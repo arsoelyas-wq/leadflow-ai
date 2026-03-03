@@ -2,23 +2,31 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
+
 const app = express();
 const PORT = process.env.PORT || 3001;
+
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.NEXT_PUBLIC_APP_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
-const authRouter = require('./routes/auth');
-const aiRouter = require('./routes/ai');
-app.use('/api/auth', authRouter);
-app.use('/api/ai', aiRouter);
-const scrapeRouter = require('./routes/scrape');
+
 const { authMiddleware } = require('./middleware/auth');
-app.use('/api/scrape', authMiddleware, scrapeRouter);
-const whatsappRouter = require('./routes/whatsapp');
-app.use('/api/whatsapp', whatsappRouter);
-const emailRouter = require('./routes/email');
-app.use('/api/email', emailRouter);
-const paymentsRouter = require('./routes/payments');
-app.use('/api/payments', paymentsRouter);
-app.get('/health', function(req, res) { res.json({ status: 'OK' }); });
-app.listen(PORT, function() { console.log('LeadFlow API:' + PORT); });
+
+// Public routes
+app.use('/api/auth', require('./routes/auth'));
+
+// Protected routes
+app.use('/api/leads',     authMiddleware, require('./routes/leads'));
+app.use('/api/analytics', authMiddleware, require('./routes/analytics'));
+app.use('/api/scrape',    authMiddleware, require('./routes/scrape'));
+app.use('/api/whatsapp',  authMiddleware, require('./routes/whatsapp'));
+app.use('/api/email',     authMiddleware, require('./routes/email'));
+app.use('/api/payments',  authMiddleware, require('./routes/payments'));
+app.use('/api/ai',        require('./routes/ai'));
+
+app.get('/health', (_req: any, res: any) => res.json({ status: 'OK', ts: Date.now() }));
+
+app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));
