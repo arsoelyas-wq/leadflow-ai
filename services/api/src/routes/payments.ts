@@ -1,193 +1,91 @@
 export {};
 const express = require('express');
-const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 
 const router = express.Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// Planlar
-const PLANS = {
-  starter: {
-    name: 'Starter',
-    price: 299,
-    credits: 100,
-    priceId: 'price_starter'
-  },
-  pro: {
-    name: 'Pro',
-    price: 699,
-    credits: 500,
-    priceId: 'price_pro'
-  },
-  enterprise: {
-    name: 'Enterprise',
-    price: 1499,
-    credits: 2000,
-    priceId: 'price_enterprise'
-  }
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://leadflow-ai-r2fxkzrjv-arsoelyas-4547s-projects.vercel.app';
+
+const PACKAGES: Record<string, { credits: number; amount: number; name: string }> = {
+  small:  { credits: 100, amount: 20000, name: 'Başlangıç Paketi' },   // ₺200
+  medium: { credits: 300, amount: 45000, name: 'Profesyonel Paket' },  // ₺450
+  large:  { credits: 700, amount: 80000, name: 'İşletme Paketi' },     // ₺800
 };
 
-// Checkout session olustur
-router.post('/create-checkout', async (req: any, res: any) => {
+// POST /api/payments/topup — Stripe checkout
+router.post('/topup', async (req: any, res: any) => {
   try {
-    const { plan, userId, userEmail } = req.body;
+    const { packageId } = req.body;
+    const userId = req.userId;
+    const pkg = PACKAGES[packageId];
 
-    if (!plan || !userId || !userEmail) {
-      return res.status(400).json({ error: 'plan, userId ve userEmail zorunlu' });
+    if (!pkg) return res.status(400).json({ error: 'Geçersiz paket' });
+
+    // Stripe yoksa test modu
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'sk_live_...') {
+      // Direkt kredi ekle (test)
+      const { data: user } = await supabase
+        .from('users').select('credits_total').eq('id', userId).single();
+      await supabase.from('users').update({
+        credits_total: (user?.credits_total || 50) + pkg.credits
+      }).eq('id', userId);
+      return res.json({ url: `${APP_URL}/billing?success=true&credits=${pkg.credits}`, testMode: true });
     }
 
-    const planData = PLANS[plan as keyof typeof PLANS];
-    if (!planData) {
-      return res.status(400).json({ error: 'Gecersiz plan' });
-    }
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      customer_email: userEmail,
       line_items: [{
         price_data: {
           currency: 'try',
-          product_data: {
-            name: `LeadFlow AI - ${planData.name} Plan`,
-            description: `${planData.credits} lead kredisi / ay`,
-          },
-          unit_amount: planData.price * 100, // kuruş cinsinden
-          recurring: { interval: 'month' }
+          product_data: { name: `LeadFlow AI — ${pkg.name}` },
+          unit_amount: pkg.amount,
         },
         quantity: 1,
       }],
-      mode: 'subscription',
-      success_url: `http://192.168.1.37:3000/dashboard?payment=success&plan=${plan}`,
-      cancel_url: `http://192.168.1.37:3000/dashboard?payment=cancelled`,
-      metadata: { userId, plan, credits: planData.credits.toString() }
+      mode: 'payment',
+      success_url: `${APP_URL}/billing?payment=success`,
+      cancel_url: `${APP_URL}/billing?payment=cancelled`,
+      metadata: { userId, credits: pkg.credits.toString() },
     });
 
-    res.json({
-      message: 'Checkout oturumu olusturuldu',
-      checkoutUrl: session.url,
-      sessionId: session.id
-    });
-
-  } catch (error: any) {
-    console.error('Checkout Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.json({ url: session.url });
+  } catch (e: any) {
+    console.error('Payment Error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// Planları getir
-router.get('/plans', (req: any, res: any) => {
-  res.json({
-    plans: [
-      {
-        id: 'starter',
-        name: 'Starter',
-        price: 299,
-        currency: 'TRY',
-        credits: 100,
-        features: [
-          '100 lead/ay',
-          'Google Maps scraping',
-          'WhatsApp otomasyonu',
-          'Email otomasyonu',
-          'AI mesaj oluşturma'
-        ]
-      },
-      {
-        id: 'pro',
-        name: 'Pro',
-        price: 699,
-        currency: 'TRY',
-        credits: 500,
-        features: [
-          '500 lead/ay',
-          'Tüm Starter özellikleri',
-          'Instagram scraping',
-          'LinkedIn scraping',
-          'Öncelikli destek'
-        ]
-      },
-      {
-        id: 'enterprise',
-        name: 'Enterprise',
-        price: 1499,
-        currency: 'TRY',
-        credits: 2000,
-        features: [
-          '2000 lead/ay',
-          'Tüm Pro özellikleri',
-          'API erişimi',
-          'Özel entegrasyonlar',
-          '7/24 destek'
-        ]
-      }
-    ]
-  });
-});
-
-// Stripe webhook (ödeme tamamlandı)
+// Stripe webhook
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req: any, res: any) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err: any) {
-    console.error('Webhook Error:', err.message);
-    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const sig = req.headers['stripe-signature'];
+    const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+
+    if (event.type === 'checkout.session.completed') {
+      const { userId, credits } = event.data.object.metadata;
+      await supabase.from('users').update({
+        credits_total: supabase.rpc('increment', { x: parseInt(credits) })
+      }).eq('id', userId);
+    }
+
+    res.json({ received: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
   }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const { userId, plan, credits } = session.metadata;
-
-    // Kullanicinin planini guncelle
-    await supabase
-      .from('users')
-      .update({
-        plan_type: plan,
-        credits_total: parseInt(credits),
-        credits_used: 0
-      })
-      .eq('id', userId);
-
-    console.log(`Plan guncellendi: ${userId} -> ${plan}`);
-  }
-
-  res.json({ received: true });
 });
 
-// Kullanicinin abonelik durumu
-router.get('/subscription/:userId', async (req: any, res: any) => {
-  try {
-    const { userId } = req.params;
-
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('plan_type, credits_total, credits_used')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
-
-    res.json({
-      plan: user.plan_type || 'free',
-      creditsTotal: user.credits_total || 50,
-      creditsUsed: user.credits_used || 0,
-      creditsRemaining: (user.credits_total || 50) - (user.credits_used || 0)
-    });
-
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
+// GET /api/payments/plans
+router.get('/plans', (_req: any, res: any) => {
+  res.json({ packages: PACKAGES });
 });
 
 module.exports = router;

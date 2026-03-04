@@ -8,25 +8,33 @@ const PORT = process.env.PORT || 3001;
 
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NEXT_PUBLIC_APP_URL || '*',
-  credentials: true
+  origin: '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Stripe webhook — raw body gerekli, json'dan önce tanımla
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 const { authMiddleware } = require('./middleware/auth');
 
-// Public routes
+// Public
 app.use('/api/auth', require('./routes/auth'));
 
-// Protected routes
-app.use('/api/leads',     authMiddleware, require('./routes/leads'));
-app.use('/api/analytics', authMiddleware, require('./routes/analytics'));
-app.use('/api/scrape',    authMiddleware, require('./routes/scrape'));
-app.use('/api/whatsapp',  authMiddleware, require('./routes/whatsapp'));
-app.use('/api/email',     authMiddleware, require('./routes/email'));
-app.use('/api/payments',  authMiddleware, require('./routes/payments'));
-app.use('/api/ai',        require('./routes/ai'));
+// Protected
+app.use('/api/leads',    authMiddleware, require('./routes/leads'));
+app.use('/api/scrape',   authMiddleware, require('./routes/scrape'));
+app.use('/api/payments', authMiddleware, require('./routes/payments'));
+app.use('/api/analytics',authMiddleware, require('./routes/analytics'));
+app.use('/api/whatsapp', authMiddleware, require('./routes/whatsapp'));
+app.use('/api/email',    authMiddleware, require('./routes/email'));
+app.use('/api/ai',       authMiddleware, require('./routes/ai'));
 
-app.get('/health', (_req: any, res: any) => res.json({ status: 'OK', ts: Date.now() }));
+// Health check
+app.get('/health', (_req: any, res: any) => {
+  res.json({ status: 'OK', ts: Date.now(), env: process.env.NODE_ENV });
+});
 
 app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));

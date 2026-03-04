@@ -4,26 +4,45 @@ const { ApifyClient } = require('apify-client');
 const { createClient } = require('@supabase/supabase-js');
 
 const router = express.Router();
-
-const apify = new ApifyClient({ token: process.env.APIFY_TOKEN });
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// Google Maps'ten lead cek
+// Google Maps scraping
 router.post('/google-maps', async (req: any, res: any) => {
   try {
-    const { keyword, city, userId, maxResults = 20 } = req.body;
+    const { keyword, city, maxResults = 20 } = req.body;
+    const userId = req.userId; // authMiddleware'den gelir
 
-    if (!keyword || !city || !userId) {
-      return res.status(400).json({ error: 'keyword, city ve userId zorunlu' });
+    if (!keyword || !city) {
+      return res.status(400).json({ error: 'keyword ve city zorunlu' });
     }
 
-    const searchQuery = `${keyword} ${city} Turkey`;
-    console.log(`Scraping basliyor: ${searchQuery}`);
+    // Apify token yoksa mock data döndür (test için)
+    if (!process.env.APIFY_TOKEN) {
+      const mockLeads = Array.from({ length: 5 }, (_, i) => ({
+        user_id: userId,
+        company_name: `${keyword} Firması ${i + 1}`,
+        phone: `+905${Math.floor(Math.random() * 900000000 + 100000000)}`,
+        website: null,
+        city,
+        sector: keyword,
+        source: 'google_maps',
+        status: 'new',
+        score: Math.floor(Math.random() * 40 + 60),
+        notes: `${city}, Türkiye`,
+      }));
 
-    // Apify Google Maps Scraper calistir
+      const { data: saved, error } = await supabase
+        .from('leads').insert(mockLeads).select();
+      if (error) throw error;
+      return res.json({ message: `${saved.length} test lead eklendi`, count: saved.length, leads: saved });
+    }
+
+    const apify = new ApifyClient({ token: process.env.APIFY_TOKEN });
+    const searchQuery = `${keyword} ${city} Turkey`;
+
     const run = await apify.actor('compass/crawler-google-places').call({
       searchStringsArray: [searchQuery],
       maxCrawledPlacesPerSearch: maxResults,
@@ -33,101 +52,40 @@ router.post('/google-maps', async (req: any, res: any) => {
       includePeopleAlsoSearch: false,
     });
 
-    // Sonuclari al
     const { items } = await apify.dataset(run.defaultDatasetId).listItems();
+    if (!items?.length) return res.json({ message: 'Sonuç bulunamadı', count: 0, leads: [] });
 
-    if (!items || items.length === 0) {
-      return res.json({ message: 'Sonuc bulunamadi', count: 0, leads: [] });
-    }
-
-    // Leadleri veritabanina kaydet
     const leadsToInsert = items.map((place: any) => ({
       user_id: userId,
       company_name: place.title || 'Bilinmiyor',
       phone: place.phone || place.phoneUnformatted || null,
       website: place.website || null,
-      city: city,
+      city,
       sector: keyword,
-      source: 'Google Maps',
+      source: 'google_maps',
       status: 'new',
-      score: calculateScore(place),
+      score: calcScore(place),
       notes: place.address || null,
     }));
 
-    const { data: savedLeads, error } = await supabase
-      .from('leads')
-      .insert(leadsToInsert)
-      .select();
-
+    const { data: saved, error } = await supabase
+      .from('leads').insert(leadsToInsert).select();
     if (error) throw error;
 
-    res.json({
-      message: `${savedLeads.length} lead basariyla eklendi!`,
-      count: savedLeads.length,
-      leads: savedLeads
-    });
-
-  } catch (error: any) {
-    console.error('Scraping Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.json({ message: `${saved.length} lead eklendi`, count: saved.length, leads: saved });
+  } catch (e: any) {
+    console.error('Scrape Error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// Lead skoru hesapla
-function calculateScore(place: any): number {
-  let score = 50;
-  if (place.phone) score += 20;
-  if (place.website) score += 10;
-  if (place.reviewsCount > 10) score += 10;
-  if (place.totalScore > 4) score += 10;
-  return Math.min(score, 100);
+function calcScore(place: any): number {
+  let s = 50;
+  if (place.phone) s += 20;
+  if (place.website) s += 10;
+  if (place.reviewsCount > 10) s += 10;
+  if (place.totalScore > 4) s += 10;
+  return Math.min(s, 100);
 }
-
-// Kayitli leadleri getir
-router.get('/leads/:userId', async (req: any, res: any) => {
-  try {
-    const { userId } = req.params;
-    const { status, source, limit = 50 } = req.query;
-
-    let query = supabase
-      .from('leads')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(Number(limit));
-
-    if (status) query = query.eq('status', status);
-    if (source) query = query.eq('source', source);
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    res.json({ count: data.length, leads: data });
-
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Lead durumunu guncelle
-router.patch('/leads/:leadId', async (req: any, res: any) => {
-  try {
-    const { leadId } = req.params;
-    const { status, notes } = req.body;
-
-    const { data, error } = await supabase
-      .from('leads')
-      .update({ status, notes, updated_at: new Date().toISOString() })
-      .eq('id', leadId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    res.json({ message: 'Lead guncellendi', lead: data });
-
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 module.exports = router;
