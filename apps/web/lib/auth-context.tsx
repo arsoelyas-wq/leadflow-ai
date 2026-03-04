@@ -7,6 +7,7 @@ interface User {
   email: string
   name?: string
   company?: string
+  sector?: string
   planType: string
   creditsTotal: number
   creditsUsed: number
