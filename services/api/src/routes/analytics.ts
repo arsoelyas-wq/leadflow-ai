@@ -39,10 +39,20 @@ router.get('/overview', authMiddleware, async (req: any, res: any) => {
       .from('users').select('credits_total, credits_used')
       .eq('id', userId).single();
 
-    // Son 5 lead
-    const recentLeads = (leads || [])
-      .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at))
-      .slice(0, 5);
+    // Son 5 lead — field adlarını frontend formatına çevir
+const recentLeads = (leads || [])
+  .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at))
+  .slice(0, 5)
+  .map((l: any) => ({
+    id: l.id,
+    companyName: l.company_name,
+    company_name: l.company_name,
+    city: l.city,
+    source: l.source,
+    score: l.score,
+    status: l.status,
+    createdAt: l.created_at,
+  }));
 
     // Kaynak dağılımı
     const sourceBreakdown: Record<string, number> = {};

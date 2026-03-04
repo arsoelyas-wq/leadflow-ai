@@ -149,10 +149,11 @@ export default function DashboardPage() {
             {stats?.recentLeads.map(lead => (
               <div key={lead.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-700/30 transition">
                 <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-white font-bold">
-                  {lead.companyName[0]}
+                  {(lead.companyName || lead.company_name || '?')[0]}
+
                 </div>
                 <div className="flex-1">
-                  <p className="text-white font-medium">{lead.companyName}</p>
+                  <p className="text-white font-medium">{lead.companyName || lead.company_name}</p>
                   <p className="text-slate-400 text-sm">{lead.city} · {sourceLabel[lead.source] || lead.source}</p>
                 </div>
                 <div className="flex items-center gap-3">
