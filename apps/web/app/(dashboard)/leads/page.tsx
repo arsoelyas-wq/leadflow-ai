@@ -189,8 +189,18 @@ export default function LeadsPage() {
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="flex gap-2">
-                    {lead.phone && <a href={`tel:${lead.phone}`} className="text-slate-400 hover:text-green-400 transition"><Phone size={14} /></a>}
+                  <div className="flex gap-2 items-center">
+                    {lead.phone && (
+                      <span className="group relative">
+                        <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                          className="text-slate-400 hover:text-green-400 transition">
+                          <Phone size={14} />
+                        </a>
+                        <span className="absolute bottom-6 left-0 bg-slate-900 border border-slate-700 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition z-10">
+                          {lead.phone}
+                        </span>
+                      </span>
+                    )}
                     {lead.email && <a href={`mailto:${lead.email}`} className="text-slate-400 hover:text-blue-400 transition"><Mail size={14} /></a>}
                     {lead.instagram && <a href={`https://instagram.com/${lead.instagram.replace('@','')}`} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-pink-400 transition"><Instagram size={14} /></a>}
                   </div>
