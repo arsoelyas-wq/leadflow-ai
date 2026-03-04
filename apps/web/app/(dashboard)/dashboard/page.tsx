@@ -14,6 +14,7 @@ interface Stats {
   recentLeads: Array<{
     id: string
     companyName: string
+    company_name: string
     city: string
     source: string
     score: number
