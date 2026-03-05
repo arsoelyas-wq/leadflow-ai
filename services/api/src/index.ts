@@ -31,6 +31,8 @@ app.use('/api/analytics',authMiddleware, require('./routes/analytics'));
 app.use('/api/whatsapp', authMiddleware, require('./routes/whatsapp'));
 app.use('/api/email',    authMiddleware, require('./routes/email'));
 app.use('/api/ai',       authMiddleware, require('./routes/ai'));
+app.use('/api/campaigns', authMiddleware, require('./routes/campaigns'));
+app.use('/api/messages',  authMiddleware, require('./routes/messages'));
 
 // Health check
 app.get('/health', (_req: any, res: any) => {
