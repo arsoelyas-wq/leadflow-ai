@@ -7,7 +7,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 // Tüm kampanyaları getir
 router.get('/', async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId;
         const { data, error } = await supabase
             .from('campaigns')
             .select('*')
