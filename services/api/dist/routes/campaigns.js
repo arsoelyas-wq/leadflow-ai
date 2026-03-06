@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
 // Yeni kampanya oluştur
 router.post('/', async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId;
         const { name, channel, messageTemplate, leadIds, sequence } = req.body;
         if (!name || !channel || !messageTemplate) {
             return res.status(400).json({ error: 'name, channel ve messageTemplate zorunlu' });
@@ -69,7 +69,7 @@ router.post('/', async (req, res) => {
 // Kampanya detayı
 router.get('/:id', async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId;
         const { data, error } = await supabase
             .from('campaigns')
             .select('*')
@@ -87,7 +87,7 @@ router.get('/:id', async (req, res) => {
 // Kampanyayı başlat
 router.post('/:id/start', async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId;
         const { data: campaign, error } = await supabase
             .from('campaigns')
             .select('*')
@@ -96,14 +96,12 @@ router.post('/:id/start', async (req, res) => {
             .single();
         if (error || !campaign)
             return res.status(404).json({ error: 'Kampanya bulunamadı' });
-        // Lead'leri çek
         const { data: leads } = await supabase
             .from('leads')
             .select('*')
             .in('id', campaign.lead_ids || []);
         let sent = 0;
         let failed = 0;
-        // WhatsApp veya Email gönder
         for (const lead of leads || []) {
             try {
                 const personalizedMsg = (campaign.message_template || '')
@@ -160,7 +158,6 @@ router.post('/:id/start', async (req, res) => {
                 failed++;
             }
         }
-        // Kampanyayı güncelle
         await supabase.from('campaigns').update({
             status: 'active',
             total_sent: (campaign.total_sent || 0) + sent,
@@ -175,7 +172,7 @@ router.post('/:id/start', async (req, res) => {
 // Kampanyayı duraklat
 router.post('/:id/pause', async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId;
         await supabase.from('campaigns')
             .update({ status: 'paused' })
             .eq('id', req.params.id)
@@ -189,7 +186,7 @@ router.post('/:id/pause', async (req, res) => {
 // Kampanyayı sil
 router.delete('/:id', async (req, res) => {
     try {
-        const userId = req.user?.id;
+        const userId = req.userId;
         await supabase.from('campaigns')
             .delete()
             .eq('id', req.params.id)
