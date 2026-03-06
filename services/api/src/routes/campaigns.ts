@@ -11,7 +11,7 @@ const supabase = createClient(
 // Tüm kampanyaları getir
 router.get('/', async (req: any, res: any) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.userId;
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')
