@@ -45,6 +45,13 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
   completed: { label: 'Tamamlandı', color: 'text-blue-400', dot: 'bg-blue-400' },
 }
 
+function formatDate(dateStr: string) {
+  if (!dateStr) return 'Tarih yok'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return 'Tarih yok'
+  return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 export default function CampaignDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -110,10 +117,13 @@ export default function CampaignDetailPage() {
 
   if (!campaign) return null
 
+  const totalLeads = campaign.leadIds?.length || 0
   const replyRate = campaign.totalSent > 0
     ? Math.round((campaign.totalReplied / campaign.totalSent) * 100)
     : 0
   const deliveryRate = campaign.totalSent > 0 ? 100 : 0
+  const progressMax = Math.max(totalLeads, campaign.totalSent || 0, 1)
+
   const ch = channelConfig[campaign.channel] || channelConfig.whatsapp
   const st = statusConfig[campaign.status] || statusConfig.draft
   const ChIcon = ch.icon
@@ -144,9 +154,7 @@ export default function CampaignDetailPage() {
               <div className={`w-1.5 h-1.5 rounded-full ${st.dot} ${campaign.status === 'active' ? 'animate-pulse' : ''}`} />
               <span className={`text-sm ${st.color}`}>{st.label}</span>
               <span className="text-slate-600">·</span>
-              <span className="text-slate-500 text-sm">
-                {new Date(campaign.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </span>
+              <span className="text-slate-500 text-sm">{formatDate(campaign.createdAt)}</span>
             </div>
           </div>
         </div>
@@ -180,7 +188,7 @@ export default function CampaignDetailPage() {
             icon: Send,
             color: 'text-blue-400',
             bg: 'bg-blue-400/10',
-            sub: `${campaign.leadIds?.length || 0} hedef`
+            sub: `${totalLeads} hedef`
           },
           {
             label: 'Cevaplanan',
@@ -200,7 +208,7 @@ export default function CampaignDetailPage() {
           },
           {
             label: 'Lead Sayısı',
-            value: campaign.leadIds?.length || 0,
+            value: totalLeads,
             icon: Users,
             color: 'text-amber-400',
             bg: 'bg-amber-400/10',
@@ -234,8 +242,8 @@ export default function CampaignDetailPage() {
         </div>
         <div className="space-y-3">
           {[
-            { label: 'Gönderildi', value: campaign.totalSent, max: campaign.leadIds?.length || 1, color: 'bg-blue-500' },
-            { label: 'Cevap Aldı', value: campaign.totalReplied, max: campaign.leadIds?.length || 1, color: 'bg-emerald-500' },
+            { label: 'Gönderildi', value: campaign.totalSent, max: progressMax, color: 'bg-blue-500' },
+            { label: 'Cevap Aldı', value: campaign.totalReplied, max: progressMax, color: 'bg-emerald-500' },
           ].map((bar, i) => (
             <div key={i}>
               <div className="flex justify-between text-sm mb-1.5">
@@ -245,7 +253,7 @@ export default function CampaignDetailPage() {
               <div className="w-full bg-slate-700 rounded-full h-2">
                 <div
                   className={`${bar.color} h-2 rounded-full transition-all duration-700`}
-                  style={{ width: `${Math.min(100, (bar.value / bar.max) * 100)}%` }}
+                  style={{ width: `${bar.max > 0 ? Math.min(100, (bar.value / bar.max) * 100) : 0}%` }}
                 />
               </div>
             </div>
