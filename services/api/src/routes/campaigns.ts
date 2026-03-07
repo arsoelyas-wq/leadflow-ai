@@ -88,7 +88,20 @@ router.get('/:id', async (req: any, res: any) => {
 
     if (error || !data) return res.status(404).json({ error: 'Kampanya bulunamadı' });
 
-    res.json({ campaign: data });
+    res.json({
+      campaign: {
+        id: data.id,
+        name: data.name,
+        channel: data.channel,
+        status: data.status,
+        totalSent: data.total_sent || 0,
+        totalReplied: data.total_replied || 0,
+        createdAt: data.created_at,
+        messageTemplate: data.message_template,
+        leadIds: data.lead_ids || [],
+        sequence: data.sequence || [],
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
