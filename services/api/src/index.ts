@@ -33,6 +33,8 @@ app.use('/api/email',    authMiddleware, require('./routes/email'));
 app.use('/api/ai',       authMiddleware, require('./routes/ai'));
 app.use('/api/campaigns', authMiddleware, require('./routes/campaigns'));
 app.use('/api/messages',  authMiddleware, require('./routes/messages'));
+const { router: settingsRouter } = require('./routes/settings');
+app.use('/api/settings', authMiddleware, settingsRouter);
 
 // Health check
 app.get('/health', (_req: any, res: any) => {
