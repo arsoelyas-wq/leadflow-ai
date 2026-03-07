@@ -90,7 +90,7 @@ router.post('/whatsapp/connect', async (req: any, res: any) => {
       DisconnectReason,
       useMultiFileAuthState,
       fetchLatestBaileysVersion,
-    } = require('@whiskeysockets/baileys');
+    } = await import('@whiskeysockets/baileys');
     const qrcode = require('qrcode');
     const path = require('path');
     const fs = require('fs');
