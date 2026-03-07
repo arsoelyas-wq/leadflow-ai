@@ -9,10 +9,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// WhatsApp client store (memory - per user)
-const waClients: Record<string, any> = {};
-const waQRCodes: Record<string, string> = {};
-const waStatus: Record<string, string> = {};
+// WhatsApp state store
+const waState: Record<string, {
+  status: string;
+  qr: string;
+  socket: any;
+}> = {};
 
 // Ayarları getir
 router.get('/', async (req: any, res: any) => {
@@ -26,15 +28,17 @@ router.get('/', async (req: any, res: any) => {
 
     if (error && error.code !== 'PGRST116') throw error;
 
+    const state = waState[userId];
+
     res.json({
-      settings: data || {
-        whatsapp_number: '',
-        whatsapp_status: waStatus[userId] || 'disconnected',
-        email_host: 'smtp.gmail.com',
-        email_port: 587,
-        email_user: '',
-        email_from: '',
-        company_name: '',
+      settings: {
+        ...(data || {}),
+        whatsapp_status: state?.status || data?.whatsapp_status || 'disconnected',
+        email_host: data?.email_host || 'smtp.gmail.com',
+        email_port: data?.email_port || 587,
+        email_user: data?.email_user || '',
+        email_from: data?.email_from || '',
+        company_name: data?.company_name || '',
       }
     });
   } catch (error: any) {
@@ -63,80 +67,95 @@ router.post('/', async (req: any, res: any) => {
       }, { onConflict: 'user_id' });
 
     if (error) throw error;
-
     res.json({ message: 'Ayarlar kaydedildi!' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// WhatsApp QR kod üret
+// WhatsApp QR bağlantı - Baileys
 router.post('/whatsapp/connect', async (req: any, res: any) => {
   try {
     const userId = req.userId;
 
-    // Önceki client varsa temizle
-    if (waClients[userId]) {
-      try { await waClients[userId].destroy(); } catch {}
-      delete waClients[userId];
+    // Önceki socket varsa kapat
+    if (waState[userId]?.socket) {
+      try { waState[userId].socket.end(); } catch {}
     }
 
-    waStatus[userId] = 'connecting';
-    waQRCodes[userId] = '';
+    waState[userId] = { status: 'connecting', qr: '', socket: null };
 
-    const { Client, LocalAuth } = require('whatsapp-web.js');
+    const {
+      default: makeWASocket,
+      DisconnectReason,
+      useMultiFileAuthState,
+      fetchLatestBaileysVersion,
+    } = require('@whiskeysockets/baileys');
     const qrcode = require('qrcode');
+    const path = require('path');
+    const fs = require('fs');
 
-    const client = new Client({
-      authStrategy: new LocalAuth({ clientId: userId }),
-      puppeteer: {
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    const authDir = path.join('/tmp', 'wa_auth', userId);
+    fs.mkdirSync(authDir, { recursive: true });
+
+    const { state, saveCreds } = await useMultiFileAuthState(authDir);
+    const { version } = await fetchLatestBaileysVersion();
+
+    const sock = makeWASocket({
+      version,
+      auth: state,
+      printQRInTerminal: false,
+      logger: require('pino')({ level: 'silent' }),
+    });
+
+    waState[userId].socket = sock;
+
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', async (update: any) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        const qrImage = await qrcode.toDataURL(qr);
+        waState[userId].qr = qrImage;
+        waState[userId].status = 'qr_ready';
+      }
+
+      if (connection === 'open') {
+        waState[userId].status = 'connected';
+        waState[userId].qr = '';
+        const number = sock.user?.id?.split(':')[0] || '';
+        await supabase.from('user_settings').upsert({
+          user_id: userId,
+          whatsapp_number: number,
+          whatsapp_status: 'connected',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      }
+
+      if (connection === 'close') {
+        const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+        if (!shouldReconnect) {
+          waState[userId].status = 'disconnected';
+          await supabase.from('user_settings').upsert({
+            user_id: userId,
+            whatsapp_status: 'disconnected',
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        }
       }
     });
 
-    waClients[userId] = client;
-
-    client.on('qr', async (qr: string) => {
-      const qrImage = await qrcode.toDataURL(qr);
-      waQRCodes[userId] = qrImage;
-      waStatus[userId] = 'qr_ready';
-    });
-
-    client.on('ready', async () => {
-      waStatus[userId] = 'connected';
-      waQRCodes[userId] = '';
-      const number = client.info?.wid?.user || '';
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        whatsapp_number: number,
-        whatsapp_status: 'connected',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-    });
-
-    client.on('disconnected', async () => {
-      waStatus[userId] = 'disconnected';
-      delete waClients[userId];
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        whatsapp_status: 'disconnected',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
-    });
-
-    client.initialize();
-
-    // QR hazır olana kadar bekle (max 30 saniye)
+    // QR hazır olana kadar bekle (max 20 saniye)
     let waited = 0;
-    while (waStatus[userId] !== 'qr_ready' && waStatus[userId] !== 'connected' && waited < 30000) {
+    while (waState[userId].status === 'connecting' && waited < 20000) {
       await new Promise(r => setTimeout(r, 500));
       waited += 500;
     }
 
     res.json({
-      status: waStatus[userId],
-      qr: waQRCodes[userId] || null,
+      status: waState[userId].status,
+      qr: waState[userId].qr || null,
     });
   } catch (error: any) {
     console.error('WhatsApp connect error:', error.message);
@@ -146,26 +165,22 @@ router.post('/whatsapp/connect', async (req: any, res: any) => {
 
 // WhatsApp durum kontrol
 router.get('/whatsapp/status', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const status = waStatus[userId] || 'disconnected';
-    const qr = waQRCodes[userId] || null;
-    res.json({ status, qr });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
+  const userId = req.userId;
+  const state = waState[userId];
+  res.json({
+    status: state?.status || 'disconnected',
+    qr: state?.qr || null,
+  });
 });
 
 // WhatsApp bağlantıyı kes
 router.post('/whatsapp/disconnect', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    if (waClients[userId]) {
-      try { await waClients[userId].destroy(); } catch {}
-      delete waClients[userId];
+    if (waState[userId]?.socket) {
+      try { waState[userId].socket.end(); } catch {}
     }
-    waStatus[userId] = 'disconnected';
-    waQRCodes[userId] = '';
+    delete waState[userId];
 
     await supabase.from('user_settings').upsert({
       user_id: userId,
@@ -179,13 +194,17 @@ router.post('/whatsapp/disconnect', async (req: any, res: any) => {
   }
 });
 
-// Email test gönder
+// Email test
 router.post('/email/test', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { email_host, email_port, email_user, email_pass, email_from } = req.body;
 
-    const transporter = nodemailer.createTransporter({
+    if (!email_user || !email_pass) {
+      return res.status(400).json({ error: 'Email ve şifre gerekli' });
+    }
+
+    const transporter = nodemailer.createTransport({
       host: email_host || 'smtp.gmail.com',
       port: email_port || 587,
       secure: false,
@@ -218,14 +237,14 @@ router.post('/email/test', async (req: any, res: any) => {
 
 // WhatsApp mesaj gönder (kampanyadan kullanılır)
 const sendWhatsAppMessage = async (userId: string, phone: string, message: string) => {
-  const client = waClients[userId];
-  if (!client || waStatus[userId] !== 'connected') {
-    throw new Error('WhatsApp bağlı değil');
+  const state = waState[userId];
+  if (!state || state.status !== 'connected') {
+    throw new Error('WhatsApp bağlı değil. Ayarlar sayfasından bağlayın.');
   }
   const cleanPhone = phone.replace(/\D/g, '');
   const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
     : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
-  await client.sendMessage(`${formattedPhone}@c.us`, message);
+  await state.socket.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: message });
 };
 
 // Email gönder (kampanyadan kullanılır)
@@ -238,7 +257,7 @@ const sendEmail = async (userId: string, to: string, subject: string, html: stri
 
   if (!settings?.email_user) throw new Error('Email ayarları yapılmamış');
 
-  const transporter = nodemailer.createTransporter({
+  const transporter = nodemailer.createTransport({
     host: settings.email_host || 'smtp.gmail.com',
     port: settings.email_port || 587,
     secure: false,
@@ -253,4 +272,4 @@ const sendEmail = async (userId: string, to: string, subject: string, html: stri
   });
 };
 
-module.exports = { router, sendWhatsAppMessage, sendEmail, waClients, waStatus };
+module.exports = { router, sendWhatsAppMessage, sendEmail, waState };
