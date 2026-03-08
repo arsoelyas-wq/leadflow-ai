@@ -35,6 +35,8 @@ app.use('/api/campaigns', authMiddleware, require('./routes/campaigns'));
 app.use('/api/messages',  authMiddleware, require('./routes/messages'));
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings', authMiddleware, settingsRouter);
+const { router: dashboardRouter } = require('./routes/dashboard');
+app.use('/api/dashboard', authMiddleware, dashboardRouter);
 
 // Health check
 app.get('/health', (_req: any, res: any) => {
