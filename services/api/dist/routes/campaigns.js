@@ -173,10 +173,10 @@ async function sendCampaignMessages(campaign, leads, userSettings, userId) {
         try {
             // Mesajı kişiselleştir
             const personalizedMsg = (campaign.message_template || '')
-                .replace(/\[FIRMA_ADI\]/g, lead.company || lead.name || 'Sayın Yetkili')
+                .replace(/\[FIRMA_ADI\]/g, lead.company_name || lead.contact_name || 'Sayın Yetkili')
                 .replace(/\[SEHIR\]/g, lead.city || '')
                 .replace(/\[SEKTOR\]/g, lead.sector || '')
-                .replace(/\[AD\]/g, lead.name || '')
+                .replace(/\[AD\]/g, lead.contact_name || '')
                 .replace(/\[TELEFON\]/g, lead.phone || '');
             let success = false;
             if (campaign.channel === 'whatsapp' && lead.phone) {

@@ -48,7 +48,7 @@ router.get('/', async (req, res) => {
         // Son leadler
         const { data: recentLeads } = await supabase
             .from('leads')
-            .select('id, name, company, city, source, score, created_at')
+            .select('id, company_name, contact_name, city, source, score, created_at')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(5);

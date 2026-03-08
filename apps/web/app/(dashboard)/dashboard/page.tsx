@@ -200,10 +200,10 @@ export default function DashboardPage() {
               <div key={lead.id} className="flex items-center justify-between py-2.5 border-b border-slate-700/30 last:border-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center text-blue-300 text-xs font-bold">
-                    {(lead.company || lead.name || '?')[0].toUpperCase()}
+                    {(lead.company_name || lead.contact_name || '?')[0].toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-white text-sm font-medium">{lead.company || lead.name}</p>
+                    <p className="text-white text-sm font-medium">{lead.company_name || lead.contact_name}</p>
                     <p className="text-slate-500 text-xs">{lead.city} · {lead.source}</p>
                   </div>
                 </div>
