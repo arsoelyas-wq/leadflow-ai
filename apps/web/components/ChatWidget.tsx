@@ -11,23 +11,23 @@ interface Message {
 const FLOW: { key: string; text: string; options?: string[] }[] = [
   {
     key: 'welcome',
-    text: 'Merhaba! 👋 Ben LeadFlow AI. Size birkaç soru soracağım ve işinize nasıl yardımcı olabileceğimi göstereceğim.\n\nHangi sektörde faaliyet gösteriyorsunuz?',
-    options: ['Dekorasyon / Mobilya', 'Tekstil / Giyim', 'İnşaat / Yapı', 'Gıda / Restoran', 'Teknoloji', 'Hizmet Sektörü', 'Diğer']
+    text: 'Merhaba! ðŸ‘‹ Ben LeadFlow AI. Size birkaÃ§ soru soracaÄŸÄ±m ve iÅŸinize nasÄ±l yardÄ±mcÄ± olabileceÄŸimi gÃ¶stereceÄŸim.\n\nHangi sektÃ¶rde faaliyet gÃ¶steriyorsunuz?',
+    options: ['Dekorasyon / Mobilya', 'Tekstil / Giyim', 'Ä°nÅŸaat / YapÄ±', 'GÄ±da / Restoran', 'Teknoloji', 'Hizmet SektÃ¶rÃ¼', 'DiÄŸer']
   },
   {
     key: 'goal',
-    text: 'Harika! Peki şu an en büyük zorluğunuz ne?',
-    options: ['Yeni müşteri bulmak zor', 'Müşterilere ulaşmak zaman alıyor', 'Rakipler önüme geçiyor', 'Satış sürecim verimsiz']
+    text: 'Harika! Peki ÅŸu an en bÃ¼yÃ¼k zorluÄŸunuz ne?',
+    options: ['Yeni mÃ¼ÅŸteri bulmak zor', 'MÃ¼ÅŸterilere ulaÅŸmak zaman alÄ±yor', 'Rakipler Ã¶nÃ¼me geÃ§iyor', 'SatÄ±ÅŸ sÃ¼recim verimsiz']
   },
   {
     key: 'city',
-    text: 'Anladım. Hangi şehirde veya bölgede müşteri arıyorsunuz?',
-    options: ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Diğer şehir']
+    text: 'AnladÄ±m. Hangi ÅŸehirde veya bÃ¶lgede mÃ¼ÅŸteri arÄ±yorsunuz?',
+    options: ['Ä°stanbul', 'Ankara', 'Ä°zmir', 'Bursa', 'Antalya', 'DiÄŸer ÅŸehir']
   },
   {
     key: 'size',
-    text: 'Son olarak — ayda kaç yeni müşteri kazanmak istersiniz?',
-    options: ['5-10 müşteri', '10-30 müşteri', '30-50 müşteri', '50+ müşteri']
+    text: 'Son olarak â€” ayda kaÃ§ yeni mÃ¼ÅŸteri kazanmak istersiniz?',
+    options: ['5-10 mÃ¼ÅŸteri', '10-30 mÃ¼ÅŸteri', '30-50 mÃ¼ÅŸteri', '50+ mÃ¼ÅŸteri']
   },
 ]
 
@@ -82,7 +82,7 @@ export default function ChatWidget() {
         }])
         setStep(s => s + 1)
       } else {
-        // Son adım — AI ile özel mesaj üret
+        // Son adÄ±m â€” AI ile Ã¶zel mesaj Ã¼ret
         generateFinalMessage(newAnswers)
       }
     }, 800)
@@ -113,7 +113,7 @@ export default function ChatWidget() {
   }
 
   const getFallbackMessage = (ans: Record<string, string>) => {
-    return `Mükemmel! İşte size özel planım 🎯\n\n${ans.city} bölgesinde ${ans.welcome} sektöründe faaliyet gösteren işletmeler için LeadFlow AI şunları yapabilir:\n\n✅ Google Maps'ten otomatik potansiyel müşteri bulur\n✅ WhatsApp ile kişiselleştirilmiş mesaj gönderir\n✅ ${ans.size} hedefine ulaşmanıza yardımcı olur\n\nÜcretsiz başlayın, ilk 50 lead hediyemiz! 🎁`
+    return `MÃ¼kemmel! Ä°ÅŸte size Ã¶zel planÄ±m ðŸŽ¯\n\n${ans.city} bÃ¶lgesinde ${ans.welcome} sektÃ¶rÃ¼nde faaliyet gÃ¶steren iÅŸletmeler iÃ§in LeadFlow AI ÅŸunlarÄ± yapabilir:\n\nâœ… Google Maps'ten otomatik potansiyel mÃ¼ÅŸteri bulur\nâœ… WhatsApp ile kiÅŸiselleÅŸtirilmiÅŸ mesaj gÃ¶nderir\nâœ… ${ans.size} hedefine ulaÅŸmanÄ±za yardÄ±mcÄ± olur\n\nÃœcretsiz baÅŸlayÄ±n, ilk 50 lead hediyemiz! ðŸŽ`
   }
 
   return (
@@ -122,7 +122,7 @@ export default function ChatWidget() {
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
         {!open && pulse && (
           <div className="bg-white text-slate-800 text-sm font-medium px-4 py-2 rounded-2xl shadow-lg animate-bounce">
-            💬 Size nasıl yardımcı olabilirim?
+            ðŸ’¬ Size nasÄ±l yardÄ±mcÄ± olabilirim?
           </div>
         )}
         <button
@@ -152,7 +152,7 @@ export default function ChatWidget() {
               <p className="text-white font-semibold text-sm">LeadFlow AI Asistan</p>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                <span className="text-blue-200 text-xs">Çevrimiçi</span>
+                <span className="text-blue-200 text-xs">Ã‡evrimiÃ§i</span>
               </div>
             </div>
             <button onClick={() => setOpen(false)} className="ml-auto text-white/60 hover:text-white transition">
@@ -204,10 +204,10 @@ export default function ChatWidget() {
             <div className="p-4 border-t border-slate-700/50">
               <a href="/register"
                 className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition text-sm">
-                <Zap size={15} /> Ücretsiz Başla — 50 Kredi Hediye
+                <Zap size={15} /> Ãœcretsiz BaÅŸla â€” 50 Kredi Hediye
                 <ArrowRight size={15} />
               </a>
-              <p className="text-center text-slate-500 text-xs mt-2">Kredi kartı gerekmez</p>
+              <p className="text-center text-slate-500 text-xs mt-2">Kredi kartÄ± gerekmez</p>
             </div>
           )}
         </div>
