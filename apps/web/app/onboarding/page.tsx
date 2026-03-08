@@ -35,7 +35,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     // İlk mesajı göster
     setTimeout(() => {
-      const firstQ = STEPS[0].question(name)
+      const firstQ = STEPS[0].question(name, {})
       setMessages([{ role: 'assistant', content: firstQ }])
     }, 500)
   }, [])
