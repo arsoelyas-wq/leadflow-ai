@@ -1,11 +1,11 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import {
   User, Building2, Key, Bell, Shield, Save, MessageSquare,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff,
-  Send, Eye, EyeOff, Smartphone
+  Send, Eye, EyeOff, Smartphone, Phone
 } from 'lucide-react'
 
 interface Settings {
@@ -34,15 +34,13 @@ export default function SettingsPage() {
   // Channels
   const [settings, setSettings] = useState<Settings>({})
   const [settingsLoading, setSettingsLoading] = useState(false)
-  const [settingsSaving, setSettingsSaving] = useState(false)
   const [waConnecting, setWaConnecting] = useState(false)
   const [emailTesting, setEmailTesting] = useState(false)
-  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [settingsSaving, setSettingsSaving] = useState(false)
   const [waStatus, setWaStatus] = useState('disconnected')
+  const [waNumber, setWaNumber] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [emailPass, setEmailPass] = useState('')
-  const pollRef = useRef<any>(null)
-
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const showMsg = (type: 'success' | 'error', text: string) => {
@@ -56,6 +54,7 @@ export default function SettingsPage() {
       const data = await api.get('/api/settings')
       setSettings(data.settings || {})
       setWaStatus(data.settings?.whatsapp_status || 'disconnected')
+      setWaNumber(data.settings?.whatsapp_number || '')
     } catch {} finally { setSettingsLoading(false) }
   }
 
@@ -83,35 +82,21 @@ export default function SettingsPage() {
   }
 
   const connectWhatsApp = async () => {
+    if (!waNumber) return showMsg('error', 'Lütfen WhatsApp numaranızı girin')
     setWaConnecting(true)
-    setQrCode(null)
     try {
-      const data = await api.post('/api/settings/whatsapp/connect', {})
-      if (data.qr) setQrCode(data.qr)
-      setWaStatus(data.status)
-      pollRef.current = setInterval(async () => {
-        try {
-          const s = await api.get('/api/settings/whatsapp/status')
-          setWaStatus(s.status)
-          if (s.qr) setQrCode(s.qr)
-          if (s.status === 'connected') {
-            setQrCode(null)
-            setWaConnecting(false)
-            clearInterval(pollRef.current)
-            showMsg('success', 'WhatsApp başarıyla bağlandı!')
-            loadSettings()
-          }
-        } catch {}
-      }, 2000)
-    } catch (e: any) { showMsg('error', e.message); setWaConnecting(false) }
+      const data = await api.post('/api/settings/whatsapp/connect', { whatsapp_number: waNumber })
+      setWaStatus('connected')
+      showMsg('success', data.message || 'WhatsApp bağlandı!')
+      loadSettings()
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setWaConnecting(false) }
   }
 
   const disconnectWhatsApp = async () => {
     try {
       await api.post('/api/settings/whatsapp/disconnect', {})
       setWaStatus('disconnected')
-      setQrCode(null)
-      clearInterval(pollRef.current)
       showMsg('success', 'WhatsApp bağlantısı kesildi')
     } catch (e: any) { showMsg('error', e.message) }
   }
@@ -157,7 +142,6 @@ export default function SettingsPage() {
       )}
 
       <div className="flex gap-6">
-        {/* Sidebar */}
         <div className="w-52 shrink-0">
           <nav className="space-y-1">
             {tabs.map(({ id, label, icon: Icon }) => (
@@ -172,7 +156,6 @@ export default function SettingsPage() {
           </nav>
         </div>
 
-        {/* Content */}
         <div className="flex-1">
 
           {/* PROFİL */}
@@ -238,20 +221,17 @@ export default function SettingsPage() {
                       <MessageSquare size={18} className="text-green-400" />
                     </div>
                     <div>
-                      <h2 className="text-white font-semibold">WhatsApp</h2>
-                      <p className="text-slate-400 text-xs">Telefonunuzu QR kod ile bağlayın</p>
+                      <h2 className="text-white font-semibold">WhatsApp Business</h2>
+                      <p className="text-slate-400 text-xs">Meta Cloud API ile güvenli bağlantı</p>
                     </div>
                   </div>
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
-                    waStatus === 'connected' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : waStatus === 'qr_ready' || waStatus === 'connecting' ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                    : 'bg-slate-700 border-slate-600 text-slate-400'
+                    waStatus === 'connected'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-slate-700 border-slate-600 text-slate-400'
                   }`}>
-                    {waStatus === 'connected' ? <Wifi size={11} /> :
-                     waStatus === 'connecting' || waStatus === 'qr_ready' ? <RefreshCw size={11} className="animate-spin" /> :
-                     <WifiOff size={11} />}
-                    {waStatus === 'connected' ? 'Bağlı' : waStatus === 'connecting' ? 'Bağlanıyor...' :
-                     waStatus === 'qr_ready' ? 'QR Hazır' : 'Bağlı Değil'}
+                    {waStatus === 'connected' ? <Wifi size={11} /> : <WifiOff size={11} />}
+                    {waStatus === 'connected' ? 'Bağlı' : 'Bağlı Değil'}
                   </div>
                 </div>
 
@@ -269,34 +249,31 @@ export default function SettingsPage() {
                       Bağlantıyı Kes
                     </button>
                   </div>
-                ) : qrCode ? (
-                  <div className="flex flex-col items-center gap-4 py-4">
-                    <p className="text-slate-300 text-sm text-center">
-                      WhatsApp'ı açın → <span className="text-white font-medium">⋮ Menü → Bağlantılı Cihazlar → Cihaz Bağla</span>
-                    </p>
-                    <div className="p-3 bg-white rounded-2xl">
-                      <img src={qrCode} alt="QR Code" className="w-48 h-48" />
-                    </div>
-                    <p className="text-slate-500 text-xs">QR kodu okutunca otomatik bağlanacak</p>
-                  </div>
                 ) : (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-700 flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-green-400 text-xs font-bold">1</span>
-                      </div>
-                      <p className="text-slate-300 text-sm">Aşağıdaki butona tıklayın ve QR kodu bekleyin (~10 saniye)</p>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+                      <p className="text-blue-300 text-sm font-medium mb-1">📱 Meta Cloud API</p>
+                      <p className="text-slate-400 text-xs">Numaranızı girin, sistem Meta'nın resmi altyapısı üzerinden mesaj gönderir. Güvenli ve kararlı bağlantı.</p>
                     </div>
-                    <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-700 flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-green-400 text-xs font-bold">2</span>
+                    <div>
+                      <label className="text-slate-400 text-xs mb-1.5 block">WhatsApp Numaranız</label>
+                      <div className="flex gap-2">
+                        <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-400 text-sm">
+                          <Phone size={14} />
+                          +90
+                        </div>
+                        <input
+                          value={waNumber}
+                          onChange={e => setWaNumber(e.target.value)}
+                          placeholder="5XX XXX XX XX"
+                          className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500"
+                        />
                       </div>
-                      <p className="text-slate-300 text-sm">WhatsApp → Menü (⋮) → Bağlantılı Cihazlar → QR kodu okutun</p>
                     </div>
-                    <button onClick={connectWhatsApp} disabled={waConnecting}
+                    <button onClick={connectWhatsApp} disabled={waConnecting || !waNumber}
                       className="w-full flex items-center justify-center gap-2 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-300 rounded-xl text-sm font-medium transition disabled:opacity-50">
                       {waConnecting ? <RefreshCw size={15} className="animate-spin" /> : <MessageSquare size={15} />}
-                      {waConnecting ? 'QR Hazırlanıyor...' : 'WhatsApp Bağla'}
+                      {waConnecting ? 'Bağlanıyor...' : 'WhatsApp Bağla'}
                     </button>
                   </div>
                 )}
@@ -326,8 +303,7 @@ export default function SettingsPage() {
                       <label className="text-slate-400 text-xs mb-1.5 block">Port</label>
                       <input type="number" value={settings.email_port || 587}
                         onChange={e => setSettings({ ...settings, email_port: parseInt(e.target.value) })}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
-                        placeholder="587" />
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
                     </div>
                   </div>
                   <div>
@@ -397,7 +373,7 @@ export default function SettingsPage() {
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" defaultChecked={defaultOn} className="sr-only peer" />
-                    <div className="w-10 h-5 bg-slate-700 peer-checked:bg-blue-600 rounded-full transition peer-focus:outline-none after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5" />
+                    <div className="w-10 h-5 bg-slate-700 peer-checked:bg-blue-600 rounded-full transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5" />
                   </label>
                 </div>
               ))}

@@ -1,45 +1,12 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-// WhatsApp state store
-const waState = {};
+const META_TOKEN = process.env.META_WA_TOKEN;
+const META_PHONE_ID = process.env.META_WA_PHONE_ID;
 // Ayarları getir
 router.get('/', async (req, res) => {
     try {
@@ -51,11 +18,11 @@ router.get('/', async (req, res) => {
             .single();
         if (error && error.code !== 'PGRST116')
             throw error;
-        const state = waState[userId];
         res.json({
             settings: {
                 ...(data || {}),
-                whatsapp_status: state?.status || data?.whatsapp_status || 'disconnected',
+                whatsapp_status: data?.whatsapp_status || 'disconnected',
+                whatsapp_number: data?.whatsapp_number || '',
                 email_host: data?.email_host || 'smtp.gmail.com',
                 email_port: data?.email_port || 587,
                 email_user: data?.email_user || '',
@@ -94,100 +61,72 @@ router.post('/', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-// WhatsApp QR bağlantı - Baileys
+// WhatsApp - numara kaydet ve bağlantıyı test et
 router.post('/whatsapp/connect', async (req, res) => {
     try {
         const userId = req.userId;
-        // Önceki socket varsa kapat
-        if (waState[userId]?.socket) {
-            try {
-                waState[userId].socket.end();
-            }
-            catch { }
+        const { whatsapp_number } = req.body;
+        if (!whatsapp_number) {
+            return res.status(400).json({ error: 'WhatsApp numarası gerekli' });
         }
-        waState[userId] = { status: 'connecting', qr: '', socket: null };
-        const { default: makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion, } = await Promise.resolve().then(() => __importStar(require('@whiskeysockets/baileys')));
-        const qrcode = require('qrcode');
-        const path = require('path');
-        const fs = require('fs');
-        const authDir = path.join('/tmp', 'wa_auth', userId);
-        fs.mkdirSync(authDir, { recursive: true });
-        const { state, saveCreds } = await useMultiFileAuthState(authDir);
-        const { version } = await fetchLatestBaileysVersion();
-        const sock = makeWASocket({
-            version,
-            auth: state,
-            printQRInTerminal: false,
-            logger: require('pino')({ level: 'silent' }),
-        });
-        waState[userId].socket = sock;
-        sock.ev.on('creds.update', saveCreds);
-        sock.ev.on('connection.update', async (update) => {
-            const { connection, lastDisconnect, qr } = update;
-            if (qr) {
-                const qrImage = await qrcode.toDataURL(qr);
-                waState[userId].qr = qrImage;
-                waState[userId].status = 'qr_ready';
-            }
-            if (connection === 'open') {
-                waState[userId].status = 'connected';
-                waState[userId].qr = '';
-                const number = sock.user?.id?.split(':')[0] || '';
-                await supabase.from('user_settings').upsert({
-                    user_id: userId,
-                    whatsapp_number: number,
-                    whatsapp_status: 'connected',
-                    updated_at: new Date().toISOString(),
-                }, { onConflict: 'user_id' });
-            }
-            if (connection === 'close') {
-                const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-                if (!shouldReconnect) {
-                    waState[userId].status = 'disconnected';
-                    await supabase.from('user_settings').upsert({
-                        user_id: userId,
-                        whatsapp_status: 'disconnected',
-                        updated_at: new Date().toISOString(),
-                    }, { onConflict: 'user_id' });
+        if (!META_TOKEN || !META_PHONE_ID) {
+            return res.status(500).json({ error: 'Meta API yapılandırılmamış' });
+        }
+        // Meta API ile test mesajı gönder
+        const cleanPhone = whatsapp_number.replace(/\D/g, '');
+        const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
+            : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
+        const resp = await fetch(`https://graph.facebook.com/v22.0/${META_PHONE_ID}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${META_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: formattedPhone,
+                type: 'template',
+                template: {
+                    name: 'hello_world',
+                    language: { code: 'en_US' }
                 }
-            }
+            })
         });
-        // QR hazır olana kadar bekle (max 20 saniye)
-        let waited = 0;
-        while (waState[userId].status === 'connecting' && waited < 20000) {
-            await new Promise(r => setTimeout(r, 500));
-            waited += 500;
+        const result = await resp.json();
+        if (!resp.ok) {
+            return res.status(400).json({ error: result.error?.message || 'Meta API hatası' });
         }
-        res.json({
-            status: waState[userId].status,
-            qr: waState[userId].qr || null,
-        });
+        await supabase.from('user_settings').upsert({
+            user_id: userId,
+            whatsapp_number: formattedPhone,
+            whatsapp_status: 'connected',
+            updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+        res.json({ message: 'WhatsApp bağlandı! Test mesajı gönderildi.', status: 'connected' });
     }
     catch (error) {
-        console.error('WhatsApp connect error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
-// WhatsApp durum kontrol
+// WhatsApp durum
 router.get('/whatsapp/status', async (req, res) => {
-    const userId = req.userId;
-    const state = waState[userId];
-    res.json({
-        status: state?.status || 'disconnected',
-        qr: state?.qr || null,
-    });
+    try {
+        const userId = req.userId;
+        const { data } = await supabase
+            .from('user_settings')
+            .select('whatsapp_status, whatsapp_number')
+            .eq('user_id', userId)
+            .single();
+        res.json({ status: data?.whatsapp_status || 'disconnected', number: data?.whatsapp_number });
+    }
+    catch {
+        res.json({ status: 'disconnected' });
+    }
 });
 // WhatsApp bağlantıyı kes
 router.post('/whatsapp/disconnect', async (req, res) => {
     try {
         const userId = req.userId;
-        if (waState[userId]?.socket) {
-            try {
-                waState[userId].socket.end();
-            }
-            catch { }
-        }
-        delete waState[userId];
         await supabase.from('user_settings').upsert({
             user_id: userId,
             whatsapp_status: 'disconnected',
@@ -209,7 +148,7 @@ router.post('/email/test', async (req, res) => {
         }
         const transporter = nodemailer.createTransport({
             host: email_host || 'smtp.gmail.com',
-            port: email_port || 587,
+            port: Number(email_port) || 587,
             secure: false,
             auth: { user: email_user, pass: email_pass },
         });
@@ -222,7 +161,7 @@ router.post('/email/test', async (req, res) => {
         await supabase.from('user_settings').upsert({
             user_id: userId,
             email_host,
-            email_port,
+            email_port: Number(email_port) || 587,
             email_user,
             email_pass,
             email_from,
@@ -232,19 +171,33 @@ router.post('/email/test', async (req, res) => {
         res.json({ message: 'Test emaili gönderildi! Gelen kutunuzu kontrol edin.' });
     }
     catch (error) {
-        res.status(500).json({ error: 'Email bağlantısı başarısız: ' + error.message });
+        res.status(500).json({ error: 'Email hatası: ' + error.message });
     }
 });
 // WhatsApp mesaj gönder (kampanyadan kullanılır)
-const sendWhatsAppMessage = async (userId, phone, message) => {
-    const state = waState[userId];
-    if (!state || state.status !== 'connected') {
-        throw new Error('WhatsApp bağlı değil. Ayarlar sayfasından bağlayın.');
-    }
+const sendWhatsAppMessage = async (phone, message) => {
+    if (!META_TOKEN || !META_PHONE_ID)
+        throw new Error('Meta API yapılandırılmamış');
     const cleanPhone = phone.replace(/\D/g, '');
     const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
         : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
-    await state.socket.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: message });
+    const resp = await fetch(`https://graph.facebook.com/v22.0/${META_PHONE_ID}/messages`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${META_TOKEN}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: formattedPhone,
+            type: 'text',
+            text: { body: message }
+        })
+    });
+    if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error?.message || 'Meta API hatası');
+    }
 };
 // Email gönder (kampanyadan kullanılır)
 const sendEmail = async (userId, to, subject, html) => {
@@ -257,7 +210,7 @@ const sendEmail = async (userId, to, subject, html) => {
         throw new Error('Email ayarları yapılmamış');
     const transporter = nodemailer.createTransport({
         host: settings.email_host || 'smtp.gmail.com',
-        port: settings.email_port || 587,
+        port: Number(settings.email_port) || 587,
         secure: false,
         auth: { user: settings.email_user, pass: settings.email_pass },
     });
@@ -268,4 +221,4 @@ const sendEmail = async (userId, to, subject, html) => {
         html,
     });
 };
-module.exports = { router, sendWhatsAppMessage, sendEmail, waState };
+module.exports = { router, sendWhatsAppMessage, sendEmail };
