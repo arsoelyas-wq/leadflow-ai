@@ -37,6 +37,8 @@ const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings', authMiddleware, settingsRouter);
 const { router: dashboardRouter } = require('./routes/dashboard');
 app.use('/api/dashboard', authMiddleware, dashboardRouter);
+const { salesChatRouter } = require('./routes/salesChat');
+app.use('/api/ai', salesChatRouter); // mevcut ai route'unun yanına
 
 // Health check
 app.get('/health', (_req: any, res: any) => {

@@ -366,3 +366,7 @@ export default function LandingPage() {
     </div>
   )
 }
+import ChatWidget from '@/components/ChatWidget'
+// ... mevcut kod ...
+// En sona, </> veya son div'den önce:
+<ChatWidget />
