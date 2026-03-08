@@ -25,7 +25,7 @@ app.use('/api/auth', require('./routes/auth'));
 
 // Protected
 app.use('/api/leads',    authMiddleware, require('./routes/leads'));
-app.use('/api/scrape',   authMiddleware, require('./routes/scrape'));
+app.use('/api/scrape',   authMiddleware, require('./routes/scrape').router);
 app.use('/api/payments', authMiddleware, require('./routes/payments'));
 app.use('/api/analytics',authMiddleware, require('./routes/analytics'));
 app.use('/api/whatsapp', authMiddleware, require('./routes/whatsapp'));
