@@ -180,26 +180,10 @@ async function sendCampaignMessages(campaign, leads, userSettings, userId) {
                 .replace(/\[TELEFON\]/g, lead.phone || '');
             let success = false;
             if (campaign.channel === 'whatsapp' && lead.phone) {
-                // Meta Cloud API ile gönder
-                const META_TOKEN = process.env.META_WA_TOKEN;
-                const META_PHONE_ID = process.env.META_WA_PHONE_ID;
-                const cleanPhone = lead.phone.replace(/\D/g, '');
-                const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
-                    : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
-                const resp = await fetch(`https://graph.facebook.com/v22.0/${META_PHONE_ID}/messages`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${META_TOKEN}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        messaging_product: 'whatsapp',
-                        to: formattedPhone,
-                        type: 'text',
-                        text: { body: personalizedMsg }
-                    })
-                });
-                success = resp.ok;
+                // Baileys ile gönder
+                const { sendWhatsAppMessage } = require('./settings');
+                await sendWhatsAppMessage(userId, lead.phone, personalizedMsg);
+                success = true;
             }
             else if (campaign.channel === 'email' && lead.email && transporter) {
                 // SMTP ile gönder
@@ -236,7 +220,7 @@ async function sendCampaignMessages(campaign, leads, userSettings, userId) {
             await new Promise(r => setTimeout(r, 1000));
         }
         catch (e) {
-            console.error('Send error:', e.message);
+            console.error('Send error:', e.message, JSON.stringify(e));
             failed++;
         }
     }
