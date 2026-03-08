@@ -166,6 +166,7 @@ router.post('/', async (req, res) => {
 router.post('/whatsapp/connect', async (req, res) => {
     try {
         const userId = req.userId;
+        // No phone number needed — QR based auth
         // Önceki bağlantıyı kapat
         if (waState[userId]?.sock) {
             try {
