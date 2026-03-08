@@ -53,7 +53,7 @@ router.get('/', async (req: any, res: any) => {
     // Kullanıcı kredisi
     const { data: userCredits } = await supabase
       .from('users')
-      .select('credits, plan_type')
+      .select('credits_total, credits_used, plan_type')
       .eq('id', userId)
       .single();
 
@@ -103,7 +103,7 @@ router.get('/', async (req: any, res: any) => {
         totalSent,
         totalReplied,
         replyRate,
-        credits: userCredits?.credits || 0,
+        credits: (userCredits?.credits_total || 0) - (userCredits?.credits_used || 0),
         planType: userCredits?.plan_type || 'starter',
       },
       recentLeads: recentLeads || [],
