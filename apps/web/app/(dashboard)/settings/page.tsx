@@ -39,6 +39,7 @@ export default function SettingsPage() {
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [waStatus, setWaStatus] = useState('disconnected')
   const [waNumber, setWaNumber] = useState('')
+  const [countryCode, setCountryCode] = useState('90')
   const [showPass, setShowPass] = useState(false)
   const [emailPass, setEmailPass] = useState('')
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -85,7 +86,7 @@ export default function SettingsPage() {
     if (!waNumber) return showMsg('error', 'Lütfen WhatsApp numaranızı girin')
     setWaConnecting(true)
     try {
-      const data = await api.post('/api/settings/whatsapp/connect', { whatsapp_number: waNumber })
+      const data = await api.post('/api/settings/whatsapp/connect', { whatsapp_number: countryCode + waNumber.replace(/^0/, '') })
       setWaStatus('connected')
       showMsg('success', data.message || 'WhatsApp bağlandı!')
       loadSettings()
@@ -258,10 +259,41 @@ export default function SettingsPage() {
                     <div>
                       <label className="text-slate-400 text-xs mb-1.5 block">WhatsApp Numaranız</label>
                       <div className="flex gap-2">
-                        <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-400 text-sm">
-                          <Phone size={14} />
-                          +90
-                        </div>
+                        <select
+                          value={countryCode}
+                          onChange={e => setCountryCode(e.target.value)}
+                          className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-2.5 text-slate-300 text-sm focus:outline-none focus:border-green-500 w-32"
+                        >
+                          <option value="90">🇹🇷 +90</option>
+                          <option value="1">🇺🇸 +1</option>
+                          <option value="44">🇬🇧 +44</option>
+                          <option value="49">🇩🇪 +49</option>
+                          <option value="33">🇫🇷 +33</option>
+                          <option value="39">🇮🇹 +39</option>
+                          <option value="34">🇪🇸 +34</option>
+                          <option value="31">🇳🇱 +31</option>
+                          <option value="7">🇷🇺 +7</option>
+                          <option value="380">🇺🇦 +380</option>
+                          <option value="48">🇵🇱 +48</option>
+                          <option value="40">🇷🇴 +40</option>
+                          <option value="30">🇬🇷 +30</option>
+                          <option value="966">🇸🇦 +966</option>
+                          <option value="971">🇦🇪 +971</option>
+                          <option value="90392">🇨🇾 +90392</option>
+                          <option value="994">🇦🇿 +994</option>
+                          <option value="993">🇹🇲 +993</option>
+                          <option value="998">🇺🇿 +998</option>
+                          <option value="77">🇰🇿 +77</option>
+                          <option value="86">🇨🇳 +86</option>
+                          <option value="81">🇯🇵 +81</option>
+                          <option value="82">🇰🇷 +82</option>
+                          <option value="91">🇮🇳 +91</option>
+                          <option value="55">🇧🇷 +55</option>
+                          <option value="52">🇲🇽 +52</option>
+                          <option value="27">🇿🇦 +27</option>
+                          <option value="20">🇪🇬 +20</option>
+                          <option value="234">🇳🇬 +234</option>
+                        </select>
                         <input
                           value={waNumber}
                           onChange={e => setWaNumber(e.target.value)}
