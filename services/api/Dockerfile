@@ -1,6 +1,5 @@
 FROM node:20-slim
 
-# Chromium ve sistem kütüphaneleri
 RUN apt-get update && apt-get install -y \
   chromium \
   libglib2.0-0 \
@@ -27,14 +26,13 @@ RUN apt-get update && apt-get install -y \
   fonts-liberation \
   && rm -rf /var/lib/apt/lists/*
 
-# Puppeteer'ın kendi Chromium indirmesini engelle, sistem Chromium'unu kullan
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
+COPY package.json ./
+RUN npm install --omit=dev
 
 COPY dist/ ./dist/
 
