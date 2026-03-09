@@ -59,7 +59,6 @@ router.post('/chat', async (req, res) => {
             }))
         });
         const rawText = response.content[0].text;
-        // JSON ayikla
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
             return res.status(500).json({ error: 'AI yanit formati hatali' });
@@ -105,34 +104,27 @@ Her mesajda [FIRMA_ADI] ve [SEHIR] placeholder kullan.`;
         res.status(500).json({ error: error.message });
     }
 });
-module.exports = router;
-const express = require('express');
-const router = express.Router();
-// POST /api/ai/sales-chat — Landing page chatbot için AI mesaj üret
+// POST /api/ai/sales-chat — Landing page chatbot
 router.post('/sales-chat', async (req, res) => {
     try {
         const { answers } = req.body;
-        const Anthropic = require('@anthropic-ai/sdk');
-        const client = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const prompt = `Sen LeadFlow AI'nın satış asistanısın. Bir potansiyel müşteri sana şu bilgileri verdi:
+        const prompt = `Sen LeadFlow AI'nin satis asistanisin. Bir potansiyel musteri su bilgileri verdi:
+Sektor: ${answers.welcome || 'Belirtilmedi'}
+En buyuk zorluk: ${answers.goal || 'Belirtilmedi'}
+Sehir: ${answers.city || 'Belirtilmedi'}
+Hedef musteri sayisi: ${answers.size || 'Belirtilmedi'}
 
-Sektör: ${answers.welcome || 'Belirtilmedi'}
-En büyük zorluk: ${answers.goal || 'Belirtilmedi'}
-Şehir: ${answers.city || 'Belirtilmedi'}
-Hedef müşteri sayısı: ${answers.size || 'Belirtilmedi'}
-
-Bu kişiye LeadFlow AI'nın nasıl yardımcı olabileceğini anlatan kısa, ikna edici, samimi bir Türkçe mesaj yaz. 
+Bu kisiye LeadFlow AI'nin nasil yardimci olabilecegini anlatan kisa, ikna edici Turkce mesaj yaz.
 - Emoji kullan ama abartma
-- Maksimum 5-6 satır
-- Spesifik ol (sektörüne ve şehrine göre özelleştir)
-- Sonda ücretsiz denemeye davet et
-- Heyecan verici ama samimi ol`;
-        const message = await client.messages.create({
+- Maksimum 5-6 satir
+- Sektore ve sehire gore ozellestir
+- Sonda ucretsiz denemeye davet et`;
+        const response = await anthropic.messages.create({
             model: 'claude-sonnet-4-20250514',
             max_tokens: 300,
             messages: [{ role: 'user', content: prompt }]
         });
-        const text = message.content[0].type === 'text' ? message.content[0].text : '';
+        const text = response.content[0].type === 'text' ? response.content[0].text : '';
         res.json({ message: text });
     }
     catch (e) {
@@ -140,4 +132,4 @@ Bu kişiye LeadFlow AI'nın nasıl yardımcı olabileceğini anlatan kısa, ikna
         res.status(500).json({ error: e.message });
     }
 });
-module.exports = { salesChatRouter: router };
+module.exports = router;

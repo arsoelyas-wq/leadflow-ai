@@ -65,8 +65,6 @@ router.post('/chat', async (req: any, res: any) => {
     });
 
     const rawText = response.content[0].text;
-
-    // JSON ayikla
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return res.status(500).json({ error: 'AI yanit formati hatali' });
@@ -116,6 +114,37 @@ Her mesajda [FIRMA_ADI] ve [SEHIR] placeholder kullan.`;
   } catch (error: any) {
     console.error('Generate Messages Error:', error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/ai/sales-chat — Landing page chatbot
+router.post('/sales-chat', async (req: any, res: any) => {
+  try {
+    const { answers } = req.body;
+
+    const prompt = `Sen LeadFlow AI'nin satis asistanisin. Bir potansiyel musteri su bilgileri verdi:
+Sektor: ${answers.welcome || 'Belirtilmedi'}
+En buyuk zorluk: ${answers.goal || 'Belirtilmedi'}
+Sehir: ${answers.city || 'Belirtilmedi'}
+Hedef musteri sayisi: ${answers.size || 'Belirtilmedi'}
+
+Bu kisiye LeadFlow AI'nin nasil yardimci olabilecegini anlatan kisa, ikna edici Turkce mesaj yaz.
+- Emoji kullan ama abartma
+- Maksimum 5-6 satir
+- Sektore ve sehire gore ozellestir
+- Sonda ucretsiz denemeye davet et`;
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    res.json({ message: text });
+  } catch (e: any) {
+    console.error('Sales chat error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
