@@ -8,6 +8,46 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+// ── ANTI-BAN YARDIMCI FONKSİYONLAR ──────────────────────────
+
+// Rastgele bekleme (min-max ms arası)
+function randomDelay(min: number, max: number): Promise<void> {
+  const ms = Math.floor(Math.random() * (max - min + 1)) + min;
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// Güvenli gönderim saati kontrolü (09:00 - 20:00)
+function isSafeHour(): boolean {
+  const hour = new Date().getHours();
+  return hour >= 9 && hour < 20;
+}
+
+// Günlük gönderim sayısını kontrol et (kullanıcı başına max 150/gün)
+async function getDailyCount(userId: string, channel: string): Promise<number> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const { count } = await supabase
+    .from('messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('channel', channel)
+    .eq('direction', 'out')
+    .gte('sent_at', today.toISOString())
+    .eq('user_id', userId);
+  return count || 0;
+}
+
+// Mesajı kişiselleştir
+function personalizeMessage(template: string, lead: any): string {
+  return template
+    .replace(/\[FIRMA_ADI\]/g, lead.company_name || lead.contact_name || 'Sayın Yetkili')
+    .replace(/\[SEHIR\]/g, lead.city || '')
+    .replace(/\[SEKTOR\]/g, lead.sector || '')
+    .replace(/\[AD\]/g, lead.contact_name || '')
+    .replace(/\[TELEFON\]/g, lead.phone || '');
+}
+
+// ── ROUTES ───────────────────────────────────────────────────
+
 // Tüm kampanyaları getir
 router.get('/', async (req: any, res: any) => {
   try {
@@ -109,7 +149,6 @@ router.post('/:id/start', async (req: any, res: any) => {
   try {
     const userId = req.userId;
 
-    // Kampanyayı getir
     const { data: campaign, error } = await supabase
       .from('campaigns')
       .select('*')
@@ -119,14 +158,12 @@ router.post('/:id/start', async (req: any, res: any) => {
 
     if (error || !campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
 
-    // Kullanıcı ayarlarını getir (email SMTP + WhatsApp durumu)
     const { data: userSettings } = await supabase
       .from('user_settings')
       .select('*')
       .eq('user_id', userId)
       .single();
 
-    // Kullanıcı kreditini kontrol et
     const { data: userData } = await supabase
       .from('users')
       .select('credits_total, credits_used')
@@ -135,7 +172,6 @@ router.post('/:id/start', async (req: any, res: any) => {
 
     const availableCredits = (userData?.credits_total || 0) - (userData?.credits_used || 0);
 
-    // Leadleri getir
     const { data: leads } = await supabase
       .from('leads')
       .select('*')
@@ -151,7 +187,6 @@ router.post('/:id/start', async (req: any, res: any) => {
       });
     }
 
-    // Kanal kontrolü
     if (campaign.channel === 'email' && !userSettings?.email_user) {
       return res.status(400).json({ error: 'Email ayarları yapılmamış. Ayarlar sayfasından SMTP bağlayın.' });
     }
@@ -160,25 +195,57 @@ router.post('/:id/start', async (req: any, res: any) => {
       return res.status(400).json({ error: 'WhatsApp bağlı değil. Ayarlar sayfasından bağlayın.' });
     }
 
-    // Status'u active yap
+    // WhatsApp için saat kontrolü
+    if (campaign.channel === 'whatsapp' && !isSafeHour()) {
+      return res.status(400).json({
+        error: 'WhatsApp mesajları sadece 09:00-20:00 arası gönderilebilir. Lütfen daha sonra tekrar deneyin.'
+      });
+    }
+
+    // Günlük limit kontrolü
+    if (campaign.channel === 'whatsapp') {
+      const dailyCount = await getDailyCount(userId, 'whatsapp');
+      if (dailyCount >= 150) {
+        return res.status(400).json({
+          error: `Günlük WhatsApp limiti doldu (150/gün). Yarın tekrar deneyin. Bugün gönderilen: ${dailyCount}`
+        });
+      }
+      const remaining = 150 - dailyCount;
+      if (leads.length > remaining) {
+        return res.status(400).json({
+          error: `Bugün sadece ${remaining} mesaj daha gönderebilirsiniz. ${leads.length} lead seçtiniz.`
+        });
+      }
+    }
+
     await supabase.from('campaigns').update({ status: 'active' }).eq('id', req.params.id);
 
-    // Arka planda gönderimi başlat (non-blocking)
     sendCampaignMessages(campaign, leads, userSettings, userId).catch(console.error);
 
-    res.json({ message: 'Kampanya başlatıldı! Mesajlar gönderiliyor...', total: leads.length });
+    res.json({
+      message: 'Kampanya başlatıldı! Mesajlar gönderiliyor...',
+      total: leads.length,
+      estimatedTime: `~${Math.ceil(leads.length * 1.5)} dakika`
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Arka planda mesaj gönderme fonksiyonu
+// Arka planda mesaj gönderme
 async function sendCampaignMessages(campaign: any, leads: any[], userSettings: any, userId: string) {
   let sent = 0;
   let failed = 0;
   const nodemailer = require('nodemailer');
 
-  // Email transporter
+  // Kullanıcının güncel credits_used değerini al
+  const { data: userData } = await supabase
+    .from('users')
+    .select('credits_used')
+    .eq('id', userId)
+    .single();
+  let currentCreditsUsed = userData?.credits_used || 0;
+
   let transporter: any = null;
   if (campaign.channel === 'email' && userSettings?.email_user) {
     transporter = nodemailer.createTransport({
@@ -194,30 +261,29 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
 
   for (const lead of leads) {
     try {
-      // Mesajı kişiselleştir
-      const personalizedMsg = (campaign.message_template || '')
-        .replace(/\[FIRMA_ADI\]/g, lead.company_name || lead.contact_name || 'Sayın Yetkili')
-        .replace(/\[SEHIR\]/g, lead.city || '')
-        .replace(/\[SEKTOR\]/g, lead.sector || '')
-        .replace(/\[AD\]/g, lead.contact_name || '')
-        .replace(/\[TELEFON\]/g, lead.phone || '');
+      // WhatsApp için saat kontrolü (gönderim sırasında da kontrol et)
+      if (campaign.channel === 'whatsapp' && !isSafeHour()) {
+        console.log(`Campaign ${campaign.id}: Güvenli saat dışı, gönderim durduruldu.`);
+        break;
+      }
 
+      const personalizedMsg = personalizeMessage(campaign.message_template || '', lead);
       let success = false;
 
       if (campaign.channel === 'whatsapp' && lead.phone) {
-        // Baileys ile gönder
         const { sendWhatsAppMessage } = require('./settings');
         await sendWhatsAppMessage(userId, lead.phone, personalizedMsg);
         success = true;
 
       } else if (campaign.channel === 'email' && lead.email && transporter) {
-        // SMTP ile gönder
         await transporter.sendMail({
           from: userSettings.email_from || userSettings.email_user,
           to: lead.email,
           subject: campaign.name,
           html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
             ${personalizedMsg.replace(/\n/g, '<br>')}
+            <hr style="margin-top:30px; border:none; border-top:1px solid #eee;">
+            <p style="font-size:11px; color:#999;">Bu mesajı almak istemiyorsanız STOP yazarak yanıtlayın.</p>
           </div>`,
         });
         success = true;
@@ -225,30 +291,50 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
 
       if (success) {
         sent++;
-        // Mesajı kaydet
+        currentCreditsUsed++;
+
+        // Mesajı kaydet (user_id ile birlikte)
         await supabase.from('messages').insert([{
           lead_id: lead.id,
+          user_id: userId,
           channel: campaign.channel,
           direction: 'out',
           content: personalizedMsg,
           status: 'sent',
           sent_at: new Date().toISOString(),
         }]);
-        // Kredi düş
-        await supabase.from('users')
-          .update({ credits_used: supabase.rpc('increment', { x: 1 }) })
-          .eq('id', userId);
+
+        // Krediyi toplu güncelle (her 5 mesajda bir)
+        if (sent % 5 === 0) {
+          await supabase.from('users')
+            .update({ credits_used: currentCreditsUsed })
+            .eq('id', userId);
+        }
       } else {
         failed++;
       }
 
-      // Rate limiting — her mesaj arası 1 saniye
-      await new Promise(r => setTimeout(r, 1000));
+      // ── ANTI-BAN: Rastgele bekleme ──
+      if (campaign.channel === 'whatsapp') {
+        // WhatsApp: 8-25 saniye arası rastgele bekleme
+        await randomDelay(8000, 25000);
+      } else {
+        // Email: 2-5 saniye
+        await randomDelay(2000, 5000);
+      }
+
     } catch (e: any) {
-      console.error('Send error:', e.message, JSON.stringify(e));
+      console.error('Send error:', e.message);
       failed++;
+      // Hata durumunda daha uzun bekle
+      await randomDelay(15000, 30000);
     }
   }
+
+  // Final kredi güncellemesi
+  await supabase.from('users')
+    .update({ credits_used: currentCreditsUsed })
+    .eq('id', userId);
 
   // Kampanya sonucunu güncelle
   await supabase.from('campaigns').update({
