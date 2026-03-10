@@ -15,25 +15,28 @@ app.use(cors({
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 const { authMiddleware } = require('./middleware/auth');
-// Public
+// ── PUBLIC ROUTES ─────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
-// Protected
+// Link redirect — auth gerektirmez
+const linksRouter = require('./routes/links');
+app.get('/t/:code', (req, res) => {
+    req.params.code = req.params.code;
+    linksRouter.handle(Object.assign(req, { url: `/redirect/${req.params.code}`, path: `/redirect/${req.params.code}` }), res, () => res.status(404).send('Not found'));
+});
+// ── PROTECTED ROUTES ──────────────────────────────────────
 app.use('/api/leads', authMiddleware, require('./routes/leads'));
 app.use('/api/scrape', authMiddleware, require('./routes/scrape'));
 app.use('/api/payments', authMiddleware, require('./routes/payments'));
 app.use('/api/analytics', authMiddleware, require('./routes/analytics'));
-app.use('/api/whatsapp', authMiddleware, require('./routes/whatsapp'));
-app.use('/api/email', authMiddleware, require('./routes/email'));
 app.use('/api/ai', authMiddleware, require('./routes/ai'));
 app.use('/api/campaigns', authMiddleware, require('./routes/campaigns'));
 app.use('/api/messages', authMiddleware, require('./routes/messages'));
+app.use('/api/links', authMiddleware, linksRouter);
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings', authMiddleware, settingsRouter);
 const { router: dashboardRouter } = require('./routes/dashboard');
 app.use('/api/dashboard', authMiddleware, dashboardRouter);
-const { salesChatRouter } = require('./routes/salesChat');
-app.use('/api/ai', salesChatRouter); // mevcut ai route'unun yanına
-// Health check
+// ── HEALTH CHECK ──────────────────────────────────────────
 app.get('/health', (_req, res) => {
     res.json({ status: 'OK', ts: Date.now(), env: process.env.NODE_ENV });
 });
