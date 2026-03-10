@@ -19,6 +19,100 @@ const waState: Record<string, {
   sock: any;
 }> = {};
 
+// Gelen mesajı işle — intent analizi + kaydet
+async function handleIncomingMessage(userId: string, msg: any) {
+  try {
+    const from = msg.key?.remoteJid || '';
+    const text = msg.message?.conversation
+      || msg.message?.extendedTextMessage?.text
+      || msg.message?.buttonsResponseMessage?.selectedDisplayText
+      || '';
+
+    if (!text || from.endsWith('@g.us')) return; // Grup mesajlarını atla
+
+    const phone = from.replace('@s.whatsapp.net', '');
+
+    // Lead bul veya oluştur
+    let { data: lead } = await supabase
+      .from('leads')
+      .select('id, company_name, status')
+      .eq('user_id', userId)
+      .eq('phone', phone)
+      .single();
+
+    if (!lead) {
+      // Bilinmeyen numara — yeni lead oluştur
+      const { data: newLead } = await supabase
+        .from('leads')
+        .insert([{
+          user_id: userId,
+          phone,
+          company_name: phone,
+          source: 'WhatsApp Gelen',
+          status: 'new',
+          score: 50,
+        }])
+        .select()
+        .single();
+      lead = newLead;
+    }
+
+    if (!lead) return;
+
+    // Mesajı kaydet
+    await supabase.from('messages').insert([{
+      lead_id: lead.id,
+      user_id: userId,
+      channel: 'whatsapp',
+      direction: 'in',
+      content: text,
+      status: 'received',
+      sent_at: new Date().toISOString(),
+    }]);
+
+    // Intent analizi — basit keyword bazlı
+    const lowerText = text.toLowerCase();
+    let intent = 'unknown';
+    let newStatus = lead.status;
+
+    if (/fiyat|ücret|kaç para|maliyet|teklif/i.test(lowerText)) {
+      intent = 'price_inquiry';
+      newStatus = 'contacted';
+    } else if (/evet|tamam|ilgileniyorum|olur|istiyor|gönder/i.test(lowerText)) {
+      intent = 'interested';
+      newStatus = 'qualified';
+    } else if (/hayır|istemiyorum|dur|iptal|stop/i.test(lowerText)) {
+      intent = 'not_interested';
+      newStatus = 'lost';
+    } else if (/merhaba|selam|iyi günler/i.test(lowerText)) {
+      intent = 'greeting';
+      newStatus = 'contacted';
+    }
+
+    // Lead durumunu güncelle
+    if (newStatus !== lead.status) {
+      await supabase
+        .from('leads')
+        .update({ status: newStatus })
+        .eq('id', lead.id);
+    }
+
+    console.log(`WA incoming [${userId}] from ${phone}: "${text}" → intent: ${intent}`);
+
+    // STOP komutu — blacklist
+    if (/^stop$/i.test(text.trim())) {
+      await supabase
+        .from('leads')
+        .update({ status: 'lost', notes: 'STOP komutu gönderdi — blacklist' })
+        .eq('id', lead.id);
+      console.log(`Blacklisted: ${phone}`);
+    }
+
+  } catch (err: any) {
+    console.error('handleIncomingMessage error:', err.message);
+  }
+}
+
 // Baileys'i başlat
 async function startWhatsApp(userId: string) {
   try {
@@ -78,13 +172,20 @@ async function startWhatsApp(userId: string) {
             whatsapp_status: 'disconnected',
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
-          // Auth dosyalarını sil
           fs.rmSync(authDir, { recursive: true, force: true });
         } else {
-          // Yeniden bağlan
           console.log(`Reconnecting WhatsApp for user ${userId}...`);
           setTimeout(() => startWhatsApp(userId), 3000);
         }
+      }
+    });
+
+    // ── GELEN MESAJLARI DİNLE ────────────────────────────────
+    sock.ev.on('messages.upsert', async ({ messages, type }: any) => {
+      if (type !== 'notify') return;
+      for (const msg of messages) {
+        if (msg.key?.fromMe) continue; // Kendi gönderdiğimizi atla
+        await handleIncomingMessage(userId, msg);
       }
     });
 
@@ -157,19 +258,14 @@ router.post('/', async (req: any, res: any) => {
 router.post('/whatsapp/connect', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    // No phone number needed — QR based auth
 
-    // Önceki bağlantıyı kapat
     if (waState[userId]?.sock) {
       try { waState[userId].sock.end?.(); } catch {}
     }
 
     waState[userId] = { status: 'connecting', qr: '', sock: null };
-
-    // Başlat (non-blocking)
     startWhatsApp(userId).catch(console.error);
 
-    // QR hazır olana kadar bekle (max 15 saniye)
     let waited = 0;
     while ((!waState[userId]?.qr) && waited < 15000) {
       await new Promise(r => setTimeout(r, 500));
@@ -207,7 +303,6 @@ router.post('/whatsapp/disconnect', async (req: any, res: any) => {
     }
     waState[userId] = { status: 'disconnected', qr: '', sock: null };
 
-    // Auth dosyalarını sil
     const authDir = path.join('/tmp', 'wa_auth', userId);
     fs.rmSync(authDir, { recursive: true, force: true });
 
