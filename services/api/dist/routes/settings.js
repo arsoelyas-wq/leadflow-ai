@@ -42,7 +42,6 @@ const fs = require('fs');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const waState = {};
-// Gelen mesajı işle + AI otomatik yanıt
 async function handleIncomingMessage(userId, msg) {
     try {
         const from = msg.key?.remoteJid || '';
@@ -56,7 +55,6 @@ async function handleIncomingMessage(userId, msg) {
         const phone = rawPhone.replace(/\D/g, '');
         if (!phone || phone.length < 7)
             return;
-        // Lead bul veya oluştur
         let { data: lead } = await supabase
             .from('leads')
             .select('id, company_name, status')
@@ -80,7 +78,6 @@ async function handleIncomingMessage(userId, msg) {
         }
         if (!lead)
             return;
-        // Mesajı kaydet
         await supabase.from('messages').insert([{
                 lead_id: lead.id,
                 user_id: userId,
@@ -90,14 +87,12 @@ async function handleIncomingMessage(userId, msg) {
                 status: 'received',
                 sent_at: new Date().toISOString(),
             }]);
-        // STOP komutu
         if (/^stop$/i.test(text.trim())) {
             await supabase.from('leads').update({
                 status: 'lost', notes: 'STOP komutu — blacklist'
             }).eq('id', lead.id);
             return;
         }
-        // Intent analizi
         let newStatus = lead.status;
         if (/fiyat|ücret|kaç para|maliyet|teklif/i.test(text))
             newStatus = 'contacted';
@@ -109,7 +104,6 @@ async function handleIncomingMessage(userId, msg) {
             await supabase.from('leads').update({ status: newStatus }).eq('id', lead.id);
         }
         console.log(`WA incoming [${userId}] from ${phone}: "${text.slice(0, 50)}"`);
-        // AI otomatik yanıt
         const { data: settings } = await supabase
             .from('user_settings')
             .select('auto_reply_enabled, company_name')
@@ -128,19 +122,46 @@ async function handleIncomingMessage(userId, msg) {
             .limit(1);
         if (recentReply && recentReply.length > 0)
             return;
-        // AI yanıt üret
+        // Son 20 mesajı çek — konuşma geçmişi
+        const { data: history } = await supabase
+            .from('messages')
+            .select('direction, content, sent_at')
+            .eq('lead_id', lead.id)
+            .eq('channel', 'whatsapp')
+            .order('sent_at', { ascending: false })
+            .limit(20);
+        const sortedHistory = (history || []).reverse();
+        const conversationMessages = sortedHistory.map((m) => ({
+            role: m.direction === 'out' ? 'assistant' : 'user',
+            content: m.content,
+        }));
+        // Son mesaj user olmalı
+        if (conversationMessages.length === 0 ||
+            conversationMessages[conversationMessages.length - 1].role !== 'user') {
+            conversationMessages.push({ role: 'user', content: text });
+        }
         const Anthropic = require('@anthropic-ai/sdk');
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
         const aiResponse = await anthropic.messages.create({
             model: 'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            system: `Sen ${settings.company_name || 'şirketin'} WhatsApp asistanısın. Müşteri mesajına kısa (max 3 cümle), samimi Türkçe yanıt ver. Fiyat sorarsa "size özel fiyat için sizi arayacağız" de. ASLA uydurma bilgi verme.`,
-            messages: [{ role: 'user', content: text }],
+            max_tokens: 200,
+            system: `Sen ${settings.company_name || 'şirketin'} müşteri temsilcisisin.
+Görev: WhatsApp üzerinden gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt ver.
+
+Kurallar:
+- Kendini AI veya asistan olarak tanıtma — normal bir müşteri temsilcisi gibi davran
+- Maksimum 3-4 cümle, doğal konuş
+- Emoji kullanabilirsin ama abartma
+- Fiyat sorarsa "size özel fiyat için sizi arayacağız, numaranızı alabilir miyiz?" de
+- Sipariş için "detayları konuşmak için sizi arayacağız" de
+- Müşteri veda ederse (teşekkür, görüşürüz vb.) sıcak bir vedayla bitir
+- ASLA uydurma fiyat veya ürün bilgisi verme
+- Konuşma geçmişini dikkate al, aynı şeyi tekrar sorma`,
+            messages: conversationMessages,
         });
         const replyText = aiResponse.content[0]?.text || '';
         if (!replyText)
             return;
-        // Gönder
         const waEntry = waState[userId];
         if (!waEntry || waEntry.status !== 'connected')
             return;

@@ -2,69 +2,69 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
-const { authMiddleware } = require('../middleware/auth');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-// GET /api/analytics/overview — Dashboard için
-router.get('/overview', authMiddleware, async (req, res) => {
+router.get('/overview', async (req, res) => {
     try {
         const userId = req.userId;
         const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        // Tüm leadler
-        const { data: leads } = await supabase
-            .from('leads').select('id, status, created_at, score, company_name, city, source')
-            .eq('user_id', userId);
-        // Bu hafta eklenen
-        const newLeads = (leads || []).filter((l) => l.created_at >= weekAgo).length;
-        // Cevap oranı
-        const total = leads?.length || 0;
-        const replied = (leads || []).filter((l) => ['replied', 'won'].includes(l.status)).length;
-        const replyRate = total > 0 ? Math.round((replied / total) * 100) : 0;
-        // Aktif kampanyalar
-        const { count: activeCampaigns } = await supabase
-            .from('campaigns').select('*', { count: 'exact', head: true })
-            .eq('user_id', userId).eq('status', 'active');
-        // Kullanıcı kredisi
-        const { data: user } = await supabase
-            .from('users').select('credits_total, credits_used')
-            .eq('id', userId).single();
-        // Son 5 lead — field adlarını frontend formatına çevir
-        const recentLeads = (leads || [])
-            .sort((a, b) => b.created_at.localeCompare(a.created_at))
-            .slice(0, 5)
-            .map((l) => ({
-            id: l.id,
-            companyName: l.company_name,
-            company_name: l.company_name,
-            city: l.city,
-            source: l.source,
-            score: l.score,
-            status: l.status,
-            createdAt: l.created_at,
-        }));
-        // Kaynak dağılımı
+        const [{ data: leads }, { data: user }, { data: campaigns }, { data: messages },] = await Promise.all([
+            supabase.from('leads').select('status, source, created_at').eq('user_id', userId),
+            supabase.from('users').select('credits_total, credits_used').eq('id', userId).single(),
+            supabase.from('campaigns').select('name, channel, status, total_sent, total_replied').eq('user_id', userId),
+            supabase.from('messages').select('channel, direction').eq('user_id', userId),
+        ]);
+        const allLeads = leads || [];
+        const allCampaigns = campaigns || [];
+        const allMessages = messages || [];
+        // Lead stats
+        const totalLeads = allLeads.length;
+        const newLeads = allLeads.filter((l) => l.created_at >= weekAgo).length;
+        // Source breakdown
         const sourceBreakdown = {};
-        (leads || []).forEach((l) => {
-            sourceBreakdown[l.source] = (sourceBreakdown[l.source] || 0) + 1;
+        allLeads.forEach((l) => {
+            const src = l.source || 'manual';
+            sourceBreakdown[src] = (sourceBreakdown[src] || 0) + 1;
         });
-        // Status dağılımı
+        // Status breakdown
         const statusBreakdown = {};
-        (leads || []).forEach((l) => {
+        allLeads.forEach((l) => {
             statusBreakdown[l.status] = (statusBreakdown[l.status] || 0) + 1;
         });
+        // Campaign stats
+        const activeCampaigns = allCampaigns.filter((c) => c.status === 'active').length;
+        const totalSent = allCampaigns.reduce((s, c) => s + (c.total_sent || 0), 0);
+        const totalReplied = allCampaigns.reduce((s, c) => s + (c.total_replied || 0), 0);
+        const replyRate = totalSent > 0 ? Math.round((totalReplied / totalSent) * 100) : 0;
+        // Top kampanyalar
+        const topCampaigns = allCampaigns
+            .filter((c) => (c.total_sent || 0) > 0)
+            .sort((a, b) => (b.total_sent || 0) - (a.total_sent || 0))
+            .slice(0, 5);
+        // Kanal stats
+        const channelStats = {
+            whatsapp: allMessages.filter((m) => m.channel === 'whatsapp' && m.direction === 'out').length,
+            email: allMessages.filter((m) => m.channel === 'email' && m.direction === 'out').length,
+        };
+        // Kredi
+        const credits = (user?.credits_total || 0) - (user?.credits_used || 0);
         res.json({
-            totalLeads: total,
+            totalLeads,
             newLeads,
             replyRate,
-            activeCampaigns: activeCampaigns || 0,
-            credits: (user?.credits_total || 50) - (user?.credits_used || 0),
-            recentLeads,
+            activeCampaigns,
+            credits,
+            totalSent,
+            totalReplied,
             sourceBreakdown,
             statusBreakdown,
+            channelStats,
+            topCampaigns,
         });
     }
-    catch (e) {
-        res.status(500).json({ error: e.message });
+    catch (error) {
+        console.error('Analytics error:', error.message);
+        res.status(500).json({ error: error.message });
     }
 });
 module.exports = router;
