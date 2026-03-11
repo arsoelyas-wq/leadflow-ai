@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import {
   User, Key, Bell, Shield, Save, MessageSquare,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff,
-  Send, Eye, EyeOff, Smartphone, Phone, QrCode
+  Send, Eye, EyeOff, Smartphone, QrCode, Bot
 } from 'lucide-react'
 
 interface Settings {
@@ -16,6 +16,7 @@ interface Settings {
   email_user?: string
   email_from?: string
   company_name?: string
+  auto_reply_enabled?: boolean
 }
 
 export default function SettingsPage() {
@@ -54,7 +55,6 @@ export default function SettingsPage() {
     if (tab === 'channels') loadSettings()
   }, [tab])
 
-  // QR polling
   const startPolling = () => {
     pollRef.current = setInterval(async () => {
       try {
@@ -124,6 +124,14 @@ export default function SettingsPage() {
       showMsg('success', 'Ayarlar kaydedildi!')
     } catch (e: any) { showMsg('error', e.message) }
     finally { setSettingsSaving(false) }
+  }
+
+  const toggleAutoReply = async (enabled: boolean) => {
+    setSettings(s => ({ ...s, auto_reply_enabled: enabled }))
+    try {
+      await api.post('/api/settings', { ...settings, auto_reply_enabled: enabled })
+      showMsg('success', enabled ? 'AI otomatik yanıt açıldı 🤖' : 'AI otomatik yanıt kapatıldı')
+    } catch (e: any) { showMsg('error', e.message) }
   }
 
   const testEmail = async () => {
@@ -249,6 +257,38 @@ export default function SettingsPage() {
                         <p className="text-slate-400 text-xs">WhatsApp aktif — kampanyalar bu numara üzerinden gönderilecek</p>
                       </div>
                     </div>
+
+                    {/* AI OTOMATİK YANIT */}
+                    <div className="flex items-center justify-between p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                          <Bot size={16} className="text-purple-400" />
+                        </div>
+                        <div>
+                          <p className="text-white text-sm font-medium">AI Otomatik Yanıt</p>
+                          <p className="text-slate-400 text-xs">Gelen mesajlara Claude ile otomatik cevap ver</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.auto_reply_enabled || false}
+                          onChange={e => toggleAutoReply(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-700 peer-checked:bg-purple-600 rounded-full transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5" />
+                      </label>
+                    </div>
+
+                    {settings.auto_reply_enabled && (
+                      <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded-lg">
+                        <p className="text-purple-300 text-xs">
+                          🤖 AI aktif — Gelen mesajlara 5 dakika içinde otomatik yanıt verilecek.
+                          Spam önleme: Aynı kişiye 5 dk içinde tek yanıt.
+                        </p>
+                      </div>
+                    )}
+
                     <button onClick={disconnectWhatsApp}
                       className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-sm transition">
                       Bağlantıyı Kes
@@ -271,9 +311,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <button onClick={() => { stopPolling(); setQrCode(null); setWaConnecting(false) }}
-                      className="text-slate-400 text-sm hover:text-white transition">
-                      İptal
-                    </button>
+                      className="text-slate-400 text-sm hover:text-white transition">İptal</button>
                   </div>
                 ) : (
                   <div className="space-y-4">
