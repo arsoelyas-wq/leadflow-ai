@@ -41,9 +41,8 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-// WhatsApp state — memory'de tut
 const waState = {};
-// Gelen mesajı işle — intent analizi + kaydet
+// Gelen mesajı işle + AI otomatik yanıt
 async function handleIncomingMessage(userId, msg) {
     try {
         const from = msg.key?.remoteJid || '';
@@ -51,18 +50,20 @@ async function handleIncomingMessage(userId, msg) {
             || msg.message?.extendedTextMessage?.text
             || msg.message?.buttonsResponseMessage?.selectedDisplayText
             || '';
-        if (!text || from.endsWith('@g.us'))
-            return; // Grup mesajlarını atla
-        const phone = from.replace('@s.whatsapp.net', '');
+        if (!text || from.endsWith('@g.us') || from === 'status@broadcast')
+            return;
+        const rawPhone = from.replace('@s.whatsapp.net', '').replace('@lid', '');
+        const phone = rawPhone.replace(/\D/g, '');
+        if (!phone || phone.length < 7)
+            return;
         // Lead bul veya oluştur
         let { data: lead } = await supabase
             .from('leads')
             .select('id, company_name, status')
             .eq('user_id', userId)
             .eq('phone', phone)
-            .single();
+            .maybeSingle();
         if (!lead) {
-            // Bilinmeyen numara — yeni lead oluştur
             const { data: newLead } = await supabase
                 .from('leads')
                 .insert([{
@@ -89,48 +90,78 @@ async function handleIncomingMessage(userId, msg) {
                 status: 'received',
                 sent_at: new Date().toISOString(),
             }]);
-        // Intent analizi — basit keyword bazlı
-        const lowerText = text.toLowerCase();
-        let intent = 'unknown';
-        let newStatus = lead.status;
-        if (/fiyat|ücret|kaç para|maliyet|teklif/i.test(lowerText)) {
-            intent = 'price_inquiry';
-            newStatus = 'contacted';
-        }
-        else if (/evet|tamam|ilgileniyorum|olur|istiyor|gönder/i.test(lowerText)) {
-            intent = 'interested';
-            newStatus = 'qualified';
-        }
-        else if (/hayır|istemiyorum|dur|iptal|stop/i.test(lowerText)) {
-            intent = 'not_interested';
-            newStatus = 'lost';
-        }
-        else if (/merhaba|selam|iyi günler/i.test(lowerText)) {
-            intent = 'greeting';
-            newStatus = 'contacted';
-        }
-        // Lead durumunu güncelle
-        if (newStatus !== lead.status) {
-            await supabase
-                .from('leads')
-                .update({ status: newStatus })
-                .eq('id', lead.id);
-        }
-        console.log(`WA incoming [${userId}] from ${phone}: "${text}" → intent: ${intent}`);
-        // STOP komutu — blacklist
+        // STOP komutu
         if (/^stop$/i.test(text.trim())) {
-            await supabase
-                .from('leads')
-                .update({ status: 'lost', notes: 'STOP komutu gönderdi — blacklist' })
-                .eq('id', lead.id);
-            console.log(`Blacklisted: ${phone}`);
+            await supabase.from('leads').update({
+                status: 'lost', notes: 'STOP komutu — blacklist'
+            }).eq('id', lead.id);
+            return;
         }
+        // Intent analizi
+        let newStatus = lead.status;
+        if (/fiyat|ücret|kaç para|maliyet|teklif/i.test(text))
+            newStatus = 'contacted';
+        if (/evet|tamam|ilgileniyorum|sipariş/i.test(text))
+            newStatus = 'qualified';
+        if (/hayır|istemiyorum|iptal/i.test(text))
+            newStatus = 'lost';
+        if (newStatus !== lead.status) {
+            await supabase.from('leads').update({ status: newStatus }).eq('id', lead.id);
+        }
+        console.log(`WA incoming [${userId}] from ${phone}: "${text.slice(0, 50)}"`);
+        // AI otomatik yanıt
+        const { data: settings } = await supabase
+            .from('user_settings')
+            .select('auto_reply_enabled, company_name')
+            .eq('user_id', userId)
+            .maybeSingle();
+        if (!settings?.auto_reply_enabled)
+            return;
+        // Spam önleme — 5 dk içinde yanıt verdik mi?
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: recentReply } = await supabase
+            .from('messages')
+            .select('id')
+            .eq('lead_id', lead.id)
+            .eq('direction', 'out')
+            .gte('sent_at', fiveMinAgo)
+            .limit(1);
+        if (recentReply && recentReply.length > 0)
+            return;
+        // AI yanıt üret
+        const Anthropic = require('@anthropic-ai/sdk');
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const aiResponse = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 150,
+            system: `Sen ${settings.company_name || 'şirketin'} WhatsApp asistanısın. Müşteri mesajına kısa (max 3 cümle), samimi Türkçe yanıt ver. Fiyat sorarsa "size özel fiyat için sizi arayacağız" de. ASLA uydurma bilgi verme.`,
+            messages: [{ role: 'user', content: text }],
+        });
+        const replyText = aiResponse.content[0]?.text || '';
+        if (!replyText)
+            return;
+        // Gönder
+        const waEntry = waState[userId];
+        if (!waEntry || waEntry.status !== 'connected')
+            return;
+        const formattedPhone = phone.startsWith('90') ? phone
+            : phone.startsWith('0') ? '9' + phone : '90' + phone;
+        await waEntry.sock.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: replyText });
+        await supabase.from('messages').insert([{
+                lead_id: lead.id,
+                user_id: userId,
+                channel: 'whatsapp',
+                direction: 'out',
+                content: replyText,
+                status: 'sent',
+                sent_at: new Date().toISOString(),
+            }]);
+        console.log(`AI auto-reply to ${phone}: "${replyText.slice(0, 60)}"`);
     }
     catch (err) {
         console.error('handleIncomingMessage error:', err.message);
     }
 }
-// Baileys'i başlat
 async function startWhatsApp(userId) {
     try {
         const baileys = await Promise.resolve().then(() => __importStar(require('@whiskeysockets/baileys')));
@@ -185,14 +216,13 @@ async function startWhatsApp(userId) {
                 }
             }
         });
-        // ── GELEN MESAJLARI DİNLE ────────────────────────────────
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
             if (type !== 'notify')
                 return;
-            for (const msg of messages) {
-                if (msg.key?.fromMe)
-                    continue; // Kendi gönderdiğimizi atla
-                await handleIncomingMessage(userId, msg);
+            for (const m of messages) {
+                if (m.key?.fromMe)
+                    continue;
+                await handleIncomingMessage(userId, m);
             }
         });
         return sock;
@@ -203,7 +233,6 @@ async function startWhatsApp(userId) {
         throw err;
     }
 }
-// Ayarları getir
 router.get('/', async (req, res) => {
     try {
         const userId = req.userId;
@@ -225,6 +254,7 @@ router.get('/', async (req, res) => {
                 email_user: data?.email_user || '',
                 email_from: data?.email_from || '',
                 company_name: data?.company_name || '',
+                auto_reply_enabled: data?.auto_reply_enabled || false,
             }
         });
     }
@@ -232,21 +262,18 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-// Ayarları kaydet
 router.post('/', async (req, res) => {
     try {
         const userId = req.userId;
-        const { email_host, email_port, email_user, email_pass, email_from, company_name } = req.body;
+        const { email_host, email_port, email_user, email_pass, email_from, company_name, auto_reply_enabled } = req.body;
         const { error } = await supabase
             .from('user_settings')
             .upsert({
             user_id: userId,
             email_host: email_host || 'smtp.gmail.com',
             email_port: email_port || 587,
-            email_user,
-            email_pass,
-            email_from,
-            company_name,
+            email_user, email_pass, email_from, company_name,
+            auto_reply_enabled: auto_reply_enabled || false,
             updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
         if (error)
@@ -257,7 +284,6 @@ router.post('/', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-// WhatsApp bağlan — QR üret
 router.post('/whatsapp/connect', async (req, res) => {
     try {
         const userId = req.userId;
@@ -275,26 +301,18 @@ router.post('/whatsapp/connect', async (req, res) => {
             waited += 500;
         }
         const state = waState[userId];
-        res.json({
-            status: state?.status || 'connecting',
-            qr: state?.qr || null,
-        });
+        res.json({ status: state?.status || 'connecting', qr: state?.qr || null });
     }
     catch (error) {
         console.error('WhatsApp connect error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
-// WhatsApp durum + QR polling
 router.get('/whatsapp/status', async (req, res) => {
     const userId = req.userId;
     const state = waState[userId];
-    res.json({
-        status: state?.status || 'disconnected',
-        qr: state?.qr || null,
-    });
+    res.json({ status: state?.status || 'disconnected', qr: state?.qr || null });
 });
-// WhatsApp bağlantıyı kes
 router.post('/whatsapp/disconnect', async (req, res) => {
     try {
         const userId = req.userId;
@@ -318,7 +336,6 @@ router.post('/whatsapp/disconnect', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-// Email test
 router.post('/email/test', async (req, res) => {
     try {
         const userId = req.userId;
@@ -336,36 +353,30 @@ router.post('/email/test', async (req, res) => {
             from: email_from || email_user,
             to: email_user,
             subject: 'LeadFlow AI - Email Bağlantı Testi',
-            html: '<h2>✅ Email bağlantınız başarıyla test edildi!</h2><p>LeadFlow AI kampanyalarınız bu adres üzerinden gönderilecek.</p>',
+            html: '<h2>✅ Email bağlantınız başarıyla test edildi!</h2>',
         });
         await supabase.from('user_settings').upsert({
             user_id: userId,
-            email_host,
-            email_port: Number(email_port) || 587,
-            email_user,
-            email_pass,
-            email_from,
+            email_host, email_port: Number(email_port) || 587,
+            email_user, email_pass, email_from,
             email_status: 'connected',
             updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
-        res.json({ message: 'Test emaili gönderildi! Gelen kutunuzu kontrol edin.' });
+        res.json({ message: 'Test emaili gönderildi!' });
     }
     catch (error) {
         res.status(500).json({ error: 'Email hatası: ' + error.message });
     }
 });
-// WhatsApp mesaj gönder (kampanyadan kullanılır)
 const sendWhatsAppMessage = async (userId, phone, message) => {
     const state = waState[userId];
-    if (!state || state.status !== 'connected') {
+    if (!state || state.status !== 'connected')
         throw new Error('WhatsApp bağlı değil');
-    }
     const cleanPhone = phone.replace(/\D/g, '');
     const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
         : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
     await state.sock.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: message });
 };
-// Email gönder (kampanyadan kullanılır)
 const sendEmail = async (userId, to, subject, html) => {
     const { data: settings } = await supabase
         .from('user_settings')
@@ -380,9 +391,6 @@ const sendEmail = async (userId, to, subject, html) => {
         secure: false,
         auth: { user: settings.email_user, pass: settings.email_pass },
     });
-    await transporter.sendMail({
-        from: settings.email_from || settings.email_user,
-        to, subject, html,
-    });
+    await transporter.sendMail({ from: settings.email_from || settings.email_user, to, subject, html });
 };
 module.exports = { router, sendWhatsAppMessage, sendEmail, waState };
