@@ -1,7 +1,6 @@
 export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
-
 const router = express.Router();
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,29 +10,16 @@ const supabase = createClient(
 // Tüm mesajları getir (leads join ile)
 router.get('/', async (req: any, res: any) => {
   try {
-    const userId = req.user?.id;
-
-    // Kullanıcıya ait lead'lerin mesajlarını çek
-    const { data: userLeads } = await supabase
-      .from('leads')
-      .select('id')
-      .eq('user_id', userId);
-
-    const leadIds = (userLeads || []).map((l: any) => l.id);
-
-    if (leadIds.length === 0) {
-      return res.json({ messages: [] });
-    }
+    const userId = req.userId;
 
     const { data, error } = await supabase
       .from('messages')
-      .select('*, leads(company_name, city)')
-      .in('lead_id', leadIds)
+      .select('*, leads(company_name, phone, email, city)')
+      .eq('user_id', userId)
       .order('sent_at', { ascending: false })
-      .limit(100);
+      .limit(200);
 
     if (error) throw error;
-
     res.json({ messages: data || [] });
   } catch (error: any) {
     console.error('Messages GET Error:', error.message);
@@ -49,7 +35,6 @@ router.get('/lead/:leadId', async (req: any, res: any) => {
       .select('*')
       .eq('lead_id', req.params.leadId)
       .order('sent_at', { ascending: true });
-
     if (error) throw error;
     res.json({ messages: data || [] });
   } catch (error: any) {
