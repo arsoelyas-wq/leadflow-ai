@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import ChatWidget from '@/components/ChatWidget'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
@@ -363,10 +364,7 @@ export default function LandingPage() {
           <p className="text-slate-600 text-sm">© 2026 LeadFlow AI</p>
         </div>
       </footer>
+      <ChatWidget />
     </div>
   )
 }
-import ChatWidget from '@/components/ChatWidget'
-// ... mevcut kod ...
-// En sona, </> veya son div'den önce:
-<ChatWidget />

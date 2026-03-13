@@ -1,33 +1,33 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, X, Send, Zap, ArrowRight, Loader2 } from 'lucide-react'
+import { MessageSquare, X, Send, ChevronRight } from 'lucide-react'
 
 interface Message {
-  role: 'assistant' | 'user'
-  content: string
+  role: 'bot' | 'user'
+  text: string
   options?: string[]
 }
 
-const FLOW: { key: string; text: string; options?: string[] }[] = [
+const STEPS = [
   {
-    key: 'welcome',
-    text: 'Merhaba! ðŸ‘‹ Ben LeadFlow AI. Size birkaÃ§ soru soracaÄŸÄ±m ve iÅŸinize nasÄ±l yardÄ±mcÄ± olabileceÄŸimi gÃ¶stereceÄŸim.\n\nHangi sektÃ¶rde faaliyet gÃ¶steriyorsunuz?',
-    options: ['Dekorasyon / Mobilya', 'Tekstil / Giyim', 'Ä°nÅŸaat / YapÄ±', 'GÄ±da / Restoran', 'Teknoloji', 'Hizmet SektÃ¶rÃ¼', 'DiÄŸer']
+    key: 'sector',
+    question: 'Merhaba! 👋 Hangi sektördesiniz?',
+    options: ['Toptan Ticaret', 'Üretim / Fabrika', 'İnşaat / Yapı', 'Hizmet Sektörü', 'Diğer'],
   },
   {
     key: 'goal',
-    text: 'Harika! Peki ÅŸu an en bÃ¼yÃ¼k zorluÄŸunuz ne?',
-    options: ['Yeni mÃ¼ÅŸteri bulmak zor', 'MÃ¼ÅŸterilere ulaÅŸmak zaman alÄ±yor', 'Rakipler Ã¶nÃ¼me geÃ§iyor', 'SatÄ±ÅŸ sÃ¼recim verimsiz']
+    question: 'En büyük sorunun ne?',
+    options: ['Yeni müşteri bulamıyorum', 'Müşterilerle iletişim zor', 'Satış takibi karmaşık', 'Rakiplerimden gerideyim'],
   },
   {
     key: 'city',
-    text: 'AnladÄ±m. Hangi ÅŸehirde veya bÃ¶lgede mÃ¼ÅŸteri arÄ±yorsunuz?',
-    options: ['Ä°stanbul', 'Ankara', 'Ä°zmir', 'Bursa', 'Antalya', 'DiÄŸer ÅŸehir']
+    question: 'Hangi şehirde faaliyet gösteriyorsunuz?',
+    options: ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Diğer'],
   },
   {
     key: 'size',
-    text: 'Son olarak â€” ayda kaÃ§ yeni mÃ¼ÅŸteri kazanmak istersiniz?',
-    options: ['5-10 mÃ¼ÅŸteri', '10-30 mÃ¼ÅŸteri', '30-50 mÃ¼ÅŸteri', '50+ mÃ¼ÅŸteri']
+    question: 'Aylık kaç yeni müşteriye ulaşmak istersiniz?',
+    options: ['10-50', '50-100', '100-300', '300+'],
   },
 ]
 
@@ -36,18 +36,21 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<Message[]>([])
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [done, setDone] = useState(false)
-  const [pulse, setPulse] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+  const [email, setEmail] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
+  const [unread, setUnread] = useState(1)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  // İlk açılışta ilk soruyu göster
   useEffect(() => {
     if (open && messages.length === 0) {
       setTimeout(() => {
         setMessages([{
-          role: 'assistant',
-          content: FLOW[0].text,
-          options: FLOW[0].options
+          role: 'bot',
+          text: STEPS[0].question,
+          options: STEPS[0].options,
         }])
       }, 400)
     }
@@ -57,161 +60,202 @@ export default function ChatWidget() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  // Pulse durur 5 saniye sonra
+  // 3 sn sonra widget'ı pulse et
   useEffect(() => {
-    const t = setTimeout(() => setPulse(false), 5000)
+    const t = setTimeout(() => setUnread(1), 3000)
     return () => clearTimeout(t)
   }, [])
 
-  const handleOption = (option: string) => {
-    const currentFlow = FLOW[step]
-    const newAnswers = { ...answers, [currentFlow.key]: option }
+  const handleOption = async (option: string) => {
+    const currentStep = STEPS[step]
+    const newAnswers = { ...answers, [currentStep.key]: option }
     setAnswers(newAnswers)
 
-    setMessages(prev => [...prev, { role: 'user', content: option }])
-    setLoading(true)
+    // Kullanıcı mesajını ekle
+    setMessages(prev => [...prev, { role: 'user', text: option }])
 
-    setTimeout(() => {
-      setLoading(false)
-      if (step < FLOW.length - 1) {
-        const next = FLOW[step + 1]
+    const nextStep = step + 1
+
+    if (nextStep < STEPS.length) {
+      // Sonraki soruyu göster
+      setStep(nextStep)
+      setTimeout(() => {
         setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: next.text,
-          options: next.options
+          role: 'bot',
+          text: STEPS[nextStep].question,
+          options: STEPS[nextStep].options,
         }])
-        setStep(s => s + 1)
-      } else {
-        // Son adÄ±m â€” AI ile Ã¶zel mesaj Ã¼ret
-        generateFinalMessage(newAnswers)
-      }
-    }, 800)
-  }
+      }, 600)
+    } else {
+      // Tüm sorular bitti — AI yanıtı al
+      setStep(nextStep)
+      setLoading(true)
 
-  const generateFinalMessage = async (finalAnswers: Record<string, string>) => {
-    setLoading(true)
-    try {
-      const response = await fetch('https://leadflow-ai-production.up.railway.app/api/ai/sales-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: finalAnswers })
-      })
-      const data = await response.json()
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.message || getFallbackMessage(finalAnswers)
-      }])
-    } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: getFallbackMessage(finalAnswers)
-      }])
-    } finally {
-      setLoading(false)
-      setDone(true)
+      try {
+        const res = await fetch('/api/ai/sales-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: newAnswers }),
+        })
+        const data = await res.json()
+        setMessages(prev => [...prev, {
+          role: 'bot',
+          text: data.message || 'LeadFlow AI tam size göre! Hemen başlayalım. 🚀',
+        }])
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            role: 'bot',
+            text: '📧 Email adresinizi bırakın, 14 günlük ücretsiz denemenizi başlatalım!',
+          }])
+          setDone(true)
+        }, 1000)
+      } catch {
+        setMessages(prev => [...prev, {
+          role: 'bot',
+          text: 'LeadFlow AI ile her ay yüzlerce yeni müşteriye ulaşabilirsiniz! 🚀\n\n14 gün ücretsiz deneyin.',
+        }])
+        setDone(true)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
-  const getFallbackMessage = (ans: Record<string, string>) => {
-    return `MÃ¼kemmel! Ä°ÅŸte size Ã¶zel planÄ±m ðŸŽ¯\n\n${ans.city} bÃ¶lgesinde ${ans.welcome} sektÃ¶rÃ¼nde faaliyet gÃ¶steren iÅŸletmeler iÃ§in LeadFlow AI ÅŸunlarÄ± yapabilir:\n\nâœ… Google Maps'ten otomatik potansiyel mÃ¼ÅŸteri bulur\nâœ… WhatsApp ile kiÅŸiselleÅŸtirilmiÅŸ mesaj gÃ¶nderir\nâœ… ${ans.size} hedefine ulaÅŸmanÄ±za yardÄ±mcÄ± olur\n\nÃœcretsiz baÅŸlayÄ±n, ilk 50 lead hediyemiz! ðŸŽ`
+  const handleEmailSubmit = async () => {
+    if (!email || !email.includes('@')) return
+    setEmailSent(true)
+    setMessages(prev => [...prev, { role: 'user', text: email }])
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        role: 'bot',
+        text: '✅ Harika! Sizi en kısa sürede arayacağız. Şimdi ücretsiz denemeye başlayabilirsiniz! 🎉',
+      }])
+    }, 500)
   }
 
   return (
     <>
-      {/* Floating Button */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-        {!open && pulse && (
-          <div className="bg-white text-slate-800 text-sm font-medium px-4 py-2 rounded-2xl shadow-lg animate-bounce">
-            ðŸ’¬ Size nasÄ±l yardÄ±mcÄ± olabilirim?
-          </div>
+      {/* Açık/kapalı buton */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {!open && (
+          <button
+            onClick={() => { setOpen(true); setUnread(0) }}
+            className="relative w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-full shadow-2xl shadow-blue-600/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+          >
+            <MessageSquare size={22} className="text-white" />
+            {unread > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center font-bold animate-bounce">
+                {unread}
+              </span>
+            )}
+          </button>
         )}
-        <button
-          onClick={() => { setOpen(o => !o); setPulse(false) }}
-          className="relative w-14 h-14 bg-blue-600 hover:bg-blue-500 rounded-full shadow-2xl flex items-center justify-center transition-all"
-        >
-          {open ? <X size={22} className="text-white" /> : <MessageCircle size={22} className="text-white" />}
-          {!open && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white animate-ping" />
-          )}
-          {!open && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white" />
-          )}
-        </button>
-      </div>
 
-      {/* Chat Window */}
-      {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 bg-[#0d1117] border border-slate-700/60 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
-          style={{ height: '480px' }}>
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex items-center gap-3">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <Zap size={18} className="text-white" />
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm">LeadFlow AI Asistan</p>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                <span className="text-blue-200 text-xs">Ã‡evrimiÃ§i</span>
-              </div>
-            </div>
-            <button onClick={() => setOpen(false)} className="ml-auto text-white/60 hover:text-white transition">
-              <X size={18} />
-            </button>
-          </div>
+        {/* Chat penceresi */}
+        {open && (
+          <div className="w-80 sm:w-96 bg-[#0F1520] border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
+            style={{ height: '520px' }}>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] ${msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm px-3 py-2 text-sm'
-                  : 'bg-slate-800 text-slate-200 rounded-2xl rounded-tl-sm px-3 py-2 text-sm leading-relaxed whitespace-pre-line'
-                }`}>
-                  {msg.content}
-                  {msg.role === 'assistant' && msg.options && step === messages.filter(m => m.role === 'assistant').length - 1 && !done && (
-                    <div className="flex flex-col gap-1.5 mt-3">
-                      {msg.options.map(opt => (
-                        <button key={opt} onClick={() => handleOption(opt)}
-                          className="text-left px-3 py-2 bg-slate-700 hover:bg-blue-600/30 border border-slate-600 hover:border-blue-500/50 text-slate-300 hover:text-white text-xs rounded-xl transition">
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
+                  <MessageSquare size={16} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold text-sm">LeadFlow AI</p>
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                    <p className="text-blue-100 text-xs">Çevrimiçi</p>
+                  </div>
                 </div>
               </div>
-            ))}
+              <button onClick={() => setOpen(false)}
+                className="text-white/70 hover:text-white transition">
+                <X size={18} />
+              </button>
+            </div>
 
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3">
-                  <div className="flex gap-1">
-                    {[0,1,2].map(i => (
-                      <div key={i} className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"
+            {/* Mesajlar */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] ${msg.role === 'user'
+                    ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm px-3 py-2 text-sm'
+                    : 'space-y-2'
+                  }`}>
+                    {msg.role === 'bot' ? (
+                      <>
+                        <div className="bg-slate-800 text-slate-200 rounded-2xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
+                          {msg.text}
+                        </div>
+                        {msg.options && step <= STEPS.indexOf(STEPS.find(s => s.question === msg.text) || STEPS[0]) && (
+                          <div className="space-y-1.5 mt-2">
+                            {msg.options.map(opt => (
+                              <button
+                                key={opt}
+                                onClick={() => handleOption(opt)}
+                                className="w-full text-left px-3 py-2 bg-slate-800/80 hover:bg-blue-600/20 border border-slate-700 hover:border-blue-500/50 text-slate-300 hover:text-white rounded-xl text-xs transition flex items-center justify-between group"
+                              >
+                                {opt}
+                                <ChevronRight size={12} className="text-slate-600 group-hover:text-blue-400 transition" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm">{msg.text}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"
                         style={{ animationDelay: `${i * 0.15}s` }} />
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div ref={bottomRef} />
-          </div>
-
-          {/* CTA when done */}
-          {done && (
-            <div className="p-4 border-t border-slate-700/50">
-              <a href="/register"
-                className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition text-sm">
-                <Zap size={15} /> Ãœcretsiz BaÅŸla â€” 50 Kredi Hediye
-                <ArrowRight size={15} />
-              </a>
-              <p className="text-center text-slate-500 text-xs mt-2">Kredi kartÄ± gerekmez</p>
+              <div ref={bottomRef} />
             </div>
-          )}
-        </div>
-      )}
+
+            {/* Email input veya CTA */}
+            <div className="p-3 border-t border-slate-700/50">
+              {done && !emailSent ? (
+                <div className="flex gap-2">
+                  <input
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleEmailSubmit()}
+                    placeholder="email@sirketiniz.com"
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 placeholder-slate-500"
+                  />
+                  <button
+                    onClick={handleEmailSubmit}
+                    disabled={!email.includes('@')}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-xl transition"
+                  >
+                    <Send size={15} className="text-white" />
+                  </button>
+                </div>
+              ) : emailSent ? (
+                <a href="/register"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition">
+                  Ücretsiz Başla 🚀
+                </a>
+              ) : (
+                <p className="text-center text-slate-600 text-xs">Seçeneklerden birini seçin</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </>
   )
 }
