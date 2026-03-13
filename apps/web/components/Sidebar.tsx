@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
-  MessageSquare, Settings, CreditCard, LogOut, Zap
+  MessageSquare, Settings, CreditCard, LogOut, Zap, Activity
 } from 'lucide-react'
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/campaigns', label: 'Kampanyalar', icon: Megaphone },
   { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
+  { href: '/monitoring', label: 'Monitör', icon: Activity },
   { href: '/billing', label: 'Abonelik', icon: CreditCard },
   { href: '/settings', label: 'Ayarlar', icon: Settings },
 ]

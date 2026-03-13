@@ -92,6 +92,9 @@ app.use('/api/settings',  authMiddleware, settingsRouter);
 const { router: dashboardRouter } = require('./routes/dashboard');
 app.use('/api/dashboard', authMiddleware, dashboardRouter);
 
+const { router: monitoringRouter } = require('./routes/monitoring');
+app.use('/api/monitoring', authMiddleware, monitoringRouter);
+
 // ── HEALTH CHECK ──────────────────────────────────────────
 app.get('/health', (_req: any, res: any) => {
   res.json({ status: 'OK', ts: Date.now(), env: process.env.NODE_ENV });
