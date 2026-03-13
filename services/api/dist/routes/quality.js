@@ -3,10 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const dns = require('dns').promises;
-const net = require('net');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-// ── DISPOSABLE EMAIL DOMAINLERI ───────────────────────────
 const DISPOSABLE_DOMAINS = new Set([
     'tempmail.com', 'guerrillamail.com', 'mailinator.com', 'trashmail.com',
     'yopmail.com', 'throwaway.email', 'fakeinbox.com', 'sharklasers.com',
@@ -14,7 +12,18 @@ const DISPOSABLE_DOMAINS = new Set([
     'temp-mail.org', 'dispostable.com', 'maildrop.cc', 'mailnull.com',
     'spamgourmet.com', '10minutemail.com', 'disposablemail.com', 'tmpmail.net',
 ]);
-// ── GLOBAL TELEFON FORMATI ────────────────────────────────
+const FREE_PROVIDERS = new Set([
+    'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
+    'icloud.com', 'aol.com', 'yandex.com', 'mail.com', 'protonmail.com',
+    'yandex.ru', 'mail.ru', 'hotmail.co.uk', 'yahoo.co.uk', 'googlemail.com',
+]);
+const ROLE_BASED_PREFIXES = new Set([
+    'info', 'contact', 'hello', 'support', 'help', 'admin', 'sales',
+    'marketing', 'hr', 'jobs', 'careers', 'noreply', 'no-reply',
+    'webmaster', 'postmaster', 'abuse', 'security', 'billing',
+    'invoice', 'accounts', 'office', 'team', 'mail', 'email', 'bilgi',
+    'iletisim', 'musteri', 'destek', 'satis', 'muhasebe',
+]);
 const PHONE_PATTERNS = {
     'TR': { pattern: /^(\+90|0090|90|0)?[5][0-9]{9}$/ },
     'US': { pattern: /^(\+1)?[2-9][0-9]{9}$/ },
@@ -27,140 +36,43 @@ const PHONE_PATTERNS = {
     'RU': { pattern: /^(\+7)?[9][0-9]{9}$/ },
     'DEFAULT': { pattern: /^[\+]?[1-9][0-9]{6,14}$/ },
 };
-// Türkiye operatör + hat tipi tespiti
 const TR_OPERATORS = {
-    '530': { name: 'Turkcell', type: 'mobile' },
-    '531': { name: 'Turkcell', type: 'mobile' },
-    '532': { name: 'Turkcell', type: 'mobile' },
-    '533': { name: 'Turkcell', type: 'mobile' },
-    '534': { name: 'Turkcell', type: 'mobile' },
-    '535': { name: 'Turkcell', type: 'mobile' },
-    '536': { name: 'Turkcell', type: 'mobile' },
-    '537': { name: 'Turkcell', type: 'mobile' },
-    '538': { name: 'Turkcell', type: 'mobile' },
-    '539': { name: 'Turkcell', type: 'mobile' },
-    '540': { name: 'Vodafone', type: 'mobile' },
-    '541': { name: 'Vodafone', type: 'mobile' },
-    '542': { name: 'Vodafone', type: 'mobile' },
-    '543': { name: 'Vodafone', type: 'mobile' },
-    '544': { name: 'Vodafone', type: 'mobile' },
-    '545': { name: 'Vodafone', type: 'mobile' },
-    '546': { name: 'Vodafone', type: 'mobile' },
-    '547': { name: 'Vodafone', type: 'mobile' },
-    '548': { name: 'Vodafone', type: 'mobile' },
-    '549': { name: 'Vodafone', type: 'mobile' },
-    '550': { name: 'Türk Telekom', type: 'mobile' },
-    '551': { name: 'Türk Telekom', type: 'mobile' },
-    '552': { name: 'Türk Telekom', type: 'mobile' },
-    '553': { name: 'Türk Telekom', type: 'mobile' },
-    '554': { name: 'Türk Telekom', type: 'mobile' },
-    '555': { name: 'Türk Telekom', type: 'mobile' },
-    '556': { name: 'Türk Telekom', type: 'mobile' },
-    '557': { name: 'Türk Telekom', type: 'mobile' },
-    '558': { name: 'Türk Telekom', type: 'mobile' },
-    '559': { name: 'Türk Telekom', type: 'mobile' },
-    '505': { name: 'Türk Telekom', type: 'mobile' },
-    '506': { name: 'Türk Telekom', type: 'mobile' },
+    '530': { name: 'Turkcell', type: 'mobile' }, '531': { name: 'Turkcell', type: 'mobile' },
+    '532': { name: 'Turkcell', type: 'mobile' }, '533': { name: 'Turkcell', type: 'mobile' },
+    '534': { name: 'Turkcell', type: 'mobile' }, '535': { name: 'Turkcell', type: 'mobile' },
+    '536': { name: 'Turkcell', type: 'mobile' }, '537': { name: 'Turkcell', type: 'mobile' },
+    '538': { name: 'Turkcell', type: 'mobile' }, '539': { name: 'Turkcell', type: 'mobile' },
+    '540': { name: 'Vodafone', type: 'mobile' }, '541': { name: 'Vodafone', type: 'mobile' },
+    '542': { name: 'Vodafone', type: 'mobile' }, '543': { name: 'Vodafone', type: 'mobile' },
+    '544': { name: 'Vodafone', type: 'mobile' }, '545': { name: 'Vodafone', type: 'mobile' },
+    '546': { name: 'Vodafone', type: 'mobile' }, '547': { name: 'Vodafone', type: 'mobile' },
+    '548': { name: 'Vodafone', type: 'mobile' }, '549': { name: 'Vodafone', type: 'mobile' },
+    '550': { name: 'Türk Telekom', type: 'mobile' }, '551': { name: 'Türk Telekom', type: 'mobile' },
+    '552': { name: 'Türk Telekom', type: 'mobile' }, '553': { name: 'Türk Telekom', type: 'mobile' },
+    '554': { name: 'Türk Telekom', type: 'mobile' }, '555': { name: 'Türk Telekom', type: 'mobile' },
+    '556': { name: 'Türk Telekom', type: 'mobile' }, '557': { name: 'Türk Telekom', type: 'mobile' },
+    '558': { name: 'Türk Telekom', type: 'mobile' }, '559': { name: 'Türk Telekom', type: 'mobile' },
+    '505': { name: 'Türk Telekom', type: 'mobile' }, '506': { name: 'Türk Telekom', type: 'mobile' },
     '507': { name: 'Türk Telekom', type: 'mobile' },
-    // Sabit hatlar
-    '212': { name: 'Türk Telekom', type: 'landline' },
-    '216': { name: 'Türk Telekom', type: 'landline' },
-    '312': { name: 'Türk Telekom', type: 'landline' },
-    '232': { name: 'Türk Telekom', type: 'landline' },
+    '212': { name: 'Türk Telekom', type: 'landline' }, '216': { name: 'Türk Telekom', type: 'landline' },
+    '312': { name: 'Türk Telekom', type: 'landline' }, '232': { name: 'Türk Telekom', type: 'landline' },
     '224': { name: 'Türk Telekom', type: 'landline' },
 };
-// Global hat tipi tespiti (prefix bazlı)
 function detectLineType(phone, country) {
     const cleaned = phone.replace(/\D/g, '');
     if (country === 'TR') {
         const prefix = cleaned.replace(/^90|^0/, '').substring(0, 3);
         return TR_OPERATORS[prefix]?.type || 'unknown';
     }
-    // Global mobile prefix tespiti
     const mobilePatterns = {
-        'GB': /^44[7]/,
-        'DE': /^49[1][5-7]/,
-        'FR': /^33[6-7]/,
-        'NL': /^31[6]/,
-        'US': /^1[2-9][0-9]{2}[2-9]/,
-        'AE': /^971[5]/,
-        'SA': /^966[5]/,
-        'RU': /^7[9]/,
+        'GB': /^44[7]/, 'DE': /^49[1][5-7]/, 'FR': /^33[6-7]/,
+        'NL': /^31[6]/, 'AE': /^971[5]/, 'SA': /^966[5]/, 'RU': /^7[9]/,
     };
     const pattern = mobilePatterns[country];
     if (pattern && pattern.test(cleaned))
         return 'mobile';
     return 'unknown';
 }
-// ── SMTP PING (Email deliverability) ─────────────────────
-async function smtpPing(email, mxHost) {
-    return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-            resolve({ deliverable: false, reason: 'SMTP timeout' });
-        }, 8000);
-        try {
-            const socket = net.createConnection(25, mxHost);
-            let buffer = '';
-            let step = 0;
-            socket.setTimeout(7000);
-            socket.on('data', (data) => {
-                buffer += data.toString();
-                const lines = buffer.split('\r\n');
-                for (const line of lines) {
-                    if (!line)
-                        continue;
-                    if (step === 0 && line.startsWith('220')) {
-                        // Banner aldık — EHLO gönder
-                        socket.write(`EHLO leadflow-checker.com\r\n`);
-                        step = 1;
-                    }
-                    else if (step === 1 && (line.startsWith('250') && !line.startsWith('250-'))) {
-                        // EHLO tamam — MAIL FROM gönder
-                        socket.write(`MAIL FROM:<check@leadflow-checker.com>\r\n`);
-                        step = 2;
-                    }
-                    else if (step === 2 && line.startsWith('250')) {
-                        // MAIL FROM tamam — RCPT TO gönder
-                        socket.write(`RCPT TO:<${email}>\r\n`);
-                        step = 3;
-                    }
-                    else if (step === 3) {
-                        clearTimeout(timeout);
-                        socket.write(`QUIT\r\n`);
-                        socket.destroy();
-                        if (line.startsWith('250') || line.startsWith('251')) {
-                            resolve({ deliverable: true, reason: 'Email teslim edilebilir' });
-                        }
-                        else if (line.startsWith('550') || line.startsWith('551') || line.startsWith('553')) {
-                            resolve({ deliverable: false, reason: 'Email adresi mevcut değil' });
-                        }
-                        else if (line.startsWith('421') || line.startsWith('450') || line.startsWith('452')) {
-                            resolve({ deliverable: true, reason: 'Geçici hata (muhtemelen geçerli)' });
-                        }
-                        else {
-                            resolve({ deliverable: false, reason: `SMTP yanıt: ${line.substring(0, 50)}` });
-                        }
-                    }
-                }
-                buffer = lines[lines.length - 1] || '';
-            });
-            socket.on('error', () => {
-                clearTimeout(timeout);
-                resolve({ deliverable: false, reason: 'SMTP bağlantı hatası' });
-            });
-            socket.on('timeout', () => {
-                clearTimeout(timeout);
-                socket.destroy();
-                resolve({ deliverable: false, reason: 'SMTP timeout' });
-            });
-        }
-        catch {
-            clearTimeout(timeout);
-            resolve({ deliverable: false, reason: 'SMTP bağlantı kurulamadı' });
-        }
-    });
-}
-// ── TELEFON DOĞRULAMA ─────────────────────────────────────
 function validatePhone(phone) {
     if (!phone)
         return { valid: false, formatted: '', country: '', lineType: 'unknown', score: 0, reason: 'Telefon yok' };
@@ -202,84 +114,69 @@ function validatePhone(phone) {
         formatted = `+${cleaned}`;
     }
     const lineType = detectLineType(cleaned, country);
-    // Mobile numara daha değerli (WhatsApp için)
-    let score = 0;
-    if (valid) {
-        score = lineType === 'mobile' ? 30 : lineType === 'landline' ? 20 : 25;
-    }
-    else {
-        score = 5;
-    }
+    const score = valid ? (lineType === 'mobile' ? 30 : lineType === 'landline' ? 20 : 25) : 5;
     return { valid, formatted, country, operator, lineType, score, reason: valid ? undefined : 'Geçersiz format' };
 }
-// ── EMAIL DOĞRULAMA ───────────────────────────────────────
-async function validateEmail(email, withSmtp = false) {
+async function validateEmail(email) {
     if (!email)
         return { valid: false, score: 0, reason: 'Email yok' };
     const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email))
         return { valid: false, score: 0, reason: 'Geçersiz format' };
-    }
     const domain = email.split('@')[1].toLowerCase();
+    const local = email.split('@')[0].toLowerCase();
     if (DISPOSABLE_DOMAINS.has(domain)) {
         return { valid: false, score: 5, reason: 'Geçici email adresi', disposable: true };
     }
-    // MX record kontrolü
     let mxValid = false;
-    let mxHost = '';
     try {
         const mxRecords = await dns.resolveMx(domain);
-        if (mxRecords && mxRecords.length > 0) {
-            mxValid = true;
-            // En yüksek öncelikli MX host
-            mxHost = mxRecords.sort((a, b) => a.priority - b.priority)[0].exchange;
-        }
+        mxValid = mxRecords && mxRecords.length > 0;
     }
     catch {
         mxValid = false;
     }
-    if (!mxValid) {
+    if (!mxValid)
         return { valid: false, score: 5, reason: 'Email sunucusu bulunamadı', mxValid: false };
+    const corporate = !FREE_PROVIDERS.has(domain);
+    const isRoleBased = ROLE_BASED_PREFIXES.has(local);
+    const isPersonal = /^[a-z]+(\.[a-z]+)?[0-9]{0,4}$/.test(local) && !isRoleBased;
+    // Güven seviyesi ve skor
+    let confidence = 'low';
+    let bonusScore = 0;
+    let deliverabilityReason = '';
+    if (isPersonal && corporate) {
+        confidence = 'high';
+        bonusScore = 15;
+        deliverabilityReason = 'Kişisel kurumsal email — yüksek teslim güveni';
     }
-    const freeProviders = new Set([
-        'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
-        'icloud.com', 'aol.com', 'yandex.com', 'mail.com', 'protonmail.com',
-        'yandex.ru', 'mail.ru', 'hotmail.co.uk', 'yahoo.co.uk', 'googlemail.com',
-    ]);
-    const corporate = !freeProviders.has(domain);
-    // SMTP ping (opsiyonel — sadece istendiğinde)
-    let deliverable;
-    let smtpReason;
-    if (withSmtp && mxHost) {
-        try {
-            const smtpResult = await smtpPing(email, mxHost);
-            deliverable = smtpResult.deliverable;
-            smtpReason = smtpResult.reason;
-        }
-        catch {
-            deliverable = undefined;
-        }
+    else if (isRoleBased && corporate) {
+        confidence = 'medium';
+        bonusScore = 8;
+        deliverabilityReason = 'Departman emaili (info@, sales@ vb.)';
     }
-    // Skor hesapla
-    let score = 10; // base
-    if (mxValid)
-        score += 5;
-    if (corporate)
-        score += 10;
-    if (deliverable === true)
-        score += 10;
+    else if (corporate) {
+        confidence = 'medium';
+        bonusScore = 10;
+        deliverabilityReason = 'Kurumsal email';
+    }
+    else {
+        confidence = 'low';
+        bonusScore = 0;
+        deliverabilityReason = 'Kişisel email (geçerli)';
+    }
+    const score = 10 + bonusScore; // base 10 + bonus
     return {
         valid: true,
         score,
         mxValid: true,
         disposable: false,
         corporate,
-        deliverable,
-        smtpReason,
-        reason: corporate ? 'Kurumsal email' : 'Kişisel email (geçerli)',
+        isRoleBased,
+        confidence,
+        reason: deliverabilityReason,
     };
 }
-// ── WEBSITE DOĞRULAMA ─────────────────────────────────────
 async function validateWebsite(website) {
     if (!website)
         return { valid: false, score: 0 };
@@ -293,36 +190,35 @@ async function validateWebsite(website) {
         return { valid: false, score: 5, reachable: false };
     }
 }
-// ── ANA SKOR HESAPLAMA ────────────────────────────────────
-async function calculateLeadScore(lead, withSmtp = false) {
+async function calculateLeadScore(lead) {
     const breakdown = {};
     let totalScore = 0;
     const phoneResult = validatePhone(lead.phone || '');
     breakdown.phone = phoneResult.score;
     totalScore += phoneResult.score;
-    const emailResult = await validateEmail(lead.email || '', withSmtp);
+    const emailResult = await validateEmail(lead.email || '');
     breakdown.email = emailResult.score;
     totalScore += emailResult.score;
     const websiteResult = await validateWebsite(lead.website || '');
     breakdown.website = websiteResult.score;
     totalScore += websiteResult.score;
-    if (lead.city && lead.city.length > 1) {
+    if (lead.city?.length > 1) {
         breakdown.city = 10;
         totalScore += 10;
     }
-    if (lead.company_name && lead.company_name.length > 3 && !/^\d+$/.test(lead.company_name)) {
+    if (lead.company_name?.length > 3 && !/^\d+$/.test(lead.company_name)) {
         breakdown.company = 10;
         totalScore += 10;
     }
-    if (lead.rating && lead.rating >= 4.0) {
+    if (lead.rating >= 4.0) {
         breakdown.rating = 10;
         totalScore += 10;
     }
-    if (lead.review_count && lead.review_count >= 10) {
+    if (lead.review_count >= 10) {
         breakdown.reviews = 5;
         totalScore += 5;
     }
-    if (lead.sector && lead.sector.length > 2) {
+    if (lead.sector?.length > 2) {
         breakdown.sector = 5;
         totalScore += 5;
     }
@@ -338,11 +234,9 @@ async function calculateLeadScore(lead, withSmtp = false) {
         grade = 'D';
     return { score: finalScore, breakdown, phone: phoneResult, email: emailResult, website: websiteResult, grade };
 }
-// ── ROUTES ────────────────────────────────────────────────
 router.post('/validate', async (req, res) => {
     try {
-        const { phone, email, website, company_name, city, sector, rating, review_count, smtp } = req.body;
-        const result = await calculateLeadScore({ phone, email, website, company_name, city, sector, rating, review_count }, smtp === true);
+        const result = await calculateLeadScore(req.body);
         res.json(result);
     }
     catch (e) {
@@ -365,22 +259,14 @@ router.post('/batch', async (req, res) => {
         const results = [];
         for (const lead of leads) {
             try {
-                const result = await calculateLeadScore(lead, false); // batch'te smtp kapalı
+                const result = await calculateLeadScore(lead);
                 await supabase.from('leads').update({ score: result.score }).eq('id', lead.id);
-                results.push({
-                    id: lead.id,
-                    company_name: lead.company_name,
-                    oldScore: lead.score,
-                    newScore: result.score,
-                    grade: result.grade,
-                    phone: result.phone,
-                    email: result.email,
-                });
+                results.push({ id: lead.id, company_name: lead.company_name, oldScore: lead.score, newScore: result.score, grade: result.grade });
                 updated++;
                 await new Promise(r => setTimeout(r, 100));
             }
             catch (err) {
-                console.error(`Lead ${lead.id} validation error:`, err.message);
+                console.error(`Lead ${lead.id} error:`, err.message);
             }
         }
         res.json({ message: `${updated} lead güncellendi`, updated, results });
@@ -390,11 +276,9 @@ router.post('/batch', async (req, res) => {
     }
 });
 router.post('/phone', async (req, res) => {
-    const { phone } = req.body;
-    res.json(validatePhone(phone || ''));
+    res.json(validatePhone(req.body.phone || ''));
 });
 router.post('/email', async (req, res) => {
-    const { email, smtp } = req.body;
-    res.json(await validateEmail(email || '', smtp === true));
+    res.json(await validateEmail(req.body.email || ''));
 });
 module.exports = router;
