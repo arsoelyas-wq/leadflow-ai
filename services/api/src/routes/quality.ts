@@ -21,7 +21,7 @@ const DISPOSABLE_DOMAINS = new Set([
 // ── GLOBAL TELEFON FORMATI ────────────────────────────────
 // Ülke kodu → regex pattern
 const PHONE_PATTERNS: Record<string, { pattern: RegExp; operators?: string[] }> = {
-  'TR': { pattern: /^(\+90|0090|90)?[5][0-9]{9}$/, operators: ['Turkcell', 'Vodafone', 'Türk Telekom'] },
+  'TR': { pattern: /^(\+90|0090|90|0)?[5][0-9]{9}$/, operators: ['Turkcell', 'Vodafone', 'Türk Telekom'] },
   'US': { pattern: /^(\+1)?[2-9][0-9]{9}$/ },
   'DE': { pattern: /^(\+49)?[1-9][0-9]{6,11}$/ },
   'GB': { pattern: /^(\+44)?[7][0-9]{9}$/ },
