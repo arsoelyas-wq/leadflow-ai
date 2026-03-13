@@ -8,21 +8,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// ── ANTI-BAN YARDIMCI FONKSİYONLAR ──────────────────────────
+// ── ANTI-BAN YARDIMCI FONKSİYONLAR ──────────────────────
 
-// Rastgele bekleme (min-max ms arası)
 function randomDelay(min: number, max: number): Promise<void> {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
   return new Promise(r => setTimeout(r, ms));
 }
 
-// Güvenli gönderim saati kontrolü (09:00 - 20:00)
 function isSafeHour(): boolean {
   const hour = new Date().getHours();
   return hour >= 9 && hour < 20;
 }
 
-// Günlük gönderim sayısını kontrol et (kullanıcı başına max 150/gün)
 async function getDailyCount(userId: string, channel: string): Promise<number> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -36,7 +33,6 @@ async function getDailyCount(userId: string, channel: string): Promise<number> {
   return count || 0;
 }
 
-// Mesajı kişiselleştir
 function personalizeMessage(template: string, lead: any): string {
   return template
     .replace(/\[FIRMA_ADI\]/g, lead.company_name || lead.contact_name || 'Sayın Yetkili')
@@ -46,9 +42,8 @@ function personalizeMessage(template: string, lead: any): string {
     .replace(/\[TELEFON\]/g, lead.phone || '');
 }
 
-// ── ROUTES ───────────────────────────────────────────────────
+// ── ROUTES ────────────────────────────────────────────────
 
-// Tüm kampanyaları getir
 router.get('/', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -79,7 +74,6 @@ router.get('/', async (req: any, res: any) => {
   }
 });
 
-// Yeni kampanya oluştur
 router.post('/', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -112,7 +106,6 @@ router.post('/', async (req: any, res: any) => {
   }
 });
 
-// Kampanya detayı
 router.get('/:id', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -144,7 +137,7 @@ router.get('/:id', async (req: any, res: any) => {
   }
 });
 
-// Kampanyayı başlat
+// Kampanyayı başlat — Bull Queue ile
 router.post('/:id/start', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -188,62 +181,113 @@ router.post('/:id/start', async (req: any, res: any) => {
     }
 
     if (campaign.channel === 'email' && !userSettings?.email_user) {
-      return res.status(400).json({ error: 'Email ayarları yapılmamış. Ayarlar sayfasından SMTP bağlayın.' });
+      return res.status(400).json({ error: 'Email ayarları yapılmamış.' });
     }
 
     if (campaign.channel === 'whatsapp' && userSettings?.whatsapp_status !== 'connected') {
-      return res.status(400).json({ error: 'WhatsApp bağlı değil. Ayarlar sayfasından bağlayın.' });
+      return res.status(400).json({ error: 'WhatsApp bağlı değil.' });
     }
 
-    // WhatsApp için saat kontrolü
     if (campaign.channel === 'whatsapp' && !isSafeHour()) {
       return res.status(400).json({
-        error: 'WhatsApp mesajları sadece 09:00-20:00 arası gönderilebilir. Lütfen daha sonra tekrar deneyin.'
+        error: 'WhatsApp mesajları sadece 09:00-20:00 arası gönderilebilir.'
       });
     }
 
-    // Günlük limit kontrolü
     if (campaign.channel === 'whatsapp') {
       const dailyCount = await getDailyCount(userId, 'whatsapp');
       if (dailyCount >= 150) {
-        return res.status(400).json({
-          error: `Günlük WhatsApp limiti doldu (150/gün). Yarın tekrar deneyin. Bugün gönderilen: ${dailyCount}`
-        });
+        return res.status(400).json({ error: `Günlük WhatsApp limiti doldu (150/gün).` });
       }
       const remaining = 150 - dailyCount;
       if (leads.length > remaining) {
         return res.status(400).json({
-          error: `Bugün sadece ${remaining} mesaj daha gönderebilirsiniz. ${leads.length} lead seçtiniz.`
+          error: `Bugün sadece ${remaining} mesaj daha gönderebilirsiniz.`
         });
       }
     }
 
-    await supabase.from('campaigns').update({ status: 'active' }).eq('id', req.params.id);
+    // Bull Queue varsa queue ile, yoksa direkt gönder
+    try {
+      const { startCampaign } = require('../queue');
+      await startCampaign(req.params.id, userId);
+      res.json({
+        message: 'Kampanya kuyruğa alındı! Mesajlar sırayla gönderilecek.',
+        total: leads.length,
+        estimatedTime: `~${Math.ceil(leads.length * 1.5)} dakika`,
+        mode: 'queue',
+      });
+    } catch (queueErr: any) {
+      // Queue yoksa eski yönteme düş (fallback)
+      console.log('Queue unavailable, falling back to direct send:', queueErr.message);
+      await supabase.from('campaigns').update({ status: 'active' }).eq('id', req.params.id);
+      sendCampaignMessages(campaign, leads, userSettings, userId).catch(console.error);
+      res.json({
+        message: 'Kampanya başlatıldı! Mesajlar gönderiliyor...',
+        total: leads.length,
+        estimatedTime: `~${Math.ceil(leads.length * 1.5)} dakika`,
+        mode: 'direct',
+      });
+    }
 
-    sendCampaignMessages(campaign, leads, userSettings, userId).catch(console.error);
-
-    res.json({
-      message: 'Kampanya başlatıldı! Mesajlar gönderiliyor...',
-      total: leads.length,
-      estimatedTime: `~${Math.ceil(leads.length * 1.5)} dakika`
-    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Arka planda mesaj gönderme
+// Queue istatistikleri
+router.get('/queue/stats', async (req: any, res: any) => {
+  try {
+    const { getQueueStats } = require('../queue');
+    const stats = await getQueueStats();
+    res.json(stats);
+  } catch (e: any) {
+    res.json({ error: 'Queue bağlantısı yok', stats: null });
+  }
+});
+
+// Kampanyayı duraklat
+router.post('/:id/pause', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    await supabase.from('campaigns')
+      .update({ status: 'paused' })
+      .eq('id', req.params.id)
+      .eq('user_id', userId);
+
+    // Queue'dan da duraklat
+    try {
+      const { pauseCampaign } = require('../queue');
+      await pauseCampaign(req.params.id);
+    } catch {}
+
+    res.json({ message: 'Kampanya duraklatıldı' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/:id', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    await supabase.from('campaigns')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('user_id', userId);
+    res.json({ message: 'Kampanya silindi' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fallback: Direkt gönderim (queue yoksa)
 async function sendCampaignMessages(campaign: any, leads: any[], userSettings: any, userId: string) {
   let sent = 0;
   let failed = 0;
   const nodemailer = require('nodemailer');
 
-  // Kullanıcının güncel credits_used değerini al
   const { data: userData } = await supabase
-    .from('users')
-    .select('credits_used')
-    .eq('id', userId)
-    .single();
+    .from('users').select('credits_used').eq('id', userId).single();
   let currentCreditsUsed = userData?.credits_used || 0;
 
   let transporter: any = null;
@@ -252,16 +296,12 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
       host: userSettings.email_host || 'smtp.gmail.com',
       port: Number(userSettings.email_port) || 587,
       secure: false,
-      auth: {
-        user: userSettings.email_user,
-        pass: userSettings.email_pass,
-      },
+      auth: { user: userSettings.email_user, pass: userSettings.email_pass },
     });
   }
 
   for (const lead of leads) {
     try {
-      // WhatsApp için saat kontrolü (gönderim sırasında da kontrol et)
       if (campaign.channel === 'whatsapp' && !isSafeHour()) {
         console.log(`Campaign ${campaign.id}: Güvenli saat dışı, gönderim durduruldu.`);
         break;
@@ -274,13 +314,12 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
         const { sendWhatsAppMessage } = require('./settings');
         await sendWhatsAppMessage(userId, lead.phone, personalizedMsg);
         success = true;
-
       } else if (campaign.channel === 'email' && lead.email && transporter) {
         await transporter.sendMail({
           from: userSettings.email_from || userSettings.email_user,
           to: lead.email,
           subject: campaign.name,
-          html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+          html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             ${personalizedMsg.replace(/\n/g, '<br>')}
             <hr style="margin-top:30px; border:none; border-top:1px solid #eee;">
             <p style="font-size:11px; color:#999;">Bu mesajı almak istemiyorsanız STOP yazarak yanıtlayın.</p>
@@ -292,8 +331,6 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
       if (success) {
         sent++;
         currentCreditsUsed++;
-
-        // Mesajı kaydet (user_id ile birlikte)
         await supabase.from('messages').insert([{
           lead_id: lead.id,
           user_id: userId,
@@ -303,40 +340,27 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
           status: 'sent',
           sent_at: new Date().toISOString(),
         }]);
-
-        // Krediyi toplu güncelle (her 5 mesajda bir)
         if (sent % 5 === 0) {
-          await supabase.from('users')
-            .update({ credits_used: currentCreditsUsed })
-            .eq('id', userId);
+          await supabase.from('users').update({ credits_used: currentCreditsUsed }).eq('id', userId);
         }
       } else {
         failed++;
       }
 
-      // ── ANTI-BAN: Rastgele bekleme ──
       if (campaign.channel === 'whatsapp') {
-        // WhatsApp: 8-25 saniye arası rastgele bekleme
         await randomDelay(8000, 25000);
       } else {
-        // Email: 2-5 saniye
         await randomDelay(2000, 5000);
       }
 
     } catch (e: any) {
       console.error('Send error:', e.message);
       failed++;
-      // Hata durumunda daha uzun bekle
       await randomDelay(15000, 30000);
     }
   }
 
-  // Final kredi güncellemesi
-  await supabase.from('users')
-    .update({ credits_used: currentCreditsUsed })
-    .eq('id', userId);
-
-  // Kampanya sonucunu güncelle
+  await supabase.from('users').update({ credits_used: currentCreditsUsed }).eq('id', userId);
   await supabase.from('campaigns').update({
     total_sent: (campaign.total_sent || 0) + sent,
     status: failed === leads.length ? 'paused' : 'completed',
@@ -344,35 +368,5 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
 
   console.log(`Campaign ${campaign.id} done: ${sent} sent, ${failed} failed`);
 }
-
-// Kampanyayı duraklat
-router.post('/:id/pause', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    await supabase.from('campaigns')
-      .update({ status: 'paused' })
-      .eq('id', req.params.id)
-      .eq('user_id', userId);
-
-    res.json({ message: 'Kampanya duraklatıldı' });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Kampanyayı sil
-router.delete('/:id', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    await supabase.from('campaigns')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', userId);
-
-    res.json({ message: 'Kampanya silindi' });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 module.exports = router;
