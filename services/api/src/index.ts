@@ -85,6 +85,7 @@ app.use('/api/campaigns', authMiddleware, campaignLimiter, require('./routes/cam
 app.use('/api/messages',  authMiddleware, require('./routes/messages'));
 app.use('/api/links',     authMiddleware, linksRouter);
 app.use('/api/quality', authMiddleware, require('./routes/quality'));
+app.use('/api/competitor', authMiddleware, require('./routes/competitor'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',  authMiddleware, settingsRouter);
