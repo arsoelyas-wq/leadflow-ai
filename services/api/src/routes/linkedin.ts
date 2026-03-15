@@ -20,152 +20,148 @@ const DECISION_TITLES = [
   'cmo', 'coo', 'cto', 'cfo', 'partner', 'ortak', 'yönetici', 'vp',
 ];
 
-function getHeaders(liAt: string) {
-  return {
-    'Cookie': `li_at=${liAt}; lang=v=2&lang=tr-tr`,
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Referer': 'https://www.linkedin.com/',
-    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
-    'sec-fetch-dest': 'document',
-    'sec-fetch-mode': 'navigate',
-    'sec-fetch-site': 'same-origin',
-    'upgrade-insecure-requests': '1',
-  };
-}
-
-// LinkedIn şirket sayfasından çalışanları çek
-async function scrapeLinkedInCompanyPage(companyName: string, liAt: string): Promise<any[]> {
+// Playwright ile li_at cookie kullanarak LinkedIn tara
+async function scrapeWithPlaywright(companyName: string, liAt: string): Promise<any[]> {
+  let browser: any = null;
   const persons: any[] = [];
 
   try {
-    // 1. Şirket arama sayfası
+    const { chromium } = require('playwright');
+    browser = await chromium.launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+      args: [
+        '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
+        '--no-zygote', '--disable-gpu', '--disable-blink-features=AutomationControlled',
+      ],
+    });
+
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      viewport: { width: 1280, height: 800 },
+      locale: 'tr-TR',
+    });
+
+    // li_at cookie'yi ekle
+    await context.addCookies([
+      { name: 'li_at', value: liAt, domain: '.linkedin.com', path: '/' },
+      { name: 'lang', value: 'v=2&lang=tr-tr', domain: '.linkedin.com', path: '/' },
+    ]);
+
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      try { Object.defineProperty((window as any).navigator, 'webdriver', { get: () => undefined }); } catch {}
+    });
+
+    // Şirket arama
     const searchUrl = `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(companyName)}`;
-    const searchRes = await axios.get(searchUrl, {
-      headers: getHeaders(liAt),
-      timeout: 15000,
-      maxRedirects: 3,
-    });
+    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await sleep(3000);
 
-    const $search = cheerio.load(searchRes.data);
-
-    // JSON-LD veya inline data'dan şirket slug bul
-    let companySlug = '';
-    $search('a[href*="/company/"]').each((_: any, el: any) => {
-      const href = $search(el).attr('href') || '';
-      const match = href.match(/\/company\/([^/?]+)/);
-      if (match && !companySlug) companySlug = match[1];
-    });
-
-    if (!companySlug) {
-      // Alternatif: script tag içinden bul
-      $search('script[type="application/ld+json"]').each((_: any, el: any) => {
-        try {
-          const data = JSON.parse($search(el).html() || '{}');
-          if (data.url?.includes('/company/')) {
-            const match = data.url.match(/\/company\/([^/?]+)/);
-            if (match) companySlug = match[1];
-          }
-        } catch {}
-      });
+    // Login gerekiyor mu?
+    if (page.url().includes('login') || page.url().includes('authwall')) {
+      await browser.close();
+      return [];
     }
+
+    // İlk şirket sonucunu bul ve tıkla
+    const companyLink = await page.$('a[href*="/company/"]');
+    if (!companyLink) {
+      await browser.close();
+      return [];
+    }
+
+    const href = await companyLink.getAttribute('href') || '';
+    const companySlug = href.match(/\/company\/([^/?]+)/)?.[1];
 
     if (companySlug) {
+      // People sayfası
+      await page.goto(`https://www.linkedin.com/company/${companySlug}/people/`, {
+        waitUntil: 'domcontentloaded', timeout: 20000
+      });
+      await sleep(3000);
+      await page.evaluate(() => (window as any).scrollTo(0, 600));
       await sleep(1500);
 
-      // 2. Şirket people sayfası
-      const peopleUrl = `https://www.linkedin.com/company/${companySlug}/people/`;
-      const peopleRes = await axios.get(peopleUrl, {
-        headers: getHeaders(liAt),
-        timeout: 15000,
-        maxRedirects: 3,
-      });
-
-      const $people = cheerio.load(peopleRes.data);
-
-      // Çalışan kartlarını parse et
-      $people('.org-people-profile-card, [data-member-id], .artdeco-entity-lockup').each((_: any, el: any) => {
-        const name = $people(el).find('.org-people-profile-card__profile-title, dt, h3, .artdeco-entity-lockup__title').first().text().trim();
-        const title = $people(el).find('.lt-line-clamp, dd, .org-people-profile-card__profile-position, .artdeco-entity-lockup__subtitle').first().text().trim();
-        const profileUrl = $people(el).find('a[href*="/in/"]').first().attr('href') || '';
-
-        if (name && name.length > 2 && name.length < 60) {
-          const isDecision = DECISION_TITLES.some(t => title.toLowerCase().includes(t));
-          persons.push({
-            full_name: name,
-            title: title || 'Çalışan',
-            linkedin_url: profileUrl ? `https://linkedin.com${profileUrl.split('?')[0]}` : null,
-            source: 'LinkedIn Company Page',
-            confidence: 90,
-            isDecisionMaker: isDecision,
-          });
-        }
-      });
-
-      // JSON içindeki veriyi de parse et
-      $people('script').each((_: any, el: any) => {
-        try {
-          const content = $people(el).html() || '';
-          if (content.includes('firstName') && content.includes('lastName')) {
-            const matches = content.match(/"firstName":"([^"]+)","lastName":"([^"]+)"/g) || [];
-            matches.forEach((match: string) => {
-              const nameMatch = match.match(/"firstName":"([^"]+)","lastName":"([^"]+)"/);
-              if (nameMatch) {
-                const name = `${nameMatch[1]} ${nameMatch[2]}`.trim();
-                if (name.length > 2 && !persons.find((p: any) => p.full_name === name)) {
-                  persons.push({
-                    full_name: name,
-                    title: 'Çalışan',
-                    source: 'LinkedIn JSON',
-                    confidence: 85,
-                    isDecisionMaker: false,
-                  });
-                }
-              }
-            });
+      // Çalışanları çek
+      const employees = await page.evaluate((): any[] => {
+        const results: any[] = [];
+        const cards = (document as any).querySelectorAll(
+          '[data-member-id], .org-people-profile-card, .artdeco-entity-lockup, .scaffold-layout__list-item'
+        );
+        cards.forEach((card: any) => {
+          const name = card.querySelector(
+            '.org-people-profile-card__profile-title, dt, h3, .artdeco-entity-lockup__title, [aria-hidden="true"]'
+          )?.textContent?.trim() || '';
+          const title = card.querySelector(
+            '.lt-line-clamp, dd, .org-people-profile-card__profile-position, .artdeco-entity-lockup__subtitle'
+          )?.textContent?.trim() || '';
+          const url = card.querySelector('a[href*="/in/"]')?.href || '';
+          if (name && name.length > 2 && name.length < 60) {
+            results.push({ name, title, url });
           }
-        } catch {}
-      });
+        });
+        return results;
+      }).catch(() => []);
+
+      for (const emp of employees) {
+        const isDecision = DECISION_TITLES.some(t => emp.title.toLowerCase().includes(t));
+        persons.push({
+          full_name: emp.name,
+          title: emp.title || 'Çalışan',
+          linkedin_url: emp.url ? emp.url.split('?')[0] : null,
+          source: 'LinkedIn Company (Playwright)',
+          confidence: 93,
+          isDecisionMaker: isDecision,
+        });
+      }
     }
 
-    await sleep(1000);
+    // Kişi araması — CEO/Müdür
+    if (persons.filter((p: any) => p.isDecisionMaker).length < 2) {
+      await page.goto(
+        `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(companyName + ' CEO Genel Müdür Kurucu')}&origin=GLOBAL_SEARCH_HEADER`,
+        { waitUntil: 'domcontentloaded', timeout: 20000 }
+      );
+      await sleep(2500);
 
-    // 3. LinkedIn kişi arama sayfası
-    const peopleSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(companyName + ' CEO Genel Müdür')}&origin=GLOBAL_SEARCH_HEADER`;
-    const peopleSearchRes = await axios.get(peopleSearchUrl, {
-      headers: getHeaders(liAt),
-      timeout: 15000,
-    });
+      const searchResults = await page.evaluate((): any[] => {
+        const results: any[] = [];
+        const cards = (document as any).querySelectorAll('.entity-result, [data-chameleon-result-urn]');
+        cards.forEach((card: any) => {
+          const name = card.querySelector(
+            '.entity-result__title-text span[aria-hidden="true"], .actor-name'
+          )?.textContent?.trim() || '';
+          const title = card.querySelector(
+            '.entity-result__primary-subtitle, .subline-level-1'
+          )?.textContent?.trim() || '';
+          const url = card.querySelector('a[href*="/in/"]')?.href || '';
+          if (name && name.length > 2) results.push({ name, title, url });
+        });
+        return results;
+      }).catch(() => []);
 
-    const $ps = cheerio.load(peopleSearchRes.data);
-
-    $ps('.entity-result, .search-result, [data-chameleon-result-urn]').each((_: any, el: any) => {
-      const name = $ps(el).find('.entity-result__title-text, .actor-name, span[aria-hidden="true"]').first().text().trim();
-      const title = $ps(el).find('.entity-result__primary-subtitle, .subline-level-1').first().text().trim();
-      const profileUrl = $ps(el).find('a[href*="/in/"]').first().attr('href') || '';
-
-      if (name && name.length > 2 && name.length < 60) {
-        const isDecision = DECISION_TITLES.some(t => title.toLowerCase().includes(t));
-        if (isDecision && !persons.find((p: any) => p.full_name === name)) {
+      for (const r of searchResults) {
+        const isDecision = DECISION_TITLES.some(t => r.title.toLowerCase().includes(t));
+        if (isDecision && !persons.find((p: any) => p.full_name === r.name)) {
           persons.push({
-            full_name: name,
-            title,
-            linkedin_url: profileUrl ? `https://linkedin.com${profileUrl.split('?')[0]}` : null,
-            source: 'LinkedIn People Search',
-            confidence: 88,
+            full_name: r.name,
+            title: r.title,
+            linkedin_url: r.url ? r.url.split('?')[0] : null,
+            source: 'LinkedIn People Search (Playwright)',
+            confidence: 90,
             isDecisionMaker: true,
           });
         }
       }
-    });
+    }
 
+    await browser.close();
   } catch (e: any) {
-    console.error('LinkedIn scrape error:', e.message);
+    console.error('LinkedIn Playwright error:', e.message);
+    if (browser) try { await browser.close(); } catch {}
   }
 
-  // Tekrarları kaldır + karar vericileri önce sırala
   const seen = new Set<string>();
   return persons
     .filter(p => {
@@ -196,7 +192,7 @@ router.post('/search', async (req: any, res: any) => {
         .eq('user_id', userId)
         .single();
 
-      if (settings?.linkedin_cookies && settings.linkedin_status === 'connected') {
+      if (settings?.linkedin_cookies) {
         try {
           const cookies = JSON.parse(Buffer.from(settings.linkedin_cookies, 'base64').toString('utf8'));
           const liAtCookie = cookies.find((c: any) => c.name === 'li_at');
@@ -206,16 +202,12 @@ router.post('/search', async (req: any, res: any) => {
     }
 
     if (!liAt) {
-      return res.status(400).json({
-        error: 'LinkedIn bağlı değil',
-        needsConnection: true,
-      });
+      return res.status(400).json({ error: 'LinkedIn bağlı değil', needsConnection: true });
     }
 
-    console.log(`LinkedIn scraping: ${companyName}`);
-    const persons = await scrapeLinkedInCompanyPage(companyName, liAt);
+    console.log(`LinkedIn Playwright scraping: ${companyName}`);
+    const persons = await scrapeWithPlaywright(companyName, liAt);
 
-    // Veritabanına kaydet
     for (const person of persons) {
       try {
         await supabase.from('person_database').upsert({
@@ -257,7 +249,7 @@ router.get('/status', async (req: any, res: any) => {
 
     res.json({
       connected: hasEnvToken || data?.linkedin_status === 'connected',
-      email: data?.linkedin_email || (hasEnvToken ? 'Sistem hesabı (li_at)' : null),
+      email: data?.linkedin_email || (hasEnvToken ? 'Sistem (li_at)' : null),
       status: hasEnvToken ? 'connected' : (data?.linkedin_status || 'disconnected'),
     });
   } catch (e: any) {
@@ -269,7 +261,6 @@ router.post('/connect', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { liAt, email } = req.body;
-
     if (!liAt) return res.status(400).json({ error: 'liAt cookie zorunlu' });
 
     await supabase.from('user_settings').upsert({
