@@ -33,7 +33,7 @@ async function linkedInLogin(email: string, password: string): Promise<{
 
     const page = await context.newPage();
     await page.addInitScript(() => {
-      try { Object.defineProperty(window.navigator, 'webdriver', { get: () => undefined }); } catch {}
+      try { Object.defineProperty((window as any).navigator, 'webdriver', { get: () => undefined }); } catch {}
     });
 
     await page.goto('https://www.linkedin.com/login', { waitUntil: 'domcontentloaded', timeout: 20000 });
@@ -100,7 +100,7 @@ async function searchLinkedInWithCookies(
     await context.addCookies(parsedCookies);
     const page = await context.newPage();
     await page.addInitScript(() => {
-      try { Object.defineProperty(window.navigator, 'webdriver', { get: () => undefined }); } catch {}
+      try { Object.defineProperty((window as any).navigator, 'webdriver', { get: () => undefined }); } catch {}
     });
 
     // Şirket ara
@@ -129,12 +129,12 @@ async function searchLinkedInWithCookies(
     await sleep(3000);
 
     // Scroll yaparak daha fazla yükle
-    await page.evaluate(() => window.scrollTo(0, 500));
+    await page.evaluate(() => (window as any).scrollTo(0, 500));
     await sleep(1000);
 
     // Çalışanları tara
-    const employees = await page.evaluate(() => {
-      const cards = document.querySelectorAll('[data-member-id], .org-people-profile-card, .artdeco-entity-lockup');
+    const employees = await page.evaluate((): any[] => {
+      const cards = (document as any).querySelectorAll('[data-member-id], .org-people-profile-card, .artdeco-entity-lockup');
       const results: any[] = [];
       cards.forEach((card: any) => {
         const name = card.querySelector('dt, .org-people-profile-card__profile-title, .artdeco-entity-lockup__title, h3')?.textContent?.trim() || '';
@@ -178,8 +178,8 @@ async function searchLinkedInWithCookies(
       await page.goto(peopleSearchUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
       await sleep(2500);
 
-      const searchResults = await page.evaluate(() => {
-        const cards = document.querySelectorAll('.entity-result');
+      const searchResults = await page.evaluate((): any[] => {
+        const cards = (document as any).querySelectorAll('.entity-result');
         const results: any[] = [];
         cards.forEach((card: any) => {
           const name = card.querySelector('.entity-result__title-text')?.textContent?.trim() || '';
