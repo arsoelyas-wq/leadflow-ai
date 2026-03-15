@@ -87,6 +87,7 @@ app.use('/api/persons', authMiddleware, require('./routes/persons'));
 app.use('/api/linkedin', authMiddleware, require('./routes/linkedin'));
 app.use('/api/sequences', authMiddleware, require('./routes/sequences'));
 app.use('/api/abtests', authMiddleware, require('./routes/ab-testing'));
+app.use('/api/wa-numbers', authMiddleware, require('./routes/wa-numbers'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
