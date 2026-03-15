@@ -4,7 +4,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
-  MessageSquare, Settings, CreditCard, LogOut, Zap, Activity, Target, DollarSign
+  MessageSquare, Settings, CreditCard, LogOut, Zap,
+  Activity, Target, DollarSign, Crosshair
 } from 'lucide-react'
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
   { href: '/competitor', label: 'Rakip Hijack', icon: Target },
+  { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },
   { href: '/monitoring', label: 'Monitör', icon: Activity },
   { href: '/billing', label: 'Abonelik', icon: CreditCard },
   { href: '/settings', label: 'Ayarlar', icon: Settings },
