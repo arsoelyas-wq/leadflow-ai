@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
-import { Search, Filter, Plus, Trash2, Mail, Phone, Instagram, ExternalLink } from 'lucide-react'
+import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -11,6 +11,7 @@ interface Lead {
   phone?: string
   email?: string
   instagram?: string
+  website?: string
   city?: string
   source: string
   score: number
@@ -18,24 +19,19 @@ interface Lead {
   created_at: string
 }
 
-const STATUS_OPTS = ['', 'new', 'contacted', 'replied', 'offered', 'won', 'lost']
-const SOURCE_OPTS = ['', 'google_maps', 'instagram', 'linkedin', 'manual']
-
+const STATUS_OPTS = ['', 'new', 'contacted', 'qualified', 'replied', 'offered', 'won', 'lost']
 const statusLabel: Record<string, string> = {
-  new: 'Yeni', contacted: 'İletişime Geçildi', replied: 'Cevap Verdi',
-  offered: 'Teklif Verildi', won: 'Kazanıldı', lost: 'Kaybedildi'
+  new: 'Yeni', contacted: 'İletişime Geçildi', qualified: 'Nitelikli',
+  replied: 'Cevap Verdi', offered: 'Teklif Verildi', won: 'Kazanıldı', lost: 'Kaybedildi'
 }
 const statusColor: Record<string, string> = {
   new: 'bg-blue-500/20 text-blue-300',
   contacted: 'bg-yellow-500/20 text-yellow-300',
+  qualified: 'bg-cyan-500/20 text-cyan-300',
   replied: 'bg-green-500/20 text-green-300',
   offered: 'bg-purple-500/20 text-purple-300',
   won: 'bg-emerald-500/20 text-emerald-300',
   lost: 'bg-red-500/20 text-red-300',
-}
-const sourceLabel: Record<string, string> = {
-  google_maps: 'Google Maps', instagram: 'Instagram',
-  linkedin: 'LinkedIn', manual: 'Manuel'
 }
 
 export default function LeadsPage() {
@@ -44,9 +40,10 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
-  const [source, setSource] = useState('')
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string[]>([])
+  const [findingDM, setFindingDM] = useState<string | null>(null)
+  const [dmResults, setDmResults] = useState<Record<string, any>>({})
 
   const load = async () => {
     setLoading(true)
@@ -54,18 +51,17 @@ export default function LeadsPage() {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (search) params.set('search', search)
       if (status) params.set('status', status)
-      if (source) params.set('source', source)
       const data = await api.get(`/api/leads?${params}`)
       setLeads(data.leads)
       setTotal(data.total)
-    } catch (e) {
+    } catch {
       setLeads([])
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { load() }, [page, status, source])
+  useEffect(() => { load() }, [page, status])
   useEffect(() => {
     const t = setTimeout(load, 400)
     return () => clearTimeout(t)
@@ -89,6 +85,25 @@ export default function LeadsPage() {
     load()
   }
 
+  // Tek lead için karar verici bul
+  const findDecisionMaker = async (lead: Lead) => {
+    setFindingDM(lead.id)
+    try {
+      const data = await api.post('/api/decision-maker/find', {
+        companyName: lead.company_name,
+        website: lead.website || '',
+        city: lead.city || '',
+        leadId: lead.id,
+      })
+      setDmResults(prev => ({ ...prev, [lead.id]: data }))
+      if (data.found > 0) load() // Lead güncellendi
+    } catch (e: any) {
+      alert(e.message)
+    } finally {
+      setFindingDM(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -97,10 +112,16 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-bold text-white">Leadler</h1>
           <p className="text-slate-400 mt-1">{total} lead bulundu</p>
         </div>
-        <Link href="/leads/scrape"
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-medium transition">
-          <Plus size={18} /> Lead Topla
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/decision-maker"
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm">
+            <Crosshair size={16} /> Karar Verici Bul
+          </Link>
+          <Link href="/leads/scrape"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm">
+            <Plus size={16} /> Lead Topla
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -118,20 +139,13 @@ export default function LeadsPage() {
             <option key={s} value={s}>{statusLabel[s]}</option>
           ))}
         </select>
-        <select value={source} onChange={e => { setSource(e.target.value); setPage(1) }}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
-          <option value="">Tüm Kaynaklar</option>
-          {SOURCE_OPTS.filter(Boolean).map(s => (
-            <option key={s} value={s}>{sourceLabel[s]}</option>
-          ))}
-        </select>
       </div>
 
       {/* Bulk actions */}
       {selected.length > 0 && (
         <div className="flex items-center gap-3 bg-blue-600/10 border border-blue-500/30 rounded-lg px-4 py-3">
           <span className="text-blue-300 text-sm">{selected.length} seçili</span>
-          <div className="flex gap-2 ml-auto">
+          <div className="flex gap-2 ml-auto flex-wrap">
             {['contacted', 'replied', 'won', 'lost'].map(s => (
               <button key={s} onClick={() => bulkStatus(s)}
                 className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition">
@@ -156,12 +170,12 @@ export default function LeadsPage() {
                   onChange={selectAll} className="accent-blue-500" />
               </th>
               <th className="p-4 text-slate-400 text-sm font-medium">Firma</th>
+              <th className="p-4 text-slate-400 text-sm font-medium">Karar Verici</th>
               <th className="p-4 text-slate-400 text-sm font-medium">İletişim</th>
-              <th className="p-4 text-slate-400 text-sm font-medium">Kaynak</th>
               <th className="p-4 text-slate-400 text-sm font-medium">Puan</th>
               <th className="p-4 text-slate-400 text-sm font-medium">Durum</th>
               <th className="p-4 text-slate-400 text-sm font-medium">Tarih</th>
-              <th className="p-4 w-10"></th>
+              <th className="p-4 w-16"></th>
             </tr>
           </thead>
           <tbody>
@@ -179,7 +193,7 @@ export default function LeadsPage() {
                 </td>
                 <td className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                    <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
                       {lead.company_name[0]}
                     </div>
                     <div>
@@ -188,6 +202,36 @@ export default function LeadsPage() {
                     </div>
                   </div>
                 </td>
+
+                {/* Karar Verici */}
+                <td className="p-4">
+                  {lead.contact_name ? (
+                    <div>
+                      <p className="text-purple-300 text-sm font-medium">{lead.contact_name}</p>
+                      {lead.email && <p className="text-slate-500 text-xs truncate max-w-32">{lead.email}</p>}
+                    </div>
+                  ) : dmResults[lead.id] ? (
+                    <div>
+                      {dmResults[lead.id].found > 0 ? (
+                        <p className="text-emerald-400 text-xs">{dmResults[lead.id].decisionMakers[0]?.name}</p>
+                      ) : (
+                        <p className="text-slate-500 text-xs">Bulunamadı</p>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => findDecisionMaker(lead)}
+                      disabled={findingDM === lead.id}
+                      className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs rounded-lg transition disabled:opacity-50"
+                    >
+                      {findingDM === lead.id
+                        ? <RefreshCw size={11} className="animate-spin" />
+                        : <Crosshair size={11} />}
+                      {findingDM === lead.id ? 'Aranıyor...' : 'Bul'}
+                    </button>
+                  )}
+                </td>
+
                 <td className="p-4">
                   <div className="flex gap-2 items-center">
                     {lead.phone && (
@@ -204,9 +248,6 @@ export default function LeadsPage() {
                     {lead.email && <a href={`mailto:${lead.email}`} className="text-slate-400 hover:text-blue-400 transition"><Mail size={14} /></a>}
                     {lead.instagram && <a href={`https://instagram.com/${lead.instagram.replace('@','')}`} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-pink-400 transition"><Instagram size={14} /></a>}
                   </div>
-                </td>
-                <td className="p-4">
-                  <span className="text-slate-300 text-sm">{sourceLabel[lead.source] || lead.source}</span>
                 </td>
                 <td className="p-4">
                   <div className="flex items-center gap-2">
