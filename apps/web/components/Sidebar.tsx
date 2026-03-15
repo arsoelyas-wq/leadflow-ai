@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
   MessageSquare, Settings, CreditCard, LogOut, Zap,
-  Activity, Target, DollarSign, Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye
+  Activity, Target, DollarSign, Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye, TrendingUp
 } from 'lucide-react'
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
+  { href: '/financial', label: 'Büyüme Zekası', icon: TrendingUp },
   { href: '/competitor', label: 'Rakip Hijack', icon: Target },
   { href: '/shadow', label: 'Rakip İzleme', icon: Eye },
   { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },

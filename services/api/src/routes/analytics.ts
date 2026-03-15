@@ -247,5 +247,168 @@ router.get('/revenue', async (req: any, res: any) => {
     res.status(500).json({ error: error.message });
   }
 });
+// Bu kod analytics.ts'e eklenecek — mevcut module.exports'un üstüne yapıştır
 
+// ── FINANCIAL GROWTH INTELLIGENCE ────────────────────────
+
+router.get('/financial', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const now = new Date();
+
+    // Son 6 ay için veri
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now);
+      d.setMonth(d.getMonth() - i);
+      return {
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: d.toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' }),
+        start: new Date(d.getFullYear(), d.getMonth(), 1).toISOString(),
+        end: new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString(),
+      };
+    }).reverse();
+
+    const [{ data: allLeads }, { data: allMessages }, { data: campaigns }, { data: user }] = await Promise.all([
+      supabase.from('leads').select('status, source, score, created_at, city, sector').eq('user_id', userId),
+      supabase.from('messages').select('direction, channel, sent_at').eq('user_id', userId),
+      supabase.from('campaigns').select('name, total_sent, total_replied, created_at').eq('user_id', userId),
+      supabase.from('users').select('plan_type, credits_total, credits_used, created_at').eq('id', userId).single(),
+    ]);
+
+    const leads = allLeads || [];
+    const messages = allMessages || [];
+
+    // ── AYLIK BÜYÜME TRENDİ ───────────────────────────────
+    const monthlyTrend = months.map(month => {
+      const monthLeads = leads.filter(l => l.created_at >= month.start && l.created_at <= month.end);
+      const monthMessages = messages.filter(m => m.sent_at >= month.start && m.sent_at <= month.end);
+      const won = monthLeads.filter(l => l.status === 'won').length;
+      const contacted = monthLeads.filter(l => ['contacted','replied','won'].includes(l.status)).length;
+
+      return {
+        month: month.label,
+        leads: monthLeads.length,
+        messages: monthMessages.filter(m => m.direction === 'out').length,
+        replies: monthMessages.filter(m => m.direction === 'in').length,
+        won,
+        contacted,
+        conversionRate: monthLeads.length > 0 ? Math.round((won / monthLeads.length) * 100) : 0,
+      };
+    });
+
+    // ── KAYNAK PERFORMANSI ────────────────────────────────
+    const sourceStats: Record<string, { total: number; won: number; score: number }> = {};
+    leads.forEach(lead => {
+      const src = lead.source?.split(' (')[0] || 'Manual';
+      const key = src.length > 30 ? src.slice(0, 30) : src;
+      if (!sourceStats[key]) sourceStats[key] = { total: 0, won: 0, score: 0 };
+      sourceStats[key].total++;
+      if (lead.status === 'won') sourceStats[key].won++;
+      sourceStats[key].score += lead.score || 0;
+    });
+
+    const sourcePerformance = Object.entries(sourceStats)
+      .map(([source, stats]) => ({
+        source,
+        total: stats.total,
+        won: stats.won,
+        avgScore: Math.round(stats.score / stats.total),
+        conversionRate: Math.round((stats.won / stats.total) * 100),
+        roi: stats.won > 0 ? 'Yüksek' : stats.total > 10 ? 'Orta' : 'Düşük',
+      }))
+      .sort((a, b) => b.conversionRate - a.conversionRate)
+      .slice(0, 8);
+
+    // ── ŞEHİR BAZLI ANALİZ ────────────────────────────────
+    const cityStats: Record<string, { total: number; won: number }> = {};
+    leads.forEach(lead => {
+      const city = lead.city || 'Bilinmiyor';
+      if (!cityStats[city]) cityStats[city] = { total: 0, won: 0 };
+      cityStats[city].total++;
+      if (lead.status === 'won') cityStats[city].won++;
+    });
+
+    const topCities = Object.entries(cityStats)
+      .map(([city, stats]) => ({
+        city,
+        total: stats.total,
+        won: stats.won,
+        rate: Math.round((stats.won / stats.total) * 100),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    // ── CHURN RİSKİ ───────────────────────────────────────
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+
+    const staleLeads = leads.filter(l =>
+      l.status === 'contacted' &&
+      l.created_at < thirtyDaysAgo
+    ).length;
+
+    const coldLeads = leads.filter(l =>
+      l.status === 'new' &&
+      l.created_at < sixtyDaysAgo
+    ).length;
+
+    // ── KREDİ VERİMLİLİĞİ ────────────────────────────────
+    const creditsUsed = user?.credits_used || 0;
+    const totalLeads = leads.length;
+    const wonLeads = leads.filter(l => l.status === 'won').length;
+    const creditEfficiency = creditsUsed > 0 ? Math.round((wonLeads / creditsUsed) * 100) : 0;
+    const costPerLead = creditsUsed > 0 && totalLeads > 0 ? (creditsUsed / totalLeads).toFixed(2) : '0';
+    const costPerWin = creditsUsed > 0 && wonLeads > 0 ? (creditsUsed / wonLeads).toFixed(2) : '0';
+
+    // ── BÜYÜME HIZI ───────────────────────────────────────
+    const thisMonth = monthlyTrend[monthlyTrend.length - 1];
+    const lastMonth = monthlyTrend[monthlyTrend.length - 2];
+    const growthRate = lastMonth?.leads > 0
+      ? Math.round(((thisMonth.leads - lastMonth.leads) / lastMonth.leads) * 100)
+      : 0;
+
+    // ── HEDEF TAKİBİ ─────────────────────────────────────
+    const monthlyLeadTarget = 50; // Varsayılan hedef
+    const targetProgress = Math.round((thisMonth.leads / monthlyLeadTarget) * 100);
+
+    // ── AI FINANSİYEL TAVSİYE ────────────────────────────
+    let financialAdvice: any = null;
+    try {
+      const Anthropic = require('@anthropic-ai/sdk');
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: `B2B satış finansal analizi:
+- Bu ay ${thisMonth.leads} lead, geçen ay ${lastMonth?.leads || 0} lead (${growthRate}% büyüme)
+- Dönüşüm oranı: %${thisMonth.conversionRate}
+- En iyi kaynak: ${sourcePerformance[0]?.source || 'Bilinmiyor'} (%${sourcePerformance[0]?.conversionRate || 0} dönüşüm)
+- ${staleLeads} takılı lead, ${coldLeads} soğuk lead
+- Kredi verimliliği: %${creditEfficiency}
+
+3 madde finansal büyüme tavsiyesi ver. JSON: {"advice": ["tavsiye1","tavsiye2","tavsiye3"], "priority": "en önemli eylem", "forecast": "önümüzdeki ay tahmin"}`
+        }]
+      });
+      const text = response.content[0]?.text || '';
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) financialAdvice = JSON.parse(match[0]);
+    } catch {}
+
+    res.json({
+      monthlyTrend,
+      sourcePerformance,
+      topCities,
+      churnRisk: { staleLeads, coldLeads, total: staleLeads + coldLeads },
+      creditEfficiency: { used: creditsUsed, efficiency: creditEfficiency, costPerLead, costPerWin },
+      growth: { rate: growthRate, thisMonth: thisMonth.leads, lastMonth: lastMonth?.leads || 0 },
+      target: { monthly: monthlyLeadTarget, current: thisMonth.leads, progress: Math.min(targetProgress, 100) },
+      financialAdvice,
+    });
+  } catch (e: any) {
+    console.error('Financial intelligence error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 module.exports = router;
