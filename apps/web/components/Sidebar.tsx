@@ -5,13 +5,14 @@ import { useAuth } from '@/lib/auth-context'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
   MessageSquare, Settings, CreditCard, LogOut, Zap,
-  Activity, Target, DollarSign, Crosshair
+  Activity, Target, DollarSign, Crosshair, Bot
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/leads', label: 'Leadler', icon: Users },
   { href: '/campaigns', label: 'Kampanyalar', icon: Megaphone },
+  { href: '/sequences', label: 'AI Sekanslar', icon: Bot },
   { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
@@ -52,10 +53,8 @@ export default function Sidebar() {
             </span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-1.5">
-            <div
-              className="bg-blue-500 h-1.5 rounded-full transition-all"
-              style={{ width: `${Math.max(0, ((user.creditsTotal - user.creditsUsed) / user.creditsTotal) * 100)}%` }}
-            />
+            <div className="bg-blue-500 h-1.5 rounded-full transition-all"
+              style={{ width: `${Math.max(0, ((user.creditsTotal - user.creditsUsed) / user.creditsTotal) * 100)}%` }} />
           </div>
         </div>
       )}
@@ -87,8 +86,7 @@ export default function Sidebar() {
         </div>
         <button onClick={handleLogout}
           className="flex items-center gap-2 text-slate-400 hover:text-red-400 text-sm transition w-full">
-          <LogOut size={16} />
-          Çıkış Yap
+          <LogOut size={16} /> Çıkış Yap
         </button>
       </div>
     </aside>

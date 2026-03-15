@@ -85,6 +85,7 @@ app.use('/api/competitor', authMiddleware, require('./routes/competitor'));
 app.use('/api/decision-maker', authMiddleware, require('./routes/decision-maker'));
 app.use('/api/persons', authMiddleware, require('./routes/persons'));
 app.use('/api/linkedin', authMiddleware, require('./routes/linkedin'));
+app.use('/api/sequences', authMiddleware, require('./routes/sequences'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
