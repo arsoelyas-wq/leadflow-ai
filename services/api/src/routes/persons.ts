@@ -551,9 +551,8 @@ router.get('/stats', async (req: any, res: any) => {
 
 module.exports = router;
 
-// ── TELEFON ÖNCELİKLİ ARAMA ──────────────────────────────
-// Bu kısım mevcut router'a eklenir
 
+// ── TELEFON + LİNKEDİN KİŞİ ARAMA ──────────────────────
 router.post('/find-phone', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -562,60 +561,88 @@ router.post('/find-phone', async (req: any, res: any) => {
 
     const phones: string[] = [];
     const emails: string[] = [];
+    const decisionMakers: any[] = [];
     let domain = '';
 
-    // 1. Web sitesinden telefon çek
+    function addPhone(p: string) {
+      const clean = p.replace(/[\s\-\.\(\)]/g, '');
+      const formatted = clean.startsWith('00') ? '+' + clean.slice(2) :
+        clean.startsWith('0') ? '+9' + clean : clean.startsWith('90') && !clean.startsWith('+') ? '+' + clean : clean;
+      if (formatted.length >= 10 && !phones.includes(formatted)) phones.push(formatted);
+    }
+
+    // 1. Web sitesinden telefon + email çek
     if (website) {
       try {
         const fullUrl = website.startsWith('http') ? website : `https://${website}`;
         domain = new URL(fullUrl).hostname.replace('www.', '');
-        const pages = [fullUrl, `${fullUrl}/iletisim`, `${fullUrl}/contact`];
+        const pages = [fullUrl, `${fullUrl}/iletisim`, `${fullUrl}/contact`, `${fullUrl}/hakkimizda`];
 
-        for (const pageUrl of pages) {
+        for (const pageUrl of pages.slice(0, 3)) {
           try {
-            const response = await axios.get(pageUrl, { headers: HEADERS, timeout: 8000 });
+            const response = await axios.get(pageUrl, { headers: HEADERS, timeout: 8000, maxRedirects: 3 });
             const $ = cheerio.load(response.data);
             const text = $.text();
             const html = response.data;
 
+            // tel: linkleri (en güvenilir)
+            const telLinks = html.match(/href="tel:([^"]+)"/g) || [];
+            telLinks.forEach((link: string) => {
+              const num = link.replace(/href="tel:/g, '').replace(/"/g, '');
+              addPhone(num);
+            });
+
             // TR telefon
             const trPhones = text.match(/(\+90|0)[\s\-]?[0-9]{3}[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}/g) || [];
-            trPhones.forEach((p: string) => {
-              const clean = p.replace(/[\s\-]/g, '');
-              const formatted = clean.startsWith('0') ? '+9' + clean : clean.startsWith('90') ? '+' + clean : clean;
-              if (!phones.includes(formatted)) phones.push(formatted);
-            });
+            trPhones.forEach(addPhone);
 
             // Uluslararası
             const intlPhones = text.match(/\+[1-9][0-9]{8,14}/g) || [];
-            intlPhones.forEach((p: string) => { if (!phones.includes(p)) phones.push(p); });
-
-            // Tel: link'leri
-            const telLinks = html.match(/href="tel:([^"]+)"/g) || [];
-            telLinks.forEach((link: string) => {
-              const num = link.replace('href="tel:', '').replace('"', '').replace(/[\s\-]/g, '');
-              if (num && !phones.includes(num)) phones.push(num);
-            });
+            intlPhones.forEach(addPhone);
 
             // Email
             const emailMatches = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
             emailMatches.forEach((e: string) => {
-              if (!e.includes('example') && !e.includes('.png') && e.length < 100 &&
-                  !['gmail.com','hotmail.com','yahoo.com'].includes(e.split('@')[1])) {
-                if (!emails.includes(e)) emails.push(e);
+              const d = e.split('@')[1];
+              if (d && !['gmail.com','hotmail.com','yahoo.com','outlook.com'].includes(d) && e.length < 100 && !emails.includes(e)) {
+                emails.push(e.toLowerCase());
               }
             });
 
             if (phones.length >= 3) break;
+            await sleep(300);
           } catch {}
         }
       } catch {}
     }
 
-    // 2. Google'dan telefon bul
+    // 2. LinkedIn'den karar verici bul
+    try {
+      const liPersons = await scrapeLinkedInViaGoogle(companyName, city);
+      decisionMakers.push(...liPersons);
+
+      // Her karar verici için telefon ara
+      for (const person of liPersons.slice(0, 2)) {
+        if (phones.length >= 3) break;
+        try {
+          const phoneQuery = `"${person.full_name}" "${companyName}" telefon OR "0(5" OR "+90"`;
+          const phoneResponse = await axios.get(
+            `https://www.google.com/search?q=${encodeURIComponent(phoneQuery)}&num=5&hl=tr`,
+            { headers: HEADERS, timeout: 8000 }
+          );
+          const $p = cheerio.load(phoneResponse.data);
+          const pText = $p.text();
+          const trPhones = pText.match(/(\+90|0)[\s\-]?[0-9]{3}[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}/g) || [];
+          trPhones.forEach(addPhone);
+          await sleep(600);
+        } catch {}
+      }
+    } catch {}
+
+    // 3. Google'dan şirket telefonu ara (hala bulunamadıysa)
     if (phones.length === 0) {
       try {
-        const query = `"${companyName}" ${city} telefon iletişim`;
+        const query = `"${companyName}" ${city} telefon`;
         const response = await axios.get(
           `https://www.google.com/search?q=${encodeURIComponent(query)}&num=5&hl=tr`,
           { headers: HEADERS, timeout: 8000 }
@@ -623,41 +650,52 @@ router.post('/find-phone', async (req: any, res: any) => {
         const $ = cheerio.load(response.data);
         const text = $.text();
         const trPhones = text.match(/(\+90|0)[\s\-]?[0-9]{3}[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}/g) || [];
-        trPhones.slice(0, 3).forEach((p: string) => {
-          const clean = p.replace(/[\s\-]/g, '');
-          const formatted = clean.startsWith('0') ? '+9' + clean : clean;
-          if (!phones.includes(formatted)) phones.push(formatted);
-        });
+        trPhones.slice(0, 3).forEach(addPhone);
       } catch {}
     }
 
-    // 3. Lead güncelle
-    if (leadId && (phones.length > 0 || emails.length > 0)) {
+    // Mobil numaraları önce sırala (WhatsApp için)
+    const mobilePhones = phones.filter(p => {
+      const digits = p.replace(/\D/g, '');
+      const prefix = digits.startsWith('90') ? digits.slice(2, 5) : digits.startsWith('0') ? digits.slice(1, 4) : digits.slice(0, 3);
+      return ['530','531','532','533','534','535','536','537','538','539',
+              '540','541','542','543','544','545','546','547','548','549',
+              '550','551','552','553','554','555','556','557','558','559',
+              '505','506','507'].includes(prefix);
+    });
+    const landlinePhones = phones.filter(p => !mobilePhones.includes(p));
+    const sortedPhones = [...mobilePhones, ...landlinePhones];
+
+    // Lead güncelle
+    if (leadId && (sortedPhones.length > 0 || emails.length > 0)) {
       const updateData: any = {};
-      if (phones.length > 0) updateData.phone = phones[0];
-      if (emails.length > 0) updateData.email = emails[0];
+      if (sortedPhones.length > 0) updateData.phone = sortedPhones[0];
+      if (emails.length > 0 && !updateData.email) updateData.email = emails[0];
+      if (decisionMakers.length > 0) {
+        updateData.contact_name = decisionMakers[0].full_name;
+        updateData.notes = `Karar verici: ${decisionMakers[0].full_name} (${decisionMakers[0].title})`;
+      }
       if (Object.keys(updateData).length > 0) {
         await supabase.from('leads').update(updateData).eq('id', leadId).eq('user_id', userId);
       }
     }
 
-    // 4. WhatsApp linkleri kontrol et
-    const whatsappNumbers = phones.filter(p => {
-      const digits = p.replace(/\D/g, '');
-      return digits.length >= 10 && digits.length <= 13;
-    });
-
     res.json({
       company: companyName,
-      phones,
+      phones: sortedPhones,
+      mobilePhones,
+      landlinePhones,
       emails: emails.slice(0, 5),
-      whatsappReady: whatsappNumbers,
+      decisionMakers: decisionMakers.slice(0, 5),
       domain,
-      bestPhone: whatsappNumbers[0] || phones[0] || null,
+      bestPhone: mobilePhones[0] || sortedPhones[0] || null,
       bestEmail: emails[0] || (domain ? `info@${domain}` : null),
+      whatsappReady: mobilePhones,
     });
 
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
+
+module.exports = router;
