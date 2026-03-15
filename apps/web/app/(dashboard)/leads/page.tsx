@@ -44,6 +44,12 @@ export default function LeadsPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [findingDM, setFindingDM] = useState<string | null>(null)
   const [dmResults, setDmResults] = useState<Record<string, any>>({})
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  
+  const showMsg = (type: 'success' | 'error', text: string) => {
+    setMsg({ type, text })
+    setTimeout(() => setMsg(null), 4000)
+  }
 
   const load = async () => {
     setLoading(true)
@@ -85,6 +91,29 @@ export default function LeadsPage() {
     load()
   }
 
+  // Telefon bul
+  const findPhone = async (lead: Lead) => {
+    setFindingDM(lead.id + '_phone')
+    try {
+      const data = await api.post('/api/persons/find-phone', {
+        companyName: lead.company_name,
+        website: (lead as any).website || '',
+        city: lead.city || '',
+        leadId: lead.id,
+      })
+      if (data.bestPhone) {
+        showMsg('success', `${lead.company_name}: ${data.bestPhone} bulundu! 📱`)
+        load()
+      } else {
+        showMsg('error', `${lead.company_name}: Telefon bulunamadı`)
+      }
+    } catch (e: any) {
+      showMsg('error', e.message)
+    } finally {
+      setFindingDM(null)
+    }
+  }
+
   // Tek lead için karar verici bul
   const findDecisionMaker = async (lead: Lead) => {
     setFindingDM(lead.id)
@@ -123,6 +152,15 @@ export default function LeadsPage() {
           </Link>
         </div>
       </div>
+
+      {/* Message */}
+      {msg && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+          msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
+        }`}>
+          {msg.text}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
@@ -219,16 +257,30 @@ export default function LeadsPage() {
                       )}
                     </div>
                   ) : (
-                    <button
-                      onClick={() => findDecisionMaker(lead)}
-                      disabled={findingDM === lead.id}
-                      className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs rounded-lg transition disabled:opacity-50"
-                    >
-                      {findingDM === lead.id
-                        ? <RefreshCw size={11} className="animate-spin" />
-                        : <Crosshair size={11} />}
-                      {findingDM === lead.id ? 'Aranıyor...' : 'Bul'}
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => findDecisionMaker(lead)}
+                        disabled={!!findingDM}
+                        className="flex items-center gap-1 px-2 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs rounded-lg transition disabled:opacity-50"
+                        title="Karar verici bul"
+                      >
+                        {findingDM === lead.id
+                          ? <RefreshCw size={11} className="animate-spin" />
+                          : <Crosshair size={11} />}
+                        KV
+                      </button>
+                      <button
+                        onClick={() => findPhone(lead)}
+                        disabled={!!findingDM}
+                        className="flex items-center gap-1 px-2 py-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-xs rounded-lg transition disabled:opacity-50"
+                        title="Telefon bul"
+                      >
+                        {findingDM === lead.id + '_phone'
+                          ? <RefreshCw size={11} className="animate-spin" />
+                          : <Phone size={11} />}
+                        📱
+                      </button>
+                    </div>
                   )}
                 </td>
 
