@@ -83,6 +83,7 @@ app.use('/api/links',      authMiddleware, linksRouter);
 app.use('/api/quality',    authMiddleware, require('./routes/quality'));
 app.use('/api/competitor', authMiddleware, require('./routes/competitor'));
 app.use('/api/decision-maker', authMiddleware, require('./routes/decision-maker'));
+app.use('/api/persons', authMiddleware, require('./routes/persons'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
