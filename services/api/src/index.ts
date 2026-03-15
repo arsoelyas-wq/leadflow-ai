@@ -7,6 +7,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Railway ve diğer proxy'ler için
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(cors({
   origin: '*',
@@ -16,47 +19,41 @@ app.use(cors({
 }));
 
 // ── RATE LIMITERS ─────────────────────────────────────────
-
-// Genel limit — tüm API
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 dakika
+  windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Çok fazla istek gönderildi. 15 dakika sonra tekrar deneyin.' },
 });
 
-// Auth limit — brute force koruması
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: 'Çok fazla giriş denemesi. 15 dakika sonra tekrar deneyin.' },
 });
 
-// Scrape limit — pahalı işlem
 const scrapeLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 saat
+  windowMs: 60 * 60 * 1000,
   max: 20,
   message: { error: 'Saatlik scrape limitine ulaştınız (20 istek/saat).' },
 });
 
-// Kampanya limit
 const campaignLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 50,
   message: { error: 'Saatlik kampanya limitine ulaştınız.' },
 });
 
-// AI limit
 const aiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 dakika
+  windowMs: 60 * 1000,
   max: 20,
   message: { error: 'AI servisine çok fazla istek. 1 dakika bekleyin.' },
 });
 
 app.use(generalLimiter);
 
-// Stripe webhook — raw body gerekli, json'dan önce tanımla
+// Stripe webhook — raw body gerekli
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
@@ -65,7 +62,6 @@ const { authMiddleware } = require('./middleware/auth');
 // ── PUBLIC ROUTES ─────────────────────────────────────────
 app.use('/api/auth', authLimiter, require('./routes/auth'));
 
-// Link redirect — auth gerektirmez
 const linksRouter = require('./routes/links');
 app.get('/t/:code', (req: any, res: any) => {
   linksRouter.handle(
@@ -76,22 +72,22 @@ app.get('/t/:code', (req: any, res: any) => {
 });
 
 // ── PROTECTED ROUTES ──────────────────────────────────────
-app.use('/api/leads',     authMiddleware, require('./routes/leads'));
-app.use('/api/scrape',    authMiddleware, scrapeLimiter, require('./routes/scrape'));
-app.use('/api/payments',  authMiddleware, require('./routes/payments'));
-app.use('/api/analytics', authMiddleware, require('./routes/analytics'));
-app.use('/api/ai',        authMiddleware, aiLimiter, require('./routes/ai'));
-app.use('/api/campaigns', authMiddleware, campaignLimiter, require('./routes/campaigns'));
-app.use('/api/messages',  authMiddleware, require('./routes/messages'));
-app.use('/api/links',     authMiddleware, linksRouter);
-app.use('/api/quality', authMiddleware, require('./routes/quality'));
+app.use('/api/leads',      authMiddleware, require('./routes/leads'));
+app.use('/api/scrape',     authMiddleware, scrapeLimiter, require('./routes/scrape'));
+app.use('/api/payments',   authMiddleware, require('./routes/payments'));
+app.use('/api/analytics',  authMiddleware, require('./routes/analytics'));
+app.use('/api/ai',         authMiddleware, aiLimiter, require('./routes/ai'));
+app.use('/api/campaigns',  authMiddleware, campaignLimiter, require('./routes/campaigns'));
+app.use('/api/messages',   authMiddleware, require('./routes/messages'));
+app.use('/api/links',      authMiddleware, linksRouter);
+app.use('/api/quality',    authMiddleware, require('./routes/quality'));
 app.use('/api/competitor', authMiddleware, require('./routes/competitor'));
 
 const { router: settingsRouter } = require('./routes/settings');
-app.use('/api/settings',  authMiddleware, settingsRouter);
+app.use('/api/settings',   authMiddleware, settingsRouter);
 
 const { router: dashboardRouter } = require('./routes/dashboard');
-app.use('/api/dashboard', authMiddleware, dashboardRouter);
+app.use('/api/dashboard',  authMiddleware, dashboardRouter);
 
 const { router: monitoringRouter } = require('./routes/monitoring');
 app.use('/api/monitoring', authMiddleware, monitoringRouter);
