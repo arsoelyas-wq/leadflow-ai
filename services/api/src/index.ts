@@ -89,6 +89,7 @@ app.use('/api/sequences', authMiddleware, require('./routes/sequences'));
 app.use('/api/abtests', authMiddleware, require('./routes/ab-testing'));
 app.use('/api/wa-numbers', authMiddleware, require('./routes/wa-numbers'));
 app.use('/api/shadow', authMiddleware, require('./routes/shadow'));
+app.use('/api/visual-trends', authMiddleware, require('./routes/visual-trends'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
