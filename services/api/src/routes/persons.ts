@@ -124,7 +124,8 @@ async function scrapeLinkedInDirect(companyName: string, city: string): Promise<
 
     const page = await context.newPage();
     await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      // @ts-ignore
+      Object.defineProperty(window.navigator, 'webdriver', { get: () => undefined });
     });
 
     // LinkedIn login varsa giriş yap
