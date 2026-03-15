@@ -302,6 +302,10 @@ async function scrapeWebsite(url: string): Promise<{ emails: string[]; phones: s
 
         const phoneMatches = text.match(/(\+90|0)[\s\-]?[0-9]{3}[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}/g) || [];
         phoneMatches.forEach((p: string) => phoneSet.add(p.replace(/[\s\-]/g, '')));
+        
+        // Uluslararası telefon formatları
+        const intlPhones = text.match(/\+[1-9][0-9]{1,3}[\s\-]?[0-9]{6,12}/g) || [];
+        intlPhones.forEach((p: string) => phoneSet.add(p.replace(/[\s\-]/g, '')));
 
         $('[itemtype*="Person"], .team-member, .staff, [class*="team-card"]').each((_: any, el: any) => {
           const name = $(el).find('[itemprop="name"], h3, h4, .name').first().text().trim();
@@ -432,10 +436,13 @@ router.post('/find', async (req: any, res: any) => {
 
     if (leadId && persons.length > 0) {
       const best = persons[0];
+      // Telefonu olan kişiyi önceliklendir
+      const bestWithPhone = persons.find((p: any) => p.phone) || best;
       await supabase.from('leads').update({
-        contact_name: best.full_name,
-        email: best.email || undefined,
-        notes: `Karar verici: ${best.full_name} (${best.title}) - %${best.confidence} güven`,
+        contact_name: bestWithPhone.full_name || best.full_name,
+        email: bestWithPhone.email || best.email || undefined,
+        phone: bestWithPhone.phone || undefined,
+        notes: `Karar verici: ${bestWithPhone.full_name} (${bestWithPhone.title}) - %${bestWithPhone.confidence} güven`,
       }).eq('id', leadId).eq('user_id', userId);
     }
 
@@ -543,3 +550,114 @@ router.get('/stats', async (req: any, res: any) => {
 });
 
 module.exports = router;
+
+// ── TELEFON ÖNCELİKLİ ARAMA ──────────────────────────────
+// Bu kısım mevcut router'a eklenir
+
+router.post('/find-phone', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { companyName, website, city, leadId } = req.body;
+    if (!companyName) return res.status(400).json({ error: 'companyName zorunlu' });
+
+    const phones: string[] = [];
+    const emails: string[] = [];
+    let domain = '';
+
+    // 1. Web sitesinden telefon çek
+    if (website) {
+      try {
+        const fullUrl = website.startsWith('http') ? website : `https://${website}`;
+        domain = new URL(fullUrl).hostname.replace('www.', '');
+        const pages = [fullUrl, `${fullUrl}/iletisim`, `${fullUrl}/contact`];
+
+        for (const pageUrl of pages) {
+          try {
+            const response = await axios.get(pageUrl, { headers: HEADERS, timeout: 8000 });
+            const $ = cheerio.load(response.data);
+            const text = $.text();
+            const html = response.data;
+
+            // TR telefon
+            const trPhones = text.match(/(\+90|0)[\s\-]?[0-9]{3}[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}/g) || [];
+            trPhones.forEach((p: string) => {
+              const clean = p.replace(/[\s\-]/g, '');
+              const formatted = clean.startsWith('0') ? '+9' + clean : clean.startsWith('90') ? '+' + clean : clean;
+              if (!phones.includes(formatted)) phones.push(formatted);
+            });
+
+            // Uluslararası
+            const intlPhones = text.match(/\+[1-9][0-9]{8,14}/g) || [];
+            intlPhones.forEach((p: string) => { if (!phones.includes(p)) phones.push(p); });
+
+            // Tel: link'leri
+            const telLinks = html.match(/href="tel:([^"]+)"/g) || [];
+            telLinks.forEach((link: string) => {
+              const num = link.replace('href="tel:', '').replace('"', '').replace(/[\s\-]/g, '');
+              if (num && !phones.includes(num)) phones.push(num);
+            });
+
+            // Email
+            const emailMatches = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
+            emailMatches.forEach((e: string) => {
+              if (!e.includes('example') && !e.includes('.png') && e.length < 100 &&
+                  !['gmail.com','hotmail.com','yahoo.com'].includes(e.split('@')[1])) {
+                if (!emails.includes(e)) emails.push(e);
+              }
+            });
+
+            if (phones.length >= 3) break;
+          } catch {}
+        }
+      } catch {}
+    }
+
+    // 2. Google'dan telefon bul
+    if (phones.length === 0) {
+      try {
+        const query = `"${companyName}" ${city} telefon iletişim`;
+        const response = await axios.get(
+          `https://www.google.com/search?q=${encodeURIComponent(query)}&num=5&hl=tr`,
+          { headers: HEADERS, timeout: 8000 }
+        );
+        const $ = cheerio.load(response.data);
+        const text = $.text();
+        const trPhones = text.match(/(\+90|0)[\s\-]?[0-9]{3}[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}/g) || [];
+        trPhones.slice(0, 3).forEach((p: string) => {
+          const clean = p.replace(/[\s\-]/g, '');
+          const formatted = clean.startsWith('0') ? '+9' + clean : clean;
+          if (!phones.includes(formatted)) phones.push(formatted);
+        });
+      } catch {}
+    }
+
+    // 3. Lead güncelle
+    if (leadId && (phones.length > 0 || emails.length > 0)) {
+      const updateData: any = {};
+      if (phones.length > 0) updateData.phone = phones[0];
+      if (emails.length > 0) updateData.email = emails[0];
+      if (Object.keys(updateData).length > 0) {
+        await supabase.from('leads').update(updateData).eq('id', leadId).eq('user_id', userId);
+      }
+    }
+
+    // 4. WhatsApp linkleri kontrol et
+    const whatsappNumbers = phones.filter(p => {
+      const digits = p.replace(/\D/g, '');
+      return digits.length >= 10 && digits.length <= 13;
+    });
+
+    res.json({
+      company: companyName,
+      phones,
+      emails: emails.slice(0, 5),
+      whatsappReady: whatsappNumbers,
+      domain,
+      bestPhone: whatsappNumbers[0] || phones[0] || null,
+      bestEmail: emails[0] || (domain ? `info@${domain}` : null),
+    });
+
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
