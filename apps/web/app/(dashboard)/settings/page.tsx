@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import {
   User, Key, Bell, Shield, Save, MessageSquare,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff,
-  Send, Eye, EyeOff, Smartphone, QrCode, Bot
+  Send, Eye, EyeOff, Smartphone, QrCode, Bot, Linkedin
 } from 'lucide-react'
 
 interface Settings {
@@ -37,6 +37,14 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const pollRef = useRef<any>(null)
 
+  // LinkedIn states
+  const [linkedinStatus, setLinkedinStatus] = useState('disconnected')
+  const [linkedinEmail, setLinkedinEmail] = useState('')
+  const [linkedinPassword, setLinkedinPassword] = useState('')
+  const [linkedinConnecting, setLinkedinConnecting] = useState(false)
+  const [showLinkedinPass, setShowLinkedinPass] = useState(false)
+  const [linkedinConnectedEmail, setLinkedinConnectedEmail] = useState('')
+
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
     setTimeout(() => setMsg(null), 5000)
@@ -51,8 +59,19 @@ export default function SettingsPage() {
     } catch {} finally { setSettingsLoading(false) }
   }
 
+  const loadLinkedInStatus = async () => {
+    try {
+      const data = await api.get('/api/linkedin/status')
+      setLinkedinStatus(data.connected ? 'connected' : 'disconnected')
+      setLinkedinConnectedEmail(data.email || '')
+    } catch {}
+  }
+
   useEffect(() => {
-    if (tab === 'channels') loadSettings()
+    if (tab === 'channels') {
+      loadSettings()
+      loadLinkedInStatus()
+    }
   }, [tab])
 
   const startPolling = () => {
@@ -83,27 +102,16 @@ export default function SettingsPage() {
     setQrCode(null)
     try {
       const data = await api.post('/api/settings/whatsapp/connect', {})
-      if (data.qr) {
-        setQrCode(data.qr)
-        startPolling()
-      } else if (data.status === 'connected') {
-        setWaStatus('connected')
-        setWaConnecting(false)
-        showMsg('success', 'WhatsApp bağlandı!')
-        loadSettings()
-      }
-    } catch (e: any) {
-      showMsg('error', e.message)
-      setWaConnecting(false)
-    }
+      if (data.qr) { setQrCode(data.qr); startPolling() }
+      else if (data.status === 'connected') { setWaStatus('connected'); setWaConnecting(false); showMsg('success', 'WhatsApp bağlandı!'); loadSettings() }
+    } catch (e: any) { showMsg('error', e.message); setWaConnecting(false) }
   }
 
   const disconnectWhatsApp = async () => {
     stopPolling()
     try {
       await api.post('/api/settings/whatsapp/disconnect', {})
-      setWaStatus('disconnected')
-      setQrCode(null)
+      setWaStatus('disconnected'); setQrCode(null)
       showMsg('success', 'WhatsApp bağlantısı kesildi')
     } catch (e: any) { showMsg('error', e.message) }
   }
@@ -138,15 +146,37 @@ export default function SettingsPage() {
     setEmailTesting(true)
     try {
       const data = await api.post('/api/settings/email/test', {
-        email_host: settings.email_host,
-        email_port: settings.email_port,
-        email_user: settings.email_user,
-        email_pass: emailPass,
-        email_from: settings.email_from,
+        email_host: settings.email_host, email_port: settings.email_port,
+        email_user: settings.email_user, email_pass: emailPass, email_from: settings.email_from,
       })
       showMsg('success', data.message)
     } catch (e: any) { showMsg('error', e.message) }
     finally { setEmailTesting(false) }
+  }
+
+  const connectLinkedIn = async () => {
+    if (!linkedinEmail || !linkedinPassword) return
+    setLinkedinConnecting(true)
+    try {
+      const data = await api.post('/api/linkedin/connect', { email: linkedinEmail, password: linkedinPassword })
+      showMsg('success', data.message)
+      setLinkedinStatus('connected')
+      setLinkedinConnectedEmail(linkedinEmail)
+      setLinkedinPassword('')
+    } catch (e: any) {
+      showMsg('error', e.message)
+    } finally {
+      setLinkedinConnecting(false)
+    }
+  }
+
+  const disconnectLinkedIn = async () => {
+    try {
+      await api.post('/api/linkedin/disconnect', {})
+      setLinkedinStatus('disconnected')
+      setLinkedinConnectedEmail('')
+      showMsg('success', 'LinkedIn bağlantısı kesildi')
+    } catch (e: any) { showMsg('error', e.message) }
   }
 
   const tabs = [
@@ -187,7 +217,6 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex-1">
-          {/* PROFİL */}
           {tab === 'profile' && (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-6">
               <h2 className="text-white font-semibold text-lg">Profil Bilgileri</h2>
@@ -201,10 +230,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="border-t border-slate-700 pt-6 grid gap-4">
-                {[
-                  { label: 'Ad Soyad', key: 'name' },
-                  { label: 'Firma Adı', key: 'company' },
-                ].map(({ label, key }) => (
+                {[{ label: 'Ad Soyad', key: 'name' }, { label: 'Firma Adı', key: 'company' }].map(({ label, key }) => (
                   <div key={key}>
                     <label className="text-slate-400 text-sm mb-1.5 block">{label}</label>
                     <input value={(profile as any)[key]}
@@ -225,7 +251,6 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* KANALLAR */}
           {tab === 'channels' && (
             <div className="space-y-6">
               {/* WhatsApp */}
@@ -254,41 +279,23 @@ export default function SettingsPage() {
                       <Smartphone size={18} className="text-emerald-400" />
                       <div>
                         <p className="text-white text-sm font-medium">+{settings.whatsapp_number}</p>
-                        <p className="text-slate-400 text-xs">WhatsApp aktif — kampanyalar bu numara üzerinden gönderilecek</p>
+                        <p className="text-slate-400 text-xs">WhatsApp aktif</p>
                       </div>
                     </div>
-
-                    {/* AI OTOMATİK YANIT */}
                     <div className="flex items-center justify-between p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                          <Bot size={16} className="text-purple-400" />
-                        </div>
+                        <Bot size={16} className="text-purple-400" />
                         <div>
                           <p className="text-white text-sm font-medium">AI Otomatik Yanıt</p>
-                          <p className="text-slate-400 text-xs">Gelen mesajlara Claude ile otomatik cevap ver</p>
+                          <p className="text-slate-400 text-xs">Gelen mesajlara Claude ile otomatik cevap</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.auto_reply_enabled || false}
-                          onChange={e => toggleAutoReply(e.target.checked)}
-                          className="sr-only peer"
-                        />
+                        <input type="checkbox" checked={settings.auto_reply_enabled || false}
+                          onChange={e => toggleAutoReply(e.target.checked)} className="sr-only peer" />
                         <div className="w-11 h-6 bg-slate-700 peer-checked:bg-purple-600 rounded-full transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5" />
                       </label>
                     </div>
-
-                    {settings.auto_reply_enabled && (
-                      <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded-lg">
-                        <p className="text-purple-300 text-xs">
-                          🤖 AI aktif — Gelen mesajlara 5 dakika içinde otomatik yanıt verilecek.
-                          Spam önleme: Aynı kişiye 5 dk içinde tek yanıt.
-                        </p>
-                      </div>
-                    )}
-
                     <button onClick={disconnectWhatsApp}
                       className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-sm transition">
                       Bağlantıyı Kes
@@ -298,39 +305,82 @@ export default function SettingsPage() {
                   <div className="space-y-4">
                     <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl flex flex-col items-center gap-4">
                       <p className="text-white text-sm font-medium flex items-center gap-2">
-                        <QrCode size={16} className="text-green-400" />
-                        QR kodu WhatsApp ile okutun
+                        <QrCode size={16} className="text-green-400" /> QR kodu WhatsApp ile okutun
                       </p>
                       <img src={qrCode} alt="WhatsApp QR" className="w-52 h-52 rounded-xl border border-slate-600" />
-                      <div className="text-center">
-                        <p className="text-slate-400 text-xs">WhatsApp → Menü → Bağlantılı Cihazlar → QR kodu okut</p>
-                        <p className="text-slate-500 text-xs mt-1 flex items-center justify-center gap-1">
-                          <RefreshCw size={11} className="animate-spin" />
-                          Bağlantı bekleniyor...
-                        </p>
-                      </div>
+                      <p className="text-slate-500 text-xs flex items-center gap-1">
+                        <RefreshCw size={11} className="animate-spin" /> Bağlantı bekleniyor...
+                      </p>
                     </div>
                     <button onClick={() => { stopPolling(); setQrCode(null); setWaConnecting(false) }}
                       className="text-slate-400 text-sm hover:text-white transition">İptal</button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { n: '1', text: 'Aşağıdaki butona tıklayın ve QR kodu bekleyin (~10 saniye)' },
-                        { n: '2', text: 'WhatsApp → Menü (⋮) → Bağlantılı Cihazlar → QR kodu okutun' },
-                        { n: '3', text: 'Bağlantı otomatik tamamlanır, kampanyalar başlar' },
-                      ].map(({ n, text }) => (
-                        <div key={n} className="p-3 bg-slate-900/50 border border-slate-700/50 rounded-xl">
-                          <div className="w-6 h-6 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center text-xs font-bold mb-2">{n}</div>
-                          <p className="text-slate-400 text-xs leading-relaxed">{text}</p>
-                        </div>
-                      ))}
+                  <button onClick={connectWhatsApp} disabled={waConnecting}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-300 rounded-xl text-sm font-medium transition disabled:opacity-50">
+                    {waConnecting ? <RefreshCw size={15} className="animate-spin" /> : <QrCode size={15} />}
+                    {waConnecting ? 'QR oluşturuluyor...' : 'WhatsApp Bağla'}
+                  </button>
+                )}
+              </div>
+
+              {/* LinkedIn */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center">
+                      <Linkedin size={18} className="text-blue-400" />
                     </div>
-                    <button onClick={connectWhatsApp} disabled={waConnecting}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-300 rounded-xl text-sm font-medium transition disabled:opacity-50">
-                      {waConnecting ? <RefreshCw size={15} className="animate-spin" /> : <QrCode size={15} />}
-                      {waConnecting ? 'QR oluşturuluyor...' : 'WhatsApp Bağla'}
+                    <div>
+                      <h2 className="text-white font-semibold">LinkedIn</h2>
+                      <p className="text-slate-400 text-xs">Karar verici araması için hesabınızı bağlayın</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                    linkedinStatus === 'connected' ? 'bg-blue-500/10 border-blue-500/30 text-blue-300' : 'bg-slate-700 border-slate-600 text-slate-400'
+                  }`}>
+                    {linkedinStatus === 'connected' ? '✓ Bağlı' : 'Bağlı Değil'}
+                  </div>
+                </div>
+
+                {linkedinStatus === 'connected' ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        {linkedinConnectedEmail?.[0]?.toUpperCase() || 'L'}
+                      </div>
+                      <div>
+                        <p className="text-white text-sm font-medium">{linkedinConnectedEmail}</p>
+                        <p className="text-slate-400 text-xs">Karar verici aramaları bu hesap üzerinden yapılacak</p>
+                      </div>
+                    </div>
+                    <button onClick={disconnectLinkedIn}
+                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-sm transition">
+                      Bağlantıyı Kes
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
+                      <p className="text-yellow-300 text-xs">⚠️ LinkedIn hesabınızı bağlayarak karar verici aramalarını çok daha etkili yapabilirsiniz. Şifreniz güvenli şekilde saklanır.</p>
+                    </div>
+                    <input value={linkedinEmail} onChange={e => setLinkedinEmail(e.target.value)}
+                      placeholder="LinkedIn email"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
+                    <div className="relative">
+                      <input type={showLinkedinPass ? 'text' : 'password'}
+                        value={linkedinPassword} onChange={e => setLinkedinPassword(e.target.value)}
+                        placeholder="LinkedIn şifre"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 pr-10" />
+                      <button onClick={() => setShowLinkedinPass(!showLinkedinPass)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                        {showLinkedinPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                    <button onClick={connectLinkedIn} disabled={linkedinConnecting || !linkedinEmail || !linkedinPassword}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition">
+                      {linkedinConnecting ? <RefreshCw size={14} className="animate-spin" /> : <Linkedin size={14} />}
+                      {linkedinConnecting ? 'Bağlanıyor... (~30 saniye)' : 'LinkedIn Bağla'}
                     </button>
                   </div>
                 )}
@@ -362,45 +412,25 @@ export default function SettingsPage() {
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-slate-400 text-xs mb-1.5 block">Email Adresi</label>
-                    <input value={settings.email_user || ''}
-                      onChange={e => setSettings({ ...settings, email_user: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
-                      placeholder="ornek@gmail.com" />
-                  </div>
-                  <div>
-                    <label className="text-slate-400 text-xs mb-1.5 block">
-                      Şifre / Uygulama Şifresi
-                      <a href="https://myaccount.google.com/apppasswords" target="_blank"
-                        className="ml-2 text-blue-400 hover:text-blue-300 text-xs">Gmail uygulama şifresi al →</a>
-                    </label>
-                    <div className="relative">
-                      <input type={showPass ? 'text' : 'password'} value={emailPass}
-                        onChange={e => setEmailPass(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 pr-10"
-                        placeholder="••••••••••••" />
-                      <button onClick={() => setShowPass(!showPass)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                        {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-slate-400 text-xs mb-1.5 block">Gönderen Adı (opsiyonel)</label>
-                    <input value={settings.email_from || ''}
-                      onChange={e => setSettings({ ...settings, email_from: e.target.value })}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
-                      placeholder="Şirket Adı <ornek@gmail.com>" />
+                  <input value={settings.email_user || ''} onChange={e => setSettings({ ...settings, email_user: e.target.value })}
+                    placeholder="ornek@gmail.com"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
+                  <div className="relative">
+                    <input type={showPass ? 'text' : 'password'} value={emailPass} onChange={e => setEmailPass(e.target.value)}
+                      placeholder="Şifre / Uygulama Şifresi"
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 pr-10" />
+                    <button onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
                   </div>
                   <div className="flex gap-3">
                     <button onClick={testEmail} disabled={emailTesting || !settings.email_user || !emailPass}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 rounded-lg text-sm font-medium transition disabled:opacity-40">
+                      className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 rounded-lg text-sm transition disabled:opacity-40">
                       {emailTesting ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
-                      {emailTesting ? 'Test Gönderiliyor...' : 'Test Emaili Gönder'}
+                      Test Et
                     </button>
                     <button onClick={saveSettings} disabled={settingsSaving}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50">
+                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
                       {settingsSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
                       Kaydet
                     </button>
@@ -410,7 +440,6 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* BİLDİRİMLER */}
           {tab === 'notifications' && (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
               <h2 className="text-white font-semibold text-lg">Bildirim Ayarları</h2>
@@ -434,7 +463,6 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* GÜVENLİK */}
           {tab === 'security' && (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-6">
               <h2 className="text-white font-semibold text-lg">Güvenlik</h2>
