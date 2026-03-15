@@ -32,11 +32,21 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
+# Tüm kaynak dosyaları kopyala
 COPY package.json ./
-RUN npm install --omit=dev --legacy-peer-deps
+COPY tsconfig.json ./
 
-COPY dist/ ./dist/
+# Hem prod hem dev bağımlılıkları kur (build için typescript lazım)
+RUN npm install --legacy-peer-deps
+
+# Kaynak kodunu kopyala ve build et
+COPY src/ ./src/
+
+# TypeScript build
+RUN npm run build
+
+# Dev bağımlılıklarını kaldır
+RUN npm prune --omit=dev
 
 EXPOSE 3001
-
 CMD ["node", "dist/index.js"]
