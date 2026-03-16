@@ -11,7 +11,7 @@ const supabase = createClient(
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const GOOGLE_API_KEY = process.env.GOOGLE_CSE_API_KEY || process.env.GOOGLE_PLACES_API_KEY;
 const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
 
 // ── GOOGLE CSE GÖRSEL ARAMA ───────────────────────────────
