@@ -1,8 +1,10 @@
+export {};
 const express = require('express');
-const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const Anthropic = require('@anthropic-ai/sdk').default;
 const { authMiddleware } = require('../middleware/auth');
+
+const router = express.Router();
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -10,7 +12,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // ─── AI ile en iyi gönderim saatini hesapla ───────────────────────────────────
 router.post('/analyze', authMiddleware, async (req: any, res: any) => {
   const { lead_id, channel } = req.body;
-  const userId = req.user.id;
+  const userId = req.userId;
 
   try {
     const { data: messages } = await supabase
@@ -85,7 +87,7 @@ Consider local business culture and timezone. Return ONLY valid JSON:
 
 // ─── Zamanlanmış gönderimler listesi ─────────────────────────────────────────
 router.get('/scheduled', authMiddleware, async (req: any, res: any) => {
-  const userId = req.user.id;
+  const userId = req.userId;
   const { status } = req.query;
 
   try {
@@ -109,7 +111,7 @@ router.get('/scheduled', authMiddleware, async (req: any, res: any) => {
 // ─── Manuel zamanlama oluştur ─────────────────────────────────────────────────
 router.post('/schedule', authMiddleware, async (req: any, res: any) => {
   const { lead_id, campaign_id, message, channel, scheduled_at, use_ai } = req.body;
-  const userId = req.user.id;
+  const userId = req.userId;
 
   try {
     let finalScheduledAt = scheduled_at;
