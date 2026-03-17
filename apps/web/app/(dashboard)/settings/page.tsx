@@ -5,39 +5,27 @@ import { api } from '@/lib/api'
 import {
   User, Key, Bell, Shield, Save, MessageSquare,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff,
-  Send, Eye, EyeOff, Smartphone, QrCode, Bot, Linkedin
+  Send, Eye, EyeOff, Smartphone, QrCode, Bot, Linkedin, Video
 } from 'lucide-react'
-
-interface Settings {
-  whatsapp_number?: string
-  whatsapp_status?: string
-  email_host?: string
-  email_port?: number
-  email_user?: string
-  email_from?: string
-  company_name?: string
-  auto_reply_enabled?: boolean
-}
 
 export default function SettingsPage() {
   const { user } = useAuth()
   const [tab, setTab] = useState<'profile' | 'channels' | 'notifications' | 'security'>('profile')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [profile, setProfile] = useState({ name: user?.name || '', company: user?.company || '', sector: user?.sector || '' })
-  const [settings, setSettings] = useState<Settings>({})
-  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [profile, setProfile] = useState({ name: user?.name || '', company: user?.company || '' })
+  const [settings, setSettings] = useState<any>({})
+  const [waStatus, setWaStatus] = useState('disconnected')
+  const [qrCode, setQrCode] = useState<string | null>(null)
   const [waConnecting, setWaConnecting] = useState(false)
   const [emailTesting, setEmailTesting] = useState(false)
   const [settingsSaving, setSettingsSaving] = useState(false)
-  const [waStatus, setWaStatus] = useState('disconnected')
-  const [qrCode, setQrCode] = useState<string | null>(null)
   const [showPass, setShowPass] = useState(false)
   const [emailPass, setEmailPass] = useState('')
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const pollRef = useRef<any>(null)
 
-  // LinkedIn states
+  // LinkedIn
   const [linkedinStatus, setLinkedinStatus] = useState('disconnected')
   const [linkedinEmail, setLinkedinEmail] = useState('')
   const [linkedinPassword, setLinkedinPassword] = useState('')
@@ -45,18 +33,26 @@ export default function SettingsPage() {
   const [showLinkedinPass, setShowLinkedinPass] = useState(false)
   const [linkedinConnectedEmail, setLinkedinConnectedEmail] = useState('')
 
+  // Avatar & Voice
+  const [avatarStatus, setAvatarStatus] = useState<any>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingVoice, setUploadingVoice] = useState(false)
+  const [voiceName, setVoiceName] = useState('Kişisel Sesim')
+  const avatarVideoRef = useRef<HTMLInputElement>(null)
+  const avatarPhotoRef = useRef<HTMLInputElement>(null)
+  const voiceRef = useRef<HTMLInputElement>(null)
+
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
-    setTimeout(() => setMsg(null), 5000)
+    setTimeout(() => setMsg(null), 6000)
   }
 
   const loadSettings = async () => {
-    setSettingsLoading(true)
     try {
       const data = await api.get('/api/settings')
       setSettings(data.settings || {})
       setWaStatus(data.settings?.whatsapp_status || 'disconnected')
-    } catch {} finally { setSettingsLoading(false) }
+    } catch {}
   }
 
   const loadLinkedInStatus = async () => {
@@ -67,12 +63,72 @@ export default function SettingsPage() {
     } catch {}
   }
 
+  const loadAvatarStatus = async () => {
+    try {
+      const data = await api.get('/api/avatar/avatar-status')
+      setAvatarStatus(data)
+    } catch {}
+  }
+
   useEffect(() => {
     if (tab === 'channels') {
       loadSettings()
       loadLinkedInStatus()
+      loadAvatarStatus()
     }
   }, [tab])
+
+  // Avatar yükle
+  const uploadAvatar = async (file: File, type: 'video' | 'photo') => {
+    setUploadingAvatar(true)
+    try {
+      const formData = new FormData()
+      formData.append(type === 'video' ? 'video' : 'photo', file)
+      const endpoint = type === 'video' ? '/api/avatar/upload-avatar' : '/api/avatar/upload-photo-avatar'
+
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'}${endpoint}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+
+      showMsg('success', data.message)
+      loadAvatarStatus()
+    } catch (e: any) {
+      showMsg('error', e.message)
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  // Ses yükle
+  const uploadVoice = async (file: File) => {
+    setUploadingVoice(true)
+    try {
+      const formData = new FormData()
+      formData.append('audio', file)
+      formData.append('voiceName', voiceName)
+
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'}/api/avatar/upload-voice`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+
+      showMsg('success', data.message)
+      loadAvatarStatus()
+    } catch (e: any) {
+      showMsg('error', e.message)
+    } finally {
+      setUploadingVoice(false)
+    }
+  }
 
   const startPolling = () => {
     pollRef.current = setInterval(async () => {
@@ -84,7 +140,7 @@ export default function SettingsPage() {
           setQrCode(null)
           setWaConnecting(false)
           stopPolling()
-          showMsg('success', 'WhatsApp başarıyla bağlandı!')
+          showMsg('success', 'WhatsApp bağlandı!')
           loadSettings()
         }
       } catch {}
@@ -98,12 +154,11 @@ export default function SettingsPage() {
   useEffect(() => () => stopPolling(), [])
 
   const connectWhatsApp = async () => {
-    setWaConnecting(true)
-    setQrCode(null)
+    setWaConnecting(true); setQrCode(null)
     try {
       const data = await api.post('/api/settings/whatsapp/connect', {})
       if (data.qr) { setQrCode(data.qr); startPolling() }
-      else if (data.status === 'connected') { setWaStatus('connected'); setWaConnecting(false); showMsg('success', 'WhatsApp bağlandı!'); loadSettings() }
+      else if (data.status === 'connected') { setWaStatus('connected'); setWaConnecting(false); showMsg('success', 'WhatsApp bağlandı!') }
     } catch (e: any) { showMsg('error', e.message); setWaConnecting(false) }
   }
 
@@ -135,7 +190,7 @@ export default function SettingsPage() {
   }
 
   const toggleAutoReply = async (enabled: boolean) => {
-    setSettings(s => ({ ...s, auto_reply_enabled: enabled }))
+    setSettings((s: any) => ({ ...s, auto_reply_enabled: enabled }))
     try {
       await api.post('/api/settings', { ...settings, auto_reply_enabled: enabled })
       showMsg('success', enabled ? 'AI otomatik yanıt açıldı 🤖' : 'AI otomatik yanıt kapatıldı')
@@ -155,7 +210,6 @@ export default function SettingsPage() {
   }
 
   const connectLinkedIn = async () => {
-    if (!linkedinEmail || !linkedinPassword) return
     setLinkedinConnecting(true)
     try {
       const data = await api.post('/api/linkedin/connect', { email: linkedinEmail, password: linkedinPassword })
@@ -163,11 +217,8 @@ export default function SettingsPage() {
       setLinkedinStatus('connected')
       setLinkedinConnectedEmail(linkedinEmail)
       setLinkedinPassword('')
-    } catch (e: any) {
-      showMsg('error', e.message)
-    } finally {
-      setLinkedinConnecting(false)
-    }
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setLinkedinConnecting(false) }
   }
 
   const disconnectLinkedIn = async () => {
@@ -216,7 +267,8 @@ export default function SettingsPage() {
           </nav>
         </div>
 
-        <div className="flex-1">
+        <div className="flex-1 space-y-6">
+          {/* PROFIL */}
           {tab === 'profile' && (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-6">
               <h2 className="text-white font-semibold text-lg">Profil Bilgileri</h2>
@@ -233,16 +285,11 @@ export default function SettingsPage() {
                 {[{ label: 'Ad Soyad', key: 'name' }, { label: 'Firma Adı', key: 'company' }].map(({ label, key }) => (
                   <div key={key}>
                     <label className="text-slate-400 text-sm mb-1.5 block">{label}</label>
-                    <input value={(profile as any)[key]}
+                    <input value={(profile as any)[key] || ''}
                       onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))}
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
                   </div>
                 ))}
-                <div>
-                  <label className="text-slate-400 text-sm mb-1.5 block">Email</label>
-                  <input value={user?.email || ''} disabled
-                    className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2.5 text-slate-500 text-sm cursor-not-allowed" />
-                </div>
               </div>
               <button onClick={saveProfile} disabled={saving}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
@@ -251,8 +298,9 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {/* KANALLAR */}
           {tab === 'channels' && (
-            <div className="space-y-6">
+            <>
               {/* WhatsApp */}
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -262,7 +310,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 className="text-white font-semibold">WhatsApp</h2>
-                      <p className="text-slate-400 text-xs">Telefonunuzu QR kod ile bağlayın</p>
+                      <p className="text-slate-400 text-xs">QR kod ile bağlayın</p>
                     </div>
                   </div>
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
@@ -287,7 +335,7 @@ export default function SettingsPage() {
                         <Bot size={16} className="text-purple-400" />
                         <div>
                           <p className="text-white text-sm font-medium">AI Otomatik Yanıt</p>
-                          <p className="text-slate-400 text-xs">Gelen mesajlara Claude ile otomatik cevap</p>
+                          <p className="text-slate-400 text-xs">Claude ile otomatik cevap</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -302,18 +350,16 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 ) : qrCode ? (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl flex flex-col items-center gap-4">
-                      <p className="text-white text-sm font-medium flex items-center gap-2">
-                        <QrCode size={16} className="text-green-400" /> QR kodu WhatsApp ile okutun
-                      </p>
-                      <img src={qrCode} alt="WhatsApp QR" className="w-52 h-52 rounded-xl border border-slate-600" />
-                      <p className="text-slate-500 text-xs flex items-center gap-1">
-                        <RefreshCw size={11} className="animate-spin" /> Bağlantı bekleniyor...
-                      </p>
-                    </div>
+                  <div className="flex flex-col items-center gap-4 p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
+                    <p className="text-white text-sm font-medium flex items-center gap-2">
+                      <QrCode size={16} className="text-green-400" /> QR kodu WhatsApp ile okutun
+                    </p>
+                    <img src={qrCode} alt="WA QR" className="w-52 h-52 rounded-xl border border-slate-600" />
+                    <p className="text-slate-500 text-xs flex items-center gap-1">
+                      <RefreshCw size={11} className="animate-spin" /> Bağlantı bekleniyor...
+                    </p>
                     <button onClick={() => { stopPolling(); setQrCode(null); setWaConnecting(false) }}
-                      className="text-slate-400 text-sm hover:text-white transition">İptal</button>
+                      className="text-slate-400 text-sm hover:text-white">İptal</button>
                   </div>
                 ) : (
                   <button onClick={connectWhatsApp} disabled={waConnecting}
@@ -322,6 +368,136 @@ export default function SettingsPage() {
                     {waConnecting ? 'QR oluşturuluyor...' : 'WhatsApp Bağla'}
                   </button>
                 )}
+              </div>
+
+              {/* AI Video Avatar */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+                      <Video size={18} className="text-red-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-white font-semibold">AI Video Avatar</h2>
+                      <p className="text-slate-400 text-xs">Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları</p>
+                    </div>
+                  </div>
+                  {avatarStatus?.hasAvatar && (
+                    <span className={`text-xs px-2 py-1 rounded-full border ${
+                      avatarStatus.avatarStatus === 'completed'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300'
+                    }`}>
+                      {avatarStatus.avatarStatus === 'completed' ? '✓ Avatar Hazır' : '⏳ İşleniyor'}
+                    </span>
+                  )}
+                </div>
+
+                {avatarStatus?.hasAvatar && avatarStatus.avatarStatus === 'completed' ? (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                          <Video size={20} className="text-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">Kişisel Avatar Aktif ✅</p>
+                          <p className="text-slate-400 text-xs">
+                            {avatarStatus.avatarType === 'photo' ? '📸 Fotoğraf Avatar' : '📹 Video Avatar'}
+                          </p>
+                        </div>
+                      </div>
+                      {avatarStatus.hasVoice && (
+                        <div className="flex items-center gap-2 p-3 bg-slate-900/50 rounded-lg mt-2">
+                          <span className="text-green-400">🎙️</span>
+                          <p className="text-white text-sm">{avatarStatus.voiceName} — Ses klonu aktif</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => avatarVideoRef.current?.click()}
+                        className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition">
+                        Avatar Değiştir
+                      </button>
+                      <button onClick={async () => {
+                        await api.delete('/api/avatar/avatar')
+                        setAvatarStatus({ hasAvatar: false })
+                        showMsg('success', 'Avatar silindi')
+                      }} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-sm transition">
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Video Avatar */}
+                      <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
+                        <p className="text-white text-sm font-medium mb-1">📹 Video Avatar</p>
+                        <p className="text-slate-400 text-xs mb-2">2-5 dk video yükle → AI klonlar</p>
+                        <p className="text-emerald-400 text-xs mb-3">En gerçekçi sonuç</p>
+                        <button onClick={() => avatarVideoRef.current?.click()}
+                          disabled={uploadingAvatar}
+                          className="w-full py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs rounded-lg transition flex items-center justify-center gap-1">
+                          {uploadingAvatar ? <RefreshCw size={11} className="animate-spin" /> : null}
+                          {uploadingAvatar ? 'Yükleniyor...' : 'Video Yükle'}
+                        </button>
+                        <p className="text-slate-500 text-xs mt-1 text-center">MP4 · Max 100MB</p>
+                      </div>
+
+                      {/* Photo Avatar */}
+                      <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
+                        <p className="text-white text-sm font-medium mb-1">📸 Fotoğraf Avatar</p>
+                        <p className="text-slate-400 text-xs mb-2">Fotoğraf yükle → AI animasyon</p>
+                        <p className="text-yellow-400 text-xs mb-3">Hızlı & ücretsiz</p>
+                        <button onClick={() => avatarPhotoRef.current?.click()}
+                          disabled={uploadingAvatar}
+                          className="w-full py-2 bg-slate-600 hover:bg-slate-500 disabled:opacity-50 text-white text-xs rounded-lg transition flex items-center justify-center gap-1">
+                          {uploadingAvatar ? <RefreshCw size={11} className="animate-spin" /> : null}
+                          {uploadingAvatar ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
+                        </button>
+                        <p className="text-slate-500 text-xs mt-1 text-center">JPG, PNG</p>
+                      </div>
+                    </div>
+
+                    {/* Ses Klonlama */}
+                    <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
+                      <p className="text-white text-sm font-medium mb-1">🎙️ Ses Klonlama</p>
+                      <p className="text-slate-400 text-xs mb-3">30sn - 3dk ses kaydı → AI sesinizi klonlar</p>
+                      <div className="flex gap-2">
+                        <input value={voiceName} onChange={e => setVoiceName(e.target.value)}
+                          placeholder="Ses adı"
+                          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500" />
+                        <button onClick={() => voiceRef.current?.click()}
+                          disabled={uploadingVoice}
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs rounded-lg transition flex items-center gap-1">
+                          {uploadingVoice ? <RefreshCw size={11} className="animate-spin" /> : null}
+                          {uploadingVoice ? 'Yükleniyor...' : 'Ses Yükle'}
+                        </button>
+                      </div>
+                      <p className="text-slate-500 text-xs mt-2">MP3, WAV · Net konuşma · Arka plan gürültüsü olmamalı</p>
+                    </div>
+
+                    {/* Tips */}
+                    <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                      <p className="text-blue-300 text-xs font-medium mb-1">💡 İpuçları</p>
+                      <div className="space-y-0.5 text-slate-400 text-xs">
+                        <p>→ Düz, açık renkli arka plan kullanın</p>
+                        <p>→ Yüzünüz net ve ortada olsun</p>
+                        <p>→ İyi aydınlatma çok önemli</p>
+                        <p>→ Doğal konuşma tonu ses klonlama için ideal</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gizli input'lar */}
+                <input ref={avatarVideoRef} type="file" accept="video/*" className="hidden"
+                  onChange={e => e.target.files?.[0] && uploadAvatar(e.target.files[0], 'video')} />
+                <input ref={avatarPhotoRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => e.target.files?.[0] && uploadAvatar(e.target.files[0], 'photo')} />
+                <input ref={voiceRef} type="file" accept="audio/*" className="hidden"
+                  onChange={e => e.target.files?.[0] && uploadVoice(e.target.files[0])} />
               </div>
 
               {/* LinkedIn */}
@@ -333,14 +509,14 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 className="text-white font-semibold">LinkedIn</h2>
-                      <p className="text-slate-400 text-xs">Karar verici araması için hesabınızı bağlayın</p>
+                      <p className="text-slate-400 text-xs">Karar verici araması için bağlayın</p>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                  <span className={`text-xs px-2 py-1 rounded-full border ${
                     linkedinStatus === 'connected' ? 'bg-blue-500/10 border-blue-500/30 text-blue-300' : 'bg-slate-700 border-slate-600 text-slate-400'
                   }`}>
                     {linkedinStatus === 'connected' ? '✓ Bağlı' : 'Bağlı Değil'}
-                  </div>
+                  </span>
                 </div>
 
                 {linkedinStatus === 'connected' ? (
@@ -351,7 +527,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <p className="text-white text-sm font-medium">{linkedinConnectedEmail}</p>
-                        <p className="text-slate-400 text-xs">Karar verici aramaları bu hesap üzerinden yapılacak</p>
+                        <p className="text-slate-400 text-xs">LinkedIn bağlı</p>
                       </div>
                     </div>
                     <button onClick={disconnectLinkedIn}
@@ -360,9 +536,9 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
-                      <p className="text-yellow-300 text-xs">⚠️ LinkedIn hesabınızı bağlayarak karar verici aramalarını çok daha etkili yapabilirsiniz. Şifreniz güvenli şekilde saklanır.</p>
+                      <p className="text-yellow-300 text-xs">⚠️ li_at cookie yöntemi önerilir — Ayarlar → Railway → LINKEDIN_LI_AT</p>
                     </div>
                     <input value={linkedinEmail} onChange={e => setLinkedinEmail(e.target.value)}
                       placeholder="LinkedIn email"
@@ -380,13 +556,13 @@ export default function SettingsPage() {
                     <button onClick={connectLinkedIn} disabled={linkedinConnecting || !linkedinEmail || !linkedinPassword}
                       className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition">
                       {linkedinConnecting ? <RefreshCw size={14} className="animate-spin" /> : <Linkedin size={14} />}
-                      {linkedinConnecting ? 'Bağlanıyor... (~30 saniye)' : 'LinkedIn Bağla'}
+                      {linkedinConnecting ? 'Bağlanıyor...' : 'LinkedIn Bağla'}
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Email */}
+              {/* Email SMTP */}
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
@@ -394,7 +570,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h2 className="text-white font-semibold">Email (SMTP)</h2>
-                    <p className="text-slate-400 text-xs">Gmail veya özel SMTP sunucunuzu bağlayın</p>
+                    <p className="text-slate-400 text-xs">Gmail veya SMTP sunucunuzu bağlayın</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -413,13 +589,15 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <input value={settings.email_user || ''} onChange={e => setSettings({ ...settings, email_user: e.target.value })}
-                    placeholder="ornek@gmail.com"
+                    placeholder="email@gmail.com"
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
                   <div className="relative">
-                    <input type={showPass ? 'text' : 'password'} value={emailPass} onChange={e => setEmailPass(e.target.value)}
+                    <input type={showPass ? 'text' : 'password'} value={emailPass}
+                      onChange={e => setEmailPass(e.target.value)}
                       placeholder="Şifre / Uygulama Şifresi"
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 pr-10" />
-                    <button onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                    <button onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
@@ -437,23 +615,21 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {tab === 'notifications' && (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
               <h2 className="text-white font-semibold text-lg">Bildirim Ayarları</h2>
               {[
-                { label: 'Yeni lead geldiğinde', desc: 'Scraping tamamlandığında bildirim al', defaultOn: true },
-                { label: 'Lead cevap verdiğinde', desc: 'WhatsApp veya email cevabı geldiğinde', defaultOn: true },
-                { label: 'Kampanya tamamlandığında', desc: 'Tüm adımlar bittiğinde', defaultOn: false },
-                { label: 'Kredi azaldığında', desc: '10 kredi altına düştüğünde uyar', defaultOn: true },
-              ].map(({ label, desc, defaultOn }) => (
+                { label: 'Yeni lead geldiğinde', defaultOn: true },
+                { label: 'Lead cevap verdiğinde', defaultOn: true },
+                { label: 'Video hazır olduğunda', defaultOn: true },
+                { label: 'Kampanya tamamlandığında', defaultOn: false },
+                { label: 'Kredi azaldığında', defaultOn: true },
+              ].map(({ label, defaultOn }) => (
                 <div key={label} className="flex items-center justify-between py-3 border-b border-slate-700/50 last:border-0">
-                  <div>
-                    <p className="text-white text-sm font-medium">{label}</p>
-                    <p className="text-slate-400 text-xs mt-0.5">{desc}</p>
-                  </div>
+                  <p className="text-white text-sm">{label}</p>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" defaultChecked={defaultOn} className="sr-only peer" />
                     <div className="w-10 h-5 bg-slate-700 peer-checked:bg-blue-600 rounded-full transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5" />
