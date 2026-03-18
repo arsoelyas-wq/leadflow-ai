@@ -151,6 +151,7 @@ router.post('/create', async (req: any, res: any) => {
     if (!videoId) throw new Error('HeyGen video ID alınamadı: ' + JSON.stringify(heygenRes.data));
 
     // DB'ye kaydet
+    console.log('VIDEO CREATE - userId:', userId, 'leadId:', leadId, 'videoId:', videoId);
     const insertData = {
       user_id: userId,
       lead_id: leadId,
@@ -171,7 +172,9 @@ router.post('/create', async (req: any, res: any) => {
       .single();
 
     if (insertError) {
-      console.error('DB insert error:', insertError);
+      console.error('DB insert error:', JSON.stringify(insertError));
+    } else {
+      console.log('DB insert success - recordId:', record?.id);
     }
 
     res.json({
