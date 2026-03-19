@@ -6,8 +6,8 @@ import {
   LayoutDashboard, Users, Megaphone, BarChart3, MessageSquare,
   Settings, CreditCard, LogOut, Zap, Activity, Target, DollarSign,
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
-  TrendingUp, Sparkles, Video, RefreshCw, FileText, Star, Clock,
-  Heart, Code, Mail
+  TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
+  Clock, Heart, Code, Building2
 } from 'lucide-react'
 
 const navItems = [
@@ -33,6 +33,7 @@ const navItems = [
   { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },
   { href: '/wa-numbers', label: 'WA Numaralar', icon: Smartphone },
   { href: '/webhooks', label: 'Webhooks', icon: Webhook },
+  { href: '/whitelabel', label: 'White-Label', icon: Building2 },
   { href: '/developer', label: 'API Erişimi', icon: Code },
   { href: '/monitoring', label: 'Monitör', icon: Activity },
   { href: '/billing', label: 'Abonelik', icon: CreditCard },
