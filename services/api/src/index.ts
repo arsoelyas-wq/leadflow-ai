@@ -50,6 +50,7 @@ app.use('/api/campaigns',      authMiddleware, campaignLimiter, require('./route
 app.use('/api/messages',       authMiddleware, require('./routes/messages'));
 app.use('/api/links',          authMiddleware, linksRouter);
 app.use('/api/quality',        authMiddleware, require('./routes/quality'));
+app.use('/api/quality-v2',     authMiddleware, require('./routes/quality-v2'));
 app.use('/api/competitor',     authMiddleware, require('./routes/competitor'));
 app.use('/api/decision-maker', authMiddleware, require('./routes/decision-maker'));
 app.use('/api/persons',        authMiddleware, require('./routes/persons'));
@@ -61,9 +62,9 @@ app.use('/api/shadow',         authMiddleware, require('./routes/shadow'));
 app.use('/api/visual-trends',  authMiddleware, require('./routes/visual-trends'));
 app.use('/api/video-outreach', authMiddleware, require('./routes/video-outreach'));
 app.use('/api/avatar',         authMiddleware, require('./routes/avatar'));
-app.use('/api/retargeting', authMiddleware, require('./routes/retargeting'));
-app.use('/api/proposals', authMiddleware, require('./routes/proposals'));
-app.use('/api/quality-v2', authMiddleware, require('./routes/quality-v2'));
+app.use('/api/retargeting',    authMiddleware, require('./routes/retargeting'));
+app.use('/api/proposals',      authMiddleware, require('./routes/proposals'));
+app.use('/api/smart-timing',   authMiddleware, require('./routes/smart-timing'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);

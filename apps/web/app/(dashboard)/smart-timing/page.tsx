@@ -186,7 +186,7 @@ export default function SmartTimingPage() {
                   🎯 AI Öner
                 </button>
               </div>
-              <button onClick={schedule} disabled={scheduling || !schedLead || !schedMessage || !schedTime}
+              <button onClick={schedule} disabled={scheduling || !schedLead || !schedMessage.trim() || !schedTime}
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
                 {scheduling ? <RefreshCw size={14} className="animate-spin" /> : <Clock size={14} />}
                 {scheduling ? 'Zamanlanıyor...' : 'Mesajı Zamanla'}
