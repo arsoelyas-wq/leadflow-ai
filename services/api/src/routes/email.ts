@@ -1,211 +1,142 @@
 export {};
 const express = require('express');
-const resendPkg = require('resend');
-const Resend = resendPkg.Resend; 
 const { createClient } = require('@supabase/supabase-js');
+const { Resend } = require('resend');
 
 const router = express.Router();
-const resend = new Resend(process.env.RESEND_API_KEY);
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// Tek email gonder
+function getResend(apiKey?: string) {
+  return new Resend(apiKey || process.env.RESEND_API_KEY);
+}
+
+// POST /api/email/send
 router.post('/send', async (req: any, res: any) => {
   try {
-    const { to, subject, body, leadId } = req.body;
+    const userId = req.userId;
+    const { to, subject, html, text, leadId } = req.body;
+    if (!to || !subject) return res.status(400).json({ error: 'to ve subject zorunlu' });
 
-    if (!to || !subject || !body) {
-      return res.status(400).json({ error: 'to, subject ve body zorunlu' });
-    }
+    const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
+    const resend = getResend(settings?.resend_api_key);
+    const fromEmail = settings?.resend_from_email || 'onboarding@resend.dev';
 
     const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-      to: [to],
+      from: fromEmail,
+      to: Array.isArray(to) ? to : [to],
       subject,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="border-bottom: 2px solid #B8892A; padding-bottom: 16px; margin-bottom: 24px;">
-            <h2 style="color: #1a1a2e; margin: 0; font-size: 18px;">LeadFlow AI</h2>
-          </div>
-          <div style="color: #333; line-height: 1.7; font-size: 14px;">
-            ${body.replace(/\n/g, '<br>')}
-          </div>
-          <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11px; color: #999;">
-            Bu email LeadFlow AI tarafindan otomatik gonderilmistir.
-          </div>
-        </div>
-      `
+      html: html || `<p>${text || ''}</p>`,
+      text,
     });
 
     if (error) throw new Error(error.message);
 
-    // Mesaji veritabanina kaydet
+    // Log kaydet
     if (leadId) {
       await supabase.from('messages').insert([{
-        lead_id: leadId,
-        channel: 'email',
-        direction: 'outbound',
-        content: `Konu: ${subject}\n\n${body}`,
-        status: 'sent',
-        sent_at: new Date().toISOString()
+        user_id: userId, lead_id: leadId,
+        direction: 'out', content: subject,
+        channel: 'email', sent_at: new Date().toISOString(),
+        metadata: JSON.stringify({ emailId: data?.id, to, subject }),
       }]);
-
-      await supabase.from('leads')
-        .update({ status: 'contacted' })
-        .eq('id', leadId);
     }
 
-    res.json({ message: 'Email basariyla gonderildi!', data });
-
-  } catch (error: any) {
-    console.error('Email Error:', error.message);
-    res.status(500).json({ error: error.message });
+    res.json({ success: true, emailId: data?.id });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// AI ile email olustur ve gonder
-router.post('/ai-send', async (req: any, res: any) => {
+// POST /api/email/send-campaign — Toplu email
+router.post('/send-campaign', async (req: any, res: any) => {
   try {
-    const { leadId, senderProfile } = req.body;
+    const userId = req.userId;
+    const { leadIds, subject, template } = req.body;
+    if (!leadIds?.length || !subject) return res.status(400).json({ error: 'leadIds ve subject zorunlu' });
 
-    const { data: lead, error } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('id', leadId)
-      .single();
+    const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
+    const { data: leads } = await supabase.from('leads').select('*').in('id', leadIds).eq('user_id', userId);
 
-    if (error || !lead) {
-      return res.status(404).json({ error: 'Lead bulunamadi' });
-    }
+    if (!leads?.length) return res.status(400).json({ error: 'Lead bulunamadı' });
 
-    if (!lead.email) {
-      return res.status(400).json({ error: 'Bu leadin email adresi yok' });
-    }
+    res.json({ message: `${leads.length} email gönderiliyor...`, total: leads.length });
 
-    // AI ile email olustur
-    const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    (async () => {
+      const resend = getResend(settings?.resend_api_key);
+      const fromEmail = settings?.resend_from_email || 'onboarding@resend.dev';
+      let sent = 0;
 
-    const aiResponse = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `Profesyonel B2B satis emaili yaz (Turkce):
-Gonderen: ${JSON.stringify(senderProfile || {})}
-Alici firma: ${lead.company_name}, ${lead.city}
-Sektor: ${lead.sector}
+      for (const lead of leads) {
+        if (!lead.email) continue;
+        try {
+          const Anthropic = require('@anthropic-ai/sdk');
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+          const scriptRes = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 200,
+            messages: [{ role: 'user', content: `${template || 'B2B email yaz'}\nŞirket: ${lead.company_name}\nKişi: ${lead.contact_name || 'Yetkili'}\nSadece HTML email içeriği yaz.` }]
+          });
+          const emailHtml = scriptRes.content[0]?.text || `<p>Merhaba ${lead.contact_name || lead.company_name},<br>${template}</p>`;
 
-SADECE JSON don:
-{
-  "subject": "Email konusu",
-  "body": "Email icerigi (duz metin, 3-4 paragraf)"
-}`
-      }]
-    });
+          await resend.emails.send({
+            from: fromEmail,
+            to: [lead.email],
+            subject: subject.replace('[FIRMA]', lead.company_name),
+            html: emailHtml,
+          });
 
-    const rawText = aiResponse.content[0].text;
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI yanit formati hatali');
-
-    const { subject, body } = JSON.parse(jsonMatch[0]);
-
-    // Email gonder
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-      to: [lead.email],
-      subject,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="border-bottom: 2px solid #B8892A; padding-bottom: 16px; margin-bottom: 24px;">
-            <h2 style="color: #1a1a2e; margin: 0;">LeadFlow AI</h2>
-          </div>
-          <div style="color: #333; line-height: 1.7; font-size: 14px;">
-            ${body.replace(/\n/g, '<br>')}
-          </div>
-          <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11px; color: #999;">
-            Bu email LeadFlow AI tarafindan otomatik gonderilmistir.
-          </div>
-        </div>
-      `
-    });
-
-    if (emailError) throw new Error(emailError.message);
-
-    await supabase.from('messages').insert([{
-      lead_id: lead.id,
-      channel: 'email',
-      direction: 'outbound',
-      content: `Konu: ${subject}\n\n${body}`,
-      status: 'sent',
-      sent_at: new Date().toISOString()
-    }]);
-
-    res.json({
-      message: 'AI email olusturuldu ve gonderildi!',
-      subject,
-      body,
-      emailData
-    });
-
-  } catch (error: any) {
-    console.error('AI Email Error:', error.message);
-    res.status(500).json({ error: error.message });
+          await supabase.from('messages').insert([{
+            user_id: userId, lead_id: lead.id,
+            direction: 'out', content: subject,
+            channel: 'email', sent_at: new Date().toISOString(),
+          }]);
+          sent++;
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (e: any) {
+          console.error(`Email error ${lead.company_name}:`, e.message);
+        }
+      }
+      console.log(`Email campaign done: ${sent}/${leads.length}`);
+    })();
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// Hosgeldin emaili gonder (kayit sonrasi)
-router.post('/welcome', async (req: any, res: any) => {
+// POST /api/email/test
+router.post('/test', async (req: any, res: any) => {
   try {
-    const { email, name } = req.body;
+    const userId = req.userId;
+    const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
+    const { data: user } = await supabase.from('users').select('email').eq('id', userId).single();
+    const resend = getResend(settings?.resend_api_key);
 
-    const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-      to: [email],
-      subject: 'LeadFlow AI\'a Hosgeldiniz! 50 Ucretsiz Lediniz Hazir',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #0a0a0f; color: #f5f0e8;">
-          <div style="text-align: center; margin-bottom: 40px;">
-            <h1 style="font-size: 32px; font-weight: 300; color: #f5f0e8; margin: 0;">
-              Lead<span style="color: #B8892A;">Flow</span> AI
-            </h1>
-          </div>
-          <div style="background: #15151f; border: 1px solid rgba(255,255,255,0.07); padding: 40px;">
-            <h2 style="color: #B8892A; font-weight: 400; margin-top: 0;">Hosgeldiniz, ${name}!</h2>
-            <p style="color: rgba(245,240,232,0.7); line-height: 1.8;">
-              LeadFlow AI hesabiniz olusturuldu. Size <strong style="color: #B8892A;">50 ucretsiz lead</strong> hediye ettik.
-            </p>
-            <p style="color: rgba(245,240,232,0.7); line-height: 1.8;">
-              Simdi yapabilecekleriniz:
-            </p>
-            <ul style="color: rgba(245,240,232,0.6); line-height: 2;">
-              <li>Google Maps'ten hedef sektorde lead cekin</li>
-              <li>AI ile kisisellestirilmis mesajlar olusturun</li>
-              <li>WhatsApp ve email ile otomatik goндerin</li>
-            </ul>
-            <div style="text-align: center; margin-top: 32px;">
-              <a href="http://192.168.1.37:3000/dashboard" 
-                style="background: #B8892A; color: #0a0a0f; padding: 14px 32px; text-decoration: none; font-weight: 600; display: inline-block;">
-                Dashboard'a Git →
-              </a>
-            </div>
-          </div>
-          <p style="text-align: center; color: rgba(245,240,232,0.2); font-size: 12px; margin-top: 24px;">
-            LeadFlow AI — Akilli Satis Otomasyonu
-          </p>
-        </div>
-      `
+    const { error } = await resend.emails.send({
+      from: settings?.resend_from_email || 'onboarding@resend.dev',
+      to: [user?.email || 'test@test.com'],
+      subject: 'LeadFlow AI - Email Test ✅',
+      html: '<h1>Email sistemi çalışıyor!</h1><p>LeadFlow AI email entegrasyonu başarılı.</p>',
     });
 
     if (error) throw new Error(error.message);
+    res.json({ success: true, message: 'Test emaili gönderildi!' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
-    res.json({ message: 'Hosgeldin emaili gonderildi!', data });
-
-  } catch (error: any) {
-    console.error('Welcome Email Error:', error.message);
-    res.status(500).json({ error: error.message });
+// PATCH /api/email/settings
+router.patch('/settings', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { resend_api_key, resend_from_email } = req.body;
+    await supabase.from('user_settings').upsert({
+      user_id: userId, resend_api_key, resend_from_email,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+    res.json({ message: 'Email ayarları kaydedildi' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 

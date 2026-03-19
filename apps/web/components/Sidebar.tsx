@@ -6,17 +6,20 @@ import {
   LayoutDashboard, Users, Megaphone, BarChart3, MessageSquare,
   Settings, CreditCard, LogOut, Zap, Activity, Target, DollarSign,
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
-  TrendingUp, Sparkles, Video, RefreshCw, FileText, Star, Clock
+  TrendingUp, Sparkles, Video, RefreshCw, FileText, Star, Clock,
+  Heart, Code, Mail
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/leads', label: 'Leadler', icon: Users },
   { href: '/lead-quality', label: 'Lead Kalite AI', icon: Star },
+  { href: '/health-scores', label: 'Müşteri Sağlığı', icon: Heart },
   { href: '/campaigns', label: 'Kampanyalar', icon: Megaphone },
   { href: '/sequences', label: 'AI Sekanslar', icon: Bot },
   { href: '/ab-testing', label: 'A/B Test', icon: FlaskConical },
   { href: '/video-outreach', label: 'AI Video', icon: Video },
+  { href: '/vision', label: 'Vision AI', icon: Eye },
   { href: '/retargeting', label: 'Retargeting', icon: RefreshCw },
   { href: '/proposals', label: 'Teklif & Pazarlık', icon: FileText },
   { href: '/smart-timing', label: 'Akıllı Zamanlama', icon: Clock },
@@ -30,6 +33,7 @@ const navItems = [
   { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },
   { href: '/wa-numbers', label: 'WA Numaralar', icon: Smartphone },
   { href: '/webhooks', label: 'Webhooks', icon: Webhook },
+  { href: '/developer', label: 'API Erişimi', icon: Code },
   { href: '/monitoring', label: 'Monitör', icon: Activity },
   { href: '/billing', label: 'Abonelik', icon: CreditCard },
   { href: '/settings', label: 'Ayarlar', icon: Settings },
@@ -50,7 +54,6 @@ export default function Sidebar() {
           <span className="text-white font-bold text-lg">LeadFlow AI</span>
         </div>
       </div>
-
       {user && (
         <div className="mx-4 mt-4 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
           <div className="flex justify-between items-center mb-1">
@@ -63,21 +66,17 @@ export default function Sidebar() {
           </div>
         </div>
       )}
-
       <nav className="flex-1 p-4 space-y-1 mt-2 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href
           return (
             <Link key={href} href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
-                active ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}>
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${active ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
               <Icon size={18} />{label}
             </Link>
           )
         })}
       </nav>
-
       <div className="p-4 border-t border-slate-800">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">

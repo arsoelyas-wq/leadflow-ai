@@ -34,7 +34,7 @@
     "playwright": "^1.58.2",
     "playwright-core": "^1.58.2",
     "qrcode": "^1.5.4",
-    "resend": "^6.9.3",
+    "resend": "^6.9.4",
     "stripe": "^20.4.0"
   },
   "devDependencies": {
