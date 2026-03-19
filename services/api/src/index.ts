@@ -63,6 +63,7 @@ app.use('/api/video-outreach', authMiddleware, require('./routes/video-outreach'
 app.use('/api/avatar',         authMiddleware, require('./routes/avatar'));
 app.use('/api/retargeting', authMiddleware, require('./routes/retargeting'));
 app.use('/api/proposals', authMiddleware, require('./routes/proposals'));
+app.use('/api/quality-v2', authMiddleware, require('./routes/quality-v2'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);

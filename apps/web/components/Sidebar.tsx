@@ -6,12 +6,13 @@ import {
   LayoutDashboard, Users, Megaphone, BarChart3, MessageSquare,
   Settings, CreditCard, LogOut, Zap, Activity, Target, DollarSign,
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
-  TrendingUp, Sparkles, Video, RefreshCw, FileText
+  TrendingUp, Sparkles, Video, RefreshCw, FileText, Star
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/leads', label: 'Leadler', icon: Users },
+  { href: '/lead-quality', label: 'Lead Kalite AI', icon: Star },
   { href: '/campaigns', label: 'Kampanyalar', icon: Megaphone },
   { href: '/sequences', label: 'AI Sekanslar', icon: Bot },
   { href: '/ab-testing', label: 'A/B Test', icon: FlaskConical },
