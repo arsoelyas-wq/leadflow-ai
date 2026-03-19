@@ -1,206 +1,284 @@
 export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
-const Anthropic = require('@anthropic-ai/sdk').default;
-const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// ── SEKTÖR BAZLI VARSAYILAN SAATLER ──────────────────────
+const SECTOR_DEFAULT_TIMES: Record<string, number[]> = {
+  'restoran': [11, 15, 19],
+  'cafe': [9, 14, 17],
+  'inşaat': [8, 12, 16],
+  'mobilya': [10, 14, 16],
+  'tekstil': [9, 13, 16],
+  'otomotiv': [10, 14, 17],
+  'sağlık': [9, 13, 16],
+  'eğitim': [9, 12, 16],
+  'teknoloji': [10, 14, 17],
+  'perakende': [11, 15, 18],
+  'default': [10, 14, 16],
+};
 
-// ─── AI ile en iyi gönderim saatini hesapla ───────────────────────────────────
-router.post('/analyze', authMiddleware, async (req: any, res: any) => {
-  const { lead_id, channel } = req.body;
-  const userId = req.userId;
+// ── EN İYİ SAAT ANALİZİ ───────────────────────────────────
+async function analyzeOptimalTime(userId: string, leadId?: string): Promise<any> {
+  // Tüm mesaj cevap verilerini çek
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('sent_at, direction, channel, lead_id')
+    .eq('user_id', userId)
+    .eq('direction', 'in')
+    .order('sent_at', { ascending: false })
+    .limit(500);
 
+  const replies = messages || [];
+
+  // Saat bazlı cevap dağılımı
+  const hourCounts: Record<number, number> = {};
+  const dayOfWeekCounts: Record<number, number> = {};
+
+  replies.forEach((msg: any) => {
+    const date = new Date(msg.sent_at);
+    const hour = date.getHours();
+    const day = date.getDay();
+    hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    dayOfWeekCounts[day] = (dayOfWeekCounts[day] || 0) + 1;
+  });
+
+  // En iyi saatleri bul
+  const sortedHours = Object.entries(hourCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([hour]) => parseInt(hour));
+
+  // En iyi günleri bul
+  const sortedDays = Object.entries(dayOfWeekCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([day]) => parseInt(day));
+
+  const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+  return {
+    bestHours: sortedHours.length ? sortedHours : [10, 14, 16],
+    bestDays: sortedDays.length ? sortedDays.map(d => dayNames[d]) : ['Salı', 'Çarşamba', 'Perşembe'],
+    totalReplies: replies.length,
+    hourDistribution: hourCounts,
+  };
+}
+
+// ── AI ZAMAN TAVSİYESİ ────────────────────────────────────
+async function getAITimingAdvice(lead: any, behavior: any, globalStats: any): Promise<any> {
   try {
-    const { data: messages } = await supabase
-      .from('messages')
-      .select('created_at, status, direction')
-      .eq('lead_id', lead_id)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    const { data: lead } = await supabase
-      .from('leads')
-      .select('city, sector, company_name, country')
-      .eq('id', lead_id)
-      .single();
-
-    const interactionHours = (messages || [])
-      .filter((m: any) => m.direction === 'inbound')
-      .map((m: any) => new Date(m.created_at).getHours());
-
-    const prompt = `You are a global B2B sales expert. Based on the data below, suggest the best time to send a message to this lead.
-
-Lead Info:
-- City: ${lead?.city || 'Unknown'}
-- Country: ${lead?.country || 'Unknown'}
-- Sector: ${lead?.sector || 'Unknown'}
-- Company: ${lead?.company_name || 'Unknown'}
-- Channel: ${channel}
-
-Past interaction hours: ${interactionHours.length > 0 ? interactionHours.join(', ') : 'No data'}
-Total messages: ${messages?.length || 0}
-
-Consider local business culture and timezone. Return ONLY valid JSON:
-{
-  "best_hour": 10,
-  "best_days": ["Tuesday", "Wednesday", "Thursday"],
-  "avoid_hours": [12, 13, 17, 18],
-  "reasoning": "explanation",
-  "confidence": 85,
-  "timezone": "Europe/Istanbul"
-}`;
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 500,
-      messages: [{ role: 'user', content: prompt }]
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: `WhatsApp mesaj gönderimi için en iyi zaman tavsiyesi ver.
+
+Lead: ${lead.company_name} / ${lead.sector || 'bilinmiyor'} / ${lead.city || ''}
+Genel en iyi saatler: ${globalStats.bestHours.join(', ')}
+Genel en iyi günler: ${globalStats.bestDays.join(', ')}
+Sektör: ${lead.sector || 'genel'}
+
+JSON döndür:
+{
+  "bestHour": 10,
+  "bestDay": "Salı",
+  "reason": "Neden bu saat/gün",
+  "avoidTimes": ["kaçınılacak saat 1"],
+  "tip": "Ekstra ipucu"
+}`
+      }]
     });
 
-    const text = response.content[0].text;
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const timing = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    const text = response.content[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch {
+    const sector = (lead.sector || '').toLowerCase();
+    const defaultHours = SECTOR_DEFAULT_TIMES[sector] || SECTOR_DEFAULT_TIMES.default;
+    return {
+      bestHour: defaultHours[0],
+      bestDay: 'Salı',
+      reason: 'Sektör ortalamasına göre',
+      avoidTimes: ['12:00-13:00 öğle', '18:00 sonrası'],
+      tip: 'Sabah 9-11 arası genel olarak en yüksek açılma oranına sahip',
+    };
+  }
+}
 
-    if (!timing) throw new Error('AI response could not be parsed');
+// ── ROUTES ────────────────────────────────────────────────
 
-    await supabase.from('send_timing_cache').upsert({
-      user_id: userId,
-      lead_id,
-      channel,
-      best_hour: timing.best_hour,
-      best_days: timing.best_days,
-      avoid_hours: timing.avoid_hours,
-      reasoning: timing.reasoning,
-      confidence: timing.confidence,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id,lead_id,channel' });
+// GET /api/smart-timing/analyze — Genel analiz
+router.get('/analyze', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const stats = await analyzeOptimalTime(userId);
 
-    res.json({ success: true, timing });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // Saat dağılımını 24 saatlik array'e çevir
+    const hourlyChart = Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      label: `${String(h).padStart(2, '0')}:00`,
+      count: stats.hourDistribution[h] || 0,
+    }));
+
+    res.json({
+      bestHours: stats.bestHours,
+      bestDays: stats.bestDays,
+      totalReplies: stats.totalReplies,
+      hourlyChart,
+      recommendation: stats.bestHours.length
+        ? `En yüksek cevap oranı: ${stats.bestHours.map((h: number) => `${h}:00`).join(', ')}`
+        : 'Henüz yeterli veri yok. Varsayılan: 10:00, 14:00, 16:00',
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ─── Zamanlanmış gönderimler listesi ─────────────────────────────────────────
-router.get('/scheduled', authMiddleware, async (req: any, res: any) => {
-  const userId = req.userId;
-  const { status } = req.query;
-
+// GET /api/smart-timing/lead/:leadId — Lead için öneri
+router.get('/lead/:leadId', async (req: any, res: any) => {
   try {
-    let query = supabase
-      .from('scheduled_sends')
-      .select(`*, leads(company_name, phone, email), campaigns(name, channel)`)
-      .eq('user_id', userId)
-      .order('scheduled_at', { ascending: true });
+    const userId = req.userId;
+    const { data: lead } = await supabase
+      .from('leads').select('*').eq('id', req.params.leadId).eq('user_id', userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
 
-    if (status) query = query.eq('status', status);
+    const globalStats = await analyzeOptimalTime(userId);
+    const advice = await getAITimingAdvice(lead, {}, globalStats);
 
-    const { data, error } = await query.limit(200);
-    if (error) throw error;
-
-    res.json({ success: true, data });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.json({ lead: lead.company_name, advice, globalStats });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ─── Manuel zamanlama oluştur ─────────────────────────────────────────────────
-router.post('/schedule', authMiddleware, async (req: any, res: any) => {
-  const { lead_id, campaign_id, message, channel, scheduled_at, use_ai } = req.body;
-  const userId = req.userId;
-
+// POST /api/smart-timing/schedule — Mesajı zamanla
+router.post('/schedule', async (req: any, res: any) => {
   try {
-    let finalScheduledAt = scheduled_at;
-
-    if (use_ai) {
-      const { data: cache } = await supabase
-        .from('send_timing_cache')
-        .select('best_hour, best_days')
-        .eq('lead_id', lead_id)
-        .eq('channel', channel)
-        .single();
-
-      if (cache) {
-        const now = new Date();
-        const candidate = new Date(now);
-        candidate.setHours(cache.best_hour, 0, 0, 0);
-        if (candidate <= now) candidate.setDate(candidate.getDate() + 1);
-        finalScheduledAt = candidate.toISOString();
-      }
+    const userId = req.userId;
+    const { leadId, message, scheduledAt, channel = 'whatsapp' } = req.body;
+    if (!leadId || !message || !scheduledAt) {
+      return res.status(400).json({ error: 'leadId, message, scheduledAt zorunlu' });
     }
 
-    const { data, error } = await supabase.from('scheduled_sends').insert({
-      user_id: userId,
-      lead_id,
-      campaign_id,
-      message,
-      channel,
-      scheduled_at: finalScheduledAt,
-      status: 'pending',
-      created_at: new Date().toISOString()
-    }).select().single();
+    const { data: lead } = await supabase
+      .from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
 
-    if (error) throw error;
+    const { data: scheduled } = await supabase
+      .from('scheduled_messages').insert([{
+        user_id: userId,
+        lead_id: leadId,
+        message,
+        channel,
+        scheduled_at: scheduledAt,
+        status: 'pending',
+      }]).select().single();
 
-    res.json({ success: true, data });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.json({ scheduledId: scheduled?.id, message: 'Mesaj zamanlandı!', scheduledAt });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ─── Cron: Bekleyen gönderimler işle ─────────────────────────────────────────
-router.post('/cron/process', async (req: any, res: any) => {
-  const cronSecret = req.headers['x-cron-secret'];
-  if (cronSecret !== process.env.CRON_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' });
+// GET /api/smart-timing/scheduled — Zamanlanmış mesajlar
+router.get('/scheduled', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { data, error } = await supabase
+      .from('scheduled_messages')
+      .select('*, leads(company_name, contact_name, phone)')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'sent'])
+      .order('scheduled_at', { ascending: true })
+      .limit(50);
+    if (error) throw error;
+    res.json({ scheduled: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
+});
 
+// DELETE /api/smart-timing/scheduled/:id — İptal et
+router.delete('/scheduled/:id', async (req: any, res: any) => {
+  try {
+    await supabase.from('scheduled_messages')
+      .update({ status: 'cancelled' })
+      .eq('id', req.params.id)
+      .eq('user_id', req.userId);
+    res.json({ message: 'Zamanlanmış mesaj iptal edildi' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/smart-timing/best-time-campaign — Kampanya için en iyi zaman
+router.post('/best-time-campaign', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { leadIds } = req.body;
+
+    const stats = await analyzeOptimalTime(userId);
+
+    // Bugün için en iyi sonraki saati bul
+    const now = new Date();
+    const currentHour = now.getHours();
+    const bestNextHour = stats.bestHours.find((h: number) => h > currentHour) || stats.bestHours[0];
+
+    const scheduledDate = new Date();
+    if (bestNextHour <= currentHour) scheduledDate.setDate(scheduledDate.getDate() + 1);
+    scheduledDate.setHours(bestNextHour, 0, 0, 0);
+
+    res.json({
+      recommendedTime: scheduledDate.toISOString(),
+      recommendedHour: bestNextHour,
+      reason: `${stats.totalReplies} cevap verisine göre en yüksek etkileşim saati`,
+      bestDays: stats.bestDays,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Zamanlanmış mesajları çalıştır (her dakika kontrol)
+setInterval(async () => {
   try {
     const now = new Date().toISOString();
-
     const { data: pending } = await supabase
-      .from('scheduled_sends')
-      .select('*, leads(phone, email)')
+      .from('scheduled_messages')
+      .select('*, leads(phone, company_name, contact_name)')
       .eq('status', 'pending')
       .lte('scheduled_at', now)
-      .limit(50);
+      .limit(10);
 
-    let processed = 0;
-    let failed = 0;
+    if (!pending?.length) return;
 
-    for (const send of pending || []) {
+    const { sendWhatsAppMessage } = require('./settings');
+
+    for (const msg of pending) {
       try {
-        await supabase.from('messages').insert({
-          user_id: send.user_id,
-          lead_id: send.lead_id,
-          campaign_id: send.campaign_id,
-          content: send.message,
-          channel: send.channel,
-          direction: 'outbound',
-          status: 'sent',
-          created_at: new Date().toISOString()
-        });
-
-        await supabase
-          .from('scheduled_sends')
+        if (msg.channel === 'whatsapp' && msg.leads?.phone) {
+          await sendWhatsAppMessage(msg.user_id, msg.leads.phone, msg.message);
+        }
+        await supabase.from('scheduled_messages')
           .update({ status: 'sent', sent_at: new Date().toISOString() })
-          .eq('id', send.id);
-
-        processed++;
-      } catch {
-        await supabase.from('scheduled_sends').update({ status: 'failed' }).eq('id', send.id);
-        failed++;
+          .eq('id', msg.id);
+        console.log(`Scheduled message sent to ${msg.leads?.company_name}`);
+      } catch (e: any) {
+        console.error(`Scheduled send error:`, e.message);
+        await supabase.from('scheduled_messages').update({ status: 'failed' }).eq('id', msg.id);
       }
     }
-
-    res.json({ success: true, processed, failed });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  } catch {}
+}, 60 * 1000);
 
 module.exports = router;
