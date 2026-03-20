@@ -18,6 +18,9 @@ export default function VoicePage() {
   const [selectedVoice, setSelectedVoice] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [delayMinutes, setDelayMinutes] = useState(5)
+  const [uploadingVoice, setUploadingVoice] = useState(false)
+  const [clonedVoiceId, setClonedVoiceId] = useState('')
+  const voiceFileRef = useRef<HTMLInputElement>(null)
   const [previewText, setPreviewText] = useState('Merhaba, nasılsınız? Size kısa bir bilgi vermek istiyorum.')
   const [previewing, setPreviewing] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -45,21 +48,50 @@ export default function VoicePage() {
 
   useEffect(() => { load() }, [])
 
+  const uploadAndCloneVoice = async (file: File) => {
+    setUploadingVoice(true)
+    try {
+      const token = localStorage.getItem('token')
+      const formData = new FormData()
+      formData.append('audio', file)
+      formData.append('voiceName', 'Kişisel Sesim')
+      const response = await fetch('https://leadflow-ai-production.up.railway.app/api/voice/clone', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+      setClonedVoiceId(data.voiceId)
+      setSelectedVoice(data.voiceId)
+      showMsg('success', '✅ Sesiniz klonlandı! Artık aramalar kendi sesinizle yapılacak.')
+      load()
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setUploadingVoice(false) }
+  }
+
   const previewVoice = async () => {
     if (!selectedVoice || !previewText) return
     setPreviewing(true)
     try {
       const token = localStorage.getItem('token')
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'}/api/voice/preview`, {
+      const response = await fetch(`https://leadflow-ai-production.up.railway.app/api/voice/preview`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: previewText, voiceId: selectedVoice }),
       })
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      if (audioRef.current) audioRef.current.pause()
-      audioRef.current = new Audio(url)
-      audioRef.current.play()
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Ses üretilemedi')
+      }
+      const arrayBuffer = await response.arrayBuffer()
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+      const source = audioContext.createBufferSource()
+      source.buffer = audioBuffer
+      source.connect(audioContext.destination)
+      source.start(0)
+      showMsg('success', '🔊 Ses oynatılıyor...')
     } catch (e: any) { showMsg('error', e.message) }
     finally { setPreviewing(false) }
   }
@@ -185,6 +217,19 @@ export default function VoicePage() {
                 </option>
               ))}
             </select>
+
+            {/* Ses Klonlama */}
+            <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg space-y-2">
+              <p className="text-purple-300 text-xs font-medium">🎙️ Kendi Sesini Klonla</p>
+              <p className="text-slate-400 text-xs">30sn - 3dk ses kaydı yükle → aramalar kendi sesinle yapılır</p>
+              {clonedVoiceId && <p className="text-emerald-400 text-xs">✅ Kişisel ses aktif</p>}
+              <button onClick={() => voiceFileRef.current?.click()} disabled={uploadingVoice}
+                className="w-full py-2 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs rounded-lg transition hover:bg-purple-600/30 disabled:opacity-50 flex items-center justify-center gap-2">
+                {uploadingVoice ? <><RefreshCw size={11} className="animate-spin" /> Klonlanıyor...</> : <><Mic size={11} /> Ses Dosyası Yükle</>}
+              </button>
+              <input ref={voiceFileRef} type="file" accept="audio/*" className="hidden"
+                onChange={e => e.target.files?.[0] && uploadAndCloneVoice(e.target.files[0])} />
+            </div>
 
             {/* Ses Önizleme */}
             <div className="space-y-2">

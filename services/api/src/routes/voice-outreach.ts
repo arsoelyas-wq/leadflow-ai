@@ -190,13 +190,12 @@ router.get('/voices', async (req: any, res: any) => {
 });
 
 // POST /api/voice/clone — Ses klonla
-router.post('/clone', async (req: any, res: any) => {
+const multer = require('multer');
+const voiceUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+router.post('/clone', voiceUpload.single('audio'), async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const multer = require('multer');
-    const upload = multer({ storage: multer.memoryStorage() });
-
-    // FormData ile ses dosyası alınacak
     const { voiceName } = req.body;
     if (!req.file) return res.status(400).json({ error: 'Ses dosyası zorunlu' });
 
