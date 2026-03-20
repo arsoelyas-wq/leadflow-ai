@@ -20,8 +20,8 @@ function ARViewerContent() {
     script.onload = () => setLoaded(true)
 
     // AR desteği kontrol
-    if (navigator.xr) {
-      navigator.xr.isSessionSupported('immersive-ar').then(supported => setIsAR(supported))
+    if ('xr' in navigator) {
+      (navigator as any).xr.isSessionSupported('immersive-ar').then((supported: boolean) => setIsAR(supported))
     }
 
     return () => { document.head.removeChild(script) }
