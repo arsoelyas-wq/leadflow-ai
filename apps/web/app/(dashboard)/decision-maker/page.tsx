@@ -1,458 +1,304 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { Search, Users, Linkedin, Globe, RefreshCw, Mail, User, CheckCircle, XCircle, Database, Crosshair, ChevronDown, ChevronUp } from 'lucide-react'
+import { Linkedin, Search, RefreshCw, Send, UserPlus, Users, Phone, Instagram, Twitter, Facebook, ChevronDown, ChevronUp, Zap, Copy } from 'lucide-react'
 
-export default function PersonsPage() {
-  const [tab, setTab] = useState<'find' | 'database' | 'leads'>('find')
-  const [companyName, setCompanyName] = useState('')
-  const [website, setWebsite] = useState('')
-  const [city, setCity] = useState('')
-  const [verifyEmails, setVerifyEmails] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [batchLoading, setBatchLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
-  const [stats, setStats] = useState<any>(null)
-  const [dbPersons, setDbPersons] = useState<any[]>([])
-  const [dbSearch, setDbSearch] = useState('')
+export default function LinkedInPage() {
   const [leads, setLeads] = useState<any[]>([])
-  const [findingId, setFindingId] = useState<string | null>(null)
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [persons, setPersons] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searching, setSearching] = useState(false)
+  const [batchSearching, setBatchSearching] = useState(false)
+  const [selectedLead, setSelectedLead] = useState('')
+  const [selectedPersons, setSelectedPersons] = useState<string[]>([])
+  const [selectedCampaign, setSelectedCampaign] = useState('')
+  const [searchResult, setSearchResult] = useState<any>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [sendingPerson, setSendingPerson] = useState<string | null>(null)
+  const [customMessages, setCustomMessages] = useState<Record<string, string>>({})
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  // Email verify
-  const [emailToVerify, setEmailToVerify] = useState('')
-  const [verifyResult, setVerifyResult] = useState<any>(null)
-  const [verifying, setVerifying] = useState(false)
-
-  // Email generate
-  const [genFirst, setGenFirst] = useState('')
-  const [genLast, setGenLast] = useState('')
-  const [genDomain, setGenDomain] = useState('')
-  const [genResult, setGenResult] = useState<any>(null)
-  const [generating, setGenerating] = useState(false)
+  const [filterLead, setFilterLead] = useState('')
 
   const showMsg = (type: 'success' | 'error', text: string) => {
-    setMsg({ type, text })
-    setTimeout(() => setMsg(null), 5000)
+    setMsg({ type, text }); setTimeout(() => setMsg(null), 5000)
   }
 
-  const loadStats = async () => {
-    const data = await api.get('/api/persons/stats').catch(() => null)
-    if (data) setStats(data)
-  }
-
-  const loadDatabase = async () => {
-    const data = await api.get(`/api/persons/database?limit=50${dbSearch ? `&search=${dbSearch}` : ''}`).catch(() => null)
-    if (data) setDbPersons(data.persons || [])
-  }
-
-  const loadLeads = async () => {
-    const data = await api.get('/api/leads?limit=50').catch(() => null)
-    if (data) setLeads(data.leads || [])
-  }
-
-  useEffect(() => { loadStats(); loadLeads() }, [])
-  useEffect(() => { if (tab === 'database') loadDatabase() }, [tab, dbSearch])
-
-  const handleFind = async () => {
-    if (!companyName) return
+  const load = async () => {
     setLoading(true)
-    setResult(null)
     try {
-      const data = await api.post('/api/persons/find', { companyName, website, city, verifyEmails })
-      setResult(data)
-      showMsg('success', `${data.found} kişi bulundu!`)
-      loadStats()
-    } catch (e: any) {
-      showMsg('error', e.message)
-    } finally {
-      setLoading(false)
-    }
+      const [l, c, p] = await Promise.allSettled([
+        api.get('/api/leads?limit=100'),
+        api.get('/api/campaigns'),
+        api.get('/api/linkedin/persons'),
+      ])
+      if (l.status === 'fulfilled') setLeads(l.value.leads || [])
+      if (c.status === 'fulfilled') setCampaigns(c.value.campaigns || [])
+      if (p.status === 'fulfilled') setPersons(p.value.persons || [])
+    } catch {}
+    finally { setLoading(false) }
   }
 
-  const handleBatch = async () => {
-    setBatchLoading(true)
+  useEffect(() => { load() }, [])
+
+  const search = async () => {
+    if (!selectedLead) return
+    setSearching(true)
+    setSearchResult(null)
     try {
-      const data = await api.post('/api/persons/batch', { maxLeads: 5 })
+      const data = await api.post('/api/linkedin/find-decision-makers', { leadId: selectedLead })
+      setSearchResult(data)
+      showMsg('success', `${data.found} karar verici bulundu!`)
+      load()
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setSearching(false) }
+  }
+
+  const batchSearch = async () => {
+    setBatchSearching(true)
+    try {
+      const data = await api.post('/api/linkedin/find-batch', { limit: 10 })
       showMsg('success', data.message)
-      loadStats()
-      loadLeads()
-    } catch (e: any) {
-      showMsg('error', e.message)
-    } finally {
-      setBatchLoading(false)
-    }
+      setTimeout(load, 5000)
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setBatchSearching(false) }
   }
 
-  const findForLead = async (lead: any) => {
-    setFindingId(lead.id)
+  const addToCampaign = async () => {
+    if (!selectedPersons.length || !selectedCampaign) return
     try {
-      const data = await api.post('/api/persons/find', {
-        companyName: lead.company_name,
-        website: lead.website || '',
-        city: lead.city || '',
-        leadId: lead.id,
+      const data = await api.post('/api/linkedin/add-to-campaign', {
+        personIds: selectedPersons,
+        campaignId: selectedCampaign,
       })
-      showMsg('success', `${lead.company_name}: ${data.found} kişi bulundu`)
-      loadLeads()
-      loadStats()
-    } catch (e: any) {
-      showMsg('error', e.message)
-    } finally {
-      setFindingId(null)
-    }
+      showMsg('success', data.message)
+      setSelectedPersons([])
+      load()
+    } catch (e: any) { showMsg('error', e.message) }
   }
 
-  const handleVerify = async () => {
-    if (!emailToVerify) return
-    setVerifying(true)
+  const sendWhatsApp = async (personId: string) => {
+    setSendingPerson(personId)
     try {
-      const data = await api.post('/api/persons/verify-email', { email: emailToVerify })
-      setVerifyResult(data)
-    } catch (e: any) {
-      showMsg('error', e.message)
-    } finally {
-      setVerifying(false)
-    }
-  }
-
-  const handleGenerate = async () => {
-    if (!genFirst || !genLast || !genDomain) return
-    setGenerating(true)
-    try {
-      const data = await api.post('/api/persons/generate-emails', {
-        firstName: genFirst, lastName: genLast, domain: genDomain
+      await api.post('/api/linkedin/send-whatsapp', {
+        personId,
+        message: customMessages[personId] || undefined,
       })
-      setGenResult(data)
-    } catch (e: any) {
-      showMsg('error', e.message)
-    } finally {
-      setGenerating(false)
-    }
+      showMsg('success', 'Mesaj gönderildi!')
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setSendingPerson(null) }
   }
 
-  const confidenceColor = (c: number) => {
-    if (c >= 80) return 'text-emerald-400'
-    if (c >= 60) return 'text-yellow-400'
-    return 'text-slate-400'
-  }
+  const filteredPersons = filterLead
+    ? persons.filter(p => p.lead_id === filterLead)
+    : persons
 
-  const leadsWithContact = leads.filter(l => l.contact_name)
-  const leadsWithoutContact = leads.filter(l => !l.contact_name)
+  const decisionPowerColor: Record<string, string> = {
+    yüksek: 'text-emerald-400',
+    orta: 'text-yellow-400',
+    düşük: 'text-slate-400',
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Crosshair size={24} className="text-purple-400" />
-          Karar Verici Avı
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm">Web sitesi + LinkedIn + Email pattern engine ile profesyonel kişi bulma</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Linkedin size={24} className="text-blue-400" /> LinkedIn Karar Verici Avı
+          </h1>
+          <p className="text-slate-400 mt-1 text-sm">Şirket sahipleri ve karar vericileri bul — WhatsApp numarası + sosyal medya + kampanyaya ekle</p>
+        </div>
+        <button onClick={batchSearch} disabled={batchSearching}
+          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition">
+          {batchSearching ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+          {batchSearching ? 'Aranıyor...' : 'Toplu Ara (10 şirket)'}
+        </button>
       </div>
 
-      {msg && (
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
-          msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
-        }`}>{msg.text}</div>
-      )}
+      {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {[
-            { label: 'Kişi DB', value: stats.totalPersons, color: 'text-purple-400' },
-            { label: 'Doğrulanan Email', value: stats.verifiedEmails, color: 'text-green-400' },
-            { label: 'LinkedIn\'li', value: stats.withLinkedIn, color: 'text-blue-400' },
-            { label: 'Lead', value: stats.totalLeads, color: 'text-slate-300' },
-            { label: 'Kapsama', value: `%${stats.coverageRate}`, color: 'text-yellow-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-center">
-              <p className={`text-xl font-bold ${color}`}>{value}</p>
-              <p className="text-slate-500 text-xs mt-0.5">{label}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-800/50 p-1 rounded-xl w-fit">
-        {[
-          { id: 'find', label: 'Kişi Bul' },
-          { id: 'database', label: `Veritabanı (${stats?.totalPersons || 0})` },
-          { id: 'leads', label: `Lead Listesi (${leads.length})` },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id as any)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-            }`}>
-            {t.label}
+      {/* Tek Şirket Ara */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+        <h2 className="text-white font-semibold mb-4">🔍 Tek Şirkette Karar Verici Bul</h2>
+        <div className="flex gap-3">
+          <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
+            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500">
+            <option value="">Şirket seçin</option>
+            {leads.map(l => <option key={l.id} value={l.id}>{l.company_name} {l.city ? `— ${l.city}` : ''}</option>)}
+          </select>
+          <button onClick={search} disabled={searching || !selectedLead}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition">
+            {searching ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
+            {searching ? 'Aranıyor...' : 'LinkedIn\'de Ara'}
           </button>
-        ))}
+        </div>
+
+        {searchResult && (
+          <div className="mt-4 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+            <p className="text-blue-300 text-sm font-medium">
+              {searchResult.lead} — {searchResult.found} karar verici bulundu
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* KİŞİ BUL */}
-      {tab === 'find' && (
-        <div className="space-y-6">
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Tek Firma */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
-              <h2 className="text-white font-semibold">Firma Araştır</h2>
-              <input value={companyName} onChange={e => setCompanyName(e.target.value)}
-                placeholder="Firma adı *"
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
-              <div className="grid grid-cols-2 gap-3">
-                <input value={website} onChange={e => setWebsite(e.target.value)}
-                  placeholder="Website (önerilir)"
-                  className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
-                <input value={city} onChange={e => setCity(e.target.value)}
-                  placeholder="Şehir"
-                  className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={verifyEmails} onChange={e => setVerifyEmails(e.target.checked)} className="sr-only peer" />
-                  <div className="w-9 h-5 bg-slate-700 peer-checked:bg-green-600 rounded-full transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
-                </label>
-                <span className="text-slate-400 text-xs">Email doğrulama yap (yavaş ama güvenilir)</span>
-              </div>
-              <button onClick={handleFind} disabled={loading || !companyName}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition">
-                {loading ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
-                {loading ? 'Araştırılıyor...' : 'Kişi Bul'}
-              </button>
-            </div>
-
-            {/* Araçlar */}
-            <div className="space-y-4">
-              {/* Email Doğrula */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-                <h3 className="text-white font-medium mb-3 text-sm">Email Doğrula</h3>
-                <div className="flex gap-2">
-                  <input value={emailToVerify} onChange={e => setEmailToVerify(e.target.value)}
-                    placeholder="email@firma.com"
-                    className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
-                  <button onClick={handleVerify} disabled={verifying || !emailToVerify}
-                    className="px-3 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
-                    {verifying ? <RefreshCw size={13} className="animate-spin" /> : 'Doğrula'}
-                  </button>
-                </div>
-                {verifyResult && (
-                  <div className={`mt-2 flex items-center gap-2 text-xs p-2 rounded-lg ${verifyResult.valid ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                    {verifyResult.valid ? <CheckCircle size={12} /> : <XCircle size={12} />}
-                    {verifyResult.valid ? 'Geçerli' : 'Geçersiz'} — %{verifyResult.confidence} güven — {verifyResult.reason}
-                  </div>
-                )}
-              </div>
-
-              {/* Email Pattern */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-                <h3 className="text-white font-medium mb-3 text-sm">Email Pattern Üret</h3>
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  <input value={genFirst} onChange={e => setGenFirst(e.target.value)}
-                    placeholder="Ad" className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500" />
-                  <input value={genLast} onChange={e => setGenLast(e.target.value)}
-                    placeholder="Soyad" className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500" />
-                  <input value={genDomain} onChange={e => setGenDomain(e.target.value)}
-                    placeholder="domain.com" className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500" />
-                </div>
-                <button onClick={handleGenerate} disabled={generating || !genFirst || !genLast || !genDomain}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs rounded-lg transition">
-                  {generating ? 'Üretiliyor...' : 'Email Pattern Üret + Doğrula'}
-                </button>
-                {genResult && (
-                  <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-                    {genResult.patterns?.slice(0, 5).map((p: any, i: number) => (
-                      <div key={i} className={`flex items-center justify-between text-xs p-1.5 rounded ${p.valid ? 'bg-green-500/5' : 'bg-slate-900'}`}>
-                        <span className={p.valid ? 'text-green-300' : 'text-slate-400'}>{p.email}</span>
-                        <span className={confidenceColor(p.confidence)}>%{p.confidence}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Toplu Tara */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-                <h3 className="text-white font-medium mb-2 text-sm">Toplu Lead Tara</h3>
-                <p className="text-slate-500 text-xs mb-3">Website'i olan 5 leadi otomatik tara</p>
-                <button onClick={handleBatch} disabled={batchLoading}
-                  className="w-full flex items-center justify-center gap-2 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-lg transition">
-                  {batchLoading ? <RefreshCw size={13} className="animate-spin" /> : <Users size={13} />}
-                  {batchLoading ? 'Taranıyor...' : '5 Lead Tara'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Sonuçlar */}
-          {result && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl">
-              <div className="px-5 py-4 border-b border-slate-700 flex items-center gap-2">
-                <User size={15} className="text-purple-400" />
-                <h2 className="text-white font-semibold">{result.company} — {result.found} Kişi Bulundu</h2>
-              </div>
-              {result.found === 0 ? (
-                <div className="p-12 text-center">
-                  <Users size={32} className="text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400 text-sm">Kişi bulunamadı — website ekleyerek tekrar deneyin</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-700/50">
-                  {result.persons?.map((p: any, i: number) => (
-                    <div key={i} className="px-5 py-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-purple-500/10 rounded-full flex items-center justify-center text-purple-300 font-bold text-sm shrink-0">
-                            {p.full_name?.[0]?.toUpperCase() || '?'}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <p className="text-white text-sm font-medium">{p.full_name}</p>
-                              <span className={`text-xs font-bold ${confidenceColor(p.confidence)}`}>%{p.confidence}</span>
-                            </div>
-                            <p className="text-slate-400 text-xs">{p.title} · {p.source}</p>
-                            {p.email && (
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <Mail size={11} className={p.email_verified ? 'text-green-400' : 'text-blue-400'} />
-                                <span className={`text-xs ${p.email_verified ? 'text-green-300' : 'text-blue-300'}`}>{p.email}</span>
-                                {p.email_verified && <CheckCircle size={10} className="text-green-400" />}
-                                {p.email_confidence && <span className="text-slate-500 text-xs">%{p.email_confidence}</span>}
-                              </div>
-                            )}
-                            {p.email_patterns && (
-                              <div className="mt-1">
-                                <p className="text-slate-500 text-xs">Olası: {p.email_patterns.slice(0,3).join(', ')}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {p.linkedin_url && (
-                          <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer"
-                            className="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition">
-                            <Linkedin size={13} />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+      {/* Kampanyaya Ekle */}
+      {selectedPersons.length > 0 && (
+        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-4">
+          <p className="text-emerald-300 text-sm flex-1">{selectedPersons.length} kişi seçili</p>
+          <select value={selectedCampaign} onChange={e => setSelectedCampaign(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500">
+            <option value="">Kampanya seç</option>
+            {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <button onClick={addToCampaign} disabled={!selectedCampaign}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
+            <UserPlus size={14} /> Kampanyaya Ekle
+          </button>
         </div>
       )}
 
-      {/* VERİTABANI */}
-      {tab === 'database' && (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl">
-          <div className="px-5 py-4 border-b border-slate-700 flex items-center gap-3">
-            <Database size={15} className="text-purple-400" />
-            <h2 className="text-white font-semibold">Kişi Veritabanı</h2>
-            <div className="ml-auto flex-1 max-w-xs relative">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input value={dbSearch} onChange={e => setDbSearch(e.target.value)}
-                placeholder="İsim ara..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
-            </div>
+      {/* Kişi Listesi */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-white font-semibold">
+            Bulunan Karar Vericiler ({filteredPersons.length})
+          </h2>
+          <select value={filterLead} onChange={e => setFilterLead(e.target.value)}
+            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none">
+            <option value="">Tüm şirketler</option>
+            {leads.map(l => <option key={l.id} value={l.id}>{l.company_name}</option>)}
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center h-32 items-center"><RefreshCw size={24} className="animate-spin text-slate-400" /></div>
+        ) : filteredPersons.length === 0 ? (
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
+            <Linkedin size={40} className="text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-400">Henüz karar verici bulunamadı</p>
+            <p className="text-slate-500 text-sm mt-1">Şirket seçip "LinkedIn'de Ara" butonuna tıklayın</p>
           </div>
-          {!dbPersons.length ? (
-            <div className="p-12 text-center">
-              <Database size={32} className="text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm">Henüz kişi yok — firma araştırınca burada birikir</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-700/50 max-h-[500px] overflow-y-auto">
-              {dbPersons.map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-500/10 rounded-full flex items-center justify-center text-purple-300 text-xs font-bold">
-                      {p.full_name?.[0]?.toUpperCase() || '?'}
+        ) : (
+          <div className="space-y-3">
+            {filteredPersons.map(person => (
+              <div key={person.id} className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <input type="checkbox" checked={selectedPersons.includes(person.id)}
+                    onChange={e => setSelectedPersons(prev => e.target.checked ? [...prev, person.id] : prev.filter(id => id !== person.id))}
+                    className="accent-blue-500 shrink-0" />
+
+                  {/* Avatar */}
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    {person.name?.[0]?.toUpperCase() || '?'}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-semibold">{person.name}</p>
+                      {person.aiAnalysis?.isDecisionMaker && (
+                        <span className="text-xs px-1.5 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded">✓ Karar Verici</span>
+                      )}
+                      {person.aiAnalysis?.decisionPower && (
+                        <span className={`text-xs font-medium ${decisionPowerColor[person.aiAnalysis.decisionPower] || 'text-slate-400'}`}>
+                          {person.aiAnalysis.decisionPower} güç
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <p className="text-white text-sm font-medium">{p.full_name}</p>
-                      <p className="text-slate-400 text-xs">{p.title} · {p.company_name}</p>
-                      {p.email && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {p.email_verified ? <CheckCircle size={10} className="text-green-400" /> : <Mail size={10} className="text-slate-500" />}
-                          <span className="text-xs text-slate-400">{p.email}</span>
-                        </div>
+                    <p className="text-slate-400 text-xs">{person.title} — {person.company}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      {person.phone && (
+                        <span className="flex items-center gap-1 text-xs text-emerald-400">
+                          <Phone size={10} /> {person.phone}
+                        </span>
+                      )}
+                      {person.linkedin_url && (
+                        <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer"
+                          className="text-blue-400 text-xs flex items-center gap-1 hover:underline">
+                          <Linkedin size={10} /> LinkedIn
+                        </a>
+                      )}
+                      {person.instagram_url && (
+                        <a href={person.instagram_url} target="_blank" rel="noopener noreferrer"
+                          className="text-pink-400 text-xs flex items-center gap-1 hover:underline">
+                          <Instagram size={10} /> Instagram
+                        </a>
+                      )}
+                      {person.twitter_url && (
+                        <a href={person.twitter_url} target="_blank" rel="noopener noreferrer"
+                          className="text-sky-400 text-xs flex items-center gap-1 hover:underline">
+                          <Twitter size={10} /> Twitter
+                        </a>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold ${confidenceColor(p.confidence)}`}>%{p.confidence}</span>
-                    {p.linkedin_url && (
-                      <a href={p.linkedin_url} target="_blank" rel="noopener noreferrer"
-                        className="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 rounded-lg text-blue-400 transition">
-                        <Linkedin size={12} />
-                      </a>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {person.phone ? (
+                      <button onClick={() => setExpanded(expanded === person.id ? null : person.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-300 text-xs rounded-lg transition">
+                        <Send size={11} /> WA Gönder
+                      </button>
+                    ) : (
+                      <span className="text-slate-500 text-xs px-3 py-1.5 bg-slate-700/50 rounded-lg">Telefon yok</span>
+                    )}
+                    <button onClick={() => setExpanded(expanded === person.id ? null : person.id)}
+                      className="p-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition">
+                      {expanded === person.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded Panel */}
+                {expanded === person.id && (
+                  <div className="border-t border-slate-700 px-5 py-4 space-y-4">
+                    {/* AI Analiz */}
+                    {person.aiAnalysis && (
+                      <div className="grid lg:grid-cols-2 gap-4">
+                        <div className="bg-slate-900/50 rounded-xl p-4">
+                          <p className="text-blue-300 text-xs font-medium mb-2">🧠 AI Yaklaşım Stratejisi</p>
+                          <p className="text-slate-300 text-sm">{person.aiAnalysis.approachStrategy}</p>
+                          {person.aiAnalysis.bestContactTime && (
+                            <p className="text-yellow-400 text-xs mt-2">⏰ {person.aiAnalysis.bestContactTime}</p>
+                          )}
+                        </div>
+                        {person.aiAnalysis.personalizedOpener && (
+                          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+                            <p className="text-emerald-300 text-xs font-medium mb-2">💬 Kişisel WA Mesajı</p>
+                            <p className="text-white text-sm">{person.aiAnalysis.personalizedOpener}</p>
+                            <button onClick={() => setCustomMessages(prev => ({ ...prev, [person.id]: person.aiAnalysis.personalizedOpener }))}
+                              className="mt-2 px-2 py-1 bg-slate-700 text-slate-300 text-xs rounded">Kullan</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* WA Gönder */}
+                    {person.phone && (
+                      <div className="space-y-2">
+                        <textarea
+                          value={customMessages[person.id] || person.aiAnalysis?.personalizedOpener || ''}
+                          onChange={e => setCustomMessages(prev => ({ ...prev, [person.id]: e.target.value }))}
+                          placeholder="WhatsApp mesajı yazın..."
+                          rows={2}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500 resize-none"
+                        />
+                        <button onClick={() => sendWhatsApp(person.id)} disabled={sendingPerson === person.id}
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
+                          {sendingPerson === person.id ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                          WhatsApp Gönder — {person.phone}
+                        </button>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* LEAD LİSTESİ */}
-      {tab === 'leads' && (
-        <div className="space-y-4">
-          {leadsWithContact.length > 0 && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl">
-              <div className="px-5 py-3 border-b border-slate-700 flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full" />
-                <h3 className="text-white font-medium text-sm">Kişi Bulunanlar ({leadsWithContact.length})</h3>
+                )}
               </div>
-              <div className="divide-y divide-slate-700/50 max-h-48 overflow-y-auto">
-                {leadsWithContact.map(lead => (
-                  <div key={lead.id} className="flex items-center justify-between px-5 py-3">
-                    <div>
-                      <p className="text-white text-sm">{lead.company_name}</p>
-                      <p className="text-purple-300 text-xs">{lead.contact_name} {lead.email && `· ${lead.email}`}</p>
-                    </div>
-                    <span className="text-emerald-400 text-xs">✓</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl">
-            <div className="px-5 py-3 border-b border-slate-700 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-slate-500 rounded-full" />
-                <h3 className="text-white font-medium text-sm">Kişi Bulunamayanlar ({leadsWithoutContact.length})</h3>
-              </div>
-              <button onClick={handleBatch} disabled={batchLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs rounded-lg transition">
-                {batchLoading ? <RefreshCw size={12} className="animate-spin" /> : <Crosshair size={12} />}
-                {batchLoading ? 'Taranıyor...' : '5 Lead Otomatik Tara'}
-              </button>
-            </div>
-            <div className="divide-y divide-slate-700/50 max-h-96 overflow-y-auto">
-              {leadsWithoutContact.map(lead => (
-                <div key={lead.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-slate-300 text-xs font-bold">
-                      {lead.company_name?.[0]?.toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-white text-sm">{lead.company_name}</p>
-                      <p className="text-slate-500 text-xs">{lead.city} · {lead.website ? '🌐 website var' : 'website yok'}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => findForLead(lead)} disabled={findingId === lead.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs rounded-lg transition disabled:opacity-50">
-                    {findingId === lead.id ? <RefreshCw size={11} className="animate-spin" /> : <Crosshair size={11} />}
-                    {findingId === lead.id ? 'Aranıyor...' : 'Bul'}
-                  </button>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
