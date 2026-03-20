@@ -7,7 +7,7 @@ import {
   Settings, CreditCard, LogOut, Zap, Activity, Target, DollarSign,
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
-  Clock, Heart, Code, Building2, Phone
+  Clock, Heart, Code, Building2, Phone, Globe, Globe2
 } from 'lucide-react'
 
 const navItems = [
@@ -24,6 +24,9 @@ const navItems = [
   { href: '/retargeting', label: 'Retargeting', icon: RefreshCw },
   { href: '/proposals', label: 'Teklif & Pazarlık', icon: FileText },
   { href: '/smart-timing', label: 'Akıllı Zamanlama', icon: Clock },
+  { href: '/cultural', label: 'Kültürel Uyum', icon: Globe },
+  { href: '/export', label: 'İhracat Zekası', icon: Globe2 },
+  { href: '/meta-intent', label: 'Meta Intent', icon: Target },
   { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
