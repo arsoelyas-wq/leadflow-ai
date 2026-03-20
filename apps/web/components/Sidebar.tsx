@@ -7,7 +7,7 @@ import {
   Settings, CreditCard, LogOut, Zap, Activity, Target, DollarSign,
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
-  Clock, Heart, Code, Building2
+  Clock, Heart, Code, Building2, Phone
 } from 'lucide-react'
 
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/sequences', label: 'AI Sekanslar', icon: Bot },
   { href: '/ab-testing', label: 'A/B Test', icon: FlaskConical },
   { href: '/video-outreach', label: 'AI Video', icon: Video },
+  { href: '/voice-outreach', label: 'AI Sesli Arama', icon: Phone },
   { href: '/vision', label: 'Vision AI', icon: Eye },
   { href: '/retargeting', label: 'Retargeting', icon: RefreshCw },
   { href: '/proposals', label: 'Teklif & Pazarlık', icon: FileText },

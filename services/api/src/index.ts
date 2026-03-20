@@ -19,12 +19,14 @@ const aiLimiter       = rateLimit({ windowMs: 60*1000,    max: 20 });
 
 app.use(generalLimiter);
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/voice/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 const { authMiddleware } = require('./middleware/auth');
 
 // PUBLIC
 app.use('/api/auth', authLimiter, require('./routes/auth'));
+app.post('/api/voice/webhook', require('./routes/voice-outreach').webhook || ((req: any, res: any) => res.json({ ok: true })));
 const linksRouter = require('./routes/links');
 app.get('/t/:code', (req: any, res: any) => {
   linksRouter.handle(Object.assign(req, { url: `/redirect/${req.params.code}`, path: `/redirect/${req.params.code}` }), res, () => res.status(404).send('Not found'));
@@ -60,6 +62,7 @@ app.use('/api/health-scores',  authMiddleware, require('./routes/health-scores')
 app.use('/api/email',          authMiddleware, require('./routes/email'));
 app.use('/api/developer',      authMiddleware, require('./routes/developer'));
 app.use('/api/whitelabel',     authMiddleware, require('./routes/whitelabel'));
+app.use('/api/voice',          authMiddleware, require('./routes/voice-outreach'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
