@@ -63,6 +63,7 @@ app.use('/api/email',          authMiddleware, require('./routes/email'));
 app.use('/api/developer',      authMiddleware, require('./routes/developer'));
 app.use('/api/whitelabel',     authMiddleware, require('./routes/whitelabel'));
 app.use('/api/voice',          authMiddleware, require('./routes/voice-outreach'));
+app.use('/api/push', authMiddleware, require('./routes/push'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);

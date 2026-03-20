@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import Sidebar from '../../components/Sidebar'
+import PWAInstallBanner from '../../components/PWAInstallBanner'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -30,6 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 ml-64 p-8 overflow-auto">
         {children}
       </main>
+      <PWAInstallBanner />
     </div>
   )
 }
