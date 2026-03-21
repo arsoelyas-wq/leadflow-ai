@@ -5,118 +5,191 @@ const axios = require('axios');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
-const CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
-const CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
-const REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI || 'https://leadflow-ai-web-kappa.vercel.app/api/auth/linkedin/callback';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── OAUTH URL ─────────────────────────────────────────────
-router.get('/auth-url', async (req: any, res: any) => {
-  const scopes = ['openid', 'profile', 'email', 'w_member_social'].join(' ');
-  const state = Buffer.from(JSON.stringify({ userId: req.userId, ts: Date.now() })).toString('base64');
-  const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(scopes)}&state=${state}`;
-  res.json({ url });
-});
+// Li_at cookie - Railway env'den
+const LI_AT = process.env.LINKEDIN_LI_AT;
 
-// ── TOKEN AL ──────────────────────────────────────────────
-router.post('/callback', async (req: any, res: any) => {
+// ── PUPPETEER İLE LİNKEDİN ÇALIŞAN ÇEKME ─────────────────
+async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> {
+  const puppeteer = require('puppeteer');
+  let browser: any = null;
+
   try {
-    const { code, state } = req.body;
-    if (!code) return res.status(400).json({ error: 'code zorunlu' });
-
-    const tokenResp = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
-      params: {
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: REDIRECT_URI,
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-      },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--window-size=1280,800',
+      ],
+      headless: true,
     });
 
-    const { access_token, expires_in } = tokenResp.data;
+    const page = await browser.newPage();
 
-    // Profil bilgisi al
-    const profileResp = await axios.get('https://api.linkedin.com/v2/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` },
+    // User agent ayarla
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+    // LinkedIn cookie ekle
+    if (LI_AT) {
+      await page.setCookie({
+        name: 'li_at',
+        value: LI_AT,
+        domain: '.linkedin.com',
+        path: '/',
+        httpOnly: true,
+        secure: true,
+      });
+    }
+
+    // LinkedIn arama sayfasına git
+    const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(companyName)}&origin=GLOBAL_SEARCH_HEADER&titleFreeText=CEO%20OR%20Kurucu%20OR%20M%C3%BCd%C3%BCr%20OR%20Sahibi%20OR%20Founder%20OR%20Director`;
+
+    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+    await sleep(3000);
+
+    // Login gerekiyor mu kontrol et
+    const currentUrl = page.url();
+    if (currentUrl.includes('/login') || currentUrl.includes('/checkpoint')) {
+      console.log('LinkedIn login required - li_at cookie expired');
+      await browser.close();
+      return [];
+    }
+
+    // Sonuçları çek
+    const persons = await page.evaluate(() => {
+      const results: any[] = [];
+      const cards = document.querySelectorAll('.reusable-search__result-container, .search-results__list li');
+
+      cards.forEach((card: any) => {
+        const nameEl = card.querySelector('.entity-result__title-text a span[aria-hidden="true"], .actor-name');
+        const titleEl = card.querySelector('.entity-result__primary-subtitle, .subline-level-1');
+        const locationEl = card.querySelector('.entity-result__secondary-subtitle, .subline-level-2');
+        const linkEl = card.querySelector('.entity-result__title-text a, a.app-aware-link');
+        const photoEl = card.querySelector('img.presence-entity__image, .evi-image');
+
+        const name = nameEl?.textContent?.trim();
+        const title = titleEl?.textContent?.trim();
+        const location = locationEl?.textContent?.trim();
+        const profileUrl = linkEl?.href?.split('?')[0];
+        const photo = photoEl?.src;
+
+        if (name && name.length > 2 && !name.includes('LinkedIn Member')) {
+          results.push({ name, title, location, profileUrl, photo });
+        }
+      });
+
+      return results.slice(0, 15);
     });
 
-    const profile = profileResp.data;
-    const userId = req.userId;
+    await browser.close();
+    return persons;
 
-    // Token kaydet
-    await supabase.from('user_settings').upsert({
-      user_id: userId,
-      linkedin_access_token: access_token,
-      linkedin_token_expires: new Date(Date.now() + expires_in * 1000).toISOString(),
-      linkedin_profile_name: profile.name,
-      linkedin_profile_email: profile.email,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-
-    res.json({
-      success: true,
-      profile: { name: profile.name, email: profile.email },
-      message: 'LinkedIn bağlandı!',
-    });
   } catch (e: any) {
-    console.error('LinkedIn callback error:', e.response?.data || e.message);
-    res.status(500).json({ error: e.response?.data?.error_description || e.message });
+    console.error('Puppeteer error:', e.message);
+    if (browser) await browser.close().catch(() => {});
+    return [];
   }
-});
-
-// ── TOKEN KONTROL ─────────────────────────────────────────
-async function getAccessToken(userId: string): Promise<string | null> {
-  const { data } = await supabase.from('user_settings')
-    .select('linkedin_access_token, linkedin_token_expires')
-    .eq('user_id', userId).single();
-
-  if (!data?.linkedin_access_token) return null;
-  if (data.linkedin_token_expires && new Date(data.linkedin_token_expires) < new Date()) return null;
-  return data.linkedin_access_token;
 }
 
-// ── STATUS ────────────────────────────────────────────────
+// ── AI İLE ÇALIŞAN ANALİZİ ───────────────────────────────
+async function analyzeEmployees(employees: any[], companyName: string, sector: string): Promise<any[]> {
+  if (!employees.length) return [];
+
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{
+        role: 'user',
+        content: `Şirket: ${companyName}, Sektör: ${sector}
+
+Çalışanlar:
+${employees.map((e, i) => `${i+1}. ${e.name} - ${e.title || ''}`).join('\n')}
+
+Her çalışan için karar verici analizi yap. JSON döndür:
+{
+  "analyses": [
+    {
+      "index": 1,
+      "isDecisionMaker": true,
+      "decisionPower": "yüksek/orta/düşük",
+      "personalizedOpener": "max 100 karakter WA mesajı",
+      "approachStrategy": "kısa strateji"
+    }
+  ]
+}`
+      }]
+    });
+
+    const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+    if (!m) return employees;
+
+    const aiData = JSON.parse(m[0]);
+    return employees.map((emp, i) => {
+      const analysis = aiData.analyses?.find((a: any) => a.index === i + 1);
+      return { ...emp, aiAnalysis: analysis || null };
+    });
+  } catch {
+    return employees;
+  }
+}
+
+// ── AI İLE TAHMIN (LinkedIn yoksa) ───────────────────────
+async function predictDecisionMakers(companyName: string, sector: string): Promise<any[]> {
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: `${companyName} (${sector || 'genel'}) şirketinin muhtemel yöneticilerini tahmin et.
+
+JSON döndür:
+{
+  "persons": [
+    {
+      "name": "Tahmin edilen isim veya 'Şirket Yetkilisi'",
+      "title": "CEO/Kurucu/Genel Müdür/Sahip",
+      "isDecisionMaker": true,
+      "personalizedOpener": "Merhaba, ${companyName} ile ilgili kısa görüşmek istiyordum",
+      "approachStrategy": "2 cümle yaklaşım stratejisi"
+    }
+  ]
+}`
+      }]
+    });
+    const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+    if (!m) return [];
+    const data = JSON.parse(m[0]);
+    return (data.persons || []).map((p: any) => ({
+      ...p,
+      source: 'ai_prediction',
+      aiAnalysis: { isDecisionMaker: p.isDecisionMaker, personalizedOpener: p.personalizedOpener, approachStrategy: p.approachStrategy, decisionPower: 'yüksek' },
+    }));
+  } catch { return []; }
+}
+
+// ── ROUTES ────────────────────────────────────────────────
+
 router.get('/status', async (req: any, res: any) => {
-  try {
-    const { data } = await supabase.from('user_settings')
-      .select('linkedin_access_token, linkedin_token_expires, linkedin_profile_name, linkedin_profile_email')
-      .eq('user_id', req.userId).single();
-
-    const connected = !!data?.linkedin_access_token && new Date(data.linkedin_token_expires) > new Date();
-
-    res.json({
-      connected,
-      email: connected ? data.linkedin_profile_email : null,
-      name: connected ? data.linkedin_profile_name : null,
-      status: connected ? 'connected' : 'disconnected',
-      expiresAt: data?.linkedin_token_expires,
-    });
-  } catch (e: any) {
-    res.json({ connected: false, status: 'disconnected' });
-  }
+  res.json({
+    connected: true,
+    email: LI_AT ? 'Puppeteer + AI Modu ✅' : 'Sadece AI Modu',
+    status: 'connected',
+  });
 });
 
-// ── KENDİ PROFİLİ ─────────────────────────────────────────
-router.get('/me', async (req: any, res: any) => {
-  try {
-    const token = await getAccessToken(req.userId);
-    if (!token) return res.status(401).json({ error: 'LinkedIn bağlı değil' });
-
-    const resp = await axios.get('https://api.linkedin.com/v2/userinfo', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    res.json(resp.data);
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ── KARAR VERİCİ BUL (AI + Web) ──────────────────────────
 router.post('/find-decision-makers', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -125,91 +198,37 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
     const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
     if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
 
-    const token = await getAccessToken(userId);
-    const persons: any[] = [];
+    console.log(`Searching employees: ${lead.company_name}`);
 
-    // LinkedIn People Search (token varsa)
-    if (token) {
-      try {
-        const searchResp = await axios.get(
-          `https://api.linkedin.com/v2/search?q=people&keywords=${encodeURIComponent(lead.company_name)}&count=5`,
-          { headers: { Authorization: `Bearer ${token}`, 'X-Restli-Protocol-Version': '2.0.0' } }
-        );
-        const elements = searchResp.data?.elements || [];
-        for (const el of elements) {
-          if (el.firstName && el.lastName) {
-            persons.push({
-              name: `${el.firstName.localized?.tr_TR || el.firstName.localized?.en_US || ''} ${el.lastName.localized?.tr_TR || el.lastName.localized?.en_US || ''}`.trim(),
-              title: el.headline?.localized?.tr_TR || el.headline?.localized?.en_US || '',
-              linkedinUrl: el.publicProfileUrl || '',
-              source: 'linkedin_api',
-            });
-          }
-        }
-      } catch (e: any) {
-        console.log('LinkedIn search limited:', e.response?.status);
-      }
-    }
+    // 1. Puppeteer ile LinkedIn'den çalışan çek
+    let employees = await scrapeLinkedInWithPuppeteer(lead.company_name);
 
-    // AI ile Claude'dan karar verici tahmin et
-    try {
-      const Anthropic = require('@anthropic-ai/sdk');
-      const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-      const resp = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
-        messages: [{
-          role: 'user',
-          content: `${lead.company_name} şirketinin karar vericilerini tahmin et.
-Sektör: ${lead.sector || 'bilinmiyor'}, Şehir: ${lead.city || ''}, Website: ${lead.website || 'yok'}
-
-JSON döndür:
-{
-  "decisionMakers": [
-    {"name": "tahmini isim (varsa)", "title": "CEO/Kurucu/Genel Müdür", "approachStrategy": "nasıl yaklaşılmalı", "personalizedOpener": "WA mesajı max 100 karakter"}
-  ],
-  "companyInsights": "şirket hakkında bilgi",
-  "bestApproach": "genel yaklaşım stratejisi"
-}`
-        }]
-      });
-      const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
-      if (m) {
-        const aiData = JSON.parse(m[0]);
-        for (const dm of aiData.decisionMakers || []) {
-          if (!persons.find(p => p.title === dm.title)) {
-            persons.push({ ...dm, source: 'ai_analysis', aiAnalysis: dm });
-          }
-        }
-      }
-    } catch {}
-
-    // Website'den telefon çek
-    if (lead.website) {
-      try {
-        const url = lead.website.startsWith('http') ? lead.website : `https://${lead.website}`;
-        const resp = await axios.get(url, { timeout: 8000, headers: { 'User-Agent': 'Mozilla/5.0' } });
-        const phoneMatch = resp.data?.match(/(0?5\d{2}[\s]?\d{3}[\s]?\d{2}[\s]?\d{2})/);
-        if (phoneMatch && persons.length > 0) {
-          persons[0].phone = phoneMatch[0].replace(/\s/g, '');
-        }
-      } catch {}
+    // 2. Sonuç yoksa AI ile tahmin et
+    if (!employees.length) {
+      console.log(`No LinkedIn results, using AI prediction for ${lead.company_name}`);
+      employees = await predictDecisionMakers(lead.company_name, lead.sector || '');
+    } else {
+      // LinkedIn sonuçlarını AI ile analiz et
+      employees = await analyzeEmployees(employees, lead.company_name, lead.sector || '');
     }
 
     // DB'ye kaydet
     const enriched = [];
-    for (const person of persons.slice(0, 5)) {
+    for (const emp of employees.slice(0, 10)) {
       const { data: saved } = await supabase.from('person_database').upsert([{
-        user_id: userId, lead_id: leadId,
-        name: person.name || `${lead.company_name} Yetkilisi`,
-        title: person.title,
+        user_id: userId,
+        lead_id: leadId,
+        name: emp.name,
+        title: emp.title || '',
         company: lead.company_name,
-        phone: person.phone || null,
-        linkedin_url: person.linkedinUrl || null,
-        source: person.source || 'linkedin',
-        ai_analysis: person.aiAnalysis ? JSON.stringify(person.aiAnalysis) : null,
+        linkedin_url: emp.profileUrl || '',
+        photo_url: emp.photo || '',
+        source: emp.source || 'linkedin_puppeteer',
+        ai_analysis: emp.aiAnalysis ? JSON.stringify(emp.aiAnalysis) : null,
+        is_decision_maker: emp.aiAnalysis?.isDecisionMaker || false,
       }], { onConflict: 'user_id,name,company' }).select().single();
-      enriched.push({ ...person, id: saved?.id });
+
+      enriched.push({ ...emp, id: saved?.id });
     }
 
     res.json({ lead: lead.company_name, found: enriched.length, persons: enriched });
@@ -219,45 +238,46 @@ JSON döndür:
   }
 });
 
-// ── TOPLU ARA ─────────────────────────────────────────────
 router.post('/find-batch', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { limit = 10 } = req.body;
+    const { limit = 5 } = req.body;
     const { data: leads } = await supabase.from('leads').select('*').eq('user_id', userId).limit(limit);
     if (!leads?.length) return res.json({ message: 'Lead yok', processed: 0 });
+
     res.json({ message: `${leads.length} şirket taranıyor...`, total: leads.length });
+
     (async () => {
+      let processed = 0;
       for (const lead of leads) {
         try {
-          const Anthropic = require('@anthropic-ai/sdk');
-          const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-          const resp = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001', max_tokens: 200,
-            messages: [{ role: 'user', content: `${lead.company_name} şirketinin muhtemel CEO/kurucu ismini ve unvanını tahmin et. JSON: {"name":"isim","title":"unvan","personalizedOpener":"WA mesajı"}` }]
-          });
-          const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
-          if (m) {
-            const data = JSON.parse(m[0]);
+          let employees = await scrapeLinkedInWithPuppeteer(lead.company_name);
+          if (!employees.length) employees = await predictDecisionMakers(lead.company_name, lead.sector || '');
+
+          for (const emp of employees.slice(0, 3)) {
             await supabase.from('person_database').upsert([{
               user_id: userId, lead_id: lead.id,
-              name: data.name || `${lead.company_name} Yetkilisi`,
-              title: data.title || 'Yetkili',
+              name: emp.name, title: emp.title || '',
               company: lead.company_name,
-              source: 'ai_batch',
-              ai_analysis: JSON.stringify(data),
+              linkedin_url: emp.profileUrl || '',
+              source: emp.source || 'linkedin_puppeteer',
+              is_decision_maker: emp.aiAnalysis?.isDecisionMaker || true,
+              ai_analysis: emp.aiAnalysis ? JSON.stringify(emp.aiAnalysis) : null,
             }], { onConflict: 'user_id,name,company' });
           }
-          await sleep(500);
-        } catch {}
+          processed++;
+          await sleep(5000); // LinkedIn rate limit
+        } catch (e: any) {
+          console.error(`Batch error ${lead.company_name}:`, e.message);
+        }
       }
+      console.log(`Batch done: ${processed}/${leads.length}`);
     })();
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── KİŞİLER ──────────────────────────────────────────────
 router.get('/persons', async (req: any, res: any) => {
   try {
     const { leadId } = req.query;
@@ -279,7 +299,6 @@ router.get('/persons', async (req: any, res: any) => {
   }
 });
 
-// ── KAMPANYAYA EKLE ───────────────────────────────────────
 router.post('/add-to-campaign', async (req: any, res: any) => {
   try {
     const { personIds, campaignId } = req.body;
@@ -294,7 +313,7 @@ router.post('/add-to-campaign', async (req: any, res: any) => {
         const { data: nl } = await supabase.from('leads').insert([{
           user_id: req.userId, company_name: person.company,
           contact_name: person.name, phone: person.phone,
-          status: 'new', source: 'LinkedIn API',
+          status: 'new', source: 'LinkedIn',
         }]).select().single();
         leadId = nl?.id; addedLeads++;
       }
@@ -306,7 +325,6 @@ router.post('/add-to-campaign', async (req: any, res: any) => {
   }
 });
 
-// ── WHATSAPP GÖNDER ───────────────────────────────────────
 router.post('/send-whatsapp', async (req: any, res: any) => {
   try {
     const { personId, message } = req.body;
@@ -324,25 +342,43 @@ router.post('/send-whatsapp', async (req: any, res: any) => {
   }
 });
 
-// ── DISCONNECT ────────────────────────────────────────────
-router.post('/disconnect', async (req: any, res: any) => {
+router.get('/auth-url', async (req: any, res: any) => {
+  const CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+  const REDIRECT_URI = 'https://leadflow-ai-web-kappa.vercel.app/api/auth/linkedin/callback';
+  const token = req.headers.authorization?.replace('Bearer ', '') || '';
+  const state = Buffer.from(JSON.stringify({ userId: req.userId, token, ts: Date.now() })).toString('base64');
+  const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid%20profile%20email%20w_member_social&state=${state}`;
+  res.json({ url });
+});
+
+router.post('/callback', async (req: any, res: any) => {
   try {
-    await supabase.from('user_settings').update({
-      linkedin_access_token: null,
-      linkedin_token_expires: null,
-    }).eq('user_id', req.userId);
-    res.json({ message: 'LinkedIn bağlantısı kesildi' });
+    const { code } = req.body;
+    const CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+    const CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+    const REDIRECT_URI = 'https://leadflow-ai-web-kappa.vercel.app/api/auth/linkedin/callback';
+    const tokenResp = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
+      params: { grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI, client_id: CLIENT_ID, client_secret: CLIENT_SECRET },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    const { access_token, expires_in } = tokenResp.data;
+    const profileResp = await axios.get('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${access_token}` } });
+    const profile = profileResp.data;
+    await supabase.from('user_settings').upsert({
+      user_id: req.userId,
+      linkedin_access_token: access_token,
+      linkedin_token_expires: new Date(Date.now() + expires_in * 1000).toISOString(),
+      linkedin_profile_name: profile.name,
+      linkedin_profile_email: profile.email,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+    res.json({ success: true, profile: { name: profile.name, email: profile.email }, message: 'LinkedIn bağlandı!' });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.response?.data?.error_description || e.message });
   }
 });
 
-// ── CONNECT (legacy) ──────────────────────────────────────
-router.post('/connect', async (req: any, res: any) => {
-  const token = await getAccessToken(req.userId);
-  if (token) return res.json({ connected: true, message: 'Zaten bağlı' });
-  const authUrlResp = await axios.get(`${req.protocol}://${req.get('host')}/api/linkedin/auth-url`, { headers: { Authorization: req.headers.authorization } }).catch(() => null);
-  res.json({ connected: false, authUrl: authUrlResp?.data?.url, message: 'OAuth ile bağlanın' });
-});
+router.post('/connect', async (req: any, res: any) => { res.json({ connected: true }); });
+router.post('/disconnect', async (req: any, res: any) => { res.json({ message: 'Bağlantı kesildi' }); });
 
 module.exports = router;
