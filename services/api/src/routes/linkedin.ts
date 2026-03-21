@@ -211,7 +211,7 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
       const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
       const aiResp = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001', max_tokens: 400,
-        messages: [{ role: 'user', content: `${lead.company_name} (${lead.sector || 'genel'}) sirketinin muhtemel yoneticisini tahmin et. JSON dondurac: {"persons":[{"name":"tahmini isim","title":"CEO/Kurucu/Sahip","personalizedOpener":"Merhaba, kisa gorusme yapabilir miyiz?","approachStrategy":"Dogrudan ve samimi yak"}]}` }]
+        messages: [{ role: 'user', content: 'Return ONLY valid JSON, no markdown, no explanation. Format: {"persons":[{"name":"Ali Yilmaz","title":"CEO","personalizedOpener":"Merhaba, gorusmek istiyordum","approachStrategy":"Dogrudan yak"}]}. Company: ' + lead.company_name + ' Sector: ' + (lead.sector || 'general') }]
       });
       const aiText = aiResp.content[0]?.text || '';
       console.log('AI raw response:', aiText.slice(0, 200));
