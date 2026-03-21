@@ -5,301 +5,226 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 const router = express.Router();
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-const DECISION_TITLES = [
-  'ceo', 'genel müdür', 'kurucu', 'founder', 'owner', 'sahip',
-  'direktör', 'director', 'müdür', 'manager', 'başkan', 'president',
-  'satın alma', 'procurement', 'purchasing', 'tedarik',
-  'satış', 'sales', 'ticaret', 'ihracat', 'pazarlama', 'marketing',
-  'cmo', 'coo', 'cto', 'cfo', 'partner', 'ortak', 'yönetici', 'vp',
-];
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+};
 
-function getHeaders(liAt: string) {
-  return {
-    'Cookie': `li_at=${liAt}; lang=v=2&lang=tr-tr`,
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Referer': 'https://www.linkedin.com/',
-    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
-    'sec-fetch-dest': 'document',
-    'sec-fetch-mode': 'navigate',
-    'sec-fetch-site': 'same-origin',
-    'upgrade-insecure-requests': '1',
-  };
-}
+router.get('/status', async (req, res) => {
+  res.json({ connected: true, email: 'Web Scraping Modu', status: 'connected' });
+});
 
-// LinkedIn şirket sayfasından çalışanları çek
-async function scrapeLinkedInCompanyPage(companyName: string, liAt: string): Promise<any[]> {
-  const persons: any[] = [];
-
-  try {
-    // 1. Şirket arama sayfası
-    const searchUrl = `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(companyName)}`;
-    const searchRes = await axios.get(searchUrl, {
-      headers: getHeaders(liAt),
-      timeout: 15000,
-      maxRedirects: 3,
-    });
-
-    const $search = cheerio.load(searchRes.data);
-
-    // JSON-LD veya inline data'dan şirket slug bul
-    let companySlug = '';
-    $search('a[href*="/company/"]').each((_: any, el: any) => {
-      const href = $search(el).attr('href') || '';
-      const match = href.match(/\/company\/([^/?]+)/);
-      if (match && !companySlug) companySlug = match[1];
-    });
-
-    if (!companySlug) {
-      // Alternatif: script tag içinden bul
-      $search('script[type="application/ld+json"]').each((_: any, el: any) => {
-        try {
-          const data = JSON.parse($search(el).html() || '{}');
-          if (data.url?.includes('/company/')) {
-            const match = data.url.match(/\/company\/([^/?]+)/);
-            if (match) companySlug = match[1];
-          }
-        } catch {}
-      });
-    }
-
-    if (companySlug) {
-      await sleep(1500);
-
-      // 2. Şirket people sayfası
-      const peopleUrl = `https://www.linkedin.com/company/${companySlug}/people/`;
-      const peopleRes = await axios.get(peopleUrl, {
-        headers: getHeaders(liAt),
-        timeout: 15000,
-        maxRedirects: 3,
-      });
-
-      const $people = cheerio.load(peopleRes.data);
-
-      // Çalışan kartlarını parse et
-      $people('.org-people-profile-card, [data-member-id], .artdeco-entity-lockup').each((_: any, el: any) => {
-        const name = $people(el).find('.org-people-profile-card__profile-title, dt, h3, .artdeco-entity-lockup__title').first().text().trim();
-        const title = $people(el).find('.lt-line-clamp, dd, .org-people-profile-card__profile-position, .artdeco-entity-lockup__subtitle').first().text().trim();
-        const profileUrl = $people(el).find('a[href*="/in/"]').first().attr('href') || '';
-
-        if (name && name.length > 2 && name.length < 60) {
-          const isDecision = DECISION_TITLES.some(t => title.toLowerCase().includes(t));
-          persons.push({
-            full_name: name,
-            title: title || 'Çalışan',
-            linkedin_url: profileUrl ? `https://linkedin.com${profileUrl.split('?')[0]}` : null,
-            source: 'LinkedIn Company Page',
-            confidence: 90,
-            isDecisionMaker: isDecision,
-          });
-        }
-      });
-
-      // JSON içindeki veriyi de parse et
-      $people('script').each((_: any, el: any) => {
-        try {
-          const content = $people(el).html() || '';
-          if (content.includes('firstName') && content.includes('lastName')) {
-            const matches = content.match(/"firstName":"([^"]+)","lastName":"([^"]+)"/g) || [];
-            matches.forEach((match: string) => {
-              const nameMatch = match.match(/"firstName":"([^"]+)","lastName":"([^"]+)"/);
-              if (nameMatch) {
-                const name = `${nameMatch[1]} ${nameMatch[2]}`.trim();
-                if (name.length > 2 && !persons.find((p: any) => p.full_name === name)) {
-                  persons.push({
-                    full_name: name,
-                    title: 'Çalışan',
-                    source: 'LinkedIn JSON',
-                    confidence: 85,
-                    isDecisionMaker: false,
-                  });
-                }
-              }
-            });
-          }
-        } catch {}
-      });
-    }
-
-    await sleep(1000);
-
-    // 3. LinkedIn kişi arama sayfası
-    const peopleSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(companyName + ' CEO Genel Müdür')}&origin=GLOBAL_SEARCH_HEADER`;
-    const peopleSearchRes = await axios.get(peopleSearchUrl, {
-      headers: getHeaders(liAt),
-      timeout: 15000,
-    });
-
-    const $ps = cheerio.load(peopleSearchRes.data);
-
-    $ps('.entity-result, .search-result, [data-chameleon-result-urn]').each((_: any, el: any) => {
-      const name = $ps(el).find('.entity-result__title-text, .actor-name, span[aria-hidden="true"]').first().text().trim();
-      const title = $ps(el).find('.entity-result__primary-subtitle, .subline-level-1').first().text().trim();
-      const profileUrl = $ps(el).find('a[href*="/in/"]').first().attr('href') || '';
-
-      if (name && name.length > 2 && name.length < 60) {
-        const isDecision = DECISION_TITLES.some(t => title.toLowerCase().includes(t));
-        if (isDecision && !persons.find((p: any) => p.full_name === name)) {
-          persons.push({
-            full_name: name,
-            title,
-            linkedin_url: profileUrl ? `https://linkedin.com${profileUrl.split('?')[0]}` : null,
-            source: 'LinkedIn People Search',
-            confidence: 88,
-            isDecisionMaker: true,
-          });
-        }
-      }
-    });
-
-  } catch (e: any) {
-    console.error('LinkedIn scrape error:', e.message);
-  }
-
-  // Tekrarları kaldır + karar vericileri önce sırala
-  const seen = new Set<string>();
-  return persons
-    .filter(p => {
-      const key = (p.linkedin_url || p.full_name || '').toLowerCase().trim();
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((a: any, b: any) => (b.isDecisionMaker ? 1 : 0) - (a.isDecisionMaker ? 1 : 0))
-    .slice(0, 20);
-}
-
-// ── ROUTES ────────────────────────────────────────────────
-
-router.post('/search', async (req: any, res: any) => {
+router.post('/find-decision-makers', async (req, res) => {
   try {
     const userId = req.userId;
-    const { companyName, city, leadId } = req.body;
-    if (!companyName) return res.status(400).json({ error: 'companyName zorunlu' });
+    const { leadId } = req.body;
+    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
 
-    // li_at: env > kullanıcı DB
-    let liAt = process.env.LINKEDIN_LI_AT || '';
+    const persons = [];
 
-    if (!liAt) {
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('linkedin_cookies, linkedin_status')
-        .eq('user_id', userId)
-        .single();
+    // Google'dan ara
+    try {
+      const query = encodeURIComponent(`"${lead.company_name}" kurucu CEO "genel müdür" sahibi`);
+      const response = await axios.get(`https://www.google.com/search?q=${query}&num=8&hl=tr`, { headers: BROWSER_HEADERS, timeout: 10000 });
+      const $ = cheerio.load(response.data);
+      $('div.g, .tF2Cxc').each((_, el) => {
+        const snippet = $(el).find('.VwiC3b, .lEBKkf').first().text();
+        const title = $(el).find('h3').first().text();
+        const href = $(el).find('a').first().attr('href') || '';
+        if (href.includes('linkedin.com/in/')) {
+          const nameMatch = title.match(/^([A-ZÇĞİÖŞÜa-zçğışöüş\s]{5,40})\s*[-|–]/);
+          if (nameMatch) {
+            const name = nameMatch[1].trim();
+            if (!persons.find(p => p.name === name)) {
+              persons.push({ name, title: title.replace(name, '').replace(/[-|–]/g, '').trim().slice(0,80), linkedinUrl: href.replace('/url?q=', '').split('&')[0], source: 'google' });
+            }
+          }
+        }
+        const patterns = [
+          /([A-ZÇĞİÖŞÜ][a-zçğışöüş]+ [A-ZÇĞİÖŞÜ][a-zçğışöüş]+)\s*[,-]\s*(CEO|Kurucu|Genel Müdür|Sahip|Yönetici)/,
+          /(CEO|Kurucu|Genel Müdür|Sahip)[:\s]+([A-ZÇĞİÖŞÜ][a-zçğışöüş]+ [A-ZÇĞİÖŞÜ][a-zçğışöüş]+)/,
+        ];
+        for (const pat of patterns) {
+          const m = (snippet + ' ' + title).match(pat);
+          if (m) {
+            const name = m[1].length > 10 ? m[1] : m[2];
+            const jobTitle = m[1].length > 10 ? m[2] : m[1];
+            if (name && !persons.find(p => p.name === name)) persons.push({ name, title: jobTitle, source: 'google_snippet' });
+          }
+        }
+      });
+    } catch(e) { console.error('Google error:', e.message); }
 
-      if (settings?.linkedin_cookies && settings.linkedin_status === 'connected') {
+    // Website'den ara
+    if (lead.website) {
+      const url = lead.website.startsWith('http') ? lead.website : `https://${lead.website}`;
+      for (const page of [url, `${url}/hakkimizda`, `${url}/iletisim`]) {
         try {
-          const cookies = JSON.parse(Buffer.from(settings.linkedin_cookies, 'base64').toString('utf8'));
-          const liAtCookie = cookies.find((c: any) => c.name === 'li_at');
-          if (liAtCookie?.value) liAt = liAtCookie.value;
+          const r = await axios.get(page, { headers: BROWSER_HEADERS, timeout: 7000 });
+          const $ = cheerio.load(r.data);
+          const text = $('body').text();
+          const phoneMatch = text.match(/(0?5\d{2}[\s]?\d{3}[\s]?\d{2}[\s]?\d{2})/);
+          const phone = phoneMatch ? phoneMatch[0].replace(/\s/g,'') : null;
+          const nameMatch = text.match(/(?:Kurucu|CEO|Genel Müdür)[:\s]+([A-ZÇĞİÖŞÜ][a-zçğışöüş]+ [A-ZÇĞİÖŞÜ][a-zçğışöüş]+)/);
+          if (nameMatch && !persons.find(p => p.name === nameMatch[1])) {
+            persons.push({ name: nameMatch[1], title: 'Yetkili', phone, source: 'website' });
+          } else if (phone && persons.length === 0) {
+            persons.push({ name: `${lead.company_name} Yetkilisi`, title: 'Yetkili', phone, source: 'website' });
+          }
+          if (persons.length > 0) break;
+          await sleep(300);
         } catch {}
       }
     }
 
-    if (!liAt) {
-      return res.status(400).json({
-        error: 'LinkedIn bağlı değil',
-        needsConnection: true,
-      });
-    }
-
-    console.log(`LinkedIn scraping: ${companyName}`);
-    const persons = await scrapeLinkedInCompanyPage(companyName, liAt);
-
-    // Veritabanına kaydet
-    for (const person of persons) {
+    // Zenginleştir
+    const enriched = [];
+    for (const person of persons.slice(0,5)) {
+      // Telefon ara
+      if (!person.phone) {
+        try {
+          const q = encodeURIComponent(`"${person.name}" "${lead.company_name}" telefon`);
+          const r = await axios.get(`https://www.google.com/search?q=${q}&num=5`, { headers: BROWSER_HEADERS, timeout: 8000 });
+          const text = cheerio.load(r.data)('body').text();
+          const m = text.match(/(0?5\d{2}[\s]?\d{3}[\s]?\d{2}[\s]?\d{2})/);
+          if (m) person.phone = m[0].replace(/\s/g,'');
+          await sleep(400);
+        } catch {}
+      }
+      // Sosyal medya
+      const social = { instagram: null, linkedin: null };
       try {
-        await supabase.from('person_database').upsert({
-          full_name: person.full_name,
-          title: person.title,
-          company_name: companyName,
-          linkedin_url: person.linkedin_url || null,
-          city: city || null,
-          source: person.source,
-          confidence: person.confidence,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'linkedin_url', ignoreDuplicates: false });
+        const q = encodeURIComponent(`"${person.name}" "${lead.company_name}" instagram linkedin`);
+        const r = await axios.get(`https://www.google.com/search?q=${q}&num=5`, { headers: BROWSER_HEADERS, timeout: 8000 });
+        const $ = cheerio.load(r.data);
+        $('a[href]').each((_, el) => {
+          const href = decodeURIComponent($(el).attr('href') || '');
+          if (href.includes('instagram.com/') && !social.instagram && !href.includes('/p/')) {
+            const m = href.match(/instagram\.com\/([\w.]+)/);
+            if (m?.[1] && !['explore','reel','p'].includes(m[1])) social.instagram = `https://instagram.com/${m[1]}`;
+          }
+          if (href.includes('linkedin.com/in/') && !social.linkedin) {
+            const m = href.match(/linkedin\.com\/in\/([\w-]+)/);
+            if (m?.[1]) social.linkedin = `https://linkedin.com/in/${m[1]}`;
+          }
+        });
+        await sleep(400);
       } catch {}
+
+      // AI analiz
+      let aiAnalysis = null;
+      try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const resp = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001', max_tokens: 200,
+          messages: [{ role: 'user', content: `Kişi: ${person.name}, Pozisyon: ${person.title}, Şirket: ${lead.company_name}\nJSON: {"isDecisionMaker":true,"decisionPower":"yüksek","approachStrategy":"2 cümle","personalizedOpener":"max 100 karakter WA mesajı"}` }]
+        });
+        const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+        if (m) aiAnalysis = JSON.parse(m[0]);
+      } catch {}
+
+      // DB kaydet
+      await supabase.from('person_database').upsert([{
+        user_id: userId, lead_id: leadId,
+        name: person.name, title: person.title, company: lead.company_name,
+        phone: person.phone, linkedin_url: social.linkedin || person.linkedinUrl,
+        instagram_url: social.instagram, source: person.source || 'web',
+        ai_analysis: aiAnalysis ? JSON.stringify(aiAnalysis) : null,
+      }], { onConflict: 'user_id,name,company' });
+
+      enriched.push({ ...person, social, aiAnalysis });
     }
 
-    if (leadId && persons.length > 0) {
-      const best = persons.find((p: any) => p.isDecisionMaker) || persons[0];
-      await supabase.from('leads').update({
-        contact_name: best.full_name,
-        notes: `Karar verici: ${best.full_name} (${best.title})`,
-      }).eq('id', leadId).eq('user_id', userId);
+    res.json({ lead: lead.company_name, found: enriched.length, persons: enriched });
+  } catch(e) {
+    console.error('Find DM error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/find-batch', async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { limit = 10 } = req.body;
+    const { data: leads } = await supabase.from('leads').select('*').eq('user_id', userId).limit(limit);
+    if (!leads?.length) return res.json({ message: 'Lead yok', processed: 0 });
+    res.json({ message: `${leads.length} şirket taranıyor...`, total: leads.length });
+    (async () => {
+      for (const lead of leads) {
+        try {
+          const q = encodeURIComponent(`"${lead.company_name}" kurucu CEO sahibi`);
+          const r = await axios.get(`https://www.google.com/search?q=${q}&num=5&hl=tr`, { headers: BROWSER_HEADERS, timeout: 10000 });
+          const $ = cheerio.load(r.data);
+          const text = $('body').text();
+          const m = text.match(/([A-ZÇĞİÖŞÜ][a-zçğışöüş]+ [A-ZÇĞİÖŞÜ][a-zçğışöüş]+)\s*[,-]\s*(CEO|Kurucu|Genel Müdür)/);
+          if (m) {
+            const phone_m = text.match(/(0?5\d{2}[\s]?\d{3}[\s]?\d{2}[\s]?\d{2})/);
+            await supabase.from('person_database').upsert([{
+              user_id: userId, lead_id: lead.id, name: m[1], title: m[2],
+              company: lead.company_name, phone: phone_m ? phone_m[0].replace(/\s/g,'') : null, source: 'batch',
+            }], { onConflict: 'user_id,name,company' });
+          }
+          await sleep(2000);
+        } catch {}
+      }
+    })();
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/persons', async (req, res) => {
+  try {
+    const { leadId } = req.query;
+    let query = supabase.from('person_database').select('*, leads(company_name,city,sector)').eq('user_id', req.userId).order('created_at', { ascending: false }).limit(100);
+    if (leadId) query = query.eq('lead_id', leadId);
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json({ persons: (data||[]).map(p => ({ ...p, aiAnalysis: p.ai_analysis ? (() => { try { return JSON.parse(p.ai_analysis); } catch { return null; } })() : null })) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/add-to-campaign', async (req, res) => {
+  try {
+    const { personIds, campaignId } = req.body;
+    if (!personIds?.length || !campaignId) return res.status(400).json({ error: 'personIds ve campaignId zorunlu' });
+    const { data: persons } = await supabase.from('person_database').select('*').in('id', personIds).eq('user_id', req.userId);
+    let addedLeads = 0;
+    for (const person of persons || []) {
+      if (!person.phone) continue;
+      const { data: ex } = await supabase.from('leads').select('id').eq('user_id', req.userId).eq('phone', person.phone).single();
+      let leadId = ex?.id;
+      if (!leadId) {
+        const { data: nl } = await supabase.from('leads').insert([{ user_id: req.userId, company_name: person.company, contact_name: person.name, phone: person.phone, status: 'new', source: 'Web/LinkedIn' }]).select().single();
+        leadId = nl?.id; addedLeads++;
+      }
+      if (leadId) await supabase.from('campaign_leads').upsert([{ campaign_id: campaignId, lead_id: leadId }], { onConflict: 'campaign_id,lead_id' }).catch(()=>{});
     }
-
-    res.json({ company: companyName, found: persons.length, persons });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+    res.json({ message: `${addedLeads} yeni lead, ${persons?.length||0} kampanyaya eklendi`, addedLeads });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/status', async (req: any, res: any) => {
+router.post('/send-whatsapp', async (req, res) => {
   try {
-    const userId = req.userId;
-    const hasEnvToken = !!process.env.LINKEDIN_LI_AT;
-    const { data } = await supabase
-      .from('user_settings')
-      .select('linkedin_email, linkedin_status')
-      .eq('user_id', userId)
-      .single();
-
-    res.json({
-      connected: hasEnvToken || data?.linkedin_status === 'connected',
-      email: data?.linkedin_email || (hasEnvToken ? 'Sistem hesabı (li_at)' : null),
-      status: hasEnvToken ? 'connected' : (data?.linkedin_status || 'disconnected'),
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+    const { personId, message } = req.body;
+    const { data: person } = await supabase.from('person_database').select('*').eq('id', personId).eq('user_id', req.userId).single();
+    if (!person?.phone) return res.status(400).json({ error: 'Telefon yok' });
+    const analysis = person.ai_analysis ? (() => { try { return JSON.parse(person.ai_analysis); } catch { return null; } })() : null;
+    const firstName = person.name.split(' ')[0];
+    const finalMsg = message || analysis?.personalizedOpener || `Merhaba ${firstName} Bey/Hanım, ${person.company} ile görüşebilir miyiz?`;
+    const { sendWhatsAppMessage } = require('./settings');
+    await sendWhatsAppMessage(req.userId, person.phone, finalMsg);
+    await supabase.from('messages').insert([{ user_id: req.userId, lead_id: person.lead_id, direction: 'out', content: finalMsg, channel: 'whatsapp', sent_at: new Date().toISOString() }]);
+    res.json({ message: 'WhatsApp gönderildi!' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/connect', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { liAt, email } = req.body;
-
-    if (!liAt) return res.status(400).json({ error: 'liAt cookie zorunlu' });
-
-    await supabase.from('user_settings').upsert({
-      user_id: userId,
-      linkedin_email: email || 'li_at cookie',
-      linkedin_status: 'connected',
-      linkedin_cookies: Buffer.from(JSON.stringify([{ name: 'li_at', value: liAt }])).toString('base64'),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-
-    res.json({ success: true, message: 'LinkedIn bağlandı! 🎉' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-router.post('/disconnect', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    await supabase.from('user_settings').upsert({
-      user_id: userId,
-      linkedin_email: null,
-      linkedin_status: 'disconnected',
-      linkedin_cookies: null,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-    res.json({ message: 'LinkedIn bağlantısı kesildi' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+router.post('/connect', async (req, res) => { res.json({ message: 'Web scraping modu aktif', connected: true }); });
+router.post('/disconnect', async (req, res) => { res.json({ message: 'Bağlantı kesildi' }); });
 
 module.exports = router;
