@@ -215,9 +215,12 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
       });
       const aiText = aiResp.content[0]?.text || '';
       console.log('AI raw response:', aiText.slice(0, 200));
-      const aiM = aiText.match(/\{[\s\S]*\}/);
-      if (aiM) {
-        const aiData = JSON.parse(aiM[0]);
+      // JSON'u markdown code block'tan da çıkar
+      let aiM = aiText.match(/```json\s*([\s\S]*?)```/);
+      const jsonStr = aiM ? aiM[1].trim() : aiText.match(/\{[\s\S]*\}/)?.[0];
+      const aiM2 = jsonStr ? [jsonStr] : null;
+      if (aiM2) {
+        const aiData = JSON.parse(aiM2[0]);
         employees = (aiData.persons || []).map((p: any) => ({
           name: p.name || `${lead.company_name} Yetkilisi`,
           title: p.title || 'Sahip/CEO',
