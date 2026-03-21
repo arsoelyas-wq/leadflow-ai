@@ -12,7 +12,7 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 // Li_at cookie - Railway env'den
 const LI_AT = process.env.LINKEDIN_LI_AT;
 
-// ── PUPPETEER İLE LİNKEDİN ÇALIŞAN ÇEKME ─────────────────
+// â”€â”€ PUPPETEER Ä°LE LÄ°NKEDÄ°N Ã‡ALIÅžAN Ã‡EKME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> {
   const puppeteer = require('puppeteer');
   let browser: any = null;
@@ -47,7 +47,7 @@ async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> 
       });
     }
 
-    // LinkedIn arama sayfasına git
+    // LinkedIn arama sayfasÄ±na git
     const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(companyName)}&origin=GLOBAL_SEARCH_HEADER&titleFreeText=CEO%20OR%20Kurucu%20OR%20M%C3%BCd%C3%BCr%20OR%20Sahibi%20OR%20Founder%20OR%20Director`;
 
     await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
@@ -61,7 +61,7 @@ async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> 
       return [];
     }
 
-    // Sonuçları çek
+    // SonuÃ§larÄ± Ã§ek
     const persons = await page.evaluate(() => {
       const results: any[] = [];
       const cards = document.querySelectorAll('.reusable-search__result-container, .search-results__list li');
@@ -97,7 +97,7 @@ async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> 
   }
 }
 
-// ── AI İLE ÇALIŞAN ANALİZİ ───────────────────────────────
+// â”€â”€ AI Ä°LE Ã‡ALIÅžAN ANALÄ°ZÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function analyzeEmployees(employees: any[], companyName: string, sector: string): Promise<any[]> {
   if (!employees.length) return [];
 
@@ -110,20 +110,20 @@ async function analyzeEmployees(employees: any[], companyName: string, sector: s
       max_tokens: 800,
       messages: [{
         role: 'user',
-        content: `Şirket: ${companyName}, Sektör: ${sector}
+        content: `Åžirket: ${companyName}, SektÃ¶r: ${sector}
 
-Çalışanlar:
+Ã‡alÄ±ÅŸanlar:
 ${employees.map((e, i) => `${i+1}. ${e.name} - ${e.title || ''}`).join('\n')}
 
-Her çalışan için karar verici analizi yap. JSON döndür:
+Her Ã§alÄ±ÅŸan iÃ§in karar verici analizi yap. JSON dÃ¶ndÃ¼r:
 {
   "analyses": [
     {
       "index": 1,
       "isDecisionMaker": true,
-      "decisionPower": "yüksek/orta/düşük",
-      "personalizedOpener": "max 100 karakter WA mesajı",
-      "approachStrategy": "kısa strateji"
+      "decisionPower": "yÃ¼ksek/orta/dÃ¼ÅŸÃ¼k",
+      "personalizedOpener": "max 100 karakter WA mesajÄ±",
+      "approachStrategy": "kÄ±sa strateji"
     }
   ]
 }`
@@ -143,7 +143,7 @@ Her çalışan için karar verici analizi yap. JSON döndür:
   }
 }
 
-// ── AI İLE TAHMIN (LinkedIn yoksa) ───────────────────────
+// â”€â”€ AI Ä°LE TAHMIN (LinkedIn yoksa) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function predictDecisionMakers(companyName: string, sector: string): Promise<any[]> {
   try {
     const Anthropic = require('@anthropic-ai/sdk');
@@ -153,17 +153,17 @@ async function predictDecisionMakers(companyName: string, sector: string): Promi
       max_tokens: 400,
       messages: [{
         role: 'user',
-        content: `${companyName} (${sector || 'genel'}) şirketinin muhtemel yöneticilerini tahmin et.
+        content: `${companyName} (${sector || 'genel'}) ÅŸirketinin muhtemel yÃ¶neticilerini tahmin et.
 
-JSON döndür:
+JSON dÃ¶ndÃ¼r:
 {
   "persons": [
     {
-      "name": "Tahmin edilen isim veya 'Şirket Yetkilisi'",
-      "title": "CEO/Kurucu/Genel Müdür/Sahip",
+      "name": "Tahmin edilen isim veya 'Åžirket Yetkilisi'",
+      "title": "CEO/Kurucu/Genel MÃ¼dÃ¼r/Sahip",
       "isDecisionMaker": true,
-      "personalizedOpener": "Merhaba, ${companyName} ile ilgili kısa görüşmek istiyordum",
-      "approachStrategy": "2 cümle yaklaşım stratejisi"
+      "personalizedOpener": "Merhaba, ${companyName} ile ilgili kÄ±sa gÃ¶rÃ¼ÅŸmek istiyordum",
+      "approachStrategy": "2 cÃ¼mle yaklaÅŸÄ±m stratejisi"
     }
   ]
 }`
@@ -175,17 +175,17 @@ JSON döndür:
     return (data.persons || []).map((p: any) => ({
       ...p,
       source: 'ai_prediction',
-      aiAnalysis: { isDecisionMaker: p.isDecisionMaker, personalizedOpener: p.personalizedOpener, approachStrategy: p.approachStrategy, decisionPower: 'yüksek' },
+      aiAnalysis: { isDecisionMaker: p.isDecisionMaker, personalizedOpener: p.personalizedOpener, approachStrategy: p.approachStrategy, decisionPower: 'yÃ¼ksek' },
     }));
   } catch { return []; }
 }
 
-// ── ROUTES ────────────────────────────────────────────────
+// â”€â”€ ROUTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 router.get('/status', async (req: any, res: any) => {
   res.json({
     connected: true,
-    email: LI_AT ? 'Puppeteer + AI Modu ✅' : 'Sadece AI Modu',
+    email: LI_AT ? 'Puppeteer + AI Modu âœ…' : 'Sadece AI Modu',
     status: 'connected',
   });
 });
@@ -196,19 +196,20 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
     const { leadId } = req.body;
 
     const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadÄ±' });
 
     console.log(`Searching employees: ${lead.company_name}`);
 
-    // 1. Puppeteer ile LinkedIn'den çalışan çek
-    let employees = await scrapeLinkedInWithPuppeteer(lead.company_name);
+    // 1. Puppeteer ile LinkedIn'den Ã§alÄ±ÅŸan Ã§ek
+    let employees: any[] = [];
+    try { employees = await scrapeLinkedInWithPuppeteer(lead.company_name); } catch(puppErr: any) { console.log('Puppeteer failed, using AI:', puppErr.message); }
 
-    // 2. Sonuç yoksa AI ile tahmin et
+    // 2. SonuÃ§ yoksa AI ile tahmin et
     if (!employees.length) {
       console.log(`No LinkedIn results, using AI prediction for ${lead.company_name}`);
       employees = await predictDecisionMakers(lead.company_name, lead.sector || '');
     } else {
-      // LinkedIn sonuçlarını AI ile analiz et
+      // LinkedIn sonuÃ§larÄ±nÄ± AI ile analiz et
       employees = await analyzeEmployees(employees, lead.company_name, lead.sector || '');
     }
 
@@ -245,13 +246,14 @@ router.post('/find-batch', async (req: any, res: any) => {
     const { data: leads } = await supabase.from('leads').select('*').eq('user_id', userId).limit(limit);
     if (!leads?.length) return res.json({ message: 'Lead yok', processed: 0 });
 
-    res.json({ message: `${leads.length} şirket taranıyor...`, total: leads.length });
+    res.json({ message: `${leads.length} ÅŸirket taranÄ±yor...`, total: leads.length });
 
     (async () => {
       let processed = 0;
       for (const lead of leads) {
         try {
-          let employees = await scrapeLinkedInWithPuppeteer(lead.company_name);
+          let employees: any[] = [];
+    try { employees = await scrapeLinkedInWithPuppeteer(lead.company_name); } catch(puppErr: any) { console.log('Puppeteer failed, using AI:', puppErr.message); }
           if (!employees.length) employees = await predictDecisionMakers(lead.company_name, lead.sector || '');
 
           for (const emp of employees.slice(0, 3)) {
@@ -332,11 +334,11 @@ router.post('/send-whatsapp', async (req: any, res: any) => {
     if (!person?.phone) return res.status(400).json({ error: 'Telefon yok' });
     const analysis = person.ai_analysis ? (() => { try { return JSON.parse(person.ai_analysis); } catch { return null; } })() : null;
     const firstName = person.name.split(' ')[0];
-    const finalMsg = message || analysis?.personalizedOpener || `Merhaba ${firstName} Bey/Hanım, ${person.company} ile görüşebilir miyiz?`;
+    const finalMsg = message || analysis?.personalizedOpener || `Merhaba ${firstName} Bey/HanÄ±m, ${person.company} ile gÃ¶rÃ¼ÅŸebilir miyiz?`;
     const { sendWhatsAppMessage } = require('./settings');
     await sendWhatsAppMessage(req.userId, person.phone, finalMsg);
     await supabase.from('messages').insert([{ user_id: req.userId, lead_id: person.lead_id, direction: 'out', content: finalMsg, channel: 'whatsapp', sent_at: new Date().toISOString() }]);
-    res.json({ message: 'WhatsApp gönderildi!' });
+    res.json({ message: 'WhatsApp gÃ¶nderildi!' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -372,13 +374,13 @@ router.post('/callback', async (req: any, res: any) => {
       linkedin_profile_email: profile.email,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
-    res.json({ success: true, profile: { name: profile.name, email: profile.email }, message: 'LinkedIn bağlandı!' });
+    res.json({ success: true, profile: { name: profile.name, email: profile.email }, message: 'LinkedIn baÄŸlandÄ±!' });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error_description || e.message });
   }
 });
 
 router.post('/connect', async (req: any, res: any) => { res.json({ connected: true }); });
-router.post('/disconnect', async (req: any, res: any) => { res.json({ message: 'Bağlantı kesildi' }); });
+router.post('/disconnect', async (req: any, res: any) => { res.json({ message: 'BaÄŸlantÄ± kesildi' }); });
 
 module.exports = router;
