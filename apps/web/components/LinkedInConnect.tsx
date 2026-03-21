@@ -64,8 +64,8 @@ export default function LinkedInConnect() {
         ts: Date.now() 
       }))
       
-      // Redirect URI'yi şu anki sayfaya yönlendir
-      const redirectUri = `${window.location.origin}/api/auth/linkedin/callback`
+      // Sabit redirect URI - LinkedIn'de kayıtlı olan
+      const redirectUri = 'https://leadflow-ai-web-kappa.vercel.app/api/auth/linkedin/callback'
       const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=775y6eze63qpk3&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email%20w_member_social&state=${stateData}`
       
       window.location.href = url
