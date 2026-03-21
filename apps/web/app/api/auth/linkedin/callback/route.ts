@@ -10,8 +10,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/decision-maker?error=linkedin_denied", request.url))
   }
 
+  let token = ""
   try {
-    const token = request.cookies.get("token")?.value || ""
+    const decoded = JSON.parse(Buffer.from(state || "", "base64").toString())
+    token = decoded.token || ""
+  } catch {}
+
+  if (!token) token = request.cookies.get("token")?.value || ""
+
+  try {
     const response = await fetch("https://leadflow-ai-production.up.railway.app/api/linkedin/callback", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
