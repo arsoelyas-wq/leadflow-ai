@@ -12,7 +12,7 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 // Li_at cookie - Railway env'den
 const LI_AT = process.env.LINKEDIN_LI_AT;
 
-// â”€â”€ PUPPETEER Ä°LE LÄ°NKEDÄ°N Ã‡ALIÅžAN Ã‡EKME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ PUPPETEER Ã„Â°LE LÃ„Â°NKEDÃ„Â°N Ãƒâ€¡ALIÃ…Å¾AN Ãƒâ€¡EKME Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> {
   const puppeteer = require('puppeteer');
   let browser: any = null;
@@ -47,7 +47,7 @@ async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> 
       });
     }
 
-    // LinkedIn arama sayfasÄ±na git
+    // LinkedIn arama sayfasÃ„Â±na git
     const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(companyName)}&origin=GLOBAL_SEARCH_HEADER&titleFreeText=CEO%20OR%20Kurucu%20OR%20M%C3%BCd%C3%BCr%20OR%20Sahibi%20OR%20Founder%20OR%20Director`;
 
     await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 30000 });
@@ -61,7 +61,7 @@ async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> 
       return [];
     }
 
-    // SonuÃ§larÄ± Ã§ek
+    // SonuÃƒÂ§larÃ„Â± ÃƒÂ§ek
     const persons = await page.evaluate(() => {
       const results: any[] = [];
       const cards = document.querySelectorAll('.reusable-search__result-container, .search-results__list li');
@@ -97,7 +97,7 @@ async function scrapeLinkedInWithPuppeteer(companyName: string): Promise<any[]> 
   }
 }
 
-// â”€â”€ AI Ä°LE Ã‡ALIÅžAN ANALÄ°ZÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ AI Ã„Â°LE Ãƒâ€¡ALIÃ…Å¾AN ANALÃ„Â°ZÃ„Â° Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function analyzeEmployees(employees: any[], companyName: string, sector: string): Promise<any[]> {
   if (!employees.length) return [];
 
@@ -110,20 +110,20 @@ async function analyzeEmployees(employees: any[], companyName: string, sector: s
       max_tokens: 800,
       messages: [{
         role: 'user',
-        content: `Åžirket: ${companyName}, SektÃ¶r: ${sector}
+        content: `Ã…Å¾irket: ${companyName}, SektÃƒÂ¶r: ${sector}
 
-Ã‡alÄ±ÅŸanlar:
+Ãƒâ€¡alÃ„Â±Ã…Å¸anlar:
 ${employees.map((e, i) => `${i+1}. ${e.name} - ${e.title || ''}`).join('\n')}
 
-Her Ã§alÄ±ÅŸan iÃ§in karar verici analizi yap. JSON dÃ¶ndÃ¼r:
+Her ÃƒÂ§alÃ„Â±Ã…Å¸an iÃƒÂ§in karar verici analizi yap. JSON dÃƒÂ¶ndÃƒÂ¼r:
 {
   "analyses": [
     {
       "index": 1,
       "isDecisionMaker": true,
-      "decisionPower": "yÃ¼ksek/orta/dÃ¼ÅŸÃ¼k",
-      "personalizedOpener": "max 100 karakter WA mesajÄ±",
-      "approachStrategy": "kÄ±sa strateji"
+      "decisionPower": "yÃƒÂ¼ksek/orta/dÃƒÂ¼Ã…Å¸ÃƒÂ¼k",
+      "personalizedOpener": "max 100 karakter WA mesajÃ„Â±",
+      "approachStrategy": "kÃ„Â±sa strateji"
     }
   ]
 }`
@@ -143,7 +143,7 @@ Her Ã§alÄ±ÅŸan iÃ§in karar verici analizi yap. JSON dÃ¶ndÃ¼r:
   }
 }
 
-// â”€â”€ AI Ä°LE TAHMIN (LinkedIn yoksa) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ AI Ã„Â°LE TAHMIN (LinkedIn yoksa) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function predictDecisionMakers(companyName: string, sector: string): Promise<any[]> {
   try {
     const Anthropic = require('@anthropic-ai/sdk');
@@ -153,17 +153,17 @@ async function predictDecisionMakers(companyName: string, sector: string): Promi
       max_tokens: 400,
       messages: [{
         role: 'user',
-        content: `${companyName} (${sector || 'genel'}) ÅŸirketinin muhtemel yÃ¶neticilerini tahmin et.
+        content: `${companyName} (${sector || 'genel'}) Ã…Å¸irketinin muhtemel yÃƒÂ¶neticilerini tahmin et.
 
-JSON dÃ¶ndÃ¼r:
+JSON dÃƒÂ¶ndÃƒÂ¼r:
 {
   "persons": [
     {
-      "name": "Tahmin edilen isim veya 'Åžirket Yetkilisi'",
-      "title": "CEO/Kurucu/Genel MÃ¼dÃ¼r/Sahip",
+      "name": "Tahmin edilen isim veya 'Ã…Å¾irket Yetkilisi'",
+      "title": "CEO/Kurucu/Genel MÃƒÂ¼dÃƒÂ¼r/Sahip",
       "isDecisionMaker": true,
-      "personalizedOpener": "Merhaba, ${companyName} ile ilgili kÄ±sa gÃ¶rÃ¼ÅŸmek istiyordum",
-      "approachStrategy": "2 cÃ¼mle yaklaÅŸÄ±m stratejisi"
+      "personalizedOpener": "Merhaba, ${companyName} ile ilgili kÃ„Â±sa gÃƒÂ¶rÃƒÂ¼Ã…Å¸mek istiyordum",
+      "approachStrategy": "2 cÃƒÂ¼mle yaklaÃ…Å¸Ã„Â±m stratejisi"
     }
   ]
 }`
@@ -175,17 +175,17 @@ JSON dÃ¶ndÃ¼r:
     return (data.persons || []).map((p: any) => ({
       ...p,
       source: 'ai_prediction',
-      aiAnalysis: { isDecisionMaker: p.isDecisionMaker, personalizedOpener: p.personalizedOpener, approachStrategy: p.approachStrategy, decisionPower: 'yÃ¼ksek' },
+      aiAnalysis: { isDecisionMaker: p.isDecisionMaker, personalizedOpener: p.personalizedOpener, approachStrategy: p.approachStrategy, decisionPower: 'yÃƒÂ¼ksek' },
     }));
   } catch { return []; }
 }
 
-// â”€â”€ ROUTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ ROUTES Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 router.get('/status', async (req: any, res: any) => {
   res.json({
     connected: true,
-    email: LI_AT ? 'Puppeteer + AI Modu âœ…' : 'Sadece AI Modu',
+    email: LI_AT ? 'Puppeteer + AI Modu Ã¢Å“â€¦' : 'Sadece AI Modu',
     status: 'connected',
   });
 });
@@ -196,20 +196,20 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
     const { leadId } = req.body;
 
     const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamadÄ±' });
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadÃ„Â±' });
 
     console.log(`Searching employees: ${lead.company_name}`);
 
-    // 1. Puppeteer ile LinkedIn'den Ã§alÄ±ÅŸan Ã§ek
+    // 1. Puppeteer ile LinkedIn'den ÃƒÂ§alÃ„Â±Ã…Å¸an ÃƒÂ§ek
     let employees: any[] = [];
     try { employees = await scrapeLinkedInWithPuppeteer(lead.company_name); } catch(puppErr: any) { console.log('Puppeteer failed, using AI:', puppErr.message); }
 
-    // 2. SonuÃ§ yoksa AI ile tahmin et
+    // 2. SonuÃƒÂ§ yoksa AI ile tahmin et
     if (!employees.length) {
       console.log(`No LinkedIn results, using AI prediction for ${lead.company_name}`);
       employees = await predictDecisionMakers(lead.company_name, lead.sector || '');
     } else {
-      // LinkedIn sonuÃ§larÄ±nÄ± AI ile analiz et
+      // LinkedIn sonuÃƒÂ§larÃ„Â±nÃ„Â± AI ile analiz et
       employees = await analyzeEmployees(employees, lead.company_name, lead.sector || '');
     }
 
@@ -227,7 +227,7 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
         source: emp.source || 'linkedin_puppeteer',
         ai_analysis: emp.aiAnalysis ? JSON.stringify(emp.aiAnalysis) : null,
         is_decision_maker: emp.aiAnalysis?.isDecisionMaker || false,
-      }], { onConflict: 'user_id,name,company' }).select().single();
+      }], { onConflict: 'user_id,name,company' }).catch(async () => { return supabase.from('person_database').insert }).select().single();
 
       enriched.push({ ...emp, id: saved?.id });
     }
@@ -246,7 +246,7 @@ router.post('/find-batch', async (req: any, res: any) => {
     const { data: leads } = await supabase.from('leads').select('*').eq('user_id', userId).limit(limit);
     if (!leads?.length) return res.json({ message: 'Lead yok', processed: 0 });
 
-    res.json({ message: `${leads.length} ÅŸirket taranÄ±yor...`, total: leads.length });
+    res.json({ message: `${leads.length} Ã…Å¸irket taranÃ„Â±yor...`, total: leads.length });
 
     (async () => {
       let processed = 0;
@@ -265,7 +265,7 @@ router.post('/find-batch', async (req: any, res: any) => {
               source: emp.source || 'linkedin_puppeteer',
               is_decision_maker: emp.aiAnalysis?.isDecisionMaker || true,
               ai_analysis: emp.aiAnalysis ? JSON.stringify(emp.aiAnalysis) : null,
-            }], { onConflict: 'user_id,name,company' });
+            }], { onConflict: 'user_id,name,company' }).catch(async () => { return supabase.from('person_database').insert });
           }
           processed++;
           await sleep(5000); // LinkedIn rate limit
@@ -334,11 +334,11 @@ router.post('/send-whatsapp', async (req: any, res: any) => {
     if (!person?.phone) return res.status(400).json({ error: 'Telefon yok' });
     const analysis = person.ai_analysis ? (() => { try { return JSON.parse(person.ai_analysis); } catch { return null; } })() : null;
     const firstName = person.name.split(' ')[0];
-    const finalMsg = message || analysis?.personalizedOpener || `Merhaba ${firstName} Bey/HanÄ±m, ${person.company} ile gÃ¶rÃ¼ÅŸebilir miyiz?`;
+    const finalMsg = message || analysis?.personalizedOpener || `Merhaba ${firstName} Bey/HanÃ„Â±m, ${person.company} ile gÃƒÂ¶rÃƒÂ¼Ã…Å¸ebilir miyiz?`;
     const { sendWhatsAppMessage } = require('./settings');
     await sendWhatsAppMessage(req.userId, person.phone, finalMsg);
     await supabase.from('messages').insert([{ user_id: req.userId, lead_id: person.lead_id, direction: 'out', content: finalMsg, channel: 'whatsapp', sent_at: new Date().toISOString() }]);
-    res.json({ message: 'WhatsApp gÃ¶nderildi!' });
+    res.json({ message: 'WhatsApp gÃƒÂ¶nderildi!' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -374,13 +374,13 @@ router.post('/callback', async (req: any, res: any) => {
       linkedin_profile_email: profile.email,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
-    res.json({ success: true, profile: { name: profile.name, email: profile.email }, message: 'LinkedIn baÄŸlandÄ±!' });
+    res.json({ success: true, profile: { name: profile.name, email: profile.email }, message: 'LinkedIn baÃ„Å¸landÃ„Â±!' });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error_description || e.message });
   }
 });
 
 router.post('/connect', async (req: any, res: any) => { res.json({ connected: true }); });
-router.post('/disconnect', async (req: any, res: any) => { res.json({ message: 'BaÄŸlantÄ± kesildi' }); });
+router.post('/disconnect', async (req: any, res: any) => { res.json({ message: 'BaÃ„Å¸lantÃ„Â± kesildi' }); });
 
 module.exports = router;
