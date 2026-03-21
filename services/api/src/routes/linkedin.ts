@@ -241,18 +241,37 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
     // DB'ye kaydet
     const enriched = [];
     for (const emp of employees.slice(0, 10)) {
-      const { data: saved } = await supabase.from('person_database').upsert([{
-        user_id: userId,
-        lead_id: leadId,
-        name: emp.name,
-        title: emp.title || '',
-        company: lead.company_name,
-        linkedin_url: emp.profileUrl || '',
-        photo_url: emp.photo || '',
-        source: emp.source || 'linkedin_puppeteer',
-        ai_analysis: emp.aiAnalysis ? JSON.stringify(emp.aiAnalysis) : null,
-        is_decision_maker: emp.aiAnalysis?.isDecisionMaker || false,
-      }], { onConflict: 'user_id,name,company' }).select().single();
+      // Önce var mı kontrol et
+      const { data: existing } = await supabase.from('person_database')
+        .select('id').eq('user_id', userId).eq('name', emp.name).eq('company', lead.company_name).maybeSingle();
+      
+      let saved: any = null;
+      if (existing) {
+        const { data: updated } = await supabase.from('person_database').update({
+          title: emp.title || '',
+          linkedin_url: emp.profileUrl || '',
+          photo_url: emp.photo || '',
+          source: emp.source || 'linkedin_puppeteer',
+          ai_analysis: emp.aiAnalysis ? JSON.stringify(emp.aiAnalysis) : null,
+          is_decision_maker: emp.aiAnalysis?.isDecisionMaker || false,
+        }).eq('id', existing.id).select().single();
+        saved = updated;
+      } else {
+        const { data: inserted } = await supabase.from('person_database').insert([{
+          user_id: userId,
+          lead_id: leadId,
+          name: emp.name,
+          title: emp.title || '',
+          company: lead.company_name,
+          linkedin_url: emp.profileUrl || '',
+          photo_url: emp.photo || '',
+          source: emp.source || 'linkedin_puppeteer',
+          ai_analysis: emp.aiAnalysis ? JSON.stringify(emp.aiAnalysis) : null,
+          is_decision_maker: emp.aiAnalysis?.isDecisionMaker || false,
+        }]).select().single();
+        saved = inserted;
+      }
+      console.log('Saved person:', emp.name, saved?.id);
 
       enriched.push({ ...emp, id: saved?.id });
     }
