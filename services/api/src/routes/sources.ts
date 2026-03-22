@@ -18,49 +18,44 @@ const HEADERS = {
 async function scrapeAltinRehber(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    const url = `https://www.altinrehber.com/${encodeURIComponent(city.toLowerCase())}/${encodeURIComponent(keyword.toLowerCase())}`;
-    const resp = await axios.get(url, { headers: HEADERS, timeout: 15000 });
-    const $ = cheerio.load(resp.data);
+    const queries = [
+      `"${keyword}" "${city}" altinrehber telefon`,
+      `"${keyword}" "${city}" firma iletisim numarasi`,
+      `"${keyword}" "${city}" isletme telefon whatsapp`,
+    ];
 
-    $(".firm-card, .listing-item, .company-item, article").each((_: any, el: any) => {
-      const name = $(el).find(".firm-name, h2, h3, .title").first().text().trim();
-      const phone = $(el).find(".phone, .tel, [href^='tel:']").first().text().trim().replace(/\s/g, "");
-      const address = $(el).find(".address, .location").first().text().trim();
-      const website = $(el).find("a[href*='http']").first().attr("href");
-
-      if (name && name.length > 2) {
-        results.push({
-          company_name: name,
-          phone: phone || null,
-          address: address || null,
-          website: website || null,
-          city,
-          sector: keyword,
-          source: "altinrehber",
-          status: "new",
-        });
-      }
-    });
-
-    // Google'dan da çek
-    if (results.length < 5) {
-      const gResp = await axios.get(
-        `https://www.google.com/search?q=site:altinrehber.com+${encodeURIComponent(keyword)}+${encodeURIComponent(city)}&num=10`,
-        { headers: HEADERS, timeout: 10000 }
+    for (const query of queries) {
+      const resp = await axios.get(
+        `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=tr`,
+        { headers: HEADERS, timeout: 12000 }
       );
-      const g$ = cheerio.load(gResp.data);
-      g$("div.g, .tF2Cxc").each((_: any, el: any) => {
-        const title = g$(el).find("h3").text().trim();
-        const snippet = g$(el).find(".VwiC3b").text();
-        const phoneMatch = snippet.match(/(0\d{10}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
-        if (title && title.length > 2 && !results.find(r => r.company_name === title)) {
-          results.push({
-            company_name: title.split(/[-|–]/)[0].trim(),
-            phone: phoneMatch?.[0]?.replace(/\s/g,"") || null,
-            city, sector: keyword, source: "altinrehber", status: "new",
-          });
+      const $ = cheerio.load(resp.data);
+
+      $("div.g, .tF2Cxc").each((_: any, el: any) => {
+        const title = $(el).find("h3").text().trim();
+        const snippet = $(el).find(".VwiC3b, .st").text();
+        const link = $(el).find("a").first().attr("href") || "";
+        const text = title + " " + snippet;
+
+        const phoneMatch = text.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+        const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+        const companyName = title.split(/[-|–|\/]/)[0].trim();
+
+        if (companyName && companyName.length > 3) {
+          if (!results.find(r => r.company_name === companyName)) {
+            results.push({
+              company_name: companyName,
+              phone: phoneMatch?.[0]?.replace(/\s/g, "") || null,
+              email: emailMatch?.[0] || null,
+              website: link.startsWith("http") ? link.split("?")[0] : null,
+              city, sector: keyword, source: "altinrehber", status: "new",
+            });
+          }
         }
       });
+
+      await sleep(600);
+      if (results.length >= limit) break;
     }
   } catch (e: any) {
     console.error("AltinRehber error:", e.message);
@@ -68,47 +63,49 @@ async function scrapeAltinRehber(keyword: string, city: string, limit: number): 
   return results.slice(0, limit);
 }
 
-// ── SAHİBİNDEN İŞLETME ───────────────────────────────────
+// ── SAHİBİNDEN İŞLETME — Google üzerinden ───────────────
 async function scrapeSahibinden(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    const url = `https://www.sahibinden.com/hizmet/${encodeURIComponent(keyword)}?location=${encodeURIComponent(city)}`;
-    const resp = await axios.get(url, { headers: HEADERS, timeout: 15000 });
-    const $ = cheerio.load(resp.data);
+    // Sahibinden 403 veriyor — Google üzerinden çek
+    const queries = [
+      `site:sahibinden.com "${keyword}" "${city}" iletisim telefon`,
+      `sahibinden.com "${keyword}" "${city}" hizmet`,
+      `"${keyword}" "${city}" ilan hizmet telefon iletisim`,
+    ];
 
-    $(".listing-item, .s-list-item, tr.searchResultsItem").each((_: any, el: any) => {
-      const name = $(el).find(".listing-text-title, h3, .title").first().text().trim();
-      const phone = $(el).find(".phone, [href^='tel:']").first().text().trim();
-      const price = $(el).find(".price, .listing-price").first().text().trim();
-      if (name && name.length > 2) {
-        results.push({
-          company_name: name,
-          phone: phone || null,
-          city, sector: keyword, source: "sahibinden", status: "new",
-          notes: price || null,
-        });
-      }
-    });
-
-    // Google fallback
-    if (results.length < 5) {
-      const gResp = await axios.get(
-        `https://www.google.com/search?q=${encodeURIComponent(keyword)}+${encodeURIComponent(city)}+sahibinden+telefon&num=10`,
-        { headers: HEADERS, timeout: 10000 }
+    for (const query of queries) {
+      const resp = await axios.get(
+        `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=tr`,
+        { headers: HEADERS, timeout: 12000 }
       );
-      const g$ = cheerio.load(gResp.data);
-      g$("div.g").each((_: any, el: any) => {
-        const title = g$(el).find("h3").text();
-        const snippet = g$(el).find(".VwiC3b").text();
-        const phoneMatch = snippet.match(/(0\d{10}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
-        if (title && phoneMatch) {
-          results.push({
-            company_name: title.split(/[-|–]/)[0].trim(),
-            phone: phoneMatch[0].replace(/\s/g,""),
-            city, sector: keyword, source: "sahibinden", status: "new",
-          });
+      const $ = cheerio.load(resp.data);
+
+      $("div.g, .tF2Cxc").each((_: any, el: any) => {
+        const title = $(el).find("h3").text().trim();
+        const snippet = $(el).find(".VwiC3b, .st").text();
+        const link = $(el).find("a").first().attr("href") || "";
+        const text = title + " " + snippet;
+
+        const phoneMatch = text.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+        const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+        const companyName = title.split(/[-|–|\/]/)[0].trim();
+
+        if (companyName && companyName.length > 3) {
+          if (!results.find(r => r.company_name === companyName)) {
+            results.push({
+              company_name: companyName,
+              phone: phoneMatch?.[0]?.replace(/\s/g, "") || null,
+              email: emailMatch?.[0] || null,
+              website: link.startsWith("http") ? link.split("?")[0] : null,
+              city, sector: keyword, source: "sahibinden", status: "new",
+            });
+          }
         }
       });
+
+      await sleep(600);
+      if (results.length >= limit) break;
     }
   } catch (e: any) {
     console.error("Sahibinden error:", e.message);
