@@ -2,224 +2,242 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
-const cheerio = require('cheerio');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-};
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
-// ── SEKTÖR DİZİNİ: ALTIN REHBER ─────────────────────────
-async function scrapeAltinRehber(keyword: string, city: string, limit: number): Promise<any[]> {
+// ── GOOGLE MAPS — Places API ──────────────────────────────
+async function scrapeGoogleMaps(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    const queries = [
-      `"${keyword}" "${city}" altinrehber telefon`,
-      `"${keyword}" "${city}" firma iletisim numarasi`,
-      `"${keyword}" "${city}" isletme telefon whatsapp`,
-    ];
+    const query = `${keyword} in ${city}`;
+    const resp = await axios.post(
+      'https://places.googleapis.com/v1/places:searchText',
+      { textQuery: query, maxResultCount: Math.min(limit, 20), languageCode: 'tr' },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_API_KEY,
+          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.businessStatus',
+        },
+        timeout: 15000,
+      }
+    );
 
-    for (const query of queries) {
-      const resp = await axios.get(
-        `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=tr`,
-        { headers: HEADERS, timeout: 12000 }
-      );
-      const $ = cheerio.load(resp.data);
-
-      $("div.g, .tF2Cxc").each((_: any, el: any) => {
-        const title = $(el).find("h3").text().trim();
-        const snippet = $(el).find(".VwiC3b, .st").text();
-        const link = $(el).find("a").first().attr("href") || "";
-        const text = title + " " + snippet;
-
-        const phoneMatch = text.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
-        const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
-        const companyName = title.split(/[-|–|\/]/)[0].trim();
-
-        if (companyName && companyName.length > 3) {
-          if (!results.find(r => r.company_name === companyName)) {
-            results.push({
-              company_name: companyName,
-              phone: phoneMatch?.[0]?.replace(/\s/g, "") || null,
-              email: emailMatch?.[0] || null,
-              website: link.startsWith("http") ? link.split("?")[0] : null,
-              city, sector: keyword, source: "altinrehber", status: "new",
-            });
-          }
-        }
-      });
-
-      await sleep(600);
-      if (results.length >= limit) break;
+    for (const place of resp.data?.places || []) {
+      if (place.businessStatus === 'OPERATIONAL' || !place.businessStatus) {
+        results.push({
+          company_name: place.displayName?.text || '',
+          phone: place.nationalPhoneNumber?.replace(/\s/g, '') || null,
+          address: place.formattedAddress || null,
+          website: place.websiteUri || null,
+          city,
+          sector: keyword,
+          source: 'google_maps',
+          status: 'new',
+        });
+      }
     }
   } catch (e: any) {
-    console.error("AltinRehber error:", e.message);
+    console.error('Google Maps error:', e.message);
   }
   return results.slice(0, limit);
 }
 
-// ── SAHİBİNDEN İŞLETME — Google üzerinden ───────────────
-async function scrapeSahibinden(keyword: string, city: string, limit: number): Promise<any[]> {
+// ── INSTAGRAM — Meta Graph API ────────────────────────────
+async function scrapeInstagram(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    // Sahibinden 403 veriyor — Google üzerinden çek
-    const queries = [
-      `site:sahibinden.com "${keyword}" "${city}" iletisim telefon`,
-      `sahibinden.com "${keyword}" "${city}" hizmet`,
-      `"${keyword}" "${city}" ilan hizmet telefon iletisim`,
-    ];
+    // Instagram Basic Display API veya Graph API ile iş hesabı ara
+    // Meta WA token'ı kullan
+    const META_TOKEN = process.env.META_WA_TOKEN;
+    if (!META_TOKEN) throw new Error('META_WA_TOKEN eksik');
 
-    for (const query of queries) {
-      const resp = await axios.get(
-        `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=tr`,
-        { headers: HEADERS, timeout: 12000 }
-      );
-      const $ = cheerio.load(resp.data);
+    // Instagram hashtag araması
+    const hashtagQuery = keyword.replace(/\s/g, '').toLowerCase();
+    const resp = await axios.get(
+      `https://graph.facebook.com/v18.0/ig_hashtag_search?user_id=${process.env.META_WA_BUSINESS_ID}&q=${hashtagQuery}&access_token=${META_TOKEN}`,
+      { timeout: 10000 }
+    );
 
-      $("div.g, .tF2Cxc").each((_: any, el: any) => {
-        const title = $(el).find("h3").text().trim();
-        const snippet = $(el).find(".VwiC3b, .st").text();
-        const link = $(el).find("a").first().attr("href") || "";
-        const text = title + " " + snippet;
+    const hashtagId = resp.data?.data?.[0]?.id;
+    if (!hashtagId) throw new Error('Hashtag bulunamadı');
 
-        const phoneMatch = text.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
-        const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
-        const companyName = title.split(/[-|–|\/]/)[0].trim();
+    const mediaResp = await axios.get(
+      `https://graph.facebook.com/v18.0/${hashtagId}/top_media?fields=id,caption,username,media_type,permalink&access_token=${META_TOKEN}&limit=${limit}`,
+      { timeout: 10000 }
+    );
 
-        if (companyName && companyName.length > 3) {
-          if (!results.find(r => r.company_name === companyName)) {
-            results.push({
-              company_name: companyName,
-              phone: phoneMatch?.[0]?.replace(/\s/g, "") || null,
-              email: emailMatch?.[0] || null,
-              website: link.startsWith("http") ? link.split("?")[0] : null,
-              city, sector: keyword, source: "sahibinden", status: "new",
-            });
-          }
+    for (const media of mediaResp.data?.data || []) {
+      if (media.username) {
+        const phoneMatch = (media.caption || '').match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+        const emailMatch = (media.caption || '').match(/[\w.-]+@[\w.-]+\.\w+/);
+
+        if (!results.find(r => r.instagram_username === media.username)) {
+          results.push({
+            company_name: media.username,
+            instagram_username: media.username,
+            instagram_url: `https://instagram.com/${media.username}`,
+            phone: phoneMatch?.[0]?.replace(/\s/g, '') || null,
+            email: emailMatch?.[0] || null,
+            city,
+            sector: keyword,
+            source: 'instagram',
+            status: 'new',
+          });
         }
-      });
-
-      await sleep(600);
-      if (results.length >= limit) break;
+      }
     }
   } catch (e: any) {
-    console.error("Sahibinden error:", e.message);
+    console.error('Instagram API error:', e.message);
+    // Fallback: Puppeteer ile çek
+    results.push(...await scrapeInstagramPuppeteer(keyword, city, limit));
   }
   return results.slice(0, limit);
 }
 
-// ── TRENDYOL MAĞAZA SAHİPLERİ ────────────────────────────
-async function scrapeTrendyol(keyword: string, limit: number): Promise<any[]> {
+// Instagram Puppeteer fallback
+async function scrapeInstagramPuppeteer(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    // Trendyol mağaza sahiplerini Google üzerinden bul
-    const queries = [
-      `site:trendyol.com/magaza "${keyword}" iletisim`,
-      `trendyol "${keyword}" magaza sahibi whatsapp telefon`,
-      `trendyol satici "${keyword}" iletisim`,
-    ];
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+      args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu'],
+      headless: true,
+    });
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-    for (const query of queries) {
-      const resp = await axios.get(
-        `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10`,
-        { headers: HEADERS, timeout: 10000 }
-      );
-      const $ = cheerio.load(resp.data);
+    const searchUrl = `https://www.instagram.com/explore/tags/${encodeURIComponent(keyword.replace(/\s/g,''))}`;
+    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 20000 });
+    await sleep(2000);
 
-      $("div.g, .tF2Cxc").each((_: any, el: any) => {
-        const link = $(el).find("a").first().attr("href") || "";
-        const title = $(el).find("h3").text().trim();
-        const snippet = $(el).find(".VwiC3b").text();
+    const usernames = await page.evaluate(() => {
+      const links = Array.from(document.querySelectorAll('a[href*="/"]'));
+      return links
+        .map((a: any) => a.href?.match(/instagram\.com\/([\w.]+)\//)?.[1])
+        .filter((u: any) => u && !['explore','p','reel','stories','accounts','about','legal','help'].includes(u))
+        .filter((u: any, i: any, arr: any) => arr.indexOf(u) === i)
+        .slice(0, 10);
+    });
 
-        if (link.includes("trendyol.com")) {
-          const phoneMatch = (snippet + title).match(/(0?5\d{2}[\s]?\d{3}[\s]?\d{2}[\s]?\d{2})/);
-          const emailMatch = (snippet + title).match(/[\w.-]+@[\w.-]+\.\w+/);
-          const storeMatch = link.match(/trendyol\.com\/([^/?]+)/);
-
-          if (title && !results.find(r => r.company_name === title)) {
-            results.push({
-              company_name: title.split(/[-|–]/)[0].trim(),
-              phone: phoneMatch?.[0]?.replace(/\s/g,"") || null,
-              email: emailMatch?.[0] || null,
-              website: link.includes("trendyol") ? link.split("?")[0] : null,
-              sector: keyword,
-              source: "trendyol",
-              status: "new",
-            });
-          }
-        }
+    for (const username of usernames) {
+      results.push({
+        company_name: username,
+        instagram_username: username,
+        instagram_url: `https://instagram.com/${username}`,
+        phone: null,
+        city, sector: keyword, source: 'instagram', status: 'new',
       });
-      await sleep(600);
-      if (results.length >= limit) break;
+    }
+
+    await browser.close();
+  } catch (e: any) {
+    console.error('Instagram Puppeteer error:', e.message);
+  }
+  return results;
+}
+
+// ── FACEBOOK — Graph API ──────────────────────────────────
+async function scrapeFacebook(keyword: string, city: string, limit: number): Promise<any[]> {
+  const results: any[] = [];
+  try {
+    const META_TOKEN = process.env.META_WA_TOKEN;
+    if (!META_TOKEN) throw new Error('META_WA_TOKEN eksik');
+
+    // Facebook Pages Search
+    const resp = await axios.get(
+      `https://graph.facebook.com/v18.0/pages/search?q=${encodeURIComponent(keyword + ' ' + city)}&fields=id,name,phone,website,location,category&access_token=${META_TOKEN}&limit=${limit}`,
+      { timeout: 10000 }
+    );
+
+    for (const page of resp.data?.data || []) {
+      results.push({
+        company_name: page.name,
+        phone: page.phone?.replace(/\s/g,'') || null,
+        website: page.website || null,
+        facebook_url: `https://facebook.com/${page.id}`,
+        city: page.location?.city || city,
+        sector: keyword,
+        source: 'facebook',
+        status: 'new',
+      });
     }
   } catch (e: any) {
-    console.error("Trendyol error:", e.message);
+    console.error('Facebook API error:', e.message);
   }
   return results.slice(0, limit);
 }
 
-// ── GENEL WEB ARAMA ───────────────────────────────────────
-async function scrapeGeneral(keyword: string, city: string, source: string, limit: number): Promise<any[]> {
+// ── TIKTOK — Puppeteer ile ────────────────────────────────
+async function scrapeTikTok(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    const queries = [
-      `"${keyword}" "${city}" telefon iletisim`,
-      `"${keyword}" "${city}" firma whatsapp`,
-    ];
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+      args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu'],
+      headless: true,
+    });
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 
-    for (const query of queries) {
-      const resp = await axios.get(
-        `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=tr`,
-        { headers: HEADERS, timeout: 10000 }
-      );
-      const $ = cheerio.load(resp.data);
+    const searchUrl = `https://www.tiktok.com/search/user?q=${encodeURIComponent(keyword + ' ' + city)}`;
+    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 25000 });
+    await sleep(3000);
 
-      $("div.g, .tF2Cxc").each((_: any, el: any) => {
-        const title = $(el).find("h3").text().trim();
-        const snippet = $(el).find(".VwiC3b").text();
-        const link = $(el).find("a").first().attr("href") || "";
-        const phoneMatch = (snippet + title).match(/(0?5\d{2}[\s]?\d{3}[\s]?\d{2}[\s]?\d{2})/);
-        const emailMatch = (snippet + title).match(/[\w.-]+@[\w.-]+\.\w+/);
+    const accounts = await page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll('[data-e2e="search-user-item"], .tiktok-1f2kn0i-DivUserItem'));
+      return items.slice(0, 10).map((item: any) => ({
+        username: item.querySelector('[data-e2e="user-unique-id"], .tiktok-1b5kp1h-SpanUniqueId')?.textContent?.trim() || '',
+        nickname: item.querySelector('[data-e2e="user-nickname"], .tiktok-5e2vqk-SpanNickName')?.textContent?.trim() || '',
+        bio: item.querySelector('[data-e2e="user-bio"], .tiktok-wb6ij-SpanBioText')?.textContent?.trim() || '',
+      }));
+    });
 
-        if (title && title.length > 3 && phoneMatch) {
-          if (!results.find(r => r.company_name === title.split(/[-|–]/)[0].trim())) {
-            results.push({
-              company_name: title.split(/[-|–]/)[0].trim(),
-              phone: phoneMatch[0].replace(/\s/g,""),
-              email: emailMatch?.[0] || null,
-              website: link.startsWith("http") ? link.split("?")[0] : null,
-              city, sector: keyword, source, status: "new",
-            });
-          }
-        }
+    for (const acc of accounts) {
+      if (!acc.username) continue;
+      const phoneMatch = acc.bio?.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+      const emailMatch = acc.bio?.match(/[\w.-]+@[\w.-]+\.\w+/);
+
+      results.push({
+        company_name: acc.nickname || acc.username,
+        tiktok_username: acc.username,
+        tiktok_url: `https://tiktok.com/@${acc.username}`,
+        phone: phoneMatch?.[0]?.replace(/\s/g,'') || null,
+        email: emailMatch?.[0] || null,
+        city, sector: keyword, source: 'tiktok', status: 'new',
       });
-      await sleep(700);
-      if (results.length >= limit) break;
     }
+
+    await browser.close();
   } catch (e: any) {
-    console.error("General scrape error:", e.message);
+    console.error('TikTok error:', e.message);
   }
   return results.slice(0, limit);
 }
 
-// ── DB'YE KAYDET ──────────────────────────────────────────
-async function saveLeads(userId: string, leads: any[]): Promise<{added:number, duplicate:number}> {
+// ── DB KAYDET ─────────────────────────────────────────────
+async function saveLeads(userId: string, leads: any[]): Promise<{added: number, duplicate: number}> {
   let added = 0, duplicate = 0;
   for (const lead of leads) {
     try {
-      let query = supabase.from("leads").select("id").eq("user_id", userId);
-      if (lead.phone) query = query.eq("phone", lead.phone);
-      else query = query.eq("company_name", lead.company_name);
+      if (!lead.company_name) continue;
+      let query = supabase.from('leads').select('id').eq('user_id', userId);
+      if (lead.phone) query = query.eq('phone', lead.phone);
+      else if (lead.instagram_url) query = query.eq('instagram_url', lead.instagram_url);
+      else if (lead.facebook_url) query = query.eq('facebook_url', lead.facebook_url);
+      else query = query.eq('company_name', lead.company_name).eq('city', lead.city || '');
 
       const { data: existing } = await query.maybeSingle();
       if (existing) { duplicate++; continue; }
 
-      await supabase.from("leads").insert([{ user_id: userId, ...lead }]);
+      await supabase.from('leads').insert([{ user_id: userId, ...lead }]);
       added++;
     } catch {}
   }
@@ -229,59 +247,61 @@ async function saveLeads(userId: string, leads: any[]): Promise<{added:number, d
 // ── ROUTES ────────────────────────────────────────────────
 
 // POST /api/sources/scrape
-router.post("/scrape", async (req: any, res: any) => {
+router.post('/scrape', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { source, keyword, city, limit = 20 } = req.body;
-    if (!keyword || !source) return res.status(400).json({ error: "source ve keyword zorunlu" });
+    if (!keyword || !source) return res.status(400).json({ error: 'source ve keyword zorunlu' });
 
+    console.log(`Scraping ${source}: ${keyword} / ${city}`);
     let leads: any[] = [];
 
     switch (source) {
-      case "altinrehber": leads = await scrapeAltinRehber(keyword, city || "Istanbul", limit); break;
-      case "sahibinden": leads = await scrapeSahibinden(keyword, city || "Istanbul", limit); break;
-      case "trendyol": leads = await scrapeTrendyol(keyword, limit); break;
-      case "web": leads = await scrapeGeneral(keyword, city || "Istanbul", "web", limit); break;
-      default: return res.status(400).json({ error: "Geçersiz kaynak" });
+      case 'google_maps': leads = await scrapeGoogleMaps(keyword, city || 'Istanbul', limit); break;
+      case 'instagram': leads = await scrapeInstagram(keyword, city || 'Istanbul', limit); break;
+      case 'facebook': leads = await scrapeFacebook(keyword, city || 'Istanbul', limit); break;
+      case 'tiktok': leads = await scrapeTikTok(keyword, city || 'Istanbul', limit); break;
+      default: return res.status(400).json({ error: 'Geçersiz kaynak. google_maps, instagram, facebook, tiktok' });
     }
 
+    console.log(`Found ${leads.length} leads for ${source}/${keyword}`);
     const { added, duplicate } = await saveLeads(userId, leads);
     res.json({ found: leads.length, added, duplicate, message: `${added} yeni lead eklendi (${source})` });
   } catch (e: any) {
+    console.error('Scrape error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
 // POST /api/sources/scrape-batch
-router.post("/scrape-batch", async (req: any, res: any) => {
+router.post('/scrape-batch', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { sources, keywords, cities, limitPerCombination = 10 } = req.body;
+    if (!keywords?.length) return res.status(400).json({ error: 'keywords zorunlu' });
 
-    res.json({ message: "Toplu tarama başlıyor...", total: (sources?.length||1) * keywords.length * (cities?.length||1) });
+    const srcList = sources || ['google_maps'];
+    const cityList = cities || ['Istanbul'];
+    const total = srcList.length * keywords.length * cityList.length;
+
+    res.json({ message: `${total} kombinasyon taranıyor arka planda...`, total });
 
     (async () => {
       let totalAdded = 0;
       for (const keyword of keywords) {
-        for (const source of (sources || ["web"])) {
-          const cityList = ["trendyol"].includes(source) ? [""] : (cities || ["Istanbul"]);
+        for (const source of srcList) {
           for (const city of cityList) {
             try {
               let leads: any[] = [];
               switch (source) {
-                case "altinrehber": leads = await scrapeAltinRehber(keyword, city, limitPerCombination); break;
-                case "sahibinden": leads = await scrapeSahibinden(keyword, city, limitPerCombination); break;
-                case "trendyol": leads = await scrapeTrendyol(keyword, limitPerCombination); break;
-                case "instagram":
-                  leads = (await axios.post(`http://localhost:3001/api/instagram/scrape`, { keyword, city, limit: limitPerCombination }, { headers: { Authorization: req.headers.authorization } }).catch(()=>({data:{}})))?.data?.leads || [];
-                  break;
-                case "facebook":
-                  leads = (await axios.post(`http://localhost:3001/api/facebook/scrape`, { keyword, city, limit: limitPerCombination }, { headers: { Authorization: req.headers.authorization } }).catch(()=>({data:{}})))?.data?.leads || [];
-                  break;
-                default: leads = await scrapeGeneral(keyword, city, source, limitPerCombination);
+                case 'google_maps': leads = await scrapeGoogleMaps(keyword, city, limitPerCombination); break;
+                case 'instagram': leads = await scrapeInstagram(keyword, city, limitPerCombination); break;
+                case 'facebook': leads = await scrapeFacebook(keyword, city, limitPerCombination); break;
+                case 'tiktok': leads = await scrapeTikTok(keyword, city, limitPerCombination); break;
               }
               const { added } = await saveLeads(userId, leads);
               totalAdded += added;
+              console.log(`Batch: ${source}/${keyword}/${city} => ${added} added`);
               await sleep(2000);
             } catch (e: any) {
               console.error(`Batch error ${source}/${keyword}/${city}:`, e.message);
@@ -289,58 +309,52 @@ router.post("/scrape-batch", async (req: any, res: any) => {
           }
         }
       }
-      console.log(`Batch scrape done: ${totalAdded} total leads added`);
+      console.log(`Batch done: ${totalAdded} total leads`);
     })();
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// GET /api/sources/stats
-router.get("/stats", async (req: any, res: any) => {
+// POST /api/sources/referral
+router.post('/referral', async (req: any, res: any) => {
   try {
-    const { data } = await supabase.from("leads").select("source").eq("user_id", req.userId);
-    const stats: Record<string, number> = {};
-    (data || []).forEach((d: any) => {
-      stats[d.source || "manual"] = (stats[d.source || "manual"] || 0) + 1;
-    });
-    res.json({ stats, total: data?.length || 0 });
+    const userId = req.userId;
+    const { referrerLeadId, companyName, contactName, phone, email, sector } = req.body;
+    if (!companyName) return res.status(400).json({ error: 'companyName zorunlu' });
+
+    let referrerName = 'Referans';
+    if (referrerLeadId) {
+      const { data: referrer } = await supabase.from('leads').select('company_name,contact_name').eq('id', referrerLeadId).single();
+      referrerName = referrer?.contact_name || referrer?.company_name || 'Referans';
+    }
+
+    if (phone) {
+      const { data: existing } = await supabase.from('leads').select('id').eq('user_id', userId).eq('phone', phone).maybeSingle();
+      if (existing) return res.status(400).json({ error: 'Bu telefon zaten kayıtlı' });
+    }
+
+    const { data: newLead } = await supabase.from('leads').insert([{
+      user_id: userId, company_name: companyName,
+      contact_name: contactName || null, phone: phone || null,
+      email: email || null, sector: sector || null,
+      source: 'referral', referrer: referrerName,
+      status: 'new', notes: `${referrerName} tarafından önerildi`,
+    }]).select().single();
+
+    res.json({ lead: newLead, message: `Referans lead eklendi! (${referrerName} tarafından)` });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/sources/referral — Referans ile lead ekle
-router.post("/referral", async (req: any, res: any) => {
+// GET /api/sources/stats
+router.get('/stats', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { referrerLeadId, companyName, contactName, phone, email, sector } = req.body;
-    if (!companyName || !phone) return res.status(400).json({ error: "companyName ve phone zorunlu" });
-
-    // Referans veren müşteriyi bul
-    let referrerName = "Referans";
-    if (referrerLeadId) {
-      const { data: referrer } = await supabase.from("leads").select("company_name, contact_name").eq("id", referrerLeadId).single();
-      referrerName = referrer?.contact_name || referrer?.company_name || "Referans";
-    }
-
-    const { data: existing } = await supabase.from("leads").select("id").eq("user_id", userId).eq("phone", phone).maybeSingle();
-    if (existing) return res.status(400).json({ error: "Bu telefon numarası zaten kayıtlı" });
-
-    const { data: newLead } = await supabase.from("leads").insert([{
-      user_id: userId,
-      company_name: companyName,
-      contact_name: contactName || null,
-      phone,
-      email: email || null,
-      sector: sector || null,
-      source: "referral",
-      referrer: referrerName,
-      status: "new",
-      notes: `${referrerName} tarafından önerildi`,
-    }]).select().single();
-
-    res.json({ lead: newLead, message: `Referans lead eklendi! (${referrerName} tarafından)` });
+    const { data } = await supabase.from('leads').select('source').eq('user_id', req.userId);
+    const stats: Record<string, number> = {};
+    (data || []).forEach((d: any) => { stats[d.source || 'manual'] = (stats[d.source || 'manual'] || 0) + 1; });
+    res.json({ stats, total: data?.length || 0 });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

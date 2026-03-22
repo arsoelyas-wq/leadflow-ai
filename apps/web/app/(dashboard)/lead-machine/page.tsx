@@ -6,12 +6,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 const SOURCES = [
-  { id: 'web', label: 'Web Genel', icon: '🌐', desc: 'Google aramasından işletme bul', color: 'blue' },
+  { id: 'google_maps', label: 'Google Maps', icon: '🗺️', desc: 'Google Maps işletme veritabanı', color: 'green' },
   { id: 'instagram', label: 'Instagram', icon: '📸', desc: 'Instagram işletme hesapları', color: 'pink' },
   { id: 'facebook', label: 'Facebook', icon: '📘', desc: 'Facebook sayfa sahipleri', color: 'blue' },
-  { id: 'altinrehber', label: 'Altın Rehber', icon: '📒', desc: 'Türkiye sektör dizini', color: 'yellow' },
-  { id: 'sahibinden', label: 'Sahibinden', icon: '🏠', desc: 'Hizmet ilanı verenler', color: 'orange' },
-  { id: 'trendyol', label: 'Trendyol', icon: '🛍️', desc: 'E-ticaret mağaza sahipleri', color: 'orange' },
+  { id: 'tiktok', label: 'TikTok', icon: '🎵', desc: 'TikTok işletme hesapları', color: 'black' },
 ]
 
 const SECTORS = [
@@ -26,7 +24,7 @@ const CITIES = [
 ]
 
 export default function LeadMachinePage() {
-  const [selectedSources, setSelectedSources] = useState<string[]>(['web'])
+  const [selectedSources, setSelectedSources] = useState<string[]>(['google_maps'])
   const [keyword, setKeyword] = useState('')
   const [customKeyword, setCustomKeyword] = useState('')
   const [selectedCities, setSelectedCities] = useState<string[]>(['Istanbul'])
