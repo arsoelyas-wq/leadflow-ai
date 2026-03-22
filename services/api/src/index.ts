@@ -48,6 +48,7 @@ app.use('/api/sources',    authMiddleware, require('./routes/sources'));
 app.use('/api/instagram',  authMiddleware, require('./routes/instagram'));
 app.use('/api/facebook',   authMiddleware, require('./routes/facebook'));
 app.use('/api/workflow',   authMiddleware, require('./routes/workflow'));
+app.use('/api/hunter', authMiddleware, require('./routes/hunter'));
 app.use('/api/trade-fair', authMiddleware, require('./routes/trade-fair'));
 app.use('/api/linkedin',            authMiddleware, require('./routes/linkedin'));
 app.use('/api/sequences',           authMiddleware, require('./routes/sequences'));

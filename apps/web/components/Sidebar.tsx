@@ -17,6 +17,7 @@ const navItems = [
   // ── LEAD KAYNAKLARI ──
   { href: '/leads', label: 'Leadler', icon: Users },
   { href: '/lead-machine', label: 'Lead Makinesi', icon: Target },
+  { href: '/lead-hunter', label: '7/24 Lead Avcısı', icon: Bot },
   { href: '/workflow', label: 'Workflow Engine', icon: Workflow },
   { href: '/trade-fair', label: 'Fuar Asistanı', icon: MapPin },
   { href: '/lead-quality', label: 'Lead Kalite AI', icon: Star },

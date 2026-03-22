@@ -17,12 +17,17 @@ async function scrapeGoogleMaps(keyword: string, city: string, limit: number): P
     const query = `${keyword} in ${city}`;
     const resp = await axios.post(
       'https://places.googleapis.com/v1/places:searchText',
-      { textQuery: query, maxResultCount: Math.min(limit, 20), languageCode: 'tr' },
+      { 
+        textQuery: query, 
+        maxResultCount: Math.min(limit, 20), 
+        languageCode: 'tr',
+        regionCode: 'TR',
+      },
       {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_API_KEY,
-          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.businessStatus',
+          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.businessStatus,places.regularOpeningHours',
         },
         timeout: 15000,
       }
@@ -30,9 +35,18 @@ async function scrapeGoogleMaps(keyword: string, city: string, limit: number): P
 
     for (const place of resp.data?.places || []) {
       if (place.businessStatus === 'OPERATIONAL' || !place.businessStatus) {
+        // Telefon: önce ulusal, yoksa uluslararası
+        let phone = place.nationalPhoneNumber || place.internationalPhoneNumber || null;
+        if (phone) {
+          // 0 ile başlamazsa ekle, boşlukları kaldır
+          phone = phone.replace(/\s/g, '').replace(/\+90/, '0').replace(/[^0-9]/g, '');
+          if (phone.startsWith('90') && phone.length === 12) phone = '0' + phone.slice(2);
+          if (!phone.startsWith('0')) phone = '0' + phone;
+        }
+
         results.push({
           company_name: place.displayName?.text || '',
-          phone: place.nationalPhoneNumber?.replace(/\s/g, '') || null,
+          phone: phone || null,
           address: place.formattedAddress || null,
           website: place.websiteUri || null,
           city,
@@ -174,49 +188,88 @@ async function scrapeFacebook(keyword: string, city: string, limit: number): Pro
   return results.slice(0, limit);
 }
 
-// ── TIKTOK — Puppeteer ile ────────────────────────────────
+// ── TIKTOK — Herkese açık arama sayfası ─────────────────
 async function scrapeTikTok(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
+  let browser: any = null;
   try {
     const puppeteer = require('puppeteer');
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-      args: ['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-gpu'],
+      args: [
+        '--no-sandbox','--disable-setuid-sandbox',
+        '--disable-dev-shm-usage','--disable-gpu',
+        '--window-size=1280,800',
+      ],
       headless: true,
     });
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+    await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15');
+    await page.setViewport({ width: 390, height: 844 });
 
+    // 1. Kullanıcı araması
     const searchUrl = `https://www.tiktok.com/search/user?q=${encodeURIComponent(keyword + ' ' + city)}`;
-    await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 25000 });
-    await sleep(3000);
+    await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await sleep(2500);
 
-    const accounts = await page.evaluate(() => {
-      const items = Array.from(document.querySelectorAll('[data-e2e="search-user-item"], .tiktok-1f2kn0i-DivUserItem'));
-      return items.slice(0, 10).map((item: any) => ({
-        username: item.querySelector('[data-e2e="user-unique-id"], .tiktok-1b5kp1h-SpanUniqueId')?.textContent?.trim() || '',
-        nickname: item.querySelector('[data-e2e="user-nickname"], .tiktok-5e2vqk-SpanNickName')?.textContent?.trim() || '',
-        bio: item.querySelector('[data-e2e="user-bio"], .tiktok-wb6ij-SpanBioText')?.textContent?.trim() || '',
-      }));
-    });
+    // Tüm metin içeriğini al
+    const pageText = await page.evaluate(() => document.body.innerText);
+    const pageHtml = await page.content();
 
-    for (const acc of accounts) {
-      if (!acc.username) continue;
-      const phoneMatch = acc.bio?.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
-      const emailMatch = acc.bio?.match(/[\w.-]+@[\w.-]+\.\w+/);
+    // Username'leri çek
+    const usernameMatches = pageHtml.match(/"uniqueId":"([\w.]+)"/g) || [];
+    const nicknameMatches = pageHtml.match(/"nickname":"([^"]+)"/g) || [];
+    const bioMatches = pageHtml.match(/"signature":"([^"]+)"/g) || [];
+
+    const seen = new Set();
+    for (let i = 0; i < Math.min(usernameMatches.length, limit); i++) {
+      const username = usernameMatches[i]?.replace(/"uniqueId":"/, '').replace(/"/, '');
+      const nickname = nicknameMatches[i]?.replace(/"nickname":"/, '').replace(/"/, '') || username;
+      const bio = bioMatches[i]?.replace(/"signature":"/, '').replace(/"/, '') || '';
+
+      if (!username || seen.has(username)) continue;
+      seen.add(username);
+
+      const phoneMatch = bio.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+      const emailMatch = bio.match(/[\w.-]+@[\w.-]+\.\w+/);
 
       results.push({
-        company_name: acc.nickname || acc.username,
-        tiktok_username: acc.username,
-        tiktok_url: `https://tiktok.com/@${acc.username}`,
-        phone: phoneMatch?.[0]?.replace(/\s/g,'') || null,
+        company_name: nickname,
+        tiktok_username: username,
+        tiktok_url: `https://tiktok.com/@${username}`,
+        phone: phoneMatch?.[0]?.replace(/\s/g, '') || null,
         email: emailMatch?.[0] || null,
         city, sector: keyword, source: 'tiktok', status: 'new',
       });
     }
 
+    // 2. Hashtag araması — daha fazla sonuç
+    if (results.length < limit) {
+      const hashUrl = `https://www.tiktok.com/tag/${encodeURIComponent(keyword.replace(/\s/g, ''))}`;
+      await page.goto(hashUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+      await sleep(2000);
+
+      const hashHtml = await page.content();
+      const hashUsernames = hashHtml.match(/"uniqueId":"([\w.]+)"/g) || [];
+
+      for (const match of hashUsernames.slice(0, limit - results.length)) {
+        const username = match.replace(/"uniqueId":"/, '').replace(/"/, '');
+        if (!username || seen.has(username)) continue;
+        seen.add(username);
+        results.push({
+          company_name: username,
+          tiktok_username: username,
+          tiktok_url: `https://tiktok.com/@${username}`,
+          phone: null, email: null,
+          city, sector: keyword, source: 'tiktok', status: 'new',
+        });
+      }
+    }
+
     await browser.close();
+    console.log(`TikTok found: ${results.length} for ${keyword}/${city}`);
   } catch (e: any) {
+    if (browser) await browser.close().catch(() => {});
     console.error('TikTok error:', e.message);
   }
   return results.slice(0, limit);
