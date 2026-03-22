@@ -7,35 +7,51 @@ import {
   Settings, CreditCard, LogOut, Zap, Activity, Target, DollarSign,
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
-  Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box
+  Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
+  Workflow, MapPin
 } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+
+  // ── LEAD KAYNAKLARI ──
   { href: '/leads', label: 'Leadler', icon: Users },
+  { href: '/lead-machine', label: 'Lead Makinesi', icon: Target },
+  { href: '/workflow', label: 'Workflow Engine', icon: Workflow },
+  { href: '/trade-fair', label: 'Fuar Asistanı', icon: MapPin },
   { href: '/lead-quality', label: 'Lead Kalite AI', icon: Star },
   { href: '/health-scores', label: 'Müşteri Sağlığı', icon: Heart },
+  { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },
+
+  // ── KAMPANYA & MESAJ ──
   { href: '/campaigns', label: 'Kampanyalar', icon: Megaphone },
   { href: '/sequences', label: 'AI Sekanslar', icon: Bot },
   { href: '/ab-testing', label: 'A/B Test', icon: FlaskConical },
+  { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
+  { href: '/smart-timing', label: 'Akıllı Zamanlama', icon: Clock },
+  { href: '/retargeting', label: 'Retargeting', icon: RefreshCw },
+
+  // ── AI ARAÇLAR ──
   { href: '/video-outreach', label: 'AI Video', icon: Video },
   { href: '/voice-outreach', label: 'AI Sesli Arama', icon: Phone },
   { href: '/ar-experience', label: 'AR Deneyimi', icon: Box },
   { href: '/vision', label: 'Vision AI', icon: Eye },
-  { href: '/retargeting', label: 'Retargeting', icon: RefreshCw },
   { href: '/proposals', label: 'Teklif & Pazarlık', icon: FileText },
-  { href: '/smart-timing', label: 'Akıllı Zamanlama', icon: Clock },
-  { href: '/cultural', label: 'Kültürel Uyum', icon: Globe },
-  { href: '/export', label: 'İhracat Zekası', icon: Globe2 },
-  { href: '/meta-intent', label: 'Meta Intent', icon: Target },
-  { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
+
+  // ── ANALİTİK ──
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
   { href: '/financial', label: 'Büyüme Zekası', icon: TrendingUp },
+
+  // ── PAZAR & RAKİP ──
   { href: '/visual-trends', label: 'Trend Catcher', icon: Sparkles },
   { href: '/competitor', label: 'Rakip Hijack', icon: Target },
   { href: '/shadow', label: 'Rakip İzleme', icon: Eye },
-  { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },
+  { href: '/cultural', label: 'Kültürel Uyum', icon: Globe },
+  { href: '/export', label: 'İhracat Zekası', icon: Globe2 },
+  { href: '/meta-intent', label: 'Meta Intent', icon: Target },
+
+  // ── SİSTEM ──
   { href: '/wa-numbers', label: 'WA Numaralar', icon: Smartphone },
   { href: '/webhooks', label: 'Webhooks', icon: Webhook },
   { href: '/whitelabel', label: 'White-Label', icon: Building2 },
