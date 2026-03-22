@@ -44,11 +44,11 @@ app.use('/api/quality-v2',          authMiddleware, require('./routes/quality-v2
 app.use('/api/competitor',          authMiddleware, require('./routes/competitor'));
 app.use('/api/decision-maker',      authMiddleware, require('./routes/decision-maker'));
 app.use('/api/persons',             authMiddleware, require('./routes/persons'));
-app.use('/api/sources', auth, require('./routes/sources'));
-app.use('/api/instagram', auth, require('./routes/instagram'));
-app.use('/api/facebook', auth, require('./routes/facebook'));
-app.use('/api/workflow', auth, require('./routes/workflow'));
-app.use('/api/trade-fair', auth, require('./routes/trade-fair'));
+app.use('/api/sources',    authMiddleware, require('./routes/sources'));
+app.use('/api/instagram',  authMiddleware, require('./routes/instagram'));
+app.use('/api/facebook',   authMiddleware, require('./routes/facebook'));
+app.use('/api/workflow',   authMiddleware, require('./routes/workflow'));
+app.use('/api/trade-fair', authMiddleware, require('./routes/trade-fair'));
 app.use('/api/linkedin',            authMiddleware, require('./routes/linkedin'));
 app.use('/api/sequences',           authMiddleware, require('./routes/sequences'));
 app.use('/api/abtests',             authMiddleware, require('./routes/ab-testing'));
