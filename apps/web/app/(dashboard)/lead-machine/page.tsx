@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { Search, Zap, RefreshCw, Plus, Instagram, Facebook, Globe, ShoppingBag, BookOpen, Users, TrendingUp, Target } from 'lucide-react'
+import { Search, Zap, RefreshCw, Plus, Instagram, Facebook, Globe, ShoppingBag, BookOpen, Users, TrendingUp, Target, ArrowRight, ExternalLink } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 const SOURCES = [
   { id: 'web', label: 'Web Genel', icon: '🌐', desc: 'Google aramasından işletme bul', color: 'blue' },
@@ -40,6 +42,7 @@ export default function LeadMachinePage() {
   const [leads, setLeads] = useState<any[]>([])
   const [referralForm, setReferralForm] = useState({ referrerLeadId:'', companyName:'', contactName:'', phone:'', email:'', sector:'' })
   const [referralLoading, setReferralLoading] = useState(false)
+  const router = useRouter()
 
   const showMsg = (type: 'success'|'error', text: string) => {
     setMsg({type,text}); setTimeout(()=>setMsg(null), 6000)
@@ -89,6 +92,8 @@ export default function LeadMachinePage() {
       setResult({ results, totalAdded, totalFound })
       showMsg('success', `${totalAdded} yeni lead eklendi!`)
       loadStats()
+      // 2 saniye sonra leads sayfasına git
+      if (totalAdded > 0) setTimeout(() => router.push('/leads'), 3000)
     } catch (e:any) { showMsg('error', e.message) }
     finally { setLoading(false) }
   }
@@ -308,6 +313,13 @@ export default function LeadMachinePage() {
                   </div>
                 ))}
               </div>
+              {result.totalAdded > 0 && (
+                <Link href="/leads"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-xl transition mt-2">
+                  <ExternalLink size={14}/> Leadsları Görüntüle ({result.totalAdded} yeni)
+                  <ArrowRight size={14}/>
+                </Link>
+              )}
             </div>
           )}
 
