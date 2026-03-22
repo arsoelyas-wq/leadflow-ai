@@ -11,15 +11,26 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 // ── GOOGLE MAPS — Places API ──────────────────────────────
+function formatPhone(raw: string | null): string | null {
+  if (!raw) return null;
+  let phone = raw.replace(/\s/g, '').replace(/\+90/, '0').replace(/[^0-9]/g, '');
+  if (phone.startsWith('90') && phone.length === 12) phone = '0' + phone.slice(2);
+  if (!phone.startsWith('0')) phone = '0' + phone;
+  if (phone.length < 10 || phone.length > 11) return null;
+  return phone;
+}
+
 async function scrapeGoogleMaps(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    const query = `${keyword} in ${city}`;
+    const query = `${keyword} ${city}`;
+
+    // 1. Text Search — tüm alanları iste
     const resp = await axios.post(
       'https://places.googleapis.com/v1/places:searchText',
-      { 
-        textQuery: query, 
-        maxResultCount: Math.min(limit, 20), 
+      {
+        textQuery: query,
+        maxResultCount: Math.min(limit, 20),
         languageCode: 'tr',
         regionCode: 'TR',
       },
@@ -27,35 +38,54 @@ async function scrapeGoogleMaps(keyword: string, city: string, limit: number): P
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_API_KEY,
-          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.businessStatus,places.regularOpeningHours',
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.businessStatus',
         },
         timeout: 15000,
       }
     );
 
-    for (const place of resp.data?.places || []) {
-      if (place.businessStatus === 'OPERATIONAL' || !place.businessStatus) {
-        // Telefon: önce ulusal, yoksa uluslararası
-        let phone = place.nationalPhoneNumber || place.internationalPhoneNumber || null;
-        if (phone) {
-          // 0 ile başlamazsa ekle, boşlukları kaldır
-          phone = phone.replace(/\s/g, '').replace(/\+90/, '0').replace(/[^0-9]/g, '');
-          if (phone.startsWith('90') && phone.length === 12) phone = '0' + phone.slice(2);
-          if (!phone.startsWith('0')) phone = '0' + phone;
-        }
+    const places = resp.data?.places || [];
 
-        results.push({
-          company_name: place.displayName?.text || '',
-          phone: phone || null,
-          address: place.formattedAddress || null,
-          website: place.websiteUri || null,
-          city,
-          sector: keyword,
-          source: 'google_maps',
-          status: 'new',
-        });
+    for (const place of places) {
+      if (place.businessStatus && place.businessStatus !== 'OPERATIONAL') continue;
+
+      const name = place.displayName?.text;
+      if (!name || name.length < 2) continue;
+
+      let phone = formatPhone(place.nationalPhoneNumber) || formatPhone(place.internationalPhoneNumber);
+
+      // 2. Telefon yoksa Place Details API ile dene
+      if (!phone && place.id) {
+        try {
+          const detailResp = await axios.get(
+            `https://places.googleapis.com/v1/${place.id}`,
+            {
+              headers: {
+                'X-Goog-Api-Key': GOOGLE_API_KEY,
+                'X-Goog-FieldMask': 'nationalPhoneNumber,internationalPhoneNumber,websiteUri',
+              },
+              timeout: 8000,
+            }
+          );
+          phone = formatPhone(detailResp.data?.nationalPhoneNumber) ||
+                  formatPhone(detailResp.data?.internationalPhoneNumber);
+        } catch {}
+        await sleep(200);
       }
+
+      results.push({
+        company_name: name,
+        phone: phone || null,
+        address: place.formattedAddress || null,
+        website: place.websiteUri || null,
+        city,
+        sector: keyword,
+        source: 'google_maps',
+        status: 'new',
+      });
     }
+
+    console.log(`Google Maps: ${results.length} found, ${results.filter(r => r.phone).length} with phone`);
   } catch (e: any) {
     console.error('Google Maps error:', e.message);
   }
