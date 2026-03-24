@@ -1,17 +1,4 @@
 
-// Meta Webhook Doğrulama — Auth gerektirmez
-app.get('/api/meta/webhook', (req: any, res: any) => {
-  const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'leadflow2024';
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('Meta webhook verified!');
-    res.status(200).send(challenge);
-  } else {
-    res.status(403).send('Verification failed');
-  }
-});
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -83,7 +70,31 @@ app.use('/api/whitelabel',          authMiddleware, require('./routes/whitelabel
 app.use('/api/voice',               authMiddleware, require('./routes/voice-outreach'));
 app.use('/api/push',                authMiddleware, require('./routes/push'));
 app.use('/api/cultural',            authMiddleware, require('./routes/cultural'));
-app.use('/api/meta',                authMiddleware, require('./routes/meta-intent'));
+// Meta Webhook Dogrulama
+app.get('/api/meta/webhook', (req: any, res: any) => {
+  const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'leadflow2024';
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log('Meta webhook verified!');
+    res.status(200).send(challenge);
+  } else {
+    res.status(403).send('Verification failed');
+  }
+});
+
+
+// Meta Webhook Verification - no auth
+app.get('/api/meta/webhook', (req: any, res: any) => {
+  const challenge = req.query['hub.challenge'];
+  const token = req.query['hub.verify_token'];
+  if (req.query['hub.mode'] === 'subscribe' && token === (process.env.META_WEBHOOK_VERIFY_TOKEN || 'leadflow2024')) {
+    res.status(200).send(challenge);
+  } else { res.status(403).send('Failed'); }
+});
+
+app.use('/api/meta', authMiddleware, require('./routes/meta-intent'));
 app.use('/api/export',              authMiddleware, require('./routes/export-intelligence'));
 app.use('/api/ar',                  authMiddleware, require('./routes/ar-integration'));
 
