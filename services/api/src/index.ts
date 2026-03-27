@@ -1,4 +1,4 @@
-
+﻿
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -51,6 +51,7 @@ app.use('/api/facebook',   authMiddleware, require('./routes/facebook'));
 app.use('/api/workflow',   authMiddleware, require('./routes/workflow'));
 app.use('/api/hunter', authMiddleware, require('./routes/hunter'));
 app.use('/api/trade-fair', authMiddleware, require('./routes/trade-fair'));
+app.use('/api/tenders',    authMiddleware, require('./routes/tenders'));
 app.use('/api/linkedin',            authMiddleware, require('./routes/linkedin'));
 app.use('/api/sequences',           authMiddleware, require('./routes/sequences'));
 app.use('/api/abtests',             authMiddleware, require('./routes/ab-testing'));
