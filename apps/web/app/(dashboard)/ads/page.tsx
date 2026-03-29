@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api'
 import { Megaphone, RefreshCw, Plus, Play, Pause, AlertTriangle, TrendingUp, Users, Zap, CheckCircle, Eye, Target, BarChart3, Link } from 'lucide-react'
 
@@ -31,7 +32,28 @@ export default function AdsPage() {
   const [form, setForm] = useState({ name:'', objective:'OUTCOME_LEADS', dailyBudget:'100', targetCountries:['TR'], targetAgeMin:25, targetAgeMax:55 })
   const [copyForm, setCopyForm] = useState({ product:'', sector:'', target:'işletme sahipleri', platform:'Meta' })
 
+  const searchParams = useSearchParams()
   const showMsg = (type:'success'|'error', text:string) => { setMsg({type,text}); setTimeout(()=>setMsg(null),6000) }
+
+  // Meta OAuth callback — code'u exchange et
+  useEffect(() => {
+    const code = searchParams.get('meta_code')
+    const success = searchParams.get('success')
+    const error = searchParams.get('error')
+    
+    if (code) {
+      api.post('/api/ads/exchange-token', { code })
+        .then(data => {
+          showMsg('success', `${data.userName} — Meta hesabı bağlandı!`)
+          load()
+          // URL'den code'u temizle
+          window.history.replaceState({}, '', '/ads')
+        })
+        .catch(e => showMsg('error', e.message))
+    }
+    if (success === 'meta_connected') showMsg('success', 'Meta hesabı bağlandı!')
+    if (error) showMsg('error', 'Meta bağlantısı başarısız')
+  }, [])
 
   const load = async () => {
     setLoading(true)
