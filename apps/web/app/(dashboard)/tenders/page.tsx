@@ -3,113 +3,125 @@ import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import {
   FileText, Search, RefreshCw, Globe, TrendingUp,
-  CheckCircle, XCircle, Clock, Star, ChevronDown,
-  ChevronUp, ExternalLink, Send, BarChart2, Filter
+  CheckCircle, XCircle, Clock, Star, ExternalLink,
+  Send, BarChart2, Filter, ChevronDown
 } from 'lucide-react'
 
-const SOURCES = [
-  { id: 'ekap', label: 'EKAP', flag: '🇹🇷' },
-  { id: 'ted', label: 'TED Europa', flag: '🇪🇺' },
-  { id: 'ungm', label: 'UNGM (BM)', flag: '🇺🇳' },
-  { id: 'worldbank', label: 'World Bank', flag: '🌍' },
-  { id: 'middleeast', label: 'Orta Doğu', flag: '🇦🇪' },
+// ── ÜLKELER ───────────────────────────────────────────────────────────────
+const COUNTRIES = [
+  { id: 'worldwide',     name: '🌍 Dünya Geneli (Worldwide)',         group: 'Global' },
+  { id: 'international', name: '🌐 Uluslararası (BM / Dünya Bankası)', group: 'Global' },
+  { id: 'turkey',        name: '🇹🇷 Türkiye',                          group: 'Yakın Çevre' },
+  { id: 'uae',           name: '🇦🇪 BAE (Dubai / Abu Dhabi)',           group: 'Yakın Çevre' },
+  { id: 'saudi',         name: '🇸🇦 Suudi Arabistan',                   group: 'Yakın Çevre' },
+  { id: 'qatar',         name: '🇶🇦 Katar',                             group: 'Yakın Çevre' },
+  { id: 'kuwait',        name: '🇰🇼 Kuveyt',                            group: 'Yakın Çevre' },
+  { id: 'middleeast',    name: '🕌 Orta Doğu Geneli',                   group: 'Yakın Çevre' },
+  { id: 'eu',            name: '🇪🇺 Avrupa Birliği (Tümü)',             group: 'Avrupa' },
+  { id: 'germany',       name: '🇩🇪 Almanya',                           group: 'Avrupa' },
+  { id: 'france',        name: '🇫🇷 Fransa',                            group: 'Avrupa' },
+  { id: 'italy',         name: '🇮🇹 İtalya',                            group: 'Avrupa' },
+  { id: 'spain',         name: '🇪🇸 İspanya',                           group: 'Avrupa' },
+  { id: 'netherlands',   name: '🇳🇱 Hollanda',                          group: 'Avrupa' },
+  { id: 'poland',        name: '🇵🇱 Polonya',                           group: 'Avrupa' },
+  { id: 'uk',            name: '🇬🇧 İngiltere',                         group: 'Avrupa' },
+  { id: 'usa',           name: '🇺🇸 ABD',                               group: 'Amerika' },
+  { id: 'brazil',        name: '🇧🇷 Brezilya',                          group: 'Amerika' },
+  { id: 'china',         name: '🇨🇳 Çin',                               group: 'Asya' },
+  { id: 'india',         name: '🇮🇳 Hindistan',                         group: 'Asya' },
+  { id: 'asia',          name: '🌏 Asya Geneli',                        group: 'Asya' },
+  { id: 'russia',        name: '🇷🇺 Rusya',                             group: 'Diğer' },
+  { id: 'africa',        name: '🌍 Afrika Geneli',                      group: 'Diğer' },
+]
+
+const SECTORS = [
+  'Tekstil & Hazır Giyim', 'Mobilya & Dekorasyon', 'İnşaat & Yapı Malzemeleri',
+  'Gıda & Tarım', 'Makine & Ekipman', 'Elektrik & Elektronik',
+  'Kimya & Plastik', 'Metal & Çelik', 'Otomotiv & Parça',
+  'Sağlık & İlaç', 'Savunma & Güvenlik', 'Bilişim & Yazılım',
+  'Enerji & Altyapı', 'Lojistik & Taşımacılık', 'Turizm & Otelcilik',
+  'Eğitim & Danışmanlık', 'Tarım Makineleri', 'Ambalaj',
 ]
 
 const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  applied: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  won: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  lost: 'bg-red-500/20 text-red-300 border-red-500/30',
+  active:    'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  applied:   'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  won:       'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  lost:      'bg-red-500/20 text-red-300 border-red-500/30',
   dismissed: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
 }
-
 const STATUS_LABELS: Record<string, string> = {
-  active: 'Aktif',
-  applied: 'Başvuruldu',
-  won: 'Kazanıldı',
-  lost: 'Kaybedildi',
-  dismissed: 'Reddedildi',
+  active: 'Aktif', applied: 'Başvuruldu', won: 'Kazanıldı', lost: 'Kaybedildi', dismissed: 'Reddedildi',
 }
 
-function scoreColor(score: number) {
-  if (score >= 80) return 'text-emerald-400'
-  if (score >= 60) return 'text-yellow-400'
-  return 'text-red-400'
-}
+function scoreColor(s: number) { return s >= 80 ? 'text-emerald-400' : s >= 60 ? 'text-yellow-400' : 'text-red-400' }
+function scoreBg(s: number) { return s >= 80 ? 'bg-emerald-500/20 border-emerald-500/40' : s >= 60 ? 'bg-yellow-500/20 border-yellow-500/40' : 'bg-red-500/20 border-red-500/40' }
 
-function scoreBg(score: number) {
-  if (score >= 80) return 'bg-emerald-500/20 border-emerald-500/40'
-  if (score >= 60) return 'bg-yellow-500/20 border-yellow-500/40'
-  return 'bg-red-500/20 border-red-500/40'
-}
+// Ülkeleri grupla
+const groupedCountries = COUNTRIES.reduce((acc, c) => {
+  if (!acc[c.group]) acc[c.group] = []
+  acc[c.group].push(c)
+  return acc
+}, {} as Record<string, typeof COUNTRIES>)
 
 export default function TendersPage() {
-  const [tenders, setTenders] = useState<any[]>([])
-  const [stats, setStats] = useState<any>(null)
-  const [scans, setScans] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [scanning, setScanning] = useState(false)
+  const [tenders, setTenders]           = useState<any[]>([])
+  const [stats, setStats]               = useState<any>(null)
+  const [scans, setScans]               = useState<any[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [scanning, setScanning]         = useState(false)
   const [selectedTender, setSelectedTender] = useState<any>(null)
   const [generatingProposal, setGeneratingProposal] = useState(false)
-  const [proposal, setProposal] = useState<string | null>(null)
-  const [companyInfo, setCompanyInfo] = useState('')
-  const [showScan, setShowScan] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
-  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [proposal, setProposal]         = useState<string | null>(null)
+  const [companyInfo, setCompanyInfo]   = useState('')
+  const [showScan, setShowScan]         = useState(false)
+  const [showHistory, setShowHistory]   = useState(false)
+  const [msg, setMsg]                   = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const [scanForm, setScanForm] = useState({
     keyword: '',
+    country: 'worldwide',
+    sector: '',
     user_profile: '',
-    sources: ['ekap', 'ted', 'ungm', 'worldbank', 'middleeast'],
   })
 
-  const [filter, setFilter] = useState({ source: '', country: '', min_score: '' })
+  const [filterCountry, setFilterCountry] = useState('')
+  const [filterScore, setFilterScore]     = useState('')
 
   const showMsg = (type: 'success' | 'error', text: string) => {
-    setMsg({ type, text })
-    setTimeout(() => setMsg(null), 5000)
+    setMsg({ type, text }); setTimeout(() => setMsg(null), 5000)
   }
 
   const load = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ limit: '50' })
-      if (filter.source) params.set('source', filter.source)
-      if (filter.country) params.set('country', filter.country)
-      if (filter.min_score) params.set('min_score', filter.min_score)
-
+      if (filterCountry) params.set('country', filterCountry)
+      if (filterScore)   params.set('min_score', filterScore)
       const [t, s, sc] = await Promise.allSettled([
         api.get(`/api/tenders?${params}`),
         api.get('/api/tenders/stats/summary'),
         api.get('/api/tenders/scans/history'),
       ])
-      if (t.status === 'fulfilled') setTenders(t.value.tenders || [])
-      if (s.status === 'fulfilled') setStats(s.value)
+      if (t.status  === 'fulfilled') setTenders(t.value.tenders || [])
+      if (s.status  === 'fulfilled') setStats(s.value)
       if (sc.status === 'fulfilled') setScans(sc.value.scans || [])
-    } catch {}
-    finally { setLoading(false) }
+    } catch {} finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
 
   const startScan = async () => {
     if (!scanForm.keyword) return showMsg('error', 'Anahtar kelime zorunlu')
-    if (scanForm.sources.length === 0) return showMsg('error', 'En az bir kaynak seçin')
     setScanning(true)
     try {
+      const countryLabel = COUNTRIES.find(c => c.id === scanForm.country)?.name || scanForm.country
       await api.post('/api/tenders/scan', scanForm)
-      showMsg('success', `"${scanForm.keyword}" için tarama başlatıldı. 1-2 dakika içinde sonuçlar gelecek.`)
+      showMsg('success', `"${scanForm.keyword}" için ${countryLabel} taraması başlatıldı. 1-2 dk içinde sonuçlar gelecek.`)
       setShowScan(false)
-      setTimeout(() => load(), 60000)
+      setTimeout(() => load(), 70000)
     } catch (e: any) { showMsg('error', e.message) }
     finally { setScanning(false) }
-  }
-
-  const toggleSource = (id: string) => {
-    setScanForm(p => ({
-      ...p,
-      sources: p.sources.includes(id) ? p.sources.filter(s => s !== id) : [...p.sources, id],
-    }))
   }
 
   const updateStatus = async (id: string, status: string) => {
@@ -123,14 +135,15 @@ export default function TendersPage() {
 
   const generateProposal = async () => {
     if (!companyInfo.trim()) return showMsg('error', 'Firma bilgisi zorunlu')
-    setGeneratingProposal(true)
-    setProposal(null)
+    setGeneratingProposal(true); setProposal(null)
     try {
       const data = await api.post(`/api/tenders/${selectedTender.id}/proposal`, { company_info: companyInfo })
       setProposal(data.proposal)
     } catch (e: any) { showMsg('error', e.message) }
     finally { setGeneratingProposal(false) }
   }
+
+  const selectedCountryLabel = COUNTRIES.find(c => c.id === scanForm.country)?.name || '🌍 Dünya Geneli'
 
   return (
     <div className="space-y-6">
@@ -141,7 +154,7 @@ export default function TendersPage() {
             <FileText size={24} className="text-violet-400" /> İhale Avcısı
           </h1>
           <p className="text-slate-400 mt-1 text-sm">
-            EKAP · TED Europa · UNGM · World Bank · Orta Doğu — AI ile otomatik ihale taraması
+            Türkiye · AB · ABD · Orta Doğu · BM · Dünya Bankası — Ülke & sektör bazlı AI tarama
           </p>
         </div>
         <div className="flex gap-2">
@@ -150,7 +163,7 @@ export default function TendersPage() {
             <Clock size={14} /> Geçmiş
           </button>
           <button onClick={() => load()}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-xl transition">
+            className="p-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition">
             <RefreshCw size={14} />
           </button>
           <button onClick={() => setShowScan(!showScan)}
@@ -170,12 +183,12 @@ export default function TendersPage() {
       {stats && (
         <div className="grid grid-cols-6 gap-3">
           {[
-            { label: 'Toplam', value: stats.total, color: 'text-white' },
-            { label: 'Aktif', value: stats.active, color: 'text-emerald-400' },
-            { label: 'Yüksek Skor', value: stats.highScore, color: 'text-violet-400' },
-            { label: 'Başvuruldu', value: stats.applied, color: 'text-blue-400' },
-            { label: 'Kazanıldı', value: stats.won, color: 'text-purple-400' },
-            { label: 'Tarama', value: stats.totalScans, color: 'text-slate-400' },
+            { label: 'Toplam',      value: stats.total,      color: 'text-white' },
+            { label: 'Aktif',       value: stats.active,     color: 'text-emerald-400' },
+            { label: 'Yüksek Skor', value: stats.highScore,  color: 'text-violet-400' },
+            { label: 'Başvuruldu',  value: stats.applied,    color: 'text-blue-400' },
+            { label: 'Kazanıldı',   value: stats.won,        color: 'text-purple-400' },
+            { label: 'Tarama',      value: stats.totalScans, color: 'text-slate-400' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-center">
               <p className={`text-xl font-bold ${color}`}>{value}</p>
@@ -191,7 +204,9 @@ export default function TendersPage() {
           <h2 className="text-white font-semibold flex items-center gap-2">
             <Search size={16} className="text-violet-400" /> Yeni İhale Taraması
           </h2>
+
           <div className="grid grid-cols-2 gap-3">
+            {/* Anahtar Kelime */}
             <div>
               <label className="text-slate-400 text-xs mb-1 block">Anahtar Kelime *</label>
               <input
@@ -201,35 +216,97 @@ export default function TendersPage() {
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500"
               />
             </div>
+
+            {/* Firma Profili */}
             <div>
               <label className="text-slate-400 text-xs mb-1 block">Firma Profili (AI Skorlama için)</label>
               <input
                 value={scanForm.user_profile}
                 onChange={e => setScanForm(p => ({ ...p, user_profile: e.target.value }))}
-                placeholder="tekstil ihracatı yapan Türk firması..."
+                placeholder="tekstil ihracatı yapan Türk firması, 20 yıl deneyim..."
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500"
               />
             </div>
           </div>
-          <div>
-            <label className="text-slate-400 text-xs mb-2 block">Kaynaklar</label>
-            <div className="flex flex-wrap gap-2">
-              {SOURCES.map(s => (
-                <button key={s.id}
-                  onClick={() => toggleSource(s.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition ${scanForm.sources.includes(s.id) ? 'bg-violet-500/20 border-violet-500/50 text-violet-300' : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-500'}`}>
-                  {s.flag} {s.label}
-                </button>
+
+          <div className="grid grid-cols-2 gap-3">
+            {/* Ülke Seçimi */}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">🌍 Ülke / Bölge *</label>
+              <div className="relative">
+                <select
+                  value={scanForm.country}
+                  onChange={e => setScanForm(p => ({ ...p, country: e.target.value }))}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500 appearance-none cursor-pointer"
+                >
+                  {Object.entries(groupedCountries).map(([group, countries]) => (
+                    <optgroup key={group} label={`── ${group} ──`}>
+                      {countries.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
+              </div>
+              <p className="text-slate-500 text-xs mt-1">Seçili: {selectedCountryLabel}</p>
+            </div>
+
+            {/* Sektör Seçimi */}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">📦 Sektör (opsiyonel)</label>
+              <div className="relative">
+                <select
+                  value={scanForm.sector}
+                  onChange={e => setScanForm(p => ({ ...p, sector: e.target.value }))}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500 appearance-none cursor-pointer"
+                >
+                  <option value="">Tüm Sektörler</option>
+                  {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-3 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Seçilen ülkenin hangi kaynakları tarayacağını göster */}
+          <div className="bg-slate-900/50 rounded-lg px-4 py-3">
+            <p className="text-slate-400 text-xs mb-2">Bu seçim için taranacak kaynaklar:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {scanForm.country === 'worldwide' && ['EKAP', 'TED Europa', 'UNGM', 'World Bank', 'Google Global'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-violet-500/20 border border-violet-500/30 text-violet-300 rounded-full">{s}</span>
+              ))}
+              {scanForm.country === 'turkey' && ['EKAP', 'Google TR'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-red-500/20 border border-red-500/30 text-red-300 rounded-full">{s}</span>
+              ))}
+              {['eu', 'germany', 'france', 'italy', 'spain', 'netherlands', 'poland'].includes(scanForm.country) && ['TED Europa', 'Google EU'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-full">{s}</span>
+              ))}
+              {scanForm.country === 'uk' && ['Google UK'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-full">{s}</span>
+              ))}
+              {scanForm.country === 'usa' && ['SAM.gov', 'Google USA'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded-full">{s}</span>
+              ))}
+              {['uae', 'saudi', 'qatar', 'kuwait', 'middleeast'].includes(scanForm.country) && ['Google Orta Doğu'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 rounded-full">{s}</span>
+              ))}
+              {scanForm.country === 'international' && ['UNGM (BM)', 'World Bank'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-full">{s}</span>
+              ))}
+              {['africa', 'asia', 'russia', 'china', 'india', 'brazil'].includes(scanForm.country) && ['World Bank', 'Google'].map(s => (
+                <span key={s} className="text-xs px-2 py-0.5 bg-slate-500/20 border border-slate-500/30 text-slate-300 rounded-full">{s}</span>
               ))}
             </div>
           </div>
+
           <div className="flex gap-2">
             <button onClick={startScan} disabled={scanning}
-              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
+              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm rounded-lg transition font-medium">
               {scanning ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
               {scanning ? 'Taranıyor...' : 'Taramayı Başlat'}
             </button>
-            <button onClick={() => setShowScan(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">
+            <button onClick={() => setShowScan(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg hover:bg-slate-600 transition">
               İptal
             </button>
           </div>
@@ -248,7 +325,7 @@ export default function TendersPage() {
                 <div className="flex items-center gap-3">
                   <span className={`w-2 h-2 rounded-full ${scan.status === 'completed' ? 'bg-emerald-400' : scan.status === 'running' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'}`} />
                   <span className="text-white text-sm font-medium">"{scan.keyword}"</span>
-                  <span className="text-slate-400 text-xs">{scan.sources?.join(', ')}</span>
+                  <span className="text-slate-500 text-xs">{scan.sources?.join(', ')}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-400">
                   <span>{scan.tenders_found || 0} ihale</span>
@@ -263,12 +340,12 @@ export default function TendersPage() {
       {/* Filtreler */}
       <div className="flex gap-2 items-center">
         <Filter size={14} className="text-slate-400" />
-        <select value={filter.source} onChange={e => setFilter(p => ({ ...p, source: e.target.value }))}
+        <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
           className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 text-xs focus:outline-none">
-          <option value="">Tüm Kaynaklar</option>
-          {SOURCES.map(s => <option key={s.id} value={s.label}>{s.flag} {s.label}</option>)}
+          <option value="">Tüm Ülkeler</option>
+          {COUNTRIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
-        <select value={filter.min_score} onChange={e => setFilter(p => ({ ...p, min_score: e.target.value }))}
+        <select value={filterScore} onChange={e => setFilterScore(e.target.value)}
           className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 text-xs focus:outline-none">
           <option value="">Tüm Skorlar</option>
           <option value="75">75+ Yüksek</option>
@@ -279,6 +356,7 @@ export default function TendersPage() {
         </button>
       </div>
 
+      {/* Ana İçerik */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* İhale Listesi */}
         <div className="space-y-3">
@@ -289,9 +367,9 @@ export default function TendersPage() {
             </div>
           ) : tenders.length === 0 ? (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center">
-              <FileText size={36} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-400 text-sm">İhale bulunamadı</p>
-              <p className="text-slate-500 text-xs mt-1">"İhale Tara" butonuna tıklayın</p>
+              <Globe size={36} className="text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-300 font-medium">Henüz ihale yok</p>
+              <p className="text-slate-500 text-xs mt-1">"İhale Tara" butonuna tıklayın → Ülke & sektör seçin</p>
             </div>
           ) : tenders.map(tender => (
             <div key={tender.id}
@@ -300,21 +378,17 @@ export default function TendersPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-medium leading-snug line-clamp-2">{tender.title}</p>
-                  <p className="text-slate-400 text-xs mt-1 truncate">{tender.institution}</p>
+                  <p className="text-slate-400 text-xs mt-0.5 truncate">{tender.institution}</p>
                 </div>
-                <div className={`flex-shrink-0 px-2 py-1 rounded-lg border text-xs font-bold ${scoreBg(tender.ai_score)}`}>
+                <div className={`flex-shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center text-sm font-bold ${scoreBg(tender.ai_score)}`}>
                   <span className={scoreColor(tender.ai_score)}>{tender.ai_score}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <span className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full">{tender.source}</span>
                 <span className="text-xs text-slate-400">🌍 {tender.country}</span>
-                {tender.budget_text && <span className="text-xs text-emerald-400">💰 {tender.budget_text}</span>}
-                {tender.deadline && (
-                  <span className="text-xs text-orange-400">
-                    ⏰ {new Date(tender.deadline).toLocaleDateString('tr-TR')}
-                  </span>
-                )}
+                {tender.budget_text && <span className="text-xs text-emerald-400 font-medium">💰 {tender.budget_text}</span>}
+                {tender.deadline && <span className="text-xs text-orange-400">⏰ {new Date(tender.deadline).toLocaleDateString('tr-TR')}</span>}
                 <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLORS[tender.status] || STATUS_COLORS.active}`}>
                   {STATUS_LABELS[tender.status] || tender.status}
                 </span>
@@ -339,16 +413,16 @@ export default function TendersPage() {
 
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {[
-                  { label: 'Kurum', value: selectedTender.institution },
-                  { label: 'Kaynak', value: selectedTender.source },
-                  { label: 'Ülke', value: selectedTender.country },
+                  { label: 'Kurum',       value: selectedTender.institution },
+                  { label: 'Kaynak',      value: selectedTender.source },
+                  { label: 'Ülke',        value: selectedTender.country },
                   { label: 'Para Birimi', value: selectedTender.currency },
-                  { label: 'Bütçe', value: selectedTender.budget_text || '—' },
+                  { label: 'Bütçe',       value: selectedTender.budget_text || '—' },
                   { label: 'Son Başvuru', value: selectedTender.deadline ? new Date(selectedTender.deadline).toLocaleDateString('tr-TR') : '—' },
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <p className="text-slate-500">{label}</p>
-                    <p className="text-slate-200">{value}</p>
+                    <p className="text-slate-200 font-medium">{value}</p>
                   </div>
                 ))}
               </div>
@@ -357,18 +431,19 @@ export default function TendersPage() {
               {selectedTender.ai_summary && (
                 <div className="bg-violet-500/10 border border-violet-500/20 rounded-lg p-3 space-y-1.5">
                   <p className="text-violet-300 text-xs font-semibold flex items-center gap-1">
-                    <Star size={10} /> AI Analizi — Skor: <span className={`font-bold ${scoreColor(selectedTender.ai_score)}`}>{selectedTender.ai_score}/100</span>
+                    <Star size={10} /> AI Analizi — Uygunluk Skoru:
+                    <span className={`font-bold ml-1 ${scoreColor(selectedTender.ai_score)}`}>{selectedTender.ai_score}/100</span>
                   </p>
                   <p className="text-slate-300 text-xs">{selectedTender.ai_summary}</p>
-                  <p className="text-slate-400 text-xs">{selectedTender.ai_recommendation}</p>
+                  <p className="text-slate-400 text-xs italic">{selectedTender.ai_recommendation}</p>
                 </div>
               )}
 
-              {/* Durum Aksiyonları */}
+              {/* Aksiyonlar */}
               <div className="flex gap-2 flex-wrap">
                 <button onClick={() => updateStatus(selectedTender.id, 'applied')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-300 text-xs rounded-lg transition">
-                  <Send size={11} /> Başvuruldu
+                  <Send size={11} /> Başvuruldu İşaretle
                 </button>
                 <button onClick={() => updateStatus(selectedTender.id, 'won')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 text-xs rounded-lg transition">
@@ -389,26 +464,26 @@ export default function TendersPage() {
               <textarea
                 value={companyInfo}
                 onChange={e => setCompanyInfo(e.target.value)}
-                placeholder="Firma adı, sektör, deneyim, sertifikalar, referanslar... (AI bu bilgileri kullanarak teklif yazar)"
+                placeholder="Firma adı, sektör, deneyim yılı, sertifikalar (ISO, CE...), referanslar... AI bu bilgileri kullanarak profesyonel teklif mektubu yazar."
                 rows={3}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-violet-500 resize-none"
               />
               <button onClick={generateProposal} disabled={generatingProposal}
-                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm rounded-lg transition w-full justify-center">
+                className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm rounded-lg transition w-full justify-center font-medium">
                 {generatingProposal ? <RefreshCw size={14} className="animate-spin" /> : <FileText size={14} />}
-                {generatingProposal ? 'Teklif Hazırlanıyor...' : 'AI Teklif Taslağı Oluştur'}
+                {generatingProposal ? 'Teklif Hazırlanıyor...' : 'AI ile Teklif Taslağı Oluştur'}
               </button>
 
               {proposal && (
                 <div className="bg-slate-900/80 border border-slate-600 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-violet-300 text-xs font-semibold">Teklif Taslağı</p>
+                    <p className="text-violet-300 text-xs font-semibold">✅ Teklif Taslağı Hazır</p>
                     <button onClick={() => navigator.clipboard.writeText(proposal)}
-                      className="text-xs text-slate-400 hover:text-slate-200 transition">
-                      Kopyala
+                      className="text-xs text-slate-400 hover:text-white transition px-2 py-1 bg-slate-700 rounded">
+                      📋 Kopyala
                     </button>
                   </div>
-                  <pre className="text-slate-300 text-xs whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                  <pre className="text-slate-300 text-xs whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
                     {proposal}
                   </pre>
                 </div>
@@ -416,9 +491,10 @@ export default function TendersPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center flex flex-col items-center justify-center">
-            <BarChart2 size={36} className="text-slate-600 mb-2" />
-            <p className="text-slate-400 text-sm">Detay görmek için bir ihale seçin</p>
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center flex flex-col items-center justify-center min-h-48">
+            <BarChart2 size={36} className="text-slate-600 mb-3" />
+            <p className="text-slate-400 text-sm">Detay için bir ihale seçin</p>
+            <p className="text-slate-500 text-xs mt-1">AI analizi ve teklif taslağı burада görünecek</p>
           </div>
         )}
       </div>
