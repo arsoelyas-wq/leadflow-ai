@@ -10,7 +10,7 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ GOOGLE MAPS Ã¢â‚¬â€ Places API Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── GOOGLE MAPS — Places API ──────────────────────────────
 function formatPhone(raw: string | null): string | null {
   if (!raw) return null;
   let phone = raw.replace(/\s/g, '').replace(/\+90/, '0').replace(/[^0-9]/g, '');
@@ -25,7 +25,7 @@ async function scrapeGoogleMaps(keyword: string, city: string, limit: number): P
   try {
     const query = `${keyword} ${city}`;
 
-    // 1. Text Search Ã¢â‚¬â€ tÃƒÂ¼m alanlarÃ„Â± iste
+    // 1. Text Search — tüm alanları iste
     const resp = await axios.post(
       'https://places.googleapis.com/v1/places:searchText',
       {
@@ -92,7 +92,7 @@ async function scrapeGoogleMaps(keyword: string, city: string, limit: number): P
   return results.slice(0, limit);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ INSTAGRAM Ã¢â‚¬â€ Meta Graph API Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── INSTAGRAM — Meta Graph API ────────────────────────────
 async function scrapeInstagram(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
@@ -216,7 +216,7 @@ async function scrapeInstagramPuppeteer(keyword: string, city: string, limit: nu
   return results;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ FACEBOOK Ã¢â‚¬â€ Graph API Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── FACEBOOK — Graph API ──────────────────────────────────
 async function scrapeFacebook(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
@@ -225,7 +225,7 @@ async function scrapeFacebook(keyword: string, city: string, limit: number): Pro
 
     if (!META_TOKEN) throw new Error('META_PAGE_TOKEN eksik');
 
-    // 1. Sayfa yorumlarÃ„Â±ndan lead cek
+    // 1. Sayfa yorumlarından lead cek
     try {
       const feedResp = await axios.get(
         `https://graph.facebook.com/v18.0/${PAGE_ID}/feed?fields=message,from,created_time&access_token=${META_TOKEN}&limit=${limit}`,
@@ -250,7 +250,7 @@ async function scrapeFacebook(keyword: string, city: string, limit: number): Pro
       }
     } catch {}
 
-    // 2. Lead Ads formlarÃ„Â±ndan lead cek
+    // 2. Lead Ads formlarından lead cek
     try {
       const leadsResp = await axios.get(
         `https://graph.facebook.com/v18.0/${PAGE_ID}/leadgen_forms?fields=id,name,leads_count&access_token=${META_TOKEN}&limit=10`,
@@ -285,7 +285,7 @@ async function scrapeFacebook(keyword: string, city: string, limit: number): Pro
   return results.slice(0, limit);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ TIKTOK Ã¢â‚¬â€ Herkese aÃƒÂ§Ã„Â±k arama sayfasÃ„Â± Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── TIKTOK — Herkese açık arama sayfası ─────────────────
 async function scrapeTikTok(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   let browser: any = null;
@@ -304,16 +304,16 @@ async function scrapeTikTok(keyword: string, city: string, limit: number): Promi
     await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15');
     await page.setViewport({ width: 390, height: 844 });
 
-    // 1. KullanÃ„Â±cÃ„Â± aramasÃ„Â±
+    // 1. Kullanıcı araması
     const searchUrl = `https://www.tiktok.com/search/user?q=${encodeURIComponent(keyword + ' ' + city)}`;
     await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await sleep(2500);
 
-    // TÃƒÂ¼m metin iÃƒÂ§eriÃ„Å¸ini al
+    // Tüm metin içeriğini al
     const pageText = await page.evaluate(() => document.body.innerText);
     const pageHtml = await page.content();
 
-    // Username'leri ÃƒÂ§ek
+    // Username'leri çek
     const usernameMatches = pageHtml.match(/"uniqueId":"([\w.]+)"/g) || [];
     const nicknameMatches = pageHtml.match(/"nickname":"([^"]+)"/g) || [];
     const bioMatches = pageHtml.match(/"signature":"([^"]+)"/g) || [];
@@ -340,7 +340,7 @@ async function scrapeTikTok(keyword: string, city: string, limit: number): Promi
       });
     }
 
-    // 2. Hashtag aramasÃ„Â± Ã¢â‚¬â€ daha fazla sonuÃƒÂ§
+    // 2. Hashtag araması — daha fazla sonuç
     if (results.length < limit) {
       const hashUrl = `https://www.tiktok.com/tag/${encodeURIComponent(keyword.replace(/\s/g, ''))}`;
       await page.goto(hashUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
@@ -372,13 +372,12 @@ async function scrapeTikTok(keyword: string, city: string, limit: number): Promi
   return results.slice(0, limit);
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ DB KAYDET Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── DB KAYDET ─────────────────────────────────────────────
 async function saveLeads(userId: string, leads: any[]): Promise<{added: number, duplicate: number}> {
   let added = 0, duplicate = 0;
   for (const lead of leads) {
     try {
       if (!lead.company_name) continue;
-      if (!lead.phone && !lead.email && lead.source !== 'instagram') continue; // Instagram hariç telefon zorunlu
       let query = supabase.from('leads').select('id').eq('user_id', userId);
       if (lead.phone) query = query.eq('phone', lead.phone);
       else if (lead.instagram_url) query = query.eq('instagram_url', lead.instagram_url);
@@ -395,7 +394,7 @@ async function saveLeads(userId: string, leads: any[]): Promise<{added: number, 
   return { added, duplicate };
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ ROUTES Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── ROUTES ────────────────────────────────────────────────
 
 // POST /api/sources/scrape
 router.post('/scrape', async (req: any, res: any) => {
@@ -412,7 +411,7 @@ router.post('/scrape', async (req: any, res: any) => {
       case 'instagram': leads = await scrapeInstagram(keyword, city || 'Istanbul', limit); break;
       case 'facebook': leads = await scrapeFacebook(keyword, city || 'Istanbul', limit); break;
       case 'tiktok': leads = await scrapeTikTok(keyword, city || 'Istanbul', limit); break;
-      default: return res.status(400).json({ error: 'GeÃƒÂ§ersiz kaynak. google_maps, instagram, facebook, tiktok' });
+      default: return res.status(400).json({ error: 'Geçersiz kaynak. google_maps, instagram, facebook, tiktok' });
     }
 
     console.log(`Found ${leads.length} leads for ${source}/${keyword}`);
@@ -435,7 +434,7 @@ router.post('/scrape-batch', async (req: any, res: any) => {
     const cityList = cities || ['Istanbul'];
     const total = srcList.length * keywords.length * cityList.length;
 
-    res.json({ message: `${total} kombinasyon taranÃ„Â±yor arka planda...`, total });
+    res.json({ message: `${total} kombinasyon taranıyor arka planda...`, total });
 
     (async () => {
       let totalAdded = 0;
@@ -482,7 +481,7 @@ router.post('/referral', async (req: any, res: any) => {
 
     if (phone) {
       const { data: existing } = await supabase.from('leads').select('id').eq('user_id', userId).eq('phone', phone).maybeSingle();
-      if (existing) return res.status(400).json({ error: 'Bu telefon zaten kayÃ„Â±tlÃ„Â±' });
+      if (existing) return res.status(400).json({ error: 'Bu telefon zaten kayıtlı' });
     }
 
     const { data: newLead } = await supabase.from('leads').insert([{
@@ -490,10 +489,10 @@ router.post('/referral', async (req: any, res: any) => {
       contact_name: contactName || null, phone: phone || null,
       email: email || null, sector: sector || null,
       source: 'referral', referrer: referrerName,
-      status: 'new', notes: `${referrerName} tarafÃ„Â±ndan ÃƒÂ¶nerildi`,
+      status: 'new', notes: `${referrerName} tarafından önerildi`,
     }]).select().single();
 
-    res.json({ lead: newLead, message: `Referans lead eklendi! (${referrerName} tarafÃ„Â±ndan)` });
+    res.json({ lead: newLead, message: `Referans lead eklendi! (${referrerName} tarafından)` });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

@@ -8,7 +8,7 @@ import {
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
-  Workflow, MapPin, ScrollText
+  Workflow, MapPin, ScrollText, Gift, TrendingDown
 } from 'lucide-react'
 
 const navItems = [
@@ -32,6 +32,7 @@ const navItems = [
   { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
   { href: '/smart-timing', label: 'Akıllı Zamanlama', icon: Clock },
   { href: '/retargeting', label: 'Retargeting', icon: RefreshCw },
+  { href: '/emotional-iq', label: 'Duygusal Zeka', icon: Heart },
 
   // ── AI ARAÇLAR ──
   { href: '/video-outreach', label: 'AI Video', icon: Video },
@@ -40,7 +41,9 @@ const navItems = [
   { href: '/vision', label: 'Vision AI', icon: Eye },
   { href: '/proposals', label: 'Teklif & Pazarlık', icon: FileText },
 
-  // ── ANALİTİK ──
+  // ── SATIŞ & GELİR ──
+  { href: '/referral', label: 'Referral Loop', icon: Gift },
+  { href: '/debt-collector', label: 'Tahsilat Takibi', icon: TrendingDown },
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
   { href: '/financial', label: 'Büyüme Zekası', icon: TrendingUp },
