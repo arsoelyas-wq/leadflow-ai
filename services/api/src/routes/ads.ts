@@ -10,7 +10,7 @@ const APP_ID = process.env.META_APP_ID;
 const APP_SECRET = process.env.META_APP_SECRET;
 const REDIRECT_URI = process.env.META_REDIRECT_URI || 'https://leadflow-ai-web-kappa.vercel.app/api/auth/meta/callback';
 
-// ── OAUTH URL OLUŞTUR ─────────────────────────────────────
+// â”€â”€ OAUTH URL OLUÅžTUR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/oauth-url', async (req: any, res: any) => {
   const scopes = [
     'ads_read', 'ads_management', 'business_management',
@@ -21,7 +21,7 @@ router.get('/oauth-url', async (req: any, res: any) => {
   res.json({ url });
 });
 
-// ── TOKEN EXCHANGE ────────────────────────────────────────
+// â”€â”€ TOKEN EXCHANGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/exchange-token', async (req: any, res: any) => {
   try {
     const { code } = req.body;
@@ -33,16 +33,16 @@ router.post('/exchange-token', async (req: any, res: any) => {
     });
     const shortToken = tokenResp.data.access_token;
 
-    // Long-lived token al (60 gün)
+    // Long-lived token al (60 gÃ¼n)
     const longResp = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
       params: { grant_type: 'fb_exchange_token', client_id: APP_ID, client_secret: APP_SECRET, fb_exchange_token: shortToken }
     });
     const longToken = longResp.data.access_token;
 
-    // Kullanıcı bilgisi
+    // KullanÄ±cÄ± bilgisi
     const meResp = await axios.get(`https://graph.facebook.com/v18.0/me?fields=id,name&access_token=${longToken}`);
 
-    // Ad hesapları
+    // Ad hesaplarÄ±
     const adAccountsResp = await axios.get(
       `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,balance&access_token=${longToken}`
     );
@@ -62,14 +62,14 @@ router.post('/exchange-token', async (req: any, res: any) => {
       success: true,
       userName: meResp.data.name,
       adAccounts: adAccountsResp.data.data || [],
-      message: 'Meta hesabı bağlandı!'
+      message: 'Meta hesabÄ± baÄŸlandÄ±!'
     });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.error?.message || e.message });
+    res.status(500).json({ error: e.response?.data?.error?.message || e.message, details: e.response?.data?.error });
   }
 });
 
-// ── BAĞLI HESAP BİLGİSİ ──────────────────────────────────
+// â”€â”€ BAÄžLI HESAP BÄ°LGÄ°SÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/connection', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('meta_connections')
@@ -88,17 +88,17 @@ router.get('/connection', async (req: any, res: any) => {
   } catch { res.json({ connected: false }); }
 });
 
-// ── KAMPANYA ANALİZİ ──────────────────────────────────────
+// â”€â”€ KAMPANYA ANALÄ°ZÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/analyze/:adAccountId', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('meta_connections')
       .select('access_token').eq('user_id', req.userId).single();
-    if (!conn) return res.status(401).json({ error: 'Meta hesabı bağlı değil' });
+    if (!conn) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
 
     const token = conn.access_token;
     const accountId = req.params.adAccountId;
 
-    // Kampanyaları çek
+    // KampanyalarÄ± Ã§ek
     const campResp = await axios.get(
       `https://graph.facebook.com/v18.0/${accountId}/campaigns?fields=id,name,status,objective,daily_budget,insights{impressions,clicks,spend,ctr,cpm,reach,actions}&access_token=${token}&limit=20`
     );
@@ -111,7 +111,7 @@ router.get('/analyze/:adAccountId', async (req: any, res: any) => {
 
     const summary = campaigns.map((c: any) => {
       const ins = c.insights?.data?.[0] || {};
-      return `Kampanya: ${c.name} | Durum: ${c.status} | Gösterim: ${ins.impressions||0} | Tıklama: ${ins.clicks||0} | CTR: %${ins.ctr||0} | Harcama: $${ins.spend||0} | CPM: $${ins.cpm||0}`;
+      return `Kampanya: ${c.name} | Durum: ${c.status} | GÃ¶sterim: ${ins.impressions||0} | TÄ±klama: ${ins.clicks||0} | CTR: %${ins.ctr||0} | Harcama: $${ins.spend||0} | CPM: $${ins.cpm||0}`;
     }).join('\n');
 
     const aiResp = await anthropic.messages.create({
@@ -119,20 +119,20 @@ router.get('/analyze/:adAccountId', async (req: any, res: any) => {
       max_tokens: 800,
       messages: [{
         role: 'user',
-        content: `Sen uzman bir Meta reklam analistisın. Bu kampanyaları detaylıca analiz et ve JSON döndür:
+        content: `Sen uzman bir Meta reklam analistisÄ±n. Bu kampanyalarÄ± detaylÄ±ca analiz et ve JSON dÃ¶ndÃ¼r:
 
-${summary || 'Aktif kampanya yok — yeni kampanya öner'}
+${summary || 'Aktif kampanya yok â€” yeni kampanya Ã¶ner'}
 
-JSON (Türkçe yaz):
+JSON (TÃ¼rkÃ§e yaz):
 {
   "overallScore": 7,
-  "issues": ["CTR %0.5 altında - hedef kitle geniş tutulmuş", "Bütçe verimsiz kullanılıyor"],
-  "opportunities": ["Benzer kitle (Lookalike) oluşturulabilir", "Video reklam denenebilir"],
-  "recommendations": ["Hedef yaş aralığını 30-45 olarak daralt", "Reklam görseli değiştirilmeli", "A/B test başlat"],
+  "issues": ["CTR %0.5 altÄ±nda - hedef kitle geniÅŸ tutulmuÅŸ", "BÃ¼tÃ§e verimsiz kullanÄ±lÄ±yor"],
+  "opportunities": ["Benzer kitle (Lookalike) oluÅŸturulabilir", "Video reklam denenebilir"],
+  "recommendations": ["Hedef yaÅŸ aralÄ±ÄŸÄ±nÄ± 30-45 olarak daralt", "Reklam gÃ¶rseli deÄŸiÅŸtirilmeli", "A/B test baÅŸlat"],
   "alertLevel": "high",
-  "summary": "Kampanyalar genel olarak düşük performans gösteriyor. CTR ve dönüşüm oranları sektör ortalamasının altında.",
-  "budgetSuggestion": "Günlük bütçeyi $20 artır ve performanslı reklam setine yönlendir",
-  "audienceSuggestion": "İstanbul, Ankara, 28-45 yaş, mobilya ve ev dekorasyon ilgisi"
+  "summary": "Kampanyalar genel olarak dÃ¼ÅŸÃ¼k performans gÃ¶steriyor. CTR ve dÃ¶nÃ¼ÅŸÃ¼m oranlarÄ± sektÃ¶r ortalamasÄ±nÄ±n altÄ±nda.",
+  "budgetSuggestion": "GÃ¼nlÃ¼k bÃ¼tÃ§eyi $20 artÄ±r ve performanslÄ± reklam setine yÃ¶nlendir",
+  "audienceSuggestion": "Ä°stanbul, Ankara, 28-45 yaÅŸ, mobilya ve ev dekorasyon ilgisi"
 }`
       }]
     });
@@ -153,21 +153,21 @@ JSON (Türkçe yaz):
 
     res.json({ campaigns, analysis, total: campaigns.length });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.error?.message || e.message });
+    res.status(500).json({ error: e.response?.data?.error?.message || e.message, details: e.response?.data?.error });
   }
 });
 
-// ── KAMPANYA OLUŞTUR ──────────────────────────────────────
+// â”€â”€ KAMPANYA OLUÅžTUR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/create-campaign', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('meta_connections')
       .select('access_token').eq('user_id', req.userId).single();
-    if (!conn) return res.status(401).json({ error: 'Meta hesabı bağlı değil' });
+    if (!conn) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
 
     const token = conn.access_token;
     const { adAccountId, name, objective, dailyBudget, targetCountries, targetAgeMin, targetAgeMax, interests } = req.body;
 
-    // Kampanya oluştur
+    // Kampanya oluÅŸtur
     const campResp = await axios.post(
       `https://graph.facebook.com/v18.0/${adAccountId}/campaigns`,
       { name, objective: objective || 'OUTCOME_LEADS', status: 'PAUSED', special_ad_categories: [] },
@@ -175,7 +175,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
     );
     const campaignId = campResp.data.id;
 
-    // Ad Set oluştur — objective'e göre doğru optimization_goal seç
+    // Ad Set oluÅŸtur â€” objective'e gÃ¶re doÄŸru optimization_goal seÃ§
     const objectiveGoalMap: Record<string, {optimization_goal: string, billing_event: string}> = {
       'OUTCOME_LEADS': { optimization_goal: 'LEAD_GENERATION', billing_event: 'IMPRESSIONS' },
       'OUTCOME_TRAFFIC': { optimization_goal: 'LINK_CLICKS', billing_event: 'LINK_CLICKS' },
@@ -214,23 +214,23 @@ router.post('/create-campaign', async (req: any, res: any) => {
       ad_account_id: adAccountId,
     }]);
 
-    res.json({ campaignId, adSetId: adSetResp.data?.id, message: 'Kampanya oluşturuldu!' });
+    res.json({ campaignId, adSetId: adSetResp.data?.id, message: 'Kampanya oluÅŸturuldu!' });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.error?.message || e.message });
+    res.status(500).json({ error: e.response?.data?.error?.message || e.message, details: e.response?.data?.error });
   }
 });
 
-// ── LEAD ADS'DAN LEAD ÇEK ────────────────────────────────
+// â”€â”€ LEAD ADS'DAN LEAD Ã‡EK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/leads/:adAccountId', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('meta_connections')
       .select('access_token').eq('user_id', req.userId).single();
-    if (!conn) return res.status(401).json({ error: 'Meta hesabı bağlı değil' });
+    if (!conn) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
 
     const token = conn.access_token;
     const accountId = req.params.adAccountId;
 
-    // Lead formlarını bul
+    // Lead formlarÄ±nÄ± bul
     const formsResp = await axios.get(
       `https://graph.facebook.com/v18.0/${accountId}/leadgen_forms?fields=id,name,leads_count&access_token=${token}&limit=10`
     );
@@ -271,16 +271,16 @@ router.get('/leads/:adAccountId', async (req: any, res: any) => {
 
     res.json({ formsFound: formsResp.data?.data?.length || 0, leadsAdded: totalAdded });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.error?.message || e.message });
+    res.status(500).json({ error: e.response?.data?.error?.message || e.message, details: e.response?.data?.error });
   }
 });
 
-// ── 7/24 İZLEME ──────────────────────────────────────────
+// â”€â”€ 7/24 Ä°ZLEME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/monitor/:adAccountId', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('meta_connections')
       .select('access_token').eq('user_id', req.userId).single();
-    if (!conn) return res.status(401).json({ error: 'Meta hesabı bağlı değil' });
+    if (!conn) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
 
     const token = conn.access_token;
     const accountId = req.params.adAccountId;
@@ -297,13 +297,13 @@ router.get('/monitor/:adAccountId', async (req: any, res: any) => {
       const impressions = parseInt(ins.impressions || '0');
 
       if (ctr < 0.5 && impressions > 1000) {
-        alerts.push({ campaignId: camp.id, name: camp.name, type: 'low_ctr', message: `CTR çok düşük: %${ctr.toFixed(2)} — Hedef kitle veya reklam metni değiştirilmeli`, severity: 'high' });
+        alerts.push({ campaignId: camp.id, name: camp.name, type: 'low_ctr', message: `CTR Ã§ok dÃ¼ÅŸÃ¼k: %${ctr.toFixed(2)} â€” Hedef kitle veya reklam metni deÄŸiÅŸtirilmeli`, severity: 'high' });
       }
       if (spend > 0 && parseInt(ins.clicks || '0') === 0) {
-        alerts.push({ campaignId: camp.id, name: camp.name, type: 'no_clicks', message: 'Harcama var ama tıklama yok — Reklam görsel/metni ilgi çekmiyor', severity: 'critical' });
+        alerts.push({ campaignId: camp.id, name: camp.name, type: 'no_clicks', message: 'Harcama var ama tÄ±klama yok â€” Reklam gÃ¶rsel/metni ilgi Ã§ekmiyor', severity: 'critical' });
       }
       if (ctr > 3) {
-        alerts.push({ campaignId: camp.id, name: camp.name, type: 'high_performance', message: `Mükemmel performans! CTR: %${ctr.toFixed(2)} — Bütçeyi artırabilirsiniz`, severity: 'positive' });
+        alerts.push({ campaignId: camp.id, name: camp.name, type: 'high_performance', message: `MÃ¼kemmel performans! CTR: %${ctr.toFixed(2)} â€” BÃ¼tÃ§eyi artÄ±rabilirsiniz`, severity: 'positive' });
       }
     }
 
@@ -318,11 +318,11 @@ router.get('/monitor/:adAccountId', async (req: any, res: any) => {
 
     res.json({ campaigns: campResp.data?.data || [], alerts, monitored: campResp.data?.data?.length || 0 });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.error?.message || e.message });
+    res.status(500).json({ error: e.response?.data?.error?.message || e.message, details: e.response?.data?.error });
   }
 });
 
-// ── AI OPTİMİZASYON ÖNERİSİ ──────────────────────────────
+// â”€â”€ AI OPTÄ°MÄ°ZASYON Ã–NERÄ°SÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.post('/optimize', async (req: any, res: any) => {
   try {
     const { campaignData, goal } = req.body;
@@ -334,16 +334,16 @@ router.post('/optimize', async (req: any, res: any) => {
       max_tokens: 500,
       messages: [{
         role: 'user',
-        content: `Bu Meta reklam kampanyasını optimize et. Hedef: ${goal || 'daha fazla lead'}
+        content: `Bu Meta reklam kampanyasÄ±nÄ± optimize et. Hedef: ${goal || 'daha fazla lead'}
 
 Kampanya verisi: ${JSON.stringify(campaignData)}
 
-JSON döndür:
+JSON dÃ¶ndÃ¼r:
 {
-  "budgetChange": "+20% artır veya -10% azalt",
-  "audienceChange": "25-45 yaş, İstanbul, mobilya ilgisi ekle",
-  "adCopyChange": "Başlığı şöyle değiştir: ...",
-  "scheduleChange": "Hafta içi 9-18 arası yayınla",
+  "budgetChange": "+20% artÄ±r veya -10% azalt",
+  "audienceChange": "25-45 yaÅŸ, Ä°stanbul, mobilya ilgisi ekle",
+  "adCopyChange": "BaÅŸlÄ±ÄŸÄ± ÅŸÃ¶yle deÄŸiÅŸtir: ...",
+  "scheduleChange": "Hafta iÃ§i 9-18 arasÄ± yayÄ±nla",
   "estimatedImprovement": "%30 daha fazla lead bekleniyor",
   "priority": "high/medium/low"
 }`
@@ -357,7 +357,7 @@ JSON döndür:
   }
 });
 
-// ── STATS ─────────────────────────────────────────────────
+// â”€â”€ STATS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 router.get('/stats', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('meta_connections')
@@ -384,7 +384,7 @@ router.get('/stats', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Her 2 saatte bir tüm bağlı hesapları izle
+// Her 2 saatte bir tÃ¼m baÄŸlÄ± hesaplarÄ± izle
 setInterval(async () => {
   try {
     const { data: connections } = await supabase.from('meta_connections').select('user_id, access_token, ad_accounts');
@@ -405,7 +405,7 @@ setInterval(async () => {
                   campaign_id: camp.id,
                   name: camp.name,
                   type: 'low_ctr',
-                  message: `CTR çok düşük: %${ctr.toFixed(2)} — Acil optimizasyon gerekiyor`,
+                  message: `CTR Ã§ok dÃ¼ÅŸÃ¼k: %${ctr.toFixed(2)} â€” Acil optimizasyon gerekiyor`,
                   severity: 'high',
                   checked_at: new Date().toISOString(),
                 }]);
