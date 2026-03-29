@@ -8,7 +8,8 @@ import {
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
-  Workflow, MapPin, ScrollText, Gift, TrendingDown
+  Workflow, MapPin, ScrollText, Gift, TrendingDown,
+  GraduationCap, Inbox, Kanban, Radar
 } from 'lucide-react'
 
 const navItems = [
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/lead-machine', label: 'Lead Makinesi', icon: Target },
   { href: '/lead-hunter', label: '7/24 Lead Avcısı', icon: Bot },
   { href: '/workflow', label: 'Workflow Engine', icon: Workflow },
+  { href: '/pipeline', label: 'Pipeline & Kanban', icon: Kanban },
   { href: '/trade-fair', label: 'Fuar Asistanı', icon: MapPin },
   { href: '/tenders', label: 'İhale Avcısı', icon: ScrollText },
   { href: '/lead-quality', label: 'Lead Kalite AI', icon: Star },
@@ -26,6 +28,7 @@ const navItems = [
   { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },
 
   // ── KAMPANYA & MESAJ ──
+  { href: '/inbox', label: 'Unified Inbox', icon: Inbox },
   { href: '/campaigns', label: 'Kampanyalar', icon: Megaphone },
   { href: '/sequences', label: 'AI Sekanslar', icon: Bot },
   { href: '/ab-testing', label: 'A/B Test', icon: FlaskConical },
@@ -40,10 +43,13 @@ const navItems = [
   { href: '/ar-experience', label: 'AR Deneyimi', icon: Box },
   { href: '/vision', label: 'Vision AI', icon: Eye },
   { href: '/proposals', label: 'Teklif & Pazarlık', icon: FileText },
+  { href: '/microsites', label: 'Kişisel Katalog', icon: Globe },
+  { href: '/sales-coach', label: 'Satış Koçu', icon: GraduationCap },
 
   // ── SATIŞ & GELİR ──
   { href: '/referral', label: 'Referral Loop', icon: Gift },
   { href: '/debt-collector', label: 'Tahsilat Takibi', icon: TrendingDown },
+  { href: '/crisis-radar', label: 'Kriz & Fırsat Radar', icon: Radar },
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
   { href: '/financial', label: 'Büyüme Zekası', icon: TrendingUp },
