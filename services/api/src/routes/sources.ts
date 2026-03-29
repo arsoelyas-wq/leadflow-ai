@@ -96,49 +96,78 @@ async function scrapeGoogleMaps(keyword: string, city: string, limit: number): P
 async function scrapeInstagram(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    // Instagram Basic Display API veya Graph API ile iş hesabı ara
-    // Meta WA token'ı kullan
-    const META_TOKEN = process.env.META_WA_TOKEN;
-    if (!META_TOKEN) throw new Error('META_WA_TOKEN eksik');
+    const META_TOKEN = process.env.META_PAGE_TOKEN || process.env.META_WA_TOKEN;
+    const IG_ACCOUNT_ID = process.env.META_INSTAGRAM_ACCOUNT_ID;
 
-    // Instagram hashtag araması
+    if (!META_TOKEN || !IG_ACCOUNT_ID) throw new Error('META_PAGE_TOKEN veya META_INSTAGRAM_ACCOUNT_ID eksik');
+
+    // 1. Hashtag ID al
     const hashtagQuery = keyword.replace(/\s/g, '').toLowerCase();
-    const resp = await axios.get(
-      `https://graph.facebook.com/v18.0/ig_hashtag_search?user_id=${process.env.META_WA_BUSINESS_ID}&q=${hashtagQuery}&access_token=${META_TOKEN}`,
+    const hashResp = await axios.get(
+      `https://graph.facebook.com/v18.0/ig_hashtag_search?user_id=${IG_ACCOUNT_ID}&q=${encodeURIComponent(hashtagQuery)}&access_token=${META_TOKEN}`,
       { timeout: 10000 }
     );
 
-    const hashtagId = resp.data?.data?.[0]?.id;
-    if (!hashtagId) throw new Error('Hashtag bulunamadı');
+    const hashtagId = hashResp.data?.data?.[0]?.id;
+    if (!hashtagId) throw new Error('Hashtag ID bulunamadi');
 
+    // 2. Top media al
     const mediaResp = await axios.get(
-      `https://graph.facebook.com/v18.0/${hashtagId}/top_media?fields=id,caption,username,media_type,permalink&access_token=${META_TOKEN}&limit=${limit}`,
+      `https://graph.facebook.com/v18.0/${hashtagId}/top_media?fields=id,caption,username,permalink,media_type&user_id=${IG_ACCOUNT_ID}&access_token=${META_TOKEN}&limit=${Math.min(limit, 50)}`,
       { timeout: 10000 }
     );
 
     for (const media of mediaResp.data?.data || []) {
-      if (media.username) {
-        const phoneMatch = (media.caption || '').match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
-        const emailMatch = (media.caption || '').match(/[\w.-]+@[\w.-]+\.\w+/);
+      if (!media.username) continue;
 
-        if (!results.find(r => r.instagram_username === media.username)) {
-          results.push({
-            company_name: media.username,
-            instagram_username: media.username,
-            instagram_url: `https://instagram.com/${media.username}`,
-            phone: phoneMatch?.[0]?.replace(/\s/g, '') || null,
-            email: emailMatch?.[0] || null,
-            city,
-            sector: keyword,
-            source: 'instagram',
-            status: 'new',
-          });
-        }
+      const caption = media.caption || '';
+      const phoneMatch = caption.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+      const emailMatch = caption.match(/[\w.-]+@[\w.-]+\.\w+/);
+
+      if (!results.find(r => r.instagram_username === media.username)) {
+        results.push({
+          company_name: media.username,
+          instagram_username: media.username,
+          instagram_url: media.permalink || `https://instagram.com/${media.username}`,
+          phone: phoneMatch?.[0]?.replace(/\s/g, '') || null,
+          email: emailMatch?.[0] || null,
+          city,
+          sector: keyword,
+          source: 'instagram',
+          status: 'new',
+        });
       }
     }
+
+    // 3. Recent media de al
+    if (results.length < limit) {
+      const recentResp = await axios.get(
+        `https://graph.facebook.com/v18.0/${hashtagId}/recent_media?fields=id,caption,username,permalink&user_id=${IG_ACCOUNT_ID}&access_token=${META_TOKEN}&limit=${limit}`,
+        { timeout: 10000 }
+      );
+
+      for (const media of recentResp.data?.data || []) {
+        if (!media.username || results.find(r => r.instagram_username === media.username)) continue;
+        const caption = media.caption || '';
+        const phoneMatch = caption.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+        const emailMatch = caption.match(/[\w.-]+@[\w.-]+\.\w+/);
+
+        results.push({
+          company_name: media.username,
+          instagram_username: media.username,
+          instagram_url: media.permalink || `https://instagram.com/${media.username}`,
+          phone: phoneMatch?.[0]?.replace(/\s/g, '') || null,
+          email: emailMatch?.[0] || null,
+          city, sector: keyword, source: 'instagram', status: 'new',
+        });
+
+        if (results.length >= limit) break;
+      }
+    }
+
+    console.log(`Instagram: ${results.length} accounts found for #${hashtagQuery}`);
   } catch (e: any) {
     console.error('Instagram API error:', e.message);
-    // Fallback: Puppeteer ile çek
     results.push(...await scrapeInstagramPuppeteer(keyword, city, limit));
   }
   return results.slice(0, limit);
@@ -191,27 +220,65 @@ async function scrapeInstagramPuppeteer(keyword: string, city: string, limit: nu
 async function scrapeFacebook(keyword: string, city: string, limit: number): Promise<any[]> {
   const results: any[] = [];
   try {
-    const META_TOKEN = process.env.META_WA_TOKEN;
-    if (!META_TOKEN) throw new Error('META_WA_TOKEN eksik');
+    const META_TOKEN = process.env.META_PAGE_TOKEN || process.env.META_WA_TOKEN;
+    const PAGE_ID = process.env.META_PAGE_ID || process.env.META_WA_BUSINESS_ID;
 
-    // Facebook Pages Search
-    const resp = await axios.get(
-      `https://graph.facebook.com/v18.0/pages/search?q=${encodeURIComponent(keyword + ' ' + city)}&fields=id,name,phone,website,location,category&access_token=${META_TOKEN}&limit=${limit}`,
-      { timeout: 10000 }
-    );
+    if (!META_TOKEN) throw new Error('META_PAGE_TOKEN eksik');
 
-    for (const page of resp.data?.data || []) {
-      results.push({
-        company_name: page.name,
-        phone: page.phone?.replace(/\s/g,'') || null,
-        website: page.website || null,
-        facebook_url: `https://facebook.com/${page.id}`,
-        city: page.location?.city || city,
-        sector: keyword,
-        source: 'facebook',
-        status: 'new',
-      });
-    }
+    // 1. Sayfa yorumlarından lead cek
+    try {
+      const feedResp = await axios.get(
+        `https://graph.facebook.com/v18.0/${PAGE_ID}/feed?fields=message,from,created_time&access_token=${META_TOKEN}&limit=${limit}`,
+        { timeout: 10000 }
+      );
+
+      for (const post of feedResp.data?.data || []) {
+        if (!post.from?.name) continue;
+        const text = post.message || '';
+        const phoneMatch = text.match(/(0[35]\d{9}|0\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2})/);
+        const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
+
+        if (phoneMatch || emailMatch) {
+          results.push({
+            company_name: post.from.name,
+            phone: phoneMatch?.[0]?.replace(/\s/g, '') || null,
+            email: emailMatch?.[0] || null,
+            facebook_url: `https://facebook.com/${post.from.id}`,
+            city, sector: keyword, source: 'facebook', status: 'new',
+          });
+        }
+      }
+    } catch {}
+
+    // 2. Lead Ads formlarından lead cek
+    try {
+      const leadsResp = await axios.get(
+        `https://graph.facebook.com/v18.0/${PAGE_ID}/leadgen_forms?fields=id,name,leads_count&access_token=${META_TOKEN}&limit=10`,
+        { timeout: 10000 }
+      );
+
+      for (const form of leadsResp.data?.data || []) {
+        const leadDataResp = await axios.get(
+          `https://graph.facebook.com/v18.0/${form.id}/leads?fields=field_data,created_time&access_token=${META_TOKEN}&limit=${limit}`,
+          { timeout: 10000 }
+        );
+
+        for (const lead of leadDataResp.data?.data || []) {
+          const fields: any = {};
+          (lead.field_data || []).forEach((f: any) => { fields[f.name] = f.values?.[0]; });
+
+          results.push({
+            company_name: fields['company_name'] || fields['full_name'] || 'Facebook Lead',
+            contact_name: fields['full_name'] || null,
+            phone: fields['phone_number']?.replace(/\s/g, '') || null,
+            email: fields['email'] || null,
+            city, sector: keyword, source: 'facebook', status: 'new',
+          });
+        }
+      }
+    } catch {}
+
+    console.log(`Facebook: ${results.length} leads found for ${keyword}/${city}`);
   } catch (e: any) {
     console.error('Facebook API error:', e.message);
   }
