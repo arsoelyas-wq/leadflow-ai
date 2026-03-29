@@ -111,26 +111,28 @@ router.get('/analyze/:adAccountId', async (req: any, res: any) => {
 
     const summary = campaigns.map((c: any) => {
       const ins = c.insights?.data?.[0] || {};
-      return `Kampanya: ${c.name} | Durum: ${c.status} | Gösterim: ${ins.impressions||0} | Tıklama: ${ins.clicks||0} | CTR: ${ins.ctr||0}% | Harcama: $${ins.spend||0}`;
+      return `Kampanya: ${c.name} | Durum: ${c.status} | Gösterim: ${ins.impressions||0} | Tıklama: ${ins.clicks||0} | CTR: %${ins.ctr||0} | Harcama: $${ins.spend||0} | CPM: $${ins.cpm||0}`;
     }).join('\n');
 
     const aiResp = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
+      max_tokens: 800,
       messages: [{
         role: 'user',
-        content: `Bu Meta reklam kampanyalarını analiz et ve JSON döndür:
+        content: `Sen uzman bir Meta reklam analistisın. Bu kampanyaları detaylıca analiz et ve JSON döndür:
 
-${summary}
+${summary || 'Aktif kampanya yok — yeni kampanya öner'}
 
-JSON:
+JSON (Türkçe yaz):
 {
   "overallScore": 7,
-  "issues": ["sorun1", "sorun2"],
-  "opportunities": ["fırsat1", "fırsat2"],
-  "recommendations": ["öneri1", "öneri2"],
-  "alertLevel": "low/medium/high",
-  "summary": "genel değerlendirme"
+  "issues": ["CTR %0.5 altında - hedef kitle geniş tutulmuş", "Bütçe verimsiz kullanılıyor"],
+  "opportunities": ["Benzer kitle (Lookalike) oluşturulabilir", "Video reklam denenebilir"],
+  "recommendations": ["Hedef yaş aralığını 30-45 olarak daralt", "Reklam görseli değiştirilmeli", "A/B test başlat"],
+  "alertLevel": "high",
+  "summary": "Kampanyalar genel olarak düşük performans gösteriyor. CTR ve dönüşüm oranları sektör ortalamasının altında.",
+  "budgetSuggestion": "Günlük bütçeyi $20 artır ve performanslı reklam setine yönlendir",
+  "audienceSuggestion": "İstanbul, Ankara, 28-45 yaş, mobilya ve ev dekorasyon ilgisi"
 }`
       }]
     });
@@ -173,15 +175,23 @@ router.post('/create-campaign', async (req: any, res: any) => {
     );
     const campaignId = campResp.data.id;
 
-    // Ad Set oluştur
+    // Ad Set oluştur — objective'e göre doğru optimization_goal seç
+    const objectiveGoalMap: Record<string, {optimization_goal: string, billing_event: string}> = {
+      'OUTCOME_LEADS': { optimization_goal: 'LEAD_GENERATION', billing_event: 'IMPRESSIONS' },
+      'OUTCOME_TRAFFIC': { optimization_goal: 'LINK_CLICKS', billing_event: 'LINK_CLICKS' },
+      'OUTCOME_AWARENESS': { optimization_goal: 'REACH', billing_event: 'IMPRESSIONS' },
+      'OUTCOME_SALES': { optimization_goal: 'OFFSITE_CONVERSIONS', billing_event: 'IMPRESSIONS' },
+    };
+    const goalConfig = objectiveGoalMap[objective] || objectiveGoalMap['OUTCOME_AWARENESS'];
+
     const adSetResp = await axios.post(
       `https://graph.facebook.com/v18.0/${adAccountId}/adsets`,
       {
         name: `${name} - Hedef Kitle`,
         campaign_id: campaignId,
-        daily_budget: Math.max(100, parseInt(dailyBudget) * 100), // min 100 cent
-        billing_event: 'IMPRESSIONS',
-        optimization_goal: 'REACH',
+        daily_budget: Math.max(100, parseInt(dailyBudget) * 100),
+        billing_event: goalConfig.billing_event,
+        optimization_goal: goalConfig.optimization_goal,
         status: 'PAUSED',
         targeting: {
           geo_locations: { countries: targetCountries || ['TR'] },
