@@ -139,13 +139,15 @@ JSON:
     const analysis = m ? JSON.parse(m[0]) : null;
 
     // Analizi kaydet
-    await supabase.from('ad_analyses').insert([{
-      user_id: req.userId,
-      ad_account_id: accountId,
-      campaigns_analyzed: campaigns.length,
-      analysis: JSON.stringify(analysis),
-      analyzed_at: new Date().toISOString(),
-    }]).catch(() => {});
+    try {
+      await supabase.from('ad_analyses').insert([{
+        user_id: req.userId,
+        ad_account_id: accountId,
+        campaigns_analyzed: campaigns.length,
+        analysis: JSON.stringify(analysis),
+        analyzed_at: new Date().toISOString(),
+      }]);
+    } catch {}
 
     res.json({ campaigns, analysis, total: campaigns.length });
   } catch (e: any) {
@@ -177,16 +179,15 @@ router.post('/create-campaign', async (req: any, res: any) => {
       {
         name: `${name} - Hedef Kitle`,
         campaign_id: campaignId,
-        daily_budget: parseInt(dailyBudget) * 100,
+        daily_budget: Math.max(100, parseInt(dailyBudget) * 100), // min 100 cent
         billing_event: 'IMPRESSIONS',
-        optimization_goal: 'LEAD_GENERATION',
+        optimization_goal: 'REACH',
         status: 'PAUSED',
         targeting: {
           geo_locations: { countries: targetCountries || ['TR'] },
           age_min: targetAgeMin || 25,
           age_max: targetAgeMax || 55,
         },
-        start_time: new Date(Date.now() + 3600000).toISOString(),
       },
       { params: { access_token: token } }
     );
@@ -298,9 +299,11 @@ router.get('/monitor/:adAccountId', async (req: any, res: any) => {
 
     // Alertleri kaydet
     if (alerts.length > 0) {
-      await supabase.from('ad_alerts').insert(alerts.map(a => ({
-        user_id: req.userId, ...a, checked_at: new Date().toISOString()
-      }))).catch(() => {});
+      try {
+        await supabase.from('ad_alerts').insert(alerts.map((a: any) => ({
+          user_id: req.userId, ...a, checked_at: new Date().toISOString()
+        })));
+      } catch {}
     }
 
     res.json({ campaigns: campResp.data?.data || [], alerts, monitored: campResp.data?.data?.length || 0 });
@@ -386,15 +389,17 @@ setInterval(async () => {
             const ins = camp.insights?.data?.[0] || {};
             const ctr = parseFloat(ins.ctr || '0');
             if (ctr < 0.5 && parseInt(ins.impressions || '0') > 1000) {
-              await supabase.from('ad_alerts').insert([{
-                user_id: conn.user_id,
-                campaignId: camp.id,
-                name: camp.name,
-                type: 'low_ctr',
-                message: `CTR çok düşük: %${ctr.toFixed(2)} — Acil optimizasyon gerekiyor`,
-                severity: 'high',
-                checked_at: new Date().toISOString(),
-              }]).catch(() => {});
+              try {
+                await supabase.from('ad_alerts').insert([{
+                  user_id: conn.user_id,
+                  campaign_id: camp.id,
+                  name: camp.name,
+                  type: 'low_ctr',
+                  message: `CTR çok düşük: %${ctr.toFixed(2)} — Acil optimizasyon gerekiyor`,
+                  severity: 'high',
+                  checked_at: new Date().toISOString(),
+                }]);
+              } catch {}
             }
           }
           await new Promise(r => setTimeout(r, 1000));
