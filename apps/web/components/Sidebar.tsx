@@ -9,7 +9,7 @@ import {
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
   Workflow, MapPin, ScrollText, Gift, TrendingDown,
-  GraduationCap, Inbox, Kanban, Radar
+  GraduationCap, Inbox, Kanban, Radar, UserCog
 } from 'lucide-react'
 
 const navItems = [
@@ -63,6 +63,7 @@ const navItems = [
   { href: '/meta-intent', label: 'Meta Intent', icon: Target },
 
   // ── SİSTEM ──
+  { href: '/team', label: 'Ekip Yönetimi', icon: UserCog },
   { href: '/wa-numbers', label: 'WA Numaralar', icon: Smartphone },
   { href: '/webhooks', label: 'Webhooks', icon: Webhook },
   { href: '/whitelabel', label: 'White-Label', icon: Building2 },

@@ -49,6 +49,7 @@ app.use('/api/sources',    authMiddleware, require('./routes/sources'));
 app.use('/api/instagram',  authMiddleware, require('./routes/instagram'));
 app.use('/api/facebook',   authMiddleware, require('./routes/facebook'));
 app.use('/api/workflow',   authMiddleware, require('./routes/workflow'));
+app.use('/api/team', authMiddleware, require('./routes/team'));
 app.use('/api/coaching', authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox', authMiddleware, require('./routes/inbox'));
 app.use('/api/pipeline', authMiddleware, require('./routes/pipeline'));
