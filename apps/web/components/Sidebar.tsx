@@ -8,7 +8,7 @@ import {
   Crosshair, Bot, FlaskConical, Webhook, Smartphone, Eye,
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
-  Workflow, MapPin
+  Workflow, MapPin, ScrollText
 } from 'lucide-react'
 
 const navItems = [
@@ -20,6 +20,7 @@ const navItems = [
   { href: '/lead-hunter', label: '7/24 Lead Avcısı', icon: Bot },
   { href: '/workflow', label: 'Workflow Engine', icon: Workflow },
   { href: '/trade-fair', label: 'Fuar Asistanı', icon: MapPin },
+  { href: '/tenders', label: 'İhale Avcısı', icon: ScrollText },
   { href: '/lead-quality', label: 'Lead Kalite AI', icon: Star },
   { href: '/health-scores', label: 'Müşteri Sağlığı', icon: Heart },
   { href: '/decision-maker', label: 'Karar Verici', icon: Crosshair },
