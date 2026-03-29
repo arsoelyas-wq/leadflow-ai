@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -50,6 +50,7 @@ app.use('/api/instagram',  authMiddleware, require('./routes/instagram'));
 app.use('/api/facebook',   authMiddleware, require('./routes/facebook'));
 app.use('/api/workflow',   authMiddleware, require('./routes/workflow'));
 app.use('/api/team', authMiddleware, require('./routes/team'));
+app.use('/api/ads', authMiddleware, require('./routes/ads'));
 app.use('/api/coaching', authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox', authMiddleware, require('./routes/inbox'));
 app.use('/api/pipeline', authMiddleware, require('./routes/pipeline'));

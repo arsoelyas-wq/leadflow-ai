@@ -37,6 +37,9 @@ const navItems = [
   { href: '/retargeting', label: 'Retargeting', icon: RefreshCw },
   { href: '/emotional-iq', label: 'Duygusal Zeka', icon: Heart },
 
+  // ── REKLAMLAR ──
+  { href: '/ads', label: 'Meta & Google Reklam', icon: Megaphone },
+
   // ── AI ARAÇLAR ──
   { href: '/video-outreach', label: 'AI Video', icon: Video },
   { href: '/voice-outreach', label: 'AI Sesli Arama', icon: Phone },
