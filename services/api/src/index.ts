@@ -1,8 +1,8 @@
-
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { runDailyTenderScan } = require('./routes/tenders');
 require('dotenv').config();
 
 const app = express();
@@ -80,6 +80,7 @@ app.use('/api/whitelabel',          authMiddleware, require('./routes/whitelabel
 app.use('/api/voice',               authMiddleware, require('./routes/voice-outreach'));
 app.use('/api/push',                authMiddleware, require('./routes/push'));
 app.use('/api/cultural',            authMiddleware, require('./routes/cultural'));
+
 // Meta Webhook Dogrulama
 app.get('/api/meta/webhook', (req: any, res: any) => {
   const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'leadflow2024';
@@ -93,7 +94,6 @@ app.get('/api/meta/webhook', (req: any, res: any) => {
     res.status(403).send('Verification failed');
   }
 });
-
 
 // Meta Webhook Verification - no auth
 app.get('/api/meta/webhook', (req: any, res: any) => {
@@ -116,6 +116,21 @@ const { router: monitoringRouter } = require('./routes/monitoring');
 app.use('/api/monitoring', authMiddleware, monitoringRouter);
 const { router: webhooksRouter } = require('./routes/webhooks');
 app.use('/api/webhooks',   authMiddleware, webhooksRouter);
+
+// Günlük otomatik ihale taraması (her gün saat 07:00)
+function scheduleDailyTenderScan() {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(7, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  const msUntilNext = next.getTime() - now.getTime();
+  console.log(`Daily tender scan scheduled for ${next.toLocaleString('tr-TR')}`);
+  setTimeout(() => {
+    runDailyTenderScan();
+    setInterval(runDailyTenderScan, 24 * 60 * 60 * 1000);
+  }, msUntilNext);
+}
+scheduleDailyTenderScan();
 
 app.get('/health', (_req: any, res: any) => res.json({ status: 'OK', ts: Date.now() }));
 app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));
