@@ -32,12 +32,12 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    // KullanÃ„Â±cÃ„Â± bilgisi
+    // KullanÃƒâ€žÃ‚Â±cÃƒâ€žÃ‚Â± bilgisi
     const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Google Ads hesaplarÃ„Â±nÃ„Â± listele
+    // Google Ads hesaplarÃƒâ€žÃ‚Â±nÃƒâ€žÃ‚Â± listele
     const accountsResp = await axios.get(
       'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
       {
@@ -50,7 +50,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
 
-    // Her hesabÃ„Â±n detayÃ„Â±nÃ„Â± al
+    // Her hesabÃƒâ€žÃ‚Â±n detayÃƒâ€žÃ‚Â±nÃƒâ€žÃ‚Â± al
     const accounts = [];
     for (const customerId of customerIds.slice(0, 10)) {
       try {
@@ -92,7 +92,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     res.json({ success: true, userName: meResp.data.name, adAccounts: accounts, message: 'Google Ads hesabi baglandi!' });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.error?.message || e.response?.data?.error_description || e.message });
+    console.error('Google exchange error:', JSON.stringify(e.response?.data || e.message)); res.status(500).json({ error: e.response?.data?.error_description || e.response?.data?.error || e.message, details: e.response?.data });
   }
 });
 
@@ -103,7 +103,7 @@ async function refreshGoogleToken(userId: string): Promise<string | null> {
       .select('refresh_token, access_token, token_expires_at').eq('user_id', userId).single();
     if (!conn) return null;
 
-    // Token hala geÃƒÂ§erliyse dÃƒÂ¶ndÃƒÂ¼r
+    // Token hala geÃƒÆ’Ã‚Â§erliyse dÃƒÆ’Ã‚Â¶ndÃƒÆ’Ã‚Â¼r
     if (new Date(conn.token_expires_at) > new Date()) return conn.access_token;
 
     // Refresh
@@ -178,7 +178,7 @@ router.get('/campaigns/:customerId', async (req: any, res: any) => {
   }
 });
 
-// Kampanya Analizi Ã¢â‚¬â€ AI ile
+// Kampanya Analizi ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AI ile
 router.get('/analyze/:customerId', async (req: any, res: any) => {
   try {
     const token = await refreshGoogleToken(req.userId);
