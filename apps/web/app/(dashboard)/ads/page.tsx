@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api'
-import { Megaphone, RefreshCw, Plus, Play, Pause, AlertTriangle, TrendingUp, Users, Zap, CheckCircle, Eye, Target, BarChart3, Link } from 'lucide-react'
+import { RefreshCw, Plus, BarChart3, Eye, Users, AlertTriangle, CheckCircle, LogOut, Link, Play, Pause } from 'lucide-react'
 
 const OBJECTIVES = [
   { key: 'OUTCOME_LEADS', label: 'Lead Toplama', icon: '🎯' },
@@ -12,18 +12,23 @@ const OBJECTIVES = [
 ]
 
 export default function AdsPage() {
-  const [stats, setStats] = useState<any>(null)
-  const [connection, setConnection] = useState<any>(null)
-  const [campaigns, setCampaigns] = useState<any[]>([])
-  const [alerts, setAlerts] = useState<any[]>([])
-  const [analysis, setAnalysis] = useState<any>(null)
-  const [selectedAccount, setSelectedAccount] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [analyzing, setAnalyzing] = useState(false)
-  const [monitoring, setMonitoring] = useState(false)
+  const searchParams = useSearchParams()
+
+  // Meta state
+  const [metaConn, setMetaConn] = useState<any>(null)
+  const [metaCampaigns, setMetaCampaigns] = useState<any[]>([])
+  const [metaAnalysis, setMetaAnalysis] = useState<any>(null)
+  const [metaAlerts, setMetaAlerts] = useState<any[]>([])
+  const [selectedMetaAccount, setSelectedMetaAccount] = useState('')
+  const [analyzingMeta, setAnalyzingMeta] = useState(false)
+  const [monitoringMeta, setMonitoringMeta] = useState(false)
   const [fetchingLeads, setFetchingLeads] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
-  const [googleConnection, setGoogleConnection] = useState<any>(null)
+  const [showMetaCreate, setShowMetaCreate] = useState(false)
+  const [creatingMeta, setCreatingMeta] = useState(false)
+  const [metaForm, setMetaForm] = useState({ name:'', objective:'OUTCOME_AWARENESS', dailyBudget:'10', targetCountries:['TR'], targetAgeMin:25, targetAgeMax:55 })
+
+  // Google state
+  const [googleConn, setGoogleConn] = useState<any>(null)
   const [googleCampaigns, setGoogleCampaigns] = useState<any[]>([])
   const [googleAnalysis, setGoogleAnalysis] = useState<any>(null)
   const [selectedGoogleAccount, setSelectedGoogleAccount] = useState('')
@@ -31,158 +36,156 @@ export default function AdsPage() {
   const [showGoogleCreate, setShowGoogleCreate] = useState(false)
   const [creatingGoogle, setCreatingGoogle] = useState(false)
   const [googleForm, setGoogleForm] = useState({ name:'', budget:'10' })
-  const [showCopy, setShowCopy] = useState(false)
-  const [creating, setCreating] = useState(false)
-  const [generating, setGenerating] = useState(false)
-  const [adCopy, setAdCopy] = useState<any>(null)
-  const [msg, setMsg] = useState<{type:'success'|'error',text:string}|null>(null)
 
-  const [form, setForm] = useState({ name:'', objective:'OUTCOME_LEADS', dailyBudget:'100', targetCountries:['TR'], targetAgeMin:25, targetAgeMax:55 })
+  // AI Copy
+  const [showCopy, setShowCopy] = useState(false)
+  const [adCopy, setAdCopy] = useState<any>(null)
+  const [generating, setGenerating] = useState(false)
   const [copyForm, setCopyForm] = useState({ product:'', sector:'', target:'işletme sahipleri', platform:'Meta' })
 
-  const searchParams = useSearchParams()
-  const showMsg = (type:'success'|'error', text:string) => { setMsg({type,text}); setTimeout(()=>setMsg(null),6000) }
+  const [activeTab, setActiveTab] = useState<'meta'|'google'>('meta')
+  const [loading, setLoading] = useState(true)
+  const [msg, setMsg] = useState<{type:'success'|'error',text:string}|null>(null)
 
-  // Meta OAuth callback — code'u exchange et
-  useEffect(() => {
-    const code = searchParams.get('meta_code')
-    const success = searchParams.get('success')
-    const error = searchParams.get('error')
-    
-    if (code) {
-      api.post('/api/ads/exchange-token', { code })
-        .then(data => {
-          showMsg('success', `${data.userName} — Meta hesabı bağlandı!`)
-          load()
-          // URL'den code'u temizle
-          window.history.replaceState({}, '', '/ads')
-        })
-        .catch(e => showMsg('error', e.message))
-    }
-    if (success === 'meta_connected') showMsg('success', 'Meta hesabı bağlandı!')
-    if (error) showMsg('error', 'Meta bağlantısı başarısız')
-  }, [])
+  const showMsg = (type:'success'|'error', text:string) => { setMsg({type,text}); setTimeout(()=>setMsg(null),6000) }
 
   const load = async () => {
     setLoading(true)
     try {
-      const [s, c, camp] = await Promise.allSettled([
-        api.get('/api/ads/stats'),
+      const [m, g, mc] = await Promise.allSettled([
         api.get('/api/ads/connection'),
-        api.get('/api/ads/my-campaigns'),
-      ])
-      if (s.status==='fulfilled') setStats(s.value)
-      if (c.status==='fulfilled') {
-        setConnection(c.value)
-        if (c.value.adAccounts?.[0]) setSelectedAccount(c.value.adAccounts[0].id)
-      }
-      if (camp.status==='fulfilled') setCampaigns(camp.value.campaigns||[])
-    } catch {} finally { setLoading(false) }
-  }
-
-  useEffect(()=>{ load(); loadGoogle() },[])
-
-  const loadGoogle = async () => {
-    try {
-      const [c, camp] = await Promise.allSettled([
         api.get('/api/google-ads/connection'),
         api.get('/api/ads/my-campaigns'),
       ])
-      if (c.status==='fulfilled') {
-        setGoogleConnection(c.value)
-        if (c.value.adAccounts?.[0]) setSelectedGoogleAccount(c.value.adAccounts[0].id)
+      if (m.status==='fulfilled') {
+        setMetaConn(m.value)
+        if (m.value.adAccounts?.[0]) setSelectedMetaAccount(m.value.adAccounts[0].id)
       }
-    } catch {}
+      if (g.status==='fulfilled') {
+        setGoogleConn(g.value)
+        if (g.value.adAccounts?.[0]) setSelectedGoogleAccount(g.value.adAccounts[0].id)
+      }
+      if (mc.status==='fulfilled') setMetaCampaigns(mc.value.campaigns||[])
+    } catch {} finally { setLoading(false) }
   }
 
+  useEffect(() => {
+    load()
+    const metaCode = searchParams.get('meta_code')
+    const googleCode = searchParams.get('google_code')
+    const error = searchParams.get('error')
+
+    if (metaCode) {
+      api.post('/api/ads/exchange-token', { code: metaCode })
+        .then(d => { showMsg('success', `${d.userName} — Meta bağlandı!`); load(); window.history.replaceState({}, '', '/ads') })
+        .catch(e => showMsg('error', e.message))
+    }
+    if (googleCode) {
+      api.post('/api/google-ads/exchange-token', { code: googleCode })
+        .then(d => { showMsg('success', `${d.userName} — Google Ads bağlandı!`); load(); window.history.replaceState({}, '', '/ads') })
+        .catch(e => showMsg('error', e.message))
+    }
+    if (error) showMsg('error', 'Bağlantı başarısız')
+  }, [])
+
   const connectMeta = async () => {
-    try {
-      const data = await api.get('/api/ads/oauth-url')
-      window.location.href = data.url
-    } catch (e:any) { showMsg('error', e.message) }
+    try { const d = await api.get('/api/ads/oauth-url'); window.location.href = d.url }
+    catch (e:any) { showMsg('error', e.message) }
   }
 
   const connectGoogle = async () => {
+    try { const d = await api.get('/api/google-ads/oauth-url'); window.location.href = d.url }
+    catch (e:any) { showMsg('error', e.message) }
+  }
+
+  const disconnectMeta = async () => {
     try {
-      const data = await api.get('/api/google-ads/oauth-url')
-      window.location.href = data.url
+      await api.delete('/api/ads/connection')
+      setMetaConn(null)
+      showMsg('success', 'Meta bağlantısı kesildi')
     } catch (e:any) { showMsg('error', e.message) }
+  }
+
+  const disconnectGoogle = async () => {
+    try {
+      await api.delete('/api/google-ads/connection')
+      setGoogleConn(null)
+      showMsg('success', 'Google Ads bağlantısı kesildi')
+    } catch (e:any) { showMsg('error', e.message) }
+  }
+
+  const analyzeMeta = async () => {
+    if (!selectedMetaAccount) return
+    setAnalyzingMeta(true)
+    try {
+      const d = await api.get(`/api/ads/analyze/${selectedMetaAccount}`)
+      setMetaAnalysis(d.analysis)
+      showMsg('success', `${d.total} kampanya analiz edildi`)
+    } catch (e:any) { showMsg('error', e.message) }
+    finally { setAnalyzingMeta(false) }
+  }
+
+  const monitorMeta = async () => {
+    if (!selectedMetaAccount) return
+    setMonitoringMeta(true)
+    try {
+      const d = await api.get(`/api/ads/monitor/${selectedMetaAccount}`)
+      setMetaAlerts(d.alerts||[])
+      showMsg('success', `${d.monitored} kampanya izlendi`)
+    } catch (e:any) { showMsg('error', e.message) }
+    finally { setMonitoringMeta(false) }
+  }
+
+  const fetchMetaLeads = async () => {
+    if (!selectedMetaAccount) return
+    setFetchingLeads(true)
+    try {
+      const d = await api.get(`/api/ads/leads/${selectedMetaAccount}`)
+      showMsg('success', `${d.leadsAdded} yeni lead eklendi!`)
+    } catch (e:any) { showMsg('error', e.message) }
+    finally { setFetchingLeads(false) }
+  }
+
+  const createMetaCampaign = async () => {
+    if (!selectedMetaAccount || !metaForm.name) return
+    setCreatingMeta(true)
+    try {
+      const d = await api.post('/api/ads/create-campaign', { ...metaForm, adAccountId: selectedMetaAccount })
+      showMsg('success', d.message)
+      setShowMetaCreate(false)
+      load()
+    } catch (e:any) { showMsg('error', e.message) }
+    finally { setCreatingMeta(false) }
   }
 
   const analyzeGoogle = async () => {
     if (!selectedGoogleAccount) return
     setAnalyzingGoogle(true)
     try {
-      const data = await api.get(`/api/google-ads/analyze/${selectedGoogleAccount}`)
-      setGoogleAnalysis(data.analysis)
-      setGoogleCampaigns(data.campaigns||[])
+      const d = await api.get(`/api/google-ads/analyze/${selectedGoogleAccount}`)
+      setGoogleAnalysis(d.analysis)
+      setGoogleCampaigns(d.campaigns||[])
       showMsg('success', 'Google Ads analiz tamamlandı')
     } catch (e:any) { showMsg('error', e.message) }
     finally { setAnalyzingGoogle(false) }
   }
 
   const createGoogleCampaign = async () => {
-    if (!selectedGoogleAccount||!googleForm.name) return
+    if (!selectedGoogleAccount || !googleForm.name) return
     setCreatingGoogle(true)
     try {
-      const data = await api.post('/api/google-ads/create-campaign', { customerId: selectedGoogleAccount, ...googleForm })
-      showMsg('success', data.message)
+      const d = await api.post('/api/google-ads/create-campaign', { customerId: selectedGoogleAccount, ...googleForm })
+      showMsg('success', d.message)
       setShowGoogleCreate(false)
     } catch (e:any) { showMsg('error', e.message) }
     finally { setCreatingGoogle(false) }
   }
 
-  const analyzeCampaigns = async () => {
-    if (!selectedAccount) return
-    setAnalyzing(true)
-    try {
-      const data = await api.get(`/api/ads/analyze/${selectedAccount}`)
-      setAnalysis(data.analysis)
-      setCampaigns(data.campaigns||[])
-      showMsg('success', `${data.total} kampanya analiz edildi`)
-    } catch (e:any) { showMsg('error', e.message) }
-    finally { setAnalyzing(false) }
-  }
-
-  const monitorCampaigns = async () => {
-    if (!selectedAccount) return
-    setMonitoring(true)
-    try {
-      const data = await api.get(`/api/ads/monitor/${selectedAccount}`)
-      setAlerts(data.alerts||[])
-      showMsg('success', `${data.monitored} kampanya izlendi, ${data.alerts?.length||0} uyarı`)
-    } catch (e:any) { showMsg('error', e.message) }
-    finally { setMonitoring(false) }
-  }
-
-  const fetchLeads = async () => {
-    if (!selectedAccount) return
-    setFetchingLeads(true)
-    try {
-      const data = await api.get(`/api/ads/leads/${selectedAccount}`)
-      showMsg('success', `${data.leadsAdded} yeni lead eklendi!`)
-      load()
-    } catch (e:any) { showMsg('error', e.message) }
-    finally { setFetchingLeads(false) }
-  }
-
-  const createCampaign = async () => {
-    if (!selectedAccount||!form.name) return
-    setCreating(true)
-    try {
-      const data = await api.post('/api/ads/create-campaign', { ...form, adAccountId: selectedAccount })
-      showMsg('success', data.message)
-      setShowCreate(false)
-      load()
-    } catch (e:any) { showMsg('error', e.message) }
-    finally { setCreating(false) }
-  }
-
   const generateCopy = async () => {
     setGenerating(true)
     try {
-      const data = await api.post('/api/ads/generate-copy', copyForm)
-      setAdCopy(data.copy)
+      const d = await api.post('/api/ads/generate-copy', copyForm)
+      setAdCopy(d.copy)
     } catch (e:any) { showMsg('error', e.message) }
     finally { setGenerating(false) }
   }
@@ -190,239 +193,339 @@ export default function AdsPage() {
   const severityColor: Record<string,string> = {
     critical: 'bg-red-500/20 border-red-500/30 text-red-300',
     high: 'bg-orange-500/20 border-orange-500/30 text-orange-300',
-    medium: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300',
     positive: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300',
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Megaphone size={24} className="text-blue-400"/> AI Reklam Yöneticisi
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm">Meta hesabınızı bağlayın — AI analiz, optimizasyon, 7/24 izleme ve lead çıkarma</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">📢 AI Reklam Yöneticisi</h1>
+          <p className="text-slate-400 mt-1 text-sm">Meta & Google Ads — AI analiz, optimizasyon, 7/24 izleme</p>
+        </div>
+        <button onClick={()=>setShowCopy(!showCopy)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded-xl transition">
+          ✨ AI Reklam Metni
+        </button>
       </div>
 
       {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type==='success'?'bg-emerald-500/10 border-emerald-500/30 text-emerald-300':'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
 
-      {/* Bağlantı Durumu */}
-      {!connection?.connected ? (
-        <div className="bg-slate-800/50 border border-blue-500/30 rounded-2xl p-8 text-center">
-          <div className="text-5xl mb-4">📘</div>
-          <h2 className="text-white text-xl font-bold mb-2">Meta Reklam Hesabını Bağla</h2>
-          <p className="text-slate-400 mb-6 max-w-md mx-auto">Facebook & Instagram reklam hesabınızı bağlayın. AI kampanyalarınızı analiz etsin, optimize etsin ve leadleri otomatik çeksin.</p>
-          <div className="grid grid-cols-3 gap-4 mb-8 max-w-sm mx-auto">
-            {[
-              {icon:'🔍',label:'AI Analiz'},
-              {icon:'⚡',label:'Optimizasyon'},
-              {icon:'👥',label:'Lead Çıkarma'},
-            ].map(({icon,label})=>(
-              <div key={label} className="bg-slate-900 rounded-xl p-3 text-center">
-                <p className="text-2xl mb-1">{icon}</p>
-                <p className="text-slate-400 text-xs">{label}</p>
+      {/* Bağlantı Kartları */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Meta */}
+        <div className={`border rounded-xl p-4 ${metaConn?.connected?'bg-blue-500/5 border-blue-500/30':'bg-slate-800/50 border-slate-700'}`}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${metaConn?.connected?'bg-blue-600':'bg-slate-700'}`}>📘</div>
+            <div className="flex-1">
+              <p className="text-white font-medium">Meta Ads</p>
+              <p className={`text-xs ${metaConn?.connected?'text-emerald-400':'text-slate-400'}`}>
+                {metaConn?.connected ? `✅ ${metaConn.userName}` : 'Bağlı değil'}
+              </p>
+            </div>
+          </div>
+          {metaConn?.connected ? (
+            <div className="space-y-2">
+              {metaConn.adAccounts?.length > 1 && (
+                <select value={selectedMetaAccount} onChange={e=>setSelectedMetaAccount(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs">
+                  {metaConn.adAccounts.map((a:any)=><option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              )}
+              <div className="flex gap-1.5 flex-wrap">
+                <button onClick={analyzeMeta} disabled={analyzingMeta}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-xs rounded-lg transition">
+                  {analyzingMeta?<RefreshCw size={10} className="animate-spin"/>:<BarChart3 size={10}/>} Analiz
+                </button>
+                <button onClick={monitorMeta} disabled={monitoringMeta}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 text-xs rounded-lg transition">
+                  {monitoringMeta?<RefreshCw size={10} className="animate-spin"/>:<Eye size={10}/>} İzle
+                </button>
+                <button onClick={fetchMetaLeads} disabled={fetchingLeads}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 text-xs rounded-lg transition">
+                  {fetchingLeads?<RefreshCw size={10} className="animate-spin"/>:<Users size={10}/>} Lead
+                </button>
+                <button onClick={()=>setShowMetaCreate(!showMetaCreate)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition">
+                  <Plus size={10}/> Kampanya
+                </button>
+                <button onClick={disconnectMeta}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs rounded-lg transition ml-auto">
+                  <LogOut size={10}/> Çıkış
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={connectMeta}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition">
+              <Link size={13}/> Meta Hesabını Bağla
+            </button>
+          )}
+        </div>
+
+        {/* Google */}
+        <div className={`border rounded-xl p-4 ${googleConn?.connected?'bg-yellow-500/5 border-yellow-500/30':'bg-slate-800/50 border-slate-700'}`}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${googleConn?.connected?'bg-yellow-600':'bg-slate-700'}`}>🔍</div>
+            <div className="flex-1">
+              <p className="text-white font-medium">Google Ads</p>
+              <p className={`text-xs ${googleConn?.connected?'text-emerald-400':'text-slate-400'}`}>
+                {googleConn?.connected ? `✅ ${googleConn.userName}` : 'Bağlı değil'}
+              </p>
+            </div>
+          </div>
+          {googleConn?.connected ? (
+            <div className="space-y-2">
+              {googleConn.adAccounts?.length > 1 && (
+                <select value={selectedGoogleAccount} onChange={e=>setSelectedGoogleAccount(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs">
+                  {googleConn.adAccounts.map((a:any)=><option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              )}
+              <div className="flex gap-1.5 flex-wrap">
+                <button onClick={analyzeGoogle} disabled={analyzingGoogle}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-300 text-xs rounded-lg transition">
+                  {analyzingGoogle?<RefreshCw size={10} className="animate-spin"/>:<BarChart3 size={10}/>} Analiz
+                </button>
+                <button onClick={()=>setShowGoogleCreate(!showGoogleCreate)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition">
+                  <Plus size={10}/> Kampanya
+                </button>
+                <button onClick={disconnectGoogle}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs rounded-lg transition ml-auto">
+                  <LogOut size={10}/> Çıkış
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={connectGoogle}
+              className="w-full flex items-center justify-center gap-2 py-2 bg-yellow-600 hover:bg-yellow-500 text-white text-sm rounded-lg transition">
+              <Link size={13}/> Google Ads Bağla
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* AI Reklam Metni */}
+      {showCopy && (
+        <div className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-5 space-y-4">
+          <h2 className="text-white font-semibold">✨ AI Reklam Metni Üretici</h2>
+          <div className="grid lg:grid-cols-2 gap-3">
+            {[{k:'product',l:'Ürün/Hizmet *',p:'Mobilya, Tadilat...'},{k:'sector',l:'Sektör',p:'İnşaat, Tekstil...'},{k:'target',l:'Hedef Kitle',p:'İşletme sahipleri...'}].map(({k,l,p})=>(
+              <div key={k}>
+                <label className="text-slate-400 text-xs mb-1 block">{l}</label>
+                <input value={(copyForm as any)[k]} onChange={e=>setCopyForm(prev=>({...prev,[k]:e.target.value}))}
+                  placeholder={p} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"/>
               </div>
             ))}
+            <div>
+              <label className="text-slate-400 text-xs mb-1 block">Platform</label>
+              <select value={copyForm.platform} onChange={e=>setCopyForm(p=>({...p,platform:e.target.value}))}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                {['Meta','Google','Instagram'].map(p=><option key={p}>{p}</option>)}
+              </select>
+            </div>
           </div>
-          <button onClick={connectMeta}
-            className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition mx-auto">
-            <Link size={16}/> Meta Hesabını Bağla
+          <button onClick={generateCopy} disabled={generating||!copyForm.product}
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
+            {generating?<RefreshCw size={14} className="animate-spin"/>:'✨'} {generating?'Üretiliyor...':'Metin Üret'}
+          </button>
+          {adCopy && (
+            <div className="grid lg:grid-cols-2 gap-4">
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 space-y-2">
+                <p className="text-slate-400 text-xs">Başlık</p><p className="text-white font-semibold">{adCopy.headline}</p>
+                <p className="text-slate-400 text-xs">Açıklama</p><p className="text-slate-300 text-sm">{adCopy.description}</p>
+                <span className="inline-block px-3 py-1 bg-purple-600 text-white text-xs rounded-lg">{adCopy.cta}</span>
+              </div>
+              <div className="bg-slate-900 rounded-xl p-4 space-y-2">
+                <p className="text-slate-400 text-xs">Anahtar Kelimeler</p>
+                <div className="flex flex-wrap gap-1">{adCopy.keywords?.map((k:string)=><span key={k} className="px-2 py-0.5 bg-slate-700 text-slate-300 text-xs rounded">{k}</span>)}</div>
+                <p className="text-slate-400 text-xs">Strateji</p>
+                <p className="text-slate-300 text-xs">{adCopy.targetingTips}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Seçici */}
+      {(metaConn?.connected || googleConn?.connected) && (
+        <div className="flex gap-2">
+          <button onClick={()=>setActiveTab('meta')}
+            className={`px-4 py-2 text-sm rounded-xl border transition ${activeTab==='meta'?'bg-blue-600 border-blue-500 text-white':'border-slate-700 text-slate-400 hover:text-white'}`}>
+            📘 Meta Ads
+          </button>
+          <button onClick={()=>setActiveTab('google')}
+            className={`px-4 py-2 text-sm rounded-xl border transition ${activeTab==='google'?'bg-yellow-600 border-yellow-500 text-white':'border-slate-700 text-slate-400 hover:text-white'}`}>
+            🔍 Google Ads
           </button>
         </div>
-      ) : (
-        <>
-          {/* Bağlı — Dashboard */}
-          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl px-5 py-4 flex items-center gap-4">
-            <CheckCircle size={20} className="text-emerald-400 flex-shrink-0"/>
-            <div className="flex-1">
-              <p className="text-white font-medium">{connection.userName} — Meta Bağlı</p>
-              <p className="text-slate-400 text-xs">{connection.adAccounts?.length} reklam hesabı</p>
-            </div>
-            {connection.adAccounts?.length > 1 && (
-              <select value={selectedAccount} onChange={e=>setSelectedAccount(e.target.value)}
-                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs">
-                {connection.adAccounts.map((a: any) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
+      )}
 
-          {/* Stats */}
-          {stats && (
-            <div className="grid grid-cols-5 gap-3">
-              {[
-                {label:'Kampanya',value:stats.totalCampaigns,color:'text-white',icon:'📢'},
-                {label:'Aktif',value:stats.activeCampaigns,color:'text-emerald-400',icon:'▶️'},
-                {label:'Uyarı',value:stats.totalAlerts,color:'text-yellow-400',icon:'⚠️'},
-                {label:'Kritik',value:stats.criticalAlerts,color:'text-red-400',icon:'🚨'},
-                {label:'Reklam Leadi',value:stats.leadsFromAds,color:'text-blue-400',icon:'👥'},
-              ].map(({label,value,color,icon})=>(
-                <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-center">
-                  <p className="text-lg mb-1">{icon}</p>
-                  <p className={`text-xl font-bold ${color}`}>{value}</p>
-                  <p className="text-slate-400 text-xs">{label}</p>
+      {/* Meta Tab İçeriği */}
+      {activeTab==='meta' && metaConn?.connected && (
+        <div className="space-y-4">
+          {/* Meta Kampanya Oluştur */}
+          {showMetaCreate && (
+            <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-5 space-y-4">
+              <h2 className="text-white font-semibold">📘 Yeni Meta Kampanyası</h2>
+              <div className="grid lg:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 text-xs mb-1 block">Kampanya Adı *</label>
+                  <input value={metaForm.name} onChange={e=>setMetaForm(p=>({...p,name:e.target.value}))}
+                    placeholder="Mobilya Kampanyası" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
                 </div>
-              ))}
+                <div>
+                  <label className="text-slate-400 text-xs mb-1 block">Günlük Bütçe (USD)</label>
+                  <input type="number" value={metaForm.dailyBudget} onChange={e=>setMetaForm(p=>({...p,dailyBudget:e.target.value}))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {OBJECTIVES.map(obj=>(
+                  <button key={obj.key} onClick={()=>setMetaForm(p=>({...p,objective:obj.key}))}
+                    className={`p-2.5 rounded-lg border text-center transition ${metaForm.objective===obj.key?'bg-blue-600/20 border-blue-500 text-white':'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'}`}>
+                    <p className="text-lg">{obj.icon}</p><p className="text-xs">{obj.label}</p>
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={createMetaCampaign} disabled={creatingMeta||!metaForm.name}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
+                  {creatingMeta?'Oluşturuluyor...':'Kampanya Oluştur'}
+                </button>
+                <button onClick={()=>setShowMetaCreate(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">İptal</button>
+              </div>
             </div>
           )}
 
-          {/* Aksiyon Butonları */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <button onClick={analyzeCampaigns} disabled={analyzing||!selectedAccount}
-              className="flex items-center justify-center gap-2 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-              {analyzing?<RefreshCw size={14} className="animate-spin"/>:<BarChart3 size={14}/>}
-              {analyzing?'Analiz...':'AI Analiz Et'}
-            </button>
-            <button onClick={monitorCampaigns} disabled={monitoring||!selectedAccount}
-              className="flex items-center justify-center gap-2 py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-              {monitoring?<RefreshCw size={14} className="animate-spin"/>:<Eye size={14}/>}
-              {monitoring?'İzleniyor...':'7/24 İzle'}
-            </button>
-            <button onClick={fetchLeads} disabled={fetchingLeads||!selectedAccount}
-              className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-              {fetchingLeads?<RefreshCw size={14} className="animate-spin"/>:<Users size={14}/>}
-              {fetchingLeads?'Çekiliyor...':'Lead Çek'}
-            </button>
-            <button onClick={()=>setShowCreate(!showCreate)}
-              className="flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-xl transition">
-              <Plus size={14}/> Kampanya Oluştur
-            </button>
-          </div>
-
-          {/* AI Analiz Sonucu */}
-          {analysis && (
-            <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-5">
-              <h2 className="text-white font-semibold mb-4 flex items-center gap-2">
-                <BarChart3 size={16} className="text-purple-400"/> AI Kampanya Analizi
-              </h2>
-              <div className="grid lg:grid-cols-3 gap-4 mb-4">
+          {/* Meta Analiz */}
+          {metaAnalysis && (
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5">
+              <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><BarChart3 size={16} className="text-blue-400"/> Meta Analizi</h3>
+              <div className="grid lg:grid-cols-3 gap-4">
                 <div className="text-center">
-                  <p className={`text-3xl font-bold ${analysis.overallScore>=7?'text-emerald-400':analysis.overallScore>=5?'text-yellow-400':'text-red-400'}`}>
-                    {analysis.overallScore}/10
-                  </p>
+                  <p className={`text-3xl font-bold ${metaAnalysis.overallScore>=7?'text-emerald-400':metaAnalysis.overallScore>=5?'text-yellow-400':'text-red-400'}`}>{metaAnalysis.overallScore}/10</p>
                   <p className="text-slate-400 text-xs mt-1">Genel Skor</p>
                 </div>
-                <div className="lg:col-span-2">
-                  <p className="text-slate-300 text-sm">{analysis.summary}</p>
-                </div>
-              </div>
-              <div className="grid lg:grid-cols-2 gap-4">
-                {analysis.issues?.length > 0 && (
-                  <div>
-                    <p className="text-red-400 text-xs font-medium mb-2">⚠️ Sorunlar</p>
-                    <ul className="space-y-1">
-                      {analysis.issues.map((i: string, idx: number) => (
-                        <li key={idx} className="text-slate-300 text-xs flex items-start gap-1.5">
-                          <span className="text-red-400 mt-0.5">•</span>{i}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {analysis.recommendations?.length > 0 && (
-                  <div>
-                    <p className="text-blue-400 text-xs font-medium mb-2">💡 Öneriler</p>
-                    <ul className="space-y-1">
-                      {analysis.recommendations.map((r: string, idx: number) => (
-                        <li key={idx} className="text-slate-300 text-xs flex items-start gap-1.5">
-                          <span className="text-blue-400 mt-0.5">•</span>{r}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Uyarılar */}
-          {alerts.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-white font-semibold flex items-center gap-2">
-                <AlertTriangle size={16} className="text-orange-400"/> Uyarılar ({alerts.length})
-              </h2>
-              {alerts.map((alert, i) => (
-                <div key={i} className={`border rounded-xl px-4 py-3 flex items-start gap-3 ${severityColor[alert.severity]||severityColor.medium}`}>
-                  <span className="text-lg flex-shrink-0">
-                    {alert.severity==='critical'?'🚨':alert.severity==='high'?'⚠️':alert.severity==='positive'?'✅':'ℹ️'}
-                  </span>
-                  <div>
-                    <p className="font-medium text-sm">{alert.name}</p>
-                    <p className="text-xs mt-0.5 opacity-80">{alert.message}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Kampanya Oluştur */}
-          {showCreate && (
-            <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-5 space-y-4">
-              <h2 className="text-white font-semibold">📢 Yeni Kampanya</h2>
-              <div className="grid lg:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-slate-400 text-xs mb-1.5 block">Kampanya Adı *</label>
-                  <input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}
-                    placeholder="Mobilya Kampanyası Nisan 2026"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-                <div>
-                  <label className="text-slate-400 text-xs mb-1.5 block">Günlük Bütçe (USD) *</label>
-                  <input type="number" value={form.dailyBudget} onChange={e=>setForm(p=>({...p,dailyBudget:e.target.value}))}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-              </div>
-              <div>
-                <label className="text-slate-400 text-xs mb-1.5 block">Hedef</label>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                  {OBJECTIVES.map(obj=>(
-                    <button key={obj.key} onClick={()=>setForm(p=>({...p,objective:obj.key}))}
-                      className={`p-3 rounded-lg border text-center transition ${form.objective===obj.key?'bg-blue-600/20 border-blue-500 text-white':'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'}`}>
-                      <p className="text-xl mb-1">{obj.icon}</p>
-                      <p className="text-xs">{obj.label}</p>
-                    </button>
+                <div className="lg:col-span-2 space-y-1">
+                  <p className="text-slate-300 text-sm">{metaAnalysis.summary}</p>
+                  {metaAnalysis.recommendations?.map((r:string,i:number)=>(
+                    <p key={i} className="text-blue-300 text-xs">💡 {r}</p>
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Meta Uyarılar */}
+          {metaAlerts.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-white font-semibold text-sm flex items-center gap-2"><AlertTriangle size={14} className="text-orange-400"/> Uyarılar ({metaAlerts.length})</h3>
+              {metaAlerts.map((a:any,i:number)=>(
+                <div key={i} className={`border rounded-xl px-4 py-3 flex items-start gap-3 ${severityColor[a.severity]||'bg-slate-800 border-slate-700 text-slate-300'}`}>
+                  <span>{a.severity==='critical'?'🚨':a.severity==='positive'?'✅':'⚠️'}</span>
+                  <div><p className="font-medium text-sm">{a.name}</p><p className="text-xs opacity-80">{a.message}</p></div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Meta Kampanya Listesi */}
+          {metaCampaigns.filter(c=>c.platform==='meta').length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-white font-semibold text-sm">📋 Meta Kampanyalar</h3>
+              {metaCampaigns.filter(c=>c.platform==='meta').map((c:any)=>(
+                <div key={c.id} className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">{c.name}</p>
+                    <div className="flex gap-2 text-xs text-slate-400 mt-0.5">
+                      <span className={c.status==='active'?'text-emerald-400':'text-slate-500'}>{c.status==='active'?'Aktif':'Pasif'}</span>
+                      <span>₺{c.daily_budget}/gün</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Google Tab İçeriği */}
+      {activeTab==='google' && googleConn?.connected && (
+        <div className="space-y-4">
+          {showGoogleCreate && (
+            <div className="bg-slate-800/50 border border-yellow-500/30 rounded-xl p-5 space-y-3">
+              <h2 className="text-white font-semibold">🔍 Yeni Google Ads Kampanyası</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 text-xs mb-1 block">Kampanya Adı *</label>
+                  <input value={googleForm.name} onChange={e=>setGoogleForm(p=>({...p,name:e.target.value}))}
+                    placeholder="Mobilya Kampanyası" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-yellow-500"/>
+                </div>
+                <div>
+                  <label className="text-slate-400 text-xs mb-1 block">Günlük Bütçe (USD)</label>
+                  <input type="number" value={googleForm.budget} onChange={e=>setGoogleForm(p=>({...p,budget:e.target.value}))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-yellow-500"/>
+                </div>
+              </div>
               <div className="flex gap-2">
-                <button onClick={createCampaign} disabled={creating||!form.name}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-                  {creating?<RefreshCw size={14} className="animate-spin"/>:<Plus size={14}/>}
-                  {creating?'Oluşturuluyor...':'Kampanya Oluştur'}
+                <button onClick={createGoogleCampaign} disabled={creatingGoogle||!googleForm.name}
+                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
+                  {creatingGoogle?'Oluşturuluyor...':'Oluştur'}
                 </button>
-                <button onClick={()=>setShowCreate(false)} className="px-4 py-2.5 bg-slate-700 text-slate-300 text-sm rounded-xl">İptal</button>
+                <button onClick={()=>setShowGoogleCreate(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">İptal</button>
               </div>
             </div>
           )}
 
-          {/* Kampanya Listesi */}
-          {campaigns.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-white font-semibold">📋 Kampanyalar ({campaigns.length})</h2>
-              {campaigns.map((camp: any) => {
-                const ins = camp.insights?.data?.[0] || {}
-                return (
-                  <div key={camp.id} className="bg-slate-800/50 border border-slate-700 rounded-xl px-5 py-3 flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-white font-medium text-sm">{camp.name}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${camp.status==='ACTIVE'?'bg-emerald-500/20 text-emerald-300':'bg-slate-700 text-slate-400'}`}>
-                          {camp.status==='ACTIVE'?'Aktif':'Pasif'}
-                        </span>
-                      </div>
-                      <div className="flex gap-3 text-xs text-slate-400 mt-0.5">
-                        {ins.impressions && <span className="text-blue-400">{parseInt(ins.impressions).toLocaleString()} gösterim</span>}
-                        {ins.clicks && <span className="text-green-400">{ins.clicks} tıklama</span>}
-                        {ins.ctr && <span className="text-yellow-400">CTR: %{parseFloat(ins.ctr).toFixed(2)}</span>}
-                        {ins.spend && <span className="text-red-400">${ins.spend} harcama</span>}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+          {googleAnalysis && (
+            <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-5">
+              <h3 className="text-white font-semibold mb-3 flex items-center gap-2"><BarChart3 size={16} className="text-yellow-400"/> Google Ads Analizi</h3>
+              <div className="grid lg:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className={`text-3xl font-bold ${googleAnalysis.overallScore>=7?'text-emerald-400':googleAnalysis.overallScore>=5?'text-yellow-400':'text-red-400'}`}>{googleAnalysis.overallScore}/10</p>
+                  <p className="text-slate-400 text-xs mt-1">Genel Skor</p>
+                </div>
+                <div className="lg:col-span-2 space-y-1">
+                  <p className="text-slate-300 text-sm">{googleAnalysis.summary}</p>
+                  {googleAnalysis.recommendations?.map((r:string,i:number)=>(
+                    <p key={i} className="text-yellow-300 text-xs">💡 {r}</p>
+                  ))}
+                  {googleAnalysis.keywordSuggestion && <p className="text-blue-300 text-xs">🔑 {googleAnalysis.keywordSuggestion}</p>}
+                </div>
+              </div>
             </div>
           )}
-        </>
+
+          {googleCampaigns.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-white font-semibold text-sm">📋 Google Kampanyalar</h3>
+              {googleCampaigns.map((c:any,i:number)=>(
+                <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-white text-sm font-medium">{c.name}</p>
+                    <div className="flex gap-2 text-xs text-slate-400 mt-0.5">
+                      <span className={c.status==='ENABLED'?'text-emerald-400':'text-slate-500'}>{c.status}</span>
+                      {c.impressions>0 && <span className="text-blue-400">{c.impressions} gösterim</span>}
+                      {c.clicks>0 && <span className="text-green-400">{c.clicks} tıklama</span>}
+                      {c.spend>0 && <span className="text-red-400">${c.spend.toFixed(2)}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* İkisi de bağlı değilse */}
+      {!metaConn?.connected && !googleConn?.connected && (
+        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-10 text-center">
+          <p className="text-4xl mb-4">📢</p>
+          <h2 className="text-white text-xl font-bold mb-2">Reklam Hesabını Bağla</h2>
+          <p className="text-slate-400 mb-6">Meta veya Google Ads hesabınızı bağlayın — AI ile analiz, optimize et, lead çek</p>
+        </div>
       )}
     </div>
   )

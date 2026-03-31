@@ -119,7 +119,7 @@ JSON:
   }
 });
 
-// Kampanya Olustur — SADECE kampanya, adset yok
+// Kampanya Olustur â€” SADECE kampanya, adset yok
 router.post('/create-campaign', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('meta_connections').select('access_token').eq('user_id', req.userId).single();
@@ -234,9 +234,9 @@ router.get('/monitor/:adAccountId', async (req: any, res: any) => {
       const ctr = parseFloat(ins.ctr || '0');
       const spend = parseFloat(ins.spend || '0');
       const impressions = parseInt(ins.impressions || '0');
-      if (ctr < 0.5 && impressions > 1000) alerts.push({ campaign_id: camp.id, name: camp.name, type: 'low_ctr', message: `CTR cok dusuk: %${ctr.toFixed(2)} — Hedef kitle veya reklam metni degistirilmeli`, severity: 'high' });
-      if (spend > 0 && parseInt(ins.clicks || '0') === 0) alerts.push({ campaign_id: camp.id, name: camp.name, type: 'no_clicks', message: 'Harcama var ama tiklama yok — Reklam gorseli ilgi cekmiyor', severity: 'critical' });
-      if (ctr > 3) alerts.push({ campaign_id: camp.id, name: camp.name, type: 'high_performance', message: `Mukemmel performans! CTR: %${ctr.toFixed(2)} — Butceyi artirabilisiniz`, severity: 'positive' });
+      if (ctr < 0.5 && impressions > 1000) alerts.push({ campaign_id: camp.id, name: camp.name, type: 'low_ctr', message: `CTR cok dusuk: %${ctr.toFixed(2)} â€” Hedef kitle veya reklam metni degistirilmeli`, severity: 'high' });
+      if (spend > 0 && parseInt(ins.clicks || '0') === 0) alerts.push({ campaign_id: camp.id, name: camp.name, type: 'no_clicks', message: 'Harcama var ama tiklama yok â€” Reklam gorseli ilgi cekmiyor', severity: 'critical' });
+      if (ctr > 3) alerts.push({ campaign_id: camp.id, name: camp.name, type: 'high_performance', message: `Mukemmel performans! CTR: %${ctr.toFixed(2)} â€” Butceyi artirabilisiniz`, severity: 'positive' });
     }
 
     if (alerts.length > 0) {
@@ -303,5 +303,13 @@ router.get('/my-campaigns', async (req: any, res: any) => {
     res.json({ campaigns: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
+
+router.delete('/connection', async (req: any, res: any) => {
+  try {
+    await supabase.from('meta_connections').delete().eq('user_id', req.userId);
+    res.json({ message: 'Meta baglantisi kesildi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 
 module.exports = router;

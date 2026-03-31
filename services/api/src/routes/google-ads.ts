@@ -32,12 +32,12 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    // KullanÄ±cÄ± bilgisi
+    // KullanÃ„Â±cÃ„Â± bilgisi
     const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Google Ads hesaplarÄ±nÄ± listele
+    // Google Ads hesaplarÃ„Â±nÃ„Â± listele
     const accountsResp = await axios.get(
       'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
       {
@@ -50,7 +50,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
 
-    // Her hesabÄ±n detayÄ±nÄ± al
+    // Her hesabÃ„Â±n detayÃ„Â±nÃ„Â± al
     const accounts = [];
     for (const customerId of customerIds.slice(0, 10)) {
       try {
@@ -103,7 +103,7 @@ async function refreshGoogleToken(userId: string): Promise<string | null> {
       .select('refresh_token, access_token, token_expires_at').eq('user_id', userId).single();
     if (!conn) return null;
 
-    // Token hala geÃ§erliyse dÃ¶ndÃ¼r
+    // Token hala geÃƒÂ§erliyse dÃƒÂ¶ndÃƒÂ¼r
     if (new Date(conn.token_expires_at) > new Date()) return conn.access_token;
 
     // Refresh
@@ -178,7 +178,7 @@ router.get('/campaigns/:customerId', async (req: any, res: any) => {
   }
 });
 
-// Kampanya Analizi â€” AI ile
+// Kampanya Analizi Ã¢â‚¬â€ AI ile
 router.get('/analyze/:customerId', async (req: any, res: any) => {
   try {
     const token = await refreshGoogleToken(req.userId);
@@ -314,5 +314,13 @@ router.get('/stats', async (req: any, res: any) => {
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
+
+router.delete('/connection', async (req: any, res: any) => {
+  try {
+    await supabase.from('google_ads_connections').delete().eq('user_id', req.userId);
+    res.json({ message: 'Google Ads baglantisi kesildi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 
 module.exports = router;
