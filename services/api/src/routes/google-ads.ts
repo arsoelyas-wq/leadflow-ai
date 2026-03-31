@@ -22,6 +22,13 @@ router.get('/oauth-url', async (req: any, res: any) => {
 router.post('/exchange-token', async (req: any, res: any) => {
   try {
     const { code } = req.body;
+    // userId: header'dan veya state'den al
+    const stateUserId = req.headers['x-user-state'];
+    if (stateUserId && stateUserId !== 'undefined' && !req.userId) {
+      req.userId = stateUserId;
+    }
+    if (!req.userId) return res.status(401).json({ error: 'Kullanici kimlik dogrulamasi gerekli' });
+
     const tokenResp = await axios.post('https://oauth2.googleapis.com/token', {
       client_id: GOOGLE_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
