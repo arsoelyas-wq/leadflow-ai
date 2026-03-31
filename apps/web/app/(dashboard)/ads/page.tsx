@@ -23,6 +23,14 @@ export default function AdsPage() {
   const [monitoring, setMonitoring] = useState(false)
   const [fetchingLeads, setFetchingLeads] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  const [googleConnection, setGoogleConnection] = useState<any>(null)
+  const [googleCampaigns, setGoogleCampaigns] = useState<any[]>([])
+  const [googleAnalysis, setGoogleAnalysis] = useState<any>(null)
+  const [selectedGoogleAccount, setSelectedGoogleAccount] = useState('')
+  const [analyzingGoogle, setAnalyzingGoogle] = useState(false)
+  const [showGoogleCreate, setShowGoogleCreate] = useState(false)
+  const [creatingGoogle, setCreatingGoogle] = useState(false)
+  const [googleForm, setGoogleForm] = useState({ name:'', budget:'10' })
   const [showCopy, setShowCopy] = useState(false)
   const [creating, setCreating] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -72,13 +80,56 @@ export default function AdsPage() {
     } catch {} finally { setLoading(false) }
   }
 
-  useEffect(()=>{ load() },[])
+  useEffect(()=>{ load(); loadGoogle() },[])
+
+  const loadGoogle = async () => {
+    try {
+      const [c, camp] = await Promise.allSettled([
+        api.get('/api/google-ads/connection'),
+        api.get('/api/ads/my-campaigns'),
+      ])
+      if (c.status==='fulfilled') {
+        setGoogleConnection(c.value)
+        if (c.value.adAccounts?.[0]) setSelectedGoogleAccount(c.value.adAccounts[0].id)
+      }
+    } catch {}
+  }
 
   const connectMeta = async () => {
     try {
       const data = await api.get('/api/ads/oauth-url')
       window.location.href = data.url
     } catch (e:any) { showMsg('error', e.message) }
+  }
+
+  const connectGoogle = async () => {
+    try {
+      const data = await api.get('/api/google-ads/oauth-url')
+      window.location.href = data.url
+    } catch (e:any) { showMsg('error', e.message) }
+  }
+
+  const analyzeGoogle = async () => {
+    if (!selectedGoogleAccount) return
+    setAnalyzingGoogle(true)
+    try {
+      const data = await api.get(`/api/google-ads/analyze/${selectedGoogleAccount}`)
+      setGoogleAnalysis(data.analysis)
+      setGoogleCampaigns(data.campaigns||[])
+      showMsg('success', 'Google Ads analiz tamamlandı')
+    } catch (e:any) { showMsg('error', e.message) }
+    finally { setAnalyzingGoogle(false) }
+  }
+
+  const createGoogleCampaign = async () => {
+    if (!selectedGoogleAccount||!googleForm.name) return
+    setCreatingGoogle(true)
+    try {
+      const data = await api.post('/api/google-ads/create-campaign', { customerId: selectedGoogleAccount, ...googleForm })
+      showMsg('success', data.message)
+      setShowGoogleCreate(false)
+    } catch (e:any) { showMsg('error', e.message) }
+    finally { setCreatingGoogle(false) }
   }
 
   const analyzeCampaigns = async () => {

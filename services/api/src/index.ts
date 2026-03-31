@@ -50,6 +50,7 @@ app.use('/api/instagram',  authMiddleware, require('./routes/instagram'));
 app.use('/api/facebook',   authMiddleware, require('./routes/facebook'));
 app.use('/api/workflow',   authMiddleware, require('./routes/workflow'));
 app.use('/api/team', authMiddleware, require('./routes/team'));
+app.use('/api/google-ads', authMiddleware, require('./routes/google-ads'));
 app.use('/api/ads', authMiddleware, require('./routes/ads'));
 app.use('/api/coaching', authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox', authMiddleware, require('./routes/inbox'));
@@ -118,7 +119,7 @@ app.use('/api/monitoring', authMiddleware, monitoringRouter);
 const { router: webhooksRouter } = require('./routes/webhooks');
 app.use('/api/webhooks',   authMiddleware, webhooksRouter);
 
-// Günlük otomatik ihale taraması (her gün saat 07:00)
+// GÃ¼nlÃ¼k otomatik ihale taramasÄ± (her gÃ¼n saat 07:00)
 function scheduleDailyTenderScan() {
   const now = new Date();
   const next = new Date();
