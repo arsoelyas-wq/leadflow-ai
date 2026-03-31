@@ -32,49 +32,28 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    // KullanÃƒâ€žÃ‚Â±cÃƒâ€žÃ‚Â± bilgisi
+    // Kullanıcı bilgisi
     const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Google Ads hesaplarÃƒâ€žÃ‚Â±nÃƒâ€žÃ‚Â± listele
-    const accountsResp = await axios.get(
-      'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
-      {
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-          'developer-token': GOOGLE_DEVELOPER_TOKEN,
-        }
-      }
-    );
-
-    const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
-
-    // Her hesabÃƒâ€žÃ‚Â±n detayÃƒâ€žÃ‚Â±nÃƒâ€žÃ‚Â± al
-    const accounts = [];
-    for (const customerId of customerIds.slice(0, 10)) {
-      try {
-        const detailResp = await axios.post(
-          `https://googleads.googleapis.com/v14/customers/${customerId}/googleAds:search`,
-          { query: 'SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.time_zone FROM customer LIMIT 1' },
-          {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-              'developer-token': GOOGLE_DEVELOPER_TOKEN,
-              'login-customer-id': customerId,
-            }
+    // Google Ads hesaplarını listele
+    let accounts = [];
+    try {
+      const accountsResp = await axios.get(
+        'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+            'developer-token': GOOGLE_DEVELOPER_TOKEN,
           }
-        );
-        const customer = detailResp.data?.results?.[0]?.customer;
-        if (customer) {
-          accounts.push({
-            id: customer.id,
-            name: customer.descriptiveName || `Hesap ${customer.id}`,
-            currency: customer.currencyCode,
-            timezone: customer.timeZone,
-          });
         }
-      } catch {}
+      );
+      const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
+      accounts = customerIds.slice(0, 10).map((id: string) => ({ id, name: `Google Ads Hesap ${id}`, currency: 'USD' }));
+    } catch (adsErr: any) {
+      console.log('Google Ads accounts fetch skipped:', adsErr.response?.data?.error?.message || adsErr.message);
+      // Token exchange basarili ama ads hesaplari alinamadi - yine de kaydet
     }
 
     // DB'ye kaydet
@@ -92,7 +71,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     res.json({ success: true, userName: meResp.data.name, adAccounts: accounts, message: 'Google Ads hesabi baglandi!' });
   } catch (e: any) {
-    console.error('Google exchange error:', JSON.stringify(e.response?.data || e.message)); res.status(500).json({ error: e.response?.data?.error_description || e.response?.data?.error || e.message, details: e.response?.data });
+    res.status(500).json({ error: e.response?.data?.error?.message || e.response?.data?.error_description || e.message });
   }
 });
 
@@ -103,7 +82,7 @@ async function refreshGoogleToken(userId: string): Promise<string | null> {
       .select('refresh_token, access_token, token_expires_at').eq('user_id', userId).single();
     if (!conn) return null;
 
-    // Token hala geÃƒÆ’Ã‚Â§erliyse dÃƒÆ’Ã‚Â¶ndÃƒÆ’Ã‚Â¼r
+    // Token hala geçerliyse döndür
     if (new Date(conn.token_expires_at) > new Date()) return conn.access_token;
 
     // Refresh
@@ -178,7 +157,7 @@ router.get('/campaigns/:customerId', async (req: any, res: any) => {
   }
 });
 
-// Kampanya Analizi ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AI ile
+// Kampanya Analizi — AI ile
 router.get('/analyze/:customerId', async (req: any, res: any) => {
   try {
     const token = await refreshGoogleToken(req.userId);
@@ -303,7 +282,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
 router.get('/stats', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('google_ads_connections')
-      .select('google_user_name').eq('user_id', req.userId).single();
+      .select('google_user_name').eq('user_id', req.userId).single().catch(() => ({ data: null }));
     const { data: campaigns } = await supabase.from('ad_campaigns')
       .select('status').eq('user_id', req.userId).eq('platform', 'google');
     res.json({
@@ -314,13 +293,5 @@ router.get('/stats', async (req: any, res: any) => {
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
-
-router.delete('/connection', async (req: any, res: any) => {
-  try {
-    await supabase.from('google_ads_connections').delete().eq('user_id', req.userId);
-    res.json({ message: 'Google Ads baglantisi kesildi' });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
 
 module.exports = router;
