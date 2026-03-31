@@ -32,12 +32,12 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    // Kullanıcı bilgisi
+    // KullanÄ±cÄ± bilgisi
     const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Google Ads hesaplarını listele
+    // Google Ads hesaplarÄ±nÄ± listele
     const accountsResp = await axios.get(
       'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
       {
@@ -50,7 +50,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
 
-    // Her hesabın detayını al
+    // Her hesabÄ±n detayÄ±nÄ± al
     const accounts = [];
     for (const customerId of customerIds.slice(0, 10)) {
       try {
@@ -103,7 +103,7 @@ async function refreshGoogleToken(userId: string): Promise<string | null> {
       .select('refresh_token, access_token, token_expires_at').eq('user_id', userId).single();
     if (!conn) return null;
 
-    // Token hala geçerliyse döndür
+    // Token hala geÃ§erliyse dÃ¶ndÃ¼r
     if (new Date(conn.token_expires_at) > new Date()) return conn.access_token;
 
     // Refresh
@@ -178,7 +178,7 @@ router.get('/campaigns/:customerId', async (req: any, res: any) => {
   }
 });
 
-// Kampanya Analizi — AI ile
+// Kampanya Analizi â€” AI ile
 router.get('/analyze/:customerId', async (req: any, res: any) => {
   try {
     const token = await refreshGoogleToken(req.userId);
@@ -303,7 +303,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
 router.get('/stats', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('google_ads_connections')
-      .select('google_user_name').eq('user_id', req.userId).single().catch(() => ({ data: null }));
+      .select('google_user_name').eq('user_id', req.userId).single();
     const { data: campaigns } = await supabase.from('ad_campaigns')
       .select('status').eq('user_id', req.userId).eq('platform', 'google');
     res.json({
