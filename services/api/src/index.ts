@@ -52,6 +52,11 @@ app.use('/api/workflow',   authMiddleware, require('./routes/workflow'));
 app.use('/api/team', authMiddleware, require('./routes/team'));
 app.use('/api/google-ads', authMiddleware, require('./routes/google-ads'));
 app.use('/api/email', authMiddleware, require('./routes/email'));
+app.use('/api/email-campaigns', authMiddleware, require('./routes/email-campaigns'));
+app.use('/api/sms', authMiddleware, require('./routes/sms'));
+app.use('/api/qr', authMiddleware, require('./routes/qr'));
+app.use('/api/loyalty', authMiddleware, require('./routes/loyalty'));
+app.use('/api/reports', authMiddleware, require('./routes/reports'));
 app.use('/api/ads', authMiddleware, require('./routes/ads'));
 app.use('/api/coaching', authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox', authMiddleware, require('./routes/inbox'));
@@ -120,7 +125,7 @@ app.use('/api/monitoring', authMiddleware, monitoringRouter);
 const { router: webhooksRouter } = require('./routes/webhooks');
 app.use('/api/webhooks',   authMiddleware, webhooksRouter);
 
-// GÃƒÂ¼nlÃƒÂ¼k otomatik ihale taramasÃ„Â± (her gÃƒÂ¼n saat 07:00)
+// GÃƒÆ’Ã‚Â¼nlÃƒÆ’Ã‚Â¼k otomatik ihale taramasÃƒâ€žÃ‚Â± (her gÃƒÆ’Ã‚Â¼n saat 07:00)
 function scheduleDailyTenderScan() {
   const now = new Date();
   const next = new Date();

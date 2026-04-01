@@ -9,7 +9,8 @@ import {
   TrendingUp, Sparkles, Video, RefreshCw, FileText, Star,
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
   Workflow, MapPin, ScrollText, Gift, TrendingDown,
-  GraduationCap, Inbox, Kanban, Radar, UserCog
+  GraduationCap, Inbox, Kanban, Radar, UserCog, Mail,
+  QrCode, Trophy, FileBarChart, Layers
 } from 'lucide-react'
 
 const navItems = [
@@ -29,7 +30,9 @@ const navItems = [
 
   // ── KAMPANYA & MESAJ ──
   { href: '/inbox', label: 'Unified Inbox', icon: Inbox },
-  { href: '/campaigns', label: 'Kampanyalar', icon: Megaphone },
+  { href: '/campaigns', label: 'WA Kampanyalar', icon: Megaphone },
+  { href: '/email-campaigns', label: 'Email Kampanya', icon: Mail },
+  { href: '/sms-campaigns', label: 'SMS Kampanya', icon: Smartphone },
   { href: '/sequences', label: 'AI Sekanslar', icon: Bot },
   { href: '/ab-testing', label: 'A/B Test', icon: FlaskConical },
   { href: '/messages', label: 'Mesajlar', icon: MessageSquare },
@@ -47,12 +50,15 @@ const navItems = [
   { href: '/vision', label: 'Vision AI', icon: Eye },
   { href: '/proposals', label: 'Teklif & Pazarlık', icon: FileText },
   { href: '/microsites', label: 'Kişisel Katalog', icon: Globe },
+  { href: '/qr-codes', label: 'QR Kod Üretici', icon: QrCode },
   { href: '/sales-coach', label: 'Satış Koçu', icon: GraduationCap },
 
   // ── SATIŞ & GELİR ──
+  { href: '/loyalty', label: 'Sadakat Puanı', icon: Trophy },
   { href: '/referral', label: 'Referral Loop', icon: Gift },
   { href: '/debt-collector', label: 'Tahsilat Takibi', icon: TrendingDown },
   { href: '/crisis-radar', label: 'Kriz & Fırsat Radar', icon: Radar },
+  { href: '/reports', label: 'Raporlar', icon: FileBarChart },
   { href: '/analytics', label: 'Analitik', icon: BarChart3 },
   { href: '/revenue', label: 'Gelir Tahmini', icon: DollarSign },
   { href: '/financial', label: 'Büyüme Zekası', icon: TrendingUp },
