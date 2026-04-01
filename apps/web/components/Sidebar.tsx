@@ -10,7 +10,7 @@ import {
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
   Workflow, MapPin, ScrollText, Gift, TrendingDown,
   GraduationCap, Inbox, Kanban, Radar, UserCog, Mail,
-  QrCode, Trophy, FileBarChart, Layers
+  QrCode, Trophy, FileBarChart, TrendingDown as PriceIcon
 } from 'lucide-react'
 
 const navItems = [
@@ -64,12 +64,16 @@ const navItems = [
   { href: '/financial', label: 'Büyüme Zekası', icon: TrendingUp },
 
   // ── PAZAR & RAKİP ──
+  { href: '/price-tracker', label: 'Fiyat Takibi', icon: PriceIcon },
   { href: '/visual-trends', label: 'Trend Catcher', icon: Sparkles },
   { href: '/competitor', label: 'Rakip Hijack', icon: Target },
   { href: '/shadow', label: 'Rakip İzleme', icon: Eye },
   { href: '/cultural', label: 'Kültürel Uyum', icon: Globe },
   { href: '/export', label: 'İhracat Zekası', icon: Globe2 },
   { href: '/meta-intent', label: 'Meta Intent', icon: Target },
+
+  // ── ENTEGRASYON ──
+  { href: '/automations', label: 'Otomasyon (Zapier)', icon: Zap },
 
   // ── SİSTEM ──
   { href: '/team', label: 'Ekip Yönetimi', icon: UserCog },
