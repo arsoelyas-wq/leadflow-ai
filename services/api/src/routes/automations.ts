@@ -6,7 +6,7 @@ const axios = require('axios');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// POST /api/automations/webhook — Gelen webhook'u işle
+// POST /api/automations/webhook â€” Gelen webhook'u iÅŸle
 router.post('/webhook/:userId', async (req: any, res: any) => {
   try {
     const { userId } = req.params;
@@ -40,17 +40,17 @@ router.post('/webhook/:userId', async (req: any, res: any) => {
       }
     }
 
-    res.json({ success: true, message: 'Webhook işlendi' });
+    res.json({ success: true, message: 'Webhook iÅŸlendi' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/automations/webhook-url — Webhook URL'sini al
+// GET /api/automations/webhook-url â€” Webhook URL'sini al
 router.get('/webhook-url', async (req: any, res: any) => {
   const url = `https://leadflow-ai-production.up.railway.app/api/automations/webhook/${req.userId}`;
   res.json({ url, userId: req.userId });
 });
 
-// POST /api/automations/zap — Zapier'e veri gönder
+// POST /api/automations/zap â€” Zapier'e veri gÃ¶nder
 router.post('/zap', async (req: any, res: any) => {
   try {
     const { zapierWebhookUrl, leadId, eventType } = req.body;
@@ -72,11 +72,11 @@ router.post('/zap', async (req: any, res: any) => {
       sent_at: new Date().toISOString(),
     }]);
 
-    res.json({ success: true, message: 'Zapier\'e gönderildi' });
+    res.json({ success: true, message: 'Zapier\'e gÃ¶nderildi' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/automations/settings — Zapier URL kaydet
+// POST /api/automations/settings â€” Zapier URL kaydet
 router.post('/settings', async (req: any, res: any) => {
   try {
     const { zapierUrl, makeUrl, n8nUrl, autoSendNewLeads } = req.body;
@@ -85,7 +85,7 @@ router.post('/settings', async (req: any, res: any) => {
       n8n_url: n8nUrl, auto_send_new_leads: autoSendNewLeads || false,
       updated_at: new Date().toISOString(),
     }], { onConflict: 'user_id' });
-    res.json({ message: 'Otomasyon ayarları kaydedildi' });
+    res.json({ message: 'Otomasyon ayarlarÄ± kaydedildi' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -110,7 +110,7 @@ router.get('/logs', async (req: any, res: any) => {
 router.get('/stats', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('automation_logs').select('type').eq('user_id', req.userId);
-    const { data: settings } = await supabase.from('automation_settings').select('zapier_url').eq('user_id', req.userId).single().catch(() => ({ data: null }));
+    const { data: settings } = await supabase.from('automation_settings').select('zapier_url').eq('user_id', req.userId).single();
     res.json({
       total: data?.length || 0,
       incoming: data?.filter((d: any) => d.type === 'incoming').length || 0,
