@@ -6,7 +6,7 @@ const axios = require('axios');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// â”€â”€ HELPER: Meta token al â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ HELPER: Meta token al Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 async function getMetaToken(userId: string): Promise<string | null> {
   const { data } = await supabase.from('meta_connections').select('access_token').eq('user_id', userId).single();
   return data?.access_token || null;
@@ -18,19 +18,19 @@ async function getMetaAdAccount(userId: string): Promise<string | null> {
   return accounts[0]?.id || null;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// 1. SMART AD LAUNCH â€” Tek tuÅŸla reklam
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// 1. SMART AD LAUNCH Ã¢â‚¬â€ Tek tuÃ…Å¸la reklam
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/smart-launch', async (req: any, res: any) => {
   try {
     const token = await getMetaToken(req.userId);
     const adAccountId = await getMetaAdAccount(req.userId);
-    if (!token || !adAccountId) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
+    if (!token || !adAccountId) return res.status(401).json({ error: 'Meta hesabÃ„Â± baÃ„Å¸lÃ„Â± deÃ„Å¸il' });
 
     const { product, sector, budget, targetCountries, targetAge } = req.body;
     if (!product || !budget) return res.status(400).json({ error: 'product ve budget zorunlu' });
 
-    // AI ile reklam iÃ§eriÄŸi Ã¼ret
+    // AI ile reklam iÃƒÂ§eriÃ„Å¸i ÃƒÂ¼ret
     const Anthropic = require('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const aiResp = await anthropic.messages.create({
@@ -38,18 +38,18 @@ router.post('/smart-launch', async (req: any, res: any) => {
       max_tokens: 300,
       messages: [{
         role: 'user',
-        content: `Meta reklam kampanyasÄ± iÃ§in JSON Ã¼ret:
-ÃœrÃ¼n: ${product}, SektÃ¶r: ${sector || 'genel'}
-{"campaignName":"kampanya adÄ±","headline":"max 30 karakter","description":"max 90 karakter","objective":"OUTCOME_LEADS","targetInterests":["ilgi1","ilgi2"]}`
+        content: `Meta reklam kampanyasÃ„Â± iÃƒÂ§in JSON ÃƒÂ¼ret:
+ÃƒÅ“rÃƒÂ¼n: ${product}, SektÃƒÂ¶r: ${sector || 'genel'}
+{"campaignName":"kampanya adÃ„Â±","headline":"max 30 karakter","description":"max 90 karakter","objective":"OUTCOME_LEADS","targetInterests":["ilgi1","ilgi2"]}`
       }]
     });
     const m = aiResp.content[0]?.text?.match(/\{[\s\S]*\}/);
-    const adContent = m ? JSON.parse(m[0]) : { campaignName: `${product} KampanyasÄ±`, headline: product, description: `${product} iÃ§in Ã¶zel teklif`, objective: 'OUTCOME_LEADS', targetInterests: [] };
+    const adContent = m ? JSON.parse(m[0]) : { campaignName: `${product} KampanyasÃ„Â±`, headline: product, description: `${product} iÃƒÂ§in ÃƒÂ¶zel teklif`, objective: 'OUTCOME_LEADS', targetInterests: [] };
 
-    // Kampanya oluÅŸtur
+    // Kampanya oluÃ…Å¸tur
     const campResp = await axios.post(
       `https://graph.facebook.com/v18.0/${adAccountId}/campaigns`,
-      { name: adContent.campaignName, objective: adContent.objective, status: 'PAUSED', special_ad_categories: [] },
+      { name: adContent.campaignName, objective: 'OUTCOME_AWARENESS', status: 'PAUSED', special_ad_categories: [], daily_budget: Math.max(100, parseInt(budget) * 100) },
       { params: { access_token: token } }
     );
 
@@ -68,16 +68,16 @@ router.post('/smart-launch', async (req: any, res: any) => {
     res.json({
       campaignId: campResp.data?.id,
       adContent,
-      message: `âœ… "${adContent.campaignName}" kampanyasÄ± AI ile oluÅŸturuldu!`,
+      message: `Ã¢Å“â€¦ "${adContent.campaignName}" kampanyasÃ„Â± AI ile oluÃ…Å¸turuldu!`,
     });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error?.message || e.message });
   }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// 2. 7/24 AD MONITOR â€” 15 dakikada bir kontrol
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// 2. 7/24 AD MONITOR Ã¢â‚¬â€ 15 dakikada bir kontrol
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/monitor/start', async (req: any, res: any) => {
   try {
     const { adAccountId, alertThresholds } = req.body;
@@ -90,7 +90,7 @@ router.post('/monitor/start', async (req: any, res: any) => {
       active: true,
       updated_at: new Date().toISOString(),
     }], { onConflict: 'user_id' });
-    res.json({ message: '7/24 izleme baÅŸladÄ± â€” her 15 dakikada kontrol edilecek' });
+    res.json({ message: '7/24 izleme baÃ…Å¸ladÃ„Â± Ã¢â‚¬â€ her 15 dakikada kontrol edilecek' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -103,9 +103,9 @@ router.get('/monitor/alerts', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// 3. CONVERSION API (CAPI) â€” Meta CAPI Back-Feeding
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// 3. CONVERSION API (CAPI) Ã¢â‚¬â€ Meta CAPI Back-Feeding
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/capi/event', async (req: any, res: any) => {
   try {
     const token = await getMetaToken(req.userId);
@@ -150,7 +150,7 @@ router.post('/capi/event', async (req: any, res: any) => {
       response: JSON.stringify(resp.data),
     }]);
 
-    res.json({ success: true, eventsSent: resp.data?.events_received, message: 'CAPI eventi gÃ¶nderildi' });
+    res.json({ success: true, eventsSent: resp.data?.events_received, message: 'CAPI eventi gÃƒÂ¶nderildi' });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error?.message || e.message });
   }
@@ -165,14 +165,14 @@ router.get('/capi/stats', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// 4. COMPETITOR AD MIRRORING â€” Meta Ad Library
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// 4. COMPETITOR AD MIRRORING Ã¢â‚¬â€ Meta Ad Library
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.get('/competitor-ads', async (req: any, res: any) => {
   try {
     const { pageId, keywords, country } = req.query;
     const token = await getMetaToken(req.userId);
-    if (!token) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
+    if (!token) return res.status(401).json({ error: 'Meta hesabÃ„Â± baÃ„Å¸lÃ„Â± deÃ„Å¸il' });
 
     const params: any = {
       access_token: token,
@@ -232,10 +232,10 @@ router.post('/competitor-ads/analyze', async (req: any, res: any) => {
       max_tokens: 400,
       messages: [{
         role: 'user',
-        content: `Bu rakip reklamlarÄ± analiz et ve JSON dÃ¶ndÃ¼r:
+        content: `Bu rakip reklamlarÃ„Â± analiz et ve JSON dÃƒÂ¶ndÃƒÂ¼r:
 ${summary}
 
-{"patterns":["ortak tema1","ortak tema2"],"weaknesses":["zayÄ±flÄ±k1"],"opportunities":["fÄ±rsat1"],"suggestedAngle":"Ã¶nerilen aÃ§Ä±","hookIdea":"dikkat Ã§ekici baÅŸlÄ±k Ã¶nerisi"}`
+{"patterns":["ortak tema1","ortak tema2"],"weaknesses":["zayÃ„Â±flÃ„Â±k1"],"opportunities":["fÃ„Â±rsat1"],"suggestedAngle":"ÃƒÂ¶nerilen aÃƒÂ§Ã„Â±","hookIdea":"dikkat ÃƒÂ§ekici baÃ…Å¸lÃ„Â±k ÃƒÂ¶nerisi"}`
       }]
     });
 
@@ -244,16 +244,16 @@ ${summary}
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // 5. PREDICTIVE ROAS OPTIMIZER
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/predict-roas', async (req: any, res: any) => {
   try {
     const token = await getMetaToken(req.userId);
     const adAccountId = await getMetaAdAccount(req.userId);
-    if (!token || !adAccountId) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
+    if (!token || !adAccountId) return res.status(401).json({ error: 'Meta hesabÃ„Â± baÃ„Å¸lÃ„Â± deÃ„Å¸il' });
 
-    // Son 30 gÃ¼nlÃ¼k performans Ã§ek
+    // Son 30 gÃƒÂ¼nlÃƒÂ¼k performans ÃƒÂ§ek
     const campResp = await axios.get(
       `https://graph.facebook.com/v18.0/${adAccountId}/campaigns?fields=id,name,insights.date_preset(last_30d){spend,impressions,clicks,actions,purchase_roas}&access_token=${token}&limit=10`
     );
@@ -267,7 +267,7 @@ router.post('/predict-roas', async (req: any, res: any) => {
       const ins = c.insights?.data?.[0] || {};
       const purchases = ins.actions?.find((a: any) => a.action_type === 'purchase')?.value || 0;
       const roas = ins.purchase_roas?.[0]?.value || 0;
-      return `${c.name}: ROAS=${roas}, Harcama=$${ins.spend || 0}, TÄ±klama=${ins.clicks || 0}, SatÄ±n Alma=${purchases}`;
+      return `${c.name}: ROAS=${roas}, Harcama=$${ins.spend || 0}, TÃ„Â±klama=${ins.clicks || 0}, SatÃ„Â±n Alma=${purchases}`;
     }).join('\n');
 
     const resp = await anthropic.messages.create({
@@ -275,10 +275,10 @@ router.post('/predict-roas', async (req: any, res: any) => {
       max_tokens: 500,
       messages: [{
         role: 'user',
-        content: `Bu Meta reklam verilerine gÃ¶re 30 gÃ¼nlÃ¼k ROAS tahmini yap ve JSON dÃ¶ndÃ¼r:
-${perfData || 'Veri yok â€” genel tahmin yap'}
+        content: `Bu Meta reklam verilerine gÃƒÂ¶re 30 gÃƒÂ¼nlÃƒÂ¼k ROAS tahmini yap ve JSON dÃƒÂ¶ndÃƒÂ¼r:
+${perfData || 'Veri yok Ã¢â‚¬â€ genel tahmin yap'}
 
-{"predicted30DayRoas":2.5,"confidenceScore":75,"budgetRecommendation":"GÃ¼nlÃ¼k bÃ¼tÃ§eyi $20 artÄ±r","topPerformer":"kampanya adÄ±","pauseRecommendation":"dÃ¼ÅŸÃ¼k performanslÄ± kampanya","keyInsight":"ana iÃ§gÃ¶rÃ¼","actionPlan":["adÄ±m1","adÄ±m2","adÄ±m3"]}`
+{"predicted30DayRoas":2.5,"confidenceScore":75,"budgetRecommendation":"GÃƒÂ¼nlÃƒÂ¼k bÃƒÂ¼tÃƒÂ§eyi $20 artÃ„Â±r","topPerformer":"kampanya adÃ„Â±","pauseRecommendation":"dÃƒÂ¼Ã…Å¸ÃƒÂ¼k performanslÃ„Â± kampanya","keyInsight":"ana iÃƒÂ§gÃƒÂ¶rÃƒÂ¼","actionPlan":["adÃ„Â±m1","adÃ„Â±m2","adÃ„Â±m3"]}`
       }]
     });
 
@@ -301,9 +301,9 @@ ${perfData || 'Veri yok â€” genel tahmin yap'}
   }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// 6. KEYWORD INTELLIGENCE â€” Negatif Liste
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// 6. KEYWORD INTELLIGENCE Ã¢â‚¬â€ Negatif Liste
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/keyword-intelligence', async (req: any, res: any) => {
   try {
     const { customerId, campaignId } = req.body;
@@ -333,18 +333,18 @@ router.post('/keyword-intelligence', async (req: any, res: any) => {
     const Anthropic = require('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const termsText = searchTerms.slice(0, 20).map((t: any) =>
-      `"${t.searchTermView?.searchTerm}": ${t.metrics?.clicks || 0} tÄ±klama, ${t.metrics?.conversions || 0} dÃ¶nÃ¼ÅŸÃ¼m`
-    ).join('\n') || 'Google Ads verisi yok â€” genel analiz';
+      `"${t.searchTermView?.searchTerm}": ${t.metrics?.clicks || 0} tÃ„Â±klama, ${t.metrics?.conversions || 0} dÃƒÂ¶nÃƒÂ¼Ã…Å¸ÃƒÂ¼m`
+    ).join('\n') || 'Google Ads verisi yok Ã¢â‚¬â€ genel analiz';
 
     const resp = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
       messages: [{
         role: 'user',
-        content: `Google Ads arama terimleri analiz et, negatif anahtar kelime listesi Ã¶ner. JSON dÃ¶ndÃ¼r:
+        content: `Google Ads arama terimleri analiz et, negatif anahtar kelime listesi ÃƒÂ¶ner. JSON dÃƒÂ¶ndÃƒÂ¼r:
 ${termsText}
 
-{"negativeKeywords":["negatif1","negatif2","negatif3"],"positiveKeywords":["pozitif1","pozitif2"],"broadToExact":["geniÅŸâ†’tam1"],"insight":"ana iÃ§gÃ¶rÃ¼","estimatedWastedBudget":"tahmini boÅŸa harcanan bÃ¼tÃ§e yÃ¼zdesi"}`
+{"negativeKeywords":["negatif1","negatif2","negatif3"],"positiveKeywords":["pozitif1","pozitif2"],"broadToExact":["geniÃ…Å¸Ã¢â€ â€™tam1"],"insight":"ana iÃƒÂ§gÃƒÂ¶rÃƒÂ¼","estimatedWastedBudget":"tahmini boÃ…Å¸a harcanan bÃƒÂ¼tÃƒÂ§e yÃƒÂ¼zdesi"}`
       }]
     });
 
@@ -353,9 +353,9 @@ ${termsText}
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// 7. AI BID-WAR SENTINEL â€” Teklif YÃ¶netimi
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// 7. AI BID-WAR SENTINEL Ã¢â‚¬â€ Teklif YÃƒÂ¶netimi
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/bid-sentinel/analyze', async (req: any, res: any) => {
   try {
     const { customerId } = req.body;
@@ -385,17 +385,17 @@ router.post('/bid-sentinel/analyze', async (req: any, res: any) => {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const auctionText = auctionData.slice(0, 10).map((a: any) =>
       `${a.auctionInsight?.domain}: IS=${a.auctionInsight?.impressionShare}, Overlap=${a.auctionInsight?.overlapRate}`
-    ).join('\n') || 'Google Ads baÄŸlantÄ±sÄ± yok â€” genel strateji Ã¶ner';
+    ).join('\n') || 'Google Ads baÃ„Å¸lantÃ„Â±sÃ„Â± yok Ã¢â‚¬â€ genel strateji ÃƒÂ¶ner';
 
     const resp = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
       messages: [{
         role: 'user',
-        content: `Google Ads aÃ§Ä±k artÄ±rma analizi yap. JSON dÃ¶ndÃ¼r:
+        content: `Google Ads aÃƒÂ§Ã„Â±k artÃ„Â±rma analizi yap. JSON dÃƒÂ¶ndÃƒÂ¼r:
 ${auctionText}
 
-{"mainCompetitors":["rakip1","rakip2"],"bidStrategy":"Ã¶nerilen teklif stratejisi","impressionShareTarget":"%70","budgetIncrease":"gerekli bÃ¼tÃ§e artÄ±ÅŸÄ±","actionItems":["adÄ±m1","adÄ±m2"],"urgencyLevel":"low/medium/high"}`
+{"mainCompetitors":["rakip1","rakip2"],"bidStrategy":"ÃƒÂ¶nerilen teklif stratejisi","impressionShareTarget":"%70","budgetIncrease":"gerekli bÃƒÂ¼tÃƒÂ§e artÃ„Â±Ã…Å¸Ã„Â±","actionItems":["adÃ„Â±m1","adÃ„Â±m2"],"urgencyLevel":"low/medium/high"}`
       }]
     });
 
@@ -404,23 +404,23 @@ ${auctionText}
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // 8. DYNAMIC RETARGETING CYCLE
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.post('/retargeting/setup', async (req: any, res: any) => {
   try {
     const token = await getMetaToken(req.userId);
     const adAccountId = await getMetaAdAccount(req.userId);
-    if (!token || !adAccountId) return res.status(401).json({ error: 'Meta hesabÄ± baÄŸlÄ± deÄŸil' });
+    if (!token || !adAccountId) return res.status(401).json({ error: 'Meta hesabÃ„Â± baÃ„Å¸lÃ„Â± deÃ„Å¸il' });
 
     const { audienceName, days, leads } = req.body;
 
-    // Custom Audience oluÅŸtur
+    // Custom Audience oluÃ…Å¸tur
     const audienceResp = await axios.post(
       `https://graph.facebook.com/v18.0/${adAccountId}/customaudiences`,
       {
         name: audienceName || 'LeadFlow Retargeting',
-        description: `${days || 30} gÃ¼nlÃ¼k retargeting listesi`,
+        description: `${days || 30} gÃƒÂ¼nlÃƒÂ¼k retargeting listesi`,
         subtype: 'CUSTOM',
         customer_file_source: 'USER_PROVIDED_ONLY',
       },
@@ -429,7 +429,7 @@ router.post('/retargeting/setup', async (req: any, res: any) => {
 
     const audienceId = audienceResp.data?.id;
 
-    // Lead telefon/email listesi yÃ¼kle
+    // Lead telefon/email listesi yÃƒÂ¼kle
     if (leads?.length && audienceId) {
       const crypto = require('crypto');
       const hash = (val: string) => crypto.createHash('sha256').update(val.toLowerCase().trim()).digest('hex');
@@ -456,7 +456,7 @@ router.post('/retargeting/setup', async (req: any, res: any) => {
       created_at: new Date().toISOString(),
     }]);
 
-    res.json({ audienceId, message: `Retargeting kitlesi oluÅŸturuldu: ${audienceName}` });
+    res.json({ audienceId, message: `Retargeting kitlesi oluÃ…Å¸turuldu: ${audienceName}` });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error?.message || e.message });
   }
@@ -470,9 +470,9 @@ router.get('/retargeting/audiences', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // STATS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 router.get('/advanced/stats', async (req: any, res: any) => {
   try {
     const [capi, roas, compAds, audiences] = await Promise.all([
@@ -521,7 +521,7 @@ setInterval(async () => {
             alert_type: 'low_ctr',
             value: ctr,
             threshold: monitor.min_ctr,
-            message: `CTR Ã§ok dÃ¼ÅŸÃ¼k: %${ctr.toFixed(2)} (EÅŸik: %${monitor.min_ctr})`,
+            message: `CTR ÃƒÂ§ok dÃƒÂ¼Ã…Å¸ÃƒÂ¼k: %${ctr.toFixed(2)} (EÃ…Å¸ik: %${monitor.min_ctr})`,
             created_at: new Date().toISOString(),
           }]).catch(() => {});
         }
@@ -534,7 +534,7 @@ setInterval(async () => {
             alert_type: 'high_cpm',
             value: cpm,
             threshold: monitor.max_cpm,
-            message: `CPM Ã§ok yÃ¼ksek: $${cpm.toFixed(2)} (EÅŸik: $${monitor.max_cpm})`,
+            message: `CPM ÃƒÂ§ok yÃƒÂ¼ksek: $${cpm.toFixed(2)} (EÃ…Å¸ik: $${monitor.max_cpm})`,
             created_at: new Date().toISOString(),
           }]).catch(() => {});
         }
