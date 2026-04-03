@@ -10,7 +10,7 @@ import {
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
   Workflow, MapPin, ScrollText, Gift, TrendingDown,
   GraduationCap, Inbox, Kanban, Radar, UserCog, Mail,
-  QrCode, Trophy, FileBarChart, TrendingDown as PriceIcon
+  QrCode, Trophy, FileBarChart, Brain
 } from 'lucide-react'
 
 const navItems = [
@@ -42,6 +42,7 @@ const navItems = [
 
   // ── REKLAMLAR ──
   { href: '/ads', label: 'Meta & Google Reklam', icon: Megaphone },
+  { href: '/ads-advanced', label: 'Gelişmiş Reklam AI', icon: Brain },
 
   // ── AI ARAÇLAR ──
   { href: '/video-outreach', label: 'AI Video', icon: Video },
@@ -64,7 +65,7 @@ const navItems = [
   { href: '/financial', label: 'Büyüme Zekası', icon: TrendingUp },
 
   // ── PAZAR & RAKİP ──
-  { href: '/price-tracker', label: 'Fiyat Takibi', icon: PriceIcon },
+  { href: '/price-tracker', label: 'Fiyat Takibi', icon: TrendingDown },
   { href: '/visual-trends', label: 'Trend Catcher', icon: Sparkles },
   { href: '/competitor', label: 'Rakip Hijack', icon: Target },
   { href: '/shadow', label: 'Rakip İzleme', icon: Eye },
