@@ -341,10 +341,10 @@ router.post('/keyword-intelligence', async (req: any, res: any) => {
       max_tokens: 400,
       messages: [{
         role: 'user',
-        content: `Google Ads arama terimleri analiz et, negatif anahtar kelime listesi öner. JSON döndür:
+        content: `Google Ads keyword analizi yap. SADECE asagidaki JSON formatinda yanit ver, baska hicbir sey yazma:
 ${termsText}
 
-{"negativeKeywords":["negatif1","negatif2","negatif3"],"positiveKeywords":["pozitif1","pozitif2"],"broadToExact":["geniş→tam1"],"insight":"ana içgörü","estimatedWastedBudget":"tahmini boşa harcanan bütçe yüzdesi"}`
+{"negativeKeywords":["ucuz","bedava","indir"],"positiveKeywords":["satin al","fiyat","siparis"],"broadToExact":["mobilya genis->mobilya tam"],"insight":"Kisa ozet","estimatedWastedBudget":"%20"}`
       }]
     });
 
