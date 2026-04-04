@@ -83,4 +83,5 @@ async function sendLeadNotification(userId: string, leadName: string) {
   } catch {}
 }
 
-module.exports = { router, sendLeadNotification };
+module.exports = router;
+module.exports.sendLeadNotification = sendLeadNotification;
