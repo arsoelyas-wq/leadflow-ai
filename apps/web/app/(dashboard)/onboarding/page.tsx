@@ -5,11 +5,11 @@ import { api } from '@/lib/api'
 import { CheckCircle, ArrowRight, Zap, Users, MessageSquare, Target, BarChart3 } from 'lucide-react'
 
 const STEPS = [
-  { id: 1, title: 'Hoş Geldiniz!', icon: '👋', desc: 'LeadFlow AI ile satışlarınızı otomatikleştirin' },
-  { id: 2, title: 'Şirket Bilgileri', icon: '🏢', desc: 'Sizi daha iyi tanıyalım' },
-  { id: 3, title: 'WhatsApp Bağlayın', icon: '💬', desc: 'Müşterilerinize mesaj gönderin' },
-  { id: 4, title: 'İlk Lead\'inizi Ekleyin', icon: '👥', desc: 'Sistemi test edin' },
-  { id: 5, title: 'Hazırsınız!', icon: '🚀', desc: 'Dashboard\'a geçin' },
+  { id: 1, title: 'HoÅŸ Geldiniz!', icon: 'ðŸ‘‹', desc: 'LeadFlow AI ile satÄ±ÅŸlarÄ±nÄ±zÄ± otomatikleÅŸtirin' },
+  { id: 2, title: 'Åžirket Bilgileri', icon: 'ðŸ¢', desc: 'Sizi daha iyi tanÄ±yalÄ±m' },
+  { id: 3, title: 'WhatsApp BaÄŸlayÄ±n', icon: 'ðŸ’¬', desc: 'MÃ¼ÅŸterilerinize mesaj gÃ¶nderin' },
+  { id: 4, title: 'Ä°lk Lead\'inizi Ekleyin', icon: 'ðŸ‘¥', desc: 'Sistemi test edin' },
+  { id: 5, title: 'HazÄ±rsÄ±nÄ±z!', icon: 'ðŸš€', desc: 'Dashboard\'a geÃ§in' },
 ]
 
 export default function OnboardingPage() {
@@ -22,7 +22,7 @@ export default function OnboardingPage() {
   const saveCompany = async () => {
     setLoading(true)
     try {
-      await api.put('/api/settings', { company_name: form.company, sector: form.sector, city: form.city })
+      await api.patch('/api/settings', { company_name: form.company, sector: form.sector, city: form.city })
       setStep(3)
     } catch { setStep(3) }
     finally { setLoading(false) }
@@ -38,7 +38,7 @@ export default function OnboardingPage() {
   }
 
   const finish = async () => {
-    try { await api.put('/api/auth/onboarding', { done: true }) } catch {}
+    try { await api.patch('/api/auth/onboarding', { done: true }) } catch {}
     router.push('/dashboard')
   }
 
@@ -61,17 +61,17 @@ export default function OnboardingPage() {
           {/* Step 1 */}
           {step === 1 && (
             <div className="text-center space-y-6">
-              <p className="text-6xl">👋</p>
+              <p className="text-6xl">ðŸ‘‹</p>
               <div>
-                <h1 className="text-2xl font-bold text-white">LeadFlow AI'ya Hoş Geldiniz!</h1>
-                <p className="text-slate-400 mt-2">3 dakikada kurulumu tamamlayın ve satışlarınızı otomatikleştirmeye başlayın</p>
+                <h1 className="text-2xl font-bold text-white">LeadFlow AI'ya HoÅŸ Geldiniz!</h1>
+                <p className="text-slate-400 mt-2">3 dakikada kurulumu tamamlayÄ±n ve satÄ±ÅŸlarÄ±nÄ±zÄ± otomatikleÅŸtirmeye baÅŸlayÄ±n</p>
               </div>
               <div className="grid grid-cols-2 gap-3 text-left">
                 {[
                   {icon:MessageSquare, label:'WhatsApp ile toplu mesaj'},
                   {icon:Target, label:'AI lead toplama'},
                   {icon:BarChart3, label:'Otomatik analiz'},
-                  {icon:Users, label:'CRM yönetimi'},
+                  {icon:Users, label:'CRM yÃ¶netimi'},
                 ].map(({icon:Icon, label})=>(
                   <div key={label} className="flex items-center gap-2 bg-slate-800 rounded-xl p-3">
                     <Icon size={16} className="text-blue-400 flex-shrink-0"/>
@@ -81,7 +81,7 @@ export default function OnboardingPage() {
               </div>
               <button onClick={()=>setStep(2)}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition">
-                Kurulumu Başlat <ArrowRight size={16}/>
+                Kurulumu BaÅŸlat <ArrowRight size={16}/>
               </button>
             </div>
           )}
@@ -90,13 +90,13 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-bold text-white">🏢 Şirket Bilgileri</h2>
-                <p className="text-slate-400 text-sm mt-1">AI önerilerini kişiselleştirmek için kullanılır</p>
+                <h2 className="text-xl font-bold text-white">ðŸ¢ Åžirket Bilgileri</h2>
+                <p className="text-slate-400 text-sm mt-1">AI Ã¶nerilerini kiÅŸiselleÅŸtirmek iÃ§in kullanÄ±lÄ±r</p>
               </div>
               {[
-                {k:'company',l:'Şirket Adı *',p:'Örnek A.Ş.'},
-                {k:'sector',l:'Sektör',p:'İnşaat, Mobilya, Yazılım...'},
-                {k:'city',l:'Şehir',p:'İstanbul'},
+                {k:'company',l:'Åžirket AdÄ± *',p:'Ã–rnek A.Åž.'},
+                {k:'sector',l:'SektÃ¶r',p:'Ä°nÅŸaat, Mobilya, YazÄ±lÄ±m...'},
+                {k:'city',l:'Åžehir',p:'Ä°stanbul'},
                 {k:'website',l:'Web Sitesi',p:'https://sirket.com'},
               ].map(({k,l,p})=>(
                 <div key={k}>
@@ -115,22 +115,22 @@ export default function OnboardingPage() {
           {/* Step 3 */}
           {step === 3 && (
             <div className="space-y-5 text-center">
-              <p className="text-5xl">💬</p>
+              <p className="text-5xl">ðŸ’¬</p>
               <div>
-                <h2 className="text-xl font-bold text-white">WhatsApp Bağlayın</h2>
-                <p className="text-slate-400 text-sm mt-1">Müşterilerinize WhatsApp üzerinden mesaj gönderin</p>
+                <h2 className="text-xl font-bold text-white">WhatsApp BaÄŸlayÄ±n</h2>
+                <p className="text-slate-400 text-sm mt-1">MÃ¼ÅŸterilerinize WhatsApp Ã¼zerinden mesaj gÃ¶nderin</p>
               </div>
               <div className="p-4 bg-slate-800 rounded-xl text-left space-y-2">
-                <p className="text-white text-sm font-medium">Bağlamak için:</p>
-                <p className="text-slate-400 text-xs">1. Sol menüden <strong className="text-white">Ayarlar</strong>'a gidin</p>
-                <p className="text-slate-400 text-xs">2. WhatsApp bölümünde QR kodu okutun</p>
-                <p className="text-slate-400 text-xs">3. Telefonunuzda WhatsApp Web'i açın</p>
+                <p className="text-white text-sm font-medium">BaÄŸlamak iÃ§in:</p>
+                <p className="text-slate-400 text-xs">1. Sol menÃ¼den <strong className="text-white">Ayarlar</strong>'a gidin</p>
+                <p className="text-slate-400 text-xs">2. WhatsApp bÃ¶lÃ¼mÃ¼nde QR kodu okutun</p>
+                <p className="text-slate-400 text-xs">3. Telefonunuzda WhatsApp Web'i aÃ§Ä±n</p>
               </div>
               <div className="flex gap-3">
-                <button onClick={()=>setStep(4)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition text-sm">Sonra Bağlarım</button>
-                <button onClick={()=>router.push('/settings')} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition text-sm">Şimdi Bağla</button>
+                <button onClick={()=>setStep(4)} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition text-sm">Sonra BaÄŸlarÄ±m</button>
+                <button onClick={()=>router.push('/settings')} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition text-sm">Åžimdi BaÄŸla</button>
               </div>
-              <button onClick={()=>setStep(4)} className="text-slate-500 text-xs hover:text-slate-300">Atla →</button>
+              <button onClick={()=>setStep(4)} className="text-slate-500 text-xs hover:text-slate-300">Atla â†’</button>
             </div>
           )}
 
@@ -138,11 +138,11 @@ export default function OnboardingPage() {
           {step === 4 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-bold text-white">👥 İlk Lead'inizi Ekleyin</h2>
-                <p className="text-slate-400 text-sm mt-1">Sistemi test etmek için bir müşteri ekleyin</p>
+                <h2 className="text-xl font-bold text-white">ðŸ‘¥ Ä°lk Lead'inizi Ekleyin</h2>
+                <p className="text-slate-400 text-sm mt-1">Sistemi test etmek iÃ§in bir mÃ¼ÅŸteri ekleyin</p>
               </div>
               {[
-                {k:'company_name',l:'Şirket Adı *',p:'ABC Şirketi'},
+                {k:'company_name',l:'Åžirket AdÄ± *',p:'ABC Åžirketi'},
                 {k:'phone',l:'Telefon',p:'05001234567'},
                 {k:'email',l:'Email',p:'info@abc.com'},
               ].map(({k,l,p})=>(
@@ -165,16 +165,16 @@ export default function OnboardingPage() {
           {/* Step 5 */}
           {step === 5 && (
             <div className="text-center space-y-6">
-              <p className="text-6xl">🚀</p>
+              <p className="text-6xl">ðŸš€</p>
               <div>
-                <h2 className="text-2xl font-bold text-white">Hazırsınız!</h2>
-                <p className="text-slate-400 mt-2">LeadFlow AI kurulumu tamamlandı. Satışlarınızı büyütmeye başlayın!</p>
+                <h2 className="text-2xl font-bold text-white">HazÄ±rsÄ±nÄ±z!</h2>
+                <p className="text-slate-400 mt-2">LeadFlow AI kurulumu tamamlandÄ±. SatÄ±ÅŸlarÄ±nÄ±zÄ± bÃ¼yÃ¼tmeye baÅŸlayÄ±n!</p>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  {label:'Lead Ekle', href:'/leads', icon:'👥'},
-                  {label:'Kampanya', href:'/campaigns', icon:'📢'},
-                  {label:'Analitik', href:'/analytics', icon:'📊'},
+                  {label:'Lead Ekle', href:'/leads', icon:'ðŸ‘¥'},
+                  {label:'Kampanya', href:'/campaigns', icon:'ðŸ“¢'},
+                  {label:'Analitik', href:'/analytics', icon:'ðŸ“Š'},
                 ].map(({label,href,icon})=>(
                   <button key={href} onClick={()=>router.push(href)}
                     className="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl text-center transition">
