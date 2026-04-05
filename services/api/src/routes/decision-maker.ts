@@ -48,27 +48,28 @@ function cleanPhone(phone: string): string {
 }
 
 function extractPhones(text: string): string[] {
-  const patterns = [
-    /(\+90|0090|0)?[\s\-\.]?(\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{2}[\s\-\.]?\d{2})/g,
-    /(\+90|0090)[\s\-\.]?\d{10}/g,
-  ];
   const phones = new Set<string>();
-  for (const pattern of patterns) {
-    const matches = text.match(pattern) || [];
-    for (const m of matches) {
-      const cleaned = cleanPhone(m);
-      if (cleaned.length >= 12) phones.add(cleaned);
-    }
+  // Türkiye telefon formatları - tam pattern, max 13 karakter
+  const pattern = /(?:(?:\+90|0090|0)\s?)?(?:\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{2}[\s\-\.]?\d{2})(?!\d)/g;
+  const matches = text.match(pattern) || [];
+  for (const m of matches) {
+    const cleaned = cleanPhone(m.trim());
+    // Sadece geçerli uzunluktaki numaraları al (12-13 karakter: +90XXXXXXXXXX)
+    if (cleaned.length >= 12 && cleaned.length <= 13) phones.add(cleaned);
   }
-  return Array.from(phones).slice(0, 3);
+  return Array.from(phones).slice(0, 5);
 }
 
 function extractEmails(text: string): string[] {
-  const emailRegex = /\b[a-zA-Z0-9._%+-]{1,50}@[a-zA-Z0-9.-]{1,50}\.[a-zA-Z]{2,6}\b/g;
-  const matches = text.match(emailRegex) || [];
+  // Temiz metin üzerinde çalış - HTML entity ve karakter artıklarını temizle
+  const cleanText = text.replace(/[^\x20-\x7E\u00C0-\u024F]/g, " ");
+  const emailRegex = /\b[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,48}@[a-zA-Z0-9][a-zA-Z0-9.-]{0,48}\.[a-zA-Z]{2,6}\b/g;
+  const matches = cleanText.match(emailRegex) || [];
   return matches.filter(e =>
-    !e.includes('example') && !e.includes('placeholder') &&
-    !e.includes('domain') && e.length < 80
+    !e.includes("example") && !e.includes("placeholder") &&
+    !e.includes("domain") && e.length < 60 &&
+    /^[a-zA-Z0-9]/.test(e) && // Rakam veya harf ile başlamalı
+    e.split("@")[0].length >= 2 // prefix en az 2 karakter
   ).slice(0, 5);
 }
 
