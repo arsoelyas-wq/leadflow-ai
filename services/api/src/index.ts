@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -95,6 +95,7 @@ app.use('/api/microsite',      authMiddleware, require('./routes/microsite'));
 app.use('/api/referral',       authMiddleware, require('./routes/referral'));
 app.use('/api/debt',           authMiddleware, require('./routes/debt'));
 app.use('/api/emotional',      authMiddleware, require('./routes/emotional'));
+app.use('/api/data-collector', authMiddleware, require('./routes/data-collector'));
 app.use('/api/hunter',         authMiddleware, require('./routes/hunter'));
 app.use('/api/trade-fair',     authMiddleware, require('./routes/trade-fair'));
 app.use('/api/tenders',        authMiddleware, require('./routes/tenders'));
@@ -145,5 +146,7 @@ function scheduleDailyTenderScan() {
   }, next.getTime() - now.getTime());
 }
 scheduleDailyTenderScan();
+const { runNightlyCollection } = require('./routes/data-collector');
+require('node-cron').schedule('0 2 * * *', () => { runNightlyCollection(); });
 
 app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));
