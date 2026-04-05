@@ -6,7 +6,7 @@ import {
   User, Key, Bell, Shield, Save, MessageSquare,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff,
   Send, Eye, EyeOff, Smartphone, QrCode, Bot, Linkedin, Video,
-  Lock, Globe, Sheet
+  Lock, Globe, Table2
 } from 'lucide-react'
 
 export default function SettingsPage() {
