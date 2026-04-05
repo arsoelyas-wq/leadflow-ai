@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import {
-  LayoutDashboard, Users, Megaphone, BarChart3, MessageSquare,
+  LayoutDashboard, Users, Megaphone, BarChart3,
   Settings, CreditCard, LogOut, Zap, Activity, Target,
   Bot, FlaskConical, Webhook, Smartphone, Eye,
   TrendingUp, Sparkles, Video, FileText,
@@ -13,7 +13,7 @@ import {
   GraduationCap, Inbox, Kanban, Radar, UserCog, Mail,
   QrCode, Trophy, FileBarChart, Brain, ChevronDown,
   Crosshair, Star, RefreshCw, DollarSign, Wallet,
-  ChevronRight, Crown, Sparkle
+  ChevronRight, Crown, Sparkle, Flame, Rocket, UsersRound
 } from 'lucide-react'
 
 type PlanGate = 'all' | 'growth' | 'pro' | 'enterprise'
@@ -47,7 +47,6 @@ const groups: NavGroup[] = [
       { href: '/lead-quality',   label: 'Lead Kalite AI',   icon: Star,   plan: 'growth', badge: 'AI' },
       { href: '/decision-maker', label: 'Karar Verici',     icon: Crosshair, plan: 'pro' },
       { href: '/health-scores',  label: 'Müşteri Sağlığı',  icon: Heart,  plan: 'pro' },
-      { href: '/tenders',        label: 'İhale Avcısı',     icon: ScrollText, plan: 'pro' },
       { href: '/trade-fair',     label: 'Fuar Asistanı',    icon: MapPin, plan: 'pro' },
     ],
   },
@@ -112,7 +111,6 @@ const groups: NavGroup[] = [
       { href: '/price-tracker',  label: 'Fiyat Takibi',    icon: TrendingDown },
       { href: '/visual-trends',  label: 'Trend Catcher',   icon: Sparkles, plan: 'growth' },
       { href: '/cultural',       label: 'Kültürel Uyum',   icon: Globe,    plan: 'pro' },
-      { href: '/export',         label: 'İhracat Zekası',  icon: Globe2,   plan: 'enterprise' },
       { href: '/meta-intent',    label: 'Meta Intent',     icon: Target,   plan: 'pro' },
     ],
   },
@@ -135,7 +133,6 @@ const groups: NavGroup[] = [
     label: 'Sistem & Ayarlar',
     icon: Settings,
     items: [
-      { href: '/team',        label: 'Ekip Yönetimi',  icon: UserCog },
       { href: '/automations', label: 'Otomasyonlar',   icon: Zap },
       { href: '/wa-numbers',  label: 'WA Numaralar',   icon: Smartphone },
       { href: '/webhooks',    label: 'Webhooks',       icon: Webhook },
@@ -227,6 +224,64 @@ export default function Sidebar() {
           <LayoutDashboard size={16} />
           Dashboard
         </Link>
+
+        {/* ── Öne Çıkan Özellikler ── */}
+        <div className="mb-3 mt-1 space-y-1.5">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-1.5">Güçlü Araçlar</p>
+
+          {/* İhale Avcısı */}
+          <Link href="/tenders"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
+              pathname === '/tenders'
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                : 'bg-amber-500/5 border-amber-500/15 text-amber-400/80 hover:bg-amber-500/15 hover:border-amber-500/30 hover:text-amber-300'
+            }`}>
+            <div className="w-7 h-7 bg-amber-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <ScrollText size={14} className="text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">İhale Avcısı</p>
+              <p className="text-[10px] text-amber-500/60 leading-tight mt-0.5">Devlet ihalelerini yakala</p>
+            </div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/25 flex-shrink-0">PRO</span>
+          </Link>
+
+          {/* İhracat Zekası */}
+          <Link href="/export"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
+              pathname === '/export'
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                : 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400/80 hover:bg-emerald-500/15 hover:border-emerald-500/30 hover:text-emerald-300'
+            }`}>
+            <div className="w-7 h-7 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Globe2 size={14} className="text-emerald-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">İhracat Zekası</p>
+              <p className="text-[10px] text-emerald-500/60 leading-tight mt-0.5">Global pazarlara aç</p>
+            </div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 flex-shrink-0">ENT</span>
+          </Link>
+
+          {/* Ekip Yönetimi */}
+          <Link href="/team"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
+              pathname === '/team'
+                ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                : 'bg-blue-500/5 border-blue-500/15 text-blue-400/80 hover:bg-blue-500/15 hover:border-blue-500/30 hover:text-blue-300'
+            }`}>
+            <div className="w-7 h-7 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <UsersRound size={14} className="text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Ekip Yönetimi</p>
+              <p className="text-[10px] text-blue-500/60 leading-tight mt-0.5">Takımını birlikte yönet</p>
+            </div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/25 flex-shrink-0">PRO</span>
+          </Link>
+        </div>
+
+        <div className="border-t border-slate-800/80 mb-2" />
 
         {/* Gruplar */}
         {groups.map(group => {
