@@ -3,15 +3,61 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const cheerio = require('cheerio');
 const axios = require('axios');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-};
+// ── PROXY HAVUZU ──────────────────────────────────────────
+const PROXY_LIST = (process.env.PROXY_LIST || '').split(',').filter(Boolean);
+let proxyIndex = 0;
+
+function getNextProxy(): string | null {
+  if (!PROXY_LIST.length) return null;
+  const proxy = PROXY_LIST[proxyIndex % PROXY_LIST.length];
+  proxyIndex++;
+  return proxy;
+}
+
+function getProxyAgent(): any {
+  const proxy = getNextProxy();
+  if (!proxy) return null;
+  const [host, port, user, pass] = proxy.split(':');
+  return new HttpsProxyAgent(`http://${user}:${pass}@${host}:${port}`);
+}
+
+function getAxiosConfig(extraHeaders: any = {}): any {
+  const agent = getProxyAgent();
+  const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
+  ];
+  const ua = userAgents[Math.floor(Math.random() * userAgents.length)];
+  const config: any = {
+    timeout: 15000,
+    headers: {
+      'User-Agent': ua,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Cache-Control': 'max-age=0',
+      ...extraHeaders,
+    },
+  };
+  if (agent) {
+    config.httpAgent = agent;
+    config.httpsAgent = agent;
+  }
+  return config;
+}
 
 const DECISION_MAKER_TITLES = [
   'genel müdür','ceo','yönetim kurulu','satın alma','tedarik',
@@ -196,7 +242,7 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
 
     for (const pageUrl of pages.slice(0, 4)) {
       try {
-        const res = await axios.get(pageUrl, { headers: HEADERS, timeout: 8000 });
+        const res = await axios.get(pageUrl, getAxiosConfig());
         const $ = cheerio.load(res.data);
 
         // Sayfa metnini temiz al
