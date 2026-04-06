@@ -8,6 +8,10 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// ── GOOGLE CUSTOM SEARCH API ──────────────────────────────
+const GOOGLE_CSE_KEY = process.env.GOOGLE_CUSTOM_SEARCH_KEY;
+const GOOGLE_CSE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+
 // ── PROXY HAVUZU ──────────────────────────────────────────
 const PROXY_LIST = (process.env.PROXY_LIST || '').split(',').filter(Boolean);
 let proxyIndex = 0;
@@ -33,22 +37,16 @@ function getAxiosConfig(extraHeaders: any = {}): any {
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
   ];
   const ua = userAgents[Math.floor(Math.random() * userAgents.length)];
   const config: any = {
     timeout: 15000,
     headers: {
       'User-Agent': ua,
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
       'Accept-Encoding': 'gzip, deflate, br',
       'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none',
-      'Cache-Control': 'max-age=0',
       ...extraHeaders,
     },
   };
@@ -60,16 +58,16 @@ function getAxiosConfig(extraHeaders: any = {}): any {
 }
 
 const DECISION_MAKER_TITLES = [
-  'genel müdür','ceo','yönetim kurulu','satın alma','tedarik',
-  'ticaret müdürü','ihracat müdürü','pazarlama müdürü','satış müdürü',
-  'kurucu','ortak','direktör','başkan','founder','owner','director',
-  'manager','head of','vp','vice president','procurement','purchasing',
+  'genel müdür', 'ceo', 'yönetim kurulu', 'satın alma', 'tedarik',
+  'ticaret müdürü', 'ihracat müdürü', 'pazarlama müdürü', 'satış müdürü',
+  'kurucu', 'ortak', 'direktör', 'başkan', 'founder', 'owner', 'director',
+  'manager', 'head of', 'vp', 'vice president', 'procurement', 'purchasing',
 ];
 
 const GENERIC_PREFIXES = [
-  'info','contact','hello','mail','email','admin','support','sales',
-  'whatsapp','iletisim','bilgi','hizmet','destek','rezervasyon',
-  'muhasebe','hr','ik','webmaster','noreply','no-reply','satis',
+  'info', 'contact', 'hello', 'mail', 'email', 'admin', 'support', 'sales',
+  'whatsapp', 'iletisim', 'bilgi', 'hizmet', 'destek', 'rezervasyon',
+  'muhasebe', 'hr', 'ik', 'webmaster', 'noreply', 'no-reply', 'satis',
 ];
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
@@ -95,53 +93,50 @@ function cleanPhone(phone: string): string {
 
 function extractPhones(text: string): string[] {
   const phones = new Set<string>();
-  // Türkiye telefon formatları - tam pattern, max 13 karakter
   const pattern = /(?:(?:\+90|0090|0)\s?)?(?:\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{2}[\s\-\.]?\d{2})(?!\d)/g;
   const matches = text.match(pattern) || [];
   for (const m of matches) {
     const cleaned = cleanPhone(m.trim());
-    // Sadece geçerli uzunluktaki numaraları al (12-13 karakter: +90XXXXXXXXXX)
     if (cleaned.length >= 12 && cleaned.length <= 13) phones.add(cleaned);
   }
   return Array.from(phones).slice(0, 5);
 }
 
 function extractEmails(text: string): string[] {
-  // Temiz metin üzerinde çalış - HTML entity ve karakter artıklarını temizle
-  const cleanText = text.replace(/[^\x20-\x7E\u00C0-\u024F]/g, " ");
+  const cleanText = text.replace(/[^\x20-\x7E\u00C0-\u024F]/g, ' ');
   const emailRegex = /\b[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,48}@[a-zA-Z0-9][a-zA-Z0-9.-]{0,48}\.[a-zA-Z]{2,6}\b/g;
   const matches = cleanText.match(emailRegex) || [];
   return matches.filter(e =>
-    !e.includes("example") && !e.includes("placeholder") &&
-    !e.includes("domain") && e.length < 60 &&
-    /^[a-zA-Z0-9]/.test(e) && // Rakam veya harf ile başlamalı
-    e.split("@")[0].length >= 2 // prefix en az 2 karakter
+    !e.includes('example') && !e.includes('placeholder') &&
+    !e.includes('domain') && e.length < 60 &&
+    /^[a-zA-Z0-9]/.test(e) &&
+    e.split('@')[0].length >= 2
   ).slice(0, 5);
 }
 
+// ── GOOGLE CUSTOM SEARCH ──────────────────────────────────
 async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
-  try {
-    const response = await axios.get(
-      `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${maxResults}&hl=tr`,
-      getAxiosConfig()
-    );
-    const $ = cheerio.load(response.data);
-    const results: any[] = [];
-    $('div.g, div[data-sokoban-feature]').each((_: any, el: any) => {
-      const title = $(el).find('h3').first().text().trim();
-      const url = $(el).find('a[href]').first().attr('href') || '';
-      const snippet = $(el).find('.VwiC3b, [data-sncf], .IsZvec').first().text().trim();
-      if (title && url.startsWith('http') && !url.includes('google.com') && snippet) {
-        results.push({ title, url, snippet });
-      }
-    });
-    return results.slice(0, maxResults);
-  } catch (e: any) {
-    console.error('Google search error:', e.message);
-    return [];
+  if (GOOGLE_CSE_KEY && GOOGLE_CSE_ID) {
+    try {
+      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${Math.min(maxResults, 10)}&hl=tr&gl=tr`;
+      const response = await axios.get(url, { timeout: 10000 });
+      const items = response.data.items || [];
+      console.log(`Google CSE: ${items.length} sonuc — ${query.slice(0, 60)}`);
+      return items.map((item: any) => ({
+        title: item.title || '',
+        url: item.link || '',
+        snippet: item.snippet || '',
+      }));
+    } catch (e: any) {
+      console.error('Google CSE error:', e.message);
+      return [];
+    }
   }
+  console.log('Google CSE key bulunamadi');
+  return [];
 }
 
+// ── LİNKEDİN ARAMA ───────────────────────────────────────
 async function findViaLinkedIn(companyName: string): Promise<any[]> {
   const titles = ['CEO', 'Genel Müdür', 'Kurucu', 'Satın Alma Müdürü', 'Direktör', 'Sahip'];
   const results: any[] = [];
@@ -171,12 +166,15 @@ async function findViaLinkedIn(companyName: string): Promise<any[]> {
           confidence: 'medium',
         });
       }
-      await sleep(600);
-    } catch {}
+      await sleep(300);
+    } catch (e: any) {
+      console.error('LinkedIn search error:', e.message);
+    }
   }
   return results;
 }
 
+// ── GOOGLE'DAN KİŞİ ARAMA ────────────────────────────────
 async function findViaGoogle(companyName: string, city: string): Promise<any[]> {
   const results: any[] = [];
   const queries = [
@@ -191,7 +189,6 @@ async function findViaGoogle(companyName: string, city: string): Promise<any[]> 
       for (const r of searchResults) {
         const text = r.snippet + ' ' + r.title;
 
-        // Türkçe isim pattern
         const namePattern = /([A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,15}\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,20}(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,15})?)/g;
         const names = text.match(namePattern) || [];
         for (const name of names.slice(0, 2)) {
@@ -207,7 +204,6 @@ async function findViaGoogle(companyName: string, city: string): Promise<any[]> 
           });
         }
 
-        // Telefon bul
         const phones = extractPhones(text);
         for (const phone of phones) {
           results.push({
@@ -220,12 +216,15 @@ async function findViaGoogle(companyName: string, city: string): Promise<any[]> 
           });
         }
       }
-      await sleep(500);
-    } catch {}
+      await sleep(200);
+    } catch (e: any) {
+      console.error('Google find error:', e.message);
+    }
   }
   return results;
 }
 
+// ── WEB SİTESİ SCRAPING ──────────────────────────────────
 async function scrapeWebsite(website: string, companyName: string): Promise<any[]> {
   const results: any[] = [];
   try {
@@ -245,31 +244,20 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
         const res = await axios.get(pageUrl, getAxiosConfig());
         const $ = cheerio.load(res.data);
 
-        // Sayfa metnini temiz al
         $('script, style, noscript').remove();
         const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
 
-        // Telefon numaraları
         const phones = extractPhones(bodyText);
         for (const phone of phones) {
-          results.push({
-            name: null,
-            phone,
-            title: 'Şirket Hattı',
-            source: 'Website',
-            confidence: 'high',
-          });
+          results.push({ name: null, phone, title: 'Şirket Hattı', source: 'Website', confidence: 'high' });
         }
 
-        // Email adresleri
         const emails = extractEmails(bodyText);
         for (const email of emails) {
           const prefix = email.split('@')[0].toLowerCase();
           if (GENERIC_PREFIXES.some(g => prefix.includes(g))) {
-            // Genel email - sadece email kaydet, isim yok
             results.push({ name: null, email, title: 'İletişim', source: 'Website', confidence: 'medium' });
           } else {
-            // Kişisel email olabilir
             const nameParts = prefix.replace(/[._-]/g, ' ').split(' ');
             const possibleName = nameParts.length >= 2
               ? nameParts.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
@@ -284,7 +272,6 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
           }
         }
 
-        // Kişi schema markup
         $('[itemtype*="Person"], .team-member, .staff, .ekip, .yonetim, .management, .about-team').each((_: any, el: any) => {
           const name = $(el).find('[itemprop="name"], .name, .isim, h3, h4').first().text().trim();
           const jobTitle = $(el).find('[itemprop="jobTitle"], .title, .unvan, .pozisyon').first().text().trim();
@@ -306,11 +293,10 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
           }
         });
 
-        // tel: linklerinden telefon
         $('a[href^="tel:"]').each((_: any, el: any) => {
           const href = $(el).attr('href') || '';
           const phone = cleanPhone(href.replace('tel:', ''));
-          if (phone.length >= 12) {
+          if (phone.length >= 12 && phone.length <= 13) {
             results.push({ name: null, phone, title: 'Şirket Hattı', source: 'Website', confidence: 'high' });
           }
         });
@@ -322,14 +308,13 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
   return results;
 }
 
+// ── SONUÇLARI BİRLEŞTİR ──────────────────────────────────
 function mergeResults(all: any[]): any[] {
-  // Telefon ve email bazlı birleştir
   const merged: any[] = [];
   const seenPhones = new Set<string>();
   const seenEmails = new Set<string>();
   const seenNames = new Set<string>();
 
-  // Önce gerçek isimli sonuçlar
   const withName = all.filter(r => r.name && isRealName(r.name));
   const withoutName = all.filter(r => !r.name || !isRealName(r.name));
 
@@ -352,6 +337,8 @@ function mergeResults(all: any[]): any[] {
   const order: Record<string, number> = { high: 3, medium: 2, low: 1 };
   return merged.sort((a, b) => (order[b.confidence] || 0) - (order[a.confidence] || 0));
 }
+
+// ── ROUTES ────────────────────────────────────────────────
 
 router.post('/find', async (req: any, res: any) => {
   try {
@@ -448,7 +435,7 @@ router.post('/batch', async (req: any, res: any) => {
           });
           updated++;
         }
-        await sleep(1500);
+        await sleep(1000);
       } catch (e: any) {
         console.error(`Error for ${lead.company_name}:`, e.message);
       }
