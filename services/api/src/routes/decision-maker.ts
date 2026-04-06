@@ -123,7 +123,7 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
   try {
     const response = await axios.get(
       `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${maxResults}&hl=tr`,
-      getAxiosConfig( timeout: 12000 }
+      getAxiosConfig()
     );
     const $ = cheerio.load(response.data);
     const results: any[] = [];
