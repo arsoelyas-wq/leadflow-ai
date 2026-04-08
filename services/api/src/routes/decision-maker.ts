@@ -155,8 +155,8 @@ async function findLinkedInCompanyId(companyName: string): Promise<string | null
     const company = response.data?.data;
     console.log(`LinkedIn company profile: ${company?.name} (${company?.universal_name})`);
 
-    if (company?.universal_name) return company.universal_name;
     if (company?.id) return String(company.id);
+    if (company?.universal_name) return company.universal_name;
     return null;
   } catch (e: any) {
     console.error('LinkedIn company profile error:', e.message);
