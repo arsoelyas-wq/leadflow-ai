@@ -8,11 +8,10 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// ── GOOGLE CUSTOM SEARCH API ──────────────────────────────
 const GOOGLE_CSE_KEY = process.env.GOOGLE_CUSTOM_SEARCH_KEY;
-const GOOGLE_CSE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+const GOOGLE_CSE_ID  = process.env.GOOGLE_SEARCH_ENGINE_ID;
+const RAPIDAPI_KEY   = process.env.RAPIDAPI_KEY;
 
-// ── PROXY HAVUZU ──────────────────────────────────────────
 const PROXY_LIST = (process.env.PROXY_LIST || '').split(',').filter(Boolean);
 let proxyIndex = 0;
 
@@ -33,9 +32,8 @@ function getProxyAgent(): any {
 function getAxiosConfig(extraHeaders: any = {}): any {
   const agent = getProxyAgent();
   const userAgents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
   ];
   const ua = userAgents[Math.floor(Math.random() * userAgents.length)];
@@ -45,29 +43,26 @@ function getAxiosConfig(extraHeaders: any = {}): any {
       'User-Agent': ua,
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Accept-Encoding': 'gzip, deflate, br',
       'Connection': 'keep-alive',
       ...extraHeaders,
     },
   };
-  if (agent) {
-    config.httpAgent = agent;
-    config.httpsAgent = agent;
-  }
+  if (agent) { config.httpAgent = agent; config.httpsAgent = agent; }
   return config;
 }
 
 const DECISION_MAKER_TITLES = [
-  'genel müdür', 'ceo', 'yönetim kurulu', 'satın alma', 'tedarik',
-  'ticaret müdürü', 'ihracat müdürü', 'pazarlama müdürü', 'satış müdürü',
-  'kurucu', 'ortak', 'direktör', 'başkan', 'founder', 'owner', 'director',
-  'manager', 'head of', 'vp', 'vice president', 'procurement', 'purchasing',
+  'genel müdür','ceo','yönetim kurulu','satın alma','tedarik',
+  'ticaret müdürü','ihracat müdürü','pazarlama müdürü','satış müdürü',
+  'kurucu','ortak','direktör','başkan','founder','owner','director',
+  'manager','head of','vp','vice president','procurement','purchasing',
+  'genel koordinatör','işletme müdürü','fabrika müdürü','genel sekreter',
 ];
 
 const GENERIC_PREFIXES = [
-  'info', 'contact', 'hello', 'mail', 'email', 'admin', 'support', 'sales',
-  'whatsapp', 'iletisim', 'bilgi', 'hizmet', 'destek', 'rezervasyon',
-  'muhasebe', 'hr', 'ik', 'webmaster', 'noreply', 'no-reply', 'satis',
+  'info','contact','hello','mail','email','admin','support','sales',
+  'whatsapp','iletisim','bilgi','hizmet','destek','rezervasyon',
+  'muhasebe','hr','ik','webmaster','noreply','no-reply','satis',
 ];
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
@@ -79,6 +74,12 @@ function isRealName(name: string): boolean {
   if (name.includes('@') || name.includes('http') || name.includes('.com')) return false;
   if (/^[A-Z\s]+$/.test(name) && name.length > 20) return false;
   return true;
+}
+
+function isDecisionMakerTitle(title: string): boolean {
+  if (!title) return false;
+  const t = title.toLowerCase();
+  return DECISION_MAKER_TITLES.some(dt => t.includes(dt));
 }
 
 function cleanPhone(phone: string): string {
@@ -109,8 +110,7 @@ function extractEmails(text: string): string[] {
   return matches.filter(e =>
     !e.includes('example') && !e.includes('placeholder') &&
     !e.includes('domain') && e.length < 60 &&
-    /^[a-zA-Z0-9]/.test(e) &&
-    e.split('@')[0].length >= 2
+    /^[a-zA-Z0-9]/.test(e) && e.split('@')[0].length >= 2
   ).slice(0, 5);
 }
 
@@ -132,16 +132,108 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
       return [];
     }
   }
-  console.log('Google CSE key bulunamadi');
   return [];
 }
 
-// ── LİNKEDİN ARAMA ───────────────────────────────────────
+// ── RAPIDAPI: LİNKEDİN ŞİRKET ID BUL ────────────────────
+async function findLinkedInCompanyId(companyName: string): Promise<string | null> {
+  if (!RAPIDAPI_KEY) return null;
+  try {
+    const response = await axios.get('https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/search/companies', {
+      params: { keyword: companyName, page: '1' },
+      headers: {
+        'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
+        'x-rapidapi-key': RAPIDAPI_KEY,
+      },
+      timeout: 10000,
+    });
+    const companies = response.data?.data || [];
+    console.log(`LinkedIn company search: ${companies.length} results for "${companyName}"`);
+    if (companies.length > 0) {
+      const best = companies[0];
+      return best.id || best.universal_name || null;
+    }
+    return null;
+  } catch (e: any) {
+    console.error('LinkedIn company search error:', e.message);
+    return null;
+  }
+}
+
+// ── RAPIDAPI: ŞİRKET ÇALIŞANLARINI ÇEK ──────────────────
+async function getLinkedInCompanyPeople(companyId: string, companyName: string): Promise<any[]> {
+  if (!RAPIDAPI_KEY) return [];
+  const results: any[] = [];
+
+  try {
+    const response = await axios.get('https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/people', {
+      params: { company_id: companyId, page: '1' },
+      headers: {
+        'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
+        'x-rapidapi-key': RAPIDAPI_KEY,
+      },
+      timeout: 15000,
+    });
+
+    const people = response.data?.data || [];
+    console.log(`LinkedIn company people: ${people.length} kisi bulundu for company ${companyId}`);
+
+    for (const person of people) {
+      const name = person.full_name || '';
+      const title = person.title || '';
+      if (!isRealName(name)) continue;
+
+      // Karar verici unvana sahip olanları önceliklendir
+      const isDM = isDecisionMakerTitle(title);
+
+      results.push({
+        name,
+        title: title || 'Çalışan',
+        company: companyName,
+        linkedinUrl: person.url || '',
+        source: 'LinkedIn',
+        confidence: isDM ? 'high' : 'low',
+        isDecisionMaker: isDM,
+      });
+    }
+
+    // Karar vericileri öne al
+    results.sort((a, b) => (b.isDecisionMaker ? 1 : 0) - (a.isDecisionMaker ? 1 : 0));
+    return results.slice(0, 10);
+
+  } catch (e: any) {
+    console.error('LinkedIn company people error:', e.message);
+    return [];
+  }
+}
+
+// ── LİNKEDİN ARAMA (ANA FONKSİYON) ──────────────────────
 async function findViaLinkedIn(companyName: string): Promise<any[]> {
+  if (!RAPIDAPI_KEY) {
+    console.log('RapidAPI key yok, LinkedIn atlanıyor');
+    return [];
+  }
+
+  // 1. Şirket ID'sini bul
+  const companyId = await findLinkedInCompanyId(companyName);
+  if (!companyId) {
+    console.log(`LinkedIn: "${companyName}" için şirket bulunamadı`);
+    // Fallback: Google üzerinden LinkedIn ara
+    return await findViaLinkedInGoogle(companyName);
+  }
+
+  // 2. Çalışanları çek
+  const people = await getLinkedInCompanyPeople(companyId, companyName);
+  console.log(`LinkedIn toplam: ${people.length} kisi, karar verici: ${people.filter(p => p.isDecisionMaker).length}`);
+  return people;
+}
+
+// ── LİNKEDİN GOOGLE FALLBACK ─────────────────────────────
+async function findViaLinkedInGoogle(companyName: string): Promise<any[]> {
   const titles = ['CEO', 'Genel Müdür', 'Kurucu', 'Satın Alma Müdürü', 'Direktör', 'Sahip'];
   const results: any[] = [];
 
-  for (const title of titles.slice(0, 4)) {
+  for (const title of titles.slice(0, 3)) {
     try {
       const query = `"${companyName}" "${title}" site:linkedin.com/in`;
       const searchResults = await googleSearch(query, 3);
@@ -158,18 +250,15 @@ async function findViaLinkedIn(companyName: string): Promise<any[]> {
         if (!isRealName(name)) continue;
 
         results.push({
-          name,
-          title,
-          company: companyName,
+          name, title, company: companyName,
           linkedinUrl: r.url,
           source: 'LinkedIn',
           confidence: 'medium',
+          isDecisionMaker: true,
         });
       }
       await sleep(300);
-    } catch (e: any) {
-      console.error('LinkedIn search error:', e.message);
-    }
+    } catch {}
   }
   return results;
 }
@@ -195,31 +284,19 @@ async function findViaGoogle(companyName: string, city: string): Promise<any[]> 
           if (!isRealName(name)) continue;
           const titleMatch = DECISION_MAKER_TITLES.find(t => text.toLowerCase().includes(t));
           results.push({
-            name,
-            title: titleMatch || 'Yetkili',
-            company: companyName,
-            source: 'Google',
-            sourceUrl: r.url,
-            confidence: 'low',
+            name, title: titleMatch || 'Yetkili',
+            company: companyName, source: 'Google',
+            sourceUrl: r.url, confidence: 'low',
           });
         }
 
         const phones = extractPhones(text);
         for (const phone of phones) {
-          results.push({
-            name: null,
-            phone,
-            title: 'Yetkili',
-            company: companyName,
-            source: 'Google',
-            confidence: 'medium',
-          });
+          results.push({ name: null, phone, title: 'Yetkili', company: companyName, source: 'Google', confidence: 'medium' });
         }
       }
       await sleep(200);
-    } catch (e: any) {
-      console.error('Google find error:', e.message);
-    }
+    } catch {}
   }
   return results;
 }
@@ -229,21 +306,12 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
   const results: any[] = [];
   try {
     const base = website.startsWith('http') ? website : `https://${website}`;
-    const pages = [
-      base,
-      `${base}/iletisim`,
-      `${base}/contact`,
-      `${base}/hakkimizda`,
-      `${base}/about`,
-      `${base}/ekibimiz`,
-      `${base}/yonetim`,
-    ];
+    const pages = [base, `${base}/iletisim`, `${base}/contact`, `${base}/hakkimizda`, `${base}/about`, `${base}/ekibimiz`, `${base}/yonetim`];
 
     for (const pageUrl of pages.slice(0, 4)) {
       try {
         const res = await axios.get(pageUrl, getAxiosConfig());
         const $ = cheerio.load(res.data);
-
         $('script, style, noscript').remove();
         const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
 
@@ -264,10 +332,7 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
               : null;
             results.push({
               name: possibleName && isRealName(possibleName) ? possibleName : null,
-              email,
-              title: 'Yetkili',
-              source: 'Website',
-              confidence: 'medium',
+              email, title: 'Yetkili', source: 'Website', confidence: 'medium',
             });
           }
         }
@@ -279,15 +344,13 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
           const email = $(el).find('[itemprop="email"], a[href^="mailto:"]').first().text().trim().replace('mailto:', '');
 
           if (name && isRealName(name)) {
-            const isDecisionMaker = DECISION_MAKER_TITLES.some(t => jobTitle.toLowerCase().includes(t));
-            if (isDecisionMaker || !jobTitle) {
+            const isDM = DECISION_MAKER_TITLES.some(t => jobTitle.toLowerCase().includes(t));
+            if (isDM || !jobTitle) {
               results.push({
-                name,
-                title: jobTitle || 'Yetkili',
+                name, title: jobTitle || 'Yetkili',
                 phone: phone ? cleanPhone(phone) : null,
                 email: email || null,
-                source: 'Website',
-                confidence: 'high',
+                source: 'Website', confidence: 'high',
               });
             }
           }
@@ -313,21 +376,22 @@ function mergeResults(all: any[]): any[] {
   const merged: any[] = [];
   const seenPhones = new Set<string>();
   const seenEmails = new Set<string>();
-  const seenNames = new Set<string>();
+  const seenNames  = new Set<string>();
 
-  const withName = all.filter(r => r.name && isRealName(r.name));
-  const withoutName = all.filter(r => !r.name || !isRealName(r.name));
+  // Karar vericiler önce, sonra diğerleri
+  const decisionMakers = all.filter(r => r.isDecisionMaker || (r.name && isRealName(r.name) && isDecisionMakerTitle(r.title)));
+  const others = all.filter(r => !decisionMakers.includes(r));
 
-  for (const r of [...withName, ...withoutName]) {
-    const nameKey = r.name?.toLowerCase().replace(/\s/g, '') || '';
+  for (const r of [...decisionMakers, ...others]) {
+    const nameKey  = r.name?.toLowerCase().replace(/\s/g, '') || '';
     const phoneKey = r.phone || '';
     const emailKey = r.email?.toLowerCase() || '';
 
-    if (nameKey && seenNames.has(nameKey)) continue;
+    if (nameKey  && seenNames.has(nameKey))   continue;
     if (phoneKey && seenPhones.has(phoneKey)) continue;
     if (emailKey && seenEmails.has(emailKey)) continue;
 
-    if (nameKey) seenNames.add(nameKey);
+    if (nameKey)  seenNames.add(nameKey);
     if (phoneKey) seenPhones.add(phoneKey);
     if (emailKey) seenEmails.add(emailKey);
 
@@ -356,15 +420,17 @@ router.post('/find', async (req: any, res: any) => {
 
     const all: any[] = [];
     if (linkedinRes.status === 'fulfilled') all.push(...linkedinRes.value);
-    if (googleRes.status === 'fulfilled') all.push(...googleRes.value);
-    if (websiteRes.status === 'fulfilled') all.push(...websiteRes.value);
+    if (googleRes.status === 'fulfilled')   all.push(...googleRes.value);
+    if (websiteRes.status === 'fulfilled')  all.push(...websiteRes.value);
 
     const unique = mergeResults(all);
 
     if (leadId && unique.length > 0) {
-      const best = unique.find(r => isRealName(r.name)) || unique[0];
+      const best = unique.find(r => r.isDecisionMaker && isRealName(r.name)) ||
+                   unique.find(r => isRealName(r.name)) ||
+                   unique[0];
       const updateData: any = {};
-      if (best.name && isRealName(best.name)) updateData.contact_name = best.name;
+      if (best.name  && isRealName(best.name)) updateData.contact_name = best.name;
       if (best.email) updateData.email = best.email;
       if (best.phone) updateData.phone = best.phone;
       updateData.notes = `Karar verici: ${best.name || best.email || best.phone} (${best.title}) - ${best.source}`;
@@ -410,32 +476,31 @@ router.post('/batch', async (req: any, res: any) => {
 
         const all: any[] = [];
         if (linkedinRes.status === 'fulfilled') all.push(...linkedinRes.value);
-        if (googleRes.status === 'fulfilled') all.push(...googleRes.value);
-        if (websiteRes.status === 'fulfilled') all.push(...websiteRes.value);
+        if (googleRes.status === 'fulfilled')   all.push(...googleRes.value);
+        if (websiteRes.status === 'fulfilled')  all.push(...websiteRes.value);
 
         const unique = mergeResults(all);
         if (unique.length > 0) {
-          const best = unique.find(r => isRealName(r.name)) || unique[0];
+          const best = unique.find(r => r.isDecisionMaker && isRealName(r.name)) ||
+                       unique.find(r => isRealName(r.name)) ||
+                       unique[0];
           const updateData: any = {
             score: Math.min((lead.score || 50) + 15, 100),
             notes: `Karar verici: ${best.name || best.email || best.phone} (${best.title}) - ${best.source}`,
           };
-          if (best.name && isRealName(best.name)) updateData.contact_name = best.name;
+          if (best.name  && isRealName(best.name)) updateData.contact_name = best.name;
           if (best.email) updateData.email = best.email;
           if (best.phone) updateData.phone = best.phone;
 
           await supabase.from('leads').update(updateData).eq('id', lead.id);
           results.push({
-            id: lead.id,
-            company: lead.company_name,
+            id: lead.id, company: lead.company_name,
             found: best.name || best.email || best.phone,
-            title: best.title,
-            phone: best.phone || null,
-            email: best.email || null,
+            title: best.title, phone: best.phone || null, email: best.email || null,
           });
           updated++;
         }
-        await sleep(1000);
+        await sleep(1500);
       } catch (e: any) {
         console.error(`Error for ${lead.company_name}:`, e.message);
       }
@@ -457,10 +522,8 @@ router.get('/stats', async (req: any, res: any) => {
       supabase.from('leads').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('phone', 'is', null),
     ]);
     res.json({
-      totalLeads: total || 0,
-      withContact: withContact || 0,
-      withEmail: withEmail || 0,
-      withPhone: withPhone || 0,
+      totalLeads: total || 0, withContact: withContact || 0,
+      withEmail: withEmail || 0, withPhone: withPhone || 0,
       coverageRate: total ? Math.round(((withContact || 0) / total) * 100) : 0,
     });
   } catch (e: any) {
