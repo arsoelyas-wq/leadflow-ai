@@ -139,8 +139,8 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
 async function findLinkedInCompanyId(companyName: string): Promise<string | null> {
   if (!RAPIDAPI_KEY) return null;
   try {
-    const response = await axios.get('https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/search/companies', {
-      params: { keyword: companyName, page: '1' },
+    const response = await axios.get('https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/profile', {
+      params: { company: companyName },
       headers: {
         'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
         'x-rapidapi-key': RAPIDAPI_KEY,
@@ -151,7 +151,7 @@ async function findLinkedInCompanyId(companyName: string): Promise<string | null
     console.log(`LinkedIn company search: ${companies.length} results for "${companyName}"`);
     if (companies.length > 0) {
       const best = companies[0];
-      return best.id || best.universal_name || null;
+      return best.universal_name || best.id || null;
     }
     return null;
   } catch (e: any) {
