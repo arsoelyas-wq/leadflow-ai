@@ -139,23 +139,27 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
 async function findLinkedInCompanyId(companyName: string): Promise<string | null> {
   if (!RAPIDAPI_KEY) return null;
   try {
-    const response = await axios.get('https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/profile', {
-      params: { company: companyName },
-      headers: {
-        'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
-        'x-rapidapi-key': RAPIDAPI_KEY,
-      },
-      timeout: 10000,
-    });
-    const companies = response.data?.data || [];
-    console.log(`LinkedIn company search: ${companies.length} results for "${companyName}"`);
-    if (companies.length > 0) {
-      const best = companies[0];
-      return best.universal_name || best.id || null;
-    }
+    const response = await axios.get(
+      'https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/profile',
+      {
+        params: { company: companyName },
+        headers: {
+          'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
+          'x-rapidapi-key': RAPIDAPI_KEY,
+        },
+        timeout: 10000,
+      }
+    );
+
+    // Response: { success: true, data: { id, universal_name, name, ... } }
+    const company = response.data?.data;
+    console.log(`LinkedIn company profile: ${company?.name} (${company?.universal_name})`);
+
+    if (company?.universal_name) return company.universal_name;
+    if (company?.id) return String(company.id);
     return null;
   } catch (e: any) {
-    console.error('LinkedIn company search error:', e.message);
+    console.error('LinkedIn company profile error:', e.message);
     return null;
   }
 }
@@ -166,26 +170,28 @@ async function getLinkedInCompanyPeople(companyId: string, companyName: string):
   const results: any[] = [];
 
   try {
-    const response = await axios.get('https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/people', {
-      params: { company_id: companyId, page: '1' },
-      headers: {
-        'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
-        'x-rapidapi-key': RAPIDAPI_KEY,
-      },
-      timeout: 15000,
-    });
+    const response = await axios.get(
+      'https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/people',
+      {
+        params: { company_id: companyId, page: '1' },
+        headers: {
+          'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
+          'x-rapidapi-key': RAPIDAPI_KEY,
+        },
+        timeout: 15000,
+      }
+    );
 
+    // Response: { success: true, data: [...], total: N }
     const people = response.data?.data || [];
-    console.log(`LinkedIn company people: ${people.length} kisi bulundu for company ${companyId}`);
+    console.log(`LinkedIn people: ${people.length} kisi for ${companyName} (id: ${companyId})`);
 
     for (const person of people) {
-      const name = person.full_name || '';
+      const name  = person.full_name || '';
       const title = person.title || '';
       if (!isRealName(name)) continue;
 
-      // Karar verici unvana sahip olanları önceliklendir
       const isDM = isDecisionMakerTitle(title);
-
       results.push({
         name,
         title: title || 'Çalışan',
@@ -199,38 +205,38 @@ async function getLinkedInCompanyPeople(companyId: string, companyName: string):
 
     // Karar vericileri öne al
     results.sort((a, b) => (b.isDecisionMaker ? 1 : 0) - (a.isDecisionMaker ? 1 : 0));
-    return results.slice(0, 10);
+    return results.slice(0, 15);
 
   } catch (e: any) {
-    console.error('LinkedIn company people error:', e.message);
+    console.error('LinkedIn people error:', e.message);
     return [];
   }
 }
 
-// ── LİNKEDİN ARAMA (ANA FONKSİYON) ──────────────────────
+// ── LİNKEDİN ANA FONKSİYON ───────────────────────────────
 async function findViaLinkedIn(companyName: string): Promise<any[]> {
   if (!RAPIDAPI_KEY) {
-    console.log('RapidAPI key yok, LinkedIn atlanıyor');
+    console.log('RapidAPI key yok');
     return [];
   }
 
-  // 1. Şirket ID'sini bul
+  // 1. Şirket profilini ve ID'sini bul
   const companyId = await findLinkedInCompanyId(companyName);
   if (!companyId) {
-    console.log(`LinkedIn: "${companyName}" için şirket bulunamadı`);
-    // Fallback: Google üzerinden LinkedIn ara
+    console.log(`LinkedIn: "${companyName}" bulunamadi, Google fallback`);
     return await findViaLinkedInGoogle(companyName);
   }
 
   // 2. Çalışanları çek
   const people = await getLinkedInCompanyPeople(companyId, companyName);
-  console.log(`LinkedIn toplam: ${people.length} kisi, karar verici: ${people.filter(p => p.isDecisionMaker).length}`);
+  const dmCount = people.filter(p => p.isDecisionMaker).length;
+  console.log(`LinkedIn toplam: ${people.length}, karar verici: ${dmCount}`);
   return people;
 }
 
 // ── LİNKEDİN GOOGLE FALLBACK ─────────────────────────────
 async function findViaLinkedInGoogle(companyName: string): Promise<any[]> {
-  const titles = ['CEO', 'Genel Müdür', 'Kurucu', 'Satın Alma Müdürü', 'Direktör', 'Sahip'];
+  const titles = ['CEO', 'Genel Müdür', 'Kurucu', 'Satın Alma Müdürü', 'Direktör'];
   const results: any[] = [];
 
   for (const title of titles.slice(0, 3)) {
@@ -292,7 +298,10 @@ async function findViaGoogle(companyName: string, city: string): Promise<any[]> 
 
         const phones = extractPhones(text);
         for (const phone of phones) {
-          results.push({ name: null, phone, title: 'Yetkili', company: companyName, source: 'Google', confidence: 'medium' });
+          results.push({
+            name: null, phone, title: 'Yetkili',
+            company: companyName, source: 'Google', confidence: 'medium',
+          });
         }
       }
       await sleep(200);
@@ -306,7 +315,11 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
   const results: any[] = [];
   try {
     const base = website.startsWith('http') ? website : `https://${website}`;
-    const pages = [base, `${base}/iletisim`, `${base}/contact`, `${base}/hakkimizda`, `${base}/about`, `${base}/ekibimiz`, `${base}/yonetim`];
+    const pages = [
+      base, `${base}/iletisim`, `${base}/contact`,
+      `${base}/hakkimizda`, `${base}/about`,
+      `${base}/ekibimiz`, `${base}/yonetim`,
+    ];
 
     for (const pageUrl of pages.slice(0, 4)) {
       try {
@@ -338,10 +351,10 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
         }
 
         $('[itemtype*="Person"], .team-member, .staff, .ekip, .yonetim, .management, .about-team').each((_: any, el: any) => {
-          const name = $(el).find('[itemprop="name"], .name, .isim, h3, h4').first().text().trim();
+          const name     = $(el).find('[itemprop="name"], .name, .isim, h3, h4').first().text().trim();
           const jobTitle = $(el).find('[itemprop="jobTitle"], .title, .unvan, .pozisyon').first().text().trim();
-          const phone = $(el).find('[itemprop="telephone"], a[href^="tel:"]').first().text().trim();
-          const email = $(el).find('[itemprop="email"], a[href^="mailto:"]').first().text().trim().replace('mailto:', '');
+          const phone    = $(el).find('[itemprop="telephone"], a[href^="tel:"]').first().text().trim();
+          const email    = $(el).find('[itemprop="email"], a[href^="mailto:"]').first().text().trim().replace('mailto:', '');
 
           if (name && isRealName(name)) {
             const isDM = DECISION_MAKER_TITLES.some(t => jobTitle.toLowerCase().includes(t));
@@ -357,7 +370,7 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
         });
 
         $('a[href^="tel:"]').each((_: any, el: any) => {
-          const href = $(el).attr('href') || '';
+          const href  = $(el).attr('href') || '';
           const phone = cleanPhone(href.replace('tel:', ''));
           if (phone.length >= 12 && phone.length <= 13) {
             results.push({ name: null, phone, title: 'Şirket Hattı', source: 'Website', confidence: 'high' });
@@ -378,7 +391,6 @@ function mergeResults(all: any[]): any[] {
   const seenEmails = new Set<string>();
   const seenNames  = new Set<string>();
 
-  // Karar vericiler önce, sonra diğerleri
   const decisionMakers = all.filter(r => r.isDecisionMaker || (r.name && isRealName(r.name) && isDecisionMakerTitle(r.title)));
   const others = all.filter(r => !decisionMakers.includes(r));
 
