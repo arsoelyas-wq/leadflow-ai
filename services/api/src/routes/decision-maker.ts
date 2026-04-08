@@ -136,13 +136,22 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
 }
 
 // ── RAPIDAPI: LİNKEDİN ŞİRKET ID BUL ────────────────────
+function normalizeCompanyName(name: string): string {
+  return name
+    .replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g').replace(/[ıİ]/g, 'i')
+    .replace(/[öÖ]/g, 'o').replace(/[şŞ]/g, 's').replace(/[üÜ]/g, 'u')
+    .replace(/[^\w\s]/g, '').trim();
+}
+
 async function findLinkedInCompanyId(companyName: string): Promise<string | null> {
   if (!RAPIDAPI_KEY) return null;
+  const normalizedName = normalizeCompanyName(companyName);
+  console.log('LinkedIn arama:', normalizedName);
   try {
     const response = await axios.get(
       'https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/profile',
       {
-        params: { company: companyName },
+        params: { company: normalizedName },
         headers: {
           'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
           'x-rapidapi-key': RAPIDAPI_KEY,
