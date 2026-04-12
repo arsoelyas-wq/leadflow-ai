@@ -1,3 +1,4 @@
+// v3 - companyNameMatch fixed
 export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
