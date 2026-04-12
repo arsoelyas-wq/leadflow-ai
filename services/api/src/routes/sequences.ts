@@ -204,7 +204,9 @@ async function processSequences() {
 
           console.log(`Sequence step ${currentStep + 1} executed for lead ${lead.company_name}`);
         } else {
-          console.error(`Step failed for ${lead.company_name}: ${result.message}`);
+          if (!result.message?.includes('bağlı') && !result.message?.includes('WhatsApp')) {
+  console.error(`Step failed for ${lead.company_name}: ${result.message}`);
+}
         }
 
         await sleep(3000);
