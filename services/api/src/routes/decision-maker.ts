@@ -29,14 +29,14 @@ function getProxyAgent() {
   return new HttpsProxyAgent('http://' + user + ':' + pass + '@' + host + ':' + port);
 }
 
-function getAxiosConfig(extraHeaders) {
+function getAxiosConfig(extraHeaders?: any) {
   const agent = getProxyAgent();
   const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
   ];
   const ua = userAgents[Math.floor(Math.random() * userAgents.length)];
-  const config = {
+  const config: any = {
     timeout: 15000,
     headers: {
       'User-Agent': ua,
@@ -379,7 +379,7 @@ router.post('/find', async (req, res) => {
     const unique = mergeResults(all);
     if (leadId && unique.length > 0) {
       const best = unique.find(r => r.isDecisionMaker && isRealName(r.name)) || unique.find(r => isRealName(r.name)) || unique[0];
-      const updateData = {};
+      const updateData: any = {};
       if (best.name  && isRealName(best.name)) updateData.contact_name = best.name;
       if (best.email) updateData.email = best.email;
       if (best.phone) updateData.phone = best.phone;
@@ -419,7 +419,7 @@ router.post('/batch', async (req, res) => {
         const unique = mergeResults(all);
         if (unique.length > 0) {
           const best = unique.find(r => r.isDecisionMaker && isRealName(r.name)) || unique.find(r => isRealName(r.name)) || unique[0];
-          const updateData = {
+          const updateData: any = {
             score: Math.min((lead.score || 50) + 15, 100),
             notes: 'Karar verici: ' + (best.name || best.email || best.phone) + ' (' + best.title + ') - ' + best.source,
           };
