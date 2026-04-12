@@ -228,13 +228,13 @@ router.post('/analyze-all', async (req: any, res: any) => {
       .gte('sent_at', since)
       .not('lead_id', 'is', null);
 
-    const uniqueLeads = [...new Map((leadIds || []).map((m: any) => [m.lead_id, m])).values()];
+    const uniqueLeads: any[] = [...new Map((leadIds || []).map((m: any) => [m.lead_id, m])).values()];
     console.log(`Analiz edilecek: ${uniqueLeads.length} konuşma`);
 
     let analyzed = 0;
     const results = [];
 
-    for (const item of uniqueLeads.slice(0, 20)) {
+    for (const item of uniqueLeads.slice(0, 20) as any[]) {
       try {
         const { data: messages } = await supabase
           .from('messages')
