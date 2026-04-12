@@ -121,7 +121,7 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
       const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${Math.min(maxResults, 10)}&hl=tr&gl=tr`;
       const response = await axios.get(url, { timeout: 10000 });
       const items = response.data.items || [];
-      console.log(`Google CSE: ${items.length} sonuc — ${query.slice(0, 60)}`);
+      console.log(`Google CSE: ${items.length} sonuc`);
       return items.map((item: any) => ({
         title: item.title || '',
         url: item.link || '',
@@ -135,42 +135,75 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
   return [];
 }
 
-// ── RAPIDAPI: LİNKEDİN ŞİRKET ID BUL ────────────────────
-function normalizeCompanyName(name: string): string {
-  return name
-    .replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g').replace(/[ıİ]/g, 'i')
-    .replace(/[öÖ]/g, 'o').replace(/[şŞ]/g, 's').replace(/[üÜ]/g, 'u')
-    .replace(/[^\w\s]/g, '').trim();
+// ── LİNKEDİN SLUG OLUŞTUR ────────────────────────────────
+function generateSlugs(companyName: string): string[] {
+  // Sadece ASCII karaktere çevir
+  const ascii = companyName
+    .replace(/[^a-zA-Z0-9\s\-]/g, ' ')
+    .trim();
+
+  const words = ascii.toLowerCase().split(/\s+/).filter(Boolean);
+
+  const slugs: string[] = [];
+
+  // Tam slug: koc-holding
+  if (words.length > 0) slugs.push(words.join('-'));
+
+  // İlk kelime: koc
+  if (words.length > 0) slugs.push(words[0]);
+
+  // İlk iki kelime: koc-holding
+  if (words.length > 1) slugs.push(words.slice(0, 2).join('-'));
+
+  // Boşluksuz: kocholding
+  if (words.length > 0) slugs.push(words.join(''));
+
+  // Sadece harfler, ilk kelime
+  const firstWordOnly = words[0]?.replace(/[^a-z]/g, '') || '';
+  if (firstWordOnly && !slugs.includes(firstWordOnly)) slugs.push(firstWordOnly);
+
+  // Tekrarları kaldır
+  return [...new Set(slugs)].filter(s => s.length > 1);
 }
 
+// ── RAPIDAPI: TEK SLUG DENE ───────────────────────────────
+async function tryLinkedInSlug(slug: string): Promise<any> {
+  const response = await axios.get(
+    'https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/profile',
+    {
+      params: { company: slug },
+      headers: {
+        'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
+        'x-rapidapi-key': RAPIDAPI_KEY,
+      },
+      timeout: 10000,
+    }
+  );
+  return response.data?.data;
+}
+
+// ── RAPIDAPI: LİNKEDİN ŞİRKET ID BUL ────────────────────
 async function findLinkedInCompanyId(companyName: string): Promise<string | null> {
   if (!RAPIDAPI_KEY) return null;
-  const normalizedName = normalizeCompanyName(companyName);
-  console.log('LinkedIn arama:', normalizedName);
-  try {
-    const response = await axios.get(
-      'https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/profile',
-      {
-        params: { company: normalizedName },
-        headers: {
-          'x-rapidapi-host': 'fresh-linkedin-scraper-api.p.rapidapi.com',
-          'x-rapidapi-key': RAPIDAPI_KEY,
-        },
-        timeout: 10000,
+
+  const slugs = generateSlugs(companyName);
+  console.log(`LinkedIn slug denemeleri for "${companyName}":`, slugs);
+
+  for (const slug of slugs) {
+    try {
+      const company = await tryLinkedInSlug(slug);
+      if (company?.id) {
+        console.log(`LinkedIn bulundu: ${company.name} (ID: ${company.id}) slug: ${slug}`);
+        return String(company.id);
       }
-    );
-
-    // Response: { success: true, data: { id, universal_name, name, ... } }
-    const company = response.data?.data;
-    console.log(`LinkedIn company profile: ${company?.name} (${company?.universal_name})`);
-
-    if (company?.id) return String(company.id);
-    if (company?.universal_name) return company.universal_name;
-    return null;
-  } catch (e: any) {
-    console.error('LinkedIn company profile error:', e.message);
-    return null;
+    } catch (e: any) {
+      // 404 = bulunamadi, devam et
+    }
+    await sleep(300);
   }
+
+  console.log(`LinkedIn: hic slug calismadi for "${companyName}"`);
+  return null;
 }
 
 // ── RAPIDAPI: ŞİRKET ÇALIŞANLARINI ÇEK ──────────────────
@@ -191,9 +224,8 @@ async function getLinkedInCompanyPeople(companyId: string, companyName: string):
       }
     );
 
-    // Response: { success: true, data: [...], total: N }
     const people = response.data?.data || [];
-    console.log(`LinkedIn people: ${people.length} kisi for ${companyName} (id: ${companyId})`);
+    console.log(`LinkedIn people: ${people.length} kisi for ${companyName}`);
 
     for (const person of people) {
       const name  = person.full_name || '';
@@ -212,7 +244,6 @@ async function getLinkedInCompanyPeople(companyId: string, companyName: string):
       });
     }
 
-    // Karar vericileri öne al
     results.sort((a, b) => (b.isDecisionMaker ? 1 : 0) - (a.isDecisionMaker ? 1 : 0));
     return results.slice(0, 15);
 
@@ -224,22 +255,13 @@ async function getLinkedInCompanyPeople(companyId: string, companyName: string):
 
 // ── LİNKEDİN ANA FONKSİYON ───────────────────────────────
 async function findViaLinkedIn(companyName: string): Promise<any[]> {
-  if (!RAPIDAPI_KEY) {
-    console.log('RapidAPI key yok');
-    return [];
-  }
+  if (!RAPIDAPI_KEY) return [];
 
-  // 1. Şirket profilini ve ID'sini bul
   const companyId = await findLinkedInCompanyId(companyName);
-  if (!companyId) {
-    console.log(`LinkedIn: "${companyName}" bulunamadi, Google fallback`);
-    return await findViaLinkedInGoogle(companyName);
-  }
+  if (!companyId) return await findViaLinkedInGoogle(companyName);
 
-  // 2. Çalışanları çek
   const people = await getLinkedInCompanyPeople(companyId, companyName);
-  const dmCount = people.filter(p => p.isDecisionMaker).length;
-  console.log(`LinkedIn toplam: ${people.length}, karar verici: ${dmCount}`);
+  console.log(`LinkedIn toplam: ${people.length}, karar verici: ${people.filter(p => p.isDecisionMaker).length}`);
   return people;
 }
 
@@ -284,7 +306,6 @@ async function findViaGoogle(companyName: string, city: string): Promise<any[]> 
   const queries = [
     `"${companyName}" "genel müdür" OR "CEO" OR "kurucu" OR "sahip" ${city}`,
     `"${companyName}" yönetici telefon iletişim`,
-    `"${companyName}" site:linkedin.com CEO OR "Genel Müdür" OR Kurucu`,
   ];
 
   for (const query of queries) {
@@ -307,10 +328,7 @@ async function findViaGoogle(companyName: string, city: string): Promise<any[]> 
 
         const phones = extractPhones(text);
         for (const phone of phones) {
-          results.push({
-            name: null, phone, title: 'Yetkili',
-            company: companyName, source: 'Google', confidence: 'medium',
-          });
+          results.push({ name: null, phone, title: 'Yetkili', company: companyName, source: 'Google', confidence: 'medium' });
         }
       }
       await sleep(200);
@@ -324,11 +342,7 @@ async function scrapeWebsite(website: string, companyName: string): Promise<any[
   const results: any[] = [];
   try {
     const base = website.startsWith('http') ? website : `https://${website}`;
-    const pages = [
-      base, `${base}/iletisim`, `${base}/contact`,
-      `${base}/hakkimizda`, `${base}/about`,
-      `${base}/ekibimiz`, `${base}/yonetim`,
-    ];
+    const pages = [base, `${base}/iletisim`, `${base}/contact`, `${base}/hakkimizda`, `${base}/about`, `${base}/ekibimiz`];
 
     for (const pageUrl of pages.slice(0, 4)) {
       try {
