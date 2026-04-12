@@ -15,21 +15,21 @@ const RAPIDAPI_KEY   = process.env.RAPIDAPI_KEY;
 const PROXY_LIST = (process.env.PROXY_LIST || '').split(',').filter(Boolean);
 let proxyIndex = 0;
 
-function getNextProxy() {
+function getNextProxy(): string | null {
   if (!PROXY_LIST.length) return null;
   const proxy = PROXY_LIST[proxyIndex % PROXY_LIST.length];
   proxyIndex++;
   return proxy;
 }
 
-function getProxyAgent() {
+function getProxyAgent(): any {
   const proxy = getNextProxy();
   if (!proxy) return null;
   const [host, port, user, pass] = proxy.split(':');
-  return new HttpsProxyAgent('http://' + user + ':' + pass + '@' + host + ':' + port);
+  return new HttpsProxyAgent(`http://${user}:${pass}@${host}:${port}`);
 }
 
-function getAxiosConfig(extraHeaders?: any) {
+function getAxiosConfig(extraHeaders: any = {}): any {
   const agent = getProxyAgent();
   const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
@@ -43,7 +43,7 @@ function getAxiosConfig(extraHeaders?: any) {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
       'Connection': 'keep-alive',
-      ...(extraHeaders || {}),
+      ...extraHeaders,
     },
   };
   if (agent) { config.httpAgent = agent; config.httpsAgent = agent; }
@@ -51,11 +51,21 @@ function getAxiosConfig(extraHeaders?: any) {
 }
 
 const DECISION_MAKER_TITLES = [
-  'genel müdür','ceo','yönetim kurulu','satın alma','tedarik',
+  // Ingilizce
+  'ceo','founder','owner','director','manager','head of','vp','vice president',
+  'procurement','purchasing','president','partner','co-founder','chief',
+  'general manager','managing director','sales manager','marketing manager',
+  // Turkce - unvan sonekleri
+  'genel mudur','genel mudur',
+  // Turkce tam unvanlar
+  'genel müdür','yönetim kurulu','satın alma','tedarik zinciri',
   'ticaret müdürü','ihracat müdürü','pazarlama müdürü','satış müdürü',
-  'kurucu','ortak','direktör','başkan','founder','owner','director',
-  'manager','head of','vp','vice president','procurement','purchasing',
-  'genel koordinatör','işletme müdürü','fabrika müdürü',
+  'kurucu','ortak','direktör','başkan','genel koordinatör',
+  'işletme müdürü','fabrika müdürü','genel sekreter','icra kurulu',
+  // Turkce kismi eslesme - unvan icindeki kelimeler
+  'müdürü','yöneticisi','sorumlusu','koordinatör','direktörü',
+  'sahibi','kurucusu','ortağı','başkanı','yönetici',
+  'müdür','yönetici','kurucu','sahip','sorumlu',
 ];
 
 const GENERIC_PREFIXES = [
@@ -64,9 +74,9 @@ const GENERIC_PREFIXES = [
   'muhasebe','hr','ik','webmaster','noreply','no-reply','satis',
 ];
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-function isRealName(name) {
+function isRealName(name: string): boolean {
   if (!name || name.length < 4 || name.length > 50) return false;
   if (GENERIC_PREFIXES.some(g => name.toLowerCase().includes(g))) return false;
   if (/^\d/.test(name)) return false;
@@ -75,13 +85,13 @@ function isRealName(name) {
   return true;
 }
 
-function isDecisionMakerTitle(title) {
+function isDecisionMakerTitle(title: string): boolean {
   if (!title) return false;
   const t = title.toLowerCase();
   return DECISION_MAKER_TITLES.some(dt => t.includes(dt));
 }
 
-function cleanPhone(phone) {
+function cleanPhone(phone: string): string {
   const cleaned = phone.replace(/[^\d+]/g, '');
   if (cleaned.length < 10) return '';
   if (cleaned.startsWith('0')) return '+90' + cleaned.slice(1);
@@ -91,8 +101,8 @@ function cleanPhone(phone) {
   return cleaned;
 }
 
-function extractPhones(text) {
-  const phones = new Set();
+function extractPhones(text: string): string[] {
+  const phones = new Set<string>();
   const pattern = /(?:(?:\+90|0090|0)\s?)?(?:\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{2}[\s\-\.]?\d{2})(?!\d)/g;
   const matches = text.match(pattern) || [];
   for (const m of matches) {
@@ -102,27 +112,26 @@ function extractPhones(text) {
   return Array.from(phones).slice(0, 5);
 }
 
-function extractEmails(text) {
+function extractEmails(text: string): string[] {
   const cleanText = text.replace(/[^\x20-\x7E\u00C0-\u024F]/g, ' ');
   const emailRegex = /\b[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,48}@[a-zA-Z0-9][a-zA-Z0-9.-]{0,48}\.[a-zA-Z]{2,6}\b/g;
   const matches = cleanText.match(emailRegex) || [];
-  return matches.filter(e =>
+  return matches.filter((e: string) =>
     !e.includes('example') && !e.includes('placeholder') &&
     !e.includes('domain') && e.length < 60 &&
     /^[a-zA-Z0-9]/.test(e) && e.split('@')[0].length >= 2
   ).slice(0, 5);
 }
 
-async function googleSearch(query, maxResults) {
-  maxResults = maxResults || 8;
+async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
   if (GOOGLE_CSE_KEY && GOOGLE_CSE_ID) {
     try {
-      const url = 'https://www.googleapis.com/customsearch/v1?key=' + GOOGLE_CSE_KEY + '&cx=' + GOOGLE_CSE_ID + '&q=' + encodeURIComponent(query) + '&num=' + Math.min(maxResults, 10) + '&hl=tr&gl=tr';
+      const url = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_KEY}&cx=${GOOGLE_CSE_ID}&q=${encodeURIComponent(query)}&num=${Math.min(maxResults, 10)}&hl=tr&gl=tr`;
       const response = await axios.get(url, { timeout: 10000 });
       const items = response.data.items || [];
-      console.log('Google CSE: ' + items.length + ' sonuc');
-      return items.map(item => ({ title: item.title || '', url: item.link || '', snippet: item.snippet || '' }));
-    } catch (e) {
+      console.log(`Google CSE: ${items.length} sonuc`);
+      return items.map((item: any) => ({ title: item.title || '', url: item.link || '', snippet: item.snippet || '' }));
+    } catch (e: any) {
       console.error('Google CSE error:', e.message);
       return [];
     }
@@ -130,31 +139,28 @@ async function googleSearch(query, maxResults) {
   return [];
 }
 
-function generateSlugs(companyName) {
+function generateSlugs(companyName: string): string[] {
   const ascii = companyName.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim();
   const words = ascii.toLowerCase().split(/\s+/).filter(Boolean);
-  const slugs = [];
+  const slugs: string[] = [];
   if (words.length > 0) slugs.push(words.join('-'));
   if (words.length > 1) slugs.push(words.slice(0, 2).join('-'));
   if (words.length > 0) slugs.push(words.join(''));
   return [...new Set(slugs)].filter(s => s.length > 3);
 }
 
-// STRICT company name matching - minimum 6 char overlap required
-function companyNameMatch(foundName, searchName) {
+function companyNameMatch(foundName: string, searchName: string): boolean {
   const f = foundName.toLowerCase().replace(/[^a-z0-9]/g, '');
   const s = searchName.toLowerCase().replace(/[^a-z0-9]/g, '');
   if (f.length < 3 || s.length < 3) return false;
   if (f === s) return true;
-  // Both must be at least 6 chars for partial match
   if (f.length < 6 || s.length < 6) return f === s;
-  // Check if one contains the other (minimum 6 chars)
   if (s.length >= 6 && f.includes(s.slice(0, 6))) return true;
   if (f.length >= 6 && s.includes(f.slice(0, 6))) return true;
   return false;
 }
 
-async function tryLinkedInSlug(slug) {
+async function tryLinkedInSlug(slug: string): Promise<any> {
   const response = await axios.get(
     'https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/profile',
     {
@@ -166,18 +172,17 @@ async function tryLinkedInSlug(slug) {
       timeout: 10000,
     }
   );
-  return response.data && response.data.data;
+  return response.data?.data;
 }
 
-async function findLinkedInCompanyId(companyName) {
+async function findLinkedInCompanyId(companyName: string): Promise<string | null> {
   if (!RAPIDAPI_KEY) return null;
   const slugs = generateSlugs(companyName);
   console.log('LinkedIn slugs:', slugs.join(', '));
-
   for (const slug of slugs) {
     try {
       const company = await tryLinkedInSlug(slug);
-      if (company && company.id) {
+      if (company?.id) {
         const isMatch = companyNameMatch(company.name || '', companyName);
         if (!isMatch) {
           console.log('Eslesme yok:', company.name, 'vs', companyName);
@@ -186,18 +191,16 @@ async function findLinkedInCompanyId(companyName) {
         console.log('LinkedIn OK:', company.name, company.id, 'slug:', slug);
         return String(company.id);
       }
-    } catch (e) {
-      // 404 = not found, continue
-    }
+    } catch {}
     await sleep(300);
   }
   console.log('LinkedIn bulunamadi:', companyName);
   return null;
 }
 
-async function getLinkedInCompanyPeople(companyId, companyName) {
+async function getLinkedInCompanyPeople(companyId: string, companyName: string): Promise<any[]> {
   if (!RAPIDAPI_KEY) return [];
-  const results = [];
+  const results: any[] = [];
   try {
     const response = await axios.get(
       'https://fresh-linkedin-scraper-api.p.rapidapi.com/api/v1/company/people',
@@ -210,38 +213,42 @@ async function getLinkedInCompanyPeople(companyId, companyName) {
         timeout: 15000,
       }
     );
-    const people = (response.data && response.data.data) || [];
-    console.log('LinkedIn people: ' + people.length + ' kisi for ' + companyName);
+    const people = response.data?.data || [];
+    console.log(`LinkedIn people: ${people.length} kisi for ${companyName}`);
     for (const person of people) {
       const name  = person.full_name || '';
       const title = person.title || '';
       if (!isRealName(name)) continue;
       const isDM = isDecisionMakerTitle(title);
-      results.push({ name, title: title || 'Calisan', company: companyName, linkedinUrl: person.url || '', source: 'LinkedIn', confidence: isDM ? 'high' : 'low', isDecisionMaker: isDM });
+      results.push({
+        name, title: title || 'Calisan', company: companyName,
+        linkedinUrl: person.url || '', source: 'LinkedIn',
+        confidence: isDM ? 'high' : 'low', isDecisionMaker: isDM,
+      });
     }
     results.sort((a, b) => (b.isDecisionMaker ? 1 : 0) - (a.isDecisionMaker ? 1 : 0));
     return results.slice(0, 15);
-  } catch (e) {
+  } catch (e: any) {
     console.error('LinkedIn people error:', e.message);
     return [];
   }
 }
 
-async function findViaLinkedIn(companyName) {
+async function findViaLinkedIn(companyName: string): Promise<any[]> {
   if (!RAPIDAPI_KEY) return [];
   const companyId = await findLinkedInCompanyId(companyName);
   if (!companyId) return await findViaLinkedInGoogle(companyName);
   const people = await getLinkedInCompanyPeople(companyId, companyName);
-  console.log('LinkedIn toplam: ' + people.length + ', karar verici: ' + people.filter(p => p.isDecisionMaker).length);
+  console.log(`LinkedIn toplam: ${people.length}, karar verici: ${people.filter((p: any) => p.isDecisionMaker).length}`);
   return people;
 }
 
-async function findViaLinkedInGoogle(companyName) {
+async function findViaLinkedInGoogle(companyName: string): Promise<any[]> {
   const titles = ['CEO', 'Genel Müdür', 'Kurucu', 'Direktör'];
-  const results = [];
+  const results: any[] = [];
   for (const title of titles.slice(0, 3)) {
     try {
-      const query = '"' + companyName + '" "' + title + '" site:linkedin.com/in';
+      const query = `"${companyName}" "${title}" site:linkedin.com/in`;
       const searchResults = await googleSearch(query, 3);
       for (const r of searchResults) {
         if (!r.url.includes('linkedin.com/in/')) continue;
@@ -252,16 +259,16 @@ async function findViaLinkedInGoogle(companyName) {
         results.push({ name, title, company: companyName, linkedinUrl: r.url, source: 'LinkedIn', confidence: 'medium', isDecisionMaker: true });
       }
       await sleep(300);
-    } catch (e) {}
+    } catch {}
   }
   return results;
 }
 
-async function findViaGoogle(companyName, city) {
-  const results = [];
+async function findViaGoogle(companyName: string, city: string): Promise<any[]> {
+  const results: any[] = [];
   const queries = [
-    '"' + companyName + '" "genel müdür" OR "CEO" OR "kurucu" OR "sahip" ' + (city || ''),
-    '"' + companyName + '" yönetici telefon iletişim',
+    `"${companyName}" "genel müdür" OR "CEO" OR "kurucu" OR "sahip" ${city}`,
+    `"${companyName}" yönetici telefon iletişim`,
   ];
   for (const query of queries) {
     try {
@@ -281,16 +288,16 @@ async function findViaGoogle(companyName, city) {
         }
       }
       await sleep(200);
-    } catch (e) {}
+    } catch {}
   }
   return results;
 }
 
-async function scrapeWebsite(website, companyName) {
-  const results = [];
+async function scrapeWebsite(website: string, companyName: string): Promise<any[]> {
+  const results: any[] = [];
   try {
-    const base = website.startsWith('http') ? website : 'https://' + website;
-    const pages = [base, base + '/iletisim', base + '/contact', base + '/hakkimizda', base + '/about'];
+    const base = website.startsWith('http') ? website : `https://${website}`;
+    const pages = [base, `${base}/iletisim`, `${base}/contact`, `${base}/hakkimizda`, `${base}/about`, `${base}/ekibimiz`];
     for (const pageUrl of pages.slice(0, 4)) {
       try {
         const res = await axios.get(pageUrl, getAxiosConfig());
@@ -308,13 +315,13 @@ async function scrapeWebsite(website, companyName) {
             results.push({ name: null, email, title: 'Iletisim', source: 'Website', confidence: 'medium' });
           } else {
             const nameParts = prefix.replace(/[._-]/g, ' ').split(' ');
-            const possibleName = nameParts.length >= 2 ? nameParts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : null;
+            const possibleName = nameParts.length >= 2 ? nameParts.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ') : null;
             results.push({ name: possibleName && isRealName(possibleName) ? possibleName : null, email, title: 'Yetkili', source: 'Website', confidence: 'medium' });
           }
         }
-        $('[itemtype*="Person"], .team-member, .staff, .ekip, .yonetim, .management').each((_, el) => {
-          const name     = $(el).find('[itemprop="name"], .name, h3, h4').first().text().trim();
-          const jobTitle = $(el).find('[itemprop="jobTitle"], .title, .unvan').first().text().trim();
+        $('[itemtype*="Person"], .team-member, .staff, .ekip, .yonetim, .management, .about-team').each((_: any, el: any) => {
+          const name     = $(el).find('[itemprop="name"], .name, .isim, h3, h4').first().text().trim();
+          const jobTitle = $(el).find('[itemprop="jobTitle"], .title, .unvan, .pozisyon').first().text().trim();
           const phone    = $(el).find('[itemprop="telephone"], a[href^="tel:"]').first().text().trim();
           const email    = $(el).find('[itemprop="email"], a[href^="mailto:"]').first().text().trim().replace('mailto:', '');
           if (name && isRealName(name)) {
@@ -324,7 +331,7 @@ async function scrapeWebsite(website, companyName) {
             }
           }
         });
-        $('a[href^="tel:"]').each((_, el) => {
+        $('a[href^="tel:"]').each((_: any, el: any) => {
           const href  = $(el).attr('href') || '';
           const phone = cleanPhone(href.replace('tel:', ''));
           if (phone.length >= 12 && phone.length <= 13) {
@@ -332,23 +339,23 @@ async function scrapeWebsite(website, companyName) {
           }
         });
         await sleep(400);
-      } catch (e) {}
+      } catch {}
     }
-  } catch (e) {}
+  } catch {}
   return results;
 }
 
-function mergeResults(all) {
-  const merged = [];
-  const seenPhones = new Set();
-  const seenEmails = new Set();
-  const seenNames  = new Set();
+function mergeResults(all: any[]): any[] {
+  const merged: any[] = [];
+  const seenPhones = new Set<string>();
+  const seenEmails = new Set<string>();
+  const seenNames  = new Set<string>();
   const decisionMakers = all.filter(r => r.isDecisionMaker || (r.name && isRealName(r.name) && isDecisionMakerTitle(r.title)));
   const others = all.filter(r => !decisionMakers.includes(r));
   for (const r of [...decisionMakers, ...others]) {
-    const nameKey  = (r.name || '').toLowerCase().replace(/\s/g, '');
+    const nameKey  = r.name?.toLowerCase().replace(/\s/g, '') || '';
     const phoneKey = r.phone || '';
-    const emailKey = (r.email || '').toLowerCase();
+    const emailKey = r.email?.toLowerCase() || '';
     if (nameKey  && seenNames.has(nameKey))   continue;
     if (phoneKey && seenPhones.has(phoneKey)) continue;
     if (emailKey && seenEmails.has(emailKey)) continue;
@@ -357,22 +364,22 @@ function mergeResults(all) {
     if (emailKey) seenEmails.add(emailKey);
     merged.push(r);
   }
-  const order = { high: 3, medium: 2, low: 1 };
+  const order: Record<string, number> = { high: 3, medium: 2, low: 1 };
   return merged.sort((a, b) => (order[b.confidence] || 0) - (order[a.confidence] || 0));
 }
 
-router.post('/find', async (req, res) => {
+router.post('/find', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { companyName, website, city, leadId } = req.body;
     if (!companyName) return res.status(400).json({ error: 'companyName zorunlu' });
-    console.log('Decision maker searching: ' + companyName);
+    console.log(`Decision maker searching: ${companyName}`);
     const [linkedinRes, googleRes, websiteRes] = await Promise.allSettled([
       findViaLinkedIn(companyName),
       findViaGoogle(companyName, city || ''),
       website ? scrapeWebsite(website, companyName) : Promise.resolve([]),
     ]);
-    const all = [];
+    const all: any[] = [];
     if (linkedinRes.status === 'fulfilled') all.push(...linkedinRes.value);
     if (googleRes.status === 'fulfilled')   all.push(...googleRes.value);
     if (websiteRes.status === 'fulfilled')  all.push(...websiteRes.value);
@@ -383,26 +390,26 @@ router.post('/find', async (req, res) => {
       if (best.name  && isRealName(best.name)) updateData.contact_name = best.name;
       if (best.email) updateData.email = best.email;
       if (best.phone) updateData.phone = best.phone;
-      updateData.notes = 'Karar verici: ' + (best.name || best.email || best.phone) + ' (' + best.title + ') - ' + best.source;
+      updateData.notes = `Karar verici: ${best.name || best.email || best.phone} (${best.title}) - ${best.source}`;
       if (Object.keys(updateData).length > 1) {
         await supabase.from('leads').update(updateData).eq('id', leadId).eq('user_id', userId);
       }
     }
     res.json({ company: companyName, found: unique.length, decisionMakers: unique.slice(0, 15) });
-  } catch (e) {
+  } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-router.post('/batch', async (req, res) => {
+router.post('/batch', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { leadIds, maxLeads } = req.body;
-    let query = supabase.from('leads').select('id, company_name, website, city, contact_name, score').eq('user_id', userId).is('contact_name', null).limit(maxLeads || 10);
-    if (leadIds && leadIds.length) query = query.in('id', leadIds);
+    const { leadIds, maxLeads = 10 } = req.body;
+    let query = supabase.from('leads').select('id, company_name, website, city, contact_name, score').eq('user_id', userId).is('contact_name', null).limit(maxLeads);
+    if (leadIds?.length) query = query.in('id', leadIds);
     const { data: leads, error } = await query;
     if (error) throw error;
-    if (!leads || !leads.length) return res.json({ message: 'Taranacak lead yok', updated: 0 });
+    if (!leads?.length) return res.json({ message: 'Taranacak lead yok', updated: 0 });
     let updated = 0;
     const results = [];
     for (const lead of leads) {
@@ -412,7 +419,7 @@ router.post('/batch', async (req, res) => {
           findViaGoogle(lead.company_name, lead.city || ''),
           lead.website ? scrapeWebsite(lead.website, lead.company_name) : Promise.resolve([]),
         ]);
-        const all = [];
+        const all: any[] = [];
         if (linkedinRes.status === 'fulfilled') all.push(...linkedinRes.value);
         if (googleRes.status === 'fulfilled')   all.push(...googleRes.value);
         if (websiteRes.status === 'fulfilled')  all.push(...websiteRes.value);
@@ -421,7 +428,7 @@ router.post('/batch', async (req, res) => {
           const best = unique.find(r => r.isDecisionMaker && isRealName(r.name)) || unique.find(r => isRealName(r.name)) || unique[0];
           const updateData: any = {
             score: Math.min((lead.score || 50) + 15, 100),
-            notes: 'Karar verici: ' + (best.name || best.email || best.phone) + ' (' + best.title + ') - ' + best.source,
+            notes: `Karar verici: ${best.name || best.email || best.phone} (${best.title}) - ${best.source}`,
           };
           if (best.name  && isRealName(best.name)) updateData.contact_name = best.name;
           if (best.email) updateData.email = best.email;
@@ -431,17 +438,17 @@ router.post('/batch', async (req, res) => {
           updated++;
         }
         await sleep(1500);
-      } catch (e) {
-        console.error('Error for ' + lead.company_name + ':', e.message);
+      } catch (e: any) {
+        console.error(`Error for ${lead.company_name}:`, e.message);
       }
     }
-    res.json({ message: updated + '/' + leads.length + ' lead guncellendi', updated, results });
-  } catch (e) {
+    res.json({ message: `${updated}/${leads.length} lead guncellendi`, updated, results });
+  } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-router.get('/stats', async (req, res) => {
+router.get('/stats', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const [{ count: total }, { count: withContact }, { count: withEmail }, { count: withPhone }] = await Promise.all([
@@ -451,7 +458,7 @@ router.get('/stats', async (req, res) => {
       supabase.from('leads').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('phone', 'is', null),
     ]);
     res.json({ totalLeads: total || 0, withContact: withContact || 0, withEmail: withEmail || 0, withPhone: withPhone || 0, coverageRate: total ? Math.round(((withContact || 0) / total) * 100) : 0 });
-  } catch (e) {
+  } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
