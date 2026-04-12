@@ -148,14 +148,14 @@ function generateSlugs(companyName: string): string[] {
 }
 
 function companyNameMatch(foundName: string, searchName: string): boolean {
-  const f = foundName.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const s = searchName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const f = foundName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const s = searchName.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (f.length < 3 || s.length < 3) return false;
-  // En az 4 karakterlik önek esleşmesi
-  const prefix4 = s.slice(0, 4);
-  const prefix5 = s.slice(0, 5);
-  return f.startsWith(prefix4) || s.startsWith(f.slice(0, 4)) ||
-         f.includes(prefix5) || s.includes(f.slice(0, 5));
+  if (f === s) return true;
+  if (f.length >= 8 && s.includes(f)) return true;
+  if (s.length >= 8 && f.includes(s)) return true;
+  const minLen = Math.min(f.length, s.length, 8);
+  return f.slice(0, minLen) === s.slice(0, minLen);
 }
 
 async function tryLinkedInSlug(slug: string): Promise<any> {
