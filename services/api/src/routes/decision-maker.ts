@@ -55,17 +55,15 @@ const DECISION_MAKER_TITLES = [
   'ceo','founder','owner','director','manager','head of','vp','vice president',
   'procurement','purchasing','president','partner','co-founder','chief',
   'general manager','managing director','sales manager','marketing manager',
-  // Turkce - unvan sonekleri
-  'genel mudur','genel mudur',
   // Turkce tam unvanlar
   'genel müdür','yönetim kurulu','satın alma','tedarik zinciri',
   'ticaret müdürü','ihracat müdürü','pazarlama müdürü','satış müdürü',
   'kurucu','ortak','direktör','başkan','genel koordinatör',
   'işletme müdürü','fabrika müdürü','genel sekreter','icra kurulu',
-  // Turkce kismi eslesme - unvan icindeki kelimeler
+  // Turkce kismi eslesme
   'müdürü','yöneticisi','sorumlusu','koordinatör','direktörü',
   'sahibi','kurucusu','ortağı','başkanı','yönetici',
-  'müdür','yönetici','kurucu','sahip','sorumlu',
+  'müdür','kurucu','sahip','sorumlu',
 ];
 
 const GENERIC_PREFIXES = [
@@ -139,19 +137,43 @@ async function googleSearch(query: string, maxResults = 8): Promise<any[]> {
   return [];
 }
 
+// Turkce karakterleri Latin'e donustur
+function turkceToLatin(str: string): string {
+  return str
+    .replace(/[çÇ]/g, 'c')
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[ıİ]/g, 'i')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[üÜ]/g, 'u');
+}
+
 function generateSlugs(companyName: string): string[] {
-  const ascii = companyName.replace(/[^a-zA-Z0-9\s\-]/g, ' ').trim();
-  const words = ascii.toLowerCase().split(/\s+/).filter(Boolean);
+  // Turkce → Latin donusumu
+  const latin = turkceToLatin(companyName);
+
+  // Sirket eklerini temizle (A.S., Ltd., Tic., San. vb.)
+  const clean = latin
+    .replace(/\b(a\.?s\.?|ltd\.?|tic\.?|san\.?|ins\.?|dis\.?|ithalat|ihracat|sirketi|limited|anonim|kollektif|komandit)\b/gi, '')
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const words = clean.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+  if (words.length === 0) return [];
+
   const slugs: string[] = [];
-  if (words.length > 0) slugs.push(words.join('-'));
-  if (words.length > 1) slugs.push(words.slice(0, 2).join('-'));
-  if (words.length > 0) slugs.push(words.join(''));
-  return [...new Set(slugs)].filter(s => s.length > 3);
+  slugs.push(words.join('-'));                        // kar-insaat
+  if (words.length > 1) slugs.push(words.slice(0, 2).join('-')); // kar-insaat
+  if (words.length > 1) slugs.push(words[0]);        // kar
+  slugs.push(words.join(''));                         // karinsaat
+
+  return [...new Set(slugs)].filter(s => s.length > 2);
 }
 
 function companyNameMatch(foundName: string, searchName: string): boolean {
-  const f = foundName.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const s = searchName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const f = turkceToLatin(foundName).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const s = turkceToLatin(searchName).toLowerCase().replace(/[^a-z0-9]/g, '');
   if (f.length < 3 || s.length < 3) return false;
   if (f === s) return true;
   if (f.length < 6 || s.length < 6) return f === s;
@@ -244,7 +266,7 @@ async function findViaLinkedIn(companyName: string): Promise<any[]> {
 }
 
 async function findViaLinkedInGoogle(companyName: string): Promise<any[]> {
-  const titles = ['CEO', 'Genel Müdür', 'Kurucu', 'Direktör'];
+  const titles = ['CEO', 'Genel Müdür', 'Kurucu', 'Direktör', 'Yönetici'];
   const results: any[] = [];
   for (const title of titles.slice(0, 3)) {
     try {
