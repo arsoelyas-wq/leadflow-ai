@@ -15,7 +15,19 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const CALLS_SECRET = process.env.CALLS_SECRET || 'leadflow-calls-secret-2026';
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-const upload = multer({ dest: '/tmp/recordings/' });
+const upload = multer({ 
+  dest: '/tmp/recordings/',
+  fileFilter: (req: any, file: any, cb: any) => { cb(null, true); }
+});
+
+function ensureWavExtension(filePath: string): string {
+  if (!filePath.endsWith('.wav')) {
+    const newPath = filePath + '.wav';
+    require('fs').renameSync(filePath, newPath);
+    return newPath;
+  }
+  return filePath;
+}
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -27,7 +39,7 @@ async function transcribeAudio(filePath: string): Promise<string> {
   }
   try {
     const form = new FormData();
-    form.append('file', fs.createReadStream(filePath), {
+    form.append('file', fs.createReadStream(fixedPath), {
       filename: path.basename(filePath),
       contentType: 'audio/wav',
     });
