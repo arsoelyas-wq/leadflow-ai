@@ -15,32 +15,17 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const CALLS_SECRET = process.env.CALLS_SECRET || 'leadflow-calls-secret-2026';
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-const upload = multer({ 
-  dest: '/tmp/recordings/',
-  fileFilter: (req: any, file: any, cb: any) => { cb(null, true); }
-});
+const upload = multer({ dest: '/tmp/recordings/' });
 
-function ensureWavExtension(filePath: string): string {
-  if (!filePath.endsWith('.wav')) {
-    const newPath = filePath + '.wav';
-    require('fs').renameSync(filePath, newPath);
-    return newPath;
-  }
-  return filePath;
-}
-
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
-
-// Groq Whisper ile ses -> metin (OpenAI'dan 10x hizli, daha ucuz)
 async function transcribeAudio(filePath: string): Promise<string> {
-  if (!GROQ_API_KEY) {
-    console.log('GROQ_API_KEY yok, transkripsiyon atlanıyor');
-    return '';
-  }
+  if (!GROQ_API_KEY) return '';
   try {
+    const wavPath = filePath + '.wav';
+    fs.renameSync(filePath, wavPath);
+
     const form = new FormData();
-    form.append('file', fs.createReadStream(fixedPath), {
-      filename: path.basename(filePath),
+    form.append('file', fs.createReadStream(wavPath), {
+      filename: 'recording.wav',
       contentType: 'audio/wav',
     });
     form.append('model', 'whisper-large-v3-turbo');
@@ -60,16 +45,15 @@ async function transcribeAudio(filePath: string): Promise<string> {
         maxBodyLength: Infinity,
       }
     );
-    const transcript = response.data || '';
-    console.log(`Transkripsiyon tamamlandi: ${transcript.slice(0, 100)}...`);
-    return transcript;
+
+    try { fs.unlinkSync(wavPath); } catch {}
+    return response.data || '';
   } catch (e: any) {
-    console.error('Groq Whisper error:', e.response?.data || e.message);
+    console.error('Groq error:', e.response?.data || e.message);
     return '';
   }
 }
 
-// Claude ile arama analizi
 async function analyzeCallTranscript(
   transcript: string,
   callerid: string,
@@ -78,16 +62,16 @@ async function analyzeCallTranscript(
 ): Promise<any> {
   if (!transcript || transcript.length < 20) return null;
   try {
-    const prompt = `Sen deneyimli bir satış koçusun. Aşağıdaki telefon görüşmesi transkriptini profesyonel olarak analiz et.
+    const prompt = `Sen deneyimli bir satis koçusun. Asagidaki telefon gorusmesi transkriptini profesyonel olarak analiz et.
 
-ARAYAN MÜŞTERİ: ${callerid}
-SATIŞ TEMSİLCİSİ: ${agentName}
-GÖRÜŞME SÜRESİ: ${Math.round(duration / 60)} dakika
+ARAYAN MUSTERI: ${callerid}
+SATIS TEMSILCISI: ${agentName}
+GORUSME SURESI: ${Math.round(duration / 60)} dakika
 
-GÖRÜŞME TRANSKRİPTİ:
+GORUSME TRANSKRIPTI:
 ${transcript.slice(0, 4000)}
 
-Aşağıdaki JSON formatında çok detaylı analiz yap:
+Asagidaki JSON formatinda cok detayli analiz yap:
 {
   "overall_score": 0-100 genel performans puani,
   "professionalism_score": 0-100 profesyonellik,
@@ -101,23 +85,21 @@ Aşağıdaki JSON formatında çok detaylı analiz yap:
   "strengths": ["guclu yon 1", "guclu yon 2", "guclu yon 3"],
   "weaknesses": ["zayif yon 1", "zayif yon 2", "zayif yon 3"],
   "lost_opportunities": [
-    {"moment": "kacirilan an", "suggestion": "yapilmasi gereken"},
-    {"moment": "kacirilan an 2", "suggestion": "yapilmasi gereken 2"}
+    {"moment": "kacirilan an", "suggestion": "yapilmasi gereken"}
   ],
   "key_moments": [
-    {"time": "X. dakika", "type": "positive|negative|neutral", "description": "onemli an aciklamasi"},
-    {"time": "Y. dakika", "type": "positive|negative|neutral", "description": "onemli an aciklamasi"}
+    {"time": "X. dakika", "type": "positive|negative|neutral", "description": "aciklama"}
   ],
   "recommendations": ["oneri 1", "oneri 2", "oneri 3"],
   "talk_ratio": {"agent": 60, "customer": 40},
   "sentiment": "positive|neutral|negative",
-  "keywords": ["anahtar kelime 1", "anahtar kelime 2", "anahtar kelime 3"],
-  "customer_needs": ["musteri ihtiyaci 1", "musteri ihtiyaci 2"],
-  "objections_handled": ["itiraz 1 - nasil ele alindi", "itiraz 2 - nasil ele alindi"],
+  "keywords": ["kelime1", "kelime2", "kelime3"],
+  "customer_needs": ["ihtiyac 1", "ihtiyac 2"],
+  "objections_handled": ["itiraz 1", "itiraz 2"],
   "next_steps": "onerilecek sonraki adimlar"
 }
 
-Sadece JSON dondur, baska hicbir sey yazma.`;
+Sadece JSON dondur.`;
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -134,56 +116,47 @@ Sadece JSON dondur, baska hicbir sey yazma.`;
   }
 }
 
-// POST /api/calls/process — VPS'ten gelen ses dosyasi (secret ile korunur)
+// POST /api/calls/process
 router.post('/process', upload.single('recording'), async (req: any, res: any) => {
   try {
     const { secret, uniqueid, callerid, duration, userId, agentName, agentId } = req.body;
-
-    if (secret !== CALLS_SECRET) {
-      console.warn('Yetkisiz calls/process istegi');
-      return res.status(403).json({ error: 'Yetkisiz' });
-    }
+    if (secret !== CALLS_SECRET) return res.status(403).json({ error: 'Yetkisiz' });
 
     const file = req.file;
     console.log(`Arama isleniyor: ${callerid} sure:${duration}s temsilci:${agentName}`);
     res.json({ ok: true, message: 'Analiz baslatildi' });
 
-    // Arkaplanda isle
     (async () => {
       try {
         let transcript = '';
         let audioUrl = '';
 
         if (file && fs.existsSync(file.path)) {
-          // Groq ile transkripsiyon
           transcript = await transcribeAudio(file.path);
+          console.log(`Transkript: ${transcript.slice(0, 80)}`);
 
-          // Ses dosyasini Supabase Storage'a yukle
           try {
-            const audioBuffer = fs.readFileSync(file.path);
-            const fileName = `calls/${userId || 'unknown'}/${uniqueid || Date.now()}.wav`;
-            const { data: uploadData } = await supabase.storage
-              .from('recordings')
-              .upload(fileName, audioBuffer, { contentType: 'audio/wav', upsert: true });
-
-            if (uploadData) {
-              const { data: urlData } = supabase.storage.from('recordings').getPublicUrl(fileName);
-              audioUrl = urlData?.publicUrl || '';
+            const wavPath = file.path + '.wav';
+            const audioBuffer = fs.existsSync(wavPath) ? fs.readFileSync(wavPath) : null;
+            if (audioBuffer) {
+              const fileName = `calls/${userId || 'unknown'}/${uniqueid || Date.now()}.wav`;
+              const { data: uploadData } = await supabase.storage
+                .from('recordings')
+                .upload(fileName, audioBuffer, { contentType: 'audio/wav', upsert: true });
+              if (uploadData) {
+                const { data: urlData } = supabase.storage.from('recordings').getPublicUrl(fileName);
+                audioUrl = urlData?.publicUrl || '';
+              }
             }
           } catch (uploadErr: any) {
-            console.error('Storage yukle hatasi:', uploadErr.message);
+            console.error('Storage hatasi:', uploadErr.message);
           }
-
-          // Gecici dosyayi temizle
-          try { fs.unlinkSync(file.path); } catch {}
         }
 
-        // Claude analizi
         const analysis = transcript
           ? await analyzeCallTranscript(transcript, callerid, agentName || 'Temsilci', Number(duration) || 0)
           : null;
 
-        // Supabase'e kaydet
         const insertData: any = {
           user_id: userId || null,
           agent_id: agentId || null,
@@ -225,21 +198,19 @@ router.post('/process', upload.single('recording'), async (req: any, res: any) =
           .select()
           .single();
 
-        if (error) console.error('DB kayit hatasi:', error);
+        if (error) console.error('DB hatasi:', error);
         else console.log('Arama kaydedildi:', savedCall?.id);
-
       } catch (e: any) {
-        console.error('Arkaplan islem hatasi:', e.message);
+        console.error('Arkaplan hatasi:', e.message);
       }
     })();
-
   } catch (e: any) {
     console.error('Process hatasi:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/calls/log — Sadece metadata (ses kaydi yoksa)
+// POST /api/calls/log
 router.post('/log', async (req: any, res: any) => {
   try {
     const { secret, uniqueid, callerid, duration, userId, agentName, agentId } = req.body;
@@ -268,46 +239,6 @@ router.post('/log', async (req: any, res: any) => {
   }
 });
 
-// GET /api/calls/list — Arama listesi
-router.get('/list', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { limit = 50, offset = 0, agentId } = req.query;
-
-    let query = supabase
-      .from('call_analyses')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(Number(offset), Number(offset) + Number(limit) - 1);
-
-    if (agentId) query = query.eq('agent_id', agentId);
-
-    const { data, error } = await query;
-    if (error) throw error;
-    res.json({ calls: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/calls/:id — Tek arama detayi
-router.get('/:id', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { data, error } = await supabase
-      .from('call_analyses')
-      .select('*')
-      .eq('id', req.params.id)
-      .eq('user_id', userId)
-      .single();
-    if (error) throw error;
-    res.json({ call: data });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // GET /api/calls/stats/overview
 router.get('/stats/overview', async (req: any, res: any) => {
   try {
@@ -318,7 +249,6 @@ router.get('/stats/overview', async (req: any, res: any) => {
     const { data } = await supabase
       .from('call_analyses')
       .select('*')
-      .eq('user_id', userId)
       .gte('created_at', since);
 
     const calls = data || [];
@@ -347,6 +277,37 @@ router.get('/stats/overview', async (req: any, res: any) => {
         poor: withScore.filter((c: any) => c.overall_score < 40).length,
       },
     });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/calls/list
+router.get('/list', async (req: any, res: any) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    const { data, error } = await supabase
+      .from('call_analyses')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(Number(offset), Number(offset) + Number(limit) - 1);
+    if (error) throw error;
+    res.json({ calls: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/calls/:id
+router.get('/:id', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('call_analyses')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (error) throw error;
+    res.json({ call: data });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
