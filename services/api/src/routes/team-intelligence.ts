@@ -116,8 +116,8 @@ router.get('/members', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { data, error } = await supabase
-      .from('team_members')
-      .select('*, phone_lines(*)')
+      .from('ti_members')
+      .select('*, ti_phone_lines(*)')
       .eq('user_id', userId)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
@@ -154,7 +154,7 @@ router.post('/members', async (req: any, res: any) => {
     if (!name) return res.status(400).json({ error: 'name zorunlu' });
 
     const { data, error } = await supabase
-      .from('team_members')
+      .from('ti_members')
       .insert([{ user_id: userId, name, email, role: role || 'Satış Temsilcisi', wa_phone, notes }])
       .select().single();
     if (error) throw error;
@@ -171,7 +171,7 @@ router.patch('/members/:id', async (req: any, res: any) => {
     const userId = req.userId;
     const { name, email, role, wa_phone, notes } = req.body;
     const { data, error } = await supabase
-      .from('team_members')
+      .from('ti_members')
       .update({ name, email, role, wa_phone, notes })
       .eq('id', req.params.id)
       .eq('user_id', userId)
@@ -187,7 +187,7 @@ router.patch('/members/:id', async (req: any, res: any) => {
 router.delete('/members/:id', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    await supabase.from('team_members')
+    await supabase.from('ti_members')
       .update({ is_active: false })
       .eq('id', req.params.id)
       .eq('user_id', userId);
@@ -208,11 +208,11 @@ router.post('/members/:id/lines', async (req: any, res: any) => {
 
     // Üye bu kullanıcıya ait mi?
     const { data: member } = await supabase
-      .from('team_members').select('id').eq('id', req.params.id).eq('user_id', userId).single();
+      .from('ti_members').select('id').eq('id', req.params.id).eq('user_id', userId).single();
     if (!member) return res.status(403).json({ error: 'Yetkisiz' });
 
     const { data, error } = await supabase
-      .from('phone_lines')
+      .from('ti_phone_lines')
       .insert([{ user_id: userId, member_id: req.params.id, number, type }])
       .select().single();
     if (error) throw error;
@@ -227,7 +227,7 @@ router.post('/members/:id/lines', async (req: any, res: any) => {
 router.delete('/members/:id/lines/:lineId', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    await supabase.from('phone_lines')
+    await supabase.from('ti_phone_lines')
       .update({ is_active: false })
       .eq('id', req.params.lineId)
       .eq('user_id', userId);
@@ -251,7 +251,7 @@ router.post('/analyze-whatsapp', async (req: any, res: any) => {
 
     // Üye bilgisi
     const { data: member } = await supabase
-      .from('team_members').select('*').eq('id', memberId).eq('user_id', userId).single();
+      .from('ti_members').select('*').eq('id', memberId).eq('user_id', userId).single();
     if (!member) return res.status(404).json({ error: 'Üye bulunamadı' });
 
     // WhatsApp mesajları — bu üyenin wa_phone'u ile giden mesajlar
@@ -348,7 +348,7 @@ router.post('/process-call', upload.single('recording'), async (req: any, res: a
       try {
         // Üye bilgisi
         const { data: member } = await supabase
-          .from('team_members').select('*').eq('id', memberId).single();
+          .from('ti_members').select('*').eq('id', memberId).single();
 
         let transcript = '';
         let audioUrl = '';
@@ -455,7 +455,7 @@ router.get('/member-report/:memberId', async (req: any, res: any) => {
     const since = new Date(Date.now() - Number(days) * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: member } = await supabase
-      .from('team_members').select('*, phone_lines(*)').eq('id', req.params.memberId).eq('user_id', userId).single();
+      .from('ti_members').select('*, ti_phone_lines(*)').eq('id', req.params.memberId).eq('user_id', userId).single();
     if (!member) return res.status(404).json({ error: 'Üye bulunamadı' });
 
     const { data: analyses } = await supabase
@@ -531,7 +531,7 @@ router.get('/dashboard', async (req: any, res: any) => {
     const since = new Date(Date.now() - Number(days) * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: members } = await supabase
-      .from('team_members').select('id, name, role, wa_phone').eq('user_id', userId).eq('is_active', true);
+      .from('ti_members').select('id, name, role, wa_phone').eq('user_id', userId).eq('is_active', true);
 
     const { data: analyses } = await supabase
       .from('member_analyses').select('*').eq('user_id', userId).gte('created_at', since);

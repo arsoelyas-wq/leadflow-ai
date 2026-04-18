@@ -93,7 +93,7 @@ function MemberDetail({ member, onBack, onRefresh }: { member: any; onBack: () =
 
       setTiMember(ti)
       setWaPhone(ti?.wa_phone || member.wa_phone || '')
-      setLines(ti?.phone_lines?.filter((l: any) => l.is_active) || [])
+      setLines(ti?.ti_phone_lines?.filter((l: any) => l.is_active) || [])
 
       if (ti) {
         const [rr, ar] = await Promise.allSettled([
