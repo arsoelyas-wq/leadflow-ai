@@ -102,6 +102,7 @@ app.use('/api/tenders',              authMiddleware, require('./routes/tenders')
 app.use('/api/linkedin',             authMiddleware, require('./routes/linkedin'));
 app.use('/api/sequences',            authMiddleware, require('./routes/sequences'));
 app.use('/api/calls', require('./routes/calls'));
+app.use('/api/team-intelligence', authMiddleware, require('./routes/team-intelligence'));
 app.use('/api/abtests',              authMiddleware, require('./routes/ab-testing'));
 app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-numbers'));
 app.use('/api/shadow',               authMiddleware, require('./routes/shadow'));
