@@ -15,7 +15,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const upload = multer({ dest: '/tmp/recordings/' });
 
-// ── HELPERS ──────────────────────────────────────────────
+// â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function transcribeAudio(filePath: string): Promise<string> {
   if (!GROQ_API_KEY) return '';
@@ -55,7 +55,7 @@ async function analyzeConversation(params: {
   let conversationText = transcript || '';
   if (messages && messages.length > 0) {
     conversationText = messages.slice(-40).map((m: any) => {
-      const dir = m.direction === 'out' ? `[${memberName}]` : '[Müşteri]';
+      const dir = m.direction === 'out' ? `[${memberName}]` : '[MÃ¼ÅŸteri]';
       return `${dir}: ${m.content}`;
     }).join('\n');
   }
@@ -63,17 +63,17 @@ async function analyzeConversation(params: {
   if (!conversationText || conversationText.length < 20) return null;
 
   try {
-    const prompt = `Sen deneyimli bir satış koçusun. Aşağıdaki ${channel === 'phone' ? 'telefon görüşmesi' : 'WhatsApp konuşması'} transkriptini analiz et.
+    const prompt = `Sen deneyimli bir satÄ±ÅŸ koÃ§usun. AÅŸaÄŸÄ±daki ${channel === 'phone' ? 'telefon gÃ¶rÃ¼ÅŸmesi' : 'WhatsApp konuÅŸmasÄ±'} transkriptini analiz et.
 
-TEMSİLCİ: ${memberName}
-MÜŞTERİ NUMARASI: ${phone}
-${duration ? `SÜRE: ${Math.round(duration / 60)} dakika` : ''}
+TEMSÄ°LCÄ°: ${memberName}
+MÃœÅžTERÄ° NUMARASI: ${phone}
+${duration ? `SÃœRE: ${Math.round(duration / 60)} dakika` : ''}
 KANAL: ${channel === 'phone' ? 'Telefon' : 'WhatsApp'}
 
-KONUŞMA:
+KONUÅžMA:
 ${conversationText.slice(0, 4000)}
 
-JSON formatında detaylı analiz ver:
+JSON formatÄ±nda detaylÄ± analiz ver:
 {
   "overall_score": 0-100,
   "professionalism_score": 0-100,
@@ -109,7 +109,7 @@ Sadece JSON dondur.`;
   }
 }
 
-// ── EKIP YÖNETIMI ─────────────────────────────────────────
+// â”€â”€ EKIP YÃ–NETIMI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // GET /api/team-intelligence/members
 router.get('/members', async (req: any, res: any) => {
@@ -123,7 +123,7 @@ router.get('/members', async (req: any, res: any) => {
       .order('created_at', { ascending: false });
     if (error) throw error;
 
-    // Her üye için analiz özeti ekle
+    // Her Ã¼ye iÃ§in analiz Ã¶zeti ekle
     const members = await Promise.all((data || []).map(async (m: any) => {
       const { data: analyses } = await supabase
         .from('member_analyses')
@@ -155,11 +155,11 @@ router.post('/members', async (req: any, res: any) => {
 
     const { data, error } = await supabase
       .from('ti_members')
-      .insert([{ user_id: userId, name, email, role: role || 'Satış Temsilcisi', wa_phone, notes }])
+      .insert([{ user_id: userId, name, email, role: role || 'SatÄ±ÅŸ Temsilcisi', wa_phone, notes }])
       .select().single();
     if (error) throw error;
 
-    res.json({ member: data, message: 'Üye eklendi' });
+    res.json({ member: data, message: 'Ãœye eklendi' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -191,22 +191,22 @@ router.delete('/members/:id', async (req: any, res: any) => {
       .update({ is_active: false })
       .eq('id', req.params.id)
       .eq('user_id', userId);
-    res.json({ message: 'Üye silindi' });
+    res.json({ message: 'Ãœye silindi' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── HAT YÖNETİMİ ──────────────────────────────────────────
+// â”€â”€ HAT YÃ–NETÄ°MÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// POST /api/team-intelligence/members/:id/lines — Hat ekle
+// POST /api/team-intelligence/members/:id/lines â€” Hat ekle
 router.post('/members/:id/lines', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { number, type } = req.body; // type: 'whatsapp' | 'phone'
     if (!number || !type) return res.status(400).json({ error: 'number ve type zorunlu' });
 
-    // Üye bu kullanıcıya ait mi?
+    // Ãœye bu kullanÄ±cÄ±ya ait mi?
     const { data: member } = await supabase
       .from('ti_members').select('id').eq('id', req.params.id).eq('user_id', userId).single();
     if (!member) return res.status(403).json({ error: 'Yetkisiz' });
@@ -237,10 +237,10 @@ router.delete('/members/:id/lines/:lineId', async (req: any, res: any) => {
   }
 });
 
-// ── WHATSAPP ANALİZİ ───────────────────────────────────────
+// â”€â”€ WHATSAPP ANALÄ°ZÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // POST /api/team-intelligence/analyze-whatsapp
-// WhatsApp numarasına göre üyeyi bulur, mesajları analiz eder
+// WhatsApp numarasÄ±na gÃ¶re Ã¼yeyi bulur, mesajlarÄ± analiz eder
 router.post('/analyze-whatsapp', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -249,12 +249,12 @@ router.post('/analyze-whatsapp', async (req: any, res: any) => {
 
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-    // Üye bilgisi
+    // Ãœye bilgisi
     const { data: member } = await supabase
       .from('ti_members').select('*').eq('id', memberId).eq('user_id', userId).single();
-    if (!member) return res.status(404).json({ error: 'Üye bulunamadı' });
+    if (!member) return res.status(404).json({ error: 'Ãœye bulunamadÄ±' });
 
-    // WhatsApp mesajları — bu üyenin wa_phone'u ile giden mesajlar
+    // WhatsApp mesajlarÄ± â€” bu Ã¼yenin wa_phone'u ile giden mesajlar
     let query = supabase
       .from('messages')
       .select('*, leads(phone, company_name)')
@@ -267,9 +267,9 @@ router.post('/analyze-whatsapp', async (req: any, res: any) => {
 
     const { data: messages, error: msgError } = await query;
     if (msgError) throw msgError;
-    if (!messages?.length) return res.status(400).json({ error: 'Mesaj bulunamadı' });
+    if (!messages?.length) return res.status(400).json({ error: 'Mesaj bulunamadÄ±' });
 
-    // Müşteri bazlı grupla
+    // MÃ¼ÅŸteri bazlÄ± grupla
     const byPhone: Record<string, any[]> = {};
     messages.forEach((m: any) => {
       const p = m.leads?.phone || 'unknown';
@@ -324,15 +324,15 @@ router.post('/analyze-whatsapp', async (req: any, res: any) => {
       results.push({ phone: customerPhone, score: analysis.overall_score, id: saved?.id });
     }
 
-    res.json({ analyzed: results.length, results, message: `${results.length} konuşma analiz edildi` });
+    res.json({ analyzed: results.length, results, message: `${results.length} konuÅŸma analiz edildi` });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── TELEFON ANALİZİ ────────────────────────────────────────
+// â”€â”€ TELEFON ANALÄ°ZÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// POST /api/team-intelligence/process-call — VPS'ten ses dosyası
+// POST /api/team-intelligence/process-call â€” VPS'ten ses dosyasÄ±
 router.post('/process-call', upload.single('recording'), async (req: any, res: any) => {
   try {
     const { secret, memberId, userId, callerid, duration, uniqueid } = req.body;
@@ -341,12 +341,12 @@ router.post('/process-call', upload.single('recording'), async (req: any, res: a
     }
 
     const file = req.file;
-    console.log(`Arama: ${callerid} sure:${duration}s üye:${memberId}`);
-    res.json({ ok: true, message: 'İşleniyor' });
+    console.log(`Arama: ${callerid} sure:${duration}s Ã¼ye:${memberId}`);
+    res.json({ ok: true, message: 'Ä°ÅŸleniyor' });
 
     (async () => {
       try {
-        // Üye bilgisi
+        // Ãœye bilgisi
         const { data: member } = await supabase
           .from('ti_members').select('*').eq('id', memberId).single();
 
@@ -357,7 +357,7 @@ router.post('/process-call', upload.single('recording'), async (req: any, res: a
           transcript = await transcribeAudio(file.path);
           console.log(`Transkript: ${transcript.slice(0, 80)}`);
 
-          // Supabase Storage'a yükle
+          // Supabase Storage'a yÃ¼kle
           try {
             const wavPath = file.path + '.wav';
             const buf = fs.existsSync(wavPath) ? fs.readFileSync(wavPath) : fs.readFileSync(file.path);
@@ -413,7 +413,7 @@ router.post('/process-call', upload.single('recording'), async (req: any, res: a
 
         console.log('Arama kaydedildi:', memberId);
       } catch (e: any) {
-        console.error('Arkaplan hatası:', e.message);
+        console.error('Arkaplan hatasÄ±:', e.message);
       }
     })();
   } catch (e: any) {
@@ -421,7 +421,7 @@ router.post('/process-call', upload.single('recording'), async (req: any, res: a
   }
 });
 
-// ── ANALİZ & RAPORLAR ──────────────────────────────────────
+// â”€â”€ ANALÄ°Z & RAPORLAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // GET /api/team-intelligence/analyses
 router.get('/analyses', async (req: any, res: any) => {
@@ -456,7 +456,7 @@ router.get('/member-report/:memberId', async (req: any, res: any) => {
 
     const { data: member } = await supabase
       .from('ti_members').select('*, ti_phone_lines(*)').eq('id', req.params.memberId).eq('user_id', userId).single();
-    if (!member) return res.status(404).json({ error: 'Üye bulunamadı' });
+    if (!member) return res.status(404).json({ error: 'Ãœye bulunamadÄ±' });
 
     const { data: analyses } = await supabase
       .from('member_analyses')
@@ -473,7 +473,7 @@ router.get('/member-report/:memberId', async (req: any, res: any) => {
     const waAnalyses = data.filter((a: any) => a.channel === 'whatsapp');
     const phoneAnalyses = data.filter((a: any) => a.channel === 'phone');
 
-    // En sık geçen güçlü/zayıf yönler
+    // En sÄ±k geÃ§en gÃ¼Ã§lÃ¼/zayÄ±f yÃ¶nler
     const countItems = (items: string[]) => {
       const map: Record<string, number> = {};
       items.forEach(i => { map[i] = (map[i] || 0) + 1; });
@@ -541,7 +541,7 @@ router.get('/dashboard', async (req: any, res: any) => {
     const avgScore = withScore.length
       ? Math.round(withScore.reduce((s: number, a: any) => s + a.overall_score, 0) / withScore.length) : 0;
 
-    // Üye bazlı özet
+    // Ãœye bazlÄ± Ã¶zet
     const memberSummary = (members || []).map((m: any) => {
       const mAnalyses = data.filter((a: any) => a.member_id === m.id);
       const mScored = mAnalyses.filter((a: any) => a.overall_score);
