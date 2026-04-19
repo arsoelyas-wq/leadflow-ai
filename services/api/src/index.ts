@@ -104,9 +104,11 @@ app.use('/api/sequences',            authMiddleware, require('./routes/sequences
 app.use('/api/calls', require('./routes/calls'));
 app.post('/api/team-intelligence/process-call', require('./routes/team-intelligence'));
 app.use('/api/team-intelligence', authMiddleware, require('./routes/team-intelligence'));
-app.post('/api/green-api/webhook', require('./routes/green-api'));
-app.post('/api/green-api/connected', require('./routes/green-api'));
-app.use('/api/green-api', authMiddleware, require('./routes/green-api'));
+// Green API public endpoints (no auth)
+const greenApiRouter = require('./routes/green-api');
+app.post('/api/green-api/webhook', (req: any, res: any, next: any) => { req.url = '/webhook'; greenApiRouter(req, res, next); });
+app.post('/api/green-api/connected', (req: any, res: any, next: any) => { req.url = '/connected'; greenApiRouter(req, res, next); });
+app.use('/api/green-api', authMiddleware, greenApiRouter);
 app.use('/api/abtests',              authMiddleware, require('./routes/ab-testing'));
 app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-numbers'));
 app.use('/api/shadow',               authMiddleware, require('./routes/shadow'));
