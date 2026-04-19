@@ -13,7 +13,8 @@ import {
   GraduationCap, Inbox, Kanban, Radar, UserCog, Mail,
   QrCode, Trophy, FileBarChart, Brain, ChevronDown,
   Crosshair, Star, RefreshCw, DollarSign, Wallet,
-  ChevronRight, Crown, Sparkle, Flame, Rocket, UsersRound
+  ChevronRight, Crown, Sparkle, Flame, Rocket, UsersRound,
+  BarChart2
 } from 'lucide-react'
 
 type PlanGate = 'all' | 'growth' | 'pro' | 'enterprise'
@@ -106,12 +107,12 @@ const groups: NavGroup[] = [
     label: 'Pazar & Rakip',
     icon: TrendingUp,
     items: [
-      { href: '/competitor',     label: 'Rakip Hijack',    icon: Target,   plan: 'growth' },
-      { href: '/shadow',         label: 'Gizli Rakip İzle', icon: Eye,    plan: 'pro' },
-      { href: '/price-tracker',  label: 'Fiyat Takibi',    icon: TrendingDown },
-      { href: '/visual-trends',  label: 'Trend Catcher',   icon: Sparkles, plan: 'growth' },
-      { href: '/cultural',       label: 'Kültürel Uyum',   icon: Globe,    plan: 'pro' },
-      { href: '/meta-intent',    label: 'Meta Intent',     icon: Target,   plan: 'pro' },
+      { href: '/competitor',     label: 'Rakip Hijack',     icon: Target,   plan: 'growth' },
+      { href: '/shadow',         label: 'Gizli Rakip İzle', icon: Eye,      plan: 'pro' },
+      { href: '/price-tracker',  label: 'Fiyat Takibi',     icon: TrendingDown },
+      { href: '/visual-trends',  label: 'Trend Catcher',    icon: Sparkles, plan: 'growth' },
+      { href: '/cultural',       label: 'Kültürel Uyum',    icon: Globe,    plan: 'pro' },
+      { href: '/meta-intent',    label: 'Meta Intent',      icon: Target,   plan: 'pro' },
     ],
   },
   {
@@ -119,13 +120,13 @@ const groups: NavGroup[] = [
     label: 'Büyüme & Gelir',
     icon: DollarSign,
     items: [
-      { href: '/analytics',  label: 'Analitik',         icon: BarChart3 },
-      { href: '/reports',    label: 'Raporlar',         icon: FileBarChart },
-      { href: '/revenue',    label: 'Gelir Tahmini',    icon: DollarSign, plan: 'growth' },
-      { href: '/financial',  label: 'Büyüme Zekası',    icon: TrendingUp, plan: 'pro', badge: 'AI' },
-      { href: '/loyalty',    label: 'Sadakat Puanı',    icon: Trophy },
-      { href: '/referral',   label: 'Referral Loop',    icon: Gift },
-      { href: '/debt-collector', label: 'Tahsilat',     icon: TrendingDown },
+      { href: '/analytics',      label: 'Analitik',         icon: BarChart3 },
+      { href: '/reports',        label: 'Raporlar',         icon: FileBarChart },
+      { href: '/revenue',        label: 'Gelir Tahmini',    icon: DollarSign, plan: 'growth' },
+      { href: '/financial',      label: 'Büyüme Zekası',    icon: TrendingUp, plan: 'pro', badge: 'AI' },
+      { href: '/loyalty',        label: 'Sadakat Puanı',    icon: Trophy },
+      { href: '/referral',       label: 'Referral Loop',    icon: Gift },
+      { href: '/debt-collector', label: 'Tahsilat',         icon: TrendingDown },
     ],
   },
   {
@@ -178,7 +179,7 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-40">
 
-      {/* ── Logo ── */}
+      {/* Logo */}
       <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-3 flex-shrink-0">
         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/25">
           <Zap size={15} className="text-white" />
@@ -186,7 +187,7 @@ export default function Sidebar() {
         <span className="text-white font-bold text-base tracking-tight">LeadFlow AI</span>
       </div>
 
-      {/* ── Kredi Bar ── */}
+      {/* Kredi Bar */}
       {user && (
         <div className="mx-4 mt-3 mb-1 bg-slate-800/60 rounded-xl p-3 flex-shrink-0">
           <div className="flex justify-between items-center mb-2">
@@ -211,10 +212,10 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* ── Nav ── */}
+      {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 scrollbar-hide">
 
-        {/* Dashboard — tek item, grup dışı */}
+        {/* Dashboard */}
         <Link href="/dashboard"
           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition mb-1 ${
             pathname === '/dashboard'
@@ -225,7 +226,7 @@ export default function Sidebar() {
           Dashboard
         </Link>
 
-        {/* ── Öne Çıkan Özellikler ── */}
+        {/* Öne Çıkan Özellikler */}
         <div className="mb-3 mt-1 space-y-1.5">
           <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-1.5">Güçlü Araçlar</p>
 
@@ -266,7 +267,7 @@ export default function Sidebar() {
           {/* Ekip Yönetimi */}
           <Link href="/team"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
-              pathname === '/team'
+              pathname === '/team' || pathname === '/team-intelligence'
                 ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
                 : 'bg-blue-500/5 border-blue-500/15 text-blue-400/80 hover:bg-blue-500/15 hover:border-blue-500/30 hover:text-blue-300'
             }`}>
@@ -278,6 +279,23 @@ export default function Sidebar() {
               <p className="text-[10px] text-blue-500/60 leading-tight mt-0.5">Takımını birlikte yönet</p>
             </div>
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/25 flex-shrink-0">PRO</span>
+          </Link>
+
+          {/* Ekip Raporları */}
+          <Link href="/team-reports"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
+              pathname === '/team-reports'
+                ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
+                : 'bg-purple-500/5 border-purple-500/15 text-purple-400/80 hover:bg-purple-500/15 hover:border-purple-500/30 hover:text-purple-300'
+            }`}>
+            <div className="w-7 h-7 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <BarChart2 size={14} className="text-purple-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Ekip Raporları</p>
+              <p className="text-[10px] text-purple-500/60 leading-tight mt-0.5">Trend, benchmark, email</p>
+            </div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/25 flex-shrink-0">PRO</span>
           </Link>
         </div>
 
@@ -291,7 +309,6 @@ export default function Sidebar() {
 
           return (
             <div key={group.id} className="mb-0.5">
-              {/* Group header */}
               <button
                 onClick={() => toggle(group.id)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition group ${
@@ -310,7 +327,6 @@ export default function Sidebar() {
                 />
               </button>
 
-              {/* Group items */}
               {isOpen && (
                 <div className="ml-2 mt-0.5 space-y-0.5 border-l border-slate-800 pl-3">
                   {group.items.map(({ href, label, icon: Icon, plan, badge }) => {
@@ -356,7 +372,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* ── Upgrade CTA ── */}
+      {/* Upgrade CTA */}
       {user?.planType === 'starter' && (
         <div className="mx-3 mb-3 flex-shrink-0">
           <Link href="/billing"
@@ -377,7 +393,7 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* ── User footer ── */}
+      {/* User footer */}
       <div className="px-4 py-3 border-t border-slate-800 flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
