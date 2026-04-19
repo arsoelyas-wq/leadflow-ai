@@ -104,6 +104,8 @@ app.use('/api/sequences',            authMiddleware, require('./routes/sequences
 app.use('/api/calls', require('./routes/calls'));
 app.use('/api/team-intelligence', authMiddleware, require('./routes/team-intelligence'));
 app.use('/api/green-api/webhook', require('./routes/green-api'));
+app.post('/api/green-api/webhook', require('./routes/green-api'));
+app.post('/api/green-api/connected', require('./routes/green-api'));
 app.use('/api/green-api', authMiddleware, require('./routes/green-api'));
 app.use('/api/abtests',              authMiddleware, require('./routes/ab-testing'));
 app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-numbers'));
