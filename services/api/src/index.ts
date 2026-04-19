@@ -103,9 +103,7 @@ app.use('/api/linkedin',             authMiddleware, require('./routes/linkedin'
 app.use('/api/sequences',            authMiddleware, require('./routes/sequences'));
 app.use('/api/calls', require('./routes/calls'));
 app.post('/api/team-intelligence/process-call', require('./routes/team-intelligence'));
-app.post('/api/team-intelligence/process-call', require('./routes/team-intelligence'));
 app.use('/api/team-intelligence', authMiddleware, require('./routes/team-intelligence'));
-app.use('/api/green-api/webhook', require('./routes/green-api'));
 app.post('/api/green-api/webhook', require('./routes/green-api'));
 app.post('/api/green-api/connected', require('./routes/green-api'));
 app.use('/api/green-api', authMiddleware, require('./routes/green-api'));
