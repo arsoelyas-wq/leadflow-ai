@@ -31,8 +31,8 @@ async function generateWeeklyReport(userId: string) {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Kullanıcı bilgisi
-  const { data: user } = await supabase.auth.admin.getUserById(userId);
-  const userEmail = user?.user?.email;
+  const { data: userRow } = await supabase.from('users').select('email').eq('id', userId).single();
+  const userEmail = userRow?.email || 'test@test.com';
   if (!userEmail) return null;
 
   // Ekip üyeleri
@@ -333,8 +333,8 @@ router.post('/alert', async (req: any, res: any) => {
 
     if (!analyses?.length) return res.json({ ok: true, message: 'Uyarı gerektiren konuşma yok' });
 
-    const { data: user } = await supabase.auth.admin.getUserById(userId);
-    const userEmail = user?.user?.email;
+    const { data: userRow2 } = await supabase.from('users').select('email').eq('id', userId).single();
+    const userEmail = userRow2?.email;
     if (!userEmail) return res.status(400).json({ error: 'Email bulunamadı' });
 
     const alertHtml = `
