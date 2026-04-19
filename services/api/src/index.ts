@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -130,6 +130,7 @@ app.use('/api/meta',                 authMiddleware, require('./routes/meta-inte
 app.use('/api/export',               authMiddleware, require('./routes/export-intelligence'));
 app.use('/api/ar',                   authMiddleware, require('./routes/ar-integration'));
 app.use('/api/sales-intelligence',   authMiddleware, require('./routes/sales-intelligence'));
+app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-reports'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
