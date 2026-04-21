@@ -1,358 +1,623 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { Phone, PhoneCall, PhoneOff, RefreshCw, Play, Mic, Users, Clock, CheckCircle, Volume2, Zap, Bot } from 'lucide-react'
+import {
+  Phone, PhoneCall, PhoneOff, Mic, MicOff, Upload, Play, Square,
+  CheckCircle, AlertTriangle, RefreshCw, Plus, Trash2, Settings,
+  Users, Clock, TrendingUp, X, ChevronRight, Zap, Volume2,
+  BarChart2, Activity, Shield, Star, ArrowRight
+} from 'lucide-react'
 
-export default function VoicePage() {
-  const [voices, setVoices] = useState<any[]>([])
-  const [leads, setLeads] = useState<any[]>([])
-  const [calls, setCalls] = useState<any[]>([])
-  const [stats, setStats] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [calling, setCalling] = useState(false)
-  const [batchCalling, setBatchCalling] = useState(false)
-  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
+function authH(json = true) {
+  const h: any = { Authorization: `Bearer ${getToken()}` }
+  if (json) h['Content-Type'] = 'application/json'
+  return h
+}
 
-  // Form
-  const [selectedLead, setSelectedLead] = useState('')
-  const [selectedVoice, setSelectedVoice] = useState('')
-  const [selectedLeads, setSelectedLeads] = useState<string[]>([])
-  const [delayMinutes, setDelayMinutes] = useState(5)
-  const [uploadingVoice, setUploadingVoice] = useState(false)
-  const [clonedVoiceId, setClonedVoiceId] = useState('')
-  const voiceFileRef = useRef<HTMLInputElement>(null)
-  const [previewText, setPreviewText] = useState('Merhaba, nasılsınız? Size kısa bir bilgi vermek istiyorum.')
-  const [previewing, setPreviewing] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-
-  const showMsg = (type: 'success' | 'error', text: string) => {
-    setMsg({ type, text }); setTimeout(() => setMsg(null), 6000)
+// ── STATUS BADGE ──────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    completed: { label: 'Tamamlandı', cls: 'bg-emerald-500/15 text-emerald-400' },
+    calling: { label: 'Arıyor', cls: 'bg-blue-500/15 text-blue-400 animate-pulse' },
+    initiating: { label: 'Başlatılıyor', cls: 'bg-amber-500/15 text-amber-400' },
+    'no-answer': { label: 'Cevap Yok', cls: 'bg-slate-500/15 text-slate-400' },
+    busy: { label: 'Meşgul', cls: 'bg-orange-500/15 text-orange-400' },
+    failed: { label: 'Başarısız', cls: 'bg-red-500/15 text-red-400' },
+    transferred: { label: 'Transfer', cls: 'bg-purple-500/15 text-purple-400' },
   }
+  const s = map[status] || { label: status, cls: 'bg-slate-500/15 text-slate-400' }
+  return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
+}
 
-  const load = async () => {
-    setLoading(true)
+// ── NUMARA DOĞRULAMA MODAL ────────────────────────────────
+function VerifyModal({ onClose, onVerified }: { onClose: () => void; onVerified: (phone: string) => void }) {
+  const [step, setStep] = useState<'phone' | 'code'>('phone')
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function sendCode() {
+    if (!phone) return
+    setLoading(true); setError('')
     try {
-      const [v, l, c, s] = await Promise.allSettled([
-        api.get('/api/voice/voices'),
-        api.get('/api/leads?limit=100'),
-        api.get('/api/voice/calls'),
-        api.get('/api/voice/stats'),
-      ])
-      if (v.status === 'fulfilled') setVoices(v.value.voices || [])
-      if (l.status === 'fulfilled') setLeads((l.value.leads || []).filter((l: any) => l.phone))
-      if (c.status === 'fulfilled') setCalls(c.value.calls || [])
-      if (s.status === 'fulfilled') setStats(s.value)
-    } catch {}
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => { load() }, [])
-
-  const uploadAndCloneVoice = async (file: File) => {
-    setUploadingVoice(true)
-    try {
-      const token = localStorage.getItem('token')
-      const formData = new FormData()
-      formData.append('audio', file)
-      formData.append('voiceName', 'Kişisel Sesim')
-      const response = await fetch('https://leadflow-ai-production.up.railway.app/api/voice/clone', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      const r = await fetch(`${API}/api/voice/verify/send`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ phone })
       })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
-      setClonedVoiceId(data.voiceId)
-      setSelectedVoice(data.voiceId)
-      showMsg('success', '✅ Sesiniz klonlandı! Artık aramalar kendi sesinizle yapılacak.')
-      load()
-    } catch (e: any) { showMsg('error', e.message) }
-    finally { setUploadingVoice(false) }
+      const d = await r.json()
+      if (d.ok) setStep('code')
+      else setError(d.error)
+    } catch (e: any) { setError(e.message) }
+    setLoading(false)
   }
 
-  const previewVoice = async () => {
-    if (!selectedVoice || !previewText) return
-    setPreviewing(true)
+  async function confirmCode() {
+    if (!code) return
+    setLoading(true); setError('')
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch(`https://leadflow-ai-production.up.railway.app/api/voice/preview`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: previewText, voiceId: selectedVoice }),
+      const r = await fetch(`${API}/api/voice/verify/confirm`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ phone, code })
       })
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || 'Ses üretilemedi')
-      }
-      const arrayBuffer = await response.arrayBuffer()
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-      const source = audioContext.createBufferSource()
-      source.buffer = audioBuffer
-      source.connect(audioContext.destination)
-      source.start(0)
-      showMsg('success', '🔊 Ses oynatılıyor...')
-    } catch (e: any) { showMsg('error', e.message) }
-    finally { setPreviewing(false) }
-  }
-
-  const makeCall = async () => {
-    if (!selectedLead) return
-    setCalling(true)
-    try {
-      const data = await api.post('/api/voice/call', {
-        leadId: selectedLead,
-        voiceId: selectedVoice || undefined,
-      })
-      showMsg('success', data.message)
-      load()
-    } catch (e: any) { showMsg('error', e.message) }
-    finally { setCalling(false) }
-  }
-
-  const makeBatchCalls = async () => {
-    if (!selectedLeads.length) return
-    setBatchCalling(true)
-    try {
-      const data = await api.post('/api/voice/call-batch', {
-        leadIds: selectedLeads,
-        voiceId: selectedVoice || undefined,
-        delayMinutes,
-      })
-      showMsg('success', data.message)
-      load()
-    } catch (e: any) { showMsg('error', e.message) }
-    finally { setBatchCalling(false) }
-  }
-
-  const loadRecording = async (callId: string) => {
-    try {
-      const data = await api.get(`/api/voice/calls/${callId}/recording`)
-      if (data.recordingUrl) {
-        if (audioRef.current) audioRef.current.pause()
-        audioRef.current = new Audio(data.recordingUrl)
-        audioRef.current.play()
-        showMsg('success', 'Kayıt oynatılıyor...')
-      } else if (data.transcript) {
-        alert(`Transkript:\n\n${data.transcript}`)
-      } else {
-        showMsg('error', 'Kayıt henüz hazır değil')
-      }
-    } catch (e: any) { showMsg('error', e.message) }
-  }
-
-  const statusColor: Record<string, string> = {
-    initiated: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    completed: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    failed: 'bg-red-500/20 text-red-300 border-red-500/30',
-    'no-answer': 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+      const d = await r.json()
+      if (d.ok) { onVerified(d.phone); onClose() }
+      else setError(d.error)
+    } catch (e: any) { setError(e.message) }
+    setLoading(false)
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Phone size={24} className="text-green-400" />
-            AI Voice Outreach
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">ElevenLabs + Vapi ile insan sesi — müşteri AI olduğunu anlamaz</p>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-white font-bold text-lg flex items-center gap-2">
+            <Shield className="w-5 h-5 text-teal-400"/> Numara Doğrula
+          </h3>
+          <button onClick={onClose}><X className="w-5 h-5 text-slate-400 hover:text-white"/></button>
         </div>
-      </div>
 
-      {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
-
-      {/* Nasıl çalışır */}
-      <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/20 rounded-xl p-5">
-        <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
-          <Bot size={16} className="text-green-400" /> Neden Kimse AI Olduğunu Anlamaz?
-        </h2>
-        <div className="grid grid-cols-4 gap-3 text-xs text-center">
-          {[
-            { icon: '🎙️', title: 'Gerçek Ses', desc: 'ElevenLabs en doğal TTS' },
-            { icon: '🏢', title: 'Ofis Sesi', desc: 'Arka planda ofis gürültüsü' },
-            { icon: '🤔', title: 'Doğal Dur.', desc: '"Şey", "yani", duraksamalar' },
-            { icon: '🧠', title: 'Claude AI', desc: 'Anlık itiraz karşılama' },
-          ].map(({ icon, title, desc }) => (
-            <div key={title} className="bg-slate-900/50 rounded-lg p-3">
-              <div className="text-xl mb-1">{icon}</div>
-              <p className="text-white font-medium">{title}</p>
-              <p className="text-slate-500">{desc}</p>
+        {step === 'phone' ? (
+          <div className="space-y-4">
+            <p className="text-slate-400 text-sm">Aramalarınızda görünecek telefon numaranızı girin. SMS ile doğrulama kodu göndereceğiz.</p>
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Telefon Numarası</label>
+              <input value={phone} onChange={e => setPhone(e.target.value)}
+                placeholder="05551234567"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-500 text-lg tracking-wider"
+                onKeyDown={e => e.key === 'Enter' && sendCode()}/>
             </div>
-          ))}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <button onClick={sendCode} disabled={loading || !phone}
+              className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl font-medium flex items-center justify-center gap-2">
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Phone className="w-4 h-4"/>}
+              Doğrulama Kodu Gönder
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-slate-400 text-sm"><strong className="text-white">{phone}</strong> numarasına 4 haneli kod gönderdik.</p>
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Doğrulama Kodu</label>
+              <input value={code} onChange={e => setCode(e.target.value)}
+                placeholder="1234" maxLength={4}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-500 text-3xl tracking-widest text-center"
+                onKeyDown={e => e.key === 'Enter' && confirmCode()}/>
+            </div>
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <button onClick={confirmCode} disabled={loading || code.length < 4}
+              className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl font-medium flex items-center justify-center gap-2">
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin"/> : <CheckCircle className="w-4 h-4"/>}
+              Onayla
+            </button>
+            <button onClick={() => setStep('phone')} className="w-full text-slate-400 text-sm hover:text-white">
+              ← Numarayı değiştir
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── ANA SAYFA ─────────────────────────────────────────────
+export default function VoicePage() {
+  const [tab, setTab] = useState<'dial' | 'campaign' | 'calls' | 'settings'>('dial')
+  const [numbers, setNumbers] = useState<any[]>([])
+  const [leads, setLeads] = useState<any[]>([])
+  const [calls, setCalls] = useState<any[]>([])
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [stats, setStats] = useState<any>(null)
+  const [settings, setSettings] = useState<any>({})
+  const [loading, setLoading] = useState(true)
+  const [showVerify, setShowVerify] = useState(false)
+  const [calling, setCalling] = useState(false)
+  const [campaignRunning, setCampaignRunning] = useState(false)
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [cloning, setCloning] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Form
+  const [selectedLead, setSelectedLead] = useState('')
+  const [selectedCaller, setSelectedCaller] = useState('')
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([])
+  const [campaignName, setCampaignName] = useState('')
+  const [delayMinutes, setDelayMinutes] = useState(5)
+  const [previewText, setPreviewText] = useState('Merhaba, nasılsınız? Kısa bir bilgi vermek istiyorum.')
+
+  function showMsg(type: 'success' | 'error', text: string) {
+    setMsg({ type, text }); setTimeout(() => setMsg(null), 5000)
+  }
+
+  useEffect(() => { loadAll() }, [])
+
+  async function loadAll() {
+    setLoading(true)
+    try {
+      const [n, l, c, ca, s, st] = await Promise.allSettled([
+        fetch(`${API}/api/voice/numbers`, { headers: authH() }),
+        api.get('/api/leads?limit=200&has_phone=true'),
+        fetch(`${API}/api/voice/calls?limit=20`, { headers: authH() }),
+        fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
+        fetch(`${API}/api/voice/settings`, { headers: authH() }),
+        fetch(`${API}/api/voice/stats`, { headers: authH() }),
+      ])
+      if (n.status === 'fulfilled') { const d = await (n.value as any).json(); setNumbers(d.numbers || []) }
+      if (l.status === 'fulfilled') setLeads((l.value as any).leads || [])
+      if (c.status === 'fulfilled') { const d = await (c.value as any).json(); setCalls(d.calls || []) }
+      if (ca.status === 'fulfilled') { const d = await (ca.value as any).json(); setCampaigns(d.campaigns || []) }
+      if (s.status === 'fulfilled') { const d = await (s.value as any).json(); setSettings(d.settings || {}) }
+      if (st.status === 'fulfilled') { const d = await (st.value as any).json(); setStats(d) }
+    } catch {}
+    setLoading(false)
+  }
+
+  async function makeSingleCall() {
+    if (!selectedLead) return showMsg('error', 'Lead seçin')
+    setCalling(true)
+    try {
+      const r = await fetch(`${API}/api/voice/call/single`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ leadId: selectedLead, callerId: selectedCaller || undefined })
+      })
+      const d = await r.json()
+      if (d.ok) { showMsg('success', 'Arama başlatıldı!'); setTimeout(loadAll, 3000) }
+      else showMsg('error', d.error)
+    } catch (e: any) { showMsg('error', e.message) }
+    setCalling(false)
+  }
+
+  async function startCampaign() {
+    if (!selectedLeads.length) return showMsg('error', 'En az 1 lead seçin')
+    setCampaignRunning(true)
+    try {
+      const r = await fetch(`${API}/api/voice/call/campaign`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({
+          leadIds: selectedLeads,
+          callerId: selectedCaller || undefined,
+          campaignName: campaignName || undefined,
+          delayMinutes,
+        })
+      })
+      const d = await r.json()
+      if (d.ok) { showMsg('success', d.message); loadAll() }
+      else showMsg('error', d.error)
+    } catch (e: any) { showMsg('error', e.message) }
+    setCampaignRunning(false)
+  }
+
+  async function cloneVoice() {
+    if (!fileRef.current?.files?.[0]) return showMsg('error', 'Ses dosyası seçin')
+    setCloning(true)
+    try {
+      const form = new FormData()
+      form.append('audio', fileRef.current.files[0])
+      form.append('name', settings.agent_name || 'Sesim')
+      const r = await fetch(`${API}/api/voice/clone`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: form,
+      })
+      const d = await r.json()
+      if (d.ok) { showMsg('success', 'Sesiniz klonlandı!'); loadAll() }
+      else showMsg('error', d.error)
+    } catch (e: any) { showMsg('error', e.message) }
+    setCloning(false)
+  }
+
+  async function previewVoice() {
+    setPreviewing(true)
+    try {
+      const r = await fetch(`${API}/api/voice/preview`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ text: previewText })
+      })
+      if (r.ok) {
+        const blob = await r.blob()
+        const url = URL.createObjectURL(blob)
+        if (audioRef.current) { audioRef.current.src = url; audioRef.current.play() }
+      } else showMsg('error', 'Ses önizleme başarısız')
+    } catch (e: any) { showMsg('error', e.message) }
+    setPreviewing(false)
+  }
+
+  async function saveSettings() {
+    try {
+      await fetch(`${API}/api/voice/settings`, {
+        method: 'PATCH', headers: authH(), body: JSON.stringify(settings)
+      })
+      showMsg('success', 'Ayarlar kaydedildi')
+    } catch (e: any) { showMsg('error', e.message) }
+  }
+
+  async function deleteNumber(id: string) {
+    await fetch(`${API}/api/voice/numbers/${id}`, { method: 'DELETE', headers: authH() })
+    loadAll()
+  }
+
+  const tabCls = (t: string) => `px-4 py-2 text-sm font-medium rounded-lg transition-all ${tab === t ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`
+  const leadsWithPhone = leads.filter(l => l.phone)
+
+  return (
+    <div className="space-y-6 min-h-screen">
+      {showVerify && <VerifyModal onClose={() => setShowVerify(false)} onVerified={() => { loadAll(); showMsg('success', 'Numara doğrulandı!') }}/>}
+      <audio ref={audioRef} className="hidden"/>
+
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
+              <Phone className="w-4 h-4"/>
+            </div>
+            AI Sesli Arama
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">Gerçek insan sesiyle otomatik satış araması</p>
         </div>
+        <button onClick={() => setShowVerify(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/30 text-teal-400 rounded-xl text-sm font-medium">
+          <Plus className="w-4 h-4"/> Numara Ekle
+        </button>
       </div>
 
-      {/* Stats */}
+      {msg && (
+        <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}`}>
+          {msg.text}
+        </div>
+      )}
+
+      {/* İstatistikler */}
       {stats && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { label: 'Toplam Arama', value: stats.total, color: 'text-slate-300' },
+            { label: 'Toplam Arama', value: stats.total, color: 'text-white' },
             { label: 'Tamamlanan', value: stats.completed, color: 'text-emerald-400' },
-            { label: 'Bekleyen', value: stats.initiated, color: 'text-blue-400' },
-            { label: 'Toplam Süre', value: `${stats.totalMinutes} dk`, color: 'text-yellow-400' },
+            { label: 'Olumlu', value: stats.positive, color: 'text-teal-400' },
+            { label: 'Cevap Yok', value: stats.no_answer, color: 'text-slate-400' },
+            { label: 'Toplam Süre', value: `${stats.totalMinutes}dk`, color: 'text-amber-400' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
-              <p className="text-slate-400 text-xs mt-1">{label}</p>
+            <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-center">
+              <div className={`text-2xl font-bold ${color}`}>{value}</div>
+              <div className="text-xs text-slate-500 mt-1">{label}</div>
             </div>
           ))}
         </div>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Sol: Ses & Ayarlar */}
-        <div className="space-y-4">
-          {/* Ses Seç */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
-            <h2 className="text-white font-semibold flex items-center gap-2">
-              <Volume2 size={16} className="text-green-400" /> Ses Seç
-            </h2>
-            <select value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500">
-              <option value="">Otomatik (en iyi Türkçe ses)</option>
-              {voices.slice(0, 30).map((v: any) => (
-                <option key={v.voice_id} value={v.voice_id}>
-                  {v.name} {v.labels?.gender ? `(${v.labels.gender})` : ''}
-                </option>
-              ))}
-            </select>
-
-            {/* Ses Klonlama */}
-            <div className="p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg space-y-2">
-              <p className="text-purple-300 text-xs font-medium">🎙️ Kendi Sesini Klonla</p>
-              <p className="text-slate-400 text-xs">30sn - 3dk ses kaydı yükle → aramalar kendi sesinle yapılır</p>
-              {clonedVoiceId && <p className="text-emerald-400 text-xs">✅ Kişisel ses aktif</p>}
-              <button onClick={() => voiceFileRef.current?.click()} disabled={uploadingVoice}
-                className="w-full py-2 bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs rounded-lg transition hover:bg-purple-600/30 disabled:opacity-50 flex items-center justify-center gap-2">
-                {uploadingVoice ? <><RefreshCw size={11} className="animate-spin" /> Klonlanıyor...</> : <><Mic size={11} /> Ses Dosyası Yükle</>}
-              </button>
-              <input ref={voiceFileRef} type="file" accept="audio/*" className="hidden"
-                onChange={e => e.target.files?.[0] && uploadAndCloneVoice(e.target.files[0])} />
-            </div>
-
-            {/* Ses Önizleme */}
-            <div className="space-y-2">
-              <label className="text-slate-400 text-xs">Önizleme metni</label>
-              <textarea value={previewText} onChange={e => setPreviewText(e.target.value)} rows={2}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none resize-none" />
-              <button onClick={previewVoice} disabled={previewing || !selectedVoice}
-                className="w-full flex items-center justify-center gap-2 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-300 rounded-lg text-sm transition disabled:opacity-40">
-                {previewing ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
-                {previewing ? 'Üretiliyor...' : 'Sesi Dinle'}
+      {/* Bağlı Numaralar */}
+      {numbers.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-slate-500">Bağlı numaralar:</span>
+          {numbers.map(n => (
+            <div key={n.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-500/10 border border-teal-500/20 rounded-xl">
+              <CheckCircle className="w-3 h-3 text-teal-400"/>
+              <span className="text-teal-400 text-sm font-mono">{n.phone}</span>
+              <button onClick={() => deleteNumber(n.id)} className="text-slate-600 hover:text-red-400 ml-1">
+                <X className="w-3 h-3"/>
               </button>
             </div>
-          </div>
-
-          {/* Tek Arama */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
-            <h2 className="text-white font-semibold flex items-center gap-2">
-              <PhoneCall size={16} className="text-blue-400" /> Tek Lead'i Ara
-            </h2>
-            <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500">
-              <option value="">Lead seçin (telefon numarası olanlar)</option>
-              {leads.map(l => (
-                <option key={l.id} value={l.id}>
-                  {l.company_name} — {l.phone} {l.contact_name ? `(${l.contact_name})` : ''}
-                </option>
-              ))}
-            </select>
-            <button onClick={makeCall} disabled={calling || !selectedLead}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition ${
-                selectedLead && !calling ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-              }`}>
-              {calling ? <RefreshCw size={15} className="animate-spin" /> : <Phone size={15} />}
-              {calling ? 'Arama başlatılıyor...' : '📞 Şimdi Ara'}
-            </button>
-          </div>
+          ))}
         </div>
+      )}
 
-        {/* Sağ: Toplu Arama */}
-        <div className="space-y-4">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
-            <h2 className="text-white font-semibold flex items-center gap-2">
-              <Users size={16} className="text-orange-400" /> Toplu Arama ({selectedLeads.length} seçili)
-            </h2>
+      {numbers.length === 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0"/>
+          <div>
+            <p className="text-amber-300 text-sm font-medium">Henüz numara eklenmemiş</p>
+            <p className="text-amber-400/60 text-xs">Arama yapabilmek için telefon numaranızı doğrulayın</p>
+          </div>
+          <button onClick={() => setShowVerify(true)}
+            className="ml-auto px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-xl text-sm font-medium shrink-0">
+            Numara Ekle →
+          </button>
+        </div>
+      )}
 
-            <div className="max-h-52 overflow-y-auto space-y-1 bg-slate-900 rounded-lg p-2">
-              <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded cursor-pointer border-b border-slate-700 mb-1">
-                <input type="checkbox"
-                  checked={selectedLeads.length === leads.length && leads.length > 0}
-                  onChange={e => setSelectedLeads(e.target.checked ? leads.map(l => l.id) : [])}
-                  className="accent-green-500" />
-                <span className="text-slate-300 text-xs font-medium">Tümünü Seç ({leads.length} lead)</span>
-              </label>
-              {leads.map(lead => (
-                <label key={lead.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded cursor-pointer">
-                  <input type="checkbox" checked={selectedLeads.includes(lead.id)}
-                    onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, lead.id] : prev.filter(id => id !== lead.id))}
-                    className="accent-green-500" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-xs truncate">{lead.company_name}</p>
-                    <p className="text-slate-500 text-xs">{lead.phone} {lead.contact_name ? `· ${lead.contact_name}` : ''}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
+      {/* Tabs */}
+      <div className="flex gap-1.5 bg-slate-800/40 border border-slate-700 p-1 rounded-xl w-fit">
+        {[['dial','📞 Tek Arama'],['campaign','🚀 Kampanya'],['calls','📋 Aramalar'],['settings','⚙️ Ayarlar']].map(([t,l]) => (
+          <button key={t} onClick={() => setTab(t as any)} className={tabCls(t)}>{l}</button>
+        ))}
+      </div>
 
+      {/* TEK ARAMA */}
+      {tab === 'dial' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 space-y-4">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <PhoneCall className="w-4 h-4 text-teal-400"/> Tek Lead Ara
+            </h3>
             <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Aramalar arası bekleme (dakika)</label>
-              <select value={delayMinutes} onChange={e => setDelayMinutes(parseInt(e.target.value))}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                {[3, 5, 10, 15, 30].map(v => <option key={v} value={v}>{v} dakika</option>)}
+              <label className="text-xs text-slate-400 mb-1.5 block">Lead Seç</label>
+              <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500">
+                <option value="">Lead seçin (telefonu olanlar)</option>
+                {leadsWithPhone.map(l => (
+                  <option key={l.id} value={l.id}>{l.company_name} — {l.phone}</option>
+                ))}
               </select>
             </div>
-
-            <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg text-xs text-slate-400">
-              → Her lead için Claude otomatik script üretir<br />
-              → Aramalar arası {delayMinutes} dk beklenir (doğal görünmek için)<br />
-              → Tahmini süre: {Math.round(selectedLeads.length * delayMinutes)} dakika
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Arayan Numara</label>
+              <select value={selectedCaller} onChange={e => setSelectedCaller(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500">
+                <option value="">Varsayılan (+19784325322)</option>
+                {numbers.map(n => <option key={n.id} value={n.phone}>{n.phone}</option>)}
+              </select>
             </div>
-
-            <button onClick={makeBatchCalls} disabled={batchCalling || !selectedLeads.length}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition ${
-                selectedLeads.length && !batchCalling ? 'bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-500 hover:to-blue-500 text-white' : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-              }`}>
-              {batchCalling ? <RefreshCw size={15} className="animate-spin" /> : <Zap size={15} />}
-              {batchCalling ? 'Aramalar başlatılıyor...' : `🚀 ${selectedLeads.length} Lead'i Ara`}
+            <button onClick={makeSingleCall} disabled={calling || !selectedLead}
+              className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
+              {calling ? <><RefreshCw className="w-4 h-4 animate-spin"/> Aranıyor...</> : <><Phone className="w-4 h-4"/> Şimdi Ara</>}
             </button>
           </div>
 
-          {/* Son Aramalar */}
-          {calls.length > 0 && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-              <h2 className="text-white font-semibold mb-3">📋 Son Aramalar</h2>
-              <div className="space-y-2 max-h-52 overflow-y-auto">
-                {calls.slice(0, 10).map((call: any) => (
-                  <div key={call.id} className="flex items-center gap-3 p-2.5 bg-slate-900/50 rounded-lg">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs font-medium">{call.leads?.company_name}</p>
-                      <p className="text-slate-500 text-xs">{call.phone} · {new Date(call.created_at).toLocaleString('tr-TR')}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {call.duration_seconds && (
-                        <span className="text-slate-400 text-xs flex items-center gap-1">
-                          <Clock size={10} /> {Math.round(call.duration_seconds / 60)}dk
-                        </span>
-                      )}
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full border ${statusColor[call.status] || statusColor.initiated}`}>
-                        {call.status === 'initiated' ? '📞' : call.status === 'completed' ? '✓' : '✗'}
-                      </span>
-                      {call.status === 'completed' && (
-                        <button onClick={() => loadRecording(call.id)}
-                          className="p-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition">
-                          <Play size={10} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+          {/* Ses Önizleme */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 space-y-4">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <Volume2 className="w-4 h-4 text-purple-400"/> Ses Önizleme
+            </h3>
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Test Metni</label>
+              <textarea value={previewText} onChange={e => setPreviewText(e.target.value)}
+                rows={3} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500 resize-none"/>
+            </div>
+            <button onClick={previewVoice} disabled={previewing}
+              className="w-full py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-400 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+              {previewing ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Play className="w-4 h-4"/>}
+              Sesi Dinle
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* KAMPANYA */}
+      {tab === 'campaign' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700 rounded-2xl p-5 space-y-4">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400"/> Toplu Arama Kampanyası
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-400 mb-1.5 block">Kampanya Adı</label>
+                <input value={campaignName} onChange={e => setCampaignName(e.target.value)}
+                  placeholder="Nisan 2026 Kampanyası"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"/>
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 mb-1.5 block">Aramalar Arası Bekleme</label>
+                <select value={delayMinutes} onChange={e => setDelayMinutes(Number(e.target.value))}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none">
+                  <option value={2}>2 dakika</option>
+                  <option value={5}>5 dakika</option>
+                  <option value={10}>10 dakika</option>
+                  <option value={15}>15 dakika</option>
+                  <option value={30}>30 dakika</option>
+                </select>
               </div>
             </div>
-          )}
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Arayan Numara</label>
+              <select value={selectedCaller} onChange={e => setSelectedCaller(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none">
+                <option value="">Varsayılan (+19784325322)</option>
+                {numbers.map(n => <option key={n.id} value={n.phone}>{n.phone}</option>)}
+              </select>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs text-slate-400">Lead Listesi ({selectedLeads.length} seçili)</label>
+                <button onClick={() => setSelectedLeads(leadsWithPhone.map(l => l.id))}
+                  className="text-xs text-teal-400 hover:text-teal-300">Tümünü Seç</button>
+              </div>
+              <div className="max-h-48 overflow-y-auto bg-slate-900 rounded-xl p-2 space-y-1">
+                {leadsWithPhone.map(l => (
+                  <label key={l.id} className="flex items-center gap-2.5 px-2.5 py-2 hover:bg-slate-800 rounded-lg cursor-pointer">
+                    <input type="checkbox" checked={selectedLeads.includes(l.id)}
+                      onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, l.id] : prev.filter(id => id !== l.id))}
+                      className="accent-teal-500"/>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white text-xs font-medium truncate">{l.company_name}</div>
+                      <div className="text-slate-500 text-xs font-mono">{l.phone}</div>
+                    </div>
+                  </label>
+                ))}
+                {!leadsWithPhone.length && <p className="text-slate-600 text-xs text-center py-4">Telefon numarası olan lead bulunamadı</p>}
+              </div>
+            </div>
+            <div className="bg-slate-900 rounded-xl p-3 text-xs text-slate-400 space-y-1">
+              <p>→ Her lead için Claude otomatik satış scripti üretir</p>
+              <p>→ Aramalar arası {delayMinutes} dakika beklenir (doğal görünmek için)</p>
+              <p>→ Tahmini süre: {Math.round(selectedLeads.length * (delayMinutes + 3))} dakika</p>
+            </div>
+            <button onClick={startCampaign} disabled={campaignRunning || !selectedLeads.length}
+              className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
+              {campaignRunning ? <><RefreshCw className="w-4 h-4 animate-spin"/> Kampanya çalışıyor...</> : <><Zap className="w-4 h-4"/> {selectedLeads.length} Lead'i Ara</>}
+            </button>
+          </div>
+
+          {/* Kampanya listesi */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
+            <h3 className="font-semibold text-white text-sm mb-3">Geçmiş Kampanyalar</h3>
+            <div className="space-y-2">
+              {campaigns.map(c => (
+                <div key={c.id} className="p-3 bg-slate-900 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-white text-xs font-medium truncate">{c.name}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${c.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                      {c.status === 'completed' ? 'Bitti' : 'Devam'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-500">{c.calls_made}/{c.total_leads} arama</div>
+                  <div className="mt-1.5 h-1 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-teal-500 rounded-full" style={{ width: `${c.total_leads ? (c.calls_made / c.total_leads) * 100 : 0}%` }}/>
+                  </div>
+                </div>
+              ))}
+              {!campaigns.length && <p className="text-slate-600 text-xs text-center py-4">Henüz kampanya yok</p>}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ARAMALAR */}
+      {tab === 'calls' && (
+        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+            <h3 className="font-semibold text-white">Arama Geçmişi</h3>
+            <button onClick={loadAll} className="p-1.5 text-slate-400 hover:text-white">
+              <RefreshCw className="w-4 h-4"/>
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 text-slate-500 text-xs">
+                  <th className="text-left px-4 py-3">Lead</th>
+                  <th className="text-left px-4 py-3">Numara</th>
+                  <th className="text-center px-4 py-3">Durum</th>
+                  <th className="text-center px-4 py-3">Süre</th>
+                  <th className="text-center px-4 py-3">Sonuç</th>
+                  <th className="text-right px-4 py-3">Tarih</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calls.map(c => (
+                  <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
+                    <td className="px-4 py-3">
+                      <div className="text-white text-xs font-medium">{c.leads?.company_name || '—'}</div>
+                      <div className="text-slate-500 text-xs">{c.leads?.contact_name || ''}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-400">{c.callee_number}</td>
+                    <td className="px-4 py-3 text-center"><StatusBadge status={c.status}/></td>
+                    <td className="px-4 py-3 text-center text-xs text-slate-400">
+                      {c.duration_seconds ? `${Math.round(c.duration_seconds / 60)}dk ${c.duration_seconds % 60}sn` : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {c.outcome === 'positive' || c.outcome === 'sale'
+                        ? <span className="text-emerald-400 text-xs font-medium">✓ Olumlu</span>
+                        : c.outcome === 'negative'
+                        ? <span className="text-red-400 text-xs">Olumsuz</span>
+                        : <span className="text-slate-600 text-xs">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-slate-500">
+                      {new Date(c.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!calls.length && (
+              <div className="text-center py-12 text-slate-600">
+                <Phone className="w-10 h-10 mx-auto mb-2 opacity-30"/>
+                <p className="text-sm">Henüz arama yapılmamış</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* AYARLAR */}
+      {tab === 'settings' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Temsilci Ayarları */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 space-y-4">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <Settings className="w-4 h-4 text-blue-400"/> Temsilci Profili
+            </h3>
+            {[
+              { key: 'agent_name', label: 'Temsilci Adı', ph: 'Ahmet' },
+              { key: 'company_name', label: 'Şirket Adı', ph: 'Şirketinizin adı' },
+              { key: 'product_description', label: 'Ürün/Hizmet', ph: 'Ne sattığınızı kısaca açıklayın' },
+              { key: 'transfer_number', label: 'Transfer Numarası', ph: 'İnsan temsilciye bağlanma numarası' },
+            ].map(({ key, label, ph }) => (
+              <div key={key}>
+                <label className="text-xs text-slate-400 mb-1.5 block">{label}</label>
+                <input value={settings[key] || ''} onChange={e => setSettings((s: any) => ({ ...s, [key]: e.target.value }))}
+                  placeholder={ph}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
+              </div>
+            ))}
+            <button onClick={saveSettings}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium">
+              Kaydet
+            </button>
+          </div>
+
+          {/* Ses Klonlama */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 space-y-4">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <Mic className="w-4 h-4 text-teal-400"/> Ses Klonlama
+            </h3>
+            {settings.voice_name ? (
+              <div className="flex items-center gap-3 p-3 bg-teal-500/10 border border-teal-500/20 rounded-xl">
+                <CheckCircle className="w-5 h-5 text-teal-400"/>
+                <div>
+                  <div className="text-teal-400 text-sm font-medium">Ses klonlandı ✓</div>
+                  <div className="text-slate-400 text-xs">{settings.voice_name}</div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-400">
+                Henüz ses klonlanmamış — varsayılan Türkçe ses kullanılıyor
+              </div>
+            )}
+            <div className="space-y-2">
+              <p className="text-xs text-slate-400">30 saniye - 3 dakika ses kaydı yükleyin. Sistem kendi sesinizle konuşacak.</p>
+              <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:border-teal-500/50 transition cursor-pointer"
+                onClick={() => fileRef.current?.click()}>
+                <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2"/>
+                <p className="text-slate-400 text-sm">Ses dosyası seçin</p>
+                <p className="text-slate-600 text-xs mt-1">MP3, WAV, M4A — max 10MB</p>
+                <input ref={fileRef} type="file" accept="audio/*" className="hidden"/>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-slate-400 block">Önizleme Metni</label>
+              <input value={previewText} onChange={e => setPreviewText(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none"/>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={cloneVoice} disabled={cloning}
+                className="flex-1 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+                {cloning ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Mic className="w-4 h-4"/>}
+                Klonla
+              </button>
+              <button onClick={previewVoice} disabled={previewing}
+                className="flex-1 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-400 rounded-xl text-sm font-medium flex items-center justify-center gap-2">
+                {previewing ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Play className="w-4 h-4"/>}
+                Dinle
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
