@@ -1,446 +1,797 @@
 export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
+const multer = require('multer');
+const fs = require('fs');
+const FormData = require('form-data');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const upload = multer({ dest: '/tmp/voice/' });
 
-const VAPI_API_KEY = process.env.VAPI_API_KEY;
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const VAPI_BASE = 'https://api.vapi.ai';
+const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_NUMBER = process.env.TWILIO_PHONE_NUMBER || '+19784325322';
 const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
+const GROQ_KEY = process.env.GROQ_API_KEY;
+const API_URL = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : 'https://leadflow-ai-production.up.railway.app';
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-// ── DOĞAL TÜRKÇE SATIŞ SCRIPTI ───────────────────────────
-async function generateNaturalSalesScript(lead: any, settings: any): Promise<any> {
-  const Anthropic = require('@anthropic-ai/sdk');
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  const response = await anthropic.messages.create({
-    model: 'claude-opus-4-6',
-    max_tokens: 1000,
-    messages: [{
-      role: 'user',
-      content: `Sen deneyimli bir B2B satış temsilcisisin. ${lead.company_name} şirketini arayacaksın.
-${lead.contact_name ? `Muhatabın adı: ${lead.contact_name}` : ''}
-Sektör: ${lead.sector || 'genel'}
-Şehir: ${lead.city || ''}
-Arayan şirket: ${settings?.company_name || 'şirketimiz'}
-
-ÖNEMLI KURALLAR:
-- Çok doğal konuş, yapay zeka olduğun BELLİ OLMAMALI
-- Gerçek bir insan gibi "şey", "yani", "aslında", "tabii ki" gibi bağlaçlar kullan
-- Kısa cümleler, doğal duraklamalar
-- Türkçe aksan ve kültüre uygun
-- Müşterinin sorularına hazır cevaplar
-- Asla robot gibi konuşma
-
-JSON döndür:
-{
-  "greeting": "Açılış selamlama (5-7 saniye, çok doğal)",
-  "introduction": "Kendini tanıtma (doğal, acele değil)",
-  "hook": "İlgi çekici kanca (müşteriye değer anlat)",
-  "objectionHandlers": {
-    "mesgul": "Meşgulum derse yanıt",
-    "ilgilenmiyorum": "İlgilenmiyorum derse yanıt",
-    "pahali": "Pahalı derse yanıt",
-    "zaten_var": "Zaten başka çözümüm var derse yanıt",
-    "gonder_email": "Email gönder derse yanıt"
-  },
-  "closingAttempt": "Randevu/demo kapama girişimi",
-  "fallback": "Hiç ilgi yoksa kibarca kapama",
-  "systemPrompt": "Vapi için tam sistem prompt (Türkçe, insan gibi satışçı rolü)"
-}`
-    }]
-  });
-
-  const text = response.content[0]?.text || '';
-  const match = text.match(/\{[\s\S]*\}/);
-  return match ? JSON.parse(match[0]) : null;
+// ── TWILIO CLIENT ─────────────────────────────────────────
+function twilioClient() {
+  const twilio = require('twilio');
+  return twilio(TWILIO_SID, TWILIO_TOKEN);
 }
 
-// ── ELEVENLABs SES KLONLAma ──────────────────────────────
-async function getOrCreateVoice(userId: string): Promise<string> {
-  // Kullanıcının klonlanmış sesi varsa kullan
-  const { data: settings } = await supabase
-    .from('user_settings').select('elevenlabs_voice_id').eq('user_id', userId).single();
+// ── NUMARA DOĞRULAMA ──────────────────────────────────────
 
-  if (settings?.elevenlabs_voice_id) return settings.elevenlabs_voice_id;
-
-  // Yoksa en gerçekçi Türkçe sesi seç
-  const BEST_TURKISH_VOICES = [
-    'pNInz6obpgDQGcFmaJgB', // Adam - erkek, doğal
-    'EXAVITQu4vr4xnSDxMaL', // Bella - kadın, sıcak
-    'VR6AewLTigWG4xSOukaG', // Arnold - erkek, profesyonel
-  ];
-
-  return BEST_TURKISH_VOICES[0];
-}
-
-// ── VAPI ASSISTANT OLUŞTUR ────────────────────────────────
-async function createVapiAssistant(script: any, voiceId: string, lead: any): Promise<string> {
-  const systemPrompt = script?.systemPrompt || `Sen ${lead.company_name} şirketini arayan deneyimli bir satış temsilcisisin.
-
-KARAKTER:
-- İsmin Ahmet (veya Ayşe), 5 yıldır satış alanındasın
-- Samimi, güven veren, aceleci değil
-- Türkçe konuşuyorsun, doğal aksanla
-- Hiçbir zaman robot/yapay zeka olduğunu söyleme
-- Gerçek bir insan gibi davran
-
-KONUŞMA TARZI:
-- Kısa cümleler kullan
-- "Şey", "aslında", "yani", "tabii ki", "kesinlikle" gibi doğal ifadeler
-- Müşteri konuşunca sabırla dinle
-- Duraklamalar normal, paniklemene gerek yok
-- Gülerek konuş, ses tonun sıcak olsun
-
-YASAK:
-- Robot gibi liste okuma
-- Çok uzun paragraflar
-- "Yapay zeka", "AI", "asistan" kelimeleri
-- Aşırı resmi dil`;
-
-  const response = await axios.post(`${VAPI_BASE}/assistant`, {
-    name: `Sales_${lead.company_name}_${Date.now()}`,
-    model: {
-      provider: 'anthropic',
-      model: 'claude-haiku-4-5-20251001',
-      temperature: 0.8,
-      systemPrompt,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'assistant', content: script?.greeting || `Merhaba! ${lead.contact_name ? lead.contact_name + ' Bey/Hanım,' : ''} nasılsınız?` }
-      ]
-    },
-    voice: {
-      provider: 'elevenlabs',
-      voiceId,
-      stability: 0.45,        // Daha doğal, az stabil = daha insan gibi
-      similarityBoost: 0.85,
-      style: 0.3,
-      useSpeakerBoost: true,
-      optimizeStreamingLatency: 3,
-    },
-    transcriber: {
-      provider: 'deepgram',
-      model: 'nova-2',
-      language: 'tr',
-      smartFormat: true,
-    },
-    firstMessage: script?.greeting,
-    endCallMessage: script?.fallback || 'Anlıyorum, teşekkür ederim. İyi günler dilerim.',
-    endCallPhrases: ['görüşürüz', 'iyi günler', 'hoşçakalın', 'teşekkürler'],
-    hipaaEnabled: false,
-    silenceTimeoutSeconds: 20,
-    maxDurationSeconds: 300, // Max 5 dakika
-    backgroundSound: 'office', // Ofis arka plan sesi - daha gerçekçi!
-    backchannelingEnabled: true, // "Evet", "Hmm" gibi doğal onaylar
-    backgroundDenoisingEnabled: true,
-    modelOutputInMessagesEnabled: true,
-  }, {
-    headers: { Authorization: `Bearer ${VAPI_API_KEY}`, 'Content-Type': 'application/json' }
-  });
-
-  return response.data?.id;
-}
-
-// ── ARAMA BAŞLAT ──────────────────────────────────────────
-async function initiateCall(assistantId: string, phoneNumber: string, lead: any): Promise<any> {
-  // Telefon formatını düzenle
-  let phone = phoneNumber.replace(/\s/g, '').replace(/-/g, '');
-  if (phone.startsWith('0')) phone = '+90' + phone.slice(1);
-  if (!phone.startsWith('+')) phone = '+90' + phone;
-
-  const response = await axios.post(`${VAPI_BASE}/call/phone`, {
-    assistantId,
-    customer: {
-      number: phone,
-      name: lead.contact_name || lead.company_name,
-    },
-    phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID, // Vapi'den alınan telefon numarası
-  }, {
-    headers: { Authorization: `Bearer ${VAPI_API_KEY}`, 'Content-Type': 'application/json' }
-  });
-
-  return response.data;
-}
-
-// ── ROUTES ────────────────────────────────────────────────
-
-// GET /api/voice/voices — ElevenLabs ses listesi
-router.get('/voices', async (req: any, res: any) => {
+// POST /api/voice/verify/send — Doğrulama kodu gönder
+router.post('/verify/send', async (req: any, res: any) => {
   try {
-    const response = await axios.get(`${ELEVEN_BASE}/voices`, {
-      headers: { 'xi-api-key': ELEVENLABS_API_KEY }
+    const userId = req.userId;
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Telefon numarası zorunlu' });
+
+    // Türkiye numarasını uluslararası formata çevir
+    let e164 = phone.replace(/\s/g, '');
+    if (e164.startsWith('0')) e164 = '+90' + e164.slice(1);
+    if (!e164.startsWith('+')) e164 = '+90' + e164;
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    // Kodu DB'ye kaydet
+    await supabase.from('voice_verifications').upsert([{
+      user_id: userId, phone: e164, code, expires_at: expires, verified: false
+    }]);
+
+    // Twilio ile SMS gönder
+    const client = twilioClient();
+    await client.messages.create({
+      body: `LeadFlow doğrulama kodunuz: ${code}\nBu kod 10 dakika geçerlidir.`,
+      from: TWILIO_NUMBER,
+      to: e164,
     });
-    const voices = (response.data?.voices || []).map((v: any) => ({
-      voice_id: v.voice_id,
-      name: v.name,
-      category: v.category,
-      preview_url: v.preview_url,
-      labels: v.labels,
-    }));
-    res.json({ voices });
+
+    res.json({ ok: true, message: `${e164} numarasına doğrulama kodu gönderildi` });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.detail || e.message });
+    console.error('Verify send error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/voice/clone — Ses klonla
-const multer = require('multer');
-const voiceUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-
-router.post('/clone', voiceUpload.single('audio'), async (req: any, res: any) => {
+// POST /api/voice/verify/confirm — Kodu onayla
+router.post('/verify/confirm', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { voiceName } = req.body;
-    if (!req.file) return res.status(400).json({ error: 'Ses dosyası zorunlu' });
+    const { phone, code } = req.body;
 
-    const FormData = require('form-data');
-    const formData = new FormData();
-    formData.append('name', voiceName || 'Kişisel Satış Sesi');
-    formData.append('files', req.file.buffer, { filename: 'voice.mp3', contentType: 'audio/mp3' });
-    formData.append('description', 'LeadFlow AI satış sesi');
-    formData.append('labels', JSON.stringify({ use_case: 'sales', language: 'turkish' }));
+    let e164 = phone.replace(/\s/g, '');
+    if (e164.startsWith('0')) e164 = '+90' + e164.slice(1);
+    if (!e164.startsWith('+')) e164 = '+90' + e164;
 
-    const response = await axios.post(`${ELEVEN_BASE}/voices/add`, formData, {
-      headers: { 'xi-api-key': ELEVENLABS_API_KEY, ...formData.getHeaders() }
+    const { data: verification } = await supabase
+      .from('voice_verifications')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('phone', e164)
+      .eq('code', code)
+      .eq('verified', false)
+      .gte('expires_at', new Date().toISOString())
+      .single();
+
+    if (!verification) return res.status(400).json({ error: 'Geçersiz veya süresi dolmuş kod' });
+
+    // Doğrulandı — numara kaydet
+    await supabase.from('voice_verifications').update({ verified: true }).eq('id', verification.id);
+
+    await supabase.from('voice_numbers').upsert([{
+      user_id: userId,
+      phone: e164,
+      is_active: true,
+      verified_at: new Date().toISOString(),
+    }]);
+
+    // Twilio'ya bu numarayı kaydet (verified numbers için)
+    try {
+      const client = twilioClient();
+      await client.outgoingCallerIds.create({ phoneNumber: e164, friendlyName: `LeadFlow-${userId.slice(0,8)}` });
+    } catch (twilioErr: any) {
+      // Trial hesapta zaten kayıtlıysa hata verir, geç
+      console.log('Twilio caller ID:', twilioErr.message);
+    }
+
+    res.json({ ok: true, phone: e164, message: 'Numara başarıyla doğrulandı!' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/voice/numbers — Bağlı numaralar
+router.get('/numbers', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase
+      .from('voice_numbers')
+      .select('*')
+      .eq('user_id', req.userId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    res.json({ numbers: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/voice/numbers/:id
+router.delete('/numbers/:id', async (req: any, res: any) => {
+  try {
+    await supabase.from('voice_numbers').update({ is_active: false })
+      .eq('id', req.params.id).eq('user_id', req.userId);
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── SES KLONLAMA ──────────────────────────────────────────
+
+// POST /api/voice/clone — Ses klonla
+router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { name } = req.body;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Ses dosyası zorunlu' });
+
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    if (!elevenKey) return res.status(400).json({ error: 'ElevenLabs API key bulunamadı' });
+
+    const form = new FormData();
+    form.append('name', name || `LeadFlow-${userId.slice(0, 8)}`);
+    form.append('description', 'LeadFlow AI satış sesi');
+    form.append('files', fs.createReadStream(file.path), { filename: 'voice.mp3', contentType: 'audio/mpeg' });
+    form.append('labels', JSON.stringify({ language: 'tr', use_case: 'sales' }));
+
+    const r = await axios.post(`${ELEVEN_BASE}/voices/add`, form, {
+      headers: { ...form.getHeaders(), 'xi-api-key': elevenKey },
+      timeout: 60000,
     });
 
-    const voiceId = response.data?.voice_id;
-    if (!voiceId) throw new Error('Voice ID alınamadı');
-
-    await supabase.from('user_settings').upsert({
+    const voiceId = r.data.voice_id;
+    await supabase.from('voice_settings').upsert([{
       user_id: userId,
       elevenlabs_voice_id: voiceId,
-      elevenlabs_voice_name: voiceName || 'Kişisel Ses',
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
+      voice_name: name || 'Klonlanmış Ses',
+    }]);
 
-    res.json({ voiceId, message: 'Ses klonlandı! 🎙️' });
+    try { fs.unlinkSync(file.path); } catch {}
+    res.json({ ok: true, voiceId, message: 'Ses başarıyla klonlandı!' });
   } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.detail || e.message });
+    res.status(500).json({ error: e.message });
   }
 });
 
 // POST /api/voice/preview — Ses önizleme
 router.post('/preview', async (req: any, res: any) => {
   try {
+    const userId = req.userId;
     const { text, voiceId } = req.body;
-    if (!text || !voiceId) return res.status(400).json({ error: 'text ve voiceId zorunlu' });
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    if (!elevenKey) return res.status(400).json({ error: 'ElevenLabs key yok' });
 
-    const response = await axios.post(
-      `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
+    const vid = voiceId || await getDefaultVoice(userId);
+    const r = await axios.post(
+      `${ELEVEN_BASE}/text-to-speech/${vid}`,
+      { text: text || 'Merhaba, nasılsınız?', model_id: 'eleven_turbo_v2_5',
+        voice_settings: { stability: 0.75, similarity_boost: 0.85 } },
+      { headers: { 'xi-api-key': elevenKey, 'Content-Type': 'application/json' },
+        responseType: 'arraybuffer', timeout: 15000 }
+    );
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.send(Buffer.from(r.data));
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+async function getDefaultVoice(userId: string): Promise<string> {
+  const { data } = await supabase.from('voice_settings')
+    .select('elevenlabs_voice_id').eq('user_id', userId).single();
+  return data?.elevenlabs_voice_id || 'pNInz6obpgDQGcFmaJgB'; // Varsayılan Türkçe ses
+}
+
+// ── ARAMA SİSTEMİ ─────────────────────────────────────────
+
+// POST /api/voice/call/single — Tek lead ara
+router.post('/call/single', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { leadId, callerId, campaignId } = req.body;
+    if (!leadId) return res.status(400).json({ error: 'leadId zorunlu' });
+
+    // Lead bilgisi
+    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
+    if (!lead.phone) return res.status(400).json({ error: 'Lead telefon numarası yok' });
+
+    // Kullanıcı ayarları
+    const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
+    const { data: userRow } = await supabase.from('users').select('name, company').eq('id', userId).single();
+
+    // Arama kaydı oluştur
+    const { data: callRecord } = await supabase.from('voice_calls').insert([{
+      user_id: userId,
+      lead_id: leadId,
+      campaign_id: campaignId || null,
+      caller_number: callerId || TWILIO_NUMBER,
+      callee_number: lead.phone,
+      status: 'initiating',
+      script: null,
+    }]).select().single();
+
+    res.json({ ok: true, callId: callRecord?.id, message: 'Arama başlatılıyor...' });
+
+    // Arka planda arama yap
+    (async () => {
+      try {
+        const agentSettings = {
+          company_name: userRow?.company || 'şirketimiz',
+          agent_name: settings?.agent_name || userRow?.name || 'Ahmet',
+          product_description: settings?.product_description || '',
+        };
+
+        // Script oluştur
+        const script = await generateSalesScript(lead, agentSettings);
+        await supabase.from('voice_calls').update({ script, status: 'calling' }).eq('id', callRecord?.id);
+
+        // Twilio araması başlat
+        const client = twilioClient();
+        const call = await client.calls.create({
+          from: callerId || TWILIO_NUMBER,
+          to: lead.phone,
+          url: `${API_URL}/api/voice/twiml/start?callId=${callRecord?.id}&userId=${userId}`,
+          statusCallback: `${API_URL}/api/voice/twiml/status?callId=${callRecord?.id}`,
+          statusCallbackMethod: 'POST',
+          timeout: 30,
+          record: true,
+          recordingStatusCallback: `${API_URL}/api/voice/twiml/recording?callId=${callRecord?.id}`,
+        });
+
+        await supabase.from('voice_calls').update({ twilio_call_sid: call.sid }).eq('id', callRecord?.id);
+
+        // Pipeline güncelle
+        await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date().toISOString() }).eq('id', leadId);
+
+      } catch (err: any) {
+        console.error('Call error:', err.message);
+        await supabase.from('voice_calls').update({ status: 'failed', notes: err.message }).eq('id', callRecord?.id);
+      }
+    })();
+
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/voice/call/campaign — Kampanya araması
+router.post('/call/campaign', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { leadIds, callerId, campaignName, delayMinutes = 5, maxCallsPerHour = 10 } = req.body;
+    if (!leadIds?.length) return res.status(400).json({ error: 'Lead listesi zorunlu' });
+
+    // Kampanya kaydı
+    const { data: campaign } = await supabase.from('voice_campaigns').insert([{
+      user_id: userId,
+      name: campaignName || `Kampanya ${new Date().toLocaleDateString('tr-TR')}`,
+      total_leads: leadIds.length,
+      status: 'running',
+      caller_number: callerId || TWILIO_NUMBER,
+      delay_minutes: delayMinutes,
+    }]).select().single();
+
+    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead için arama başlatılıyor` });
+
+    // Arka planda sıralı arama
+    (async () => {
+      let called = 0;
+      for (const leadId of leadIds) {
+        try {
+          // Saatlik limit kontrolü
+          if (called > 0 && called % maxCallsPerHour === 0) {
+            console.log('Saatlik limit — 1 saat bekleniyor');
+            await sleep(60 * 60 * 1000);
+          }
+
+          // Lead bilgisi
+          const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+          if (!lead?.phone) { called++; continue; }
+
+          const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
+          const { data: userRow } = await supabase.from('users').select('name, company').eq('id', userId).single();
+
+          // Arama kaydı
+          const { data: callRecord } = await supabase.from('voice_calls').insert([{
+            user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
+            caller_number: callerId || TWILIO_NUMBER,
+            callee_number: lead.phone, status: 'calling',
+          }]).select().single();
+
+          const agentSettings = {
+            company_name: userRow?.company || 'şirketimiz',
+            agent_name: settings?.agent_name || 'Ahmet',
+            product_description: settings?.product_description || '',
+          };
+
+          const script = await generateSalesScript(lead, agentSettings);
+
+          const client = twilioClient();
+          const call = await client.calls.create({
+            from: callerId || TWILIO_NUMBER,
+            to: lead.phone,
+            url: `${API_URL}/api/voice/twiml/start?callId=${callRecord?.id}&userId=${userId}`,
+            statusCallback: `${API_URL}/api/voice/twiml/status?callId=${callRecord?.id}`,
+            statusCallbackMethod: 'POST',
+            timeout: 30,
+            record: true,
+          });
+
+          await supabase.from('voice_calls').update({ twilio_call_sid: call.sid, script }).eq('id', callRecord?.id);
+          await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date().toISOString() }).eq('id', leadId);
+          await supabase.from('voice_campaigns').update({ calls_made: called + 1 }).eq('id', campaign?.id);
+
+          called++;
+          console.log(`Arama ${called}/${leadIds.length}: ${lead.phone}`);
+
+          // Aramalar arası bekleme (anti-spam)
+          const delay = (delayMinutes + Math.random() * 2) * 60 * 1000;
+          await sleep(delay);
+
+        } catch (err: any) {
+          console.error(`Lead ${leadId} arama hatası:`, err.message);
+          called++;
+        }
+      }
+
+      await supabase.from('voice_campaigns').update({ status: 'completed' }).eq('id', campaign?.id);
+      console.log(`Kampanya tamamlandı: ${called} arama`);
+    })();
+
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── TWIML WEBHOOK'LAR ─────────────────────────────────────
+
+// GET /api/voice/twiml/start — Twilio araması başladığında
+router.post('/twiml/start', async (req: any, res: any) => {
+  const { callId, userId } = req.query;
+  const VoiceResponse = require('twilio').twiml.VoiceResponse;
+  const twiml = new VoiceResponse();
+
+  try {
+    const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('id', callId).single();
+    const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
+
+    const voiceId = settings?.elevenlabs_voice_id || 'pNInz6obpgDQGcFmaJgB';
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    const script = call?.script;
+
+    const openingText = script?.opening || `Merhaba, ${call?.leads?.contact_name || ''} Bey/Hanım. Ben ${settings?.agent_name || 'Ahmet'}, ${settings?.company_name || 'şirketimizden'} arıyorum. Uygun musunuz kısaca bir şey anlatmak istiyorum.`;
+
+    if (elevenKey) {
+      // ElevenLabs ses → Twilio'ya URL olarak ver
+      const audioUrl = `${API_URL}/api/voice/twiml/audio?text=${encodeURIComponent(openingText)}&voiceId=${voiceId}&userId=${userId}`;
+      twiml.play(audioUrl);
+    } else {
+      // Fallback: Twilio TTS
+      const say = twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' });
+      say.addText(openingText);
+    }
+
+    // Müşteri cevabını dinle
+    twiml.gather({
+      input: ['speech'],
+      action: `${API_URL}/api/voice/twiml/respond?callId=${callId}&userId=${userId}&turn=1`,
+      method: 'POST',
+      speechTimeout: 'auto',
+      language: 'tr-TR',
+      timeout: 10,
+    });
+
+    // Sessizlik — tekrar dene
+    twiml.redirect(`${API_URL}/api/voice/twiml/start?callId=${callId}&userId=${userId}`);
+
+    res.setHeader('Content-Type', 'text/xml');
+    res.send(twiml.toString());
+
+    // Konuşma geçmişini başlat
+    await supabase.from('voice_conversations').insert([{
+      call_id: callId, role: 'assistant', content: openingText, turn: 0,
+    }]);
+
+  } catch (e: any) {
+    twiml.say({ language: 'tr-TR' }, 'Üzgünüz, bağlantı hatası.');
+    twiml.hangup();
+    res.setHeader('Content-Type', 'text/xml');
+    res.send(twiml.toString());
+  }
+});
+
+// POST /api/voice/twiml/respond — Müşteri konuştu, AI cevap ver
+router.post('/twiml/respond', async (req: any, res: any) => {
+  const { callId, userId, turn } = req.query;
+  const { SpeechResult, Confidence } = req.body;
+  const VoiceResponse = require('twilio').twiml.VoiceResponse;
+  const twiml = new VoiceResponse();
+
+  try {
+    const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('id', callId).single();
+    const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
+
+    // Müşteri ne dedi
+    const userText = SpeechResult || '';
+    console.log(`[Call ${callId}] Müşteri (${turn}): ${userText}`);
+
+    // Konuşma geçmişini al
+    const { data: history } = await supabase.from('voice_conversations')
+      .select('*').eq('call_id', callId).order('turn', { ascending: true });
+
+    const conversationHistory = (history || []).map((h: any) => ({ role: h.role, content: h.content }));
+
+    // Kullanıcı mesajını kaydet
+    await supabase.from('voice_conversations').insert([{
+      call_id: callId, role: 'user', content: userText, turn: Number(turn),
+    }]);
+
+    // AI cevap üret
+    const agentSettings = {
+      company_name: settings?.company_name || 'şirketimiz',
+      agent_name: settings?.agent_name || 'Ahmet',
+      product_description: settings?.product_description || '',
+    };
+
+    const aiResult = await generateAIResponse({
+      userText,
+      conversationHistory,
+      script: call?.script,
+      lead: call?.leads || {},
+      settings: agentSettings,
+    });
+
+    console.log(`[Call ${callId}] AI (${turn}): ${aiResult.response} [${aiResult.action}]`);
+
+    // AI cevabını kaydet
+    await supabase.from('voice_conversations').insert([{
+      call_id: callId, role: 'assistant', content: aiResult.response, turn: Number(turn),
+    }]);
+
+    const voiceId = settings?.elevenlabs_voice_id || 'pNInz6obpgDQGcFmaJgB';
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+
+    if (aiResult.action === 'close_positive') {
+      // Başarılı kapanış
+      if (elevenKey) {
+        twiml.play(`${API_URL}/api/voice/twiml/audio?text=${encodeURIComponent(aiResult.response)}&voiceId=${voiceId}&userId=${userId}`);
+      } else {
+        twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, aiResult.response);
+      }
+      twiml.hangup();
+
+      // Pipeline güncelle — Cevap Verdi
+      await supabase.from('leads').update({ status: 'responded' }).eq('id', call?.lead_id);
+      await supabase.from('voice_calls').update({ status: 'completed', outcome: 'positive' }).eq('id', callId);
+
+    } else if (aiResult.action === 'close_negative') {
+      if (elevenKey) {
+        twiml.play(`${API_URL}/api/voice/twiml/audio?text=${encodeURIComponent(aiResult.response)}&voiceId=${voiceId}&userId=${userId}`);
+      } else {
+        twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, aiResult.response);
+      }
+      twiml.hangup();
+      await supabase.from('voice_calls').update({ status: 'completed', outcome: 'negative' }).eq('id', callId);
+
+    } else if (aiResult.action === 'transfer') {
+      // İnsan temsilciye transfer
+      twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, 'Sizi ilgili müdürümüze bağlıyorum.');
+      const dial = twiml.dial();
+      dial.number(settings?.transfer_number || TWILIO_NUMBER);
+      await supabase.from('voice_calls').update({ status: 'transferred' }).eq('id', callId);
+
+    } else {
+      // Konuşma devam ediyor
+      if (elevenKey) {
+        twiml.play(`${API_URL}/api/voice/twiml/audio?text=${encodeURIComponent(aiResult.response)}&voiceId=${voiceId}&userId=${userId}`);
+      } else {
+        twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, aiResult.response);
+      }
+
+      twiml.gather({
+        input: ['speech'],
+        action: `${API_URL}/api/voice/twiml/respond?callId=${callId}&userId=${userId}&turn=${Number(turn) + 1}`,
+        method: 'POST',
+        speechTimeout: 'auto',
+        language: 'tr-TR',
+        timeout: 10,
+      });
+    }
+
+    res.setHeader('Content-Type', 'text/xml');
+    res.send(twiml.toString());
+
+  } catch (e: any) {
+    console.error('Respond error:', e.message);
+    twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, 'Anlayamadım, tekrar eder misiniz?');
+    twiml.gather({
+      input: ['speech'],
+      action: `${API_URL}/api/voice/twiml/respond?callId=${callId}&userId=${userId}&turn=${Number(turn) + 1}`,
+      method: 'POST', speechTimeout: 'auto', language: 'tr-TR', timeout: 8,
+    });
+    res.setHeader('Content-Type', 'text/xml');
+    res.send(twiml.toString());
+  }
+});
+
+// GET /api/voice/twiml/audio — ElevenLabs ses üret ve serve et
+router.get('/twiml/audio', async (req: any, res: any) => {
+  try {
+    const { text, voiceId, userId } = req.query;
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    if (!elevenKey || !text) return res.status(400).send('Key veya text yok');
+
+    const r = await axios.post(
+      `${ELEVEN_BASE}/text-to-speech/${voiceId || 'pNInz6obpgDQGcFmaJgB'}`,
       {
-        text,
-        model_id: 'eleven_turbo_v2_5', // En hızlı ve doğal model
-        voice_settings: { stability: 0.45, similarity_boost: 0.85, style: 0.3, use_speaker_boost: true }
+        text: decodeURIComponent(text as string),
+        model_id: 'eleven_turbo_v2_5',
+        voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true },
       },
       {
-        headers: { 'xi-api-key': ELEVENLABS_API_KEY, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-        responseType: 'arraybuffer'
+        headers: { 'xi-api-key': elevenKey, 'Content-Type': 'application/json' },
+        responseType: 'arraybuffer',
+        timeout: 10000,
       }
     );
 
-    res.set('Content-Type', 'audio/mpeg');
-    res.send(response.data);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(Buffer.from(r.data));
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    res.status(500).send('Audio error');
   }
 });
 
-// POST /api/voice/call — Arama başlat
-router.post('/call', async (req: any, res: any) => {
+// POST /api/voice/twiml/status — Arama durumu güncelle
+router.post('/twiml/status', async (req: any, res: any) => {
+  const { callId } = req.query;
+  const { CallStatus, CallDuration, RecordingUrl } = req.body;
+
   try {
-    const userId = req.userId;
-    const { leadId, voiceId: customVoiceId } = req.body;
+    const statusMap: Record<string, string> = {
+      'completed': 'completed', 'busy': 'busy', 'no-answer': 'no-answer',
+      'failed': 'failed', 'canceled': 'canceled',
+    };
 
-    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
-    if (!lead.phone) return res.status(400).json({ error: 'Lead\'in telefon numarası yok' });
+    await supabase.from('voice_calls').update({
+      status: statusMap[CallStatus] || CallStatus,
+      duration_seconds: Number(CallDuration) || 0,
+      recording_url: RecordingUrl || null,
+      ended_at: new Date().toISOString(),
+    }).eq('id', callId);
 
-    const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
+    // Pipeline güncelle
+    const { data: call } = await supabase.from('voice_calls').select('lead_id, outcome').eq('id', callId).single();
+    if (call?.lead_id) {
+      const pipelineStatus = call?.outcome === 'positive' ? 'responded'
+        : CallStatus === 'no-answer' ? 'new' : 'contacted';
+      await supabase.from('leads').update({ status: pipelineStatus }).eq('id', call.lead_id);
+    }
 
-    // Script üret
-    const script = await generateNaturalSalesScript(lead, settings);
-    if (!script) throw new Error('Script üretilemedi');
+    // Analiz başlat (arka planda)
+    if (CallStatus === 'completed' && Number(CallDuration) > 15) {
+      analyzeCall(callId).catch(console.error);
+    }
 
-    // Ses seç
-    const voiceId = customVoiceId || await getOrCreateVoice(userId);
+    res.sendStatus(200);
+  } catch (e: any) {
+    console.error('Status error:', e.message);
+    res.sendStatus(200);
+  }
+});
 
-    // Vapi assistant oluştur
-    const assistantId = await createVapiAssistant(script, voiceId, lead);
+// ── ARAMA ANALİZİ ─────────────────────────────────────────
+async function analyzeCall(callId: string) {
+  try {
+    const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('id', callId).single();
+    const { data: convHistory } = await supabase.from('voice_conversations').select('*').eq('call_id', callId).order('turn');
 
-    // Arama başlat
-    const callData = await initiateCall(assistantId, lead.phone, lead);
+    if (!convHistory?.length) return;
 
-    // DB'ye kaydet
-    const { data: record } = await supabase.from('voice_calls').insert([{
-      user_id: userId,
-      lead_id: leadId,
-      vapi_call_id: callData?.id,
-      vapi_assistant_id: assistantId,
-      phone: lead.phone,
-      status: 'initiated',
-      script: JSON.stringify(script),
-    }]).select().single();
+    const transcript = convHistory.map((h: any) =>
+      `${h.role === 'assistant' ? '[Temsilci]' : '[Müşteri]'}: ${h.content}`
+    ).join('\n');
 
-    res.json({
-      callId: record?.id,
-      vapiCallId: callData?.id,
-      status: 'initiated',
-      message: `${lead.company_name} aranıyor...`,
+    const analysis = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: `Bu telefon görüşmesini analiz et:
+
+${transcript}
+
+JSON döndür:
+{
+  "overall_score": 0-100,
+  "outcome": "sale|callback|no_interest|no_answer",
+  "summary": "3 cümle özet",
+  "strengths": ["güçlü yön 1", "güçlü yön 2"],
+  "improvements": ["gelişim alanı 1", "gelişim alanı 2"],
+  "next_action": "yapılacak sonraki adım",
+  "sentiment": "positive|neutral|negative",
+  "talk_ratio": { "agent": 60, "customer": 40 }
+}`
+      }]
     });
-  } catch (e: any) {
-    console.error('Voice call error:', e.response?.data || e.message);
-    res.status(500).json({ error: e.response?.data?.message || e.message });
-  }
-});
 
-// POST /api/voice/call-batch — Toplu arama
-router.post('/call-batch', async (req: any, res: any) => {
+    const text = analysis.content[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return;
+    const result = JSON.parse(match[0]);
+
+    await supabase.from('voice_calls').update({
+      analysis: result,
+      outcome: result.outcome,
+    }).eq('id', callId);
+
+    // Team Intelligence'a kaydet
+    if (call?.leads) {
+      await supabase.from('member_analyses').insert([{
+        user_id: call.user_id,
+        customer_phone: call.callee_number,
+        customer_name: call.leads.company_name,
+        channel: 'phone',
+        duration_seconds: call.duration_seconds,
+        transcript,
+        overall_score: result.overall_score,
+        summary: result.summary,
+        outcome: result.outcome,
+        strengths: result.strengths || [],
+        weaknesses: result.improvements || [],
+        next_steps: result.next_action,
+        sentiment: result.sentiment,
+      }]);
+    }
+
+    console.log(`Analiz tamamlandı: ${callId} — Skor: ${result.overall_score}`);
+  } catch (e: any) {
+    console.error('Analiz hatası:', e.message);
+  }
+}
+
+// ── SALES SCRIPT ──────────────────────────────────────────
+async function generateSalesScript(lead: any, settings: any): Promise<any> {
   try {
-    const userId = req.userId;
-    const { leadIds, voiceId: customVoiceId, delayMinutes = 5 } = req.body;
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 600,
+      messages: [{
+        role: 'user',
+        content: `${lead.company_name} şirketine satış araması scripti oluştur.
+Muhatap: ${lead.contact_name || 'yetkili'}
+Sektör: ${lead.sector || 'genel'}
+Şehir: ${lead.city || ''}
+Arayan: ${settings.company_name} - ${settings.agent_name}
+Ürün: ${settings.product_description || ''}
 
-    let query = supabase.from('leads').select('*').eq('user_id', userId).not('phone', 'is', null);
-    if (leadIds?.length) query = query.in('id', leadIds);
-    else query = query.limit(20);
+JSON:
+{
+  "opening": "Doğal açılış (10-15 saniye)",
+  "pitch": "Değer önerisi (20-30 saniye)",
+  "close": "Kapanış girişimi"
+}`
+      }]
+    });
+    const text = response.content[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch { return null; }
+}
 
-    const { data: leads } = await query;
-    if (!leads?.length) return res.json({ message: 'Aranacak lead yok', called: 0 });
+// ── AI RESPONSE ───────────────────────────────────────────
+async function generateAIResponse(params: any) {
+  const { userText, conversationHistory, script, lead, settings } = params;
 
-    const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
-    const voiceId = customVoiceId || await getOrCreateVoice(userId);
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 200,
+      system: `Sen ${settings.agent_name} adında satış temsilcisisin. ${settings.company_name} adına ${lead.company_name} firmasını arıyorsun.
+Ürün: ${settings.product_description || ''}
+KURAL: Yapay zeka olduğunu asla belli etme. Kısa doğal Türkçe cümleler. Max 2-3 cümle.
+JSON döndür: {"response": "söyleyeceğin metin", "action": "continue|close_positive|close_negative|transfer"}`,
+      messages: [
+        ...conversationHistory.slice(-8),
+        { role: 'user', content: userText || '[sessiz]' }
+      ],
+    });
 
-    res.json({ message: `${leads.length} lead için arama başlıyor...`, total: leads.length });
-
-    (async () => {
-      let called = 0;
-      for (const lead of leads) {
-        try {
-          const script = await generateNaturalSalesScript(lead, settings);
-          if (!script) continue;
-          const assistantId = await createVapiAssistant(script, voiceId, lead);
-          const callData = await initiateCall(assistantId, lead.phone, lead);
-          await supabase.from('voice_calls').insert([{
-            user_id: userId, lead_id: lead.id,
-            vapi_call_id: callData?.id, vapi_assistant_id: assistantId,
-            phone: lead.phone, status: 'initiated',
-            script: JSON.stringify(script),
-          }]);
-          called++;
-          await sleep(delayMinutes * 60 * 1000); // Aramalar arası bekleme
-        } catch (e: any) {
-          console.error(`Call error ${lead.company_name}:`, e.message);
-        }
-      }
-      console.log(`Batch calls done: ${called}/${leads.length}`);
-    })();
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    const text = response.content[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    return { response: 'Anlayamadım, tekrar eder misiniz?', action: 'continue' };
+  } catch {
+    return { response: 'Bir saniye, tekrar eder misiniz?', action: 'continue' };
   }
-});
+}
+
+// ── DİĞER ROUTES ──────────────────────────────────────────
 
 // GET /api/voice/calls — Arama listesi
 router.get('/calls', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { data, error } = await supabase.from('voice_calls')
-      .select('*, leads(company_name, contact_name, phone, city)')
-      .eq('user_id', userId)
+    const { limit = 50, campaignId } = req.query;
+    let query = supabase.from('voice_calls')
+      .select('*, leads(company_name, phone, contact_name)')
+      .eq('user_id', req.userId)
       .order('created_at', { ascending: false })
-      .limit(50);
-    if (error) throw error;
+      .limit(Number(limit));
+    if (campaignId) query = query.eq('campaign_id', campaignId);
+    const { data } = await query;
     res.json({ calls: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/calls/:id/recording — Kayıt dinle
-router.get('/calls/:callId/recording', async (req: any, res: any) => {
+// GET /api/voice/campaigns — Kampanya listesi
+router.get('/campaigns', async (req: any, res: any) => {
   try {
-    const { data: call } = await supabase.from('voice_calls')
-      .select('vapi_call_id').eq('id', req.params.callId).eq('user_id', req.userId).single();
-    if (!call?.vapi_call_id) return res.status(404).json({ error: 'Kayıt bulunamadı' });
-
-    const response = await axios.get(`${VAPI_BASE}/call/${call.vapi_call_id}`, {
-      headers: { Authorization: `Bearer ${VAPI_API_KEY}` }
-    });
-
-    res.json({
-      recordingUrl: response.data?.recordingUrl,
-      transcript: response.data?.transcript,
-      duration: response.data?.duration,
-      summary: response.data?.summary,
-      status: response.data?.status,
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+    const { data } = await supabase.from('voice_campaigns')
+      .select('*').eq('user_id', req.userId).order('created_at', { ascending: false });
+    res.json({ campaigns: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/webhook — Vapi webhook (arama durumu güncelle)
-router.post('/webhook', async (req: any, res: any) => {
-  try {
-    const { type, call } = req.body;
-    if (!call?.id) return res.json({ ok: true });
-
-    const { data: voiceCall } = await supabase.from('voice_calls')
-      .select('id, user_id, lead_id').eq('vapi_call_id', call.id).single();
-
-    if (!voiceCall) return res.json({ ok: true });
-
-    if (type === 'call-ended' || type === 'end-of-call-report') {
-      await supabase.from('voice_calls').update({
-        status: call.endedReason === 'customer-hangup' ? 'completed' : call.endedReason || 'completed',
-        duration_seconds: call.duration,
-        recording_url: call.recordingUrl,
-        transcript: call.transcript,
-        summary: call.summary,
-        ended_at: new Date().toISOString(),
-      }).eq('vapi_call_id', call.id);
-
-      // Lead'i güncelle
-      if (call.transcript?.length > 50) {
-        await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date().toISOString() }).eq('id', voiceCall.lead_id);
-      }
-
-      // Mesaj olarak kaydet
-      await supabase.from('messages').insert([{
-        user_id: voiceCall.user_id, lead_id: voiceCall.lead_id,
-        direction: 'out', content: `📞 Sesli arama (${Math.round((call.duration || 0) / 60)} dk)`,
-        channel: 'voice', sent_at: new Date().toISOString(),
-        metadata: JSON.stringify({ vapiCallId: call.id, summary: call.summary }),
-      }]);
-    }
-
-    res.json({ ok: true });
-  } catch (e: any) {
-    console.error('Vapi webhook error:', e.message);
-    res.json({ ok: true });
-  }
-});
-
-// GET /api/voice/stats
+// GET /api/voice/stats — İstatistikler
 router.get('/stats', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { data } = await supabase.from('voice_calls').select('status, duration_seconds').eq('user_id', userId);
+    const { data } = await supabase.from('voice_calls')
+      .select('status, duration_seconds, outcome').eq('user_id', req.userId);
     const calls = data || [];
     res.json({
       total: calls.length,
       completed: calls.filter((c: any) => c.status === 'completed').length,
-      initiated: calls.filter((c: any) => c.status === 'initiated').length,
+      positive: calls.filter((c: any) => c.outcome === 'positive' || c.outcome === 'sale').length,
+      no_answer: calls.filter((c: any) => c.status === 'no-answer').length,
       totalMinutes: Math.round(calls.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0) / 60),
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/voice/settings — Ses ayarları
+router.get('/settings', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('voice_settings').select('*').eq('user_id', req.userId).single();
+    res.json({ settings: data || {} });
+  } catch { res.json({ settings: {} }); }
+});
+
+// PATCH /api/voice/settings — Ses ayarlarını güncelle
+router.patch('/settings', async (req: any, res: any) => {
+  try {
+    const { agent_name, company_name, product_description, transfer_number } = req.body;
+    await supabase.from('voice_settings').upsert([{
+      user_id: req.userId, agent_name, company_name, product_description, transfer_number,
+    }]);
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
