@@ -134,6 +134,7 @@ app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-r
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
+app.use('/api/settings/business-profile', authMiddleware, require('./routes/business-profile'));
 const { router: dashboardRouter } = require('./routes/dashboard');
 app.use('/api/dashboard',  authMiddleware, dashboardRouter);
 const { router: monitoringRouter } = require('./routes/monitoring');
