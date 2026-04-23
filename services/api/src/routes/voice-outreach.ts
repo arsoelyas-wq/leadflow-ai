@@ -793,7 +793,8 @@ router.patch('/settings', async (req: any, res: any) => {
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 router.get('/twiml/test', function(req, res) {
+router.get('/twiml/test', function(req, res) {
   res.setHeader('Content-Type', 'text/xml');
-  res.send('<Response><Pause length="1"/><Say language="tr-TR" voice="Polly.Filiz">Merhaba! Ben Ahmet, Dekor Panel den ariyorum. Akustik duvar paneli ve PVC mermer panel konusunda kampanyalarimiz var. Uygun musunuz?</Say><Pause length="2"/><Say language="tr-TR" voice="Polly.Filiz">Urunlerimiz yuzde kirk daha iyi ses yalitimi sagliyor. Size ozel teklif hazirlayabiliriz.</Say><Pause length="3"/></Response>');
+  res.send('<Response><Say language="tr-TR" voice="Polly.Filiz">Merhaba! Ben Ahmet, Dekor Panel den ariyorum. Akustik panellerimiz var. Uygun musunuz?</Say></Response>');
 });
 module.exports = router;
