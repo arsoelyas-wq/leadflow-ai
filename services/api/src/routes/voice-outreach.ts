@@ -23,22 +23,22 @@ const API_URL = process.env.RAILWAY_PUBLIC_DOMAIN
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-// ÔöÇÔöÇ TWILIO CLIENT ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ TWILIO CLIENT Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 function twilioClient() {
   const twilio = require('twilio');
   return twilio(TWILIO_SID, TWILIO_TOKEN);
 }
 
-// ÔöÇÔöÇ NUMARA DO─×RULAMA ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ NUMARA DOâ”€Ã—RULAMA Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 
-// POST /api/voice/verify/send ÔÇö Do─ƒrulama kodu g├Ânder
+// POST /api/voice/verify/send Ã”Ã‡Ã¶ Doâ”€Æ’rulama kodu gâ”œÃ‚nder
 router.post('/verify/send', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { phone } = req.body;
-    if (!phone) return res.status(400).json({ error: 'Telefon numaras─▒ zorunlu' });
+    if (!phone) return res.status(400).json({ error: 'Telefon numarasâ”€â–’ zorunlu' });
 
-    // T├╝rkiye numaras─▒n─▒ uluslararas─▒ formata ├ºevir
+    // Tâ”œâ•rkiye numarasâ”€â–’nâ”€â–’ uluslararasâ”€â–’ formata â”œÂºevir
     let e164 = phone.replace(/\s/g, '');
     if (e164.startsWith('0')) e164 = '+90' + e164.slice(1);
     if (!e164.startsWith('+')) e164 = '+90' + e164;
@@ -51,22 +51,22 @@ router.post('/verify/send', async (req: any, res: any) => {
       user_id: userId, phone: e164, code, expires_at: expires, verified: false
     }]);
 
-    // Twilio ile SMS g├Ânder
+    // Twilio ile SMS gâ”œÃ‚nder
     const client = twilioClient();
     await client.messages.create({
-      body: `LeadFlow do─ƒrulama kodunuz: ${code}\nBu kod 10 dakika ge├ºerlidir.`,
+      body: `LeadFlow doâ”€Æ’rulama kodunuz: ${code}\nBu kod 10 dakika geâ”œÂºerlidir.`,
       from: TWILIO_NUMBER,
       to: e164,
     });
 
-    res.json({ ok: true, message: `${e164} numaras─▒na do─ƒrulama kodu g├Ânderildi` });
+    res.json({ ok: true, message: `${e164} numarasâ”€â–’na doâ”€Æ’rulama kodu gâ”œÃ‚nderildi` });
   } catch (e: any) {
     console.error('Verify send error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/voice/verify/confirm ÔÇö Kodu onayla
+// POST /api/voice/verify/confirm Ã”Ã‡Ã¶ Kodu onayla
 router.post('/verify/confirm', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -86,9 +86,9 @@ router.post('/verify/confirm', async (req: any, res: any) => {
       .gte('expires_at', new Date().toISOString())
       .single();
 
-    if (!verification) return res.status(400).json({ error: 'Ge├ºersiz veya s├╝resi dolmu┼ƒ kod' });
+    if (!verification) return res.status(400).json({ error: 'Geâ”œÂºersiz veya sâ”œâ•resi dolmuâ”¼Æ’ kod' });
 
-    // Do─ƒruland─▒ ÔÇö numara kaydet
+    // Doâ”€Æ’rulandâ”€â–’ Ã”Ã‡Ã¶ numara kaydet
     await supabase.from('voice_verifications').update({ verified: true }).eq('id', verification.id);
 
     await supabase.from('voice_numbers').upsert([{
@@ -98,22 +98,22 @@ router.post('/verify/confirm', async (req: any, res: any) => {
       verified_at: new Date().toISOString(),
     }]);
 
-    // Twilio'ya bu numaray─▒ kaydet (verified numbers i├ºin)
+    // Twilio'ya bu numarayâ”€â–’ kaydet (verified numbers iâ”œÂºin)
     try {
       const client = twilioClient();
       await client.outgoingCallerIds.create({ phoneNumber: e164, friendlyName: `LeadFlow-${userId.slice(0,8)}` });
     } catch (twilioErr: any) {
-      // Trial hesapta zaten kay─▒tl─▒ysa hata verir, ge├º
+      // Trial hesapta zaten kayâ”€â–’tlâ”€â–’ysa hata verir, geâ”œÂº
       console.log('Twilio caller ID:', twilioErr.message);
     }
 
-    res.json({ ok: true, phone: e164, message: 'Numara ba┼ƒar─▒yla do─ƒruland─▒!' });
+    res.json({ ok: true, phone: e164, message: 'Numara baâ”¼Æ’arâ”€â–’yla doâ”€Æ’rulandâ”€â–’!' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// GET /api/voice/numbers ÔÇö Ba─ƒl─▒ numaralar
+// GET /api/voice/numbers Ã”Ã‡Ã¶ Baâ”€Æ’lâ”€â–’ numaralar
 router.get('/numbers', async (req: any, res: any) => {
   try {
     const { data } = await supabase
@@ -139,22 +139,22 @@ router.delete('/numbers/:id', async (req: any, res: any) => {
   }
 });
 
-// ÔöÇÔöÇ SES KLONLAMA ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ SES KLONLAMA Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 
-// POST /api/voice/clone ÔÇö Ses klonla
+// POST /api/voice/clone Ã”Ã‡Ã¶ Ses klonla
 router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { name } = req.body;
     const file = req.file;
-    if (!file) return res.status(400).json({ error: 'Ses dosyas─▒ zorunlu' });
+    if (!file) return res.status(400).json({ error: 'Ses dosyasâ”€â–’ zorunlu' });
 
     const elevenKey = process.env.ELEVENLABS_API_KEY;
-    if (!elevenKey) return res.status(400).json({ error: 'ElevenLabs API key bulunamad─▒' });
+    if (!elevenKey) return res.status(400).json({ error: 'ElevenLabs API key bulunamadâ”€â–’' });
 
     const form = new FormData();
     form.append('name', name || `LeadFlow-${userId.slice(0, 8)}`);
-    form.append('description', 'LeadFlow AI sat─▒┼ƒ sesi');
+    form.append('description', 'LeadFlow AI satâ”€â–’â”¼Æ’ sesi');
     form.append('files', fs.createReadStream(file.path), { filename: 'voice.mp3', contentType: 'audio/mpeg' });
     form.append('labels', JSON.stringify({ language: 'tr', use_case: 'sales' }));
 
@@ -167,17 +167,17 @@ router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
     await supabase.from('voice_settings').upsert([{
       user_id: userId,
       elevenlabs_voice_id: voiceId,
-      voice_name: name || 'Klonlanm─▒┼ƒ Ses',
+      voice_name: name || 'Klonlanmâ”€â–’â”¼Æ’ Ses',
     }]);
 
     try { fs.unlinkSync(file.path); } catch {}
-    res.json({ ok: true, voiceId, message: 'Ses ba┼ƒar─▒yla klonland─▒!' });
+    res.json({ ok: true, voiceId, message: 'Ses baâ”¼Æ’arâ”€â–’yla klonlandâ”€â–’!' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// POST /api/voice/preview ÔÇö Ses ├Ânizleme
+// POST /api/voice/preview Ã”Ã‡Ã¶ Ses â”œÃ‚nizleme
 router.post('/preview', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -188,7 +188,7 @@ router.post('/preview', async (req: any, res: any) => {
     const vid = voiceId || await getDefaultVoice(userId);
     const r = await axios.post(
       `${ELEVEN_BASE}/text-to-speech/${vid}`,
-      { text: text || 'Merhaba, nas─▒ls─▒n─▒z?', model_id: 'eleven_turbo_v2_5',
+      { text: text || 'Merhaba, nasâ”€â–’lsâ”€â–’nâ”€â–’z?', model_id: 'eleven_turbo_v2_5',
         voice_settings: { stability: 0.75, similarity_boost: 0.85 } },
       { headers: { 'xi-api-key': elevenKey, 'Content-Type': 'application/json' },
         responseType: 'arraybuffer', timeout: 15000 }
@@ -204,12 +204,12 @@ router.post('/preview', async (req: any, res: any) => {
 async function getDefaultVoice(userId: string): Promise<string> {
   const { data } = await supabase.from('voice_settings')
     .select('elevenlabs_voice_id').eq('user_id', userId).single();
-  return data?.elevenlabs_voice_id || 'pNInz6obpgDQGcFmaJgB'; // Varsay─▒lan T├╝rk├ºe ses
+  return data?.elevenlabs_voice_id || 'pNInz6obpgDQGcFmaJgB'; // Varsayâ”€â–’lan Tâ”œâ•rkâ”œÂºe ses
 }
 
-// ÔöÇÔöÇ ARAMA S─░STEM─░ ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ ARAMA Sâ”€â–‘STEMâ”€â–‘ Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 
-// POST /api/voice/call/single ÔÇö Tek lead ara
+// POST /api/voice/call/single Ã”Ã‡Ã¶ Tek lead ara
 router.post('/call/single', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -218,14 +218,14 @@ router.post('/call/single', async (req: any, res: any) => {
 
     // Lead bilgisi
     const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamad─▒' });
-    if (!lead.phone) return res.status(400).json({ error: 'Lead telefon numaras─▒ yok' });
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadâ”€â–’' });
+    if (!lead.phone) return res.status(400).json({ error: 'Lead telefon numarasâ”€â–’ yok' });
 
-    // Kullan─▒c─▒ ayarlar─▒
+    // Kullanâ”€â–’câ”€â–’ ayarlarâ”€â–’
     const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
     const { data: userRow } = await supabase.from('users').select('name, company').eq('id', userId).single();
 
-    // Arama kayd─▒ olu┼ƒtur
+    // Arama kaydâ”€â–’ oluâ”¼Æ’tur
     const { data: callRecord } = await supabase.from('voice_calls').insert([{
       user_id: userId,
       lead_id: leadId,
@@ -236,22 +236,22 @@ router.post('/call/single', async (req: any, res: any) => {
       script: null,
     }]).select().single();
 
-    res.json({ ok: true, callId: callRecord?.id, message: 'Arama ba┼ƒlat─▒l─▒yor...' });
+    res.json({ ok: true, callId: callRecord?.id, message: 'Arama baâ”¼Æ’latâ”€â–’lâ”€â–’yor...' });
 
     // Arka planda arama yap
     (async () => {
       try {
         const agentSettings = {
-          company_name: userRow?.company || '┼ƒirketimiz',
+          company_name: userRow?.company || 'â”¼Æ’irketimiz',
           agent_name: settings?.agent_name || userRow?.name || 'Ahmet',
           product_description: settings?.product_description || '',
         };
 
-        // Script olu┼ƒtur
+        // Script oluâ”¼Æ’tur
         const script = await generateSalesScript(lead, agentSettings);
         await supabase.from('voice_calls').update({ script, status: 'calling' }).eq('id', callRecord?.id);
 
-        // Twilio aramas─▒ ba┼ƒlat
+        // Twilio aramasâ”€â–’ baâ”¼Æ’lat
         const client = twilioClient();
         const call = await client.calls.create({
           from: callerId || TWILIO_NUMBER,
@@ -266,7 +266,7 @@ router.post('/call/single', async (req: any, res: any) => {
 
         await supabase.from('voice_calls').update({ twilio_call_sid: call.sid }).eq('id', callRecord?.id);
 
-        // Pipeline g├╝ncelle
+        // Pipeline gâ”œâ•ncelle
         await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date().toISOString() }).eq('id', leadId);
 
       } catch (err: any) {
@@ -280,14 +280,14 @@ router.post('/call/single', async (req: any, res: any) => {
   }
 });
 
-// POST /api/voice/call/campaign ÔÇö Kampanya aramas─▒
+// POST /api/voice/call/campaign Ã”Ã‡Ã¶ Kampanya aramasâ”€â–’
 router.post('/call/campaign', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { leadIds, callerId, campaignName, delayMinutes = 5, maxCallsPerHour = 10 } = req.body;
     if (!leadIds?.length) return res.status(400).json({ error: 'Lead listesi zorunlu' });
 
-    // Kampanya kayd─▒
+    // Kampanya kaydâ”€â–’
     const { data: campaign } = await supabase.from('voice_campaigns').insert([{
       user_id: userId,
       name: campaignName || `Kampanya ${new Date().toLocaleDateString('tr-TR')}`,
@@ -297,16 +297,16 @@ router.post('/call/campaign', async (req: any, res: any) => {
       delay_minutes: delayMinutes,
     }]).select().single();
 
-    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead i├ºin arama ba┼ƒlat─▒l─▒yor` });
+    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead iâ”œÂºin arama baâ”¼Æ’latâ”€â–’lâ”€â–’yor` });
 
-    // Arka planda s─▒ral─▒ arama
+    // Arka planda sâ”€â–’ralâ”€â–’ arama
     (async () => {
       let called = 0;
       for (const leadId of leadIds) {
         try {
-          // Saatlik limit kontrol├╝
+          // Saatlik limit kontrolâ”œâ•
           if (called > 0 && called % maxCallsPerHour === 0) {
-            console.log('Saatlik limit ÔÇö 1 saat bekleniyor');
+            console.log('Saatlik limit Ã”Ã‡Ã¶ 1 saat bekleniyor');
             await sleep(60 * 60 * 1000);
           }
 
@@ -317,7 +317,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
           const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
           const { data: userRow } = await supabase.from('users').select('name, company').eq('id', userId).single();
 
-          // Arama kayd─▒
+          // Arama kaydâ”€â–’
           const { data: callRecord } = await supabase.from('voice_calls').insert([{
             user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
             caller_number: callerId || TWILIO_NUMBER,
@@ -325,7 +325,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
           }]).select().single();
 
           const agentSettings = {
-            company_name: userRow?.company || '┼ƒirketimiz',
+            company_name: userRow?.company || 'â”¼Æ’irketimiz',
             agent_name: settings?.agent_name || 'Ahmet',
             product_description: settings?.product_description || '',
           };
@@ -350,18 +350,18 @@ router.post('/call/campaign', async (req: any, res: any) => {
           called++;
           console.log(`Arama ${called}/${leadIds.length}: ${lead.phone}`);
 
-          // Aramalar aras─▒ bekleme (anti-spam)
+          // Aramalar arasâ”€â–’ bekleme (anti-spam)
           const delay = (delayMinutes + Math.random() * 2) * 60 * 1000;
           await sleep(delay);
 
         } catch (err: any) {
-          console.error(`Lead ${leadId} arama hatas─▒:`, err.message);
+          console.error(`Lead ${leadId} arama hatasâ”€â–’:`, err.message);
           called++;
         }
       }
 
       await supabase.from('voice_campaigns').update({ status: 'completed' }).eq('id', campaign?.id);
-      console.log(`Kampanya tamamland─▒: ${called} arama`);
+      console.log(`Kampanya tamamlandâ”€â–’: ${called} arama`);
     })();
 
   } catch (e: any) {
@@ -369,9 +369,9 @@ router.post('/call/campaign', async (req: any, res: any) => {
   }
 });
 
-// ÔöÇÔöÇ TWIML WEBHOOK'LAR ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ TWIML WEBHOOK'LAR Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 
-// GET /api/voice/twiml/start ÔÇö Twilio aramas─▒ ba┼ƒlad─▒─ƒ─▒nda
+// GET /api/voice/twiml/start Ã”Ã‡Ã¶ Twilio aramasâ”€â–’ baâ”¼Æ’ladâ”€â–’â”€Æ’â”€â–’nda
 router.post('/twiml/start', async (req: any, res: any) => {
   const { callId, userId } = req.query;
   const VoiceResponse = require('twilio').twiml.VoiceResponse;
@@ -385,10 +385,10 @@ router.post('/twiml/start', async (req: any, res: any) => {
     const elevenKey = process.env.ELEVENLABS_API_KEY;
     const script = call?.script;
 
-    const openingText = script?.opening || `Merhaba, ${call?.leads?.contact_name || ''} Bey/Han─▒m. Ben ${settings?.agent_name || 'Ahmet'}, ${settings?.company_name || '┼ƒirketimizden'} ar─▒yorum. Uygun musunuz k─▒saca bir ┼ƒey anlatmak istiyorum.`;
+    const openingText = script?.opening || `Merhaba, ${call?.leads?.contact_name || ''} Bey/Hanâ”€â–’m. Ben ${settings?.agent_name || 'Ahmet'}, ${settings?.company_name || 'â”¼Æ’irketimizden'} arâ”€â–’yorum. Uygun musunuz kâ”€â–’saca bir â”¼Æ’ey anlatmak istiyorum.`;
 
     if (elevenKey) {
-      // ElevenLabs ses ÔåÆ Twilio'ya URL olarak ver
+      // ElevenLabs ses Ã”Ã¥Ã† Twilio'ya URL olarak ver
       const audioUrl = `${API_URL}/api/voice/twiml/audio?text=${encodeURIComponent(openingText)}&voiceId=${voiceId}&userId=${userId}`;
       twiml.play(audioUrl);
     } else {
@@ -397,7 +397,7 @@ router.post('/twiml/start', async (req: any, res: any) => {
       say.addText(openingText);
     }
 
-    // M├╝┼ƒteri cevab─▒n─▒ dinle
+    // Mâ”œâ•â”¼Æ’teri cevabâ”€â–’nâ”€â–’ dinle
     twiml.gather({
       input: ['speech'],
       action: `${API_URL}/api/voice/twiml/respond?callId=${callId}&userId=${userId}&turn=1`,
@@ -407,26 +407,26 @@ router.post('/twiml/start', async (req: any, res: any) => {
       timeout: 10,
     });
 
-    // Sessizlik ÔÇö tekrar dene
+    // Sessizlik Ã”Ã‡Ã¶ tekrar dene
     twiml.redirect(`${API_URL}/api/voice/twiml/start?callId=${callId}&userId=${userId}`);
 
     res.setHeader('Content-Type', 'text/xml');
     res.send(twiml.toString());
 
-    // Konu┼ƒma ge├ºmi┼ƒini ba┼ƒlat
+    // Konuâ”¼Æ’ma geâ”œÂºmiâ”¼Æ’ini baâ”¼Æ’lat
     await supabase.from('voice_conversations').insert([{
       call_id: callId, role: 'assistant', content: openingText, turn: 0,
     }]);
 
   } catch (e: any) {
-    twiml.say({ language: 'tr-TR' }, '├£zg├╝n├╝z, ba─ƒlant─▒ hatas─▒.');
+    twiml.say({ language: 'tr-TR' }, 'â”œÂ£zgâ”œâ•nâ”œâ•z, baâ”€Æ’lantâ”€â–’ hatasâ”€â–’.');
     twiml.hangup();
     res.setHeader('Content-Type', 'text/xml');
     res.send(twiml.toString());
   }
 });
 
-// POST /api/voice/twiml/respond ÔÇö M├╝┼ƒteri konu┼ƒtu, AI cevap ver
+// POST /api/voice/twiml/respond Ã”Ã‡Ã¶ Mâ”œâ•â”¼Æ’teri konuâ”¼Æ’tu, AI cevap ver
 router.post('/twiml/respond', async (req: any, res: any) => {
   const { callId, userId, turn } = req.query;
   const { SpeechResult, Confidence } = req.body;
@@ -437,24 +437,24 @@ router.post('/twiml/respond', async (req: any, res: any) => {
     const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('id', callId).single();
     const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
 
-    // M├╝┼ƒteri ne dedi
+    // Mâ”œâ•â”¼Æ’teri ne dedi
     const userText = SpeechResult || '';
-    console.log(`[Call ${callId}] M├╝┼ƒteri (${turn}): ${userText}`);
+    console.log(`[Call ${callId}] Mâ”œâ•â”¼Æ’teri (${turn}): ${userText}`);
 
-    // Konu┼ƒma ge├ºmi┼ƒini al
+    // Konuâ”¼Æ’ma geâ”œÂºmiâ”¼Æ’ini al
     const { data: history } = await supabase.from('voice_conversations')
       .select('*').eq('call_id', callId).order('turn', { ascending: true });
 
     const conversationHistory = (history || []).map((h: any) => ({ role: h.role, content: h.content }));
 
-    // Kullan─▒c─▒ mesaj─▒n─▒ kaydet
+    // Kullanâ”€â–’câ”€â–’ mesajâ”€â–’nâ”€â–’ kaydet
     await supabase.from('voice_conversations').insert([{
       call_id: callId, role: 'user', content: userText, turn: Number(turn),
     }]);
 
-    // AI cevap ├╝ret
+    // AI cevap â”œâ•ret
     const agentSettings = {
-      company_name: settings?.company_name || '┼ƒirketimiz',
+      company_name: settings?.company_name || 'â”¼Æ’irketimiz',
       agent_name: settings?.agent_name || 'Ahmet',
       product_description: settings?.product_description || '',
     };
@@ -469,7 +469,7 @@ router.post('/twiml/respond', async (req: any, res: any) => {
 
     console.log(`[Call ${callId}] AI (${turn}): ${aiResult.response} [${aiResult.action}]`);
 
-    // AI cevab─▒n─▒ kaydet
+    // AI cevabâ”€â–’nâ”€â–’ kaydet
     await supabase.from('voice_conversations').insert([{
       call_id: callId, role: 'assistant', content: aiResult.response, turn: Number(turn),
     }]);
@@ -478,7 +478,7 @@ router.post('/twiml/respond', async (req: any, res: any) => {
     const elevenKey = process.env.ELEVENLABS_API_KEY;
 
     if (aiResult.action === 'close_positive') {
-      // Ba┼ƒar─▒l─▒ kapan─▒┼ƒ
+      // Baâ”¼Æ’arâ”€â–’lâ”€â–’ kapanâ”€â–’â”¼Æ’
       if (elevenKey) {
         twiml.play(`${API_URL}/api/voice/twiml/audio?text=${encodeURIComponent(aiResult.response)}&voiceId=${voiceId}&userId=${userId}`);
       } else {
@@ -486,7 +486,7 @@ router.post('/twiml/respond', async (req: any, res: any) => {
       }
       twiml.hangup();
 
-      // Pipeline g├╝ncelle ÔÇö Cevap Verdi
+      // Pipeline gâ”œâ•ncelle Ã”Ã‡Ã¶ Cevap Verdi
       await supabase.from('leads').update({ status: 'responded' }).eq('id', call?.lead_id);
       await supabase.from('voice_calls').update({ status: 'completed', outcome: 'positive' }).eq('id', callId);
 
@@ -500,14 +500,14 @@ router.post('/twiml/respond', async (req: any, res: any) => {
       await supabase.from('voice_calls').update({ status: 'completed', outcome: 'negative' }).eq('id', callId);
 
     } else if (aiResult.action === 'transfer') {
-      // ─░nsan temsilciye transfer
-      twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, 'Sizi ilgili m├╝d├╝r├╝m├╝ze ba─ƒl─▒yorum.');
+      // â”€â–‘nsan temsilciye transfer
+      twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, 'Sizi ilgili mâ”œâ•dâ”œâ•râ”œâ•mâ”œâ•ze baâ”€Æ’lâ”€â–’yorum.');
       const dial = twiml.dial();
       dial.number(settings?.transfer_number || TWILIO_NUMBER);
       await supabase.from('voice_calls').update({ status: 'transferred' }).eq('id', callId);
 
     } else {
-      // Konu┼ƒma devam ediyor
+      // Konuâ”¼Æ’ma devam ediyor
       if (elevenKey) {
         twiml.play(`${API_URL}/api/voice/twiml/audio?text=${encodeURIComponent(aiResult.response)}&voiceId=${voiceId}&userId=${userId}`);
       } else {
@@ -529,7 +529,7 @@ router.post('/twiml/respond', async (req: any, res: any) => {
 
   } catch (e: any) {
     console.error('Respond error:', e.message);
-    twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, 'Anlayamad─▒m, tekrar eder misiniz?');
+    twiml.say({ language: 'tr-TR', voice: 'Polly.Filiz' }, 'Anlayamadâ”€â–’m, tekrar eder misiniz?');
     twiml.gather({
       input: ['speech'],
       action: `${API_URL}/api/voice/twiml/respond?callId=${callId}&userId=${userId}&turn=${Number(turn) + 1}`,
@@ -540,7 +540,7 @@ router.post('/twiml/respond', async (req: any, res: any) => {
   }
 });
 
-// GET /api/voice/twiml/audio ÔÇö ElevenLabs ses ├╝ret ve serve et
+// GET /api/voice/twiml/audio Ã”Ã‡Ã¶ ElevenLabs ses â”œâ•ret ve serve et
 router.get('/twiml/audio', async (req: any, res: any) => {
   try {
     const { text, voiceId, userId } = req.query;
@@ -569,7 +569,7 @@ router.get('/twiml/audio', async (req: any, res: any) => {
   }
 });
 
-// POST /api/voice/twiml/status ÔÇö Arama durumu g├╝ncelle
+// POST /api/voice/twiml/status Ã”Ã‡Ã¶ Arama durumu gâ”œâ•ncelle
 router.post('/twiml/status', async (req: any, res: any) => {
   const { callId } = req.query;
   const { CallStatus, CallDuration, RecordingUrl } = req.body;
@@ -587,7 +587,7 @@ router.post('/twiml/status', async (req: any, res: any) => {
       ended_at: new Date().toISOString(),
     }).eq('id', callId);
 
-    // Pipeline g├╝ncelle
+    // Pipeline gâ”œâ•ncelle
     const { data: call } = await supabase.from('voice_calls').select('lead_id, outcome').eq('id', callId).single();
     if (call?.lead_id) {
       const pipelineStatus = call?.outcome === 'positive' ? 'responded'
@@ -595,7 +595,7 @@ router.post('/twiml/status', async (req: any, res: any) => {
       await supabase.from('leads').update({ status: pipelineStatus }).eq('id', call.lead_id);
     }
 
-    // Analiz ba┼ƒlat (arka planda)
+    // Analiz baâ”¼Æ’lat (arka planda)
     if (CallStatus === 'completed' && Number(CallDuration) > 15) {
       analyzeCall(callId).catch(console.error);
     }
@@ -607,7 +607,7 @@ router.post('/twiml/status', async (req: any, res: any) => {
   }
 });
 
-// ÔöÇÔöÇ ARAMA ANAL─░Z─░ ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ ARAMA ANALâ”€â–‘Zâ”€â–‘ Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 async function analyzeCall(callId: string) {
   try {
     const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('id', callId).single();
@@ -616,7 +616,7 @@ async function analyzeCall(callId: string) {
     if (!convHistory?.length) return;
 
     const transcript = convHistory.map((h: any) =>
-      `${h.role === 'assistant' ? '[Temsilci]' : '[M├╝┼ƒteri]'}: ${h.content}`
+      `${h.role === 'assistant' ? '[Temsilci]' : '[Mâ”œâ•â”¼Æ’teri]'}: ${h.content}`
     ).join('\n');
 
     const analysis = await anthropic.messages.create({
@@ -624,18 +624,18 @@ async function analyzeCall(callId: string) {
       max_tokens: 1000,
       messages: [{
         role: 'user',
-        content: `Bu telefon g├Âr├╝┼ƒmesini analiz et:
+        content: `Bu telefon gâ”œÃ‚râ”œâ•â”¼Æ’mesini analiz et:
 
 ${transcript}
 
-JSON d├Ând├╝r:
+JSON dâ”œÃ‚ndâ”œâ•r:
 {
   "overall_score": 0-100,
   "outcome": "sale|callback|no_interest|no_answer",
-  "summary": "3 c├╝mle ├Âzet",
-  "strengths": ["g├╝├ºl├╝ y├Ân 1", "g├╝├ºl├╝ y├Ân 2"],
-  "improvements": ["geli┼ƒim alan─▒ 1", "geli┼ƒim alan─▒ 2"],
-  "next_action": "yap─▒lacak sonraki ad─▒m",
+  "summary": "3 câ”œâ•mle â”œÃ‚zet",
+  "strengths": ["gâ”œâ•â”œÂºlâ”œâ• yâ”œÃ‚n 1", "gâ”œâ•â”œÂºlâ”œâ• yâ”œÃ‚n 2"],
+  "improvements": ["geliâ”¼Æ’im alanâ”€â–’ 1", "geliâ”¼Æ’im alanâ”€â–’ 2"],
+  "next_action": "yapâ”€â–’lacak sonraki adâ”€â–’m",
   "sentiment": "positive|neutral|negative",
   "talk_ratio": { "agent": 60, "customer": 40 }
 }`
@@ -671,13 +671,13 @@ JSON d├Ând├╝r:
       }]);
     }
 
-    console.log(`Analiz tamamland─▒: ${callId} ÔÇö Skor: ${result.overall_score}`);
+    console.log(`Analiz tamamlandâ”€â–’: ${callId} Ã”Ã‡Ã¶ Skor: ${result.overall_score}`);
   } catch (e: any) {
-    console.error('Analiz hatas─▒:', e.message);
+    console.error('Analiz hatasâ”€â–’:', e.message);
   }
 }
 
-// ÔöÇÔöÇ SALES SCRIPT ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ SALES SCRIPT Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 async function generateSalesScript(lead: any, settings: any): Promise<any> {
   try {
     const response = await anthropic.messages.create({
@@ -685,18 +685,18 @@ async function generateSalesScript(lead: any, settings: any): Promise<any> {
       max_tokens: 600,
       messages: [{
         role: 'user',
-        content: `${lead.company_name} ┼ƒirketine sat─▒┼ƒ aramas─▒ scripti olu┼ƒtur.
+        content: `${lead.company_name} â”¼Æ’irketine satâ”€â–’â”¼Æ’ aramasâ”€â–’ scripti oluâ”¼Æ’tur.
 Muhatap: ${lead.contact_name || 'yetkili'}
-Sekt├Âr: ${lead.sector || 'genel'}
-┼×ehir: ${lead.city || ''}
+Sektâ”œÃ‚r: ${lead.sector || 'genel'}
+â”¼Ã—ehir: ${lead.city || ''}
 Arayan: ${settings.company_name} - ${settings.agent_name}
-├£r├╝n: ${settings.product_description || ''}
+â”œÂ£râ”œâ•n: ${settings.product_description || ''}
 
 JSON:
 {
-  "opening": "Do─ƒal a├º─▒l─▒┼ƒ (10-15 saniye)",
-  "pitch": "De─ƒer ├Ânerisi (20-30 saniye)",
-  "close": "Kapan─▒┼ƒ giri┼ƒimi"
+  "opening": "Doâ”€Æ’al aâ”œÂºâ”€â–’lâ”€â–’â”¼Æ’ (10-15 saniye)",
+  "pitch": "Deâ”€Æ’er â”œÃ‚nerisi (20-30 saniye)",
+  "close": "Kapanâ”€â–’â”¼Æ’ giriâ”¼Æ’imi"
 }`
       }]
     });
@@ -706,7 +706,7 @@ JSON:
   } catch { return null; }
 }
 
-// ÔöÇÔöÇ AI RESPONSE ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ AI RESPONSE Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 async function generateAIResponse(params: any) {
   const { userText, conversationHistory, script, lead, settings } = params;
 
@@ -714,10 +714,10 @@ async function generateAIResponse(params: any) {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 200,
-      system: `Sen ${settings.agent_name} ad─▒nda sat─▒┼ƒ temsilcisisin. ${settings.company_name} ad─▒na ${lead.company_name} firmas─▒n─▒ ar─▒yorsun.
-├£r├╝n: ${settings.product_description || ''}
-KURAL: Yapay zeka oldu─ƒunu asla belli etme. K─▒sa do─ƒal T├╝rk├ºe c├╝mleler. Max 2-3 c├╝mle.
-JSON d├Ând├╝r: {"response": "s├Âyleyece─ƒin metin", "action": "continue|close_positive|close_negative|transfer"}`,
+      system: `Sen ${settings.agent_name} adâ”€â–’nda satâ”€â–’â”¼Æ’ temsilcisisin. ${settings.company_name} adâ”€â–’na ${lead.company_name} firmasâ”€â–’nâ”€â–’ arâ”€â–’yorsun.
+â”œÂ£râ”œâ•n: ${settings.product_description || ''}
+KURAL: Yapay zeka olduâ”€Æ’unu asla belli etme. Kâ”€â–’sa doâ”€Æ’al Tâ”œâ•rkâ”œÂºe câ”œâ•mleler. Max 2-3 câ”œâ•mle.
+JSON dâ”œÃ‚ndâ”œâ•r: {"response": "sâ”œÃ‚yleyeceâ”€Æ’in metin", "action": "continue|close_positive|close_negative|transfer"}`,
       messages: [
         ...conversationHistory.slice(-8),
         { role: 'user', content: userText || '[sessiz]' }
@@ -727,15 +727,15 @@ JSON d├Ând├╝r: {"response": "s├Âyleyece─ƒin metin", "action": "cont
     const text = response.content[0]?.text || '';
     const match = text.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
-    return { response: 'Anlayamad─▒m, tekrar eder misiniz?', action: 'continue' };
+    return { response: 'Anlayamadâ”€â–’m, tekrar eder misiniz?', action: 'continue' };
   } catch {
     return { response: 'Bir saniye, tekrar eder misiniz?', action: 'continue' };
   }
 }
 
-// ÔöÇÔöÇ D─░─×ER ROUTES ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// Ã”Ã¶Ã‡Ã”Ã¶Ã‡ Dâ”€â–‘â”€Ã—ER ROUTES Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡Ã”Ã¶Ã‡
 
-// GET /api/voice/calls ÔÇö Arama listesi
+// GET /api/voice/calls Ã”Ã‡Ã¶ Arama listesi
 router.get('/calls', async (req: any, res: any) => {
   try {
     const { limit = 50, campaignId } = req.query;
@@ -750,7 +750,7 @@ router.get('/calls', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/campaigns ÔÇö Kampanya listesi
+// GET /api/voice/campaigns Ã”Ã‡Ã¶ Kampanya listesi
 router.get('/campaigns', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('voice_campaigns')
@@ -759,7 +759,7 @@ router.get('/campaigns', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/stats ÔÇö ─░statistikler
+// GET /api/voice/stats Ã”Ã‡Ã¶ â”€â–‘statistikler
 router.get('/stats', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('voice_calls')
@@ -775,7 +775,7 @@ router.get('/stats', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/settings ÔÇö Ses ayarlar─▒
+// GET /api/voice/settings Ã”Ã‡Ã¶ Ses ayarlarâ”€â–’
 router.get('/settings', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('voice_settings').select('*').eq('user_id', req.userId).single();
@@ -783,7 +783,7 @@ router.get('/settings', async (req: any, res: any) => {
   } catch { res.json({ settings: {} }); }
 });
 
-// PATCH /api/voice/settings ÔÇö Ses ayarlar─▒n─▒ g├╝ncelle
+// PATCH /api/voice/settings Ã”Ã‡Ã¶ Ses ayarlarâ”€â–’nâ”€â–’ gâ”œâ•ncelle
 router.patch('/settings', async (req: any, res: any) => {
   try {
     const { agent_name, company_name, product_description, transfer_number } = req.body;
@@ -794,5 +794,5 @@ router.patch('/settings', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.get('/twiml/test', function(req, res) { res.setHeader('Content-Type', 'text/xml'); res.send('<Response><Say language="tr-TR" voice="Polly.Filiz">Merhaba! Ben Ahmet, Dekor Panel den ariyorum. Akustik panellerimiz var. Uygun musunuz?</Say></Response>'); });
+router.get('/twiml-test', function(req, res) { res.setHeader('Content-Type', 'text/xml'); res.send('<Response><Say language="tr-TR" voice="Polly.Filiz">Merhaba! Ben Ahmet, Dekor Panel den ariyorum. Akustik panellerimiz var. Uygun musunuz?</Say></Response>'); });
 module.exports = router;
