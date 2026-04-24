@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -103,6 +103,7 @@ app.use('/api/linkedin',             authMiddleware, require('./routes/linkedin'
 app.use('/api/sequences',            authMiddleware, require('./routes/sequences'));
 app.use('/api/calls', require('./routes/calls'));
 const tiRouter = require('./routes/team-intelligence');
+app.get('/api/voice/twiml/test', require('./routes/voice-outreach'));
 app.post('/api/team-intelligence/process-call', (req: any, res: any, next: any) => { req.url = '/process-call'; tiRouter(req, res, next); });
 app.use('/api/team-intelligence', authMiddleware, tiRouter);
 // Green API public endpoints (no auth)
