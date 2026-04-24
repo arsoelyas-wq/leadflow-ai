@@ -103,7 +103,7 @@ app.use('/api/linkedin',             authMiddleware, require('./routes/linkedin'
 app.use('/api/sequences',            authMiddleware, require('./routes/sequences'));
 app.use('/api/calls', require('./routes/calls'));
 const tiRouter = require('./routes/team-intelligence');
-app.get('/api/twiml/test', require('./routes/voice-outreach'));
+app.get('/api/twiml/test', function(req, res) { res.setHeader('Content-Type', 'text/xml'); res.send('<Response><Say language="tr-TR" voice="Polly.Filiz">Merhaba! Ben Ahmet, Dekor Panel den ariyorum. Akustik panellerimiz var. Uygun musunuz?</Say></Response>'); });
 app.post('/api/team-intelligence/process-call', (req: any, res: any, next: any) => { req.url = '/process-call'; tiRouter(req, res, next); });
 app.use('/api/team-intelligence', authMiddleware, tiRouter);
 // Green API public endpoints (no auth)
