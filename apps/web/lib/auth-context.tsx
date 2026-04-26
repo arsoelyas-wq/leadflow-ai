@@ -1,5 +1,6 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { api } from './api'
 
 interface User {
@@ -11,6 +12,7 @@ interface User {
   planType: string
   creditsTotal: number
   creditsUsed: number
+  onboardingDone?: boolean
 }
 
 interface AuthContextType {
@@ -23,15 +25,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 
+const PUBLIC_PATHS = ['/login', '/register', '/onboarding']
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
       api.get('/api/auth/me')
-        .then(data => setUser(data.user))
+        .then(data => {
+          setUser(data.user)
+          // Onboarding tamamlanmamışsa yönlendir
+          if (!data.user?.onboardingDone && !PUBLIC_PATHS.includes(pathname || '')) {
+            router.push('/onboarding')
+          }
+        })
         .catch(() => localStorage.removeItem('token'))
         .finally(() => setLoading(false))
     } else {
@@ -43,17 +55,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await api.post('/api/auth/login', { email, password })
     localStorage.setItem('token', data.token)
     setUser(data.user)
+    // Login sonrası onboarding kontrolü
+    if (!data.user?.onboardingDone) {
+      router.push('/onboarding')
+    } else {
+      router.push('/dashboard')
+    }
   }
 
   const register = async (formData: { email: string; password: string; name: string; company: string }) => {
     const data = await api.post('/api/auth/register', formData)
     localStorage.setItem('token', data.token)
     setUser(data.user)
+    // Yeni kayıt — onboarding'e gönder
+    router.push('/onboarding')
   }
 
   const logout = () => {
     localStorage.removeItem('token')
     setUser(null)
+    router.push('/login')
   }
 
   return (
