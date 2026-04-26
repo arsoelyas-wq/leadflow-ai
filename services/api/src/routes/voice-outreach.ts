@@ -82,72 +82,105 @@ async function makeElevenLabsCall(params: any) {
 // â”€â”€ ROUTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // GET /api/voice/eleven-voices â€” TÃ¼m sesler (normal + shared + kategorili)
-router.get('/eleven-voices', async (req: any, res: any) => {
+router.get('/eleven-voices', async (req, res) => {
   try {
-    const { category = 'all', language = '', gender = '', search = '', page = 1 } = req.query;
-    const pageSize = 50;
-
+    const { language = 'tr' } = req.query;
     const { data: settings } = await supabase.from('voice_settings').select('elevenlabs_voice_id, voice_name').eq('user_id', req.userId).single();
-
-    // Paralel olarak Ã§ek
-    const [normalRes, sharedTrRes, sharedAllRes] = await Promise.allSettled([
-      axios.get(`${ELEVEN_BASE}/voices`, { headers: elevenHeaders() }),
-      axios.get(`${ELEVEN_BASE}/shared-voices?page_size=100&language=tr`, { headers: elevenHeaders() }),
-      axios.get(`${ELEVEN_BASE}/shared-voices?page_size=200`, { headers: elevenHeaders() }),
+    const norm = (v, src) => ({ voice_id: v.voice_id, name: v.name, category: v.category || src, preview_url: v.preview_url || null, gender: v.labels && v.labels.gender || v.gender || null, accent: v.labels && v.labels.accent || v.accent || null, use_case: v.labels && v.labels.use_case || v.use_case || null, source: src });
+    const [r1, r2] = await Promise.allSettled([
+      axios.get(ELEVEN_BASE + '/voices', { headers: elevenHeaders() }),
+      axios.get(ELEVEN_BASE + '/shared-voices?page_size=100&language=' + language, { headers: elevenHeaders() }),
     ]);
-
-    const normalVoices = normalRes.status === 'fulfilled' ? normalRes.value.data.voices || [] : [];
-    const sharedTrVoices = sharedTrRes.status === 'fulfilled' ? sharedTrRes.value.data.voices || [] : [];
-    const sharedAllVoices = sharedAllRes.status === 'fulfilled' ? sharedAllRes.value.data.voices || [] : [];
-
-    // Normalize et
-    const normalize = (v: any, source: string) => ({
-      voice_id: v.voice_id,
-      name: v.name,
-      category: v.category || source,
-      description: v.description || v.descriptive || '',
-      preview_url: v.preview_url || null,
-      gender: v.labels?.gender || v.gender || null,
-      accent: v.labels?.accent || v.accent || null,
-      use_case: v.labels?.use_case || v.use_case || null,
-      language: v.labels?.language || v.language || null,
-      age: v.labels?.age || v.age || null,
-      source,
-    });
-
-    const myVoices = normalVoices.map((v: any) => normalize(v, 'my'));
-    const cloned = myVoices.filter((v: any) => v.category === 'cloned');
-    const professional = myVoices.filter((v: any) => ['professional', 'customer_service', 'sales'].includes(v.use_case));
-    const turkishShared = sharedTrVoices.map((v: any) => normalize(v, 'shared'));
-    const allShared = sharedAllVoices.map((v: any) => normalize(v, 'shared'));
-
-    // TÃ¼m unique sesler
-    const allVoicesMap = new Map();
-    [...myVoices, ...turkishShared, ...allShared].forEach(v => allVoicesMap.set(v.voice_id, v));
-    let allVoices = Array.from(allVoicesMap.values());
-
-    // Filtrele
-    if (search) allVoices = allVoices.filter(v => v.name?.toLowerCase().includes((search as string).toLowerCase()));
-    if (gender) allVoices = allVoices.filter(v => v.gender === gender);
-    if (language) allVoices = allVoices.filter(v => v.language === language);
-
-    res.json({
-      categories: {
-        my: myVoices,
-        cloned,
-        professional,
-        turkish: turkishShared,
-        all: allVoices,
-      },
-      userVoiceId: settings?.elevenlabs_voice_id || null,
-      userVoiceName: settings?.voice_name || null,
-      total: allVoices.length,
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+    const myV = r1.status === 'fulfilled' ? r1.value.data.voices.map(v => norm(v, 'my')) : [];
+    const langV = r2.status === 'fulfilled' ? r2.value.data.voices.map(v => norm(v, 'shared')) : [];
+    res.json({ categories: { my: myV, cloned: myV.filter(v => v.category === 'cloned'), professional: myV.filter(v => ['professional','customer_service','sales'].includes(v.use_case)), language: langV, all: [...myV, ...langV] }, userVoiceId: settings && settings.elevenlabs_voice_id || null, userVoiceName: settings && settings.voice_name || null, total: langV.length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+export {};
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
+const axios = require('axios');
+const multer = require('multer');
+const fs = require('fs');
+const FormData = require('form-data');
+
+const router = express.Router();
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const upload = multer({ dest: '/tmp/voice/' });
+
+const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
+const AGENT_ID = process.env.ELEVENLABS_AGENT_ID || 'agent_6801kq0m6eh3e7r9ptx0kre2jvf0';
+const PHONE_NUMBER_ID = process.env.ELEVENLABS_PHONE_NUMBER_ID || 'phnum_5401kq493ba2e53sef4s776xn9b5';
+
+function elevenHeaders() {
+  return { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' };
+}
+
+const LANGUAGE_OPENINGS: Record<string, string> = {
+  tr: 'Merhaba! Ben {{agent_name}}, {{company_name}} adina ariyorum. Kisa bir bilgi vermek istiyorum, uygun musunuz?',
+  en: 'Hello! This is {{agent_name}} calling from {{company_name}}. I have some exciting information to share. Do you have a moment?',
+  de: 'Guten Tag! Hier ist {{agent_name}} von {{company_name}}. Ich moechte Ihnen kurz etwas mitteilen. Haben Sie einen Moment?',
+  fr: 'Bonjour! Je suis {{agent_name}} de {{company_name}}. J ai une information importante. Avez-vous un moment?',
+  ar: 'Ù…Ø±Ø­Ø¨Ø§! Ø§Ù†Ø§ {{agent_name}} Ù…Ù† Ø´Ø±ÙƒØ© {{company_name}}. Ù‡Ù„ Ù„Ø¯ÙŠÙƒ Ø¯Ù‚ÙŠÙ‚Ø©ØŸ',
+  ru: 'Zdravstvuyte! Eto {{agent_name}} iz kompanii {{company_name}}. Khotel by podelitsya informatsiyey. Est minuta?',
+  az: 'Salam! Men {{agent_name}}, {{company_name}} sirketindenim. Bir deqiqeniz varmi?',
+  it: 'Buongiorno! Sono {{agent_name}} di {{company_name}}. Ha un momento?',
+  es: 'Hola! Soy {{agent_name}} de {{company_name}}. Tiene un momento?',
+  nl: 'Goedendag! Ik ben {{agent_name}} van {{company_name}}. Heeft u even tijd?',
+  zh: 'æ‚¨å¥½ï¼æˆ‘æ˜¯{{company_name}}çš„{{agent_name}}ã€‚è¯·é—®æ‚¨çŽ°åœ¨æ–¹ä¾¿å—ï¼Ÿ',
+  ja: 'ã“ã‚“ã«ã¡ã¯ï¼{{company_name}}ã®{{agent_name}}ã¨ç”³ã—ã¾ã™ã€‚ã‚ˆã‚ã—ã„ã§ã—ã‚‡ã†ã‹ï¼Ÿ',
+};
+
+function buildOpeningLine(language: string, agentName: string, companyName: string): string {
+  const template = LANGUAGE_OPENINGS[language] || LANGUAGE_OPENINGS['en'];
+  return template.replace(/{{agent_name}}/g, agentName).replace(/{{company_name}}/g, companyName);
+}
+
+function getLanguageByCountry(countryCode: string): string {
+  const map: Record<string, string> = {
+    TR: 'tr', DE: 'de', AT: 'de', CH: 'de',
+    GB: 'en', US: 'en', CA: 'en', AU: 'en', IN: 'en',
+    FR: 'fr', BE: 'fr',
+    AE: 'ar', SA: 'ar', QA: 'ar', KW: 'ar', EG: 'ar', MA: 'ar',
+    RU: 'ru', KZ: 'ru',
+    AZ: 'az', IT: 'it',
+    ES: 'es', MX: 'es',
+    NL: 'nl', CN: 'zh', JP: 'ja', PL: 'pl',
+  };
+  return map[countryCode?.toUpperCase()] || 'en';
+}
+
+async function makeElevenLabsCall(params: any) {
+  const { toNumber, agentName, companyName, productDescription, leadName, leadCompany, language, avoidWords, openingLine } = params;
+  const response = await axios.post(
+    `${ELEVEN_BASE}/convai/twilio/outbound-call`,
+    {
+      agent_id: AGENT_ID,
+      agent_phone_number_id: PHONE_NUMBER_ID,
+      to_number: toNumber,
+      conversation_initiation_client_data: {
+        dynamic_variables: {
+          agent_name: agentName,
+          company_name: companyName,
+          product_description: productDescription,
+          lead_name: leadName,
+          lead_company: leadCompany,
+          language,
+          avoid_words: avoidWords || '',
+          opening_line: openingLine,
+        },
+      },
+    },
+    { headers: elevenHeaders(), timeout: 30000 }
+  );
+  return { conversationId: response.data.conversation_id, callSid: response.data.callSid };
+}
+
+// â”€â”€ ROUTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// GET /api/voice/eleven-voices â€” TÃ¼m sesler (normal + shared + kategorili)
 // POST /api/voice/preview-voice â€” Ses Ã¶nizleme (preview_url veya TTS)
 router.post('/preview-voice', async (req: any, res: any) => {
   try {
