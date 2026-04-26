@@ -136,6 +136,21 @@ function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
         </div>
       )}
 
+      {/* Seslerim - hızlı erişim */}
+      {myVoices.length > 0 && (
+        <div className="flex gap-2 flex-wrap items-center">
+          <span className="text-xs text-slate-500 shrink-0">Seslerim:</span>
+          {myVoices.slice(0, 6).map((voice: any) => (
+            <button key={voice.voice_id} onClick={() => onSelect(voice.voice_id, voice.name)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${selectedId === voice.voice_id ? 'bg-teal-600/20 border-teal-500/50 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+              {voice.category === 'cloned' ? '🎤' : voice.gender === 'female' ? '👩' : '👨'}
+              <span className="truncate max-w-[80px]">{voice.name.split(' ')[0]}</span>
+              {selectedId === voice.voice_id && <span className="text-teal-400">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Dil secimi */}
       <div>
         <p className="text-xs text-slate-500 mb-2">Dile gore ses ara:</p>
@@ -164,20 +179,6 @@ function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
           <option value="female">Kadin</option>
         </select>
       </div>
-
-      {/* Seslerim */}
-      {myVoices.length > 0 && (
-        <div>
-          <p className="text-xs text-slate-500 mb-2">Seslerim ({myVoices.length})</p>
-          <div className="space-y-2">
-            {myVoices.slice(0, 5).map((voice: any) => (
-              <VoiceCard key={voice.voice_id} voice={voice}
-                selected={selectedId === voice.voice_id}
-                onSelect={onSelect} playing={playing} onPlay={playVoice}/>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Ses listesi */}
       <div>
