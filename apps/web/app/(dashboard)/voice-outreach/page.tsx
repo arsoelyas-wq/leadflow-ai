@@ -66,21 +66,46 @@ function VoiceCard({ voice, selected, onSelect, onPreview, playing }: any) {
   )
 }
 
+const VOICE_LANGUAGES = [
+  { code: 'tr', name: 'Turkce', flag: '🇹🇷' },
+  { code: 'en', name: 'Ingilizce', flag: '🇬🇧' },
+  { code: 'de', name: 'Almanca', flag: '🇩🇪' },
+  { code: 'ar', name: 'Arapca', flag: '🇸🇦' },
+  { code: 'fr', name: 'Fransizca', flag: '🇫🇷' },
+  { code: 'es', name: 'Ispanyolca', flag: '🇪🇸' },
+  { code: 'pt', name: 'Portekizce', flag: '🇵🇹' },
+  { code: 'it', name: 'Italyanca', flag: '🇮🇹' },
+  { code: 'ru', name: 'Rusca', flag: '🇷🇺' },
+  { code: 'nl', name: 'Hollandaca', flag: '🇳🇱' },
+  { code: 'zh', name: 'Cince', flag: '🇨🇳' },
+  { code: 'ja', name: 'Japonca', flag: '🇯🇵' },
+  { code: 'ko', name: 'Korece', flag: '🇰🇷' },
+  { code: 'hi', name: 'Hintce', flag: '🇮🇳' },
+  { code: 'pl', name: 'Lehce', flag: '🇵🇱' },
+  { code: 'uk', name: 'Ukraynaca', flag: '🇺🇦' },
+]
+
 function VoiceLibrary({ selectedId, selectedName, onSelect, previewLang }: any) {
-  const [voices, setVoices] = useState<any>({ my: [], cloned: [], turkish: [], all: [], professional: [] })
+  const [voices, setVoices] = useState<any>({ my: [], cloned: [], turkish: [], language: [], all: [], professional: [] })
   const [loading, setLoading] = useState(true)
   const [playing, setPlaying] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterGender, setFilterGender] = useState('')
-  const [activeTab, setActiveTab] = useState<'turkish' | 'professional' | 'my' | 'cloned' | 'all'>('turkish')
+  const [activeTab, setActiveTab] = useState<'language' | 'turkish' | 'professional' | 'my' | 'cloned'>('language')
+  const [selectedVoiceLang, setSelectedVoiceLang] = useState('tr')
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  useEffect(() => {
-    fetch(`${API}/api/voice/eleven-voices`, { headers: authH() })
-      .then(r => r.json())
-      .then(d => setVoices(d.categories || {}))
-      .finally(() => setLoading(false))
-  }, [])
+  useEffect(() => { loadVoices(selectedVoiceLang) }, [selectedVoiceLang])
+
+  async function loadVoices(lang: string) {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/api/voice/eleven-voices?language=${lang}`, { headers: authH() })
+      const d = await r.json()
+      setVoices(d.categories || {})
+    } catch {}
+    setLoading(false)
+  }
 
   async function previewVoice(voiceId: string, previewUrl?: string) {
     if (playing === voiceId) {
@@ -115,12 +140,12 @@ function VoiceLibrary({ selectedId, selectedName, onSelect, previewLang }: any) 
     } catch { setPlaying(null) }
   }
 
+  const selectedLangInfo = VOICE_LANGUAGES.find(l => l.code === selectedVoiceLang)
   const tabs = [
-    { key: 'turkish', label: '🇹🇷 Turkce', count: voices.turkish?.length },
+    { key: 'language', label: `${selectedLangInfo?.flag || '🌍'} ${selectedLangInfo?.name || 'Dil'} (${voices.language?.length || 0})`, count: undefined },
     { key: 'professional', label: '💼 Profesyonel', count: voices.professional?.length },
     { key: 'my', label: '⭐ Seslerim', count: voices.my?.length },
     { key: 'cloned', label: '🎤 Klonlanmis', count: voices.cloned?.length },
-    { key: 'all', label: '🌍 Tum Sesler', count: voices.all?.length },
   ]
 
   const currentList = (voices[activeTab] || []).filter((v: any) => {
