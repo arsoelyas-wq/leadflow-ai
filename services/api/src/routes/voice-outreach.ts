@@ -24,14 +24,14 @@ const LANGUAGE_OPENINGS: Record<string, string> = {
   en: 'Hello! This is {{agent_name}} calling from {{company_name}}. I have some exciting information to share. Do you have a moment?',
   de: 'Guten Tag! Hier ist {{agent_name}} von {{company_name}}. Ich moechte Ihnen kurz etwas mitteilen. Haben Sie einen Moment?',
   fr: 'Bonjour! Je suis {{agent_name}} de {{company_name}}. J ai une information importante. Avez-vous un moment?',
-  ar: 'مرحبا! انا {{agent_name}} من شركة {{company_name}}. هل لديك دقيقة؟',
+  ar: 'Ù…Ø±Ø­Ø¨Ø§! Ø§Ù†Ø§ {{agent_name}} Ù…Ù† Ø´Ø±ÙƒØ© {{company_name}}. Ù‡Ù„ Ù„Ø¯ÙŠÙƒ Ø¯Ù‚ÙŠÙ‚Ø©ØŸ',
   ru: 'Zdravstvuyte! Eto {{agent_name}} iz kompanii {{company_name}}. Khotel by podelitsya informatsiyey. Est minuta?',
   az: 'Salam! Men {{agent_name}}, {{company_name}} sirketindenim. Bir deqiqeniz varmi?',
   it: 'Buongiorno! Sono {{agent_name}} di {{company_name}}. Ha un momento?',
   es: 'Hola! Soy {{agent_name}} de {{company_name}}. Tiene un momento?',
   nl: 'Goedendag! Ik ben {{agent_name}} van {{company_name}}. Heeft u even tijd?',
-  zh: '您好！我是{{company_name}}的{{agent_name}}。请问您现在方便吗？',
-  ja: 'こんにちは！{{company_name}}の{{agent_name}}と申します。よろしいでしょうか？',
+  zh: 'æ‚¨å¥½ï¼æˆ‘æ˜¯{{company_name}}çš„{{agent_name}}ã€‚è¯·é—®æ‚¨çŽ°åœ¨æ–¹ä¾¿å—ï¼Ÿ',
+  ja: 'ã“ã‚“ã«ã¡ã¯ï¼{{company_name}}ã®{{agent_name}}ã¨ç”³ã—ã¾ã™ã€‚ã‚ˆã‚ã—ã„ã§ã—ã‚‡ã†ã‹ï¼Ÿ',
 };
 
 function buildOpeningLine(language: string, agentName: string, companyName: string): string {
@@ -79,9 +79,9 @@ async function makeElevenLabsCall(params: any) {
   return { conversationId: response.data.conversation_id, callSid: response.data.callSid };
 }
 
-// ── ROUTES ───────────────────────────────────────────────
+// â”€â”€ ROUTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// GET /api/voice/eleven-voices — Tüm sesler (normal + shared + kategorili)
+// GET /api/voice/eleven-voices â€” TÃ¼m sesler (normal + shared + kategorili)
 router.get('/eleven-voices', async (req: any, res: any) => {
   try {
     const { category = 'all', language = '', gender = '', search = '', page = 1 } = req.query;
@@ -89,7 +89,7 @@ router.get('/eleven-voices', async (req: any, res: any) => {
 
     const { data: settings } = await supabase.from('voice_settings').select('elevenlabs_voice_id, voice_name').eq('user_id', req.userId).single();
 
-    // Paralel olarak çek
+    // Paralel olarak Ã§ek
     const [normalRes, sharedTrRes, sharedAllRes] = await Promise.allSettled([
       axios.get(`${ELEVEN_BASE}/voices`, { headers: elevenHeaders() }),
       axios.get(`${ELEVEN_BASE}/shared-voices?page_size=100&language=tr`, { headers: elevenHeaders() }),
@@ -121,7 +121,7 @@ router.get('/eleven-voices', async (req: any, res: any) => {
     const turkishShared = sharedTrVoices.map((v: any) => normalize(v, 'shared'));
     const allShared = sharedAllVoices.map((v: any) => normalize(v, 'shared'));
 
-    // Tüm unique sesler
+    // TÃ¼m unique sesler
     const allVoicesMap = new Map();
     [...myVoices, ...turkishShared, ...allShared].forEach(v => allVoicesMap.set(v.voice_id, v));
     let allVoices = Array.from(allVoicesMap.values());
@@ -148,19 +148,19 @@ router.get('/eleven-voices', async (req: any, res: any) => {
   }
 });
 
-// POST /api/voice/preview-voice — Ses önizleme (preview_url veya TTS)
+// POST /api/voice/preview-voice â€” Ses Ã¶nizleme (preview_url veya TTS)
 router.post('/preview-voice', async (req: any, res: any) => {
   try {
     const { voiceId, text, language } = req.body;
 
     const defaultTexts: Record<string, string> = {
-      tr: 'Merhaba, nasılsınız? Size kısa bir bilgi vermek istiyorum.',
+      tr: 'Merhaba, nasÄ±lsÄ±nÄ±z? Size kÄ±sa bir bilgi vermek istiyorum.',
       en: 'Hello, how are you? I would like to share some information.',
-      de: 'Guten Tag! Ich möchte Ihnen kurz etwas mitteilen.',
-      ar: 'مرحباً، كيف حالك؟ أود مشاركتك ببعض المعلومات.',
+      de: 'Guten Tag! Ich mÃ¶chte Ihnen kurz etwas mitteilen.',
+      ar: 'Ù…Ø±Ø­Ø¨Ø§Ù‹ØŒ ÙƒÙŠÙ Ø­Ø§Ù„ÙƒØŸ Ø£ÙˆØ¯ Ù…Ø´Ø§Ø±ÙƒØªÙƒ Ø¨Ø¨Ø¹Ø¶ Ø§Ù„Ù…Ø¹Ù„ÙˆÙ…Ø§Øª.',
       fr: 'Bonjour! Je voudrais partager quelques informations avec vous.',
-      ru: 'Здравствуйте! Хотел поделиться важной информацией.',
-      es: 'Hola! Me gustaría compartir información importante.',
+      ru: 'Ð—Ð´Ñ€Ð°Ð²ÑÑ‚Ð²ÑƒÐ¹Ñ‚Ðµ! Ð¥Ð¾Ñ‚ÐµÐ» Ð¿Ð¾Ð´ÐµÐ»Ð¸Ñ‚ÑŒÑÑ Ð²Ð°Ð¶Ð½Ð¾Ð¹ Ð¸Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸ÐµÐ¹.',
+      es: 'Hola! Me gustarÃ­a compartir informaciÃ³n importante.',
       it: 'Buongiorno! Vorrei condividere alcune informazioni.',
     };
 
@@ -194,17 +194,17 @@ router.post('/set-voice', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/clone — Ses klonla
+// POST /api/voice/clone â€” Ses klonla
 router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { name } = req.body;
     const file = req.file;
-    if (!file) return res.status(400).json({ error: 'Ses dosyası zorunlu' });
+    if (!file) return res.status(400).json({ error: 'Ses dosyasÄ± zorunlu' });
 
     const form = new FormData();
     form.append('name', name || `LeadFlow-${userId.slice(0, 8)}`);
-    form.append('description', 'LeadFlow AI satış sesi');
+    form.append('description', 'LeadFlow AI satÄ±ÅŸ sesi');
     form.append('files', fs.createReadStream(file.path), { filename: 'voice.mp3', contentType: 'audio/mpeg' });
 
     const r = await axios.post(`${ELEVEN_BASE}/voices/add`, form, {
@@ -214,11 +214,11 @@ router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
 
     const voiceId = r.data.voice_id;
     await supabase.from('voice_settings').upsert([{
-      user_id: userId, elevenlabs_voice_id: voiceId, voice_name: name || 'Klonlanmış Sesim',
+      user_id: userId, elevenlabs_voice_id: voiceId, voice_name: name || 'KlonlanmÄ±ÅŸ Sesim',
     }]);
 
     try { fs.unlinkSync(file.path); } catch {}
-    res.json({ ok: true, voiceId, message: 'Ses klonlandı!' });
+    res.json({ ok: true, voiceId, message: 'Ses klonlandÄ±!' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -230,14 +230,14 @@ router.post('/call/single', async (req: any, res: any) => {
     if (!leadId) return res.status(400).json({ error: 'leadId zorunlu' });
 
     const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
-    if (!lead.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadÄ±' });
+    if (!lead.phone) return res.status(400).json({ error: 'Telefon numarasÄ± yok' });
 
     const { data: settings } = await supabase.from('voice_settings').select('*').eq('user_id', userId).single();
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
     const { data: userRow } = await supabase.from('users').select('name, company').eq('id', userId).single();
 
-    const agentName = settings?.agent_name || userRow?.name || 'Satış Temsilcisi';
+    const agentName = settings?.agent_name || userRow?.name || 'SatÄ±ÅŸ Temsilcisi';
     const companyName = profile?.company?.name || userRow?.company || 'sirketimiz';
     const productDesc = profile?.product?.description || settings?.product_description || '';
     const avoidWords = profile?.sales_style?.avoid_words || '';
@@ -250,7 +250,7 @@ router.post('/call/single', async (req: any, res: any) => {
       status: 'initiating', language: callLanguage,
     }]).select().single();
 
-    res.json({ ok: true, callId: callRecord?.id, message: 'Arama ElevenLabs üzerinden başlatılıyor...' });
+    res.json({ ok: true, callId: callRecord?.id, message: 'Arama ElevenLabs Ã¼zerinden baÅŸlatÄ±lÄ±yor...' });
 
     (async () => {
       try {
@@ -282,7 +282,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
     const { data: userRow } = await supabase.from('users').select('name, company').eq('id', userId).single();
 
-    const agentName = settings?.agent_name || userRow?.name || 'Satış Temsilcisi';
+    const agentName = settings?.agent_name || userRow?.name || 'SatÄ±ÅŸ Temsilcisi';
     const companyName = profile?.company?.name || userRow?.company || 'sirketimiz';
     const productDesc = profile?.product?.description || settings?.product_description || '';
     const avoidWords = profile?.sales_style?.avoid_words || '';
@@ -292,7 +292,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
       total_leads: leadIds.length, status: 'running', caller_number: '+19784325322', delay_minutes: delayMinutes,
     }]).select().single();
 
-    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead için arama başlatılıyor` });
+    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead iÃ§in arama baÅŸlatÄ±lÄ±yor` });
 
     (async () => {
       let called = 0;
