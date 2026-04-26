@@ -12,22 +12,22 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
 const LANG_MAP: Record<string, { name: string; flag: string }> = {
-  tr: { name: 'Turkce', flag: 'ðŸ‡¹ðŸ‡·' },
-  en: { name: 'Ingilizce', flag: 'ðŸ‡¬ðŸ‡§' },
-  de: { name: 'Almanca', flag: 'ðŸ‡©ðŸ‡ª' },
-  fr: { name: 'Fransizca', flag: 'ðŸ‡«ðŸ‡·' },
-  ar: { name: 'Arapca', flag: 'ðŸ‡¸ðŸ‡¦' },
-  ru: { name: 'Rusca', flag: 'ðŸ‡·ðŸ‡º' },
-  az: { name: 'Azerbaycanca', flag: 'ðŸ‡¦ðŸ‡¿' },
-  it: { name: 'Italyanca', flag: 'ðŸ‡®ðŸ‡¹' },
-  es: { name: 'Ispanyolca', flag: 'ðŸ‡ªðŸ‡¸' },
-  nl: { name: 'Hollandaca', flag: 'ðŸ‡³ðŸ‡±' },
-  zh: { name: 'Cince', flag: 'ðŸ‡¨ðŸ‡³' },
-  ja: { name: 'Japonca', flag: 'ðŸ‡¯ðŸ‡µ' },
-  ko: { name: 'Korece', flag: 'ðŸ‡°ðŸ‡·' },
-  hi: { name: 'Hintce', flag: 'ðŸ‡®ðŸ‡³' },
-  pt: { name: 'Portekizce', flag: 'ðŸ‡µðŸ‡¹' },
-  pl: { name: 'Lehce', flag: 'ðŸ‡µðŸ‡±' },
+  tr: { name: 'Turkce', flag: '🇹🇷' },
+  en: { name: 'Ingilizce', flag: '🇬🇧' },
+  de: { name: 'Almanca', flag: '🇩🇪' },
+  fr: { name: 'Fransizca', flag: '🇫🇷' },
+  ar: { name: 'Arapca', flag: '🇸🇦' },
+  ru: { name: 'Rusca', flag: '🇷🇺' },
+  az: { name: 'Azerbaycanca', flag: '🇦🇿' },
+  it: { name: 'Italyanca', flag: '🇮🇹' },
+  es: { name: 'Ispanyolca', flag: '🇪🇸' },
+  nl: { name: 'Hollandaca', flag: '🇳🇱' },
+  zh: { name: 'Cince', flag: '🇨🇳' },
+  ja: { name: 'Japonca', flag: '🇯🇵' },
+  ko: { name: 'Korece', flag: '🇰🇷' },
+  hi: { name: 'Hintce', flag: '🇮🇳' },
+  pt: { name: 'Portekizce', flag: '🇵🇹' },
+  pl: { name: 'Lehce', flag: '🇵🇱' },
 }
 
 const VOICE_LANGS = Object.entries(LANG_MAP).map(([code, v]) => ({ code, ...v }))
@@ -44,12 +44,12 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
 }
 
-// Global audio instance - tek ses Ã§alar
+// Global audio instance - tek ses çalar
 let globalAudio: HTMLAudioElement | null = null
 
 function VoiceCard({ voice, selected, onSelect, playing, onPlay }: any) {
   const isPlaying = playing === voice.voice_id
-  const emoji = voice.category === 'cloned' ? 'ðŸŽ¤' : voice.gender === 'female' ? 'ðŸ‘©' : 'ðŸ‘¨'
+  const emoji = voice.category === 'cloned' ? '🎤' : voice.gender === 'female' ? '👩' : '👨'
   return (
     <div onClick={() => onSelect(voice.voice_id, voice.name, voice.preview_url)}
       className={`group flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${selected ? 'bg-teal-600/20 border-teal-500/50' : 'bg-slate-800/60 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800'}`}>
@@ -63,8 +63,8 @@ function VoiceCard({ voice, selected, onSelect, playing, onPlay }: any) {
         </div>
         <div className="text-xs text-slate-500 mt-0.5 flex gap-1.5">
           {voice.gender && <span>{voice.gender === 'female' ? 'Kadin' : 'Erkek'}</span>}
-          {voice.accent && <span>Â· {voice.accent}</span>}
-          {voice.use_case && <span>Â· {voice.use_case}</span>}
+          {voice.accent && <span>· {voice.accent}</span>}
+          {voice.use_case && <span>· {voice.use_case}</span>}
         </div>
       </div>
       <button onClick={e => { e.stopPropagation(); onPlay(voice.voice_id, voice.preview_url) }}
@@ -94,7 +94,7 @@ function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
       const d = await r.json()
       const cats = d.categories || {}
       // turkish veya language hangisi doluysa onu al
-      const list = cats.language || cats.turkish || []
+      const list = (cats.turkish?.length > 0 ? cats.turkish : cats.language) || []
       setAllVoices(list)
       setMyVoices(cats.my || [])
     } catch {}
@@ -108,7 +108,7 @@ function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
       setPlaying(null)
       return
     }
-    // Ã–nceki sesi durdur
+    // Önceki sesi durdur
     if (globalAudio) { globalAudio.pause(); globalAudio = null }
     if (!previewUrl) { setPlaying(null); return }
 
@@ -336,7 +336,7 @@ export default function VoicePage() {
             </div>
             AI Sesli Arama
           </h1>
-          <p className="text-slate-400 text-sm mt-1">ElevenLabs + Claude Sonnet Â· %100 insan sesi Â· 16 dil Â· 1600+ ses</p>
+          <p className="text-slate-400 text-sm mt-1">ElevenLabs + Claude Sonnet · %100 insan sesi · 16 dil · 1600+ ses</p>
         </div>
         {selectedVoiceName ? (
           <div className="flex items-center gap-2 px-3 py-2 bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer" onClick={() => setTab('voice')}>
@@ -455,7 +455,7 @@ export default function VoicePage() {
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500">
                 <option value="">Lead secin (telefonu olanlar)</option>
                 {leadsWithPhone.map(l => (
-                  <option key={l.id} value={l.id}>{l.company_name} {l.country ? `(${l.country})` : ''} â€” {l.phone}</option>
+                  <option key={l.id} value={l.id}>{l.company_name} {l.country ? `(${l.country})` : ''} — {l.phone}</option>
                 ))}
               </select>
             </div>
@@ -473,7 +473,7 @@ export default function VoicePage() {
                 { step: '1', title: 'Ses Sec', desc: 'Kutuphaneden ses sec veya kendi sesini klonla', color: 'bg-teal-500/20 text-teal-400' },
                 { step: '2', title: 'Lead ve Dil', desc: 'Aranacak leadi ve konusma dilini sec', color: 'bg-blue-500/20 text-blue-400' },
                 { step: '3', title: 'ElevenLabs Arar', desc: 'Secilen sesle musteri aranir', color: 'bg-purple-500/20 text-purple-400' },
-                { step: '4', title: 'Claude Yonetir', desc: 'Claude Sonnet konusmayÄ± yonetir', color: 'bg-amber-500/20 text-amber-400' },
+                { step: '4', title: 'Claude Yonetir', desc: 'Claude Sonnet konusmayı yonetir', color: 'bg-amber-500/20 text-amber-400' },
                 { step: '5', title: 'Analiz Gelir', desc: 'Transcript ve analiz otomatik kaydedilir', color: 'bg-emerald-500/20 text-emerald-400' },
               ].map(s => (
                 <div key={s.step} className="flex items-start gap-3">
@@ -549,7 +549,7 @@ export default function VoicePage() {
                       className="accent-teal-500"/>
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-xs font-medium truncate">{l.company_name}</div>
-                      <div className="text-slate-500 text-xs">{l.phone} {l.country && `Â· ${l.country}`}</div>
+                      <div className="text-slate-500 text-xs">{l.phone} {l.country && `· ${l.country}`}</div>
                     </div>
                   </label>
                 ))}
@@ -606,16 +606,16 @@ export default function VoicePage() {
                 {calls.map(c => (
                   <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
                     <td className="px-4 py-3">
-                      <div className="text-white text-xs font-medium">{c.leads?.company_name || 'â€”'}</div>
+                      <div className="text-white text-xs font-medium">{c.leads?.company_name || '—'}</div>
                       <div className="text-slate-500 text-xs">{c.leads?.country || ''}</div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-400">{c.callee_number}</td>
-                    <td className="px-4 py-3 text-center text-lg">{LANG_MAP[c.language]?.flag || 'ðŸŒ'}</td>
+                    <td className="px-4 py-3 text-center text-lg">{LANG_MAP[c.language]?.flag || '🌍'}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={c.status}/></td>
                     <td className="px-4 py-3 text-center">
                       {c.outcome === 'positive' ? <span className="text-emerald-400 text-xs">Olumlu</span>
                         : c.outcome === 'negative' ? <span className="text-red-400 text-xs">Olumsuz</span>
-                        : <span className="text-slate-600 text-xs">â€”</span>}
+                        : <span className="text-slate-600 text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-slate-500">
                       {new Date(c.created_at).toLocaleDateString('tr-TR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
