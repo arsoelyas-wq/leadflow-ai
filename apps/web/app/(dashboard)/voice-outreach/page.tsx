@@ -100,10 +100,19 @@ function VoiceLibrary({ selectedId, selectedName, onSelect, previewLang }: any) 
     setLoading(false)
   }
 
-  async function previewVoice(voiceId: string) {
+  async function previewVoice(voiceId: string, previewUrl?: string) {
     if (playing === voiceId) { audioRef.current?.pause(); setPlaying(null); return }
     setPlaying(voiceId)
     try {
+      if (previewUrl) {
+        if (audioRef.current) {
+          audioRef.current.src = previewUrl
+          audioRef.current.onended = () => setPlaying(null)
+          audioRef.current.onerror = () => setPlaying(null)
+          audioRef.current.play()
+          return
+        }
+      }
       const r = await fetch(`${API}/api/voice/preview-voice`, {
         method: 'POST', headers: authH(),
         body: JSON.stringify({ voiceId, language: previewLang }),
