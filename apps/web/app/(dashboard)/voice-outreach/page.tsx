@@ -12,18 +12,18 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
 const LANGUAGES: Record<string, { name: string; flag: string }> = {
-  tr: { name: 'Turkce', flag: '🇹🇷' },
-  en: { name: 'Ingilizce', flag: '🇬🇧' },
-  de: { name: 'Almanca', flag: '🇩🇪' },
-  fr: { name: 'Fransizca', flag: '🇫🇷' },
-  ar: { name: 'Arapca', flag: '🇸🇦' },
-  ru: { name: 'Rusca', flag: '🇷🇺' },
-  az: { name: 'Azerbaycanca', flag: '🇦🇿' },
-  it: { name: 'Italyanca', flag: '🇮🇹' },
-  es: { name: 'Ispanyolca', flag: '🇪🇸' },
-  nl: { name: 'Hollandaca', flag: '🇳🇱' },
-  zh: { name: 'Cince', flag: '🇨🇳' },
-  ja: { name: 'Japonca', flag: '🇯🇵' },
+  tr: { name: 'Turkce', flag: 'ðŸ‡¹ðŸ‡·' },
+  en: { name: 'Ingilizce', flag: 'ðŸ‡¬ðŸ‡§' },
+  de: { name: 'Almanca', flag: 'ðŸ‡©ðŸ‡ª' },
+  fr: { name: 'Fransizca', flag: 'ðŸ‡«ðŸ‡·' },
+  ar: { name: 'Arapca', flag: 'ðŸ‡¸ðŸ‡¦' },
+  ru: { name: 'Rusca', flag: 'ðŸ‡·ðŸ‡º' },
+  az: { name: 'Azerbaycanca', flag: 'ðŸ‡¦ðŸ‡¿' },
+  it: { name: 'Italyanca', flag: 'ðŸ‡®ðŸ‡¹' },
+  es: { name: 'Ispanyolca', flag: 'ðŸ‡ªðŸ‡¸' },
+  nl: { name: 'Hollandaca', flag: 'ðŸ‡³ðŸ‡±' },
+  zh: { name: 'Cince', flag: 'ðŸ‡¨ðŸ‡³' },
+  ja: { name: 'Japonca', flag: 'ðŸ‡¯ðŸ‡µ' },
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -40,7 +40,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function VoiceCard({ voice, selected, onSelect, onPreview, playing }: any) {
   const isPlaying = playing === voice.voice_id
-  const emoji = voice.category === 'cloned' ? '🎤' : voice.gender === 'female' ? '👩' : '👨'
+  const emoji = voice.category === 'cloned' ? 'ðŸŽ¤' : voice.gender === 'female' ? 'ðŸ‘©' : 'ðŸ‘¨'
   return (
     <div onClick={() => onSelect(voice.voice_id, voice.name, voice.preview_url)}
       className={`group flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${selected ? 'bg-teal-600/20 border-teal-500/50' : 'bg-slate-800/60 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800'}`}>
@@ -54,8 +54,8 @@ function VoiceCard({ voice, selected, onSelect, onPreview, playing }: any) {
         </div>
         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
           {voice.gender && <span className="text-xs text-slate-500">{voice.gender === 'female' ? 'Kadin' : 'Erkek'}</span>}
-          {voice.accent && <span className="text-xs text-slate-600">· {voice.accent}</span>}
-          {voice.use_case && <span className="text-xs text-slate-600">· {voice.use_case}</span>}
+          {voice.accent && <span className="text-xs text-slate-600">Â· {voice.accent}</span>}
+          {voice.use_case && <span className="text-xs text-slate-600">Â· {voice.use_case}</span>}
         </div>
       </div>
       <button onClick={e => { e.stopPropagation(); onPreview(voice.voice_id, voice.preview_url) }}
@@ -67,22 +67,22 @@ function VoiceCard({ voice, selected, onSelect, onPreview, playing }: any) {
 }
 
 const VOICE_LANGUAGES = [
-  { code: 'tr', name: 'Turkce', flag: '🇹🇷' },
-  { code: 'en', name: 'Ingilizce', flag: '🇬🇧' },
-  { code: 'de', name: 'Almanca', flag: '🇩🇪' },
-  { code: 'ar', name: 'Arapca', flag: '🇸🇦' },
-  { code: 'fr', name: 'Fransizca', flag: '🇫🇷' },
-  { code: 'es', name: 'Ispanyolca', flag: '🇪🇸' },
-  { code: 'pt', name: 'Portekizce', flag: '🇵🇹' },
-  { code: 'it', name: 'Italyanca', flag: '🇮🇹' },
-  { code: 'ru', name: 'Rusca', flag: '🇷🇺' },
-  { code: 'nl', name: 'Hollandaca', flag: '🇳🇱' },
-  { code: 'zh', name: 'Cince', flag: '🇨🇳' },
-  { code: 'ja', name: 'Japonca', flag: '🇯🇵' },
-  { code: 'ko', name: 'Korece', flag: '🇰🇷' },
-  { code: 'hi', name: 'Hintce', flag: '🇮🇳' },
-  { code: 'pl', name: 'Lehce', flag: '🇵🇱' },
-  { code: 'uk', name: 'Ukraynaca', flag: '🇺🇦' },
+  { code: 'tr', name: 'Turkce', flag: 'ðŸ‡¹ðŸ‡·' },
+  { code: 'en', name: 'Ingilizce', flag: 'ðŸ‡¬ðŸ‡§' },
+  { code: 'de', name: 'Almanca', flag: 'ðŸ‡©ðŸ‡ª' },
+  { code: 'ar', name: 'Arapca', flag: 'ðŸ‡¸ðŸ‡¦' },
+  { code: 'fr', name: 'Fransizca', flag: 'ðŸ‡«ðŸ‡·' },
+  { code: 'es', name: 'Ispanyolca', flag: 'ðŸ‡ªðŸ‡¸' },
+  { code: 'pt', name: 'Portekizce', flag: 'ðŸ‡µðŸ‡¹' },
+  { code: 'it', name: 'Italyanca', flag: 'ðŸ‡®ðŸ‡¹' },
+  { code: 'ru', name: 'Rusca', flag: 'ðŸ‡·ðŸ‡º' },
+  { code: 'nl', name: 'Hollandaca', flag: 'ðŸ‡³ðŸ‡±' },
+  { code: 'zh', name: 'Cince', flag: 'ðŸ‡¨ðŸ‡³' },
+  { code: 'ja', name: 'Japonca', flag: 'ðŸ‡¯ðŸ‡µ' },
+  { code: 'ko', name: 'Korece', flag: 'ðŸ‡°ðŸ‡·' },
+  { code: 'hi', name: 'Hintce', flag: 'ðŸ‡®ðŸ‡³' },
+  { code: 'pl', name: 'Lehce', flag: 'ðŸ‡µðŸ‡±' },
+  { code: 'uk', name: 'Ukraynaca', flag: 'ðŸ‡ºðŸ‡¦' },
 ]
 
 function VoiceLibrary({ selectedId, selectedName, onSelect, previewLang }: any) {
@@ -91,7 +91,7 @@ function VoiceLibrary({ selectedId, selectedName, onSelect, previewLang }: any) 
   const [playing, setPlaying] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterGender, setFilterGender] = useState('')
-  const [activeTab, setActiveTab] = useState<'language' | 'turkish' | 'professional' | 'my' | 'cloned'>('language')
+  const [activeTab, setActiveTab] = useState<'language' | 'turkish' | 'professional' | 'my' | 'cloned'>('turkish')
   const [selectedVoiceLang, setSelectedVoiceLang] = useState('tr')
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -142,10 +142,10 @@ function VoiceLibrary({ selectedId, selectedName, onSelect, previewLang }: any) 
 
   const selectedLangInfo = VOICE_LANGUAGES.find(l => l.code === selectedVoiceLang)
   const tabs = [
-    { key: 'language', label: `${selectedLangInfo?.flag || '🌍'} ${selectedLangInfo?.name || 'Dil'} (${voices.language?.length || 0})`, count: undefined },
-    { key: 'professional', label: '💼 Profesyonel', count: voices.professional?.length },
-    { key: 'my', label: '⭐ Seslerim', count: voices.my?.length },
-    { key: 'cloned', label: '🎤 Klonlanmis', count: voices.cloned?.length },
+    { key: 'turkish', label: `${selectedLangInfo?.flag || 'ðŸŒ'} ${selectedLangInfo?.name || 'Dil'} (${voices.language?.length || 0})`, count: undefined },
+    { key: 'professional', label: 'ðŸ’¼ Profesyonel', count: voices.professional?.length },
+    { key: 'my', label: 'â­ Seslerim', count: voices.my?.length },
+    { key: 'cloned', label: 'ðŸŽ¤ Klonlanmis', count: voices.cloned?.length },
   ]
 
   const currentList = (voices[activeTab] || []).filter((v: any) => {
@@ -338,7 +338,7 @@ export default function VoicePage() {
             </div>
             AI Sesli Arama
           </h1>
-          <p className="text-slate-400 text-sm mt-1">ElevenLabs + Claude Sonnet · %100 insan sesi · 12 dil</p>
+          <p className="text-slate-400 text-sm mt-1">ElevenLabs + Claude Sonnet Â· %100 insan sesi Â· 12 dil</p>
         </div>
         {selectedVoiceName ? (
           <div className="flex items-center gap-2 px-3 py-2 bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer" onClick={() => setTab('voice')}>
@@ -378,7 +378,7 @@ export default function VoicePage() {
       )}
 
       <div className="flex gap-1.5 bg-slate-800/40 border border-slate-700 p-1 rounded-xl w-fit flex-wrap">
-        {[['voice','🎤 Sesler'],['dial','📞 Tek Arama'],['campaign','🚀 Kampanya'],['calls','📋 Aramalar'],['settings','⚙️ Ayarlar']].map(([t,l]) => (
+        {[['voice','ðŸŽ¤ Sesler'],['dial','ðŸ“ž Tek Arama'],['campaign','ðŸš€ Kampanya'],['calls','ðŸ“‹ Aramalar'],['settings','âš™ï¸ Ayarlar']].map(([t,l]) => (
           <button key={t} onClick={() => setTab(t as any)} className={tabCls(t)}>{l}</button>
         ))}
       </div>
@@ -470,7 +470,7 @@ export default function VoicePage() {
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500">
                 <option value="">Lead secin (telefonu olanlar)</option>
                 {leadsWithPhone.map(l => (
-                  <option key={l.id} value={l.id}>{l.company_name} {l.country ? `(${l.country})` : ''} — {l.phone}</option>
+                  <option key={l.id} value={l.id}>{l.company_name} {l.country ? `(${l.country})` : ''} â€” {l.phone}</option>
                 ))}
               </select>
             </div>
@@ -531,7 +531,7 @@ export default function VoicePage() {
               <div className="flex gap-1.5 flex-wrap">
                 <button onClick={() => setSelectedLanguage('')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${!selectedLanguage ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                  🌍 Otomatik
+                  ðŸŒ Otomatik
                 </button>
                 {Object.entries(LANGUAGES).map(([code, lang]) => (
                   <button key={code} onClick={() => setSelectedLanguage(code)}
@@ -565,7 +565,7 @@ export default function VoicePage() {
                       className="accent-teal-500"/>
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-xs font-medium truncate">{l.company_name}</div>
-                      <div className="text-slate-500 text-xs">{l.phone} {l.country && `· ${l.country}`}</div>
+                      <div className="text-slate-500 text-xs">{l.phone} {l.country && `Â· ${l.country}`}</div>
                     </div>
                   </label>
                 ))}
@@ -622,16 +622,16 @@ export default function VoicePage() {
                 {calls.map(c => (
                   <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
                     <td className="px-4 py-3">
-                      <div className="text-white text-xs font-medium">{c.leads?.company_name || '—'}</div>
+                      <div className="text-white text-xs font-medium">{c.leads?.company_name || 'â€”'}</div>
                       <div className="text-slate-500 text-xs">{c.leads?.country || ''}</div>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-400">{c.callee_number}</td>
-                    <td className="px-4 py-3 text-center text-lg">{LANGUAGES[c.language]?.flag || '🌍'}</td>
+                    <td className="px-4 py-3 text-center text-lg">{LANGUAGES[c.language]?.flag || 'ðŸŒ'}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={c.status}/></td>
                     <td className="px-4 py-3 text-center">
                       {c.outcome === 'positive' ? <span className="text-emerald-400 text-xs">Olumlu</span>
                         : c.outcome === 'negative' ? <span className="text-red-400 text-xs">Olumsuz</span>
-                        : <span className="text-slate-600 text-xs">—</span>}
+                        : <span className="text-slate-600 text-xs">â€”</span>}
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-slate-500">
                       {new Date(c.created_at).toLocaleDateString('tr-TR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
