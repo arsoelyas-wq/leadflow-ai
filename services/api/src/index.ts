@@ -124,6 +124,7 @@ app.use('/api/vision',               authMiddleware, require('./routes/vision'))
 app.use('/api/health-scores',        authMiddleware, require('./routes/health-scores'));
 app.use('/api/developer',            authMiddleware, require('./routes/developer'));
 app.use('/api/whitelabel',           authMiddleware, require('./routes/whitelabel'));
+app.post('/api/voice/webhook/elevenlabs', require('./routes/voice-outreach'));
 app.use('/api/voice',                authMiddleware, require('./routes/voice-outreach'));
 app.use('/api/push',                 authMiddleware, require('./routes/push'));
 app.use('/api/cultural',             authMiddleware, require('./routes/cultural'));
