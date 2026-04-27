@@ -2,421 +2,342 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
-const cheerio = require('cheerio');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const router = express.Router();
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const HEYGEN_API_KEY = process.env.HEYGEN_API_KEY;
+const HEYGEN_KEY = process.env.HEYGEN_API_KEY;
+const ELEVEN_KEY = process.env.ELEVENLABS_API_KEY;
 const HEYGEN_BASE = 'https://api.heygen.com';
+const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
 
-function heygenHeaders() {
-  return { 'X-Api-Key': HEYGEN_API_KEY, 'Content-Type': 'application/json' };
-}
-
+function heygenHeaders() { return { 'X-Api-Key': HEYGEN_KEY, 'Content-Type': 'application/json' }; }
+function elevenHeaders() { return { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }; }
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-async function fetchCompanyBackground(website: string): Promise<string | null> {
+// Claude ile kisisel script yaz
+async function generateScript(lead: any, profile: any, language: string): Promise<string> {
+  const langNames: Record<string, string> = {
+    tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', ar: 'Arapça', fr: 'Fransızca',
+    ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
+  };
   try {
-    if (!website) return null;
-    const url = website.startsWith('http') ? website : `https://${website}`;
-    const response = await axios.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 8000
+    const r = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: `${profile?.company?.name || 'Şirket'} adına ${lead.company_name} firmasına ${langNames[language] || 'Türkçe'} dilinde kişisel satış videosu için script yaz.
+Ürün: ${profile?.product?.description || ''}
+Muhatap: ${lead.contact_name || lead.company_name}
+Sektör: ${lead.sector || ''}
+Ülke: ${lead.country || ''}
+
+KURALLAR:
+- Max 30 saniye (60-80 kelime)
+- Doğal, samimi, insan gibi konuş
+- İsmi kullan: ${lead.contact_name || lead.company_name}
+- Değer öner, randevu veya numune teklif et
+- Yapay zeka olduğunu ASLA söyleme
+- ${langNames[language] || 'Türkçe'} dilinde yaz
+
+Sadece konuşma metnini yaz, başka bir şey yazma.`
+      }]
     });
-    const $ = cheerio.load(response.data);
-    for (const sel of ['img[class*="logo"]', 'img[alt*="logo"]', 'header img']) {
-      const src = $(sel).first().attr('src');
-      if (src) return src.startsWith('http') ? src : `${url}${src.startsWith('/') ? '' : '/'}${src}`;
-    }
-    return null;
-  } catch { return null; }
+    return r.content[0]?.text || '';
+  } catch { return `Merhaba ${lead.contact_name || lead.company_name}! ${profile?.company?.name || 'Şirketimiz'} adına sizinle iletişime geçmek istedik. Size özel bir teklifimiz var, görüşmek ister misiniz?`; }
 }
 
-async function generateScript(lead: any, settings: any): Promise<string> {
-  try {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const firstName = (lead.contact_name || lead.company_name).split(' ')[0];
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 200,
-      messages: [{ role: 'user', content: `Kısa B2B satış video scripti yaz. MAX 80 kelime. Türkçe. Samimi.
-Hedef: ${firstName} / ${lead.company_name} / ${lead.city || ''} / ${lead.sector || ''}
-Sadece scripti yaz.` }]
-    });
-    return response.content[0]?.text || '';
-  } catch {
-    const firstName = (lead.contact_name || lead.company_name).split(' ')[0];
-    return `Merhaba ${firstName} Bey/Hanım, ${lead.company_name} olarak yaptığınız çalışmaları takip ediyorum. Size özel bir çözüm sunmak için kısa bir görüşme yapabilir miyiz?`;
-  }
+// ElevenLabs ile ses üret - base64 döndür
+async function generateAudio(text: string, voiceId: string): Promise<string> {
+  const r = await axios.post(
+    `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
+    { text, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true } },
+    { headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }, responseType: 'arraybuffer', timeout: 30000 }
+  );
+  return Buffer.from(r.data).toString('base64');
 }
 
-// GET /api/video-outreach/avatars
+// HeyGen video oluştur - ElevenLabs sesiyle
+async function generateHeygenVideo(params: {
+  avatarId: string;
+  audioBase64: string;
+  aspectRatio: string;
+}): Promise<string> {
+  const { avatarId, audioBase64, aspectRatio } = params;
+
+  const dimensions: Record<string, { width: number; height: number }> = {
+    '9:16': { width: 720, height: 1280 },
+    '16:9': { width: 1280, height: 720 },
+    '1:1': { width: 720, height: 720 },
+  };
+  const dim = dimensions[aspectRatio] || dimensions['9:16'];
+
+  const r = await axios.post(
+    `${HEYGEN_BASE}/v2/video/generate`,
+    {
+      video_inputs: [{
+        character: { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' },
+        voice: { type: 'audio', audio_base64: audioBase64, audio_encoding: 'mp3' },
+      }],
+      dimension: dim,
+      test: false,
+    },
+    { headers: heygenHeaders(), timeout: 30000 }
+  );
+
+  const videoId = r.data?.data?.video_id;
+  if (!videoId) throw new Error('HeyGen video ID alinamadi: ' + JSON.stringify(r.data));
+  return videoId;
+}
+
+// Video durumunu kontrol et
+async function checkVideoStatus(videoId: string): Promise<{ status: string; url?: string; thumbnail?: string }> {
+  const r = await axios.get(
+    `${HEYGEN_BASE}/v1/video_status.get?video_id=${videoId}`,
+    { headers: heygenHeaders(), timeout: 10000 }
+  );
+  const d = r.data?.data;
+  return { status: d?.status || 'processing', url: d?.video_url, thumbnail: d?.thumbnail_url };
+}
+
+// GET /api/video-outreach/avatars - Tum HeyGen avatarları
 router.get('/avatars', async (req: any, res: any) => {
   try {
-    const response = await axios.get(`${HEYGEN_BASE}/v2/avatars`, { headers: heygenHeaders(), timeout: 10000 });
-    res.json({ avatars: response.data?.data?.avatars || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.message || e.message });
-  }
+    const { search = '', gender = '', page = 1 } = req.query;
+    const r = await axios.get(`${HEYGEN_BASE}/v2/avatars`, { headers: heygenHeaders(), timeout: 15000 });
+    let avatars = r.data?.data?.avatars || [];
+
+    // Filtrele
+    if (search) avatars = avatars.filter((a: any) => a.avatar_name?.toLowerCase().includes((search as string).toLowerCase()));
+    if (gender) avatars = avatars.filter((a: any) => a.gender?.toLowerCase() === gender);
+
+    // Sayfalama
+    const pageSize = 30;
+    const pageNum = Number(page);
+    const total = avatars.length;
+    const paged = avatars.slice((pageNum - 1) * pageSize, pageNum * pageSize);
+
+    res.json({
+      avatars: paged.map((a: any) => ({
+        avatar_id: a.avatar_id,
+        name: a.avatar_name,
+        gender: a.gender,
+        preview_image: a.preview_image_url || a.preview_video_url,
+        preview_video: a.preview_video_url,
+        tags: a.tags || [],
+      })),
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / pageSize),
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/video-outreach/voices
-router.get('/voices', async (req: any, res: any) => {
+// GET /api/video-outreach/eleven-voices - ElevenLabs sesler dil bazli
+router.get('/eleven-voices', async (req: any, res: any) => {
   try {
-    const response = await axios.get(`${HEYGEN_BASE}/v2/voices`, { headers: heygenHeaders(), timeout: 10000 });
-    const voices = response.data?.data?.voices || [];
-    const tr = voices.filter((v: any) => v.language?.toLowerCase().includes('tr') || v.language?.toLowerCase().includes('turkish'));
-    const others = voices.filter((v: any) => !v.language?.toLowerCase().includes('tr') && !v.language?.toLowerCase().includes('turkish'));
-    res.json({ voices: [...tr, ...others] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.message || e.message });
-  }
+    const { language = 'tr' } = req.query;
+    const norm = (v: any) => ({
+      voice_id: v.voice_id, name: v.name,
+      preview_url: v.preview_url || null,
+      gender: v.labels?.gender || v.gender || null,
+      accent: v.labels?.accent || v.accent || null,
+    });
+    const [r1, r2] = await Promise.allSettled([
+      axios.get(`${ELEVEN_BASE}/voices`, { headers: elevenHeaders() }),
+      axios.get(`${ELEVEN_BASE}/shared-voices?page_size=100&language=${language}`, { headers: elevenHeaders() }),
+    ]);
+    const myV = r1.status === 'fulfilled' ? r1.value.data.voices.map(norm) : [];
+    const langV = r2.status === 'fulfilled' ? r2.value.data.voices.map(norm) : [];
+    res.json({ my: myV, language: langV, total: langV.length });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/video-outreach/generate/single - Tek video uret
+router.post('/generate/single', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { leadId, avatarId, voiceId, aspectRatio = '9:16', language = 'tr', autoSend = false } = req.body;
+    if (!leadId || !avatarId || !voiceId) return res.status(400).json({ error: 'leadId, avatarId, voiceId zorunlu' });
+
+    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadi' });
+
+    const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
+
+    // DB kaydı oluştur
+    const { data: videoRecord } = await supabase.from('video_outreach').insert([{
+      user_id: userId, lead_id: leadId,
+      avatar_id: avatarId, voice_id: voiceId,
+      aspect_ratio: aspectRatio, language,
+      auto_send: autoSend, status: 'generating',
+    }]).select().single();
+
+    res.json({ ok: true, videoId: videoRecord?.id, message: 'Video olusturuluyor...' });
+
+    // Arka planda pipeline
+    (async () => {
+      try {
+        // 1. Script yaz
+        const script = await generateScript(lead, profile, language);
+        await supabase.from('video_outreach').update({ script }).eq('id', videoRecord?.id);
+
+        // 2. ElevenLabs ile ses üret
+        const audioBase64 = await generateAudio(script, voiceId);
+
+        // 3. HeyGen video oluştur
+        const heygenVideoId = await generateHeygenVideo({ avatarId, audioBase64, aspectRatio });
+        await supabase.from('video_outreach').update({ heygen_video_id: heygenVideoId, status: 'processing' }).eq('id', videoRecord?.id);
+
+        console.log(`Video olusturuldu: ${heygenVideoId} (lead: ${lead.company_name})`);
+      } catch (err: any) {
+        console.error('Video hatasi:', err.message);
+        await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', videoRecord?.id);
+      }
+    })();
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/video-outreach/generate/campaign - Toplu video
+router.post('/generate/campaign', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { leadIds, avatarId, voiceId, aspectRatio = '9:16', language, autoSend = false, campaignName } = req.body;
+    if (!leadIds?.length || !avatarId || !voiceId) return res.status(400).json({ error: 'Parametreler eksik' });
+
+    const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
+
+    // Kampanya kaydı
+    const { data: campaign } = await supabase.from('video_campaigns').insert([{
+      user_id: userId, name: campaignName || `Video Kampanyasi ${new Date().toLocaleDateString('tr-TR')}`,
+      total_leads: leadIds.length, status: 'running', avatar_id: avatarId, voice_id: voiceId,
+    }]).select().single();
+
+    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} video olusturuluyor` });
+
+    // Arka planda
+    (async () => {
+      let done = 0;
+      for (const leadId of leadIds) {
+        try {
+          const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+          if (!lead) { done++; continue; }
+
+          const callLanguage = language || getLanguageByCountry(lead.country_code || '') || 'tr';
+          const script = await generateScript(lead, profile, callLanguage);
+          const audioBase64 = await generateAudio(script, voiceId);
+          const heygenVideoId = await generateHeygenVideo({ avatarId, audioBase64, aspectRatio });
+
+          await supabase.from('video_outreach').insert([{
+            user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
+            avatar_id: avatarId, voice_id: voiceId,
+            heygen_video_id: heygenVideoId, script,
+            aspect_ratio: aspectRatio, language: callLanguage,
+            auto_send: autoSend, status: 'processing',
+          }]);
+
+          await supabase.from('video_campaigns').update({ videos_created: done + 1 }).eq('id', campaign?.id);
+          done++;
+          await sleep(2000); // Rate limit
+        } catch (err: any) { console.error(`Lead ${leadId} video hatasi:`, err.message); done++; }
+      }
+      await supabase.from('video_campaigns').update({ status: 'completed' }).eq('id', campaign?.id);
+    })();
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/video-outreach/videos - Video listesi
+router.get('/videos', async (req: any, res: any) => {
+  try {
+    const { limit = 20, campaignId } = req.query;
+    let query = supabase.from('video_outreach')
+      .select('*, leads(company_name, contact_name, phone, country)')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false })
+      .limit(Number(limit));
+    if (campaignId) query = query.eq('campaign_id', campaignId);
+    const { data } = await query;
+    res.json({ videos: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/video-outreach/stats
 router.get('/stats', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const [a, b, c, d] = await Promise.all([
-      supabase.from('video_outreach').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-      supabase.from('video_outreach').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'processing'),
-      supabase.from('video_outreach').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'completed'),
-      supabase.from('video_outreach').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('sent_at', 'is', null),
-    ]);
-    res.json({ total: a.count || 0, processing: b.count || 0, completed: c.count || 0, sent: d.count || 0 });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/video-outreach/list
-router.get('/list', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { data, error } = await supabase
-      .from('video_outreach')
-      .select('*, leads(company_name, contact_name, phone, email, website, city)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    if (error) throw error;
-    res.json({ videos: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/video-outreach/create
-router.post('/create', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { leadId, avatarId, voiceId, script, aspectRatio = '9:16', autoSend = false } = req.body;
-
-    if (!leadId || !avatarId || !voiceId) {
-      return res.status(400).json({ error: 'leadId, avatarId, voiceId zorunlu' });
-    }
-
-    const { data: lead, error: leadError } = await supabase
-      .from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
-    if (leadError || !lead) return res.status(404).json({ error: 'Lead bulunamadı' });
-
-    const { data: settings } = await supabase
-      .from('user_settings').select('*').eq('user_id', userId).single();
-
-    const finalScript = script || await generateScript(lead, settings);
-    const bgUrl = await fetchCompanyBackground(lead.website || '');
-
-    // HeyGen video oluştur
-    const payload = {
-      video_inputs: [{
-        character: { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' },
-        voice: { type: 'text', voice_id: voiceId, input_text: finalScript, speed: 1.0 },
-        background: bgUrl
-          ? { type: 'image', url: bgUrl }
-          : { type: 'color', value: '#0f172a' },
-      }],
-      aspect_ratio: aspectRatio,
-      test: false,
-    };
-
-    const heygenRes = await axios.post(`${HEYGEN_BASE}/v2/video/generate`, payload, {
-      headers: heygenHeaders(), timeout: 30000
-    });
-
-    const videoId = heygenRes.data?.data?.video_id;
-    if (!videoId) throw new Error('HeyGen video ID alınamadı: ' + JSON.stringify(heygenRes.data));
-
-    // DB'ye kaydet
-    console.log('VIDEO CREATE - userId:', userId, 'leadId:', leadId, 'videoId:', videoId);
-    const insertData = {
-      user_id: userId,
-      lead_id: leadId,
-      heygen_video_id: videoId,
-      script: finalScript,
-      avatar_id: avatarId,
-      voice_id: voiceId,
-      status: 'processing',
-      aspect_ratio: aspectRatio,
-      background_url: bgUrl,
-      auto_send: autoSend,
-    };
-
-    const { data: record, error: insertError } = await supabase
-      .from('video_outreach')
-      .insert([insertData])
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('DB insert error:', JSON.stringify(insertError));
-    } else {
-      console.log('DB insert success - recordId:', record?.id);
-    }
-
+    const { data } = await supabase.from('video_outreach').select('status, sent_via, language').eq('user_id', req.userId);
+    const videos = data || [];
     res.json({
-      videoId,
-      recordId: record?.id,
-      script: finalScript,
-      backgroundUsed: !!bgUrl,
-      status: 'processing',
-      message: 'Video oluşturuluyor (~2-3 dakika)',
+      total: videos.length,
+      completed: videos.filter((v: any) => v.status === 'completed').length,
+      processing: videos.filter((v: any) => v.status === 'processing').length,
+      sent: videos.filter((v: any) => v.sent_at).length,
+      failed: videos.filter((v: any) => v.status === 'failed').length,
     });
-  } catch (e: any) {
-    console.error('Video create error:', e.response?.data || e.message);
-    res.status(500).json({ error: e.response?.data?.message || e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/video-outreach/batch
-router.post('/batch', async (req: any, res: any) => {
+// POST /api/video-outreach/send - Videoyu WhatsApp ile gonder
+router.post('/send', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { leadIds, avatarId, voiceId, aspectRatio = '9:16', autoSend = false, maxLeads = 50 } = req.body;
+    const { videoId } = req.body;
+    const { data: video } = await supabase.from('video_outreach')
+      .select('*, leads(phone, contact_name, company_name)').eq('id', videoId).eq('user_id', req.userId).single();
+    if (!video) return res.status(404).json({ error: 'Video bulunamadi' });
+    if (video.status !== 'completed' || !video.video_url) return res.status(400).json({ error: 'Video hazir degil' });
 
-    if (!avatarId || !voiceId) return res.status(400).json({ error: 'avatarId, voiceId zorunlu' });
+    const lead = video.leads;
+    if (!lead?.phone) return res.status(400).json({ error: 'Lead telefon numarasi yok' });
 
-    let query = supabase.from('leads').select('*').eq('user_id', userId).limit(maxLeads);
-    if (leadIds?.length) query = query.in('id', leadIds);
-
-    const { data: leads } = await query;
-    if (!leads?.length) return res.json({ message: 'Lead yok', created: 0 });
-
-    const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', userId).single();
-
-    res.json({
-      message: `${leads.length} lead için video oluşturma başladı!`,
-      total: leads.length,
-      estimatedMinutes: Math.ceil(leads.length * 3),
-    });
-
-    // Asenkron işle
-    (async () => {
-      let created = 0;
-      for (const lead of leads) {
-        try {
-          const script = await generateScript(lead, settings);
-          const bgUrl = await fetchCompanyBackground(lead.website || '');
-          const payload = {
-            video_inputs: [{
-              character: { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' },
-              voice: { type: 'text', voice_id: voiceId, input_text: script, speed: 1.0 },
-              background: bgUrl ? { type: 'image', url: bgUrl } : { type: 'color', value: '#0f172a' },
-            }],
-            aspect_ratio: aspectRatio,
-            test: false,
-          };
-          const heygenRes = await axios.post(`${HEYGEN_BASE}/v2/video/generate`, payload, {
-            headers: heygenHeaders(), timeout: 30000
-          });
-          const videoId = heygenRes.data?.data?.video_id;
-          if (videoId) {
-            await supabase.from('video_outreach').insert([{
-              user_id: userId, lead_id: lead.id, heygen_video_id: videoId,
-              script, avatar_id: avatarId, voice_id: voiceId,
-              status: 'processing', aspect_ratio: aspectRatio,
-              background_url: bgUrl, auto_send: autoSend,
-            }]);
-            created++;
-          }
-          await sleep(2000);
-        } catch (e: any) { console.error(`Batch error ${lead.company_name}:`, e.message); }
-      }
-      console.log(`Batch done: ${created}/${leads.length}`);
-    })();
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/video-outreach/status/:videoId
-router.get('/status/:videoId', async (req: any, res: any) => {
-  try {
-    const response = await axios.get(
-      `${HEYGEN_BASE}/v1/video_status.get?video_id=${req.params.videoId}`,
-      { headers: heygenHeaders(), timeout: 10000 }
-    );
-    const data = response.data?.data;
-    const { status, video_url, thumbnail_url } = data || {};
-
-    if (status === 'completed' && video_url) {
-      const { data: record } = await supabase.from('video_outreach')
-        .update({ status: 'completed', video_url, thumbnail_url })
-        .eq('heygen_video_id', req.params.videoId)
-        .select('*, leads(phone, contact_name, company_name), auto_send, user_id')
-        .single();
-
-      if (record?.auto_send && record?.leads?.phone) {
-        try {
-          const { sendWhatsAppMessage } = require('./settings');
-          const firstName = (record.leads.contact_name || record.leads.company_name).split(' ')[0];
-          await sendWhatsAppMessage(record.user_id, record.leads.phone,
-            `Merhaba ${firstName} Bey/Hanım! 👋\n\nSizin için özel hazırladığımız videoyu izleyin 🎬\n\n${video_url}`);
-          await supabase.from('video_outreach')
-            .update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' })
-            .eq('heygen_video_id', req.params.videoId);
-        } catch {}
-      }
-    } else if (status === 'failed') {
-      await supabase.from('video_outreach').update({ status: 'failed' }).eq('heygen_video_id', req.params.videoId);
-    }
-
-    res.json({ status, videoUrl: video_url, thumbnailUrl: thumbnail_url });
-  } catch (e: any) {
-    res.status(500).json({ error: e.response?.data?.message || e.message });
-  }
-});
-
-// POST /api/video-outreach/check-all
-router.post('/check-all', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { data: processing } = await supabase
-      .from('video_outreach').select('heygen_video_id, auto_send, lead_id')
-      .eq('user_id', userId).eq('status', 'processing').limit(20);
-
-    if (!processing?.length) return res.json({ message: 'Kontrol edilecek video yok', updated: 0 });
-
-    let updated = 0;
-    for (const v of processing) {
-      try {
-        const r = await axios.get(`${HEYGEN_BASE}/v1/video_status.get?video_id=${v.heygen_video_id}`,
-          { headers: heygenHeaders(), timeout: 8000 });
-        const d = r.data?.data;
-        if (d?.status === 'completed' && d?.video_url) {
-          await supabase.from('video_outreach')
-            .update({ status: 'completed', video_url: d.video_url, thumbnail_url: d.thumbnail_url })
-            .eq('heygen_video_id', v.heygen_video_id);
-          updated++;
-        } else if (d?.status === 'failed') {
-          await supabase.from('video_outreach').update({ status: 'failed' }).eq('heygen_video_id', v.heygen_video_id);
-        }
-        await sleep(500);
-      } catch {}
-    }
-    res.json({ message: `${updated} video güncellendi`, updated, total: processing.length });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/video-outreach/send-whatsapp/:recordId
-router.post('/send-whatsapp/:recordId', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { data: video } = await supabase
-      .from('video_outreach')
-      .select('*, leads(phone, company_name, contact_name)')
-      .eq('id', req.params.recordId).eq('user_id', userId).single();
-
-    if (!video) return res.status(404).json({ error: 'Video bulunamadı' });
-    if (video.status !== 'completed') return res.status(400).json({ error: 'Video henüz hazır değil' });
-    if (!video.video_url) return res.status(400).json({ error: 'Video URL yok' });
-    if (!video.leads?.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
+    const firstName = (lead.contact_name || lead.company_name || '').split(' ')[0];
+    const message = `Merhaba ${firstName}! Size ozel hazirladigimiz videoyu izleyin:\n\n${video.video_url}`;
 
     const { sendWhatsAppMessage } = require('./settings');
-    const firstName = (video.leads.contact_name || video.leads.company_name).split(' ')[0];
-    await sendWhatsAppMessage(userId, video.leads.phone,
-      `Merhaba ${firstName} Bey/Hanım! 👋\n\nSizin için özel hazırladığımız videoyu izleyin 🎬\n\n${video.video_url}`);
-    await supabase.from('video_outreach')
-      .update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' })
-      .eq('id', req.params.recordId);
+    await sendWhatsAppMessage(req.userId, lead.phone, message);
 
-    res.json({ message: 'Video WhatsApp ile gönderildi! ✅' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+    await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', videoId);
+    res.json({ ok: true, message: 'Video gonderildi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/video-outreach/send-all
-router.post('/send-all', async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    const { data: ready } = await supabase
-      .from('video_outreach')
-      .select('*, leads(phone, company_name, contact_name)')
-      .eq('user_id', userId).eq('status', 'completed').is('sent_at', null).limit(50);
-
-    if (!ready?.length) return res.json({ message: 'Gönderilecek hazır video yok', sent: 0 });
-
-    const { sendWhatsAppMessage } = require('./settings');
-    let sent = 0;
-    for (const v of ready) {
-      if (!v.leads?.phone || !v.video_url) continue;
-      try {
-        const firstName = (v.leads.contact_name || v.leads.company_name).split(' ')[0];
-        await sendWhatsAppMessage(userId, v.leads.phone,
-          `Merhaba ${firstName} Bey/Hanım! 👋\n\nSizin için özel hazırladığımız videoyu izleyin 🎬\n\n${v.video_url}`);
-        await supabase.from('video_outreach')
-          .update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' })
-          .eq('id', v.id);
-        sent++;
-        await sleep(12000);
-      } catch {}
-    }
-    res.json({ message: `${sent} video gönderildi!`, sent });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// Yardimci
+function getLanguageByCountry(countryCode: string): string {
+  const map: Record<string, string> = {
+    TR: 'tr', DE: 'de', GB: 'en', US: 'en', FR: 'fr',
+    AE: 'ar', SA: 'ar', RU: 'ru', IT: 'it', ES: 'es', NL: 'nl',
+  };
+  return map[countryCode?.toUpperCase()] || 'en';
+}
 
 // Her 5 dakikada processing videoları kontrol et
 setInterval(async () => {
   try {
-    const { data: processing } = await supabase
-      .from('video_outreach')
-      .select('heygen_video_id, auto_send, lead_id, user_id')
-      .eq('status', 'processing').limit(10);
+    const { data: processing } = await supabase.from('video_outreach')
+      .select('id, heygen_video_id, auto_send, lead_id, user_id').eq('status', 'processing').limit(10);
 
     for (const v of processing || []) {
       try {
-        const r = await axios.get(`${HEYGEN_BASE}/v1/video_status.get?video_id=${v.heygen_video_id}`,
-          { headers: heygenHeaders(), timeout: 8000 });
-        const d = r.data?.data;
-        if (d?.status === 'completed' && d?.video_url) {
-          await supabase.from('video_outreach')
-            .update({ status: 'completed', video_url: d.video_url, thumbnail_url: d.thumbnail_url })
-            .eq('heygen_video_id', v.heygen_video_id);
+        const result = await checkVideoStatus(v.heygen_video_id);
+        if (result.status === 'completed' && result.url) {
+          await supabase.from('video_outreach').update({
+            status: 'completed', video_url: result.url, thumbnail_url: result.thumbnail,
+          }).eq('id', v.id);
 
           if (v.auto_send) {
-            const { data: lead } = await supabase.from('leads')
-              .select('phone, contact_name, company_name').eq('id', v.lead_id).single();
+            const { data: lead } = await supabase.from('leads').select('phone, contact_name, company_name').eq('id', v.lead_id).single();
             if (lead?.phone) {
+              const firstName = (lead.contact_name || lead.company_name || '').split(' ')[0];
               const { sendWhatsAppMessage } = require('./settings');
-              const firstName = (lead.contact_name || lead.company_name).split(' ')[0];
               await sendWhatsAppMessage(v.user_id, lead.phone,
-                `Merhaba ${firstName} Bey/Hanım! 👋\n\nSizin için özel hazırladığımız videoyu izleyin 🎬\n\n${d.video_url}`
+                `Merhaba ${firstName}! Size ozel hazirladigimiz videoyu izleyin:\n\n${result.url}`
               ).catch(() => {});
-              await supabase.from('video_outreach')
-                .update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' })
-                .eq('heygen_video_id', v.heygen_video_id);
+              await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', v.id);
             }
           }
-        } else if (d?.status === 'failed') {
-          await supabase.from('video_outreach').update({ status: 'failed' }).eq('heygen_video_id', v.heygen_video_id);
+        } else if (result.status === 'failed') {
+          await supabase.from('video_outreach').update({ status: 'failed' }).eq('id', v.id);
         }
         await sleep(500);
       } catch {}
