@@ -50,23 +50,46 @@ Sadece konuşma metnini yaz, başka bir şey yazma.`
   } catch { return `Merhaba ${lead.contact_name || lead.company_name}! ${profile?.company?.name || 'Şirketimiz'} adına sizinle iletişime geçmek istedik. Size özel bir teklifimiz var, görüşmek ister misiniz?`; }
 }
 
-// ElevenLabs ile ses üret - base64 döndür
-async function generateAudio(text: string, voiceId: string): Promise<string> {
+// ElevenLabs ile ses uret - Buffer dondur
+async function generateAudio(text: string, voiceId: string): Promise<Buffer> {
   const r = await axios.post(
     `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
     { text, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true } },
     { headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }, responseType: 'arraybuffer', timeout: 30000 }
   );
-  return Buffer.from(r.data).toString('base64');
+  return Buffer.from(r.data);
 }
 
-// HeyGen video oluştur - ElevenLabs sesiyle
+// HeyGen'e ses dosyasi yukle (raw binary)
+async function uploadAudioToHeygen(audioBuffer: Buffer): Promise<string> {
+  const r = await axios.post(
+    'https://upload.heygen.com/v1/asset',
+    audioBuffer,
+    {
+      headers: {
+        'X-Api-Key': HEYGEN_KEY,
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length,
+      },
+      timeout: 30000,
+      maxBodyLength: Infinity,
+    }
+  );
+  const assetId = r.data?.data?.id;
+  if (!assetId) throw new Error('HeyGen asset ID alinamadi: ' + JSON.stringify(r.data));
+  return assetId;
+}
+
+// HeyGen video olustur - ElevenLabs sesiyle
 async function generateHeygenVideo(params: {
   avatarId: string;
-  audioBase64: string;
+  audioBuffer: Buffer;
   aspectRatio: string;
 }): Promise<string> {
-  const { avatarId, audioBase64, aspectRatio } = params;
+  const { avatarId, audioBuffer, aspectRatio } = params;
+
+  // Once sesi HeyGen'e yukle
+  const audioAssetId = await uploadAudioToHeygen(audioBuffer);
 
   const dimensions: Record<string, { width: number; height: number }> = {
     '9:16': { width: 720, height: 1280 },
@@ -80,10 +103,9 @@ async function generateHeygenVideo(params: {
     {
       video_inputs: [{
         character: { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' },
-        voice: { type: 'audio', audio_base64: audioBase64, audio_encoding: 'mp3' },
+        voice: { type: 'audio', audio_asset_id: audioAssetId },
       }],
       dimension: dim,
-      test: false,
     },
     { headers: heygenHeaders(), timeout: 30000 }
   );
@@ -186,10 +208,10 @@ router.post('/generate/single', async (req: any, res: any) => {
         await supabase.from('video_outreach').update({ script }).eq('id', videoRecord?.id);
 
         // 2. ElevenLabs ile ses üret
-        const audioBase64 = await generateAudio(script, voiceId);
+        const audioBuffer = await generateAudio(script, voiceId);
 
-        // 3. HeyGen video oluştur
-        const heygenVideoId = await generateHeygenVideo({ avatarId, audioBase64, aspectRatio });
+        // 3. HeyGen video olustur
+        const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio });
         await supabase.from('video_outreach').update({ heygen_video_id: heygenVideoId, status: 'processing' }).eq('id', videoRecord?.id);
 
         console.log(`Video olusturuldu: ${heygenVideoId} (lead: ${lead.company_name})`);
@@ -228,8 +250,8 @@ router.post('/generate/campaign', async (req: any, res: any) => {
 
           const callLanguage = language || getLanguageByCountry(lead.country_code || '') || 'tr';
           const script = await generateScript(lead, profile, callLanguage);
-          const audioBase64 = await generateAudio(script, voiceId);
-          const heygenVideoId = await generateHeygenVideo({ avatarId, audioBase64, aspectRatio });
+          const audioBuffer = await generateAudio(script, voiceId);
+          const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio });
 
           await supabase.from('video_outreach').insert([{
             user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
