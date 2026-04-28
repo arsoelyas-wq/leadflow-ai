@@ -278,7 +278,7 @@ function StepVoice({ selected, onSelect }: any) {
   )
 }
 
-// ADIM 3: Lead Sec
+// ADIM 3: Lead Sec (coklu)
 function StepLead({ selected, onSelect, leads, language, onLanguageChange, aspectRatio, onAspectChange, autoSend, onAutoSendChange }: any) {
   const [search, setSearch] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
@@ -290,28 +290,46 @@ function StepLead({ selected, onSelect, leads, language, onLanguageChange, aspec
     return true
   })
 
+  function toggleLead(lead: any) {
+    const isSelected = selected.some((l: any) => l.id === lead.id)
+    if (isSelected) {
+      onSelect(selected.filter((l: any) => l.id !== lead.id))
+    } else {
+      onSelect([...selected, lead])
+    }
+  }
+
+  function selectAll() { onSelect(filtered) }
+  function clearAll() { onSelect([]) }
+
   return (
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-white mb-1">Lead ve Ayarlar</h2>
-        <p className="text-slate-400 text-sm">Video kime gonderilecek ve nasil olusturulsun?</p>
+        <p className="text-slate-400 text-sm">Video gonderilecek leadleri secin. Her birine ayri kisisel video olusturulur.</p>
       </div>
 
-      {selected && (
+      {selected.length > 0 && (
         <div className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
           <CheckCircle className="w-4 h-4 text-blue-400 shrink-0"/>
-          <div>
-            <p className="text-blue-300 text-sm font-medium">{selected.company_name}</p>
-            <p className="text-blue-400/60 text-xs">{selected.phone} {selected.country && `· ${selected.country}`}</p>
+          <div className="flex-1">
+            <p className="text-blue-300 text-sm font-medium">{selected.length} lead secildi</p>
+            <p className="text-blue-400/60 text-xs">{selected.map((l: any) => l.company_name).slice(0,3).join(', ')}{selected.length > 3 ? ` +${selected.length-3} daha` : ''}</p>
           </div>
-          <button onClick={() => onSelect(null)} className="ml-auto text-xs text-slate-500 hover:text-slate-300">Degistir</button>
+          <button onClick={clearAll} className="text-xs text-slate-500 hover:text-red-400">Temizle</button>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Lead listesi */}
         <div className="space-y-3">
-          <p className="text-xs text-slate-500 font-medium">LEAD SEC</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500 font-medium">LEAD SEC ({selected.length}/{filtered.length})</p>
+            <div className="flex gap-2">
+              <button onClick={selectAll} className="text-xs text-teal-400 hover:text-teal-300">Tumunu Sec</button>
+              <button onClick={clearAll} className="text-xs text-slate-500 hover:text-slate-300">Temizle</button>
+            </div>
+          </div>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500"/>
@@ -325,19 +343,24 @@ function StepLead({ selected, onSelect, leads, language, onLanguageChange, aspec
             </select>
           </div>
           <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
-            {filtered.map((l: any) => (
-              <div key={l.id} onClick={() => onSelect(l)}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${selected?.id === l.id ? 'bg-blue-600/20 border-blue-500/50' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'}`}>
-                <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-sm flex-shrink-0">
-                  {l.company_name?.[0] || '?'}
+            {filtered.map((l: any) => {
+              const isSelected = selected.some((s: any) => s.id === l.id)
+              return (
+                <div key={l.id} onClick={() => toggleLead(l)}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${isSelected ? 'bg-blue-600/20 border-blue-500/50' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'}`}>
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-slate-600'}`}>
+                    {isSelected && <CheckCircle className="w-3 h-3 text-white"/>}
+                  </div>
+                  <div className="w-7 h-7 bg-slate-700 rounded-lg flex items-center justify-center text-xs flex-shrink-0">
+                    {l.company_name?.[0] || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm truncate">{l.company_name}</p>
+                    <p className="text-slate-500 text-xs">{l.phone} {l.country && `· ${l.country}`}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm truncate">{l.company_name}</p>
-                  <p className="text-slate-500 text-xs">{l.phone} {l.country && `· ${l.country}`}</p>
-                </div>
-                {selected?.id === l.id && <CheckCircle className="w-4 h-4 text-blue-400 shrink-0"/>}
-              </div>
-            ))}
+              )
+            })}
             {filtered.length === 0 && <p className="text-slate-600 text-sm text-center py-4">Lead bulunamadi</p>}
           </div>
         </div>
@@ -385,7 +408,7 @@ function StepLead({ selected, onSelect, leads, language, onLanguageChange, aspec
 }
 
 // ADIM 4: Onizleme
-function StepPreview({ avatar, voice, lead, language, aspectRatio, autoSend }: any) {
+function StepPreview({ avatar, voice, leads, language, aspectRatio, autoSend }: any) {
   return (
     <div className="space-y-5">
       <div>
@@ -412,7 +435,7 @@ function StepPreview({ avatar, voice, lead, language, aspectRatio, autoSend }: a
           {[
             { label: 'Avatar', value: avatar?.name, icon: '🎭', ok: !!avatar },
             { label: 'Ses', value: voice?.name, icon: '🎤', ok: !!voice },
-            { label: 'Lead', value: lead?.company_name, icon: '👤', ok: !!lead },
+            { label: leads?.length === 1 ? 'Lead' : 'Leadler', value: leads?.length === 1 ? leads[0]?.company_name : `${leads?.length} lead secildi`, icon: '👤', ok: leads?.length > 0 },
             { label: 'Dil', value: `${LANG_MAP[language]?.flag} ${LANG_MAP[language]?.name}`, icon: '🌍', ok: true },
             { label: 'Format', value: aspectRatio, icon: '📐', ok: true },
             { label: 'Otomatik Gonder', value: autoSend ? 'Evet - WhatsApp' : 'Hayir', icon: '📤', ok: true },
@@ -533,7 +556,7 @@ export default function VideoOutreachPage() {
   // Wizard state
   const [selectedAvatar, setSelectedAvatar] = useState<any>(null)
   const [selectedVoice, setSelectedVoice] = useState<any>(null)
-  const [selectedLead, setSelectedLead] = useState<any>(null)
+  const [selectedLead, setSelectedLead] = useState<any[]>([])
   const [language, setLanguage] = useState('tr')
   const [aspectRatio, setAspectRatio] = useState('9:16')
   const [autoSend, setAutoSend] = useState(false)
@@ -560,7 +583,7 @@ export default function VideoOutreachPage() {
   function canNext() {
     if (step === 1) return !!selectedAvatar
     if (step === 2) return !!selectedVoice
-    if (step === 3) return !!selectedLead
+    if (step === 3) return selectedLead.length > 0
     if (step === 4) return true
     return false
   }
@@ -568,21 +591,35 @@ export default function VideoOutreachPage() {
   async function generate() {
     setGenerating(true)
     try {
-      const r = await fetch(`${API}/api/video-outreach/generate/single`, {
-        method: 'POST', headers: authH(),
-        body: JSON.stringify({
-          leadId: selectedLead.id,
-          avatarId: selectedAvatar.avatar_id,
-          voiceId: selectedVoice.voice_id,
-          aspectRatio, language, autoSend,
-        }),
-      })
-      const d = await r.json()
-      if (d.ok) {
-        setCreatedVideoId(d.videoId)
-        setStep(5)
+      if (selectedLead.length === 1) {
+        // Tek lead - single endpoint
+        const r = await fetch(`${API}/api/video-outreach/generate/single`, {
+          method: 'POST', headers: authH(),
+          body: JSON.stringify({
+            leadId: selectedLead[0].id,
+            avatarId: selectedAvatar.avatar_id,
+            voiceId: selectedVoice.voice_id,
+            aspectRatio, language, autoSend,
+          }),
+        })
+        const d = await r.json()
+        if (d.ok) { setCreatedVideoId(d.videoId); setStep(5) }
+        else showMsg('error', d.error)
       } else {
-        showMsg('error', d.error)
+        // Coklu lead - kampanya endpoint
+        const r = await fetch(`${API}/api/video-outreach/generate/campaign`, {
+          method: 'POST', headers: authH(),
+          body: JSON.stringify({
+            leadIds: selectedLead.map((l: any) => l.id),
+            avatarId: selectedAvatar.avatar_id,
+            voiceId: selectedVoice.voice_id,
+            aspectRatio, language: language || undefined, autoSend,
+            campaignName: `Video - ${new Date().toLocaleDateString('tr-TR')}`,
+          }),
+        })
+        const d = await r.json()
+        if (d.ok) { showMsg('success', d.message); setStep(5) }
+        else showMsg('error', d.error)
       }
     } catch (e: any) { showMsg('error', e.message) }
     setGenerating(false)
@@ -603,7 +640,7 @@ export default function VideoOutreachPage() {
     setStep(1)
     setSelectedAvatar(null)
     setSelectedVoice(null)
-    setSelectedLead(null)
+    setSelectedLead([])
     setCreatedVideoId('')
     loadAll()
   }
@@ -682,7 +719,7 @@ export default function VideoOutreachPage() {
         {step === 1 && <StepAvatar selected={selectedAvatar} onSelect={setSelectedAvatar}/>}
         {step === 2 && <StepVoice selected={selectedVoice} onSelect={setSelectedVoice}/>}
         {step === 3 && <StepLead selected={selectedLead} onSelect={setSelectedLead} leads={leads} language={language} onLanguageChange={setLanguage} aspectRatio={aspectRatio} onAspectChange={setAspectRatio} autoSend={autoSend} onAutoSendChange={setAutoSend}/>}
-        {step === 4 && <StepPreview avatar={selectedAvatar} voice={selectedVoice} lead={selectedLead} language={language} aspectRatio={aspectRatio} autoSend={autoSend}/>}
+        {step === 4 && <StepPreview avatar={selectedAvatar} voice={selectedVoice} leads={selectedLead} language={language} aspectRatio={aspectRatio} autoSend={autoSend}/>}
         {step === 5 && <StepResult videoId={createdVideoId} onReset={reset}/>}
 
         {step < 5 && (
