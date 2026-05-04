@@ -20,8 +20,8 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 // Claude ile kisisel script yaz
 async function generateScript(lead: any, profile: any, language: string): Promise<string> {
   const langNames: Record<string, string> = {
-    tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', ar: 'Arapça', fr: 'Fransızca',
-    ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
+    tr: 'TÃ¼rkÃ§e', en: 'Ä°ngilizce', de: 'Almanca', ar: 'ArapÃ§a', fr: 'FransÄ±zca',
+    ru: 'RusÃ§a', es: 'Ä°spanyolca', it: 'Ä°talyanca', nl: 'Hollandaca',
   };
   try {
     const r = await anthropic.messages.create({
@@ -29,25 +29,25 @@ async function generateScript(lead: any, profile: any, language: string): Promis
       max_tokens: 300,
       messages: [{
         role: 'user',
-        content: `${profile?.company?.name || 'Şirket'} adına ${lead.company_name} firmasına ${langNames[language] || 'Türkçe'} dilinde kişisel satış videosu için script yaz.
-Ürün: ${profile?.product?.description || ''}
+        content: `${profile?.company?.name || 'Åžirket'} adÄ±na ${lead.company_name} firmasÄ±na ${langNames[language] || 'TÃ¼rkÃ§e'} dilinde kiÅŸisel satÄ±ÅŸ videosu iÃ§in script yaz.
+ÃœrÃ¼n: ${profile?.product?.description || ''}
 Muhatap: ${lead.contact_name || lead.company_name}
-Sektör: ${lead.sector || ''}
-Ülke: ${lead.country || ''}
+SektÃ¶r: ${lead.sector || ''}
+Ãœlke: ${lead.country || ''}
 
 KURALLAR:
 - Max 30 saniye (60-80 kelime)
-- Doğal, samimi, insan gibi konuş
-- İsmi kullan: ${lead.contact_name || lead.company_name}
-- Değer öner, randevu veya numune teklif et
-- Yapay zeka olduğunu ASLA söyleme
-- ${langNames[language] || 'Türkçe'} dilinde yaz
+- DoÄŸal, samimi, insan gibi konuÅŸ
+- Ä°smi kullan: ${lead.contact_name || lead.company_name}
+- DeÄŸer Ã¶ner, randevu veya numune teklif et
+- Yapay zeka olduÄŸunu ASLA sÃ¶yleme
+- ${langNames[language] || 'TÃ¼rkÃ§e'} dilinde yaz
 
-Sadece konuşma metnini yaz, başka bir şey yazma.`
+Sadece konuÅŸma metnini yaz, baÅŸka bir ÅŸey yazma.`
       }]
     });
     return r.content[0]?.text || '';
-  } catch { return `Merhaba ${lead.contact_name || lead.company_name}! ${profile?.company?.name || 'Şirketimiz'} adına sizinle iletişime geçmek istedik. Size özel bir teklifimiz var, görüşmek ister misiniz?`; }
+  } catch { return `Merhaba ${lead.contact_name || lead.company_name}! ${profile?.company?.name || 'Åžirketimiz'} adÄ±na sizinle iletiÅŸime geÃ§mek istedik. Size Ã¶zel bir teklifimiz var, gÃ¶rÃ¼ÅŸmek ister misiniz?`; }
 }
 
 // ElevenLabs ile ses uret - Buffer dondur
@@ -125,7 +125,7 @@ async function checkVideoStatus(videoId: string): Promise<{ status: string; url?
   return { status: d?.status || 'processing', url: d?.video_url, thumbnail: d?.thumbnail_url };
 }
 
-// GET /api/video-outreach/avatars - Tum HeyGen avatarları
+// GET /api/video-outreach/avatars - Tum HeyGen avatarlarÄ±
 router.get('/avatars', async (req: any, res: any) => {
   try {
     const { search = '', gender = '', page = 1 } = req.query;
@@ -190,7 +190,7 @@ router.post('/generate/single', async (req: any, res: any) => {
 
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
 
-    // DB kaydı oluştur
+    // DB kaydÄ± oluÅŸtur
     const { data: videoRecord } = await supabase.from('video_outreach').insert([{
       user_id: userId, lead_id: leadId,
       avatar_id: avatarId, voice_id: voiceId,
@@ -207,7 +207,7 @@ router.post('/generate/single', async (req: any, res: any) => {
         const script = customScript || await generateScript(lead, profile, language);
         await supabase.from('video_outreach').update({ script }).eq('id', videoRecord?.id);
 
-        // 2. ElevenLabs ile ses üret
+        // 2. ElevenLabs ile ses Ã¼ret
         const audioBuffer = await generateAudio(script, voiceId);
 
         // 3. HeyGen video olustur
@@ -232,7 +232,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
 
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
 
-    // Kampanya kaydı
+    // Kampanya kaydÄ±
     const { data: campaign } = await supabase.from('video_campaigns').insert([{
       user_id: userId, name: campaignName || `Video Kampanyasi ${new Date().toLocaleDateString('tr-TR')}`,
       total_leads: leadIds.length, status: 'running', avatar_id: avatarId, voice_id: voiceId,
@@ -333,7 +333,7 @@ function getLanguageByCountry(countryCode: string): string {
   return map[countryCode?.toUpperCase()] || 'en';
 }
 
-// Her 5 dakikada processing videoları kontrol et
+// Her 5 dakikada processing videolarÄ± kontrol et
 setInterval(async () => {
   try {
     const { data: processing } = await supabase.from('video_outreach')
@@ -367,4 +367,16 @@ setInterval(async () => {
   } catch {}
 }, 5 * 60 * 1000);
 
+
+// POST /api/video-outreach/preview-script
+router.post('/preview-script', async (req: any, res: any) => {
+  try {
+    const { leadId, language } = req.body;
+    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadi' });
+    const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
+    const script = await generateScript(lead, profile, language || 'tr');
+    res.json({ ok: true, script, leadId, leadName: lead.company_name });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 module.exports = router;
