@@ -6,7 +6,8 @@ const cheerio = require('cheerio');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const router = express.Router();
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const ws = require('ws');
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, { realtime: { transport: ws } });
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -23,7 +24,7 @@ function cleanText(text: string): string {
   return text?.replace(/\s+/g, ' ').trim() || '';
 }
 
-// ── ÜLKE KONFİGÜRASYONU ──────────────────────────────────────────────────
+// â”€â”€ ÃœLKE KONFÄ°GÃœRASYONU â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const COUNTRY_CONFIG: Record<string, { currency: string; scrapers: string[] }> = {
   'worldwide':     { currency: 'USD', scrapers: ['ekap', 'ted', 'ungm', 'worldbank', 'google'] },
   'international': { currency: 'USD', scrapers: ['ungm', 'worldbank'] },
@@ -51,40 +52,40 @@ const COUNTRY_CONFIG: Record<string, { currency: string; scrapers: string[] }> =
 };
 
 const COUNTRY_NAMES: Record<string, string> = {
-  'worldwide': 'Dünya Geneli', 'international': 'Uluslararası (BM/Dünya Bankası)',
-  'turkey': 'Türkiye', 'eu': 'Avrupa Birliği', 'germany': 'Almanya',
-  'france': 'Fransa', 'italy': 'İtalya', 'spain': 'İspanya',
-  'netherlands': 'Hollanda', 'poland': 'Polonya', 'uk': 'İngiltere',
+  'worldwide': 'DÃ¼nya Geneli', 'international': 'UluslararasÄ± (BM/DÃ¼nya BankasÄ±)',
+  'turkey': 'TÃ¼rkiye', 'eu': 'Avrupa BirliÄŸi', 'germany': 'Almanya',
+  'france': 'Fransa', 'italy': 'Ä°talya', 'spain': 'Ä°spanya',
+  'netherlands': 'Hollanda', 'poland': 'Polonya', 'uk': 'Ä°ngiltere',
   'usa': 'ABD', 'uae': 'BAE (Dubai)', 'saudi': 'Suudi Arabistan',
-  'qatar': 'Katar', 'kuwait': 'Kuveyt', 'middleeast': 'Orta Doğu Geneli',
+  'qatar': 'Katar', 'kuwait': 'Kuveyt', 'middleeast': 'Orta DoÄŸu Geneli',
   'africa': 'Afrika', 'asia': 'Asya', 'russia': 'Rusya',
-  'china': 'Çin', 'india': 'Hindistan', 'brazil': 'Brezilya',
+  'china': 'Ã‡in', 'india': 'Hindistan', 'brazil': 'Brezilya',
 };
 
 const COUNTRY_SEARCH_TERMS: Record<string, string> = {
   'germany': 'Germany Deutschland tender ausschreibung',
   'france': 'France appel offre tender',
   'italy': 'Italy Italia gara appalto tender',
-  'spain': 'Spain España licitacion tender',
+  'spain': 'Spain EspaÃ±a licitacion tender',
   'netherlands': 'Netherlands Holland aanbesteding tender',
   'poland': 'Poland przetarg tender',
   'uk': 'United Kingdom England tender procurement',
   'usa': 'United States America federal contract bid',
   'uae': 'UAE Dubai Abu Dhabi tender procurement',
-  'saudi': 'Saudi Arabia tender procurement منافسة',
-  'qatar': 'Qatar Doha tender procurement مناقصة',
-  'kuwait': 'Kuwait tender procurement مناقصة',
+  'saudi': 'Saudi Arabia tender procurement Ù…Ù†Ø§ÙØ³Ø©',
+  'qatar': 'Qatar Doha tender procurement Ù…Ù†Ø§Ù‚ØµØ©',
+  'kuwait': 'Kuwait tender procurement Ù…Ù†Ø§Ù‚ØµØ©',
   'middleeast': 'Middle East Gulf tender procurement',
   'africa': 'Africa tender procurement contract',
   'asia': 'Asia tender procurement contract',
-  'russia': 'Russia тендер закупка',
-  'china': 'China 招标 tender procurement',
+  'russia': 'Russia Ñ‚ÐµÐ½Ð´ÐµÑ€ Ð·Ð°ÐºÑƒÐ¿ÐºÐ°',
+  'china': 'China æ‹›æ ‡ tender procurement',
   'india': 'India tender procurement e-procurement',
-  'brazil': 'Brazil licitação tender compras',
-  'turkey': 'Türkiye ihale kamu alım',
+  'brazil': 'Brazil licitaÃ§Ã£o tender compras',
+  'turkey': 'TÃ¼rkiye ihale kamu alÄ±m',
 };
 
-// ── SCRAPERS ──────────────────────────────────────────────────────────────
+// â”€â”€ SCRAPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function scrapeEKAP(keyword: string): Promise<any[]> {
   const tenders: any[] = [];
@@ -101,12 +102,12 @@ async function scrapeEKAP(keyword: string): Promise<any[]> {
       const title = cleanText($(cells[0]).text());
       const institution = cleanText($(cells[1]).text());
       const deadline = cleanText($(cells[2]).text());
-      if (title && title.length > 10 && !title.includes('İhale Adı')) {
+      if (title && title.length > 10 && !title.includes('Ä°hale AdÄ±')) {
         tenders.push({
           source: 'EKAP', source_url: 'https://ekap.kik.gov.tr/EKAP/',
           title: title.substring(0, 300), institution: institution.substring(0, 200),
           deadline: null, budget_text: deadline || null,
-          country: 'Türkiye', currency: 'TRY', status: 'active',
+          country: 'TÃ¼rkiye', currency: 'TRY', status: 'active',
         });
       }
     });
@@ -130,7 +131,7 @@ async function scrapeTED(keyword: string): Promise<any[]> {
         title: String(n.TI || '').substring(0, 300),
         institution: String(n.AU || '').substring(0, 200),
         deadline: n.DT || null, budget_text: n.VT ? `${n.VT} EUR` : null,
-        country: n.CY || 'Avrupa Birliği', currency: 'EUR', status: 'active',
+        country: n.CY || 'Avrupa BirliÄŸi', currency: 'EUR', status: 'active',
       });
     }
   } catch (e: any) { console.log('TED API error:', e.message); }
@@ -157,7 +158,7 @@ async function scrapeUNGM(keyword: string): Promise<any[]> {
           source_url: link ? `https://www.ungm.org${link}` : 'https://www.ungm.org',
           title: title.substring(0, 300), institution: org.substring(0, 200),
           deadline: null, budget_text: null,
-          country: 'Uluslararası (BM)', currency: 'USD', status: 'active',
+          country: 'UluslararasÄ± (BM)', currency: 'USD', status: 'active',
         });
       }
     });
@@ -182,7 +183,7 @@ async function scrapeWorldBank(keyword: string): Promise<any[]> {
         institution: String(doc.borrower || 'World Bank').substring(0, 200),
         deadline: doc.closingdate || null,
         budget_text: doc.totalamt ? `${doc.totalamt} USD` : null,
-        country: 'Uluslararası (Dünya Bankası)', currency: 'USD', status: 'active',
+        country: 'UluslararasÄ± (DÃ¼nya BankasÄ±)', currency: 'USD', status: 'active',
       });
     }
   } catch (e: any) { console.log('WorldBank scrape error:', e.message); }
@@ -254,7 +255,7 @@ async function scrapeGoogleCountry(keyword: string, countryId: string): Promise<
   return tenders;
 }
 
-// ── ORCHESTRATOR ──────────────────────────────────────────────────────────
+// â”€â”€ ORCHESTRATOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function scrapeByCountry(keyword: string, countryId: string): Promise<any[]> {
   const config = COUNTRY_CONFIG[countryId] || COUNTRY_CONFIG['worldwide'];
   const scrapers = config.scrapers;
@@ -274,7 +275,7 @@ async function scrapeByCountry(keyword: string, countryId: string): Promise<any[
   return all;
 }
 
-// ── AI: SKOR + ÖZET + KATILIM ŞARTLARI ───────────────────────────────────
+// â”€â”€ AI: SKOR + Ã–ZET + KATILIM ÅžARTLARI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function analyzeAndScoreTender(tender: any, userProfile: string): Promise<{
   score: number;
   summary: string;
@@ -290,22 +291,22 @@ async function analyzeAndScoreTender(tender: any, userProfile: string): Promise<
       max_tokens: 600,
       messages: [{
         role: 'user',
-        content: `İhale analizi yap. SADECE JSON döndür, başka hiçbir şey yazma.
+        content: `Ä°hale analizi yap. SADECE JSON dÃ¶ndÃ¼r, baÅŸka hiÃ§bir ÅŸey yazma.
 
-İhale: ${tender.title}
+Ä°hale: ${tender.title}
 Kurum: ${tender.institution}
-Ülke: ${tender.country}
+Ãœlke: ${tender.country}
 Kaynak: ${tender.source}
-Bütçe: ${tender.budget_text || 'Belirtilmemiş'}
-Kullanıcı Profili: ${userProfile}
+BÃ¼tÃ§e: ${tender.budget_text || 'BelirtilmemiÅŸ'}
+KullanÄ±cÄ± Profili: ${userProfile}
 
-JSON formatı (tüm alanlar Türkçe olsun):
+JSON formatÄ± (tÃ¼m alanlar TÃ¼rkÃ§e olsun):
 {
   "score": 82,
-  "summary": "Max 120 karakter kısa özet",
-  "recommendation": "Max 150 karakter neden başvurmalı/başvurmamalı",
-  "requirements": "Katılım için genel şartlar (deneyim, kapasite, sertifika vs) max 200 karakter",
-  "eligibility": "Kimler başvurabilir (yerli/yabancı firma, KOBİ, büyük firma vs) max 150 karakter",
+  "summary": "Max 120 karakter kÄ±sa Ã¶zet",
+  "recommendation": "Max 150 karakter neden baÅŸvurmalÄ±/baÅŸvurmamalÄ±",
+  "requirements": "KatÄ±lÄ±m iÃ§in genel ÅŸartlar (deneyim, kapasite, sertifika vs) max 200 karakter",
+  "eligibility": "Kimler baÅŸvurabilir (yerli/yabancÄ± firma, KOBÄ°, bÃ¼yÃ¼k firma vs) max 150 karakter",
   "documents": "Genellikle istenen belgeler listesi max 200 karakter"
 }`
       }]
@@ -324,15 +325,15 @@ JSON formatı (tüm alanlar Türkçe olsun):
     return {
       score: 60,
       summary: tender.title.substring(0, 100),
-      recommendation: 'Manuel inceleme yapınız.',
-      requirements: 'Kaynak siteden detaylı şartları inceleyin.',
-      eligibility: 'İlgili ülke mevzuatına uygun firmalar başvurabilir.',
-      documents: 'Vergi levhası, imza sirküleri, referans listesi, finansal tablolar.',
+      recommendation: 'Manuel inceleme yapÄ±nÄ±z.',
+      requirements: 'Kaynak siteden detaylÄ± ÅŸartlarÄ± inceleyin.',
+      eligibility: 'Ä°lgili Ã¼lke mevzuatÄ±na uygun firmalar baÅŸvurabilir.',
+      documents: 'Vergi levhasÄ±, imza sirkÃ¼leri, referans listesi, finansal tablolar.',
     };
   }
 }
 
-// ── AI: TEKLİF TASLAĞ ────────────────────────────────────────────────────
+// â”€â”€ AI: TEKLÄ°F TASLAÄž â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function generateProposalDraft(tender: any, companyInfo: string): Promise<string> {
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -340,28 +341,28 @@ async function generateProposalDraft(tender: any, companyInfo: string): Promise<
       model: 'claude-opus-4-6', max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `Profesyonel ihale teklif mektubu yaz. Türkçe olsun.
+        content: `Profesyonel ihale teklif mektubu yaz. TÃ¼rkÃ§e olsun.
 
-İhale: ${tender.title}
+Ä°hale: ${tender.title}
 Kurum: ${tender.institution}
-Ülke: ${tender.country}
-Deadline: ${tender.deadline || 'Belirtilmemiş'}
-Bütçe: ${tender.budget_text || 'Belirtilmemiş'}
-Katılım Şartları: ${tender.requirements || 'Standart'}
+Ãœlke: ${tender.country}
+Deadline: ${tender.deadline || 'BelirtilmemiÅŸ'}
+BÃ¼tÃ§e: ${tender.budget_text || 'BelirtilmemiÅŸ'}
+KatÄ±lÄ±m ÅžartlarÄ±: ${tender.requirements || 'Standart'}
 Firma Bilgileri: ${companyInfo}
 
-Resmi ve ikna edici teklif mektubu yaz. Firma tanıtımı, uygunluk gerekçesi (şartları karşıladığımızı belirt), teklif özeti ve kapanış içersin.`
+Resmi ve ikna edici teklif mektubu yaz. Firma tanÄ±tÄ±mÄ±, uygunluk gerekÃ§esi (ÅŸartlarÄ± karÅŸÄ±ladÄ±ÄŸÄ±mÄ±zÄ± belirt), teklif Ã¶zeti ve kapanÄ±ÅŸ iÃ§ersin.`
       }]
     });
-    return resp.content[0]?.text?.trim() || 'Teklif taslağı oluşturulamadı.';
+    return resp.content[0]?.text?.trim() || 'Teklif taslaÄŸÄ± oluÅŸturulamadÄ±.';
   } catch (e: any) { return `Hata: ${e.message}`; }
 }
 
-// ── OTOMATIK GÜNLÜK TARAMA FONKSİYONU (index.ts'den çağrılır) ────────────
+// â”€â”€ OTOMATIK GÃœNLÃœK TARAMA FONKSÄ°YONU (index.ts'den Ã§aÄŸrÄ±lÄ±r) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function runDailyTenderScan() {
   console.log('Daily tender scan started...');
   try {
-    // Tüm kullanıcıların kayıtlı tarama tercihlerini al
+    // TÃ¼m kullanÄ±cÄ±larÄ±n kayÄ±tlÄ± tarama tercihlerini al
     const { data: prefs } = await supabase
       .from('tender_scan_prefs')
       .select('*')
@@ -411,13 +412,13 @@ async function runDailyTenderScan() {
           newCount++;
         }
 
-        // Yeni ihale varsa bildirim gönder
+        // Yeni ihale varsa bildirim gÃ¶nder
         if (newCount > 0) {
           await supabase.from('notifications').insert([{
             user_id: pref.user_id,
             type: 'tender_new',
             title: `${newCount} yeni ihale bulundu!`,
-            body: `"${pref.keyword}" araması için ${COUNTRY_NAMES[pref.country] || pref.country}'de ${newCount} yeni ihale fırsatı var.`,
+            body: `"${pref.keyword}" aramasÄ± iÃ§in ${COUNTRY_NAMES[pref.country] || pref.country}'de ${newCount} yeni ihale fÄ±rsatÄ± var.`,
             read: false,
             created_at: new Date().toISOString(),
           }]).catch(() => {});
@@ -436,9 +437,9 @@ async function runDailyTenderScan() {
 
 module.exports.runDailyTenderScan = runDailyTenderScan;
 
-// ── ROUTES ────────────────────────────────────────────────────────────────
+// â”€â”€ ROUTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// GET /api/tenders — Limit yok, tüm ihaleler
+// GET /api/tenders â€” Limit yok, tÃ¼m ihaleler
 router.get('/', async (req: any, res: any) => {
   try {
     const { country, sector, min_score, status: statusFilter, page = 1, limit = 200 } = req.query;
@@ -461,7 +462,7 @@ router.get('/', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/tenders/scan — Manuel tarama
+// POST /api/tenders/scan â€” Manuel tarama
 router.post('/scan', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -474,7 +475,7 @@ router.post('/scan', async (req: any, res: any) => {
       user_id: userId, keyword, sources: [country], status: 'running', started_at: new Date().toISOString(),
     }]).select().single();
 
-    // Tercihi kaydet (otomatik tarama için)
+    // Tercihi kaydet (otomatik tarama iÃ§in)
     if (save_pref) {
       await supabase.from('tender_scan_prefs').upsert([{
         user_id: userId, keyword, country, sector, user_profile, auto_scan: true,
@@ -482,19 +483,19 @@ router.post('/scan', async (req: any, res: any) => {
       }], { onConflict: 'user_id,keyword,country' });
     }
 
-    res.json({ message: `"${keyword}" için ${countryName} taraması başlatıldı.`, scanId: scan?.id });
+    res.json({ message: `"${keyword}" iÃ§in ${countryName} taramasÄ± baÅŸlatÄ±ldÄ±.`, scanId: scan?.id });
 
     (async () => {
       try {
         const allTenders = await scrapeByCountry(keyword, country);
         console.log(`Tender scan raw: ${allTenders.length} found for "${keyword}" in ${country}`);
 
-        // Mock data sadece hiç bulunamazsa
+        // Mock data sadece hiÃ§ bulunamazsa
         const tendersToSave = allTenders.length > 0 ? allTenders : [
-          { source: 'EKAP', source_url: 'https://ekap.kik.gov.tr/EKAP/', title: `${keyword} Alımı - Devlet Malzeme Ofisi`, institution: 'Devlet Malzeme Ofisi', deadline: new Date(Date.now() + 15 * 864e5).toISOString(), budget_text: '500.000 TRY', country: 'Türkiye', currency: 'TRY', status: 'active' },
-          { source: 'TED Europa', source_url: 'https://ted.europa.eu', title: `Supply of ${keyword} - European Commission`, institution: 'European Commission DG GROW', deadline: new Date(Date.now() + 20 * 864e5).toISOString(), budget_text: '250.000 EUR', country: 'Avrupa Birliği', currency: 'EUR', status: 'active' },
-          { source: 'World Bank', source_url: 'https://projects.worldbank.org', title: `${keyword} Infrastructure Project`, institution: 'World Bank Group', deadline: new Date(Date.now() + 30 * 864e5).toISOString(), budget_text: '2.000.000 USD', country: 'Uluslararası', currency: 'USD', status: 'active' },
-          { source: 'UNGM (BM)', source_url: 'https://www.ungm.org', title: `${keyword} for UNDP Field Operations`, institution: 'UNDP', deadline: new Date(Date.now() + 18 * 864e5).toISOString(), budget_text: '300.000 USD', country: 'Uluslararası (BM)', currency: 'USD', status: 'active' },
+          { source: 'EKAP', source_url: 'https://ekap.kik.gov.tr/EKAP/', title: `${keyword} AlÄ±mÄ± - Devlet Malzeme Ofisi`, institution: 'Devlet Malzeme Ofisi', deadline: new Date(Date.now() + 15 * 864e5).toISOString(), budget_text: '500.000 TRY', country: 'TÃ¼rkiye', currency: 'TRY', status: 'active' },
+          { source: 'TED Europa', source_url: 'https://ted.europa.eu', title: `Supply of ${keyword} - European Commission`, institution: 'European Commission DG GROW', deadline: new Date(Date.now() + 20 * 864e5).toISOString(), budget_text: '250.000 EUR', country: 'Avrupa BirliÄŸi', currency: 'EUR', status: 'active' },
+          { source: 'World Bank', source_url: 'https://projects.worldbank.org', title: `${keyword} Infrastructure Project`, institution: 'World Bank Group', deadline: new Date(Date.now() + 30 * 864e5).toISOString(), budget_text: '2.000.000 USD', country: 'UluslararasÄ±', currency: 'USD', status: 'active' },
+          { source: 'UNGM (BM)', source_url: 'https://www.ungm.org', title: `${keyword} for UNDP Field Operations`, institution: 'UNDP', deadline: new Date(Date.now() + 18 * 864e5).toISOString(), budget_text: '300.000 USD', country: 'UluslararasÄ± (BM)', currency: 'USD', status: 'active' },
           { source: countryName, source_url: '', title: `${keyword} Procurement - ${countryName} Government`, institution: `${countryName} Ministry`, deadline: new Date(Date.now() + 25 * 864e5).toISOString(), budget_text: `500.000 ${COUNTRY_CONFIG[country]?.currency || 'USD'}`, country: countryName, currency: COUNTRY_CONFIG[country]?.currency || 'USD', status: 'active' },
         ];
 
@@ -544,7 +545,7 @@ router.get('/countries', (_req: any, res: any) => {
   res.json({ countries: Object.entries(COUNTRY_NAMES).map(([id, name]) => ({ id, name, currency: COUNTRY_CONFIG[id]?.currency || 'USD' })) });
 });
 
-// GET /api/tenders/prefs — Kayıtlı tarama tercihleri
+// GET /api/tenders/prefs â€” KayÄ±tlÄ± tarama tercihleri
 router.get('/prefs', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('tender_scan_prefs').select('*').eq('user_id', req.userId);
@@ -552,7 +553,7 @@ router.get('/prefs', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// DELETE /api/tenders/prefs/:id — Tercihi sil
+// DELETE /api/tenders/prefs/:id â€” Tercihi sil
 router.delete('/prefs/:id', async (req: any, res: any) => {
   try {
     await supabase.from('tender_scan_prefs').delete().eq('id', req.params.id).eq('user_id', req.userId);
@@ -595,7 +596,7 @@ router.get('/:id', async (req: any, res: any) => {
   try {
     const { data, error } = await supabase.from('tenders').select('*')
       .eq('id', req.params.id).eq('user_id', req.userId).single();
-    if (error || !data) return res.status(404).json({ error: 'İhale bulunamadı' });
+    if (error || !data) return res.status(404).json({ error: 'Ä°hale bulunamadÄ±' });
     res.json({ tender: data });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -607,7 +608,7 @@ router.post('/:id/proposal', async (req: any, res: any) => {
     if (!company_info) return res.status(400).json({ error: 'company_info zorunlu' });
     const { data: tender, error } = await supabase.from('tenders').select('*')
       .eq('id', req.params.id).eq('user_id', req.userId).single();
-    if (error || !tender) return res.status(404).json({ error: 'İhale bulunamadı' });
+    if (error || !tender) return res.status(404).json({ error: 'Ä°hale bulunamadÄ±' });
     const draft = await generateProposalDraft(tender, company_info);
     await supabase.from('tenders').update({ proposal_draft: draft, proposal_created_at: new Date().toISOString() }).eq('id', req.params.id);
     res.json({ proposal: draft });
