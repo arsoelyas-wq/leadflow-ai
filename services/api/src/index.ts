@@ -116,6 +116,8 @@ app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-number
 app.use('/api/shadow',               authMiddleware, require('./routes/shadow'));
 app.use('/api/visual-trends',        authMiddleware, require('./routes/visual-trends'));
 app.use('/api/video-outreach',       authMiddleware, require('./routes/video-outreach'));
+app.use('/v',                          require('./routes/video-tracking'));
+app.use('/v',                          require('./routes/video-tracking'));
 app.use('/api/avatar',               authMiddleware, require('./routes/avatar'));
 app.use('/api/retargeting',          authMiddleware, require('./routes/retargeting'));
 app.use('/api/proposals',            authMiddleware, require('./routes/proposals'));
