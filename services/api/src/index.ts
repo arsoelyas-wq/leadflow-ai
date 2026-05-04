@@ -1,3 +1,5 @@
+const ws = require('ws');
+global.WebSocket = ws;
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
