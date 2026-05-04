@@ -30,8 +30,9 @@ const STEPS = [
   { id: 1, label: 'Avatar', icon: '🎭' },
   { id: 2, label: 'Ses', icon: '🎤' },
   { id: 3, label: 'Lead', icon: '👤' },
-  { id: 4, label: 'Onizleme', icon: '👁' },
-  { id: 5, label: 'Gonder', icon: '🚀' },
+  { id: 4, label: 'Script', icon: '✍️' },
+  { id: 5, label: 'Onizleme', icon: '👁' },
+  { id: 6, label: 'Gonder', icon: '🚀' },
 ]
 
 function StepIndicator({ current }: { current: number }) {
@@ -407,8 +408,128 @@ function StepLead({ selected, onSelect, leads, language, onLanguageChange, aspec
   )
 }
 
-// ADIM 4: Onizleme
-function StepPreview({ avatar, voice, leads, language, aspectRatio, autoSend }: any) {
+
+// ADIM 4: Script Onizleme ve Duzenleme
+function StepScript({ leads, avatar, voice, language, scripts, onScriptsChange }: any) {
+  const [loading, setLoading] = useState(false)
+  const [generated, setGenerated] = useState(false)
+  const [editingIdx, setEditingIdx] = useState<number | null>(null)
+
+  async function generateScripts() {
+    if (!leads?.length || !avatar || !voice) return
+    setLoading(true)
+    try {
+      const results: any[] = []
+      for (const lead of leads.slice(0, 5)) {
+        const r = await fetch(`${API}/api/video-outreach/preview-script`, {
+          method: 'POST', headers: authH(),
+          body: JSON.stringify({
+            leadId: lead.id,
+            language,
+            avatarName: avatar.name,
+          }),
+        })
+        const d = await r.json()
+        results.push({ leadId: lead.id, leadName: lead.company_name, script: d.script || '', edited: false })
+      }
+      onScriptsChange(results)
+      setGenerated(true)
+    } catch {}
+    setLoading(false)
+  }
+
+  function updateScript(idx: number, newScript: string) {
+    const updated = [...scripts]
+    updated[idx] = { ...updated[idx], script: newScript, edited: true }
+    onScriptsChange(updated)
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold text-white mb-1">Script Onizleme</h2>
+        <p className="text-slate-400 text-sm">Claude her lead icin kisisel script yazacak. Gormek ve duzenlemek ister misiniz?</p>
+      </div>
+
+      {!generated ? (
+        <div className="space-y-4">
+          <div className="p-5 bg-slate-900 border border-slate-700 rounded-2xl space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center text-xl shrink-0">✍️</div>
+              <div>
+                <p className="text-white font-medium">Claude scriptleri otomatik yazar</p>
+                <p className="text-slate-400 text-sm mt-1">Her lead icin sektore, ulkeye ve irket bilgisine gore ozel script uretilir. Isterseniz gozden gecirip duzenleyebilirsiniz.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 pt-2">
+              {[
+                { icon: '🎯', title: 'Kisisel', desc: 'Her lead icin farkli' },
+                { icon: '🌍', title: 'Cok Dilli', desc: 'Ulkeye gore dil' },
+                { icon: '⏱', title: '30 Saniye', desc: 'Optimal uzunluk' },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} className="p-3 bg-slate-800 rounded-xl text-center">
+                  <div className="text-2xl mb-1">{icon}</div>
+                  <p className="text-white text-xs font-medium">{title}</p>
+                  <p className="text-slate-500 text-xs">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={generateScripts} disabled={loading}
+              className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-medium flex items-center justify-center gap-2">
+              {loading ? <><RefreshCw className="w-4 h-4 animate-spin"/> Scriptler yaziliyor...</> : <>✍️ Scriptleri Onizle ve Duzenle</>}
+            </button>
+            <button onClick={() => { onScriptsChange([]); setGenerated(true) }}
+              className="px-5 py-3 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl font-medium hover:bg-slate-700">
+              Atla →
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {scripts.length === 0 ? (
+            <div className="p-4 bg-slate-900 border border-slate-700 rounded-xl text-center">
+              <p className="text-slate-400 text-sm">Script onizleme atlandi. Claude otomatik yazacak.</p>
+            </div>
+          ) : (
+            scripts.map((s: any, idx: number) => (
+              <div key={s.leadId} className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-slate-700 rounded-lg flex items-center justify-center text-xs">{s.leadName?.[0]}</div>
+                    <span className="text-white text-sm font-medium">{s.leadName}</span>
+                    {s.edited && <span className="text-xs px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-full">Duzenlendi</span>}
+                  </div>
+                  <button onClick={() => setEditingIdx(editingIdx === idx ? null : idx)}
+                    className="text-xs text-teal-400 hover:text-teal-300">
+                    {editingIdx === idx ? 'Kapat' : 'Duzenle'}
+                  </button>
+                </div>
+                {editingIdx === idx ? (
+                  <textarea value={s.script} onChange={e => updateScript(idx, e.target.value)}
+                    rows={4}
+                    className="w-full bg-slate-900 px-4 py-3 text-white text-sm resize-none focus:outline-none border-0"/>
+                ) : (
+                  <p className="px-4 py-3 text-slate-300 text-sm leading-relaxed">{s.script}</p>
+                )}
+                <div className="px-4 py-2 border-t border-slate-800 flex items-center gap-3">
+                  <span className="text-xs text-slate-600">{s.script?.split(' ').length || 0} kelime · ~{Math.round((s.script?.split(' ').length || 0) / 2.5)} saniye</span>
+                </div>
+              </div>
+            ))
+          )}
+          <button onClick={() => { setGenerated(false); setLoading(false) }}
+            className="text-xs text-slate-500 hover:text-slate-300">Yeniden uret</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ADIM 5: Onizleme
+function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, autoSend }: any) {
   return (
     <div className="space-y-5">
       <div>
@@ -436,6 +557,7 @@ function StepPreview({ avatar, voice, leads, language, aspectRatio, autoSend }: 
             { label: 'Avatar', value: avatar?.name, icon: '🎭', ok: !!avatar },
             { label: 'Ses', value: voice?.name, icon: '🎤', ok: !!voice },
             { label: leads?.length === 1 ? 'Lead' : 'Leadler', value: leads?.length === 1 ? leads[0]?.company_name : `${leads?.length} lead secildi`, icon: '👤', ok: leads?.length > 0 },
+            { label: 'Script', value: scripts?.length > 0 ? `${scripts.length} script hazir (${scripts.filter((s:any)=>s.edited).length} duzenlendi)` : 'Otomatik yazilacak', icon: '✍️', ok: true },
             { label: 'Dil', value: `${LANG_MAP[language]?.flag} ${LANG_MAP[language]?.name}`, icon: '🌍', ok: true },
             { label: 'Format', value: aspectRatio, icon: '📐', ok: true },
             { label: 'Otomatik Gonder', value: autoSend ? 'Evet - WhatsApp' : 'Hayir', icon: '📤', ok: true },
@@ -551,6 +673,7 @@ export default function VideoOutreachPage() {
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [generating, setGenerating] = useState(false)
   const [createdVideoId, setCreatedVideoId] = useState('')
+  const [scripts, setScripts] = useState<any[]>([])
   const [showVideos, setShowVideos] = useState(false)
 
   // Wizard state
@@ -585,6 +708,7 @@ export default function VideoOutreachPage() {
     if (step === 2) return !!selectedVoice
     if (step === 3) return selectedLead.length > 0
     if (step === 4) return true
+    if (step === 5) return true
     return false
   }
 
@@ -593,6 +717,7 @@ export default function VideoOutreachPage() {
     try {
       if (selectedLead.length === 1) {
         // Tek lead - single endpoint
+        const leadScript = scripts.find((s: any) => s.leadId === selectedLead[0].id)
         const r = await fetch(`${API}/api/video-outreach/generate/single`, {
           method: 'POST', headers: authH(),
           body: JSON.stringify({
@@ -600,10 +725,11 @@ export default function VideoOutreachPage() {
             avatarId: selectedAvatar.avatar_id,
             voiceId: selectedVoice.voice_id,
             aspectRatio, language, autoSend,
+            customScript: leadScript?.script || null,
           }),
         })
         const d = await r.json()
-        if (d.ok) { setCreatedVideoId(d.videoId); setStep(5) }
+        if (d.ok) { setCreatedVideoId(d.videoId); setStep(6) }
         else showMsg('error', d.error)
       } else {
         // Coklu lead - kampanya endpoint
@@ -618,7 +744,7 @@ export default function VideoOutreachPage() {
           }),
         })
         const d = await r.json()
-        if (d.ok) { showMsg('success', d.message); setStep(5) }
+        if (d.ok) { showMsg('success', d.message); setStep(6) }
         else showMsg('error', d.error)
       }
     } catch (e: any) { showMsg('error', e.message) }
@@ -642,6 +768,7 @@ export default function VideoOutreachPage() {
     setSelectedVoice(null)
     setSelectedLead([])
     setCreatedVideoId('')
+    setScripts([])
     loadAll()
   }
 
@@ -719,8 +846,9 @@ export default function VideoOutreachPage() {
         {step === 1 && <StepAvatar selected={selectedAvatar} onSelect={setSelectedAvatar}/>}
         {step === 2 && <StepVoice selected={selectedVoice} onSelect={setSelectedVoice}/>}
         {step === 3 && <StepLead selected={selectedLead} onSelect={setSelectedLead} leads={leads} language={language} onLanguageChange={setLanguage} aspectRatio={aspectRatio} onAspectChange={setAspectRatio} autoSend={autoSend} onAutoSendChange={setAutoSend}/>}
-        {step === 4 && <StepPreview avatar={selectedAvatar} voice={selectedVoice} leads={selectedLead} language={language} aspectRatio={aspectRatio} autoSend={autoSend}/>}
-        {step === 5 && <StepResult videoId={createdVideoId} onReset={reset}/>}
+        {step === 4 && <StepScript leads={selectedLead} avatar={selectedAvatar} voice={selectedVoice} language={language} scripts={scripts} onScriptsChange={setScripts}/>}
+        {step === 5 && <StepPreview avatar={selectedAvatar} voice={selectedVoice} leads={selectedLead} scripts={scripts} language={language} aspectRatio={aspectRatio} autoSend={autoSend}/>}
+        {step === 6 && <StepResult videoId={createdVideoId} onReset={reset}/>}
 
         {step < 5 && (
           <div className="flex items-center justify-between mt-6 pt-5 border-t border-slate-700">
