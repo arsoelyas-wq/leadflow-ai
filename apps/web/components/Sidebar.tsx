@@ -85,8 +85,9 @@ const groups: NavGroup[] = [
     label: 'Reklam Yönetimi',
     icon: Target,
     items: [
-      { href: '/ads',          label: 'Meta & Google Ads',  icon: Megaphone },
-      { href: '/ads-advanced', label: 'Gelişmiş Reklam AI', icon: Brain,   plan: 'pro', badge: 'AI' },
+      { href: '/ads',          label: 'Meta Ads',           icon: Megaphone },
+      { href: '/google-ads',   label: 'Google Ads',         icon: BarChart2 },
+      { href: '/ads-advanced', label: 'Gelişmiş Reklam AI', icon: Brain, plan: 'pro', badge: 'AI' },
     ],
   },
   {
@@ -206,7 +207,7 @@ export default function Sidebar() {
           {creditsPct < 20 && (
             <Link href="/billing"
               className="mt-2 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 transition">
-              <Zap size={10} /> Kredi satın al
+              <Zap size={10} /> Kredi satin al
             </Link>
           )}
         </div>
@@ -226,11 +227,11 @@ export default function Sidebar() {
           Dashboard
         </Link>
 
-        {/* Öne Çıkan Özellikler */}
+        {/* One Cikan Ozellikler */}
         <div className="mb-3 mt-1 space-y-1.5">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-1.5">Güçlü Araçlar</p>
+          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-1.5">Guclu Araclar</p>
 
-          {/* İhale Avcısı */}
+          {/* Ihale Avcisi */}
           <Link href="/tenders"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
               pathname === '/tenders'
@@ -241,13 +242,13 @@ export default function Sidebar() {
               <ScrollText size={14} className="text-amber-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">İhale Avcısı</p>
+              <p className="text-xs font-semibold leading-tight">Ihale Avcisi</p>
               <p className="text-[10px] text-amber-500/60 leading-tight mt-0.5">Devlet ihalelerini yakala</p>
             </div>
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/25 flex-shrink-0">PRO</span>
           </Link>
 
-          {/* İhracat Zekası */}
+          {/* Ihracat Zekasi */}
           <Link href="/export"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
               pathname === '/export'
@@ -258,13 +259,13 @@ export default function Sidebar() {
               <Globe2 size={14} className="text-emerald-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">İhracat Zekası</p>
-              <p className="text-[10px] text-emerald-500/60 leading-tight mt-0.5">Global pazarlara aç</p>
+              <p className="text-xs font-semibold leading-tight">Ihracat Zekasi</p>
+              <p className="text-[10px] text-emerald-500/60 leading-tight mt-0.5">Global pazarlara ac</p>
             </div>
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 flex-shrink-0">ENT</span>
           </Link>
 
-          {/* Ekip Yönetimi */}
+          {/* Ekip Yonetimi */}
           <Link href="/team"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
               pathname === '/team' || pathname === '/team-intelligence'
@@ -275,13 +276,13 @@ export default function Sidebar() {
               <UsersRound size={14} className="text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">Ekip Yönetimi</p>
-              <p className="text-[10px] text-blue-500/60 leading-tight mt-0.5">Takımını birlikte yönet</p>
+              <p className="text-xs font-semibold leading-tight">Ekip Yonetimi</p>
+              <p className="text-[10px] text-blue-500/60 leading-tight mt-0.5">Takimini birlikte yonet</p>
             </div>
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/25 flex-shrink-0">PRO</span>
           </Link>
 
-          {/* Ekip Raporları */}
+          {/* Ekip Raporlari */}
           <Link href="/team-reports"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
               pathname === '/team-reports'
@@ -292,7 +293,7 @@ export default function Sidebar() {
               <BarChart2 size={14} className="text-purple-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">Ekip Raporları</p>
+              <p className="text-xs font-semibold leading-tight">Ekip Raporlari</p>
               <p className="text-[10px] text-purple-500/60 leading-tight mt-0.5">Trend, benchmark, email</p>
             </div>
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/25 flex-shrink-0">PRO</span>
@@ -379,14 +380,14 @@ export default function Sidebar() {
             className="block bg-gradient-to-br from-violet-600/20 to-blue-600/20 border border-violet-500/20 rounded-xl p-3.5 hover:border-violet-500/40 transition group">
             <div className="flex items-center gap-2 mb-1.5">
               <Crown size={14} className="text-violet-400" />
-              <span className="text-xs font-semibold text-white">Pro'ya Geç</span>
+              <span className="text-xs font-semibold text-white">Pro'ya Gec</span>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed mb-2.5">
-              AI araçlar, gelişmiş reklam ve rakip izleme özelliklerini aç.
+              AI araclar, gelismis reklam ve rakip izleme ozelliklerini ac.
             </p>
             <div className="flex items-center gap-1.5 text-violet-400 text-xs font-medium group-hover:gap-2.5 transition-all">
               <Sparkle size={11} />
-              Planları incele
+              Planlari incele
               <ChevronRight size={11} />
             </div>
           </Link>
@@ -405,7 +406,7 @@ export default function Sidebar() {
           </div>
           <button
             onClick={() => { logout(); router.push('/login') }}
-            title="Çıkış Yap"
+            title="Cikis Yap"
             className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition flex-shrink-0">
             <LogOut size={13} />
           </button>

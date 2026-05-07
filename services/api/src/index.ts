@@ -90,6 +90,7 @@ app.use('/api/sheets',               authMiddleware, require('./routes/sheets'))
 app.use('/api/credits',              authMiddleware, require('./routes/credits'));
 app.use('/api/ads',                  authMiddleware, require('./routes/ads'));
 app.use('/api/ads-intelligence',     authMiddleware, require('./routes/ads-intelligence'));
+app.use('/api/google-intelligence',  authMiddleware, require('./routes/google-ads-intelligence'));
 app.use('/api/coaching',             authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox',                authMiddleware, require('./routes/inbox'));
 app.use('/api/pipeline',             authMiddleware, require('./routes/pipeline'));
