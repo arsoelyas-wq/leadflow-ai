@@ -71,7 +71,10 @@ app.use('/api/instagram',            authMiddleware, require('./routes/instagram
 app.use('/api/facebook',             authMiddleware, require('./routes/facebook'));
 app.use('/api/workflow',             authMiddleware, require('./routes/workflow'));
 app.use('/api/team',                 authMiddleware, require('./routes/team'));
-app.use('/api/google-ads',           authMiddleware, require('./routes/google-ads'));
+// Google Ads callback public (OAuth redirect)
+const googleAdsRouter = require('./routes/google-ads');
+app.get('/api/google-ads/callback', (req: any, res: any, next: any) => { req.url = '/callback'; googleAdsRouter(req, res, next); });
+app.use('/api/google-ads',           authMiddleware, googleAdsRouter);
 app.use('/api/email',                authMiddleware, require('./routes/email'));
 app.use('/api/email-campaigns',      authMiddleware, require('./routes/email'));
 app.use('/api/sms',                  authMiddleware, require('./routes/sms'));
