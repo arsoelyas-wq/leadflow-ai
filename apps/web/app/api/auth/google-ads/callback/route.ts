@@ -6,11 +6,11 @@ export async function GET(request: NextRequest) {
   const error = request.nextUrl.searchParams.get("error")
 
   if (error || !code) {
-    return NextResponse.redirect(new URL("/ads?error=google_denied", request.url))
+    return NextResponse.redirect(new URL("/google-ads?error=google_denied", request.url))
   }
 
   try {
-    // Token'ı almak için cookie'den JWT token oku
+    // Token'Ä± almak iÃ§in cookie'den JWT token oku
     const token = request.cookies.get("token")?.value || 
                   request.cookies.get("auth_token")?.value || ""
 
@@ -31,17 +31,17 @@ export async function GET(request: NextRequest) {
     
     if (data.success) {
       return NextResponse.redirect(
-        new URL(`/ads?google_success=1&name=${encodeURIComponent(data.userName || '')}`, request.url)
+        new URL(`/google-ads?google_success=1&name=${encodeURIComponent(data.userName || '')}`, request.url)
       )
     } else {
       return NextResponse.redirect(
-        new URL(`/ads?error=${encodeURIComponent(data.error || 'exchange_failed')}`, request.url)
+        new URL(`/google-ads?error=${encodeURIComponent(data.error || 'exchange_failed')}`, request.url)
       )
     }
   } catch (e) {
     // Callback'te token yoksa state'i kullan
     return NextResponse.redirect(
-      new URL(`/ads?google_code=${encodeURIComponent(code)}&state=${state || ''}`, request.url)
+      new URL(`/google-ads?google_code=${encodeURIComponent(code)}&state=${state || ''}`, request.url)
     )
   }
 }
