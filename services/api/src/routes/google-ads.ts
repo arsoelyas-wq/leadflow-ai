@@ -39,12 +39,12 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    // Kullanıcı bilgisi
+    // KullanÄ±cÄ± bilgisi
     const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Google Ads hesaplarını listele
+    // Google Ads hesaplarÄ±nÄ± listele
     let accounts = [];
     try {
       const accountsResp = await axios.get(
@@ -89,7 +89,7 @@ async function refreshGoogleToken(userId: string): Promise<string | null> {
       .select('refresh_token, access_token, token_expires_at').eq('user_id', userId).single();
     if (!conn) return null;
 
-    // Token hala geçerliyse döndür
+    // Token hala geÃ§erliyse dÃ¶ndÃ¼r
     if (new Date(conn.token_expires_at) > new Date()) return conn.access_token;
 
     // Refresh
@@ -164,7 +164,7 @@ router.get('/campaigns/:customerId', async (req: any, res: any) => {
   }
 });
 
-// Kampanya Analizi — AI ile
+// Kampanya Analizi â€” AI ile
 router.get('/analyze/:customerId', async (req: any, res: any) => {
   try {
     const token = await refreshGoogleToken(req.userId);
