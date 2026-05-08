@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -198,7 +198,7 @@ export default function GoogleAdsPage() {
             </div>
             Google Ads
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">Arama, Display & YouTube — AI analiz, 5dk kural, otomatik lead</p>
+          <p className="text-sm text-slate-500 mt-0.5">Arama, Display & YouTube â€” AI analiz, 5dk kural, otomatik lead</p>
         </div>
         <div className="flex items-center gap-2">
           {alerts.length > 0 && (
@@ -222,7 +222,7 @@ export default function GoogleAdsPage() {
             </div>
             <div>
               <h2 className="text-white font-semibold text-lg">Google Ads Bagla</h2>
-              <p className="text-slate-400 text-sm mt-2 leading-relaxed">Google Ads hesabinizi baglayin. Arama, Display ve YouTube reklamlarindan otomatik lead toplama ve AI optimizasyon baslаsin.</p>
+              <p className="text-slate-400 text-sm mt-2 leading-relaxed">Google Ads hesabinizi baglayin. Arama, Display ve YouTube reklamlarindan otomatik lead toplama ve AI optimizasyon baslÐ°sin.</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[
@@ -323,7 +323,7 @@ export default function GoogleAdsPage() {
                       <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.status === 'ENABLED' ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-sm truncate">{c.name}</p>
-                        <p className="text-slate-500 text-xs">CTR: %{c.ctr} · CPC: ${c.avg_cpc}</p>
+                        <p className="text-slate-500 text-xs">CTR: %{c.ctr} Â· CPC: ${c.avg_cpc}</p>
                       </div>
                       <span className={`text-xs ${c.status === 'ENABLED' ? 'text-emerald-400' : 'text-slate-500'}`}>{c.status === 'ENABLED' ? 'Aktif' : 'Pasif'}</span>
                     </div>
@@ -353,7 +353,7 @@ export default function GoogleAdsPage() {
                   {leads.length === 0 && (
                     <div className="px-4 py-8 text-center">
                       <p className="text-slate-600 text-sm">Henuz lead yok</p>
-                      <button onClick={extractLeads} className="mt-1.5 text-xs text-amber-400">Lead Cek →</button>
+                      <button onClick={extractLeads} className="mt-1.5 text-xs text-amber-400">Lead Cek â†’</button>
                     </div>
                   )}
                 </div>
