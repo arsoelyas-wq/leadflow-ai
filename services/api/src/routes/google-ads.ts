@@ -9,7 +9,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_ADS_CLIENT_SECRET;
 const GOOGLE_DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-const REDIRECT_URI = process.env.GOOGLE_ADS_REDIRECT_URI || 'https://leadflow-ai-web-kappa.vercel.app/api/auth/google-ads/callback';
+const REDIRECT_URI = process.env.GOOGLE_ADS_REDIRECT_URI || 'https://leadflow-ai-production.up.railway.app/api/google-ads/callback';
 
 // OAuth URL
 router.get('/oauth-url', async (req: any, res: any) => {
@@ -18,6 +18,61 @@ router.get('/oauth-url', async (req: any, res: any) => {
   res.json({ url });
 });
 
+
+// GET /api/google-ads/callback - Google OAuth callback (Railway handle eder)
+router.get('/callback', async (req: any, res: any) => {
+  const { code, state, error } = req.query;
+  
+  if (error || !code) {
+    return res.redirect('https://leadflow-ai-web-kappa.vercel.app/google-ads?error=denied');
+  }
+
+  try {
+    // state = userId
+    if (state) req.userId = state;
+
+    const tokenResp = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      redirect_uri: REDIRECT_URI,
+      grant_type: 'authorization_code',
+      code,
+    });
+
+    const { access_token, refresh_token } = tokenResp.data;
+
+    const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+
+    let customerId = '';
+    try {
+      const accountsResp = await axios.get(
+        'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
+        { headers: { Authorization: `Bearer ${access_token}`, 'developer-token': GOOGLE_DEVELOPER_TOKEN } }
+      );
+      const ids = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
+      customerId = ids[0] || '';
+    } catch {}
+
+    await supabase.from('google_ads_connections').upsert([{
+      user_id: state,
+      customer_id: customerId,
+      customer_name: meResp.data.name,
+      google_email: meResp.data.email,
+      access_token,
+      refresh_token,
+      connected_at: new Date().toISOString(),
+      token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+    }], { onConflict: 'user_id' });
+
+    console.log('[GoogleAds] Baglandi:', meResp.data.email, 'userId:', state);
+    return res.redirect('https://leadflow-ai-web-kappa.vercel.app/google-ads?google_success=1');
+  } catch (e: any) {
+    console.error('[GoogleAds] Callback hata:', e.response?.data || e.message);
+    return res.redirect('https://leadflow-ai-web-kappa.vercel.app/google-ads?error=' + encodeURIComponent(e.message));
+  }
+});
 // Token Exchange
 router.post('/exchange-token', async (req: any, res: any) => {
   try {
@@ -39,12 +94,12 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    // KullanÄ±cÄ± bilgisi
+    // KullanÃ„Â±cÃ„Â± bilgisi
     const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Google Ads hesaplarÄ±nÄ± listele
+    // Google Ads hesaplarÃ„Â±nÃ„Â± listele
     let accounts = [];
     try {
       const accountsResp = await axios.get(
@@ -89,7 +144,7 @@ async function refreshGoogleToken(userId: string): Promise<string | null> {
       .select('refresh_token, access_token, token_expires_at').eq('user_id', userId).single();
     if (!conn) return null;
 
-    // Token hala geÃ§erliyse dÃ¶ndÃ¼r
+    // Token hala geÃƒÂ§erliyse dÃƒÂ¶ndÃƒÂ¼r
     if (new Date(conn.token_expires_at) > new Date()) return conn.access_token;
 
     // Refresh
@@ -164,7 +219,7 @@ router.get('/campaigns/:customerId', async (req: any, res: any) => {
   }
 });
 
-// Kampanya Analizi â€” AI ile
+// Kampanya Analizi Ã¢â‚¬â€ AI ile
 router.get('/analyze/:customerId', async (req: any, res: any) => {
   try {
     const token = await refreshGoogleToken(req.userId);
