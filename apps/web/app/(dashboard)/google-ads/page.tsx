@@ -39,8 +39,22 @@ export default function GoogleAdsPage() {
 
   useEffect(() => {
     const code = searchParams.get('code')
-    if (code) exchangeToken(code)
-    else loadAll()
+    const googleCode = searchParams.get('google_code')
+    const googleSuccess = searchParams.get('google_success')
+
+    if (code) {
+      exchangeToken(code)
+    } else if (googleCode) {
+      // Callback'ten gelen code - client-side exchange yap
+      exchangeToken(googleCode)
+    } else if (googleSuccess) {
+      // Basarili baglanti
+      showMsg('success', 'Google Ads baglandi!')
+      window.history.replaceState({}, '', '/google-ads')
+      loadAll()
+    } else {
+      loadAll()
+    }
   }, [])
 
   async function exchangeToken(code: string) {

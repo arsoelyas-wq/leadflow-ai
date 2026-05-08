@@ -10,38 +10,45 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Token'Ä± almak iÃ§in cookie'den JWT token oku
-    const token = request.cookies.get("token")?.value || 
-                  request.cookies.get("auth_token")?.value || ""
+    // Token cookie veya localStorage'dan al
+    const token = request.cookies.get("token")?.value ||
+                  request.cookies.get("auth_token")?.value ||
+                  request.cookies.get("leadflow_token")?.value || ""
 
     const response = await fetch(
       "https://leadflow-ai-production.up.railway.app/api/google-ads/exchange-token",
       {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          "Authorization": token ? `Bearer ${token}` : "",
           "x-user-state": state || "",
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, state }),
       }
     )
 
     const data = await response.json()
-    
+
     if (data.success) {
-      return NextResponse.redirect(
-        new URL(`/google-ads?google_success=1&name=${encodeURIComponent(data.userName || '')}`, request.url)
-      )
+      // Basarili - google-ads sayfasina don
+      const redirectUrl = new URL("/google-ads", request.url)
+      redirectUrl.searchParams.set("google_success", "1")
+      redirectUrl.searchParams.set("name", data.userName || "")
+      return NextResponse.redirect(redirectUrl)
     } else {
-      return NextResponse.redirect(
-        new URL(`/google-ads?error=${encodeURIComponent(data.error || 'exchange_failed')}`, request.url)
-      )
+      // Token yoksa code ile birlikte google-ads sayfasina don
+      // Sayfa client-side token ile exchange yapacak
+      const redirectUrl = new URL("/google-ads", request.url)
+      redirectUrl.searchParams.set("google_code", code)
+      redirectUrl.searchParams.set("state", state || "")
+      return NextResponse.redirect(redirectUrl)
     }
   } catch (e) {
-    // Callback'te token yoksa state'i kullan
-    return NextResponse.redirect(
-      new URL(`/google-ads?google_code=${encodeURIComponent(code)}&state=${state || ''}`, request.url)
-    )
+    // Hata - code ile sayfaya don, client-side handle edecek
+    const redirectUrl = new URL("/google-ads", request.url)
+    redirectUrl.searchParams.set("google_code", code || "")
+    redirectUrl.searchParams.set("state", state || "")
+    return NextResponse.redirect(redirectUrl)
   }
 }
