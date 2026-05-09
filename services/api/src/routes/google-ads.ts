@@ -14,7 +14,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://leadflow-ai-web-kappa.
 
 // OAuth URL
 router.get('/oauth-url', async (req: any, res: any) => {
-  const scopes = 'https://www.googleapis.com/auth/adwords';
+  const scopes = 'https://www.googleapis.com/auth/adwords email profile';
   const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent&state=${req.userId}`;
   res.json({ url });
 });
@@ -42,25 +42,37 @@ router.get('/callback', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
+    let userEmail = '';
+    let userName = '';
+    try {
+      const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      userEmail = meResp.data.email || '';
+      userName = meResp.data.name || '';
+    } catch (meErr: any) {
+      console.error('[GoogleAds] UserInfo hata:', meErr.response?.data?.error?.message || meErr.message);
+    }
 
     let customerId = '';
-    try {
-      const accountsResp = await axios.get(
-        'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
-        { headers: { Authorization: `Bearer ${access_token}`, 'developer-token': GOOGLE_DEVELOPER_TOKEN } }
-      );
-      const ids = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
-      customerId = ids[0] || '';
-    } catch {}
+    if (GOOGLE_DEVELOPER_TOKEN) {
+      try {
+        const accountsResp = await axios.get(
+          'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
+          { headers: { Authorization: `Bearer ${access_token}`, 'developer-token': GOOGLE_DEVELOPER_TOKEN } }
+        );
+        const ids = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
+        customerId = ids[0] || '';
+      } catch (adsErr: any) {
+        console.error('[GoogleAds] Customer listesi alinamadi:', adsErr.response?.data?.error?.message || adsErr.message);
+      }
+    }
 
     await supabase.from('google_ads_connections').upsert([{
       user_id: state,
       customer_id: customerId,
-      customer_name: meResp.data.name,
-      google_email: meResp.data.email,
+      customer_name: userName,
+      google_email: userEmail,
       access_token,
       refresh_token,
       connected_at: new Date().toISOString(),
@@ -95,36 +107,48 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
+    let meEmail = '';
+    let meName = '';
+    let meId = '';
+    try {
+      const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      meEmail = meResp.data.email || '';
+      meName = meResp.data.name || '';
+      meId = meResp.data.id || '';
+    } catch (meErr: any) {
+      console.error('[GoogleAds] UserInfo hata:', meErr.response?.data?.error?.message || meErr.message);
+    }
 
     let accounts: any[] = [];
     let firstCustomerId = '';
-    try {
-      const accountsResp = await axios.get(
-        'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-            'developer-token': GOOGLE_DEVELOPER_TOKEN,
+    if (GOOGLE_DEVELOPER_TOKEN) {
+      try {
+        const accountsResp = await axios.get(
+          'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
+          {
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+              'developer-token': GOOGLE_DEVELOPER_TOKEN,
+            }
           }
-        }
-      );
-      const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
-      firstCustomerId = customerIds[0] || '';
-      accounts = customerIds.slice(0, 10).map((id: string) => ({ id, name: `Google Ads Hesap ${id}`, currency: 'USD' }));
-    } catch (adsErr: any) {
-      console.log('Google Ads accounts fetch skipped:', adsErr.response?.data?.error?.message || adsErr.message);
+        );
+        const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
+        firstCustomerId = customerIds[0] || '';
+        accounts = customerIds.slice(0, 10).map((id: string) => ({ id, name: `Google Ads Hesap ${id}`, currency: 'USD' }));
+      } catch (adsErr: any) {
+        console.log('Google Ads accounts fetch skipped:', adsErr.response?.data?.error?.message || adsErr.message);
+      }
     }
 
     await supabase.from('google_ads_connections').upsert([{
       user_id: req.userId,
       customer_id: firstCustomerId,
-      customer_name: meResp.data.name,
-      google_user_id: meResp.data.id,
-      google_user_name: meResp.data.name,
-      google_email: meResp.data.email,
+      customer_name: meName,
+      google_user_id: meId,
+      google_user_name: meName,
+      google_email: meEmail,
       access_token,
       refresh_token,
       ad_accounts: JSON.stringify(accounts),
@@ -132,7 +156,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
       token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     }], { onConflict: 'user_id' });
 
-    res.json({ success: true, userName: meResp.data.name, customerId: firstCustomerId, adAccounts: accounts, message: 'Google Ads hesabi baglandi!' });
+    res.json({ success: true, userName: meName, customerId: firstCustomerId, adAccounts: accounts, message: 'Google Ads hesabi baglandi!' });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error?.message || e.response?.data?.error_description || e.message });
   }
