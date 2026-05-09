@@ -58,7 +58,7 @@ router.get('/callback', async (req: any, res: any) => {
     if (GOOGLE_DEVELOPER_TOKEN) {
       try {
         const accountsResp = await axios.get(
-          'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
+          'https://googleads.googleapis.com/v17/customers:listAccessibleCustomers',
           { headers: { Authorization: `Bearer ${access_token}`, 'developer-token': GOOGLE_DEVELOPER_TOKEN } }
         );
         const ids = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
@@ -126,7 +126,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
     if (GOOGLE_DEVELOPER_TOKEN) {
       try {
         const accountsResp = await axios.get(
-          'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
+          'https://googleads.googleapis.com/v17/customers:listAccessibleCustomers',
           {
             headers: {
               Authorization: `Bearer ${access_token}`,
@@ -211,7 +211,7 @@ router.get('/campaigns/:customerId', async (req: any, res: any) => {
     if (!token) return res.status(401).json({ error: 'Google hesabi bagli degil' });
 
     const resp = await axios.post(
-      `https://googleads.googleapis.com/v14/customers/${req.params.customerId}/googleAds:search`,
+      `https://googleads.googleapis.com/v17/customers/${req.params.customerId}/googleAds:search`,
       {
         query: `SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type,
                 campaign_budget.amount_micros, metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.ctr
@@ -251,7 +251,7 @@ router.get('/analyze/:customerId', async (req: any, res: any) => {
     if (!token) return res.status(401).json({ error: 'Google hesabi bagli degil' });
 
     const resp = await axios.post(
-      `https://googleads.googleapis.com/v14/customers/${req.params.customerId}/googleAds:search`,
+      `https://googleads.googleapis.com/v17/customers/${req.params.customerId}/googleAds:search`,
       {
         query: `SELECT campaign.name, campaign.status, metrics.impressions, metrics.clicks,
                 metrics.cost_micros, metrics.ctr, metrics.conversions, metrics.cost_per_conversion
@@ -303,7 +303,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
 
     // Budget olustur
     const budgetResp = await axios.post(
-      `https://googleads.googleapis.com/v14/customers/${customerId}/campaignBudgets:mutate`,
+      `https://googleads.googleapis.com/v17/customers/${customerId}/campaignBudgets:mutate`,
       {
         operations: [{
           create: {
@@ -326,7 +326,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
 
     // Kampanya olustur
     const campResp = await axios.post(
-      `https://googleads.googleapis.com/v14/customers/${customerId}/campaigns:mutate`,
+      `https://googleads.googleapis.com/v17/customers/${customerId}/campaigns:mutate`,
       {
         operations: [{
           create: {

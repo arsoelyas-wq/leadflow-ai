@@ -17,7 +17,7 @@ async function getGoogleToken(userId: string): Promise<{ accessToken: string; cu
   const { data } = await supabase.from('google_ads_connections')
     .select('access_token, refresh_token, customer_id, token_expires_at')
     .eq('user_id', userId).single();
-  if (!data || !data.customer_id) return null;
+  if (!data || !data.access_token) return null;
 
   // Token expire olduysa refresh et
   if (data.token_expires_at && new Date(data.token_expires_at) < new Date()) {
@@ -468,7 +468,7 @@ router.get('/connection', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('google_ads_connections')
       .select('customer_id, customer_name, google_email, connected_at').eq('user_id', req.userId).single();
-    res.json({ connected: !!data && !!data.customer_id, connection: data });
+    res.json({ connected: !!data, connection: data });
   } catch { res.json({ connected: false }); }
 });
 
