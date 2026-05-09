@@ -363,7 +363,7 @@ router.get('/extract-leads', async (req: any, res: any) => {
     const userId = req.userId;
     const token = await getMetaToken(userId);
     if (!token) return res.status(400).json({ error: 'Meta hesabi bagli degil' });
-    const adAccountId = process.env.META_AD_ACCOUNT_ID || 'act_377102039604293';
+    const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
     const leads = await extractLeadsFromAllCampaigns(userId, adAccountId, token);
 
     const { data: settings } = await supabase.from('ad_settings').select('*').eq('user_id', userId).single();
@@ -415,7 +415,7 @@ router.post('/lead-quality', async (req: any, res: any) => {
 // POST /api/ads-intelligence/create-lookalike - Lookalike audience
 router.post('/create-lookalike', async (req: any, res: any) => {
   try {
-    const adAccountId = process.env.META_AD_ACCOUNT_ID || 'act_377102039604293';
+    const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
     const result = await createLookalikeAudience(req.userId, adAccountId);
     if (result.error) return res.status(400).json({ error: result.error });
     res.json({ ok: true, ...result });
@@ -436,7 +436,7 @@ router.get('/performance', async (req: any, res: any) => {
     const userId = req.userId;
     const token = await getMetaToken(userId);
     if (!token) return res.status(400).json({ error: 'Meta hesabi bagli degil' });
-    const adAccountId = process.env.META_AD_ACCOUNT_ID || 'act_377102039604293';
+    const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
     const alerts = await analyzePerformance(userId, adAccountId, token);
     const campaigns = await metaGet(`/${adAccountId}/campaigns`, token, {
       fields: 'id,name,status,objective,daily_budget', limit: 50,
@@ -476,7 +476,7 @@ router.get('/dashboard', async (req: any, res: any) => {
     const userId = req.userId;
     const token = await getMetaToken(userId);
     if (!token) return res.status(400).json({ error: 'Meta bagli degil' });
-    const adAccountId = process.env.META_AD_ACCOUNT_ID || 'act_377102039604293';
+    const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
     const [accountInsights, alerts, recentLeads, settings, audiences] = await Promise.allSettled([
       metaGet(`/${adAccountId}/insights`, token, {
         fields: 'impressions,clicks,spend,ctr,cpm,reach,actions', date_preset: 'last_30d',
@@ -511,7 +511,7 @@ router.post('/ai-optimize', async (req: any, res: any) => {
     const { campaignId, campaignName, metrics } = req.body;
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
     const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       messages: [{
         role: 'user',
@@ -570,7 +570,7 @@ async function runAutoSystem() {
     const { data: connections } = await supabase.from('meta_connections').select('user_id, access_token').not('access_token', 'is', null);
     for (const conn of connections || []) {
       try {
-        const adAccountId = process.env.META_AD_ACCOUNT_ID || 'act_377102039604293';
+        const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
         const leads = await extractLeadsFromAllCampaigns(conn.user_id, adAccountId, conn.access_token);
         const { data: settings } = await supabase.from('ad_settings').select('*').eq('user_id', conn.user_id).single();
         let saved = 0;

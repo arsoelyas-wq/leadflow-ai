@@ -1,4 +1,4 @@
-﻿'use client'
+﻿﻿'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -41,14 +41,18 @@ export default function GoogleAdsPage() {
     const code = searchParams.get('code')
     const gcode = searchParams.get('gcode')
     const googleSuccess = searchParams.get('google_success')
+    const errorParam = searchParams.get('error')
 
-    if (code) {
+    if (errorParam) {
+      const msg = errorParam === 'denied' ? 'Google Ads baglantisi iptal edildi.' : decodeURIComponent(errorParam)
+      showMsg('error', msg)
+      window.history.replaceState({}, '', '/google-ads')
+      loadAll()
+    } else if (code) {
       exchangeToken(code)
     } else if (gcode) {
-      // Callback'ten gelen code - client-side exchange yap
       exchangeToken(gcode)
     } else if (googleSuccess) {
-      // Basarili baglanti
       showMsg('success', 'Google Ads baglandi!')
       window.history.replaceState({}, '', '/google-ads')
       loadAll()
@@ -66,9 +70,15 @@ export default function GoogleAdsPage() {
       if (d.success) {
         showMsg('success', 'Google Ads baglandi!')
         window.history.replaceState({}, '', window.location.pathname)
-        loadAll()
-      } else showMsg('error', d.error)
-    } catch {}
+      } else {
+        showMsg('error', d.error || 'Baglanti hatasi')
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    } catch (e: any) {
+      showMsg('error', 'Baglanti saglanamadi: ' + e.message)
+    } finally {
+      loadAll()
+    }
   }
 
   async function loadAll() {
@@ -198,7 +208,7 @@ export default function GoogleAdsPage() {
             </div>
             Google Ads
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">Arama, Display & YouTube â€” AI analiz, 5dk kural, otomatik lead</p>
+          <p className="text-sm text-slate-500 mt-0.5">Arama, Display &amp; YouTube - AI analiz, 5dk kural, otomatik lead</p>
         </div>
         <div className="flex items-center gap-2">
           {alerts.length > 0 && (
@@ -222,7 +232,7 @@ export default function GoogleAdsPage() {
             </div>
             <div>
               <h2 className="text-white font-semibold text-lg">Google Ads Bagla</h2>
-              <p className="text-slate-400 text-sm mt-2 leading-relaxed">Google Ads hesabinizi baglayin. Arama, Display ve YouTube reklamlarindan otomatik lead toplama ve AI optimizasyon baslÐ°sin.</p>
+              <p className="text-slate-400 text-sm mt-2 leading-relaxed">Google Ads hesabinizi baglayin. Arama, Display ve YouTube reklamlarindan otomatik lead toplama ve AI optimizasyon baslasın.</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {[

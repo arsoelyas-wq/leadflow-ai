@@ -200,7 +200,7 @@ router.post('/call/single', async (req: any, res: any) => {
 
     const { data: callRecord } = await supabase.from('voice_calls').insert([{
       user_id: userId, lead_id: leadId,
-      callee_number: lead.phone, caller_number: '+19784325322',
+      callee_number: lead.phone, caller_number: process.env.ELEVENLABS_CALLER_NUMBER || '',
       status: 'initiating', language: callLanguage,
     }]).select().single();
 
@@ -257,7 +257,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
           const openingLine = buildOpeningLine(callLanguage, agentName, companyName);
           const { data: callRecord } = await supabase.from('voice_calls').insert([{
             user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
-            callee_number: lead.phone, caller_number: '+19784325322', status: 'calling', language: callLanguage,
+            callee_number: lead.phone, caller_number: process.env.ELEVENLABS_CALLER_NUMBER || '', status: 'calling', language: callLanguage,
           }]).select().single();
           const result = await makeElevenLabsCall({
             toNumber: lead.phone, agentName, companyName, productDescription: productDesc,

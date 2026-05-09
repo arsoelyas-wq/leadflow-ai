@@ -20,34 +20,34 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 // Claude ile kisisel script yaz
 async function generateScript(lead: any, profile: any, language: string): Promise<string> {
   const langNames: Record<string, string> = {
-    tr: 'TÃ¼rkÃ§e', en: 'Ä°ngilizce', de: 'Almanca', ar: 'ArapÃ§a', fr: 'FransÄ±zca',
-    ru: 'RusÃ§a', es: 'Ä°spanyolca', it: 'Ä°talyanca', nl: 'Hollandaca',
+    tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', ar: 'Arapça', fr: 'Fransızca',
+    ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
   };
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 300,
       messages: [{
         role: 'user',
-        content: `${profile?.company?.name || 'Åžirket'} adÄ±na ${lead.company_name} firmasÄ±na ${langNames[language] || 'TÃ¼rkÃ§e'} dilinde kiÅŸisel satÄ±ÅŸ videosu iÃ§in script yaz.
-ÃœrÃ¼n: ${profile?.product?.description || ''}
+        content: `${profile?.company?.name || 'Şirket'} adına ${lead.company_name} firmasına ${langNames[language] || 'Türkçe'} dilinde kişisel satış videosu için script yaz.
+Ürün: ${profile?.product?.description || ''}
 Muhatap: ${lead.contact_name || lead.company_name}
-SektÃ¶r: ${lead.sector || ''}
-Ãœlke: ${lead.country || ''}
+Sektör: ${lead.sector || ''}
+Ülke: ${lead.country || ''}
 
 KURALLAR:
 - Max 30 saniye (60-80 kelime)
-- DoÄŸal, samimi, insan gibi konuÅŸ
-- Ä°smi kullan: ${lead.contact_name || lead.company_name}
-- DeÄŸer Ã¶ner, randevu veya numune teklif et
-- Yapay zeka olduÄŸunu ASLA sÃ¶yleme
-- ${langNames[language] || 'TÃ¼rkÃ§e'} dilinde yaz
+- Doğal, samimi, insan gibi konuş
+- İsmi kullan: ${lead.contact_name || lead.company_name}
+- Değer öner, randevu veya numune teklif et
+- Yapay zeka olduğunu ASLA söyleme
+- ${langNames[language] || 'Türkçe'} dilinde yaz
 
-Sadece konuÅŸma metnini yaz, baÅŸka bir ÅŸey yazma.`
+Sadece konuşma metnini yaz, başka bir şey yazma.`
       }]
     });
     return r.content[0]?.text || '';
-  } catch { return `Merhaba ${lead.contact_name || lead.company_name}! ${profile?.company?.name || 'Åžirketimiz'} adÄ±na sizinle iletiÅŸime geÃ§mek istedik. Size Ã¶zel bir teklifimiz var, gÃ¶rÃ¼ÅŸmek ister misiniz?`; }
+  } catch { return `Merhaba ${lead.contact_name || lead.company_name}! ${profile?.company?.name || 'Şirketimiz'} adına sizinle iletişime geçmek istedik. Size özel bir teklifimiz var, görüşmek ister misiniz?`; }
 }
 
 // ElevenLabs ile ses uret - Buffer dondur

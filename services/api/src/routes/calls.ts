@@ -12,7 +12,7 @@ const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const CALLS_SECRET = process.env.CALLS_SECRET || 'leadflow-calls-secret-2026';
+const CALLS_SECRET = process.env.CALLS_SECRET;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const upload = multer({ dest: '/tmp/recordings/' });
@@ -120,7 +120,7 @@ Sadece JSON dondur.`;
 router.post('/process', upload.single('recording'), async (req: any, res: any) => {
   try {
     const { secret, uniqueid, callerid, duration, userId, agentName, agentId } = req.body;
-    if (secret !== CALLS_SECRET) return res.status(403).json({ error: 'Yetkisiz' });
+    if (!CALLS_SECRET || secret !== CALLS_SECRET) return res.status(403).json({ error: 'Yetkisiz' });
 
     const file = req.file;
     console.log(`Arama isleniyor: ${callerid} sure:${duration}s temsilci:${agentName}`);
@@ -214,7 +214,7 @@ router.post('/process', upload.single('recording'), async (req: any, res: any) =
 router.post('/log', async (req: any, res: any) => {
   try {
     const { secret, uniqueid, callerid, duration, userId, agentName, agentId } = req.body;
-    if (secret !== CALLS_SECRET) return res.status(403).json({ error: 'Yetkisiz' });
+    if (!CALLS_SECRET || secret !== CALLS_SECRET) return res.status(403).json({ error: 'Yetkisiz' });
 
     await supabase.from('call_analyses').insert([{
       user_id: userId || null,

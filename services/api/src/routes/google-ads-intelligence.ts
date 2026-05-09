@@ -17,7 +17,7 @@ async function getGoogleToken(userId: string): Promise<{ accessToken: string; cu
   const { data } = await supabase.from('google_ads_connections')
     .select('access_token, refresh_token, customer_id, token_expires_at')
     .eq('user_id', userId).single();
-  if (!data) return null;
+  if (!data || !data.customer_id) return null;
 
   // Token expire olduysa refresh et
   if (data.token_expires_at && new Date(data.token_expires_at) < new Date()) {
@@ -66,7 +66,7 @@ async function gaqlQuery(customerId: string, query: string, accessToken: string)
 }
 
 // ── LEAD EXTRACTION ──────────────────────────────────────
-async function extractGoogleLeads(userId: string, customerId: string, accessToken: string) {
+async function extractGoogleLeads(_userId: string, customerId: string, accessToken: string) {
   const leads: any[] = [];
   const cid = customerId.replace('customers/', '').replace(/-/g, '');
 
@@ -259,7 +259,6 @@ router.get('/dashboard', async (req: any, res: any) => {
     if (!tokenData) return res.status(400).json({ error: 'Google Ads bagli degil' });
 
     const { accessToken, customerId } = tokenData;
-    const cid = customerId.replace('customers/', '').replace(/-/g, '');
 
     const [accountMetrics, alerts, recentLeads] = await Promise.allSettled([
       gaqlQuery(customerId, `
@@ -418,11 +417,11 @@ router.get('/alerts', async (req: any, res: any) => {
 // POST /api/google-intelligence/ai-optimize
 router.post('/ai-optimize', async (req: any, res: any) => {
   try {
-    const { campaignId, campaignName, metrics } = req.body;
+    const { campaignName, metrics } = req.body;
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
 
     const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       messages: [{
         role: 'user',
@@ -468,8 +467,8 @@ JSON don:
 router.get('/connection', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('google_ads_connections')
-      .select('customer_id, customer_name, connected_at').eq('user_id', req.userId).single();
-    res.json({ connected: !!data, connection: data });
+      .select('customer_id, customer_name, google_email, connected_at').eq('user_id', req.userId).single();
+    res.json({ connected: !!data && !!data.customer_id, connection: data });
   } catch { res.json({ connected: false }); }
 });
 

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const ws = require('ws');
 global.WebSocket = ws;
 const express = require('express');
@@ -5,14 +6,14 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { runDailyTenderScan } = require('./routes/tenders');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
 app.use(helmet());
-app.use(cors({ origin: '*', credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://leadflow-ai-web-kappa.vercel.app,http://localhost:3000').split(',');
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin)), credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
 
 const generalLimiter  = rateLimit({ windowMs: 15*60*1000, max: 200, standardHeaders: true, legacyHeaders: false });
 const authLimiter     = rateLimit({ windowMs: 15*60*1000, max: 10 });

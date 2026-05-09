@@ -10,6 +10,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_ADS_CLIENT_SECRET;
 const GOOGLE_DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 const REDIRECT_URI = process.env.GOOGLE_ADS_REDIRECT_URI || 'https://leadflow-ai-production.up.railway.app/api/google-ads/callback';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://leadflow-ai-web-kappa.vercel.app';
 
 // OAuth URL
 router.get('/oauth-url', async (req: any, res: any) => {
@@ -24,7 +25,7 @@ router.get('/callback', async (req: any, res: any) => {
   const { code, state, error } = req.query;
   
   if (error || !code) {
-    return res.redirect('https://leadflow-ai-web-kappa.vercel.app/google-ads?error=denied');
+    return res.redirect(`${FRONTEND_URL}/google-ads?error=denied`);
   }
 
   try {
@@ -66,11 +67,11 @@ router.get('/callback', async (req: any, res: any) => {
       token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     }], { onConflict: 'user_id' });
 
-    console.log('[GoogleAds] Baglandi:', meResp.data.email, 'userId:', state);
-    return res.redirect('https://leadflow-ai-web-kappa.vercel.app/google-ads?google_success=1');
+    console.log('[GoogleAds] Baglandi, userId:', state ? state.slice(0, 8) + '...' : 'unknown');
+    return res.redirect(`${FRONTEND_URL}/google-ads?google_success=1`);
   } catch (e: any) {
     console.error('[GoogleAds] Callback hata:', e.response?.data || e.message);
-    return res.redirect('https://leadflow-ai-web-kappa.vercel.app/google-ads?error=' + encodeURIComponent(e.message));
+    return res.redirect(`${FRONTEND_URL}/google-ads?error=${encodeURIComponent(e.message)}`);
   }
 });
 // Token Exchange
@@ -94,13 +95,12 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    // KullanÃ„Â±cÃ„Â± bilgisi
     const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Google Ads hesaplarÃ„Â±nÃ„Â± listele
-    let accounts = [];
+    let accounts: any[] = [];
+    let firstCustomerId = '';
     try {
       const accountsResp = await axios.get(
         'https://googleads.googleapis.com/v14/customers:listAccessibleCustomers',
@@ -112,15 +112,16 @@ router.post('/exchange-token', async (req: any, res: any) => {
         }
       );
       const customerIds = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
+      firstCustomerId = customerIds[0] || '';
       accounts = customerIds.slice(0, 10).map((id: string) => ({ id, name: `Google Ads Hesap ${id}`, currency: 'USD' }));
     } catch (adsErr: any) {
       console.log('Google Ads accounts fetch skipped:', adsErr.response?.data?.error?.message || adsErr.message);
-      // Token exchange basarili ama ads hesaplari alinamadi - yine de kaydet
     }
 
-    // DB'ye kaydet
     await supabase.from('google_ads_connections').upsert([{
       user_id: req.userId,
+      customer_id: firstCustomerId,
+      customer_name: meResp.data.name,
       google_user_id: meResp.data.id,
       google_user_name: meResp.data.name,
       google_email: meResp.data.email,
@@ -131,7 +132,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
       token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     }], { onConflict: 'user_id' });
 
-    res.json({ success: true, userName: meResp.data.name, adAccounts: accounts, message: 'Google Ads hesabi baglandi!' });
+    res.json({ success: true, userName: meResp.data.name, customerId: firstCustomerId, adAccounts: accounts, message: 'Google Ads hesabi baglandi!' });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error?.message || e.response?.data?.error_description || e.message });
   }
@@ -274,7 +275,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
     const token = await refreshGoogleToken(req.userId);
     if (!token) return res.status(401).json({ error: 'Google hesabi bagli degil' });
 
-    const { customerId, name, budget, targetLocations } = req.body;
+    const { customerId, name, budget } = req.body;
 
     // Budget olustur
     const budgetResp = await axios.post(
