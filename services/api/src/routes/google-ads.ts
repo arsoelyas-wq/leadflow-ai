@@ -80,7 +80,13 @@ router.get('/callback', async (req: any, res: any) => {
     }], { onConflict: 'user_id' });
 
     console.log('[GoogleAds] Baglandi, userId:', state ? state.slice(0, 8) + '...' : 'unknown');
-    return res.redirect(`${FRONTEND_URL}/google-ads?google_success=1`);
+    // Yeni JWT üret - frontend farklı domain'den gelmiş olabilir (preview URL vs production)
+    let sessionToken = '';
+    try {
+      const jwt = require('jsonwebtoken');
+      sessionToken = jwt.sign({ userId: state }, process.env.JWT_SECRET || 'leadflow-super-secret-jwt-key-2026', { expiresIn: '7d' });
+    } catch {}
+    return res.redirect(`${FRONTEND_URL}/google-ads?google_success=1${sessionToken ? `&_t=${encodeURIComponent(sessionToken)}` : ''}`);
   } catch (e: any) {
     console.error('[GoogleAds] Callback hata:', e.response?.data || e.message);
     return res.redirect(`${FRONTEND_URL}/google-ads?error=${encodeURIComponent(e.message)}`);

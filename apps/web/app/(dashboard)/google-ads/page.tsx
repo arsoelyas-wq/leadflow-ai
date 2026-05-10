@@ -53,6 +53,8 @@ export default function GoogleAdsPage() {
     } else if (gcode) {
       exchangeToken(gcode)
     } else if (googleSuccess) {
+      const t = searchParams.get('_t')
+      if (t) localStorage.setItem('token', decodeURIComponent(t))
       showMsg('success', 'Google Ads baglandi!')
       window.history.replaceState({}, '', '/google-ads')
       loadAll()
