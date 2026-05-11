@@ -1,4 +1,4 @@
-﻿﻿'use client'
+﻿﻿﻿﻿'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -38,10 +38,13 @@ export default function GoogleAdsPage() {
   }
 
   useEffect(() => {
-    const code = searchParams.get('code')
-    const gcode = searchParams.get('gcode')
-    const googleSuccess = searchParams.get('google_success')
-    const errorParam = searchParams.get('error')
+    // window.location.search is always accurate; useSearchParams() can be empty
+    // on static pages before Next.js hydration completes
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    const gcode = params.get('gcode')
+    const googleSuccess = params.get('google_success')
+    const errorParam = params.get('error')
 
     if (errorParam) {
       const msg = errorParam === 'denied' ? 'Google Ads baglantisi iptal edildi.' : decodeURIComponent(errorParam)
@@ -53,7 +56,7 @@ export default function GoogleAdsPage() {
     } else if (gcode) {
       exchangeToken(gcode)
     } else if (googleSuccess) {
-      const t = searchParams.get('_t')
+      const t = params.get('_t')
       if (t) localStorage.setItem('token', decodeURIComponent(t))
       showMsg('success', 'Google Ads baglandi!')
       window.history.replaceState({}, '', '/google-ads')
@@ -189,11 +192,18 @@ export default function GoogleAdsPage() {
 
   const activeCount = campaigns.filter(c => c.status === 'ENABLED').length
   const tabCls = (t: string) => `px-3.5 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${tab === t ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`
-
-  if (loading) return <div className="flex items-center justify-center h-64"><RefreshCw className="w-5 h-5 animate-spin text-slate-600"/></div>
+  const metricCols = [
+    { label: 'Harcama',  value: stats ? `$${parseFloat(stats.spend||0).toFixed(2)}`         : '--', color: 'text-amber-400',   border: 'border-amber-500/15' },
+    { label: 'Gosterim', value: stats ? parseInt(stats.impressions||0).toLocaleString()       : '--', color: 'text-blue-400',    border: 'border-blue-500/15' },
+    { label: 'Tiklama',  value: stats ? parseInt(stats.clicks||0).toLocaleString()            : '--', color: 'text-teal-400',    border: 'border-teal-500/15' },
+    { label: 'CTR',      value: stats ? `%${parseFloat(stats.ctr||0).toFixed(2)}`            : '--', color: stats && parseFloat(stats.ctr) > 2 ? 'text-emerald-400' : 'text-slate-400', border: 'border-slate-600/50' },
+    { label: 'Ort. CPC', value: stats ? `$${parseFloat(stats.avg_cpc||0).toFixed(2)}`        : '--', color: 'text-slate-300',   border: 'border-slate-600/50' },
+    { label: 'Donusum',  value: stats ? parseInt(stats.conversions||0).toString()             : '--', color: 'text-purple-400',  border: 'border-purple-500/15' },
+  ]
 
   return (
     <div className="space-y-5">
+      {/* Toast */}
       {msg && (
         <div className={`fixed top-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl text-sm font-medium border ${msg.type === 'success' ? 'bg-slate-900 border-emerald-500/30 text-emerald-400' : 'bg-slate-900 border-red-500/30 text-red-400'}`}>
           {msg.type === 'success' ? <CheckCircle className="w-4 h-4"/> : <AlertTriangle className="w-4 h-4"/>}
@@ -201,8 +211,8 @@ export default function GoogleAdsPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      {/* ── HEADER ── */}
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2.5">
             <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
@@ -213,443 +223,451 @@ export default function GoogleAdsPage() {
           <p className="text-sm text-slate-500 mt-0.5">Arama, Display &amp; YouTube - AI analiz, 5dk kural, otomatik lead</p>
         </div>
         <div className="flex items-center gap-2">
-          {alerts.length > 0 && (
+          {connected && alerts.length > 0 && (
             <button onClick={() => setTab('alerts')} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-xs font-medium">
               <AlertTriangle className="w-3.5 h-3.5"/> {alerts.length} uyari
             </button>
           )}
-          <button onClick={loadAll} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition">
-            <RefreshCw className="w-4 h-4"/>
+          <button onClick={loadAll} disabled={loading} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/>
           </button>
         </div>
       </div>
 
+      {/* ── BAGLANTI KARTI (her zaman uste) ── */}
       {!connected ? (
-        /* Baglanmamis */
-        <div className="max-w-lg mx-auto pt-6">
-          <div className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 space-y-6">
-            <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/5 rounded-full"/>
-            <div className="w-12 h-12 bg-amber-500/15 border border-amber-500/20 rounded-xl flex items-center justify-center">
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 bg-gradient-to-r from-amber-500/8 via-slate-800/60 to-slate-800/40 p-5">
+          <div className="absolute right-0 top-0 h-full w-48 bg-gradient-to-l from-amber-500/4 to-transparent pointer-events-none"/>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="w-11 h-11 bg-amber-500/15 border border-amber-500/25 rounded-xl flex items-center justify-center shrink-0">
               <Target className="w-5 h-5 text-amber-400"/>
             </div>
-            <div>
-              <h2 className="text-white font-semibold text-lg">Google Ads Bagla</h2>
-              <p className="text-slate-400 text-sm mt-2 leading-relaxed">Google Ads hesabinizi baglayin. Arama, Display ve YouTube reklamlarindan otomatik lead toplama ve AI optimizasyon baslasın.</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-white font-semibold text-sm">Google Ads Bagli Degil</span>
+                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-700 text-slate-400 border border-slate-600">Bekliyor</span>
+              </div>
+              <p className="text-slate-400 text-xs">Hesabinizi baglayin - reklam verileriniz otomatik senkronize edilsin</p>
+              <div className="flex items-center gap-3 mt-2">
+                {[
+                  { icon: Users, label: 'Lead Form' },
+                  { icon: Activity, label: 'Performans' },
+                  { icon: Sparkles, label: 'AI Analiz' },
+                  { icon: Clock, label: '5 Dk Kurali' },
+                ].map(({ icon: Icon, label }) => (
+                  <span key={label} className="flex items-center gap-1 text-xs text-slate-500">
+                    <Icon className="w-3 h-3 text-slate-600"/> {label}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { icon: Users, label: 'Lead Form', desc: 'Google lead formlarindan' },
-                { icon: Activity, label: 'Performans', desc: 'CTR, CPC, CPA izleme' },
-                { icon: Sparkles, label: 'AI Analiz', desc: 'Anahtar kelime onerileri' },
-                { icon: Clock, label: '5 Dk Kurali', desc: 'Otomatik arama zinciri' },
-              ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex items-start gap-2.5 p-3 bg-slate-800/80 rounded-xl">
-                  <Icon className="w-4 h-4 text-slate-400 shrink-0 mt-0.5"/>
-                  <div><p className="text-white text-xs font-medium">{label}</p><p className="text-slate-500 text-xs">{desc}</p></div>
-                </div>
-              ))}
-            </div>
-            <button onClick={connectGoogle} className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-medium transition text-sm">
-              Google Ads Hesabimi Bagla
+            <button onClick={connectGoogle}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-semibold transition shrink-0 shadow-lg shadow-amber-900/20">
+              <Link className="w-4 h-4"/> Google Ads Bagla
             </button>
           </div>
         </div>
       ) : (
-        <div className="space-y-5">
-          {/* Durum + Aksiyonlar */}
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/8 border border-emerald-500/15 rounded-xl">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-              <span className="text-emerald-400 text-xs font-medium">Bagli</span>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>
+              <span className="text-emerald-400 text-sm font-semibold">Bagli</span>
             </div>
-            {connection?.customer_name && (
-              <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl">
-                <span className="text-slate-300 text-xs">{connection.customer_name}</span>
-              </div>
+            {connection?.google_email && (
+              <span className="text-slate-400 text-xs px-2.5 py-1 bg-slate-800/60 border border-slate-700/50 rounded-lg">
+                {connection.google_email}
+              </span>
             )}
-            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl">
-              <Wifi className="w-3.5 h-3.5 text-slate-500"/>
-              <span className="text-slate-500 text-xs">30 dk sync</span>
+            {connection?.customer_name && (
+              <span className="text-slate-300 text-xs px-2.5 py-1 bg-slate-800/60 border border-slate-700/50 rounded-lg">
+                {connection.customer_name}
+              </span>
+            )}
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <Wifi className="w-3 h-3"/> Her 30 dk sync
             </div>
             {adSettings.five_minute_rule && (
-              <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/8 border border-amber-500/15 rounded-xl">
-                <Clock className="w-3.5 h-3.5 text-amber-400"/>
-                <span className="text-amber-400 text-xs">5 Dk Kural Aktif</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <Clock className="w-3 h-3 text-amber-400"/>
+                <span className="text-amber-400 text-xs font-medium">5 Dk Kural Aktif</span>
               </div>
             )}
             <div className="ml-auto flex items-center gap-2">
               <button onClick={analyzePerformance}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-sm transition">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs transition">
                 <BarChart2 className="w-3.5 h-3.5"/> Analiz Et
               </button>
               <button onClick={extractLeads} disabled={extracting}
-                className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl text-sm font-medium transition">
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition">
                 {extracting ? <RefreshCw className="w-3.5 h-3.5 animate-spin"/> : <Users className="w-3.5 h-3.5"/>}
                 {extracting ? 'Cekiliyor...' : 'Leadleri Cek'}
               </button>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Metrikler */}
-          {stats && (
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-              {[
-                { label: 'Harcama', value: `$${parseFloat(stats.spend||0).toFixed(2)}`, color: 'text-amber-400', border: 'border-amber-500/15' },
-                { label: 'Gosterim', value: parseInt(stats.impressions||0).toLocaleString(), color: 'text-blue-400', border: 'border-blue-500/15' },
-                { label: 'Tiklama', value: parseInt(stats.clicks||0).toLocaleString(), color: 'text-teal-400', border: 'border-teal-500/15' },
-                { label: 'CTR', value: `%${parseFloat(stats.ctr||0).toFixed(2)}`, color: parseFloat(stats.ctr) > 2 ? 'text-emerald-400' : 'text-red-400', border: 'border-slate-600/50' },
-                { label: 'Ort. CPC', value: `$${parseFloat(stats.avg_cpc||0).toFixed(2)}`, color: 'text-slate-300', border: 'border-slate-600/50' },
-                { label: 'Donusum', value: parseInt(stats.conversions||0).toString(), color: 'text-purple-400', border: 'border-purple-500/15' },
-              ].map(({ label, value, color, border }) => (
-                <div key={label} className={`bg-slate-800/40 border ${border} rounded-2xl p-4`}>
-                  <p className="text-xs text-slate-500 mb-2">{label}</p>
-                  <p className={`text-xl font-semibold tracking-tight ${color}`}>{value}</p>
+      {/* ── METRIK GRID (her zaman gorunur) ── */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+        {metricCols.map(({ label, value, color, border }) => (
+          <div key={label} className={`bg-slate-800/40 border ${border} rounded-2xl p-4 ${!connected ? 'opacity-50' : ''}`}>
+            <p className="text-xs text-slate-500 mb-2">{label}</p>
+            <p className={`text-xl font-semibold tracking-tight ${color}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── TABS ── */}
+      <div className="flex items-center gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1 overflow-x-auto w-fit">
+        {([
+          ['overview',   'Genel Bakis'],
+          ['campaigns',  `Kampanyalar${campaigns.length ? ` (${campaigns.length})` : ''}`],
+          ['leads',      `Leadler${leads.length ? ` (${leads.length})` : ''}`],
+          ['alerts',     `Uyarilar${alerts.length ? ` (${alerts.length})` : ''}`],
+        ] as [string, string][]).map(([t, l]) => (
+          <button key={t} onClick={() => setTab(t as any)} className={tabCls(t)}>{l}</button>
+        ))}
+      </div>
+
+      {/* ── GENEL BAKIS ── */}
+      {tab === 'overview' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Kampanyalar */}
+          <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-700/50">
+              <p className="text-sm font-medium text-white">Son Kampanyalar</p>
+              <button onClick={() => setTab('campaigns')} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">Tumu <ChevronRight className="w-3 h-3"/></button>
+            </div>
+            <div className="divide-y divide-slate-700/30">
+              {campaigns.slice(0, 5).map((c: any) => (
+                <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.status === 'ENABLED' ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm truncate">{c.name}</p>
+                    <p className="text-slate-500 text-xs">CTR: %{c.ctr} - CPC: ${c.avg_cpc}</p>
+                  </div>
+                  <span className={`text-xs ${c.status === 'ENABLED' ? 'text-emerald-400' : 'text-slate-500'}`}>{c.status === 'ENABLED' ? 'Aktif' : 'Pasif'}</span>
                 </div>
               ))}
+              {campaigns.length === 0 && (
+                <div className="px-4 py-10 text-center">
+                  <BarChart2 className="w-8 h-8 mx-auto mb-2 text-slate-700"/>
+                  <p className="text-slate-600 text-sm">{connected ? 'Kampanya bulunamadi' : 'Google Ads baglayinca kampanyalariniz gorunecek'}</p>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Tabs */}
-          <div className="flex items-center gap-1 bg-slate-800/60 border border-slate-700/50 rounded-xl p-1 overflow-x-auto w-fit">
-            {[
-              ['overview', 'Genel Bakis'],
-              ['campaigns', `Kampanyalar (${campaigns.length})`],
-              ['leads', `Leadler (${leads.length})`],
-              ['alerts', `Uyarilar${alerts.length > 0 ? ` (${alerts.length})` : ''}`],
-            ].map(([t, l]) => (
-              <button key={t} onClick={() => setTab(t as any)} className={tabCls(t)}>{l}</button>
-            ))}
           </div>
 
-          {/* GENEL BAKIS */}
-          {tab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-700/50">
-                  <p className="text-sm font-medium text-white">Son Kampanyalar</p>
-                  <button onClick={() => setTab('campaigns')} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">Tumu <ChevronRight className="w-3 h-3"/></button>
+          {/* Leadler */}
+          <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-700/50">
+              <p className="text-sm font-medium text-white">Son Leadler</p>
+              <button onClick={() => setTab('leads')} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">Tumu <ChevronRight className="w-3 h-3"/></button>
+            </div>
+            <div className="divide-y divide-slate-700/30">
+              {leads.slice(0, 5).map((lead: any, i: number) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-7 h-7 bg-amber-500/15 rounded-lg flex items-center justify-center text-xs font-medium text-amber-400 shrink-0">
+                    {(lead.company_name || lead.name || '?')[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm truncate">{lead.company_name || lead.name || 'Google Lead'}</p>
+                    <p className="text-slate-500 text-xs">{lead.phone || lead.email || lead.source}</p>
+                  </div>
+                  <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">Yeni</span>
                 </div>
-                <div className="divide-y divide-slate-700/30">
-                  {campaigns.slice(0, 5).map((c: any) => (
-                    <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.status === 'ENABLED' ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm truncate">{c.name}</p>
-                        <p className="text-slate-500 text-xs">CTR: %{c.ctr} Â· CPC: ${c.avg_cpc}</p>
-                      </div>
-                      <span className={`text-xs ${c.status === 'ENABLED' ? 'text-emerald-400' : 'text-slate-500'}`}>{c.status === 'ENABLED' ? 'Aktif' : 'Pasif'}</span>
-                    </div>
-                  ))}
-                  {campaigns.length === 0 && <div className="px-4 py-8 text-center text-slate-600 text-sm">Kampanya yok</div>}
+              ))}
+              {leads.length === 0 && (
+                <div className="px-4 py-10 text-center">
+                  <Users className="w-8 h-8 mx-auto mb-2 text-slate-700"/>
+                  <p className="text-slate-600 text-sm">{connected ? 'Henuz lead yok' : 'Google Ads baglayinca leadleriniz gorunecek'}</p>
+                  {connected && <button onClick={extractLeads} className="mt-1.5 text-xs text-amber-400 hover:text-amber-300">Lead Cek</button>}
                 </div>
-              </div>
+              )}
+            </div>
+          </div>
 
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-700/50">
-                  <p className="text-sm font-medium text-white">Son Leadler</p>
-                  <button onClick={() => setTab('leads')} className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1">Tumu <ChevronRight className="w-3 h-3"/></button>
-                </div>
-                <div className="divide-y divide-slate-700/30">
-                  {leads.slice(0, 5).map((lead: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3">
-                      <div className="w-7 h-7 bg-amber-500/15 rounded-lg flex items-center justify-center text-xs font-medium text-amber-400 shrink-0">
-                        {(lead.company_name || lead.name || '?')[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm truncate">{lead.company_name || lead.name || 'Google Lead'}</p>
-                        <p className="text-slate-500 text-xs">{lead.phone || lead.email || lead.source}</p>
-                      </div>
-                      <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">Yeni</span>
+          {/* Sistem durumu */}
+          <div className="md:col-span-2 grid grid-cols-3 gap-3">
+            <div className={`flex items-center gap-3 p-4 rounded-xl border ${adSettings.five_minute_rule ? 'bg-amber-500/8 border-amber-500/20' : 'bg-slate-800/40 border-slate-700/50'}`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${adSettings.five_minute_rule ? 'bg-amber-500/20' : 'bg-slate-700'}`}>
+                <Clock className={`w-4 h-4 ${adSettings.five_minute_rule ? 'text-amber-400' : 'text-slate-500'}`}/>
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium">5 Dk Kurali</p>
+                <p className={`text-xs ${adSettings.five_minute_rule ? 'text-amber-400' : 'text-slate-500'}`}>{adSettings.five_minute_rule ? 'Aktif' : 'Pasif'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 bg-teal-500/8 border border-teal-500/20 rounded-xl">
+              <div className="w-9 h-9 bg-teal-500/20 rounded-xl flex items-center justify-center">
+                <Shield className="w-4 h-4 text-teal-400"/>
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium">Conversion Tracking</p>
+                <p className="text-teal-400 text-xs">Server-side aktif</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 bg-slate-800/40 border border-slate-700/50 rounded-xl">
+              <div className="w-9 h-9 bg-slate-700 rounded-xl flex items-center justify-center">
+                <Zap className={`w-4 h-4 ${connected ? 'text-emerald-400' : 'text-slate-500'}`}/>
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium">Otomatik Sync</p>
+                <p className="text-slate-500 text-xs">Her 30 dakika</p>
+                {connected && <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mt-1"/>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── KAMPANYALAR ── */}
+      {tab === 'campaigns' && (
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-700/50 bg-slate-800/60 flex items-center justify-between">
+            <p className="text-sm font-medium text-white">{campaigns.length} Kampanya</p>
+            {campaigns.length > 0 && (
+              <div className="flex items-center gap-3 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>{activeCount} aktif</span>
+                <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-600"/>{campaigns.length - activeCount} pasif</span>
+              </div>
+            )}
+          </div>
+          <div className="divide-y divide-slate-700/30">
+            {campaigns.map((c: any) => (
+              <div key={c.id} className="group">
+                <div className="flex items-center gap-4 px-5 py-4 hover:bg-slate-700/20 transition">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${c.status === 'ENABLED' ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{c.name}</p>
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                      <span>Harcama: ${parseFloat(c.spend||0).toFixed(2)}</span>
+                      <span>CTR: %{c.ctr}</span>
+                      <span>CPC: ${c.avg_cpc}</span>
+                      <span>Donusum: {c.conversions}</span>
+                      {parseFloat(c.cost_per_conversion) > 0 && <span>CPA: ${parseFloat(c.cost_per_conversion).toFixed(2)}</span>}
                     </div>
-                  ))}
-                  {leads.length === 0 && (
-                    <div className="px-4 py-8 text-center">
-                      <p className="text-slate-600 text-sm">Henuz lead yok</p>
-                      <button onClick={extractLeads} className="mt-1.5 text-xs text-amber-400">Lead Cek â†’</button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => optimizeCampaign(c)} disabled={optimizing === c.id}
+                      className="hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-amber-600/20 border border-amber-500/30 hover:bg-amber-600/30 text-amber-400 rounded-lg text-xs transition">
+                      {optimizing === c.id ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3"/>}
+                      AI Analiz
+                    </button>
+                    <span className={`text-xs px-2.5 py-1 rounded-lg font-medium shrink-0 ${c.status === 'ENABLED' ? 'text-emerald-400 bg-emerald-400/10 border border-emerald-500/20' : 'text-slate-500 bg-slate-700/50 border border-slate-600/50'}`}>
+                      {c.status === 'ENABLED' ? 'Aktif' : 'Pasif'}
+                    </span>
+                  </div>
+                </div>
+                {optimization?.campaignId === c.id && (
+                  <div className="mx-5 mb-4 p-4 bg-amber-500/8 border border-amber-500/20 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-400"/>
+                        <span className="text-amber-300 text-sm font-medium">AI Analiz Sonucu</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-bold px-2 py-0.5 rounded-lg ${optimization.overall_score >= 7 ? 'text-emerald-400 bg-emerald-400/10' : optimization.overall_score >= 4 ? 'text-amber-400 bg-amber-400/10' : 'text-red-400 bg-red-400/10'}`}>
+                          {optimization.overall_score}/10
+                        </span>
+                        <button onClick={() => setOptimization(null)} className="text-slate-500 hover:text-slate-300"><X className="w-4 h-4"/></button>
+                      </div>
+                    </div>
+                    <p className="text-slate-300 text-sm">{optimization.summary}</p>
+                    {optimization.quick_wins?.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-xs text-slate-500 font-medium">HIZLI KAZANIMLAR:</p>
+                        {optimization.quick_wins.map((win: any, i: number) => (
+                          <div key={i} className={`p-3 rounded-xl border text-xs ${win.impact === 'high' ? 'bg-red-500/8 border-red-500/20' : 'bg-slate-800 border-slate-700'}`}>
+                            <p className="text-white font-medium">{win.action}</p>
+                            <p className="text-slate-500 mt-0.5">Etki: {win.impact}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {optimization.keyword_suggestions?.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 font-medium mb-1.5">ANAHTAR KELIME ONERILERI:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {optimization.keyword_suggestions.map((kw: string, i: number) => (
+                            <span key={i} className="px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300">{kw}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {optimization.negative_keywords?.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 font-medium mb-1.5">NEGATIF KELIMELER:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {optimization.negative_keywords.map((kw: string, i: number) => (
+                            <span key={i} className="px-2.5 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">{kw}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {optimization.ad_copy_alternatives?.length > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 font-medium mb-1.5">ALTERNATIF REKLAM METINLERI:</p>
+                        {optimization.ad_copy_alternatives.map((copy: string, i: number) => (
+                          <div key={i} className="p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 mb-1.5">{copy}</div>
+                        ))}
+                      </div>
+                    )}
+                    {optimization.bidding_suggestion && (
+                      <div className="p-3 bg-slate-800 border border-slate-700 rounded-xl">
+                        <p className="text-xs text-slate-500 mb-1">Teklif Stratejisi Onerisi:</p>
+                        <p className="text-white text-sm">{optimization.bidding_suggestion}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            {campaigns.length === 0 && (
+              <div className="text-center py-14">
+                <BarChart2 className="w-10 h-10 mx-auto mb-3 text-slate-700"/>
+                <p className="text-slate-500 text-sm">{connected ? 'Kampanya bulunamadi' : 'Google Ads hesabinizi baglayin'}</p>
+                {!connected && <button onClick={connectGoogle} className="mt-3 text-xs text-amber-400 hover:text-amber-300">Bagla</button>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── LEADLER ── */}
+      {tab === 'leads' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500"/>
+              <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)} placeholder="Lead ara..."
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-slate-600"/>
+            </div>
+            {selectedLeads.length > 0 && (
+              <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl">{selectedLeads.length} secildi</span>
+            )}
+            <button onClick={exportToLeads} disabled={exporting || filteredLeads.length === 0}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition ${exportSuccess ? 'bg-emerald-600 text-white' : 'bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white'}`}>
+              {exporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin"/> : exportSuccess ? <CheckCircle className="w-3.5 h-3.5"/> : <Send className="w-3.5 h-3.5"/>}
+              {exporting ? 'Aktariliyor...' : exportSuccess ? 'Aktarildi!' : selectedLeads.length > 0 ? `${selectedLeads.length} Leadi Aktar` : 'Tumunu Aktar'}
+            </button>
+          </div>
+          <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-4 px-5 py-3 border-b border-slate-700/50 bg-slate-800/60">
+              <button onClick={toggleAll} className={`w-4 h-4 rounded border transition flex items-center justify-center shrink-0 ${selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? 'bg-amber-500 border-amber-500' : 'border-slate-600 hover:border-slate-500'}`}>
+                {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 && <Check className="w-2.5 h-2.5 text-white"/>}
+              </button>
+              <p className="text-xs font-medium text-slate-500 flex-1">LEAD</p>
+              <p className="text-xs font-medium text-slate-500 w-36 hidden md:block">ILETISIM</p>
+              <p className="text-xs font-medium text-slate-500 w-24 hidden md:block">KAYNAK</p>
+              <p className="text-xs font-medium text-slate-500 w-20 text-right">AKTAR</p>
+            </div>
+            {filteredLeads.length === 0 ? (
+              <div className="text-center py-14">
+                <Users className="w-10 h-10 mx-auto mb-3 text-slate-700"/>
+                <p className="text-slate-500 text-sm">{connected ? 'Henuz lead yok' : 'Google Ads hesabinizi baglayin'}</p>
+                {connected && (
+                  <button onClick={extractLeads} disabled={extracting}
+                    className="mt-3 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm mx-auto">
+                    {extracting ? <RefreshCw className="w-3.5 h-3.5 animate-spin"/> : <Users className="w-3.5 h-3.5"/>} Leadleri Cek
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-700/30">
+                {filteredLeads.map((lead: any, i: number) => {
+                  const lid = lead.id || String(i)
+                  const isSel = selectedLeads.includes(lid)
+                  return (
+                    <div key={lid} className={`flex items-center gap-4 px-5 py-3.5 hover:bg-slate-700/15 transition group ${isSel ? 'bg-amber-500/5' : ''}`}>
+                      <button onClick={() => toggleLead(lid)} className={`w-4 h-4 rounded border transition flex items-center justify-center shrink-0 ${isSel ? 'bg-amber-500 border-amber-500' : 'border-slate-600 hover:border-slate-500'}`}>
+                        {isSel && <Check className="w-2.5 h-2.5 text-white"/>}
+                      </button>
+                      <div className="flex-1 min-w-0 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-sm font-medium text-slate-300 shrink-0">
+                          {(lead.company_name || lead.name || '?')[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{lead.company_name || lead.name || 'Google Lead'}</p>
+                          {lead.contact_name && <p className="text-slate-500 text-xs truncate">{lead.contact_name}</p>}
+                        </div>
+                      </div>
+                      <div className="w-36 hidden md:block space-y-0.5">
+                        {lead.phone && <p className="text-slate-400 text-xs truncate">{lead.phone}</p>}
+                        {lead.email && <p className="text-slate-400 text-xs truncate">{lead.email}</p>}
+                      </div>
+                      <div className="w-24 hidden md:block">
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400">
+                          {lead.source === 'google_lead_form' ? 'Lead Form' : lead.source === 'google_conversion' ? 'Conversion' : 'Google'}
+                        </span>
+                      </div>
+                      <div className="w-20 flex justify-end">
+                        <button onClick={async () => {
+                          try {
+                            await fetch(`${API}/api/leads`, { method: 'POST', headers: authH(), body: JSON.stringify({ company_name: lead.company_name || lead.name || 'Google Lead', contact_name: lead.contact_name || lead.name, email: lead.email, phone: lead.phone, source: lead.source || 'google' }) })
+                            showMsg('success', 'Lead aktarildi!')
+                          } catch { showMsg('error', 'Hata') }
+                        }} className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-700 hover:bg-amber-600/30 border border-slate-600 hover:border-amber-500/40 rounded-lg text-xs text-slate-300 hover:text-white transition">
+                          <Send className="w-3 h-3"/> Aktar
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            {filteredLeads.length > 0 && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-slate-700/50 bg-slate-800/40">
+                <p className="text-xs text-slate-500">{filteredLeads.length} lead</p>
+                <button onClick={exportToLeads} disabled={exporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition">
+                  <Send className="w-3 h-3"/>
+                  {selectedLeads.length > 0 ? `${selectedLeads.length} Seciliyi Aktar` : 'Tumunu Aktar'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── UYARILAR ── */}
+      {tab === 'alerts' && (
+        <div className="space-y-3">
+          {alerts.length === 0 ? (
+            <div className="text-center py-14 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
+              <CheckCircle className="w-10 h-10 mx-auto mb-3 text-emerald-700"/>
+              <p className="text-white font-medium">{connected ? 'Uyari yok' : 'Baglanmadan uyari kontrolu yapilmaz'}</p>
+              <p className="text-slate-500 text-sm mt-1">{connected ? 'Tum Google reklamlari iyi gidiyor' : 'Lutfen once Google Ads hesabinizi baglayin'}</p>
+              {connected && (
+                <button onClick={analyzePerformance} className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-700 text-slate-300 rounded-xl text-sm mx-auto">
+                  <BarChart2 className="w-4 h-4"/> Yeniden Analiz
+                </button>
+              )}
+            </div>
+          ) : (
+            alerts.map((alert: any, i: number) => (
+              <div key={i} className={`flex items-start gap-4 p-5 rounded-2xl border ${alert.severity === 'critical' ? 'bg-red-500/6 border-red-500/20' : 'bg-amber-500/6 border-amber-500/20'}`}>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${alert.severity === 'critical' ? 'bg-red-500/15' : 'bg-amber-500/15'}`}>
+                  <AlertTriangle className={`w-4 h-4 ${alert.severity === 'critical' ? 'text-red-400' : 'text-amber-400'}`}/>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${alert.severity === 'critical' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                      {alert.severity === 'critical' ? 'Kritik' : 'Uyari'}
+                    </span>
+                    <span className="text-white text-sm font-medium">{alert.campaign_name}</span>
+                  </div>
+                  <p className="text-slate-400 text-sm">{alert.message}</p>
+                  {alert.recommendation && (
+                    <div className="flex items-start gap-2 mt-2.5 p-2.5 bg-slate-800/60 rounded-lg">
+                      <CheckCircle className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5"/>
+                      <p className="text-teal-400 text-xs">{alert.recommendation}</p>
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* Sistem Ozeti */}
-              <div className="md:col-span-2 grid grid-cols-3 gap-3">
-                <div className={`flex items-center gap-3 p-4 rounded-xl border ${adSettings.five_minute_rule ? 'bg-amber-500/8 border-amber-500/20' : 'bg-slate-800/40 border-slate-700/50'}`}>
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${adSettings.five_minute_rule ? 'bg-amber-500/20' : 'bg-slate-700'}`}>
-                    <Clock className={`w-4 h-4 ${adSettings.five_minute_rule ? 'text-amber-400' : 'text-slate-500'}`}/>
-                  </div>
-                  <div>
-                    <p className="text-white text-sm font-medium">5 Dk Kurali</p>
-                    <p className={`text-xs ${adSettings.five_minute_rule ? 'text-amber-400' : 'text-slate-500'}`}>{adSettings.five_minute_rule ? 'Aktif' : 'Pasif'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-teal-500/8 border border-teal-500/20 rounded-xl">
-                  <div className="w-9 h-9 bg-teal-500/20 rounded-xl flex items-center justify-center">
-                    <Shield className="w-4 h-4 text-teal-400"/>
-                  </div>
-                  <div>
-                    <p className="text-white text-sm font-medium">Conversion Tracking</p>
-                    <p className="text-teal-400 text-xs">Server-side aktif</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-4 bg-slate-800/40 border border-slate-700/50 rounded-xl">
-                  <div className="w-9 h-9 bg-slate-700 rounded-xl flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-slate-400"/>
-                  </div>
-                  <div>
-                    <p className="text-white text-sm font-medium">Otomatik Sync</p>
-                    <p className="text-slate-500 text-xs">Her 30 dakika</p>
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mt-1"/>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* KAMPANYALAR */}
-          {tab === 'campaigns' && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-slate-700/50 bg-slate-800/60 flex items-center justify-between">
-                <p className="text-sm font-medium text-white">{campaigns.length} Kampanya</p>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>{activeCount} aktif</span>
-                  <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-slate-600"/>{campaigns.length - activeCount} pasif</span>
-                </div>
-              </div>
-              <div className="divide-y divide-slate-700/30">
-                {campaigns.map((c: any) => (
-                  <div key={c.id} className="group">
-                    <div className="flex items-center gap-4 px-5 py-4 hover:bg-slate-700/20 transition">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${c.status === 'ENABLED' ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium truncate">{c.name}</p>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
-                          <span>Harcama: ${parseFloat(c.spend||0).toFixed(2)}</span>
-                          <span>CTR: %{c.ctr}</span>
-                          <span>CPC: ${c.avg_cpc}</span>
-                          <span>Donusum: {c.conversions}</span>
-                          {parseFloat(c.cost_per_conversion) > 0 && <span>CPA: ${parseFloat(c.cost_per_conversion).toFixed(2)}</span>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => optimizeCampaign(c)} disabled={optimizing === c.id}
-                          className="hidden group-hover:flex items-center gap-1.5 px-3 py-1.5 bg-amber-600/20 border border-amber-500/30 hover:bg-amber-600/30 text-amber-400 rounded-lg text-xs transition">
-                          {optimizing === c.id ? <RefreshCw className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3"/>}
-                          AI Analiz
-                        </button>
-                        <span className={`text-xs px-2.5 py-1 rounded-lg font-medium shrink-0 ${c.status === 'ENABLED' ? 'text-emerald-400 bg-emerald-400/10 border border-emerald-500/20' : 'text-slate-500 bg-slate-700/50 border border-slate-600/50'}`}>
-                          {c.status === 'ENABLED' ? 'Aktif' : 'Pasif'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {optimization?.campaignId === c.id && (
-                      <div className="mx-5 mb-4 p-4 bg-amber-500/8 border border-amber-500/20 rounded-xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-amber-400"/>
-                            <span className="text-amber-300 text-sm font-medium">AI Analiz Sonucu</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold px-2 py-0.5 rounded-lg ${optimization.overall_score >= 7 ? 'text-emerald-400 bg-emerald-400/10' : optimization.overall_score >= 4 ? 'text-amber-400 bg-amber-400/10' : 'text-red-400 bg-red-400/10'}`}>
-                              {optimization.overall_score}/10
-                            </span>
-                            <button onClick={() => setOptimization(null)} className="text-slate-500 hover:text-slate-300"><X className="w-4 h-4"/></button>
-                          </div>
-                        </div>
-                        <p className="text-slate-300 text-sm">{optimization.summary}</p>
-
-                        {optimization.quick_wins?.length > 0 && (
-                          <div className="space-y-1.5">
-                            <p className="text-xs text-slate-500 font-medium">HIZLI KAZANIMLAR:</p>
-                            {optimization.quick_wins.map((win: any, i: number) => (
-                              <div key={i} className={`p-3 rounded-xl border text-xs ${win.impact === 'high' ? 'bg-red-500/8 border-red-500/20' : 'bg-slate-800 border-slate-700'}`}>
-                                <p className="text-white font-medium">{win.action}</p>
-                                <p className="text-slate-500 mt-0.5">Etki: {win.impact}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {optimization.keyword_suggestions?.length > 0 && (
-                          <div>
-                            <p className="text-xs text-slate-500 font-medium mb-1.5">ANAHTAR KELIME ONERILERI:</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {optimization.keyword_suggestions.map((kw: string, i: number) => (
-                                <span key={i} className="px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300">{kw}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {optimization.negative_keywords?.length > 0 && (
-                          <div>
-                            <p className="text-xs text-slate-500 font-medium mb-1.5">NEGATIF KELIMELER:</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {optimization.negative_keywords.map((kw: string, i: number) => (
-                                <span key={i} className="px-2.5 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">{kw}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {optimization.ad_copy_alternatives?.length > 0 && (
-                          <div>
-                            <p className="text-xs text-slate-500 font-medium mb-1.5">ALTERNATIF REKLAM METINLERI:</p>
-                            {optimization.ad_copy_alternatives.map((copy: string, i: number) => (
-                              <div key={i} className="p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 mb-1.5">{copy}</div>
-                            ))}
-                          </div>
-                        )}
-
-                        {optimization.bidding_suggestion && (
-                          <div className="p-3 bg-slate-800 border border-slate-700 rounded-xl">
-                            <p className="text-xs text-slate-500 mb-1">Teklif Stratejisi Onerisi:</p>
-                            <p className="text-white text-sm">{optimization.bidding_suggestion}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {campaigns.length === 0 && <div className="text-center py-12 text-slate-600 text-sm">Kampanya bulunamadi</div>}
-              </div>
-            </div>
-          )}
-
-          {/* LEADLER */}
-          {tab === 'leads' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative flex-1 min-w-48">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500"/>
-                  <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)} placeholder="Lead ara..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-slate-600"/>
-                </div>
-                {selectedLeads.length > 0 && (
-                  <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl">{selectedLeads.length} secildi</span>
-                )}
-                <button onClick={exportToLeads} disabled={exporting || filteredLeads.length === 0}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition ${exportSuccess ? 'bg-emerald-600 text-white' : 'bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white'}`}>
-                  {exporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin"/> : exportSuccess ? <CheckCircle className="w-3.5 h-3.5"/> : <Send className="w-3.5 h-3.5"/>}
-                  {exporting ? 'Aktariliyor...' : exportSuccess ? 'Aktarildi!' : selectedLeads.length > 0 ? `${selectedLeads.length} Leadi Aktar` : 'Tumunu Aktar'}
-                </button>
-              </div>
-
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
-                <div className="flex items-center gap-4 px-5 py-3 border-b border-slate-700/50 bg-slate-800/60">
-                  <button onClick={toggleAll} className={`w-4 h-4 rounded border transition flex items-center justify-center shrink-0 ${selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 ? 'bg-amber-500 border-amber-500' : 'border-slate-600 hover:border-slate-500'}`}>
-                    {selectedLeads.length === filteredLeads.length && filteredLeads.length > 0 && <Check className="w-2.5 h-2.5 text-white"/>}
-                  </button>
-                  <p className="text-xs font-medium text-slate-500 flex-1">LEAD</p>
-                  <p className="text-xs font-medium text-slate-500 w-36 hidden md:block">ILETISIM</p>
-                  <p className="text-xs font-medium text-slate-500 w-24 hidden md:block">KAYNAK</p>
-                  <p className="text-xs font-medium text-slate-500 w-20 text-right">AKTAR</p>
-                </div>
-
-                {filteredLeads.length === 0 ? (
-                  <div className="text-center py-14">
-                    <Users className="w-10 h-10 mx-auto mb-3 text-slate-700"/>
-                    <p className="text-slate-500 text-sm">Henuz lead yok</p>
-                    <button onClick={extractLeads} disabled={extracting}
-                      className="mt-3 flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm mx-auto">
-                      {extracting ? <RefreshCw className="w-3.5 h-3.5 animate-spin"/> : <Users className="w-3.5 h-3.5"/>} Leadleri Cek
-                    </button>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-700/30">
-                    {filteredLeads.map((lead: any, i: number) => {
-                      const lid = lead.id || String(i)
-                      const isSel = selectedLeads.includes(lid)
-                      return (
-                        <div key={lid} className={`flex items-center gap-4 px-5 py-3.5 hover:bg-slate-700/15 transition group ${isSel ? 'bg-amber-500/5' : ''}`}>
-                          <button onClick={() => toggleLead(lid)} className={`w-4 h-4 rounded border transition flex items-center justify-center shrink-0 ${isSel ? 'bg-amber-500 border-amber-500' : 'border-slate-600 hover:border-slate-500'}`}>
-                            {isSel && <Check className="w-2.5 h-2.5 text-white"/>}
-                          </button>
-                          <div className="flex-1 min-w-0 flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-sm font-medium text-slate-300 shrink-0">
-                              {(lead.company_name || lead.name || '?')[0].toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-white text-sm font-medium truncate">{lead.company_name || lead.name || 'Google Lead'}</p>
-                              {lead.contact_name && <p className="text-slate-500 text-xs truncate">{lead.contact_name}</p>}
-                            </div>
-                          </div>
-                          <div className="w-36 hidden md:block space-y-0.5">
-                            {lead.phone && <p className="text-slate-400 text-xs truncate">{lead.phone}</p>}
-                            {lead.email && <p className="text-slate-400 text-xs truncate">{lead.email}</p>}
-                          </div>
-                          <div className="w-24 hidden md:block">
-                            <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400">
-                              {lead.source === 'google_lead_form' ? 'Lead Form' : lead.source === 'google_conversion' ? 'Conversion' : 'Google'}
-                            </span>
-                          </div>
-                          <div className="w-20 flex justify-end">
-                            <button onClick={async () => {
-                              try {
-                                await fetch(`${API}/api/leads`, { method: 'POST', headers: authH(), body: JSON.stringify({ company_name: lead.company_name || lead.name || 'Google Lead', contact_name: lead.contact_name || lead.name, email: lead.email, phone: lead.phone, source: lead.source || 'google' }) })
-                                showMsg('success', 'Lead aktarildi!')
-                              } catch { showMsg('error', 'Hata') }
-                            }} className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-700 hover:bg-amber-600/30 border border-slate-600 hover:border-amber-500/40 rounded-lg text-xs text-slate-300 hover:text-white transition">
-                              <Send className="w-3 h-3"/> Aktar
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {filteredLeads.length > 0 && (
-                  <div className="flex items-center justify-between px-5 py-3 border-t border-slate-700/50 bg-slate-800/40">
-                    <p className="text-xs text-slate-500">{filteredLeads.length} lead</p>
-                    <button onClick={exportToLeads} disabled={exporting}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition">
-                      <Send className="w-3 h-3"/>
-                      {selectedLeads.length > 0 ? `${selectedLeads.length} Seciliyi Aktar` : 'Tumunu Aktar'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* UYARILAR */}
-          {tab === 'alerts' && (
-            <div className="space-y-3">
-              {alerts.length === 0 ? (
-                <div className="text-center py-14 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
-                  <CheckCircle className="w-10 h-10 mx-auto mb-3 text-emerald-700"/>
-                  <p className="text-white font-medium">Uyari yok</p>
-                  <p className="text-slate-500 text-sm mt-1">Tum Google reklamlari iyi gidiyor</p>
-                  <button onClick={analyzePerformance} className="mt-4 flex items-center gap-2 px-4 py-2 bg-slate-700 text-slate-300 rounded-xl text-sm mx-auto">
-                    <BarChart2 className="w-4 h-4"/> Yeniden Analiz
-                  </button>
-                </div>
-              ) : (
-                alerts.map((alert: any, i: number) => (
-                  <div key={i} className={`flex items-start gap-4 p-5 rounded-2xl border ${alert.severity === 'critical' ? 'bg-red-500/6 border-red-500/20' : 'bg-amber-500/6 border-amber-500/20'}`}>
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${alert.severity === 'critical' ? 'bg-red-500/15' : 'bg-amber-500/15'}`}>
-                      <AlertTriangle className={`w-4 h-4 ${alert.severity === 'critical' ? 'text-red-400' : 'text-amber-400'}`}/>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${alert.severity === 'critical' ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>
-                          {alert.severity === 'critical' ? 'Kritik' : 'Uyari'}
-                        </span>
-                        <span className="text-white text-sm font-medium">{alert.campaign_name}</span>
-                      </div>
-                      <p className="text-slate-400 text-sm">{alert.message}</p>
-                      {alert.recommendation && (
-                        <div className="flex items-start gap-2 mt-2.5 p-2.5 bg-slate-800/60 rounded-lg">
-                          <CheckCircle className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5"/>
-                          <p className="text-teal-400 text-xs">{alert.recommendation}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            ))
           )}
         </div>
       )}

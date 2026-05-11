@@ -42,44 +42,15 @@ router.get('/callback', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    let userEmail = '';
-    let userName = '';
-    try {
-      const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${access_token}` }
-      });
-      userEmail = meResp.data.email || '';
-      userName = meResp.data.name || '';
-    } catch (meErr: any) {
-      console.error('[GoogleAds] UserInfo hata:', meErr.response?.data?.error?.message || meErr.message);
-    }
-
-    let customerId = '';
-    if (GOOGLE_DEVELOPER_TOKEN) {
-      try {
-        const accountsResp = await axios.get(
-          'https://googleads.googleapis.com/v17/customers:listAccessibleCustomers',
-          { headers: { Authorization: `Bearer ${access_token}`, 'developer-token': GOOGLE_DEVELOPER_TOKEN } }
-        );
-        const ids = accountsResp.data?.resourceNames?.map((r: string) => r.replace('customers/', '')) || [];
-        customerId = ids[0] || '';
-      } catch (adsErr: any) {
-        console.error('[GoogleAds] Customer listesi alinamadi:', adsErr.response?.data?.error?.message || adsErr.message);
-      }
-    }
-
-    await supabase.from('google_ads_connections').upsert([{
+    await supabase.from('google_ads_connections').delete().eq('user_id', state);
+    const { error: insertErr } = await supabase.from('google_ads_connections').insert([{
       user_id: state,
-      customer_id: customerId,
-      customer_name: userName,
-      google_email: userEmail,
       access_token,
       refresh_token,
-      connected_at: new Date().toISOString(),
-      token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }], { onConflict: 'user_id' });
+    }]);
+    if (insertErr) console.error('[GoogleAds] Kayit hatasi:', insertErr.message);
 
-    console.log('[GoogleAds] Baglandi, userId:', state ? state.slice(0, 8) + '...' : 'unknown');
+    console.log('[GoogleAds] Baglandi, userId:', state ? state.slice(0, 8) + '...' : 'unknown', insertErr ? '(HATA:' + insertErr.message + ')' : '(OK)');
     // Yeni JWT üret - frontend farklı domain'den gelmiş olabilir (preview URL vs production)
     let sessionToken = '';
     try {
@@ -113,16 +84,12 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
-    let meEmail = '';
     let meName = '';
-    let meId = '';
     try {
       const meResp = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: { Authorization: `Bearer ${access_token}` }
       });
-      meEmail = meResp.data.email || '';
       meName = meResp.data.name || '';
-      meId = meResp.data.id || '';
     } catch (meErr: any) {
       console.error('[GoogleAds] UserInfo hata:', meErr.response?.data?.error?.message || meErr.message);
     }
@@ -148,19 +115,13 @@ router.post('/exchange-token', async (req: any, res: any) => {
       }
     }
 
-    await supabase.from('google_ads_connections').upsert([{
+    await supabase.from('google_ads_connections').delete().eq('user_id', req.userId);
+    const { error: insertErr2 } = await supabase.from('google_ads_connections').insert([{
       user_id: req.userId,
-      customer_id: firstCustomerId,
-      customer_name: meName,
-      google_user_id: meId,
-      google_user_name: meName,
-      google_email: meEmail,
       access_token,
       refresh_token,
-      ad_accounts: JSON.stringify(accounts),
-      connected_at: new Date().toISOString(),
-      token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-    }], { onConflict: 'user_id' });
+    }]);
+    if (insertErr2) console.error('[GoogleAds] exchange-token kayit hatasi:', insertErr2.message);
 
     res.json({ success: true, userName: meName, customerId: firstCustomerId, adAccounts: accounts, message: 'Google Ads hesabi baglandi!' });
   } catch (e: any) {
@@ -172,7 +133,7 @@ router.post('/exchange-token', async (req: any, res: any) => {
 async function refreshGoogleToken(userId: string): Promise<string | null> {
   try {
     const { data: conn } = await supabase.from('google_ads_connections')
-      .select('refresh_token, access_token, token_expires_at').eq('user_id', userId).single();
+      .select('*').eq('user_id', userId).limit(1).single();
     if (!conn) return null;
 
     // Token hala geÃƒÂ§erliyse dÃƒÂ¶ndÃƒÂ¼r
@@ -375,7 +336,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
 router.get('/stats', async (req: any, res: any) => {
   try {
     const { data: conn } = await supabase.from('google_ads_connections')
-      .select('google_user_name').eq('user_id', req.userId).single().catch(() => ({ data: null }));
+      .select('*').eq('user_id', req.userId).limit(1).single().catch(() => ({ data: null }));
     const { data: campaigns } = await supabase.from('ad_campaigns')
       .select('status').eq('user_id', req.userId).eq('platform', 'google');
     res.json({

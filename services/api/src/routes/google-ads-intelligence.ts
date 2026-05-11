@@ -15,9 +15,27 @@ const DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
 async function getGoogleToken(userId: string): Promise<{ accessToken: string; customerId: string } | null> {
   const { data } = await supabase.from('google_ads_connections')
-    .select('access_token, refresh_token, customer_id, token_expires_at')
-    .eq('user_id', userId).single();
+    .select('*')
+    .eq('user_id', userId).limit(1).single();
   if (!data || !data.access_token) return null;
+
+  // Get customerId from stored ad_accounts JSON
+  let customerId = '';
+  try {
+    const accounts = JSON.parse(data.ad_accounts || '[]');
+    customerId = accounts[0]?.id || '';
+  } catch {}
+
+  // If still no customerId, fetch dynamically from Google Ads API
+  if (!customerId && DEVELOPER_TOKEN) {
+    try {
+      const r = await axios.get(`${GOOGLE_ADS_BASE}/customers:listAccessibleCustomers`, {
+        headers: { Authorization: `Bearer ${data.access_token}`, 'developer-token': DEVELOPER_TOKEN }
+      });
+      const ids = r.data?.resourceNames?.map((n: string) => n.replace('customers/', '')) || [];
+      customerId = ids[0] || '';
+    } catch {}
+  }
 
   // Token expire olduysa refresh et
   if (data.token_expires_at && new Date(data.token_expires_at) < new Date()) {
@@ -31,11 +49,11 @@ async function getGoogleToken(userId: string): Promise<{ accessToken: string; cu
       await supabase.from('google_ads_connections').update({
         access_token: newToken, token_expires_at: expiresAt,
       }).eq('user_id', userId);
-      return { accessToken: newToken, customerId: data.customer_id };
+      return { accessToken: newToken, customerId };
     } catch { return null; }
   }
 
-  return { accessToken: data.access_token, customerId: data.customer_id };
+  return { accessToken: data.access_token, customerId };
 }
 
 function googleHeaders(accessToken: string, customerId?: string) {
@@ -50,6 +68,7 @@ function googleHeaders(accessToken: string, customerId?: string) {
 
 // Google Ads GAQL query
 async function gaqlQuery(customerId: string, query: string, accessToken: string) {
+  if (!customerId) return [];
   const cid = customerId.replace('customers/', '').replace(/-/g, '');
   const r = await axios.post(
     `${GOOGLE_ADS_BASE}/customers/${cid}/googleAds:searchStream`,
@@ -466,21 +485,31 @@ JSON don:
 // GET /api/google-intelligence/connection
 router.get('/connection', async (req: any, res: any) => {
   try {
-    const { data } = await supabase.from('google_ads_connections')
-      .select('customer_id, customer_name, google_email, connected_at').eq('user_id', req.userId).single();
-    res.json({ connected: !!data, connection: data });
-  } catch { res.json({ connected: false }); }
+    const { data, error } = await supabase.from('google_ads_connections')
+      .select('*')
+      .eq('user_id', req.userId)
+      .limit(1);
+    if (error) console.error('[GoogleConn] Supabase error:', error.message, 'userId:', req.userId);
+    const row = (data && data.length > 0) ? data[0] : null;
+    console.log('[GoogleConn] userId:', req.userId, 'connected:', !!row);
+    res.json({ connected: !!row, connection: row });
+  } catch (e: any) {
+    console.error('[GoogleConn] Hata:', e.message);
+    res.json({ connected: false });
+  }
 });
 
 // ── OTOMATİK SİSTEM ─────────────────────────────────────
 async function runGoogleAutoSystem() {
   try {
     const { data: connections } = await supabase.from('google_ads_connections')
-      .select('user_id, access_token, customer_id').not('access_token', 'is', null);
+      .select('*').not('access_token', 'is', null);
 
     for (const conn of connections || []) {
       try {
-        const leads = await extractGoogleLeads(conn.user_id, conn.customer_id, conn.access_token);
+        let autoCustomerId = '';
+        try { autoCustomerId = JSON.parse(conn.ad_accounts || '[]')[0]?.id || ''; } catch {}
+        const leads = await extractGoogleLeads(conn.user_id, autoCustomerId, conn.access_token);
         let saved = 0;
         for (const lead of leads) {
           const result = await saveGoogleLeadToCRM(conn.user_id, lead);

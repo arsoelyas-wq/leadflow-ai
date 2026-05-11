@@ -1,6 +1,7 @@
 FROM node:20-slim
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ca-certificates \
   git \
   chromium \
   libglib2.0-0 \
@@ -14,7 +15,6 @@ RUN apt-get update && apt-get install -y \
   libxfixes3 \
   libxrandr2 \
   libgbm1 \
-  libasound2 \
   libpango-1.0-0 \
   libcairo2 \
   libx11-6 \
@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
   libxi6 \
   libxtst6 \
   fonts-liberation \
+  && (apt-get install -y --no-install-recommends libasound2 2>/dev/null || apt-get install -y --no-install-recommends libasound2t64 2>/dev/null || true) \
   && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -32,20 +33,19 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-# Tüm kaynak dosyaları kopyala
+# Write .gitconfig to rewrite SSH GitHub URLs to HTTPS
+# (@whiskeysockets/baileys fetches libsignal-node via ssh:// which Docker cannot resolve)
+RUN printf '[url "https://github.com/"]\n\tinsteadOf = git+ssh://git@github.com/\n\tinsteadOf = ssh://git@github.com/\n\tinsteadOf = git@github.com:\n' > /root/.gitconfig
+
 COPY package.json ./
 COPY tsconfig.json ./
 
-# Hem prod hem dev bağımlılıkları kur (build için typescript lazım)
 RUN npm install --legacy-peer-deps
 
-# Kaynak kodunu kopyala ve build et
 COPY src/ ./src/
 
-# TypeScript build
 RUN npm run build
 
-# Dev bağımlılıklarını kaldır
 RUN npm prune --omit=dev
 
 EXPOSE 3001
