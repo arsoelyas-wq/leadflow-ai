@@ -1,6 +1,7 @@
 ﻿﻿﻿﻿'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import CampaignWizard from './CampaignWizard'
 import {
   RefreshCw, Users, AlertTriangle, CheckCircle, Link,
   Zap, Target, Bell, ChevronRight, BarChart2, Wifi,
@@ -32,6 +33,9 @@ export default function GoogleAdsPage() {
   const [exportSuccess, setExportSuccess] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [adSettings, setAdSettings] = useState<any>({ five_minute_rule: true, call_delay_minutes: 5 })
+  const [showWizard, setShowWizard] = useState(false)
+  const [createdCampaigns, setCreatedCampaigns] = useState<any[]>([])
+  const [businessProfile, setBusinessProfile] = useState<any>(null)
 
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
@@ -89,11 +93,13 @@ export default function GoogleAdsPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [conn, camp, dash, settingsRes] = await Promise.allSettled([
+      const [conn, camp, dash, settingsRes, createdRes, profileRes] = await Promise.allSettled([
         fetch(`${API}/api/google-intelligence/connection`, { headers: authH() }),
         fetch(`${API}/api/google-intelligence/campaigns`, { headers: authH() }),
         fetch(`${API}/api/google-intelligence/dashboard`, { headers: authH() }),
         fetch(`${API}/api/ads-intelligence/ad-settings`, { headers: authH() }),
+        fetch(`${API}/api/google-campaign/list`, { headers: authH() }),
+        fetch(`${API}/api/settings/business-profile`, { headers: authH() }),
       ])
       if (conn.status === 'fulfilled') {
         const d = await (conn.value as any).json()
@@ -108,6 +114,8 @@ export default function GoogleAdsPage() {
         setLeads(d.recent_leads || [])
       }
       if (settingsRes.status === 'fulfilled') { const d = await (settingsRes.value as any).json(); if (d.settings) setAdSettings(d.settings) }
+      if (createdRes.status === 'fulfilled') { const d = await (createdRes.value as any).json(); setCreatedCampaigns(d.campaigns || []) }
+      if (profileRes.status === 'fulfilled') { const d = await (profileRes.value as any).json(); if (d.profile || d.business_profile) setBusinessProfile(d.profile || d.business_profile) }
     } catch {}
     setLoading(false)
   }
@@ -226,6 +234,11 @@ export default function GoogleAdsPage() {
           {connected && alerts.length > 0 && (
             <button onClick={() => setTab('alerts')} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400 text-xs font-medium">
               <AlertTriangle className="w-3.5 h-3.5"/> {alerts.length} uyari
+            </button>
+          )}
+          {connected && (
+            <button onClick={() => setShowWizard(true)} className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-amber-900/20">
+              <Sparkles className="w-3.5 h-3.5"/> Yeni Kampanya
             </button>
           )}
           <button onClick={loadAll} disabled={loading} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-white transition disabled:opacity-50">
@@ -424,9 +437,56 @@ export default function GoogleAdsPage() {
 
       {/* ── KAMPANYALAR ── */}
       {tab === 'campaigns' && (
+        <div className="space-y-4">
+          {/* AI ile oluşturulan kampanyalar */}
+          {createdCampaigns.length > 0 && (
+            <div className="bg-slate-800/40 border border-amber-500/20 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-700/50 bg-amber-500/5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400"/>
+                  <p className="text-sm font-medium text-white">AI ile Oluşturulan Kampanyalar</p>
+                  <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">{createdCampaigns.length}</span>
+                </div>
+                <button onClick={() => setShowWizard(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition">
+                  <Sparkles className="w-3 h-3"/> Yeni Ekle
+                </button>
+              </div>
+              <div className="divide-y divide-slate-700/30">
+                {createdCampaigns.map((c: any) => {
+                  const statusColors: Record<string, string> = {
+                    active: 'text-emerald-400 bg-emerald-400/10 border-emerald-500/20',
+                    draft: 'text-slate-400 bg-slate-700/50 border-slate-600/50',
+                    pending_api: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+                  }
+                  const statusLabels: Record<string, string> = { active: 'Aktif', draft: 'Taslak', pending_api: 'Bekliyor' }
+                  const statusDots: Record<string, string> = { active: 'bg-emerald-400', draft: 'bg-slate-600', pending_api: 'bg-amber-400' }
+                  const plan = typeof c.campaign_plan === 'string' ? (() => { try { return JSON.parse(c.campaign_plan) } catch { return {} } })() : (c.campaign_plan || {})
+                  return (
+                    <div key={c.id} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-700/20 transition">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${statusDots[c.status] || 'bg-slate-600'}`}/>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium truncate">{c.name}</p>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
+                          <span>Bütçe: ${c.daily_budget}/gün</span>
+                          {c.goal && <span>Hedef: {c.goal}</span>}
+                          {plan.ad_groups?.length > 0 && <span>{plan.ad_groups.length} reklam grubu</span>}
+                          {plan.keywords?.length > 0 && <span>{plan.keywords.length} anahtar kelime</span>}
+                        </div>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-lg font-medium border shrink-0 ${statusColors[c.status] || 'text-slate-400 bg-slate-700/50 border-slate-600/50'}`}>
+                        {statusLabels[c.status] || c.status}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Google Ads API'dan gelen kampanyalar */}
         <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-700/50 bg-slate-800/60 flex items-center justify-between">
-            <p className="text-sm font-medium text-white">{campaigns.length} Kampanya</p>
+            <p className="text-sm font-medium text-white">{campaigns.length > 0 ? `${campaigns.length} Google Ads Kampanyası` : 'Google Ads Kampanyaları'}</p>
             {campaigns.length > 0 && (
               <div className="flex items-center gap-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"/>{activeCount} aktif</span>
@@ -532,6 +592,7 @@ export default function GoogleAdsPage() {
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 
@@ -670,6 +731,19 @@ export default function GoogleAdsPage() {
             ))
           )}
         </div>
+      )}
+
+      {/* ── CAMPAIGN WIZARD ── */}
+      {showWizard && (
+        <CampaignWizard
+          onClose={() => setShowWizard(false)}
+          onSuccess={(campaign) => {
+            setCreatedCampaigns(prev => [campaign, ...prev.filter(c => c?.id !== campaign?.id)])
+            showMsg('success', 'Kampanya oluşturuldu!')
+            setTab('campaigns')
+          }}
+          businessProfile={businessProfile}
+        />
       )}
     </div>
   )
