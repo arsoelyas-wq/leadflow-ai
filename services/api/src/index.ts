@@ -96,6 +96,7 @@ app.use('/api/ads',                  authMiddleware, require('./routes/ads'));
 app.use('/api/ads-intelligence',     authMiddleware, require('./routes/ads-intelligence'));
 app.use('/api/google-intelligence',  authMiddleware, require('./routes/google-ads-intelligence'));
 app.use('/api/google-campaign',      authMiddleware, require('./routes/google-ads-campaign'));
+app.use('/api/google-optimizer',     authMiddleware, require('./routes/google-ads-optimizer'));
 app.use('/api/coaching',             authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox',                authMiddleware, require('./routes/inbox'));
 app.use('/api/pipeline',             authMiddleware, require('./routes/pipeline'));

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import CampaignWizard from './CampaignWizard'
+import QSOptimizer from './QSOptimizer'
 import {
   RefreshCw, Users, AlertTriangle, CheckCircle, Link,
   Zap, Target, Bell, ChevronRight, BarChart2, Wifi,
@@ -27,7 +28,7 @@ export default function GoogleAdsPage() {
   const [exporting, setExporting] = useState(false)
   const [optimizing, setOptimizing] = useState<string | null>(null)
   const [optimization, setOptimization] = useState<any>(null)
-  const [tab, setTab] = useState<'overview' | 'campaigns' | 'leads' | 'alerts'>('overview')
+  const [tab, setTab] = useState<'overview' | 'campaigns' | 'leads' | 'alerts' | 'optimizer'>('overview')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [leadSearch, setLeadSearch] = useState('')
   const [exportSuccess, setExportSuccess] = useState(false)
@@ -338,6 +339,7 @@ export default function GoogleAdsPage() {
           ['campaigns',  `Kampanyalar${campaigns.length ? ` (${campaigns.length})` : ''}`],
           ['leads',      `Leadler${leads.length ? ` (${leads.length})` : ''}`],
           ['alerts',     `Uyarilar${alerts.length ? ` (${alerts.length})` : ''}`],
+          ['optimizer',  '📊 QS Optimizasyon'],
         ] as [string, string][]).map(([t, l]) => (
           <button key={t} onClick={() => setTab(t as any)} className={tabCls(t)}>{l}</button>
         ))}
@@ -731,6 +733,11 @@ export default function GoogleAdsPage() {
             ))
           )}
         </div>
+      )}
+
+      {/* ── QS OPTIMİZASYON ── */}
+      {tab === 'optimizer' && (
+        <QSOptimizer connected={connected}/>
       )}
 
       {/* ── CAMPAIGN WIZARD ── */}
