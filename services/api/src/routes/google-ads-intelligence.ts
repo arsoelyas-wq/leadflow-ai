@@ -515,7 +515,7 @@ async function runGoogleAutoSystem() {
           const result = await saveGoogleLeadToCRM(conn.user_id, lead);
           if (result) saved++;
         }
-        await analyzeGooglePerformance(conn.user_id, conn.customer_id, conn.access_token);
+        await analyzeGooglePerformance(conn.user_id, autoCustomerId, conn.access_token);
         if (saved > 0) console.log(`[GoogleAuto] User ${conn.user_id}: ${saved} yeni lead`);
       } catch {}
     }
