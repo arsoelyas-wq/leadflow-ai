@@ -346,6 +346,7 @@ router.post('/search-terms/mine', async (req: any, res: any) => {
         ctr: (ctr * 100).toFixed(2),
         avgCpc: ((r.metrics?.averageCpc || 0) / 1_000_000).toFixed(2),
         recommended_action,
+        ai_flagged: false,
       };
     });
 
