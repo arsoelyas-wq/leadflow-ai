@@ -103,7 +103,7 @@ async function gaqlSearch(cid: string, token: string, query: string): Promise<an
 
 router.get('/conversion/status', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -137,7 +137,7 @@ router.get('/conversion/status', async (req: any, res: any) => {
 
 router.post('/conversion/import-calls', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -173,7 +173,7 @@ router.post('/conversion/import-calls', async (req: any, res: any) => {
 
 router.get('/abtests', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -220,7 +220,7 @@ router.get('/abtests', async (req: any, res: any) => {
 
 router.post('/abtests/generate', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -263,7 +263,7 @@ router.post('/abtests/generate', async (req: any, res: any) => {
 
 router.post('/abtests/create-ad', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -308,7 +308,7 @@ router.post('/abtests/create-ad', async (req: any, res: any) => {
 
 router.get('/budget-pacing', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -380,7 +380,7 @@ router.get('/budget-pacing', async (req: any, res: any) => {
 
 router.post('/landing-page/analyze', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -474,7 +474,7 @@ router.post('/landing-page/analyze', async (req: any, res: any) => {
 
 router.get('/smart-bid/status', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -514,7 +514,7 @@ router.get('/smart-bid/status', async (req: any, res: any) => {
 
 router.post('/smart-bid/simulate', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 
@@ -589,7 +589,7 @@ router.post('/smart-bid/simulate', async (req: any, res: any) => {
 
 router.post('/smart-bid/apply', async (req: any, res: any) => {
   try {
-    const userId = (req as any).user?.id || (req as any).user?.sub;
+    const userId = (req as any).userId;
     const creds = await getUserCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Google Ads bağlantısı bulunamadı' });
 

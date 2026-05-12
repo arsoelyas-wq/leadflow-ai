@@ -150,7 +150,8 @@ export default function MetaOptimizer({ connected }: { connected: boolean }) {
         body: JSON.stringify({ ...wizardData, ageMin, ageMax }),
       })
       const d = await r.json()
-      setPlan(d)
+      if (!d.ok || !d.plan) { showMsg('error', d.error || 'AI plan oluşturulamadı'); return; }
+      setPlan(d.plan)
       setWizardStep(3)
     } catch {
       showMsg('error', 'AI plan oluşturulamadı')
@@ -168,6 +169,7 @@ export default function MetaOptimizer({ connected }: { connected: boolean }) {
         body: JSON.stringify({ plan, wizardData }),
       })
       const d = await r.json()
+      if (!d.ok && !d.campaignId) { showMsg('error', d.error || 'Kampanya oluşturulamadı'); return; }
       setCreated(d)
       setWizardStep(4)
     } catch {
@@ -785,7 +787,7 @@ export default function MetaOptimizer({ connected }: { connected: boolean }) {
                   {plan.estimatedCPL && <span className="text-xs px-3 py-1 rounded-full bg-blue-600/20 text-blue-300 border border-blue-500/30">Tahmini CPL: ${plan.estimatedCPL}</span>}
                   {plan.estimatedLeadsPerDay && <span className="text-xs px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-300 border border-emerald-500/30">~{plan.estimatedLeadsPerDay} lead/gün</span>}
                 </div>
-                {plan.rationale && <p className="text-sm text-slate-300 leading-relaxed">{plan.rationale}</p>}
+                {(plan.strategyRationale || plan.rationale) && <p className="text-sm text-slate-300 leading-relaxed">{plan.strategyRationale || plan.rationale}</p>}
 
                 {/* Ad previews */}
                 {plan.ads && plan.ads.length > 0 && (

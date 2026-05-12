@@ -363,7 +363,10 @@ router.get('/extract-leads', async (req: any, res: any) => {
     const userId = req.userId;
     const token = await getMetaToken(userId);
     if (!token) return res.status(400).json({ error: 'Meta hesabi bagli degil' });
-    const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
+    const { data: metaConn } = await supabase.from('meta_connections').select('ad_accounts').eq('user_id', userId).single();
+    let adAccountId = '';
+    try { const accs = JSON.parse(metaConn?.ad_accounts || '[]'); adAccountId = accs[0]?.id || ''; } catch {}
+    if (!adAccountId) return res.status(400).json({ error: 'Meta reklam hesabi bulunamadi' });
     const leads = await extractLeadsFromAllCampaigns(userId, adAccountId, token);
 
     const { data: settings } = await supabase.from('ad_settings').select('*').eq('user_id', userId).single();
