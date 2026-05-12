@@ -260,6 +260,41 @@ async function extractLeadsFromAllCampaigns(userId: string, adAccountId: string,
   return leads;
 }
 
+// ── WA OTOMATİK MESAJ ───────────────────────────────────
+const WA_GATEWAY = process.env.WA_GATEWAY || 'http://207.154.248.119:3003';
+const WA_SECRET  = process.env.WA_SECRET  || 'leadflow-wa-secret-2026';
+
+async function sendWhatsAppToLead(userId: string, lead: any) {
+  try {
+    if (!lead?.phone) return;
+    const { data: instance } = await supabase
+      .from('wa_instances')
+      .select('instance_id')
+      .eq('user_id', userId)
+      .eq('status', 'connected')
+      .limit(1)
+      .single();
+    if (!instance) return;
+    const { data: settings } = await supabase
+      .from('ad_settings')
+      .select('wa_auto_message, wa_message_template, wa_message_delay_minutes')
+      .eq('user_id', userId)
+      .single();
+    if (!settings?.wa_auto_message) return;
+    let phone = String(lead.phone).replace(/\D/g, '');
+    if (!phone.startsWith('90') && phone.length === 10) phone = '90' + phone;
+    const text = (settings.wa_message_template || 'Merhaba {isim}! Reklamımızı gördüğünüz için teşekkürler. Size nasıl yardımcı olabiliriz?')
+      .replace('{isim}', lead.name || lead.company_name || 'Değerli Müşteri');
+    const delayMs = (settings.wa_message_delay_minutes || 1) * 60 * 1000;
+    setTimeout(async () => {
+      try {
+        await axios.post(`${WA_GATEWAY}/send`, { secret: WA_SECRET, instanceId: instance.instance_id, phone, text });
+        console.log(`[WAAuto] Mesaj gönderildi: ${phone}`);
+      } catch (e: any) { console.error('[WAAuto] Gönderim hatası:', e.message); }
+    }, delayMs);
+  } catch (e: any) { console.error('[WAAuto] Hata:', e.message); }
+}
+
 async function saveLeadToCRM(userId: string, lead: any): Promise<any> {
   try {
     if (lead.meta_lead_id) {
@@ -343,6 +378,21 @@ async function analyzePerformance(userId: string, adAccountId: string, token: st
 
 // ── ROUTES ───────────────────────────────────────────────
 
+// POST /api/ads-intelligence/wa-settings
+router.post('/wa-settings', async (req: any, res: any) => {
+  try {
+    const { wa_auto_message, wa_message_template, wa_message_delay_minutes } = req.body;
+    await supabase.from('ad_settings').upsert([{
+      user_id: req.userId,
+      wa_auto_message: !!wa_auto_message,
+      wa_message_template: wa_message_template || 'Merhaba {isim}! Reklamımızı gördüğünüz için teşekkürler.',
+      wa_message_delay_minutes: wa_message_delay_minutes || 1,
+      updated_at: new Date().toISOString(),
+    }], { onConflict: 'user_id' });
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/ads-intelligence/five-minute-settings - 5 dk kural ayarlari
 router.post('/five-minute-settings', async (req: any, res: any) => {
   try {
@@ -388,6 +438,8 @@ router.get('/extract-leads', async (req: any, res: any) => {
           setTimeout(() => triggerFiveMinuteCall(userId, result), delayMs);
           console.log(`[5DkKurali] ${delayMs/60000} dk sonra arama: ${lead.phone}`);
         }
+        // WhatsApp otomatik mesaj
+        sendWhatsAppToLead(userId, { ...lead, ...result });
       }
     }
     res.json({ ok: true, total_found: leads.length, new_leads: saved, leads });
@@ -587,6 +639,7 @@ async function runAutoSystem() {
               const delay = (settings?.call_delay_minutes || 5) * 60 * 1000;
               setTimeout(() => triggerFiveMinuteCall(conn.user_id, result), delay);
             }
+            sendWhatsAppToLead(conn.user_id, { ...lead, ...result });
           }
         }
         await analyzePerformance(conn.user_id, adAccountId, conn.access_token);

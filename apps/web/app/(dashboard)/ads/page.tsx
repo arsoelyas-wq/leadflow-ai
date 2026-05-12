@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import MetaOptimizer from './MetaOptimizer'
+import AdsROI from './AdsROI'
 import {
   RefreshCw, Users, AlertTriangle, CheckCircle, Link,
   Zap, Target, Bell, ChevronRight, BarChart2, Wifi,
@@ -26,14 +27,14 @@ export default function AdsPage() {
   const [stats, setStats] = useState<any>(null)
   const [metaLeads, setMetaLeads] = useState<any[]>([])
   const [audiences, setAudiences] = useState<any[]>([])
-  const [adSettings, setAdSettings] = useState<any>({ five_minute_rule: true, call_delay_minutes: 5 })
+  const [adSettings, setAdSettings] = useState<any>({ five_minute_rule: true, call_delay_minutes: 5, wa_auto_message: false, wa_message_template: 'Merhaba {isim}! Reklamımızı gördüğünüz için teşekkürler. Size nasıl yardımcı olabiliriz?', wa_message_delay_minutes: 1 })
   const [loading, setLoading] = useState(true)
   const [extracting, setExtracting] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [creatingLookalike, setCreatingLookalike] = useState(false)
   const [optimizing, setOptimizing] = useState<string | null>(null)
   const [optimization, setOptimization] = useState<any>(null)
-  const [tab, setTab] = useState<'overview' | 'campaigns' | 'leads' | 'alerts' | 'automation' | 'audiences' | 'optimizer'>('overview')
+  const [tab, setTab] = useState<'overview' | 'campaigns' | 'leads' | 'alerts' | 'automation' | 'audiences' | 'optimizer' | 'roi'>('overview')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [leadSearch, setLeadSearch] = useState('')
   const [exportSuccess, setExportSuccess] = useState(false)
@@ -110,10 +111,16 @@ export default function AdsPage() {
 
   async function saveSettings() {
     try {
-      await fetch(`${API}/api/ads-intelligence/five-minute-settings`, {
-        method: 'POST', headers: authH(),
-        body: JSON.stringify({ enabled: adSettings.five_minute_rule, delay_minutes: adSettings.call_delay_minutes }),
-      })
+      await Promise.all([
+        fetch(`${API}/api/ads-intelligence/five-minute-settings`, {
+          method: 'POST', headers: authH(),
+          body: JSON.stringify({ enabled: adSettings.five_minute_rule, delay_minutes: adSettings.call_delay_minutes }),
+        }),
+        fetch(`${API}/api/ads-intelligence/wa-settings`, {
+          method: 'POST', headers: authH(),
+          body: JSON.stringify({ wa_auto_message: adSettings.wa_auto_message, wa_message_template: adSettings.wa_message_template, wa_message_delay_minutes: adSettings.wa_message_delay_minutes }),
+        }),
+      ])
       showMsg('success', 'Ayarlar kaydedildi')
     } catch {}
   }
@@ -333,6 +340,7 @@ export default function AdsPage() {
               ['alerts',`Uyarilar${alerts.length > 0 ? ` (${alerts.length})` : ''}`],
               ['automation','Otomasyon'],
               ['optimizer','🚀 Gelişmiş'],
+              ['roi','📈 ROI & Uyarılar'],
             ].map(([t,l]) => (
               <button key={t} onClick={() => setTab(t as any)} className={tabCls(t)}>{l}</button>
             ))}
@@ -756,6 +764,50 @@ export default function AdsPage() {
                 </div>
               </div>
 
+              {/* WhatsApp Otomatik Mesaj */}
+              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${adSettings.wa_auto_message ? 'bg-emerald-500/20' : 'bg-slate-700'}`}>
+                      <Send className={`w-5 h-5 ${adSettings.wa_auto_message ? 'text-emerald-400' : 'text-slate-500'}`}/>
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium">WhatsApp Otomatik Mesaj</h3>
+                      <p className="text-slate-400 text-sm mt-0.5">Yeni lead gelince otomatik WhatsApp mesajı gönderir. WA numaranızın bağlı olması gerekir.</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setAdSettings((s: any) => ({ ...s, wa_auto_message: !s.wa_auto_message }))}
+                    className={`relative w-11 h-6 rounded-full transition-all shrink-0 ${adSettings.wa_auto_message ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${adSettings.wa_auto_message ? 'left-6' : 'left-1'}`}/>
+                  </button>
+                </div>
+                {adSettings.wa_auto_message && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1.5 block">Mesaj Şablonu <span className="text-slate-600">(&#123;isim&#125; otomatik doldurulur)</span></label>
+                      <textarea value={adSettings.wa_message_template}
+                        onChange={e => setAdSettings((s: any) => ({ ...s, wa_message_template: e.target.value }))}
+                        rows={3}
+                        className="w-full bg-slate-800 border border-slate-700 focus:border-emerald-500/50 rounded-xl px-4 py-3 text-sm text-white resize-none focus:outline-none"/>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1.5 block">Gönderim Gecikmesi</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {[1, 2, 5, 10, 15].map(m => (
+                          <button key={m} onClick={() => setAdSettings((s: any) => ({ ...s, wa_message_delay_minutes: m }))}
+                            className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition ${adSettings.wa_message_delay_minutes === m ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                            {m} dakika
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-emerald-500/8 border border-emerald-500/15 rounded-xl">
+                      <p className="text-emerald-300 text-xs">Lead gelince {adSettings.wa_message_delay_minutes} dakika sonra WA mesajı gönderilir.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Lookalike */}
               <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 space-y-3">
                 <div className="flex items-start gap-3">
@@ -785,6 +837,10 @@ export default function AdsPage() {
 
       {tab === 'optimizer' && (
         <MetaOptimizer connected={connected}/>
+      )}
+
+      {tab === 'roi' && (
+        <AdsROI connected={connected}/>
       )}
     </div>
   )

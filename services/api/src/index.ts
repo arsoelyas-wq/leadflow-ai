@@ -147,6 +147,7 @@ app.use('/api/export',               authMiddleware, require('./routes/export-in
 app.use('/api/ar',                   authMiddleware, require('./routes/ar-integration'));
 app.use('/api/sales-intelligence',   authMiddleware, require('./routes/sales-intelligence'));
 app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-reports'));
+app.use('/api/ads-automation',           authMiddleware, require('./routes/ads-automation'));
 
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
