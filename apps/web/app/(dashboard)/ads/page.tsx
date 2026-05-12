@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import MetaOptimizer from './MetaOptimizer'
 import {
   RefreshCw, Users, AlertTriangle, CheckCircle, Link,
   Zap, Target, Bell, ChevronRight, BarChart2, Wifi,
@@ -32,7 +33,7 @@ export default function AdsPage() {
   const [creatingLookalike, setCreatingLookalike] = useState(false)
   const [optimizing, setOptimizing] = useState<string | null>(null)
   const [optimization, setOptimization] = useState<any>(null)
-  const [tab, setTab] = useState<'overview' | 'campaigns' | 'leads' | 'alerts' | 'automation' | 'audiences'>('overview')
+  const [tab, setTab] = useState<'overview' | 'campaigns' | 'leads' | 'alerts' | 'automation' | 'audiences' | 'optimizer'>('overview')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [leadSearch, setLeadSearch] = useState('')
   const [exportSuccess, setExportSuccess] = useState(false)
@@ -283,7 +284,7 @@ export default function AdsPage() {
             </div>
             <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl">
               <Wifi className="w-3.5 h-3.5 text-slate-500"/>
-              <span className="text-slate-500 text-xs">30 dk sync</span>
+              <span className="text-slate-500 text-xs">10 dk sync</span>
             </div>
             {adSettings.five_minute_rule && (
               <div className="flex items-center gap-1.5 px-3 py-2 bg-purple-500/8 border border-purple-500/15 rounded-xl">
@@ -331,6 +332,7 @@ export default function AdsPage() {
               ['audiences',`Kitleler (${audiences.length})`],
               ['alerts',`Uyarilar${alerts.length > 0 ? ` (${alerts.length})` : ''}`],
               ['automation','Otomasyon'],
+              ['optimizer','🚀 Gelişmiş'],
             ].map(([t,l]) => (
               <button key={t} onClick={() => setTab(t as any)} className={tabCls(t)}>{l}</button>
             ))}
@@ -779,6 +781,10 @@ export default function AdsPage() {
             </div>
           )}
         </div>
+      )}
+
+      {tab === 'optimizer' && (
+        <MetaOptimizer connected={connected}/>
       )}
     </div>
   )

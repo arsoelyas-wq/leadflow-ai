@@ -567,10 +567,12 @@ router.get('/ad-settings', async (req: any, res: any) => {
 async function runAutoSystem() {
   console.log('[AdsAuto] Otomatik sistem calisiyor...');
   try {
-    const { data: connections } = await supabase.from('meta_connections').select('user_id, access_token').not('access_token', 'is', null);
+    const { data: connections } = await supabase.from('meta_connections').select('user_id, access_token, ad_accounts').not('access_token', 'is', null);
     for (const conn of connections || []) {
       try {
-        const adAccountId = process.env.META_AD_ACCOUNT_ID || '';
+        let adAccountId = '';
+        try { const accs = JSON.parse(conn.ad_accounts || '[]'); adAccountId = accs[0]?.id || ''; } catch {}
+        if (!adAccountId) { console.log(`[AdsAuto] User ${conn.user_id}: ad account yok, atlaniyor`); continue; }
         const leads = await extractLeadsFromAllCampaigns(conn.user_id, adAccountId, conn.access_token);
         const { data: settings } = await supabase.from('ad_settings').select('*').eq('user_id', conn.user_id).single();
         let saved = 0;
@@ -591,7 +593,7 @@ async function runAutoSystem() {
   } catch (e: any) { console.error('[AdsAuto] Ana hata:', e.message); }
 }
 
-setInterval(runAutoSystem, 30 * 60 * 1000);
-setTimeout(runAutoSystem, 2 * 60 * 1000);
+setInterval(runAutoSystem, 10 * 60 * 1000);
+setTimeout(runAutoSystem, 3 * 60 * 1000);
 
 module.exports = router;
