@@ -6,6 +6,7 @@ import {
   Zap, Users, Globe, ChevronDown, AlertTriangle,
   Mail, Phone, ExternalLink, SlidersHorizontal, Sparkles
 } from 'lucide-react'
+import { COUNTRIES, CITIES, REGIONS } from './countries-cities'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
@@ -20,23 +21,6 @@ const SECTORS = [
   'Mühendislik', 'Grafik & Tasarım', 'Fotoğrafçılık', 'Diğer',
 ]
 
-const COUNTRIES = [
-  { code: 'TR', name: 'Türkiye', flag: '🇹🇷' },
-  { code: 'FR', name: 'Fransa', flag: '🇫🇷' },
-  { code: 'DE', name: 'Almanya', flag: '🇩🇪' },
-  { code: 'GB', name: 'İngiltere', flag: '🇬🇧' },
-  { code: 'NL', name: 'Hollanda', flag: '🇳🇱' },
-  { code: 'BE', name: 'Belçika', flag: '🇧🇪' },
-]
-
-const CITIES: Record<string, string[]> = {
-  TR: ['İstanbul','Ankara','İzmir','Bursa','Antalya','Adana','Konya','Gaziantep','Kayseri','Mersin','Diyarbakır','Samsun','Eskişehir','Denizli','Malatya'],
-  FR: ['Paris','Lyon','Marseille','Toulouse','Nice','Nantes','Strasbourg','Montpellier','Bordeaux','Lille'],
-  DE: ['Berlin','Hamburg','München','Köln','Frankfurt','Stuttgart','Düsseldorf','Leipzig','Dresden','Hannover'],
-  GB: ['London','Birmingham','Manchester','Leeds','Glasgow','Liverpool','Bristol','Edinburgh','Sheffield','Cardiff'],
-  NL: ['Amsterdam','Rotterdam','Den Haag','Utrecht','Eindhoven','Tilburg','Groningen','Breda','Nijmegen','Leiden'],
-  BE: ['Bruxelles','Antwerpen','Gent','Liège','Bruges','Namur','Leuven','Mons','Ghent','Charleroi'],
-}
 
 const LEAD_COUNTS = [
   { value: 20,   label: '20',   badge: null,      time: '~15 sn', color: 'border-slate-600 hover:border-slate-500' },
@@ -72,6 +56,7 @@ export default function ScrapePage() {
   const [customCount, setCustomCount] = useState('')
   const [showCustom, setShowCustom] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
 
   // Quality filters
   const [minScore, setMinScore] = useState(0)
@@ -354,8 +339,31 @@ export default function ScrapePage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-400 mb-1.5 block">Ülke</label>
-              <select value={country} onChange={e => setCountry(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500 transition text-sm">
-                {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+              <input
+                type="text"
+                value={countrySearch}
+                onChange={e => setCountrySearch(e.target.value)}
+                placeholder="Ülke ara..."
+                className="w-full bg-slate-700 border border-slate-600 rounded-t-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition placeholder-slate-500"
+              />
+              <select
+                value={country}
+                onChange={e => { setCountry(e.target.value); setCountrySearch('') }}
+                className="w-full bg-slate-700 border border-slate-600 border-t-0 rounded-b-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500 transition text-sm"
+              >
+                {countrySearch
+                  ? COUNTRIES
+                      .filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()) || c.code.toLowerCase().includes(countrySearch.toLowerCase()))
+                      .map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)
+                  : REGIONS.map(region => {
+                      const group = COUNTRIES.filter(c => c.region === region)
+                      return group.length > 0 ? (
+                        <optgroup key={region} label={`── ${region} ──`}>
+                          {group.map(c => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
+                        </optgroup>
+                      ) : null
+                    })
+                }
               </select>
             </div>
             <div>
