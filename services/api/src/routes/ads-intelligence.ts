@@ -762,7 +762,7 @@ router.post('/launch-campaign', async (req: any, res: any) => {
     let adsetId: string;
 
     try {
-      const campaignRes = await withRetry(() =>
+      const campaignRes: any = await withRetry(() =>
         axios.post(`${GRAPH_V20}/${adAccountId}/campaigns`, {
           name: plan.campaign_name,
           objective: plan.objective || 'LEAD_GENERATION',
@@ -773,7 +773,7 @@ router.post('/launch-campaign', async (req: any, res: any) => {
       );
       campaignId = campaignRes.id;
 
-      const adsetRes = await withRetry(() =>
+      const adsetRes: any = await withRetry(() =>
         axios.post(`${GRAPH_V20}/${adAccountId}/adsets`, {
           name: plan.audiences?.[0]?.name || 'Ana Kitle',
           campaign_id: campaignId,
