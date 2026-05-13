@@ -890,6 +890,156 @@ JSON formatinda don:
   }
 });
 
+// ── ROUTE: POST /ai-create-simple ───────────────────────────────────────────
+
+router.post('/ai-create-simple', async (req: any, res: any) => {
+  try {
+    const { websiteUrl, businessDescription, goal, dailyBudget, location, avgDealValue } = req.body;
+
+    let fullDescription = businessDescription || '';
+
+    // If URL provided, try to fetch and extract text
+    if (websiteUrl) {
+      try {
+        const pageResp = await axios.get(websiteUrl, { timeout: 8000, headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const html: string = pageResp.data || '';
+        const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 2000);
+        fullDescription = `Web sitesi içeriği: ${text}\n\n${businessDescription || ''}`;
+      } catch { /* URL erişilemiyorsa description ile devam */ }
+    }
+
+    if (!fullDescription.trim()) {
+      return res.status(400).json({ ok: false, error: 'İşletme açıklaması gerekli' });
+    }
+
+    const goalMap: Record<string, string> = {
+      LEADS: 'Daha fazla müşteri adayı (lead) topla',
+      CALLS: 'Telefon araması al',
+      TRAFFIC: 'Web siteme ziyaretçi çek',
+      SALES: 'Satış artır'
+    };
+
+    const aiResp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 3000,
+      system: `Sen Google'ın en iyi sertifikalı reklam uzmanısın, Platinum Partner seviyesinde, $50M+ yıllık reklam bütçesi yönetiyorsun. Google'ın Quality Score algoritmasını içinden biliyorsun.
+
+TÜRK PAZARI (HER ZAMAN UYGULA):
+- Sadece yüksek niyetli, ticari/işlemsel anahtar kelimeler hedefle
+- Mobile-first: Türk kullanıcıların %78'i mobilde
+- Türkçe reklam metinleri kullan
+- Aciliyet ve sosyal kanıt kullan: "5000+ müşteri", "Ücretsiz danışmanlık", "Hemen ara"
+- Fiyat duyarlı pazar: değer mesajı ver
+- Gerçekçi TRY TBM: düşük rekabet ≈ 2-5 TRY, yüksek ≈ 10-25 TRY
+- Konum: ${location || 'Türkiye'}
+
+Quality Score 8+ hedefle. Sıkı reklam grubu yapısı kullan (tema başına 1 grup).
+
+SADECE geçerli JSON döndür, markdown yok.`,
+      messages: [{
+        role: 'user',
+        content: `İşletme: ${fullDescription}\nHedef: ${goalMap[goal] || goal}\nGünlük Bütçe: ${dailyBudget || 150} TRY\nOrtalama Müşteri Değeri: ${avgDealValue || 'belirtilmedi'} TRY`
+      }],
+    });
+
+    const text: string = aiResp.content?.[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return res.status(500).json({ ok: false, error: 'AI yanıtı işlenemedi' });
+
+    let plan: any;
+    try { plan = JSON.parse(match[0]); }
+    catch { return res.status(500).json({ ok: false, error: 'AI yanıtı işlenemedi' }); }
+
+    // Save draft to ad_campaigns or google_campaigns
+    let draftId = '';
+    try {
+      const { data: draft } = await supabase.from('ad_campaigns').insert([{
+        user_id: (req as any).userId,
+        platform: 'google',
+        name: plan.campaign_name || 'Google Kampanyası',
+        status: 'draft',
+        goal: goal || 'LEADS',
+        daily_budget: dailyBudget || 150,
+        campaign_plan: plan,
+        avg_deal_value: avgDealValue || 0,
+        created_at: new Date().toISOString(),
+      }]).select().single();
+      draftId = draft?.id || '';
+    } catch { /* ad_campaigns tablosu yoksa devam */ }
+
+    return res.json({ ok: true, draft: { id: draftId, ...plan } });
+  } catch (e: any) {
+    console.error('[GoogleCampaign] ai-create-simple hata:', e.message);
+    return res.status(500).json({ ok: false, error: 'Kampanya planı oluşturulamadı, lütfen tekrar deneyin.' });
+  }
+});
+
+// ── ROUTE: GET /campaigns-with-roi ──────────────────────────────────────────
+
+router.get('/campaigns-with-roi', async (req: any, res: any) => {
+  try {
+    const userId = (req as any).userId;
+
+    // 1. Fetch google_campaigns for user
+    const { data: campaigns } = await supabase
+      .from('google_campaigns')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (!campaigns || campaigns.length === 0) {
+      return res.json({ ok: true, campaigns: [] });
+    }
+
+    // 2. For each campaign, count leads
+    const enriched = await Promise.all(campaigns.map(async (camp: any) => {
+      try {
+        // Count all google-source leads for this user
+        const { count: totalLeads } = await supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .or('source.ilike.google%,source.ilike.google_ads%');
+
+        // Count positive/converted leads
+        const { count: positiveLeads } = await supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('outcome', 'positive')
+          .or('source.ilike.google%,source.ilike.google_ads%');
+
+        const leads = totalLeads || 0;
+        const converted = positiveLeads || 0;
+        const avgDeal = camp.avg_deal_value || 0;
+        const spend = parseFloat(camp.daily_budget || 0) * 30; // estimate
+
+        // ROI calculation: (conversions * deal_value - spend) / spend * 100
+        const revenue = converted * avgDeal;
+        const roi = spend > 0 && avgDeal > 0
+          ? Math.round((revenue - spend) / spend * 100)
+          : null;
+
+        return {
+          ...camp,
+          leads_count: leads,
+          converted_count: converted,
+          estimated_revenue: revenue,
+          roi_percent: roi,
+          spend_estimate: spend,
+        };
+      } catch {
+        return { ...camp, leads_count: 0, converted_count: 0, roi_percent: null };
+      }
+    }));
+
+    return res.json({ ok: true, campaigns: enriched });
+  } catch (e: any) {
+    console.error('[GoogleAdsCampaign] campaigns-with-roi hata:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // ── CRON: 24 saatte bir otomatik optimizasyon ────────────────────────────────
 
 async function runAutoOptimizeCron(): Promise<void> {

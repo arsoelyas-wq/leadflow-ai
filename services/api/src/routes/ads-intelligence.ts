@@ -652,4 +652,227 @@ async function runAutoSystem() {
 setInterval(runAutoSystem, 10 * 60 * 1000);
 setTimeout(runAutoSystem, 3 * 60 * 1000);
 
+// ── HELPERS ──────────────────────────────────────────────
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try { return await fn(); }
+    catch (e: any) {
+      if (i === retries - 1) throw e;
+      await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 60) return `${mins} dakika önce`;
+  if (hours < 24) return `${hours} saat önce`;
+  if (days < 7) return `${days} gün önce`;
+  return new Date(dateStr).toLocaleDateString('tr-TR');
+}
+
+// POST /api/ads-intelligence/ai-create-campaign
+router.post('/ai-create-campaign', async (req: any, res: any) => {
+  try {
+    const userId = (req as any).userId;
+    const { businessDescription, goal, dailyBudget, currency, avgDealValue } = req.body;
+
+    let profileSummary = '';
+    try {
+      const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
+      if (profile) {
+        profileSummary = `Şirket: ${profile.company?.name || ''}, Ürün: ${profile.product?.description || ''}`;
+      }
+    } catch {}
+
+    const r = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      system: `You are Meta's top advertising strategist with 10+ years managing campaigns for businesses in Turkey. Expert in Facebook/Instagram audience targeting, scroll-stopping ad copy, and budget optimization.
+
+TURKISH MARKET (always apply):
+- Price-sensitive buyers → include value anchoring
+- WhatsApp CTA converts 3x better for lead generation
+- Peak hours: 19:00-22:00 Istanbul time
+- Use urgency: "Son 3 gün", "48 saat kaldı", "Sınırlı kişi"
+- Trust signals: "10+ yıl tecrübe", "5000+ müşteri", "Ücretsiz danışmanlık"
+- 1 USD ≈ 32 TRY → use realistic TRY CPM/CPC estimates
+- 78% mobile users → mobile-first creative strategy
+- Conversational Turkish tone converts better
+
+Return ONLY valid JSON, no markdown, no explanation.`,
+      messages: [{
+        role: 'user',
+        content: `İşletme: ${businessDescription}\nProfil: ${profileSummary}\nHedef: ${goal}\nGünlük Bütçe: ${dailyBudget} ${currency || 'TRY'}\nOrtalama Müşteri Değeri: ${avgDealValue || 'belirtilmedi'} TRY`,
+      }],
+    });
+
+    const text = r.content[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Invalid AI response');
+    const plan = JSON.parse(match[0]);
+
+    let savedId: any = null;
+    try {
+      const { data: saved } = await supabase.from('ad_campaigns').insert([{
+        user_id: userId,
+        platform: 'meta',
+        name: plan.campaign_name,
+        status: 'draft',
+        goal,
+        daily_budget: dailyBudget,
+        campaign_plan: plan,
+        avg_deal_value: avgDealValue || 0,
+        created_at: new Date().toISOString(),
+      }]).select().single();
+      savedId = saved?.id;
+    } catch {}
+
+    res.json({ ok: true, draft: { id: savedId, ...plan } });
+  } catch (e: any) {
+    res.json({ ok: false, error: 'Kampanya planı oluşturulamadı, lütfen tekrar deneyin.' });
+  }
+});
+
+// POST /api/ads-intelligence/launch-campaign
+router.post('/launch-campaign', async (req: any, res: any) => {
+  try {
+    const userId = (req as any).userId;
+    const { draftId, campaignPlan } = req.body;
+    const plan = campaignPlan;
+
+    const { data: metaConn } = await supabase.from('meta_connections').select('access_token, ad_accounts').eq('user_id', userId).single();
+    const token = metaConn?.access_token;
+    let adAccountId = '';
+    try { adAccountId = JSON.parse(metaConn?.ad_accounts || '[]')[0]?.id || ''; } catch {}
+
+    if (!token || !adAccountId) {
+      return res.json({ ok: false, error: 'Meta hesabınızı bağlayın' });
+    }
+
+    const GRAPH_V20 = 'https://graph.facebook.com/v20.0';
+    const dailyBudget = plan.budget?.daily_budget || 200;
+
+    let campaignId: string;
+    let adsetId: string;
+
+    try {
+      const campaignRes = await withRetry(() =>
+        axios.post(`${GRAPH_V20}/${adAccountId}/campaigns`, {
+          name: plan.campaign_name,
+          objective: plan.objective || 'LEAD_GENERATION',
+          status: 'ACTIVE',
+          special_ad_categories: [],
+          access_token: token,
+        }, { timeout: 15000 }).then((r: any) => r.data)
+      );
+      campaignId = campaignRes.id;
+
+      const adsetRes = await withRetry(() =>
+        axios.post(`${GRAPH_V20}/${adAccountId}/adsets`, {
+          name: plan.audiences?.[0]?.name || 'Ana Kitle',
+          campaign_id: campaignId,
+          daily_budget: dailyBudget * 100,
+          billing_event: 'IMPRESSIONS',
+          optimization_goal: 'LEAD_GENERATION',
+          status: 'ACTIVE',
+          targeting: {
+            age_min: plan.audiences?.[0]?.age_min || 25,
+            age_max: plan.audiences?.[0]?.age_max || 55,
+            geo_locations: { countries: ['TR'] },
+            interests: [],
+          },
+          access_token: token,
+        }, { timeout: 15000 }).then((r: any) => r.data)
+      );
+      adsetId = adsetRes.id;
+    } catch (e: any) {
+      try {
+        await supabase.from('ad_campaigns').update({ status: 'draft' }).eq('id', draftId);
+      } catch {}
+      return res.json({ ok: false, error: 'Meta kampanya oluşturulamadı. Reklam hesabı izinlerinizi kontrol edin.' });
+    }
+
+    try {
+      await supabase.from('ad_campaigns').update({ platform_campaign_id: campaignId, status: 'active' }).eq('id', draftId);
+    } catch {}
+
+    try {
+      await supabase.from('ad_activity').insert([{
+        user_id: userId,
+        platform: 'meta',
+        type: 'campaign_launched',
+        message: `${plan.campaign_name} kampanyası yayınlandı`,
+        created_at: new Date().toISOString(),
+      }]);
+    } catch {}
+
+    res.json({ ok: true, campaignId, message: 'Kampanya başlatıldı! Meta onayı 1-24 saat sürebilir.' });
+  } catch (e: any) {
+    res.json({ ok: false, error: 'Meta kampanya oluşturulamadı. Reklam hesabı izinlerinizi kontrol edin.' });
+  }
+});
+
+// GET /api/ads-intelligence/activity
+router.get('/activity', async (req: any, res: any) => {
+  try {
+    const userId = (req as any).userId;
+
+    const [activityRes, leadsRes, alertsRes, campaignsRes] = await Promise.allSettled([
+      supabase.from('ad_activity').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(8),
+      supabase.from('leads').select('id', { count: 'exact', head: true }).eq('user_id', userId).like('source', 'meta%').gte('created_at', new Date(Date.now() - 86400000).toISOString()),
+      supabase.from('ad_alerts').select('*').eq('user_id', userId).eq('is_read', false).order('created_at', { ascending: false }).limit(3),
+      supabase.from('ad_campaigns').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(2),
+    ]);
+
+    const activities: any[] = [];
+
+    const adActivityItems: any[] = activityRes.status === 'fulfilled' ? activityRes.value.data || [] : [];
+    for (const item of adActivityItems) {
+      activities.push({
+        id: item.id,
+        type: item.type,
+        message: item.message,
+        platform: item.platform,
+        time_ago: timeAgo(item.created_at),
+        severity: 'info',
+      });
+    }
+
+    const leads24h: number = leadsRes.status === 'fulfilled' ? (leadsRes.value.count || 0) : 0;
+    const hasLeadActivity = adActivityItems.some((a: any) => a.type === 'new_leads');
+    if (leads24h > 0 && !hasLeadActivity) {
+      activities.push({
+        type: 'new_leads',
+        message: `${leads24h} yeni Meta lead geldi`,
+        platform: 'meta',
+        time_ago: 'bugün',
+        count: leads24h,
+      });
+    }
+
+    const alertItems: any[] = alertsRes.status === 'fulfilled' ? alertsRes.value.data || [] : [];
+    for (const alert of alertItems) {
+      activities.push({
+        type: 'alert',
+        message: alert.message,
+        platform: 'meta',
+        time_ago: timeAgo(alert.created_at),
+        severity: alert.severity,
+      });
+    }
+
+    const unified = activities.slice(0, 10);
+
+    res.json({ ok: true, activities: unified, leads_today: leads24h });
+  } catch (e: any) {
+    res.json({ ok: true, activities: [], leads_today: 0 });
+  }
+});
+
 module.exports = router;
