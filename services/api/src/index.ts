@@ -53,6 +53,12 @@ app.use('/api/automations', require('./routes/automations'));
 // Portal (public - token ile erisim)
 app.use('/api/portal', require('./routes/portal'));
 
+// Public diagnostic: test Google Places API key (no sensitive data exposed)
+app.get('/api/scrape/test-key', (req: any, res: any, next: any) => {
+  req.url = '/test-key';
+  require('./routes/scrape')(req, res, next);
+});
+
 // PROTECTED
 app.use('/api/leads',                authMiddleware, require('./routes/leads'));
 app.use('/api/scrape',               authMiddleware, scrapeLimiter, require('./routes/scrape'));
