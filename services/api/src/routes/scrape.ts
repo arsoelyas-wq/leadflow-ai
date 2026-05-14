@@ -455,12 +455,13 @@ async function scrapeLeads(opts: {
   requireWebsite?: boolean;
   discoverEmails?: boolean;
   onProgress?: (phase: string, found: number, saved: number, enriched: number) => void;
-}): Promise<{ saved: number; stats: { withPhone: number; withEmail: number; withWebsite: number } }> {
+}): Promise<{ saved: number; stats: { withPhone: number; withEmail: number; withWebsite: number }; apiError?: string }> {
   const {
     keyword, city, country, maxResults, userId,
     minScore = 0, requirePhone = false, requireWebsite = false,
     discoverEmails = false, onProgress,
   } = opts;
+  let firstApiError: string | null = null;
 
   const lang: Record<string, string> = {
     // Europe
@@ -636,6 +637,7 @@ async function scrapeLeads(opts: {
           if (pageToken) await sleep(2200);
         } catch (e: any) {
           console.error(`[Scrape] query "${query}" failed:`, e.message);
+          if (!firstApiError) firstApiError = e.message;
           break;
         }
       } while (pageToken && pages < 3);
@@ -661,7 +663,7 @@ async function scrapeLeads(opts: {
   const finalLeads = collected.filter(l => l.score >= minScore);
 
   if (!finalLeads.length) {
-    return { saved: 0, stats: { withPhone: 0, withEmail: 0, withWebsite: 0 } };
+    return { saved: 0, stats: { withPhone: 0, withEmail: 0, withWebsite: 0 }, apiError: firstApiError || undefined };
   }
 
   // ── Batch insert ──────────────────────────────────────────────────────────
@@ -694,7 +696,7 @@ async function scrapeLeads(opts: {
     withWebsite: finalLeads.filter(l => l.website).length,
   };
 
-  return { saved: totalSaved, stats };
+  return { saved: totalSaved, stats, apiError: firstApiError || undefined };
 }
 
 // ── POST /api/scrape/google-maps ──────────────────────────────────────────────
@@ -771,11 +773,13 @@ router.post('/google-maps', async (req: any, res: any) => {
             if (found > j.total) j.total = found; // dynamic update if more found
           }
         },
-      }).then(({ saved: count, stats }) => {
+      }).then(({ saved: count, stats, apiError }) => {
         const j = jobs.get(jobId);
         if (j) {
-          j.status = 'done'; j.saved = count;
+          j.status = count === 0 && apiError ? 'error' : 'done';
+          j.saved = count;
           j.withPhone = stats.withPhone; j.withEmail = stats.withEmail; j.withWebsite = stats.withWebsite;
+          if (count === 0 && apiError) j.error = `Google Places API hatası: ${apiError}`;
         }
         // Refund unused credits
         const diff = limit - count;
@@ -792,7 +796,7 @@ router.post('/google-maps', async (req: any, res: any) => {
     }
 
     // Small synchronous request
-    const { saved, stats } = await scrapeLeads({
+    const { saved, stats, apiError } = await scrapeLeads({
       keyword, city, country, maxResults: limit,
       userId, minScore, requirePhone, requireWebsite, discoverEmails: false,
     });
@@ -801,11 +805,43 @@ router.post('/google-maps', async (req: any, res: any) => {
       credits_used: (userData.credits_used || 0) + saved,
     }).eq('id', userId);
 
+    if (saved === 0 && apiError) {
+      return res.status(502).json({
+        error: `Google Places API hatası: ${apiError}. Lütfen API anahtarını ve kota limitini kontrol edin.`,
+        apiError,
+      });
+    }
+
     res.json({ message: `${saved} lead başarıyla eklendi!`, count: saved, stats });
 
   } catch (e: any) {
     console.error('[Scrape] Error:', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── GET /api/scrape/test-key — diagnose Google Places API connectivity ──────────
+router.get('/test-key', async (_req: any, res: any) => {
+  if (!GOOGLE_API_KEY) {
+    return res.json({ ok: false, error: 'GOOGLE_PLACES_API_KEY ortam değişkeni tanımlı değil. Railway → Variables bölümünden ekleyin.' });
+  }
+  try {
+    const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName',
+      },
+      body: JSON.stringify({ textQuery: 'coffee Istanbul Turkey', maxResultCount: 1 }),
+    });
+    const data: any = await r.json();
+    if (!r.ok) {
+      return res.json({ ok: false, httpStatus: r.status, error: data.error?.message || JSON.stringify(data) });
+    }
+    return res.json({ ok: true, found: data.places?.length || 0, sample: data.places?.[0]?.displayName?.text });
+  } catch (e: any) {
+    return res.json({ ok: false, error: e.message });
   }
 });
 

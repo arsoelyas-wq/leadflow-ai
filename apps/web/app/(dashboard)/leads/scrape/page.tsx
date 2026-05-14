@@ -171,12 +171,30 @@ export default function ScrapePage() {
           {isDone ? (
             <>
               <div className="text-center space-y-3">
-                <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto" />
+                {totalSaved === 0
+                  ? <AlertTriangle className="w-14 h-14 text-amber-400 mx-auto" />
+                  : <CheckCircle className="w-14 h-14 text-emerald-400 mx-auto" />
+                }
                 <div>
                   <h2 className="text-2xl font-bold text-white">{totalSaved} Lead Toplandı</h2>
                   <p className="text-slate-400 text-sm mt-1">"{jobStatus.keyword}" · {jobStatus.city}</p>
                 </div>
               </div>
+
+              {totalSaved === 0 && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-2 text-sm">
+                  <p className="text-red-300 font-medium">Sonuç bulunamadı — olası nedenler:</p>
+                  <ul className="text-red-400/80 space-y-1 list-disc list-inside text-xs">
+                    <li>Google Places API anahtarı tanımlı değil veya geçersiz</li>
+                    <li>Google Cloud Console'da "Places API (New)" etkin değil</li>
+                    <li>Günlük/aylık kota aşıldı</li>
+                    <li>Fatura bilgisi Google Cloud hesabına eklenmemiş</li>
+                  </ul>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Tanı: <a href={`${API.replace('https://','https://')}/api/scrape/test-key`} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">/api/scrape/test-key</a> adresini ziyaret edin
+                  </p>
+                </div>
+              )}
 
               {/* Quality breakdown */}
               {totalSaved > 0 && (
