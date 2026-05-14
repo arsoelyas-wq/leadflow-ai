@@ -81,7 +81,7 @@ export default function ScrapePage() {
 
   async function fetchCredits() {
     try {
-      const r = await fetch(`${API}/api/credits`, { headers: authH() })
+      const r = await fetch(`${API}/api/credits/balance`, { headers: authH() })
       const d = await r.json()
       setCredits({ total: d.credits_total || d.total || 0, used: d.credits_used || d.used || 0 })
     } catch {}
