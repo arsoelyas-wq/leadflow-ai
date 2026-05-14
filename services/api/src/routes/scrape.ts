@@ -679,14 +679,18 @@ async function scrapeLeads(opts: {
     status: 'new',
     score: l.score,
     notes: l.address || null,
-    rating: l.rating,
   }));
 
   let totalSaved = 0;
+  let insertError: string | null = null;
   for (let i = 0; i < leadsToInsert.length; i += 50) {
     const batch = leadsToInsert.slice(i, i + 50);
     const { data, error } = await supabase.from('leads').insert(batch).select('id');
-    if (!error && data) totalSaved += data.length;
+    if (error) {
+      console.error('[Scrape] Supabase insert error:', error.message, error.details);
+      if (!insertError) insertError = `Veritabanı hatası: ${error.message}`;
+    }
+    if (data) totalSaved += data.length;
     onProgress?.('Kaydediliyor...', finalLeads.length, totalSaved, 0);
   }
 
@@ -696,7 +700,7 @@ async function scrapeLeads(opts: {
     withWebsite: finalLeads.filter(l => l.website).length,
   };
 
-  return { saved: totalSaved, stats, apiError: firstApiError || undefined };
+  return { saved: totalSaved, stats, apiError: firstApiError || insertError || undefined };
 }
 
 // ── POST /api/scrape/google-maps ──────────────────────────────────────────────
