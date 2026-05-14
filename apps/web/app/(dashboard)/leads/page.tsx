@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
-import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw } from 'lucide-react'
+import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw, Download, Tag } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -13,6 +13,7 @@ interface Lead {
   instagram?: string
   website?: string
   city?: string
+  sector?: string
   source: string
   score: number
   status: string
@@ -40,11 +41,14 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [sector, setSector] = useState('')
+  const [sectors, setSectors] = useState<string[]>([])
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string[]>([])
   const [findingDM, setFindingDM] = useState<string | null>(null)
   const [dmResults, setDmResults] = useState<Record<string, any>>({})
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [exporting, setExporting] = useState(false)
   
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
@@ -57,6 +61,7 @@ export default function LeadsPage() {
       const params = new URLSearchParams({ page: String(page), limit: '20' })
       if (search) params.set('search', search)
       if (status) params.set('status', status)
+      if (sector) params.set('sector', sector)
       const data = await api.get(`/api/leads?${params}`)
       setLeads(data.leads)
       setTotal(data.total)
@@ -67,7 +72,15 @@ export default function LeadsPage() {
     }
   }
 
-  useEffect(() => { load() }, [page, status])
+  const loadSectors = async () => {
+    try {
+      const data = await api.get('/api/leads/sectors')
+      setSectors(data.sectors || [])
+    } catch {}
+  }
+
+  useEffect(() => { loadSectors() }, [])
+  useEffect(() => { load() }, [page, status, sector])
   useEffect(() => {
     const t = setTimeout(load, 400)
     return () => clearTimeout(t)
@@ -114,6 +127,37 @@ export default function LeadsPage() {
     }
   }
 
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const params = new URLSearchParams()
+      if (selected.length > 0) {
+        params.set('ids', selected.join(','))
+      } else {
+        if (search) params.set('search', search)
+        if (status) params.set('status', status)
+        if (sector) params.set('sector', sector)
+      }
+      const token = localStorage.getItem('token') || ''
+      const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+      const resp = await fetch(`${API}/api/leads/export?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!resp.ok) throw new Error('Export başarısız')
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `leadflow-leads-${new Date().toISOString().slice(0,10)}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e: any) {
+      showMsg('error', e.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Tek lead için karar verici bul
   const findDecisionMaker = async (lead: Lead) => {
     setFindingDM(lead.id)
@@ -142,6 +186,11 @@ export default function LeadsPage() {
           <p className="text-slate-400 mt-1">{total} lead bulundu</p>
         </div>
         <div className="flex gap-3">
+          <button onClick={exportExcel} disabled={exporting}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm">
+            {exporting ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
+            {selected.length > 0 ? `${selected.length} Seçiliyi İndir` : 'Excel İndir'}
+          </button>
           <Link href="/decision-maker"
             className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm">
             <Crosshair size={16} /> Karar Verici Bul
@@ -177,6 +226,18 @@ export default function LeadsPage() {
             <option key={s} value={s}>{statusLabel[s]}</option>
           ))}
         </select>
+        {sectors.length > 0 && (
+          <div className="relative">
+            <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <select value={sector} onChange={e => { setSector(e.target.value); setPage(1) }}
+              className="bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
+              <option value="">Tüm Sektörler</option>
+              {sectors.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Bulk actions */}
@@ -237,6 +298,11 @@ export default function LeadsPage() {
                     <div>
                       <p className="text-white font-medium text-sm">{lead.company_name}</p>
                       {lead.city && <p className="text-slate-400 text-xs">{lead.city}</p>}
+                      {lead.sector && (
+                        <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 bg-indigo-500/15 text-indigo-400 text-xs rounded">
+                          <Tag size={9} />{lead.sector}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </td>

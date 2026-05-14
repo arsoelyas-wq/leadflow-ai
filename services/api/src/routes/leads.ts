@@ -12,7 +12,7 @@ const supabase = createClient(
 // GET /api/leads — Liste (filtre + sayfalama)
 router.get('/', authMiddleware, async (req: any, res: any) => {
   try {
-    const { status, source, city, search, page = 1, limit = 20 } = req.query;
+    const { status, source, city, search, sector, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
 
     let query = supabase
@@ -25,12 +25,93 @@ router.get('/', authMiddleware, async (req: any, res: any) => {
     if (status) query = query.eq('status', status);
     if (source) query = query.eq('source', source);
     if (city)   query = query.ilike('city', `%${city}%`);
+    if (sector) query = query.ilike('sector', `%${sector}%`);
     if (search) query = query.ilike('company_name', `%${search}%`);
 
     const { data, error, count } = await query;
     if (error) throw error;
 
     res.json({ leads: data || [], total: count || 0, page: Number(page), limit: Number(limit) });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/leads/sectors — Distinct sector list for filter dropdown
+router.get('/sectors', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('sector')
+      .eq('user_id', req.userId)
+      .not('sector', 'is', null);
+    if (error) throw error;
+    const sectors = [...new Set((data || []).map((r: any) => r.sector).filter(Boolean))].sort();
+    res.json({ sectors });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/leads/export — Excel/CSV download
+router.get('/export', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { status, sector, search, ids } = req.query;
+
+    let query = supabase
+      .from('leads')
+      .select('company_name,contact_name,phone,email,website,city,sector,source,score,status,notes,created_at')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (ids) {
+      const idList = String(ids).split(',').filter(Boolean);
+      if (idList.length > 0) query = query.in('id', idList);
+    } else {
+      if (status) query = query.eq('status', status);
+      if (sector) query = query.ilike('sector', `%${sector}%`);
+      if (search) query = query.ilike('company_name', `%${search}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const xlsx = require('xlsx');
+    const colMap: Record<string, string> = {
+      company_name: 'Firma Adı', contact_name: 'Karar Verici', phone: 'Telefon',
+      email: 'E-posta', website: 'Web Sitesi', city: 'Şehir', sector: 'Sektör',
+      source: 'Kaynak', score: 'Puan', status: 'Durum', notes: 'Notlar', created_at: 'Tarih',
+    };
+    const statusTR: Record<string, string> = {
+      new: 'Yeni', contacted: 'İletişime Geçildi', qualified: 'Nitelikli',
+      replied: 'Cevap Verdi', offered: 'Teklif Verildi', won: 'Kazanıldı', lost: 'Kaybedildi',
+    };
+
+    const rows = (data || []).map((l: any) => {
+      const row: any = {};
+      for (const [k, label] of Object.entries(colMap)) {
+        let val = l[k];
+        if (k === 'status') val = statusTR[val] || val;
+        if (k === 'created_at') val = val ? new Date(val).toLocaleDateString('tr-TR') : '';
+        row[label] = val ?? '';
+      }
+      return row;
+    });
+
+    const ws = xlsx.utils.json_to_sheet(rows);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, 'Leadler');
+
+    // Auto column widths
+    const colWidths = Object.values(colMap).map((h: string) => ({ wch: Math.max(h.length + 2, 14) }));
+    ws['!cols'] = colWidths;
+
+    const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const filename = `leadflow-leads-${new Date().toISOString().slice(0,10)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buf);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

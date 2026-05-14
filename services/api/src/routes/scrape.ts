@@ -404,21 +404,7 @@ async function fetchPlacesPage(opts: {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': GOOGLE_API_KEY!,
-      'X-Goog-FieldMask': [
-        'places.id',
-        'places.displayName',
-        'places.formattedAddress',
-        'places.nationalPhoneNumber',
-        'places.internationalPhoneNumber',
-        'places.websiteUri',
-        'places.rating',
-        'places.userRatingCount',
-        'places.businessStatus',
-        'places.regularOpeningHours',
-        'places.primaryTypeDisplayName',
-        'places.photos',
-        'nextPageToken',
-      ].join(','),
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.businessStatus,places.regularOpeningHours,places.primaryTypeDisplayName,places.photos',
     },
     body: JSON.stringify(body),
   });
@@ -455,7 +441,7 @@ async function scrapeLeads(opts: {
   requireWebsite?: boolean;
   discoverEmails?: boolean;
   onProgress?: (phase: string, found: number, saved: number, enriched: number) => void;
-}): Promise<{ saved: number; stats: { withPhone: number; withEmail: number; withWebsite: number }; apiError?: string }> {
+}): Promise<{ saved: number; skipped: number; stats: { withPhone: number; withEmail: number; withWebsite: number }; apiError?: string }> {
   const {
     keyword, city, country, maxResults, userId,
     minScore = 0, requirePhone = false, requireWebsite = false,
@@ -555,6 +541,7 @@ async function scrapeLeads(opts: {
   const seenIds = new Set<string>();
   const seenNames = new Set<string>();
   const collected: any[] = [];
+  let skippedDuplicates = 0;
 
   const keywords = expandKeywords(keyword);
   const districts = getDistricts(city, maxResults);
@@ -603,8 +590,8 @@ async function scrapeLeads(opts: {
             );
 
             // Dedup against CRM and within batch
-            if (existingNames.has(nameLower) || seenNames.has(nameLower)) continue;
-            if (phone && existingPhones.has(phone)) continue;
+            if (existingNames.has(nameLower) || seenNames.has(nameLower)) { skippedDuplicates++; continue; }
+            if (phone && existingPhones.has(phone)) { skippedDuplicates++; continue; }
 
             // Quality filter: require phone
             if (requirePhone && !phone) continue;
@@ -663,7 +650,7 @@ async function scrapeLeads(opts: {
   const finalLeads = collected.filter(l => l.score >= minScore);
 
   if (!finalLeads.length) {
-    return { saved: 0, stats: { withPhone: 0, withEmail: 0, withWebsite: 0 }, apiError: firstApiError || undefined };
+    return { saved: 0, skipped: skippedDuplicates, stats: { withPhone: 0, withEmail: 0, withWebsite: 0 }, apiError: firstApiError || undefined };
   }
 
   // ── Batch insert ──────────────────────────────────────────────────────────
@@ -700,7 +687,7 @@ async function scrapeLeads(opts: {
     withWebsite: finalLeads.filter(l => l.website).length,
   };
 
-  return { saved: totalSaved, stats, apiError: firstApiError || insertError || undefined };
+  return { saved: totalSaved, skipped: skippedDuplicates, stats, apiError: firstApiError || insertError || undefined };
 }
 
 // ── POST /api/scrape/google-maps ──────────────────────────────────────────────
@@ -777,12 +764,13 @@ router.post('/google-maps', async (req: any, res: any) => {
             if (found > j.total) j.total = found; // dynamic update if more found
           }
         },
-      }).then(({ saved: count, stats, apiError }) => {
+      }).then(({ saved: count, skipped, stats, apiError }) => {
         const j = jobs.get(jobId);
         if (j) {
           j.status = count === 0 && apiError ? 'error' : 'done';
           j.saved = count;
           j.withPhone = stats.withPhone; j.withEmail = stats.withEmail; j.withWebsite = stats.withWebsite;
+          if (skipped > 0) j.phase = `${count} kaydedildi, ${skipped} tekrar atlandı`;
           if (count === 0 && apiError) j.error = `Google Places API hatası: ${apiError}`;
         }
         // Refund unused credits
@@ -800,7 +788,7 @@ router.post('/google-maps', async (req: any, res: any) => {
     }
 
     // Small synchronous request
-    const { saved, stats, apiError } = await scrapeLeads({
+    const { saved, skipped, stats, apiError } = await scrapeLeads({
       keyword, city, country, maxResults: limit,
       userId, minScore, requirePhone, requireWebsite, discoverEmails: false,
     });
@@ -816,7 +804,7 @@ router.post('/google-maps', async (req: any, res: any) => {
       });
     }
 
-    res.json({ message: `${saved} lead başarıyla eklendi!`, count: saved, stats });
+    res.json({ message: `${saved} lead başarıyla eklendi!`, count: saved, skipped, stats });
 
   } catch (e: any) {
     console.error('[Scrape] Error:', e.message);

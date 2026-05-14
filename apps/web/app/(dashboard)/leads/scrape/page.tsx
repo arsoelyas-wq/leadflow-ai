@@ -145,7 +145,7 @@ export default function ScrapePage() {
         setJobStatus({ status: 'running', total: d.total, found: 0, saved: 0, enriched: 0, phase: 'Başlatılıyor...', keyword: keyword || sector, city })
         startPolling(d.jobId)
       } else {
-        setJobStatus({ status: 'done', saved: d.count || 0, total: effectiveCount, found: d.count || 0, keyword: keyword || sector, city, stats: d.stats })
+        setJobStatus({ status: 'done', saved: d.count || 0, skipped: d.skipped || 0, total: effectiveCount, found: d.count || 0, keyword: keyword || sector, city, stats: d.stats })
       }
     } catch (err: any) {
       setError(err.message || 'Bağlantı hatası')
@@ -180,6 +180,16 @@ export default function ScrapePage() {
                   <p className="text-slate-400 text-sm mt-1">"{jobStatus.keyword}" · {jobStatus.city}</p>
                 </div>
               </div>
+
+              {(jobStatus.skipped || 0) > 0 && (
+                <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-sm">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-amber-300 font-medium">{jobStatus.skipped} tekrar lead atlandı</p>
+                    <p className="text-amber-400/70 text-xs mt-0.5">Bu leadler zaten CRM'inizde kayıtlı. Kredi harcanmadı.</p>
+                  </div>
+                </div>
+              )}
 
               {totalSaved === 0 && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-2 text-sm">
