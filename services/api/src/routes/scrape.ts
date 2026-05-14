@@ -821,27 +821,33 @@ router.post('/google-maps', async (req: any, res: any) => {
 });
 
 // ── GET /api/scrape/test-key — diagnose Google Places API connectivity ──────────
-router.get('/test-key', async (_req: any, res: any) => {
+router.get('/test-key', async (req: any, res: any) => {
   if (!GOOGLE_API_KEY) {
-    return res.json({ ok: false, error: 'GOOGLE_PLACES_API_KEY ortam değişkeni tanımlı değil. Railway → Variables bölümünden ekleyin.' });
+    return res.json({ ok: false, error: 'GOOGLE_PLACES_API_KEY ortam değişkeni tanımlı değil.' });
   }
+  const q = (req.query.q as string) || 'coffee Istanbul Turkey';
   try {
     const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': GOOGLE_API_KEY,
-        'X-Goog-FieldMask': 'places.id,places.displayName',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.nationalPhoneNumber',
       },
-      body: JSON.stringify({ textQuery: 'coffee Istanbul Turkey', maxResultCount: 1 }),
+      body: JSON.stringify({ textQuery: q, maxResultCount: 5, languageCode: 'tr' }),
     });
     const data: any = await r.json();
     if (!r.ok) {
-      return res.json({ ok: false, httpStatus: r.status, error: data.error?.message || JSON.stringify(data) });
+      return res.json({ ok: false, httpStatus: r.status, error: data.error?.message || JSON.stringify(data), query: q });
     }
-    return res.json({ ok: true, found: data.places?.length || 0, sample: data.places?.[0]?.displayName?.text });
+    return res.json({
+      ok: true,
+      query: q,
+      found: data.places?.length || 0,
+      samples: (data.places || []).slice(0, 3).map((p: any) => p.displayName?.text),
+    });
   } catch (e: any) {
-    return res.json({ ok: false, error: e.message });
+    return res.json({ ok: false, error: e.message, query: q });
   }
 });
 
