@@ -5,11 +5,12 @@ const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY;
-const YELP_KEY   = process.env.YELP_API_KEY;
-const FSQ_KEY    = process.env.FOURSQUARE_API_KEY;
-const HERE_KEY   = process.env.HERE_API_KEY;
-const CH_KEY     = process.env.UK_COMPANIES_HOUSE_KEY;
+const GOOGLE_KEY  = process.env.GOOGLE_PLACES_API_KEY;
+const YELP_KEY    = process.env.YELP_API_KEY;
+const FSQ_KEY     = process.env.FOURSQUARE_API_KEY;
+const HERE_KEY    = process.env.HERE_API_KEY;
+const CH_KEY      = process.env.UK_COMPANIES_HOUSE_KEY;
+const APIFY_TOKEN = process.env.APIFY_TOKEN;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -65,11 +66,12 @@ function createJob(query: string, city: string, total: number): FinderJob {
   return {
     status: 'running',
     sources: {
-      google:     { status: GOOGLE_KEY ? 'pending' : 'skipped', count: 0 },
+      google:     { status: GOOGLE_KEY  ? 'pending' : 'skipped', count: 0 },
+      apify:      { status: APIFY_TOKEN ? 'pending' : 'skipped', count: 0 },
       osm:        { status: 'pending', count: 0 },
-      yelp:       { status: YELP_KEY  ? 'pending' : 'skipped', count: 0 },
-      foursquare: { status: FSQ_KEY   ? 'pending' : 'skipped', count: 0 },
-      here:       { status: HERE_KEY  ? 'pending' : 'skipped', count: 0 },
+      yelp:       { status: YELP_KEY    ? 'pending' : 'skipped', count: 0 },
+      foursquare: { status: FSQ_KEY     ? 'pending' : 'skipped', count: 0 },
+      here:       { status: HERE_KEY    ? 'pending' : 'skipped', count: 0 },
       registry:   { status: 'pending', count: 0 },
     },
     found: 0, saved: 0, skipped: 0, total,
@@ -126,10 +128,11 @@ async function googleGridSearch(params: {
   const leads: RawLead[] = [];
   const seenIds = new Set<string>();
 
-  // Grid size scales with target count
-  const gridSize = params.targetCount <= 50  ? 2
-                 : params.targetCount <= 200 ? 3
-                 : params.targetCount <= 500 ? 4 : 5;
+  // Grid size scales with target count — larger grids give better coverage
+  const gridSize = params.targetCount <= 30  ? 2
+                 : params.targetCount <= 80  ? 3
+                 : params.targetCount <= 200 ? 4
+                 : params.targetCount <= 500 ? 5 : 6;
 
   const stepLatDeg = (params.radiusKm * 2 / gridSize) / 111;
   const cosLat     = Math.cos(params.lat * Math.PI / 180);
@@ -150,16 +153,19 @@ async function googleGridSearch(params: {
   const words = params.query.trim().split(/\s+/);
   const queryVariants = [params.query, words[0]].filter((v, i, a) => a.indexOf(v) === i);
 
+  // Gather up to targetCount * 4 raw leads to have buffer after CRM dedup
+  const rawCap = params.targetCount * 4;
+
   outer:
   for (const point of gridPoints) {
     for (const queryText of queryVariants) {
-      if (leads.length >= params.targetCount * 2) break outer;
+      if (leads.length >= rawCap) break outer;
 
       let pageToken: string | null = null;
       let page = 0;
 
       do {
-        if (leads.length >= params.targetCount * 2) break;
+        if (leads.length >= rawCap) break;
         try {
           const body: any = { textQuery: queryText, languageCode: params.langCode, maxResultCount: 20 };
           if (pageToken) {
@@ -223,7 +229,58 @@ async function googleGridSearch(params: {
   return leads;
 }
 
-// ── Source 2: OpenStreetMap / Overpass (free, unlimited) ──────────────────────
+// ── Source 2: Apify Google Maps Scraper (APIFY_TOKEN required) ───────────────
+// Uses compass/crawler-google-places — bypasses Places API limits entirely.
+
+async function apifySearch(params: {
+  query: string;
+  city: string;
+  countryName: string;
+  langCode: string;
+  targetCount: number;
+}): Promise<RawLead[]> {
+  if (!APIFY_TOKEN) return [];
+  try {
+    const { ApifyClient } = require('apify-client');
+    const client = new ApifyClient({ token: APIFY_TOKEN });
+
+    const run = await client.actor('compass/crawler-google-places').call(
+      {
+        searchStringsArray: [`${params.query} ${params.city}`],
+        maxCrawledPlacesPerSearch: Math.min(params.targetCount * 2, 500),
+        language: params.langCode,
+        exportPlaceUrls: false,
+        additionalInfo: false,
+        reviewsSort: 'newest',
+        maxReviews: 0,
+      },
+      { waitSecs: 180 }
+    );
+
+    const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: 600 });
+    return (items || [])
+      .filter((p: any) => p.title)
+      .map((p: any) => ({
+        source: 'apify',
+        place_id: p.placeId || undefined,
+        external_id: p.placeId ? `apify_${p.placeId}` : `apify_${p.url?.slice(-20) || Math.random()}`,
+        company_name: p.title,
+        phone: p.phone || p.phoneUnformatted || null,
+        website: p.website || null,
+        address: p.address || null,
+        lat: p.location?.lat ?? null,
+        lng: p.location?.lng ?? null,
+        rating: p.totalScore ?? null,
+        review_count: p.reviewsCount ?? null,
+        category: p.categoryName || null,
+      } as RawLead));
+  } catch (e: any) {
+    console.error('[LeadFinder] Apify error:', e.message?.slice(0, 100));
+    return [];
+  }
+}
+
+// ── Source 3: OpenStreetMap / Overpass (free, unlimited) ──────────────────────
 
 async function osmSearch(params: {
   query: string;
@@ -231,29 +288,37 @@ async function osmSearch(params: {
   lng: number;
   radiusKm: number;
 }): Promise<RawLead[]> {
-  const radiusM = Math.min(params.radiusKm * 1000, 50000);
-  // Escape the keyword for Overpass regex
+  // Cap radius at 25km to avoid Overpass timeout on large cities
+  const radiusM = Math.min(params.radiusKm * 1000, 25000);
   const kw = params.query.split(' ')[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  const q = `[out:json][timeout:30];
+  // Search by both name and category tags for broader coverage
+  const q = `[out:json][timeout:25];
 (
   node["name"~"${kw}",i](around:${radiusM},${params.lat},${params.lng});
   way["name"~"${kw}",i](around:${radiusM},${params.lat},${params.lng});
+  relation["name"~"${kw}",i](around:${radiusM},${params.lat},${params.lng});
+  node["amenity"~"${kw}",i](around:${radiusM},${params.lat},${params.lng});
+  node["shop"~"${kw}",i](around:${radiusM},${params.lat},${params.lng});
+  way["shop"~"${kw}",i](around:${radiusM},${params.lat},${params.lng});
 );
-out body center 300;`;
+out body center 600;`;
 
   try {
     const resp = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: q,
-      signal: AbortSignal.timeout(35000),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `data=${encodeURIComponent(q)}`,
+      signal: AbortSignal.timeout(30000),
     });
-    if (!resp.ok) return [];
+    if (!resp.ok) {
+      console.error('[LeadFinder] OSM HTTP error:', resp.status);
+      return [];
+    }
     const data: any = await resp.json();
 
     return (data.elements || [])
-      .filter((el: any) => el.tags?.name)
+      .filter((el: any) => el.tags?.name && el.tags.name.length > 1)
       .map((el: any) => ({
         source: 'osm',
         external_id: `osm_${el.id}`,
@@ -261,7 +326,8 @@ out body center 300;`;
         phone: el.tags.phone || el.tags['contact:phone'] || el.tags['phone:mobile'] || null,
         website: el.tags.website || el.tags['contact:website'] || null,
         email: el.tags.email || el.tags['contact:email'] || null,
-        address: [el.tags['addr:street'], el.tags['addr:housenumber'], el.tags['addr:city']].filter(Boolean).join(' ') || null,
+        address: [el.tags['addr:street'], el.tags['addr:housenumber'], el.tags['addr:city']]
+          .filter(Boolean).join(' ') || null,
         lat: el.lat ?? el.center?.lat ?? null,
         lng: el.lon ?? el.center?.lon ?? null,
         category: el.tags.amenity || el.tags.shop || el.tags.office || el.tags.craft || null,
@@ -756,14 +822,16 @@ async function runFinder(params: FinderParams): Promise<{
   updateJob({ phase: 'Şehir koordinatları alınıyor...' });
   const coords = await geocodeCity(city, countryName);
 
-  // Sequential waterfall: run sources one by one, stop early if target reached.
-  // Cross-source dedup: each source only contributes leads not already found by prior sources.
-  const sourceBreakdown: Record<string, number> = { google: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
+  // Sequential waterfall: run sources one by one; stop early when we have 2× target
+  // (2× buffer accounts for CRM dedup removing already-saved leads).
+  const WATERFALL_TARGET = targetCount * 2;
+  const sourceBreakdown: Record<string, number> = { google: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
   let deduped: RawLead[] = [];
 
   const pipeline: Array<{ name: string; fn: () => Promise<RawLead[]> }> = [
     { name: 'google',     fn: () => googleGridSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode, onCount: (n) => updateSource('google', 'running', n) }) },
+    { name: 'apify',      fn: () => apifySearch({ query, city, countryName, langCode, targetCount }) },
     { name: 'osm',        fn: () => osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }) },
     { name: 'yelp',       fn: () => yelpSearch({ query, city, countryName, targetCount }) },
     { name: 'foursquare', fn: () => foursquareSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount }) },
@@ -775,7 +843,7 @@ async function runFinder(params: FinderParams): Promise<{
     const j = jobId ? jobs.get(jobId) : null;
     if (j?.sources[name]?.status === 'skipped') continue;
 
-    if (deduped.length >= targetCount) {
+    if (deduped.length >= WATERFALL_TARGET) {
       updateSource(name, 'skipped', 0);
       continue;
     }
@@ -969,12 +1037,13 @@ router.get('/job/:jobId', (req: any, res: any) => {
 // GET /api/lead-finder/sources — which sources are active
 router.get('/sources', (_req: any, res: any) => {
   res.json({
-    google:     { active: !!GOOGLE_KEY, label: 'Google Maps',   icon: 'G', free: false },
-    osm:        { active: true,          label: 'OpenStreetMap', icon: 'O', free: true  },
+    google:     { active: !!GOOGLE_KEY,  label: 'Google Maps',   icon: 'G', free: false },
+    apify:      { active: !!APIFY_TOKEN, label: 'Apify Scraper', icon: 'A', free: false },
+    osm:        { active: true,           label: 'OpenStreetMap', icon: 'O', free: true  },
     yelp:       { active: !!YELP_KEY,    label: 'Yelp',          icon: 'Y', free: true  },
     foursquare: { active: !!FSQ_KEY,     label: 'Foursquare',    icon: '4', free: true  },
     here:       { active: !!HERE_KEY,    label: 'HERE Maps',     icon: 'H', free: true  },
-    registry:   { active: true,          label: 'Resmi Sicil',   icon: 'R', free: true  },
+    registry:   { active: true,           label: 'Resmi Sicil',   icon: 'R', free: true  },
   });
 });
 
