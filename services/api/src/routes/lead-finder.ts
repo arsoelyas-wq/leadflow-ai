@@ -756,55 +756,49 @@ async function runFinder(params: FinderParams): Promise<{
   updateJob({ phase: 'Şehir koordinatları alınıyor...' });
   const coords = await geocodeCity(city, countryName);
 
-  updateJob({ phase: 'Kaynaklar paralel taranıyor...' });
+  // Sequential waterfall: run sources one by one, stop early if target reached.
+  // Cross-source dedup: each source only contributes leads not already found by prior sources.
+  const sourceBreakdown: Record<string, number> = { google: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
+  const allLeads: RawLead[] = [];
+  let deduped: RawLead[] = [];
 
-  // Mark active sources as running
-  updateSource('google', GOOGLE_KEY ? 'running' : 'skipped', 0);
-  updateSource('osm',    'running', 0);
-  updateSource('yelp',   YELP_KEY  ? 'running' : 'skipped', 0);
-  updateSource('foursquare', FSQ_KEY ? 'running' : 'skipped', 0);
-  updateSource('here',   HERE_KEY  ? 'running' : 'skipped', 0);
-  updateSource('registry', 'running', 0);
+  const pipeline: Array<{ name: string; fn: () => Promise<RawLead[]> }> = [
+    { name: 'google',     fn: () => googleGridSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode, onCount: (n) => updateSource('google', 'running', n) }) },
+    { name: 'osm',        fn: () => osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }) },
+    { name: 'yelp',       fn: () => yelpSearch({ query, city, countryName, targetCount }) },
+    { name: 'foursquare', fn: () => foursquareSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount }) },
+    { name: 'here',       fn: () => hereSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }) },
+    { name: 'registry',   fn: () => registrySearch({ query, country, city, limit: targetCount }) },
+  ];
 
-  // Helper: run a source and update job status when done
-  const withStatus = async (src: string, fn: () => Promise<RawLead[]>): Promise<RawLead[]> => {
+  for (const { name, fn } of pipeline) {
     const j = jobId ? jobs.get(jobId) : null;
-    if (j?.sources[src]?.status === 'skipped') return [];
+    if (j?.sources[name]?.status === 'skipped') continue;
+
+    if (deduped.length >= targetCount) {
+      updateSource(name, 'skipped', 0);
+      continue;
+    }
+
+    updateJob({ phase: name === 'google' ? 'Google Maps taranıyor...' : 'Ek kaynaklar aranıyor...' });
+    updateSource(name, 'running', 0);
+
     try {
       const results = await fn();
-      updateSource(src, 'done', results.length);
-      return results;
+      sourceBreakdown[name] = results.length;
+      allLeads.push(...results);
+      deduped = deduplicateLeads(allLeads);
+      updateSource(name, 'done', results.length);
+      updateJob({ found: deduped.length });
     } catch (e: any) {
-      updateSource(src, 'error', 0);
-      console.error(`[LeadFinder] ${src} error:`, e.message?.slice(0, 80));
-      return [];
+      updateSource(name, 'error', 0);
+      console.error(`[LeadFinder] ${name} error:`, e.message?.slice(0, 80));
     }
-  };
+  }
 
-  // Run all sources in parallel
-  const [googleLeads, osmLeads, yelpLeads, fsqLeads, hereLeads, regLeads] = await Promise.all([
-    withStatus('google', () => googleGridSearch({
-      query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode,
-      onCount: (n) => updateSource('google', 'running', n),
-    })),
-    withStatus('osm',   () => osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm })),
-    withStatus('yelp',  () => yelpSearch({ query, city, countryName, targetCount })),
-    withStatus('foursquare', () => foursquareSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount })),
-    withStatus('here',  () => hereSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm })),
-    withStatus('registry', () => registrySearch({ query, country, city, limit: targetCount })),
-  ]);
+  updateJob({ phase: 'Tekrarlar temizleniyor...' });
 
-  const sourceBreakdown: Record<string, number> = {
-    google: googleLeads.length, osm: osmLeads.length,
-    yelp: yelpLeads.length,     foursquare: fsqLeads.length,
-    here: hereLeads.length,     registry: regLeads.length,
-  };
-
-  const allLeads = [...googleLeads, ...osmLeads, ...yelpLeads, ...fsqLeads, ...hereLeads, ...regLeads];
-  updateJob({ found: allLeads.length, phase: 'Tekrarlar temizleniyor...' });
-
-  // Deduplicate across sources
-  let unique = deduplicateLeads(allLeads);
+  let unique = deduped;
 
   // Apply quality filters
   if (requirePhone)   unique = unique.filter(l => l.phone);

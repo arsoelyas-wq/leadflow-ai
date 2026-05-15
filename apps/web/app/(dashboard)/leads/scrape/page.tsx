@@ -4,26 +4,13 @@ import { useRouter } from 'next/navigation'
 import {
   MapPin, Search, Loader2, CheckCircle, ArrowLeft, Zap,
   Globe, ChevronDown, AlertTriangle, SlidersHorizontal,
-  Layers, Info,
+  Info,
 } from 'lucide-react'
 import { COUNTRIES, CITIES, REGIONS } from './countries-cities'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
-
-// ── Source definitions ─────────────────────────────────────────────────────────
-
-const SOURCES: Record<string, { label: string; icon: string; color: string; desc: string }> = {
-  google:     { label: 'Google Maps',   icon: 'G', color: 'blue',    desc: 'Grid arama — en kapsamlı' },
-  osm:        { label: 'OpenStreetMap', icon: 'O', color: 'emerald', desc: 'Açık kaynak, ücretsiz' },
-  yelp:       { label: 'Yelp',          icon: 'Y', color: 'red',     desc: '5.000 istek/gün' },
-  foursquare: { label: 'Foursquare',    icon: '4', color: 'indigo',  desc: '950 istek/gün' },
-  here:       { label: 'HERE Maps',     icon: 'H', color: 'purple',  desc: '250K istek/ay' },
-  registry:   { label: 'Resmi Sicil',   icon: 'R', color: 'amber',   desc: 'Ticaret sicili' },
-}
-
-const SOURCE_ORDER = ['google', 'osm', 'yelp', 'foursquare', 'here', 'registry']
 
 const LEAD_COUNTS = [
   { value: 20,   label: '20',   badge: null,      time: '~20 sn', color: 'border-slate-600 hover:border-slate-500' },
@@ -33,57 +20,6 @@ const LEAD_COUNTS = [
   { value: 500,  label: '500',  badge: 'Pro',     time: '~7 dk',  color: 'border-purple-500/50 hover:border-purple-400' },
   { value: 1000, label: '1000', badge: 'Max',     time: '~15 dk', color: 'border-amber-500/50 hover:border-amber-400' },
 ]
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-type SrcStatus = 'pending' | 'running' | 'done' | 'error' | 'skipped'
-
-function SourceRow({ id, stat }: { id: string; stat: { status: SrcStatus; count: number } }) {
-  const info = SOURCES[id]
-  if (!info) return null
-
-  const colorMap: Record<string, string> = {
-    blue: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    emerald: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    red: 'bg-red-500/20 text-red-400 border-red-500/30',
-    indigo: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-    purple: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    amber: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  }
-  const badgeClass = colorMap[info.color] || colorMap.blue
-
-  const statusIcon = {
-    pending:  <div className="w-2 h-2 rounded-full bg-slate-600" />,
-    running:  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />,
-    done:     <CheckCircle size={14} className="text-emerald-400" />,
-    error:    <AlertTriangle size={14} className="text-red-400" />,
-    skipped:  <div className="w-2 h-2 rounded-full bg-slate-700" />,
-  }[stat.status]
-
-  const statusText = {
-    pending:  <span className="text-slate-600 text-xs">bekliyor</span>,
-    running:  <span className="text-blue-400 text-xs animate-pulse">taranıyor...</span>,
-    done:     <span className="text-emerald-400 text-xs font-medium">{stat.count} lead</span>,
-    error:    <span className="text-red-400 text-xs">hata</span>,
-    skipped:  <span className="text-slate-600 text-xs italic">API anahtarı yok</span>,
-  }[stat.status]
-
-  return (
-    <div className={`flex items-center gap-3 py-2 px-3 rounded-lg transition ${stat.status === 'skipped' ? 'opacity-40' : ''}`}>
-      <div className={`w-7 h-7 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 ${badgeClass}`}>
-        {info.icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-medium leading-tight">{info.label}</p>
-        <p className="text-slate-500 text-xs">{info.desc}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        {statusText}
-        {statusIcon}
-      </div>
-    </div>
-  )
-}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -159,7 +95,6 @@ export default function LeadFinderPage() {
     // Optimistic job state while waiting for API
     setJobStatus({
       status: 'running',
-      sources: Object.fromEntries(SOURCE_ORDER.map(s => [s, { status: 'pending', count: 0 }])),
       found: 0, saved: 0, skipped: 0, total: effectiveCount,
       query: keyword, city, phase: 'Bağlanıyor...',
     })
@@ -206,15 +141,14 @@ export default function LeadFinderPage() {
   // ── Progress view ──────────────────────────────────────────────────────────
 
   if (jobStatus) {
-    const isDone  = jobStatus.status === 'done'
-    const isError = jobStatus.status === 'error'
-    const sources: Record<string, { status: SrcStatus; count: number }> = jobStatus.sources || {}
+    const isDone     = jobStatus.status === 'done'
+    const isError    = jobStatus.status === 'error'
     const totalSaved = jobStatus.saved || 0
     const skipped    = jobStatus.skipped || 0
-    const totalFound = Object.values(sources).reduce((a: number, s: any) => a + (s.count || 0), 0)
+    const totalFound = jobStatus.found || 0
 
     const pct = jobStatus.total > 0
-      ? Math.min(100, Math.round((isDone ? jobStatus.total : jobStatus.found || 0) / jobStatus.total * 100))
+      ? Math.min(100, Math.round((isDone ? jobStatus.total : totalFound) / jobStatus.total * 100))
       : 0
 
     return (
@@ -245,21 +179,13 @@ export default function LeadFinderPage() {
                 <div className="relative w-14 h-14 mx-auto">
                   <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
                   <div className="w-14 h-14 bg-blue-500/30 rounded-full flex items-center justify-center">
-                    <Layers className="w-6 h-6 text-blue-400" />
+                    <Search className="w-6 h-6 text-blue-400" />
                   </div>
                 </div>
-                <h2 className="text-lg font-bold text-white">Kaynaklar Taranıyor...</h2>
+                <h2 className="text-lg font-bold text-white">Lead Aranıyor...</h2>
                 <p className="text-blue-400 text-sm">{jobStatus.phase}</p>
               </div>
             )}
-          </div>
-
-          {/* Source status list */}
-          <div className="p-4 border-b border-slate-700 space-y-1">
-            <p className="text-xs text-slate-500 uppercase tracking-wide font-medium px-3 pb-1">Veri Kaynakları</p>
-            {SOURCE_ORDER.map(id => (
-              <SourceRow key={id} id={id} stat={sources[id] || { status: 'pending' as SrcStatus, count: 0 }} />
-            ))}
           </div>
 
           {/* Progress / stats */}
@@ -355,10 +281,10 @@ export default function LeadFinderPage() {
       {/* Header */}
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-medium px-3 py-1 rounded-full">
-          <Layers size={12} /> 6 Kaynak Paralel Arama
+          <Search size={12} /> Akıllı Çoklu Kaynak Arama
         </div>
         <h1 className="text-3xl font-bold text-white">Lead Bul</h1>
-        <p className="text-slate-400 text-sm">Google Maps · OpenStreetMap · Yelp · Foursquare · HERE · Resmi Sicil</p>
+        <p className="text-slate-400 text-sm">Google Maps öncelikli · Gerektiğinde ek kaynaklar devreye girer</p>
       </div>
 
       {/* Credit indicator */}
@@ -544,21 +470,18 @@ export default function LeadFinderPage() {
 
             {/* Source info */}
             <div className="bg-slate-900/40 rounded-xl p-3 space-y-2">
-              <p className="text-xs text-slate-500 flex items-center gap-1"><Info size={11} /> Aktif kaynaklar (otomatik):</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1"><Info size={11} /> Kaynak sırası (otomatik, gerektiğinde devreye girer):</p>
               <div className="flex flex-wrap gap-2">
-                {SOURCE_ORDER.map(id => {
-                  const info = SOURCES[id]
-                  const colorMap: Record<string, string> = {
-                    blue: 'bg-blue-500/20 text-blue-400', emerald: 'bg-emerald-500/20 text-emerald-400',
-                    red: 'bg-red-500/20 text-red-400', indigo: 'bg-indigo-500/20 text-indigo-400',
-                    purple: 'bg-purple-500/20 text-purple-400', amber: 'bg-amber-500/20 text-amber-400',
-                  }
-                  return (
-                    <span key={id} className={`px-2 py-1 rounded-lg text-xs font-medium ${colorMap[info.color]}`} title={info.desc}>
-                      {info.icon} {info.label}
-                    </span>
-                  )
-                })}
+                {[
+                  { label: 'Google Maps', cls: 'bg-blue-500/20 text-blue-400' },
+                  { label: 'OpenStreetMap', cls: 'bg-emerald-500/20 text-emerald-400' },
+                  { label: 'Yelp', cls: 'bg-red-500/20 text-red-400' },
+                  { label: 'Foursquare', cls: 'bg-indigo-500/20 text-indigo-400' },
+                  { label: 'HERE Maps', cls: 'bg-purple-500/20 text-purple-400' },
+                  { label: 'Resmi Sicil', cls: 'bg-amber-500/20 text-amber-400' },
+                ].map(({ label, cls }) => (
+                  <span key={label} className={`px-2 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>
+                ))}
               </div>
             </div>
           </div>
