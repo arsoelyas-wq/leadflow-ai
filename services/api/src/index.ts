@@ -59,6 +59,13 @@ app.get('/api/scrape/test-key', (req: any, res: any, next: any) => {
   require('./routes/scrape')(req, res, next);
 });
 
+// Public diagnostic: test Apify token (no user data exposed)
+const lfRouter = require('./routes/lead-finder');
+app.get('/api/lead-finder/test-apify', (req: any, res: any, next: any) => {
+  req.url = '/test-apify';
+  lfRouter(req, res, next);
+});
+
 // PROTECTED
 app.use('/api/leads',                authMiddleware, require('./routes/leads'));
 app.use('/api/scrape',               authMiddleware, scrapeLimiter, require('./routes/scrape'));
