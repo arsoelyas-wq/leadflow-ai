@@ -1149,6 +1149,26 @@ router.get('/job/:jobId', (req: any, res: any) => {
   res.json(job);
 });
 
+// GET /api/lead-finder/test-apify — sanity-check Apify with a small query
+router.get('/test-apify', async (req: any, res: any) => {
+  if (!APIFY_TOKEN) return res.status(400).json({ ok: false, error: 'APIFY_TOKEN env var is not set' });
+  const query  = String(req.query.q    || 'restoran');
+  const city   = String(req.query.city || 'Istanbul');
+  const t0 = Date.now();
+  try {
+    const leads = await apifySearch({ query, city, countryName: 'Turkey', langCode: 'tr', targetCount: 10 });
+    res.json({
+      ok: true,
+      tokenPresent: true,
+      durationMs: Date.now() - t0,
+      count: leads.length,
+      sample: leads.slice(0, 3),
+    });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message, durationMs: Date.now() - t0 });
+  }
+});
+
 // GET /api/lead-finder/sources — which sources are active
 router.get('/sources', (_req: any, res: any) => {
   res.json({
