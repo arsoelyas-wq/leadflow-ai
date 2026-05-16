@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import {
   MapPin, Search, Loader2, CheckCircle, ArrowLeft, Zap,
   Globe, ChevronDown, AlertTriangle, SlidersHorizontal,
-  Info,
 } from 'lucide-react'
 import { COUNTRIES, CITIES, REGIONS } from './countries-cities'
 
@@ -52,8 +51,6 @@ export default function LeadFinderPage() {
   const [requirePhone,      setRequirePhone]      = useState(false)
   const [requireWebsite,    setRequireWebsite]    = useState(false)
   const [enrichEmail,       setEnrichEmail]       = useState(false)
-  const [includeInstagram,  setIncludeInstagram]  = useState(false)
-  const [includeGoogle,     setIncludeGoogle]     = useState(true)
   const [minScore,          setMinScore]          = useState(0)
 
   // Credits & status
@@ -102,7 +99,6 @@ export default function LeadFinderPage() {
     e.preventDefault()
     if (!keyword) { setError('Arama terimi girin'); return }
     if (!city)    { setError('Şehir seçin'); return }
-    if (!includeGoogle && !includeInstagram) { setError('En az bir kaynak seçin'); return }
 
     setLoading(true); setError('')
 
@@ -125,8 +121,6 @@ export default function LeadFinderPage() {
           requirePhone,
           requireWebsite,
           enrichEmail,
-          includeInstagram,
-          includeGoogle,
           sector: keyword,
         }),
       })
@@ -432,68 +426,13 @@ export default function LeadFinderPage() {
           </div>
         </div>
 
-        {/* Sources */}
-        <div className="space-y-2">
-          <label className="text-slate-300 text-sm font-medium">Kaynaklar</label>
-          <div className="grid grid-cols-2 gap-2">
-            {/* Google Maps — toggleable */}
-            <button
-              type="button"
-              onClick={() => setIncludeGoogle(s => !s)}
-              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${
-                includeGoogle
-                  ? 'border-blue-500/50 bg-blue-500/5'
-                  : 'border-slate-600 bg-slate-800/30 hover:border-slate-500'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition ${
-                includeGoogle ? 'bg-blue-500/20' : 'bg-slate-700/50'
-              }`}>
-                <MapPin size={15} className={includeGoogle ? 'text-blue-400' : 'text-slate-500'} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white">Google Maps</p>
-                <p className="text-[10px] text-slate-400">İşletme dizini</p>
-              </div>
-              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${
-                includeGoogle ? 'bg-blue-500 border-blue-500' : 'border-slate-600'
-              }`}>
-                {includeGoogle && <span className="text-white text-[9px] font-bold">✓</span>}
-              </div>
-            </button>
-
-            {/* Instagram — optional toggle */}
-            <button
-              type="button"
-              onClick={() => setIncludeInstagram(s => !s)}
-              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${
-                includeInstagram
-                  ? 'border-pink-500/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10'
-                  : 'border-slate-600 bg-slate-800/30 hover:border-slate-500'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition ${
-                includeInstagram ? 'bg-gradient-to-br from-pink-500/30 to-purple-500/30' : 'bg-slate-700/50'
-              }`}>
-                <span className="text-base">📸</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white">Instagram</p>
-                <p className="text-[10px] text-slate-400">Bio'dan email/tel çeker</p>
-              </div>
-              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${
-                includeInstagram ? 'bg-pink-500 border-pink-500' : 'border-slate-600'
-              }`}>
-                {includeInstagram && <span className="text-white text-[9px] font-bold">✓</span>}
-              </div>
-            </button>
+        {/* Source badge */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-500/30 bg-blue-500/5">
+            <MapPin size={13} className="text-blue-400" />
+            <span className="text-sm text-white font-medium">Google Maps</span>
+            <span className="text-[10px] text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded-full">Aktif</span>
           </div>
-          {includeInstagram && (
-            <p className="text-[10px] text-pink-400/70 flex items-center gap-1">
-              <Info size={10} />
-              Instagram, Google'da olmayan işletmeleri bulur. Takipçi sayısı &amp; bio iletişim bilgisi çeker.
-            </p>
-          )}
         </div>
 
         {/* Advanced filters */}

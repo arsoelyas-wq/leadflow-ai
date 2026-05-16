@@ -976,8 +976,6 @@ interface FinderParams {
   requirePhone: boolean;
   requireWebsite: boolean;
   enrichEmail: boolean;
-  includeGoogle: boolean;
-  includeInstagram: boolean;
   userId: string;
   jobId?: string;
 }
@@ -987,7 +985,7 @@ async function runFinder(params: FinderParams): Promise<{
   skipped: number;
   sourceBreakdown: Record<string, number>;
 }> {
-  const { query, city, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, includeGoogle, includeInstagram, userId, jobId } = params;
+  const { query, city, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId } = params;
 
   const updateJob = (patch: Partial<FinderJob>) => {
     if (!jobId) return;
@@ -1004,60 +1002,27 @@ async function runFinder(params: FinderParams): Promise<{
   const countryName = COUNTRY_NAME_MAP[country] || country;
   const langCode    = LANG_MAP[country] || 'en';
 
-  const coords = includeGoogle
-    ? (updateJob({ phase: 'Şehir koordinatları alınıyor...' }), await geocodeCity(city, countryName))
-    : { lat: 0, lng: 0 };
+  updateJob({ phase: 'Şehir koordinatları alınıyor...' });
+  const coords = await geocodeCity(city, countryName);
 
   const sourceBreakdown: Record<string, number> = { google: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
 
-  // ── Phase 1: Google grid search (primary, optional) ──────────────────────────
-  if (includeGoogle) {
-    updateJob({ phase: 'Google Maps taranıyor...' });
-    updateSource('google', 'running', 0);
+  // ── Google grid search ────────────────────────────────────────────────────────
+  updateJob({ phase: 'Google Maps taranıyor...' });
+  updateSource('google', 'running', 0);
 
-    const googleLeads = await googleGridSearch({
-      query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode,
-      onCount: (n) => updateSource('google', 'running', n),
-    });
-    allLeads.push(...googleLeads);
-    sourceBreakdown.google = googleLeads.length;
-    updateSource('google', 'done', googleLeads.length);
-    updateJob({ found: deduplicateLeads(allLeads).length });
-    console.log(`[LeadFinder] Google: ${googleLeads.length} raw results`);
-  } else {
-    updateSource('google', 'skipped', 0);
-    console.log('[LeadFinder] Google Maps skipped (not selected)');
-  }
+  const googleLeads = await googleGridSearch({
+    query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode,
+    onCount: (n) => updateSource('google', 'running', n),
+  });
+  allLeads.push(...googleLeads);
+  sourceBreakdown.google = googleLeads.length;
+  updateSource('google', 'done', googleLeads.length);
+  updateJob({ found: deduplicateLeads(allLeads).length });
+  console.log(`[LeadFinder] Google: ${googleLeads.length} raw results`);
 
-  // ── Phase 2: Instagram (optional, parallel) ───────────────────────────────────
-  if (includeInstagram) {
-    updateJob({ phase: 'Instagram taranıyor...' });
-    updateSource('apify', 'running', 0); // re-use apify slot for Instagram display
-    try {
-      const { instagramSearch } = require('./instagram');
-      const igLeads = await instagramSearch({ query, city, limit: Math.ceil(targetCount * 0.4) });
-      const igRaw: RawLead[] = igLeads.map((l: any) => ({
-        source:        'instagram',
-        external_id:   `ig_${l.instagram_url?.split('/').pop()}`,
-        company_name:  l.company_name,
-        phone:         l.phone  || null,
-        email:         l.email  || null,
-        website:       l.website || null,
-        category:      l.category || null,
-        score:         l.score || 0,
-      }));
-      allLeads.push(...igRaw);
-      sourceBreakdown.apify = igRaw.length;
-      updateSource('apify', 'done', igRaw.length);
-      console.log(`[LeadFinder] Instagram: ${igRaw.length} leads`);
-    } catch (e: any) {
-      updateSource('apify', 'error', 0);
-      console.error('[LeadFinder] Instagram error:', e.message?.slice(0, 80));
-    }
-  } else {
-    updateSource('apify', 'skipped', 0);
-  }
+  updateSource('apify', 'skipped', 0);
 
   for (const name of ['osm', 'yelp', 'foursquare', 'here', 'registry']) {
     updateSource(name, 'skipped', 0);
@@ -1150,7 +1115,6 @@ router.post('/search', async (req: any, res: any) => {
       query, city, country = 'TR', sector,
       targetCount = 50, radiusKm = 20,
       requirePhone = false, requireWebsite = false, enrichEmail = false,
-      includeInstagram = false, includeGoogle = true,
     } = req.body;
     const userId = req.userId;
 
@@ -1182,7 +1146,7 @@ router.post('/search', async (req: any, res: any) => {
         .eq('id', userId);
 
       // Fire and forget
-      runFinder({ query, city, country, sector, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, includeGoogle, includeInstagram, userId, jobId })
+      runFinder({ query, city, country, sector, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId })
         .then(({ saved, skipped, sourceBreakdown }) => {
           const j = jobs.get(jobId);
           if (j) {
@@ -1215,7 +1179,7 @@ router.post('/search', async (req: any, res: any) => {
     // Synchronous path (≤50 leads, no email enrichment)
     const { saved, skipped, sourceBreakdown } = await runFinder({
       query, city, country, sector, targetCount: limit, radiusKm,
-      requirePhone, requireWebsite, enrichEmail: false, includeGoogle, includeInstagram, userId,
+      requirePhone, requireWebsite, enrichEmail: false, userId,
     });
 
     await supabase.from('users')
