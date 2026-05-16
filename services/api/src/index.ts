@@ -17,7 +17,7 @@ app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.inclu
 
 const generalLimiter  = rateLimit({ windowMs: 15*60*1000, max: 200, standardHeaders: true, legacyHeaders: false });
 const authLimiter     = rateLimit({ windowMs: 15*60*1000, max: 10 });
-const scrapeLimiter   = rateLimit({ windowMs: 60*60*1000, max: 20 });
+const scrapeLimiter   = rateLimit({ windowMs: 60*60*1000, max: 50, message: { error: 'Çok fazla istek. Lütfen bir saat sonra tekrar deneyin.' } });
 const campaignLimiter = rateLimit({ windowMs: 60*60*1000, max: 50 });
 const aiLimiter       = rateLimit({ windowMs: 60*1000,    max: 20 });
 

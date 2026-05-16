@@ -1020,64 +1020,12 @@ async function runFinder(params: FinderParams): Promise<{
   updateJob({ found: deduplicateLeads(allLeads).length });
   console.log(`[LeadFinder] Google: ${googleLeads.length} raw results`);
 
-  // ── Phase 2: All other sources + optional query expansion — all in parallel ────
-  // Query expansion: generate related terms and run lightweight single-point searches.
-  // Only fires when we don't already have enough from Google.
-  updateJob({ phase: 'Ek kaynaklar paralel taranıyor...' });
-
-  const needsExpansion = targetCount >= 150 && googleLeads.length < targetCount * 1.5;
-
-  const expandedGooglePromise: Promise<RawLead[]> = needsExpansion
-    ? expandSearchTerms(query, langCode, targetCount).then(async (terms) => {
-        const extra: RawLead[] = [];
-        const seenIds = new Set(googleLeads.map(l => l.place_id).filter(Boolean) as string[]);
-        // Run each expansion term as a small single-area search (2×2 grid, fast)
-        await Promise.allSettled(terms.slice(1, 7).map(async (term) => {
-          const leads = await googleGridSearch({
-            query: term, lat: coords.lat, lng: coords.lng,
-            radiusKm, targetCount: 50, langCode,
-          });
-          for (const l of leads) {
-            if (l.place_id && seenIds.has(l.place_id)) continue;
-            if (l.place_id) seenIds.add(l.place_id);
-            extra.push(l);
-          }
-        }));
-        console.log(`[LeadFinder] Google expansion: +${extra.length} extra leads`);
-        return extra;
-      })
-    : Promise.resolve([]);
-
-  const [expandedR, apifyR, osmR, yelpR, fsqR, hereR, regR] = await Promise.allSettled([
-    expandedGooglePromise,
-    APIFY_TOKEN ? apifySearch({ query, city, countryName, langCode, targetCount }) : Promise.resolve([]),
-    osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }),
-    yelpSearch({ query, city, countryName, targetCount }),
-    foursquareSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount }),
-    hereSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }),
-    registrySearch({ query, country, city, limit: targetCount }),
-  ]);
-
-  const phaseResults: Array<{ name: string; r: PromiseSettledResult<RawLead[]> }> = [
-    { name: 'google',     r: expandedR },  // expansion hits also tagged google
-    { name: 'apify',      r: apifyR },
-    { name: 'osm',        r: osmR },
-    { name: 'yelp',       r: yelpR },
-    { name: 'foursquare', r: fsqR },
-    { name: 'here',       r: hereR },
-    { name: 'registry',   r: regR },
-  ];
-
-  for (const { name, r } of phaseResults) {
-    if (r.status === 'fulfilled') {
-      sourceBreakdown[name] = (sourceBreakdown[name] || 0) + r.value.length;
-      allLeads.push(...r.value);
-      if (name !== 'google') updateSource(name, 'done', r.value.length);
-      console.log(`[LeadFinder] ${name} (phase2): ${r.value.length} results`);
-    } else {
-      if (name !== 'google') updateSource(name, 'error', 0);
-      console.error(`[LeadFinder] ${name} error:`, r.reason?.message?.slice(0, 80));
-    }
+  // ── Phase 2: Secondary sources — currently disabled, Google only ──────────────
+  // TODO: re-enable after Apify token is fixed and other API keys are added.
+  updateJob({ phase: 'Sonuçlar hazırlanıyor...' });
+  // All secondary sources return empty until re-enabled:
+  for (const name of ['apify', 'osm', 'yelp', 'foursquare', 'here', 'registry']) {
+    updateSource(name, 'skipped', 0);
   }
 
   let deduped = deduplicateLeads(allLeads);
