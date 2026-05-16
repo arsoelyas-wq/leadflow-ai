@@ -11,6 +11,18 @@ const FSQ_KEY     = process.env.FOURSQUARE_API_KEY;
 const HERE_KEY    = process.env.HERE_API_KEY;
 const CH_KEY      = process.env.UK_COMPANIES_HOUSE_KEY;
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
+const OC_KEY      = process.env.OPENCORPORATES_KEY; // free key: opencorporates.com/api_accounts/new
+
+// OpenCorporates jurisdiction codes (ISO-2 → OC jurisdiction)
+const OC_JURISDICTION: Record<string, string> = {
+  TR: 'tr', DE: 'de', FR: 'fr', GB: 'gb', IT: 'it', ES: 'es', NL: 'nl',
+  BE: 'be', PL: 'pl', PT: 'pt', CZ: 'cz', HU: 'hu', SE: 'se', AT: 'at',
+  CH: 'ch', NO: 'no', DK: 'dk', FI: 'fi', GR: 'gr', RO: 'ro', SK: 'sk',
+  HR: 'hr', SI: 'si', BG: 'bg', LT: 'lt', LV: 'lv', EE: 'ee', IE: 'ie',
+  LU: 'lu', CY: 'cy', MT: 'mt', AU: 'au', NZ: 'nz', SG: 'sg', IN: 'in',
+  JP: 'jp', KR: 'kr', HK: 'hk', ZA: 'za', BR: 'br', AR: 'ar', MX: 'mx',
+  AE: 'ae', US: 'us_de', CA: 'ca_on',
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -240,44 +252,62 @@ async function apifySearch(params: {
   targetCount: number;
 }): Promise<RawLead[]> {
   if (!APIFY_TOKEN) return [];
-  try {
-    const { ApifyClient } = require('apify-client');
-    const client = new ApifyClient({ token: APIFY_TOKEN });
+  const { ApifyClient } = require('apify-client');
+  const client = new ApifyClient({ token: APIFY_TOKEN });
+  const searchTerm = `${params.query} ${params.city}`;
+  const maxPlaces  = Math.min(params.targetCount * 2, 400);
 
-    const run = await client.actor('compass/crawler-google-places').call(
-      {
-        searchStringsArray: [`${params.query} ${params.city}`],
-        maxCrawledPlacesPerSearch: Math.min(params.targetCount * 2, 500),
-        language: params.langCode,
-        exportPlaceUrls: false,
-        additionalInfo: false,
-        reviewsSort: 'newest',
-        maxReviews: 0,
-      },
-      { waitSecs: 180 }
-    );
+  const tryActor = async (actorId: string, input: any): Promise<any[]> => {
+    try {
+      console.log(`[LeadFinder] Apify starting actor ${actorId} — query: "${searchTerm}"`);
+      const runPromise = client.actor(actorId).call(input);
+      const timeout    = new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error('Apify 3min timeout')), 180_000));
+      const run = await Promise.race([runPromise, timeout]);
+      const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: 600 });
+      console.log(`[LeadFinder] Apify ${actorId} returned ${(items || []).length} items`);
+      return items || [];
+    } catch (e: any) {
+      console.error(`[LeadFinder] Apify actor ${actorId} failed:`, e.message?.slice(0, 120));
+      return [];
+    }
+  };
 
-    const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: 600 });
-    return (items || [])
-      .filter((p: any) => p.title)
-      .map((p: any) => ({
-        source: 'apify',
-        place_id: p.placeId || undefined,
-        external_id: p.placeId ? `apify_${p.placeId}` : `apify_${p.url?.slice(-20) || Math.random()}`,
-        company_name: p.title,
-        phone: p.phone || p.phoneUnformatted || null,
-        website: p.website || null,
-        address: p.address || null,
-        lat: p.location?.lat ?? null,
-        lng: p.location?.lng ?? null,
-        rating: p.totalScore ?? null,
-        review_count: p.reviewsCount ?? null,
-        category: p.categoryName || null,
-      } as RawLead));
-  } catch (e: any) {
-    console.error('[LeadFinder] Apify error:', e.message?.slice(0, 100));
-    return [];
+  // Primary: compass/crawler-google-places (most popular, 30M+ runs)
+  let items = await tryActor('compass/crawler-google-places', {
+    searchStringsArray:         [searchTerm],
+    maxCrawledPlacesPerSearch:  maxPlaces,
+    language:                   params.langCode,
+    exportPlaceUrls:            false,
+    additionalInfo:             false,
+    maxReviews:                 0,
+  });
+
+  // Fallback: apify/google-maps-scraper if primary returned nothing
+  if (items.length === 0) {
+    items = await tryActor('apify/google-maps-scraper', {
+      queries:    [searchTerm],
+      maxResults: maxPlaces,
+      language:   params.langCode,
+    });
   }
+
+  return items
+    .filter((p: any) => p.title || p.name)
+    .map((p: any) => ({
+      source:       'apify',
+      place_id:     p.placeId || undefined,
+      external_id:  p.placeId ? `apify_${p.placeId}` : `apify_${p.url?.slice(-20) || Date.now()}`,
+      company_name: p.title || p.name,
+      phone:        p.phone || p.phoneUnformatted || p.phoneNumber || null,
+      website:      p.website || null,
+      address:      p.address || p.fullAddress || null,
+      lat:          p.location?.lat ?? p.lat ?? null,
+      lng:          p.location?.lng ?? p.lng ?? null,
+      rating:       p.totalScore ?? p.rating ?? null,
+      review_count: p.reviewsCount ?? p.reviewCount ?? null,
+      category:     p.categoryName || p.category || null,
+    } as RawLead));
 }
 
 // ── Source 3: OpenStreetMap / Overpass (free, unlimited) ──────────────────────
@@ -480,7 +510,62 @@ async function hereSearch(params: {
   }
 }
 
-// ── Source 6: Free Country Business Registries ────────────────────────────────
+// ── Source 6: OpenCorporates — 130+ country universal registry ────────────────
+
+async function openCorporatesSearch(query: string, country: string, limit: number): Promise<RawLead[]> {
+  const jCode = OC_JURISDICTION[country.toUpperCase()];
+  if (!jCode) {
+    console.log(`[LeadFinder] OpenCorporates: no jurisdiction mapping for ${country}`);
+    return [];
+  }
+
+  const leads: RawLead[] = [];
+  const perPage  = OC_KEY ? 100 : 30;
+  const maxPages = Math.min(Math.ceil((limit * 2) / perPage), 4);
+
+  for (let page = 1; page <= maxPages && leads.length < limit; page++) {
+    try {
+      const sp = new URLSearchParams({
+        q:                 query,
+        jurisdiction_code: jCode,
+        per_page:          String(perPage),
+        page:              String(page),
+        ...(OC_KEY ? { api_token: OC_KEY } : {}),
+      });
+      const resp = await fetch(`https://api.opencorporates.com/v0.4/companies/search?${sp}`, {
+        headers: { 'User-Agent': 'LeadFlow-AI/1.0' },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => '');
+        console.error(`[LeadFinder] OpenCorporates HTTP ${resp.status} for ${country}:`, body.slice(0, 120));
+        break;
+      }
+      const data: any = await resp.json();
+      const companies: any[] = data.results?.companies || [];
+      for (const item of companies) {
+        const co = item.company;
+        if (!co?.name) continue;
+        leads.push({
+          source:       'registry',
+          external_id:  `oc_${jCode}_${co.company_number}`,
+          company_name: co.name,
+          address:      co.registered_address?.in_full || null,
+          category:     co.company_type || null,
+        } as RawLead);
+      }
+      if (companies.length < perPage) break;
+      if (page < maxPages) await sleep(300);
+    } catch (e: any) {
+      console.error('[LeadFinder] OpenCorporates error:', e.message?.slice(0, 80));
+      break;
+    }
+  }
+  console.log(`[LeadFinder] OpenCorporates (${country}/${jCode}): ${leads.length} results`);
+  return leads;
+}
+
+// ── Source 7: Country-specific direct registry APIs ───────────────────────────
 
 async function registrySearch(params: {
   query: string;
@@ -488,117 +573,147 @@ async function registrySearch(params: {
   city: string;
   limit: number;
 }): Promise<RawLead[]> {
-  const cc = params.country.toUpperCase();
+  const cc  = params.country.toUpperCase();
+  const all: RawLead[] = [];
 
-  // Norway — Brønnøysund (completely free, no auth)
-  if (cc === 'NO') {
-    try {
-      const sp = new URLSearchParams({
-        navn: params.query,
-        size: String(Math.min(params.limit, 100)),
-      });
-      const resp = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter?${sp}`, {
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!resp.ok) return [];
-      const data: any = await resp.json();
-      return (data._embedded?.enheter || []).map((co: any) => ({
-        source: 'registry',
-        external_id: `no_${co.organisasjonsnummer}`,
-        company_name: co.navn,
-        address: co.forretningsadresse?.adresse?.join(', ') || null,
-        phone: co.telefon || null,
-        website: co.hjemmeside || null,
-        category: co.naeringskode1?.beskrivelse || null,
-      } as RawLead));
-    } catch { return []; }
-  }
+  // ── 1. OpenCorporates: covers TR, DE, FR, IT, ES, NL, BE, PL, SE, AU, JP, KR, AE + 100 more ──
+  const ocLeads = await openCorporatesSearch(params.query, cc, params.limit);
+  all.push(...ocLeads);
+  if (all.length >= params.limit) return all.slice(0, params.limit);
 
-  // Denmark — CVR API (free, limited)
-  if (cc === 'DK') {
-    try {
-      const resp = await fetch(
-        `https://cvrapi.dk/api?search=${encodeURIComponent(params.query)}&country=dk`,
-        { headers: { 'User-Agent': 'LeadFlow-AI' }, signal: AbortSignal.timeout(10000) }
-      );
-      if (!resp.ok) return [];
-      const data: any = await resp.json();
-      const arr: any[] = Array.isArray(data) ? data : (data.name ? [data] : []);
-      return arr.filter((co: any) => co.name).map((co: any) => ({
-        source: 'registry',
-        external_id: `dk_${co.vat}`,
-        company_name: co.name,
-        address: co.address || null,
-        phone: co.phone || null,
-        category: co.industryDesc || null,
-      } as RawLead));
-    } catch { return []; }
-  }
+  const need = params.limit - all.length;
 
-  // Czech Republic — ARES (completely free, no auth)
-  if (cc === 'CZ') {
-    try {
-      const sp = new URLSearchParams({
-        obchodniJmeno: params.query,
-        pocet: String(Math.min(params.limit, 100)),
-        razeni: 'RELEVANCE',
-      });
-      const resp = await fetch(`https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty?${sp}`, {
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!resp.ok) return [];
-      const data: any = await resp.json();
-      return (data.ekonomickeSubjekty || []).map((co: any) => ({
-        source: 'registry',
-        external_id: `cz_${co.ico}`,
-        company_name: co.obchodniJmeno,
-        address: [co.sidlo?.ulice, co.sidlo?.cisloDomu, co.sidlo?.obec].filter(Boolean).join(', ') || null,
-        category: co.primaryZivnost?.obor || null,
-      } as RawLead));
-    } catch { return []; }
-  }
+  // ── 2. Country-specific high-quality supplementary APIs ──
+  try {
+    let extra: RawLead[] = [];
 
-  // Finland — PRH (free, no auth)
-  if (cc === 'FI') {
-    try {
-      const sp = new URLSearchParams({ name: params.query, maxResults: '100' });
-      const resp = await fetch(`https://avoindata.prh.fi/bis/v1?${sp}`, {
-        signal: AbortSignal.timeout(10000),
-      });
-      if (!resp.ok) return [];
-      const data: any = await resp.json();
-      return (data.results || []).map((co: any) => ({
-        source: 'registry',
-        external_id: `fi_${co.businessId}`,
-        company_name: co.name,
-        address: co.addresses?.[0]?.street || null,
-        phone: co.contactDetails?.find((c: any) => c.type === 'PhoneNumber')?.value || null,
-        website: co.contactDetails?.find((c: any) => c.type === 'Website')?.value || null,
-      } as RawLead));
-    } catch { return []; }
-  }
+    if (cc === 'NO') {
+      // Norway — Brønnøysund Register Centre (free, no auth)
+      const sp = new URLSearchParams({ navn: params.query, size: String(Math.min(need, 100)) });
+      const r = await fetch(`https://data.brreg.no/enhetsregisteret/api/enheter?${sp}`, { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const d: any = await r.json();
+        extra = (d._embedded?.enheter || []).map((co: any) => ({
+          source: 'registry', external_id: `no_${co.organisasjonsnummer}`,
+          company_name: co.navn, address: co.forretningsadresse?.adresse?.join(', ') || null,
+          phone: co.telefon || null, website: co.hjemmeside || null,
+          category: co.naeringskode1?.beskrivelse || null,
+        } as RawLead));
+      }
 
-  // UK — Companies House (free with CH_KEY)
-  if (cc === 'GB' && CH_KEY) {
-    try {
-      const sp = new URLSearchParams({ q: params.query, items_per_page: '100' });
-      const resp = await fetch(`https://api.company-information.service.gov.uk/search/companies?${sp}`, {
+    } else if (cc === 'DK') {
+      // Denmark — CVR API (free)
+      const r = await fetch(`https://cvrapi.dk/api?search=${encodeURIComponent(params.query)}&country=dk`, {
+        headers: { 'User-Agent': 'LeadFlow-AI' }, signal: AbortSignal.timeout(10000),
+      });
+      if (r.ok) {
+        const d: any = await r.json();
+        const arr: any[] = Array.isArray(d) ? d : (d.name ? [d] : []);
+        extra = arr.filter((co: any) => co.name).map((co: any) => ({
+          source: 'registry', external_id: `dk_${co.vat}`,
+          company_name: co.name, address: co.address || null,
+          phone: co.phone || null, category: co.industryDesc || null,
+        } as RawLead));
+      }
+
+    } else if (cc === 'CZ') {
+      // Czech Republic — ARES (free, no auth)
+      const sp = new URLSearchParams({ obchodniJmeno: params.query, pocet: String(Math.min(need, 100)), razeni: 'RELEVANCE' });
+      const r = await fetch(`https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty?${sp}`, { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const d: any = await r.json();
+        extra = (d.ekonomickeSubjekty || []).map((co: any) => ({
+          source: 'registry', external_id: `cz_${co.ico}`,
+          company_name: co.obchodniJmeno,
+          address: [co.sidlo?.ulice, co.sidlo?.cisloDomu, co.sidlo?.obec].filter(Boolean).join(', ') || null,
+        } as RawLead));
+      }
+
+    } else if (cc === 'FI') {
+      // Finland — PRH (free, no auth)
+      const sp = new URLSearchParams({ name: params.query, maxResults: String(Math.min(need, 100)) });
+      const r = await fetch(`https://avoindata.prh.fi/bis/v1?${sp}`, { signal: AbortSignal.timeout(10000) });
+      if (r.ok) {
+        const d: any = await r.json();
+        extra = (d.results || []).map((co: any) => ({
+          source: 'registry', external_id: `fi_${co.businessId}`,
+          company_name: co.name,
+          phone:   co.contactDetails?.find((c: any) => c.type === 'PhoneNumber')?.value || null,
+          website: co.contactDetails?.find((c: any) => c.type === 'Website')?.value || null,
+        } as RawLead));
+      }
+
+    } else if (cc === 'GB' && CH_KEY) {
+      // UK — Companies House (free with key)
+      const sp = new URLSearchParams({ q: params.query, items_per_page: String(Math.min(need, 100)) });
+      const r = await fetch(`https://api.company-information.service.gov.uk/search/companies?${sp}`, {
         headers: { Authorization: `Basic ${Buffer.from(CH_KEY + ':').toString('base64')}` },
         signal: AbortSignal.timeout(10000),
       });
-      if (!resp.ok) return [];
-      const data: any = await resp.json();
-      return (data.items || []).map((co: any) => ({
-        source: 'registry',
-        external_id: `gb_${co.company_number}`,
-        company_name: co.title,
-        address: co.address_snippet || null,
-        category: co.company_type || null,
-      } as RawLead));
-    } catch { return []; }
+      if (r.ok) {
+        const d: any = await r.json();
+        extra = (d.items || []).map((co: any) => ({
+          source: 'registry', external_id: `gb_${co.company_number}`,
+          company_name: co.title, address: co.address_snippet || null, category: co.company_type || null,
+        } as RawLead));
+      }
+
+    } else if (cc === 'AU') {
+      // Australia — ABN Lookup (free, no auth)
+      const r = await fetch(`https://www.abn.business.gov.au/json/AbnSearch.aspx?SearchString=${encodeURIComponent(params.query)}&MaxResults=${Math.min(need, 100)}`, {
+        headers: { 'User-Agent': 'LeadFlow-AI/1.0', Accept: 'application/json' },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (r.ok) {
+        const d: any = await r.json();
+        extra = (d.Names || d.SearchResults || [])
+          .filter((co: any) => co.Name || co.EntityName)
+          .map((co: any) => ({
+            source: 'registry', external_id: `au_${co.Abn}`,
+            company_name: co.Name || co.EntityName,
+            category: co.EntityTypeName || null,
+          } as RawLead));
+      }
+
+    } else if (cc === 'EE') {
+      // Estonia — e-Business Register (free)
+      const r = await fetch(`https://ariregister.rik.ee/api/company/search?q=${encodeURIComponent(params.query)}&language=en`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (r.ok) {
+        const d: any = await r.json();
+        extra = (Array.isArray(d) ? d : d.results || []).slice(0, need)
+          .filter((co: any) => co.name || co.company_name)
+          .map((co: any) => ({
+            source: 'registry', external_id: `ee_${co.registry_code || co.reg_code}`,
+            company_name: co.name || co.company_name, address: co.address || null,
+          } as RawLead));
+      }
+
+    } else if (cc === 'JP') {
+      // Japan — National Tax Agency Corporation API (free, no auth)
+      const r = await fetch(`https://api.houjin-bangou.nta.go.jp/4/name.json?name=${encodeURIComponent(params.query)}&kind=01&close=1&divide=1&type=12&unitType=1`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (r.ok) {
+        const d: any = await r.json();
+        extra = (d.corporations || d || []).slice(0, need)
+          .filter((co: any) => co.name)
+          .map((co: any) => ({
+            source: 'registry', external_id: `jp_${co.corporateNumber}`,
+            company_name: co.name, address: [co.prefectureName, co.cityName, co.streetNumber].filter(Boolean).join(' ') || null,
+          } as RawLead));
+      }
+    }
+
+    all.push(...extra);
+    if (extra.length > 0) console.log(`[LeadFinder] Registry ${cc} supplement: ${extra.length} results`);
+
+  } catch (e: any) {
+    console.error('[LeadFinder] Registry supplement error:', e.message?.slice(0, 80));
   }
 
-  return [];
+  return all.slice(0, params.limit);
 }
 
 // ── Geocoding ─────────────────────────────────────────────────────────────────
