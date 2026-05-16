@@ -5,6 +5,8 @@ const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+const APIFY_TOKEN = process.env.APIFY_TOKEN;
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -244,6 +246,103 @@ function scoreIgLead(p: IgProfile): number {
   return Math.min(s, 100);
 }
 
+// ── Apify-based Instagram search (primary — uses residential proxies) ────────
+// Two phases: 1) hashtag scraping for username discovery, 2) profile enrichment.
+// Apify bypasses Instagram's cloud-IP blocks that break the direct-fetch method.
+
+function buildHashtags(keyword: string, city: string): string[] {
+  const clean = (s: string) =>
+    s.toLowerCase()
+      .replace(/[ğ]/g, 'g').replace(/[ş]/g, 's').replace(/[ç]/g, 'c')
+      .replace(/[ö]/g, 'o').replace(/[ü]/g, 'u').replace(/[ı]/g, 'i').replace(/[İ]/g, 'i')
+      .replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+  const kw = clean(keyword);
+  const ct = clean(city);
+  const extras = keyword.trim().split(/\s+/).map(w => clean(w)).filter(w => w.length >= 3 && w !== kw);
+  return [kw, `${kw}${ct}`, `${ct}${kw}`, ...extras]
+    .filter((h, i, a) => h.length >= 3 && a.indexOf(h) === i)
+    .slice(0, 4);
+}
+
+async function apifyInstagramSearch(keyword: string, city: string, limit: number): Promise<IgProfile[]> {
+  if (!APIFY_TOKEN) return [];
+  const { ApifyClient } = require('apify-client');
+  const client = new ApifyClient({ token: APIFY_TOKEN });
+
+  const hashtags = buildHashtags(keyword, city);
+  const hashtagUrls = hashtags.map(h => `https://www.instagram.com/explore/tags/${encodeURIComponent(h)}/`);
+  console.log(`[Instagram/Apify] Hashtags: ${hashtags.join(', ')}`);
+
+  // ── Phase 1: Discover usernames via hashtag posts ─────────────────────────
+  let usernames: string[] = [];
+  try {
+    const run1 = await Promise.race([
+      client.actor('apify/instagram-scraper').call({
+        directUrls:   hashtagUrls,
+        resultsType:  'posts',
+        resultsLimit: limit * 5,
+        addParentData: false,
+      }),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Apify hashtag timeout')), 100_000)),
+    ]);
+    const { items: posts } = await client.dataset(run1.defaultDatasetId).listItems({ limit: 600 });
+    usernames = [
+      ...new Set(posts.map((p: any) => p.ownerUsername || p.username).filter(Boolean)),
+    ].slice(0, limit * 3) as string[];
+    console.log(`[Instagram/Apify] Phase 1: ${posts.length} posts → ${usernames.length} unique usernames`);
+  } catch (e: any) {
+    console.error('[Instagram/Apify] Hashtag discovery failed:', e.message?.slice(0, 80));
+    return [];
+  }
+
+  if (!usernames.length) return [];
+
+  // ── Phase 2: Enrich profiles (get bio, email, phone, website) ────────────
+  const profileUrls = usernames.slice(0, limit * 2).map(u => `https://www.instagram.com/${u}/`);
+  try {
+    const run2 = await Promise.race([
+      client.actor('apify/instagram-scraper').call({
+        directUrls:   profileUrls,
+        resultsType:  'posts',
+        resultsLimit: 3,      // 3 posts per profile is enough to capture owner data
+        addParentData: true,
+      }),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Apify profile timeout')), 120_000)),
+    ]);
+    const { items: enriched } = await client.dataset(run2.defaultDatasetId).listItems({ limit: 2000 });
+
+    const profileMap = new Map<string, IgProfile>();
+    for (const item of enriched) {
+      const u: string = item.ownerUsername || item.username;
+      if (!u || profileMap.has(u)) continue;
+
+      // Bio contact extraction as fallback
+      const rawBio = item.ownerBiography || item.biography || item.caption || '';
+      const bioContacts = extractFromBio(rawBio);
+
+      profileMap.set(u, {
+        username:     u,
+        display_name: item.ownerFullName || item.fullName || u,
+        bio:          rawBio.slice(0, 300),
+        followers:    item.ownerFollowersCount ?? item.followersCount ?? null,
+        following:    item.followsCount ?? null,
+        post_count:   item.ownerPostsCount ?? item.postsCount ?? null,
+        email:        item.ownerBusinessEmail   || item.businessEmail   || bioContacts.email   || null,
+        phone:        item.ownerBusinessPhoneNumber || item.businessPhoneNumber || bioContacts.phone || null,
+        website:      item.ownerExternalUrl     || item.externalUrl     || bioContacts.website || null,
+        is_business:  item.ownerIsBusinessAccount ?? item.isBusinessAccount ?? false,
+        category:     item.ownerBusinessCategoryName || item.businessCategoryName || null,
+        instagram_url: `https://instagram.com/${u}`,
+      });
+    }
+    console.log(`[Instagram/Apify] Phase 2: enriched ${profileMap.size} profiles`);
+    return Array.from(profileMap.values());
+  } catch (e: any) {
+    console.error('[Instagram/Apify] Profile enrichment failed:', e.message?.slice(0, 80));
+    return [];
+  }
+}
+
 // ── Main search function (used by lead-finder.ts) ─────────────────────────────
 
 async function instagramSearch(params: {
@@ -259,13 +358,24 @@ async function instagramSearch(params: {
   const { query, city, limit } = params;
   console.log(`[Instagram] Searching "${query}" in "${city}", limit: ${limit}`);
 
-  const usernames = await discoverUsernames(query, city, limit);
-  console.log(`[Instagram] Discovered ${usernames.length} unique usernames`);
+  let profiles: IgProfile[] = [];
 
-  if (usernames.length === 0) return [];
+  // Primary: Apify (reliable from cloud servers — uses residential proxies)
+  if (APIFY_TOKEN) {
+    profiles = await apifyInstagramSearch(query, city, limit);
+  }
 
-  const profiles = await enrichBatch(usernames.slice(0, limit * 2));
-  console.log(`[Instagram] Enriched ${profiles.length} profiles`);
+  // Fallback: direct Google search + Instagram fetch (unreliable from cloud IPs)
+  if (!profiles.length && !APIFY_TOKEN) {
+    console.log('[Instagram] No Apify token — trying direct method (may fail from cloud)');
+    const usernames = await discoverUsernames(query, city, limit);
+    console.log(`[Instagram] Discovered ${usernames.length} unique usernames`);
+    if (usernames.length > 0) {
+      profiles = await enrichBatch(usernames.slice(0, limit * 2));
+    }
+  }
+
+  console.log(`[Instagram] Final: ${profiles.length} profiles`);
 
   return profiles
     .map(p => ({
@@ -294,6 +404,12 @@ router.post('/find', async (req: any, res: any) => {
     const { keyword, city, limit = 30 } = req.body;
     if (!keyword || !city) return res.status(400).json({ error: 'keyword ve city zorunlu' });
 
+    if (!APIFY_TOKEN) {
+      return res.status(503).json({
+        error: 'Instagram arama için APIFY_TOKEN gerekli. Railway → Variables → APIFY_TOKEN ekleyin.',
+        apify_required: true,
+      });
+    }
     const cap = Math.max(5, Math.min(Number(limit), 200));
     const leads = await instagramSearch({ query: keyword, city, limit: cap });
 
