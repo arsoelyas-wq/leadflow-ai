@@ -273,74 +273,71 @@ async function apifyInstagramSearch(keyword: string, city: string, limit: number
   const hashtagUrls = hashtags.map(h => `https://www.instagram.com/explore/tags/${encodeURIComponent(h)}/`);
   console.log(`[Instagram/Apify] Hashtags: ${hashtags.join(', ')}`);
 
-  // ── Phase 1: Discover usernames via hashtag posts ─────────────────────────
-  let usernames: string[] = [];
+  // Single-phase: hashtag post scraping.
+  // Profile API (i.instagram.com) is blocked from cloud IPs even with proxies on FREE plan,
+  // so we skip Phase 2 and extract all available data directly from post items.
+  // Posts carry: ownerUsername, ownerFullName, ownerFollowersCount, caption (contact info via regex).
+  let items: any[] = [];
   try {
-    const run1 = await Promise.race([
+    const run = await Promise.race([
       client.actor('apify/instagram-scraper').call({
         directUrls:   hashtagUrls,
         resultsType:  'posts',
-        resultsLimit: limit * 5,
+        resultsLimit: limit * 6,
         addParentData: false,
       }),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Apify hashtag timeout')), 100_000)),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Apify timeout')), 100_000)),
     ]);
-    const { items: posts } = await client.dataset(run1.defaultDatasetId).listItems({ limit: 600 });
-    usernames = [
-      ...new Set(posts.map((p: any) => p.ownerUsername || p.username).filter(Boolean)),
-    ].slice(0, limit * 3) as string[];
-    console.log(`[Instagram/Apify] Phase 1: ${posts.length} posts → ${usernames.length} unique usernames`);
+    const result = await client.dataset(run.defaultDatasetId).listItems({ limit: 800 });
+    items = result.items || [];
+    console.log(`[Instagram/Apify] ${items.length} posts collected → building profile map`);
   } catch (e: any) {
-    console.error('[Instagram/Apify] Hashtag discovery failed:', e.message?.slice(0, 80));
+    console.error('[Instagram/Apify] Hashtag scraping failed:', e.message?.slice(0, 80));
     return [];
   }
 
-  if (!usernames.length) return [];
+  if (!items.length) return [];
 
-  // ── Phase 2: Enrich profiles (get bio, email, phone, website) ────────────
-  const profileUrls = usernames.slice(0, limit * 2).map(u => `https://www.instagram.com/${u}/`);
-  try {
-    const run2 = await Promise.race([
-      client.actor('apify/instagram-scraper').call({
-        directUrls:   profileUrls,
-        resultsType:  'posts',
-        resultsLimit: 3,      // 3 posts per profile is enough to capture owner data
-        addParentData: true,
-      }),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Apify profile timeout')), 120_000)),
-    ]);
-    const { items: enriched } = await client.dataset(run2.defaultDatasetId).listItems({ limit: 2000 });
+  // Build one profile entry per username.
+  // For the same user appearing in multiple posts: merge the richest contact data found.
+  const profileMap = new Map<string, IgProfile>();
 
-    const profileMap = new Map<string, IgProfile>();
-    for (const item of enriched) {
-      const u: string = item.ownerUsername || item.username;
-      if (!u || profileMap.has(u)) continue;
+  for (const item of items) {
+    const u: string = item.ownerUsername || item.username;
+    if (!u) continue;
 
-      // Bio contact extraction as fallback
-      const rawBio = item.ownerBiography || item.biography || item.caption || '';
-      const bioContacts = extractFromBio(rawBio);
+    // Extract contacts from post caption (Turkish businesses often include phone/email in captions)
+    const caption    = item.caption || '';
+    const contacts   = extractFromBio(caption);
 
+    const existing = profileMap.get(u);
+    if (existing) {
+      // Merge: keep the richest data found across all posts from this user
+      existing.phone    = existing.phone    || contacts.phone;
+      existing.email    = existing.email    || contacts.email;
+      existing.website  = existing.website  || contacts.website;
+      existing.followers = existing.followers ?? (item.ownerFollowersCount ?? null);
+      if (!existing.bio && caption) existing.bio = caption.slice(0, 300);
+    } else {
       profileMap.set(u, {
-        username:     u,
-        display_name: item.ownerFullName || item.fullName || u,
-        bio:          rawBio.slice(0, 300),
-        followers:    item.ownerFollowersCount ?? item.followersCount ?? null,
-        following:    item.followsCount ?? null,
-        post_count:   item.ownerPostsCount ?? item.postsCount ?? null,
-        email:        item.ownerBusinessEmail   || item.businessEmail   || bioContacts.email   || null,
-        phone:        item.ownerBusinessPhoneNumber || item.businessPhoneNumber || bioContacts.phone || null,
-        website:      item.ownerExternalUrl     || item.externalUrl     || bioContacts.website || null,
-        is_business:  item.ownerIsBusinessAccount ?? item.isBusinessAccount ?? false,
-        category:     item.ownerBusinessCategoryName || item.businessCategoryName || null,
+        username:      u,
+        display_name:  item.ownerFullName || item.fullName || u,
+        bio:           caption.slice(0, 300),
+        followers:     item.ownerFollowersCount ?? item.followersCount ?? null,
+        following:     null,
+        post_count:    null,
+        email:         item.ownerBusinessEmail || item.businessEmail || contacts.email || null,
+        phone:         item.ownerBusinessPhoneNumber || item.businessPhoneNumber || contacts.phone || null,
+        website:       item.ownerExternalUrl  || item.externalUrl   || contacts.website || null,
+        is_business:   item.ownerIsBusinessAccount ?? item.isBusinessAccount ?? false,
+        category:      item.ownerBusinessCategoryName || item.businessCategoryName || null,
         instagram_url: `https://instagram.com/${u}`,
       });
     }
-    console.log(`[Instagram/Apify] Phase 2: enriched ${profileMap.size} profiles`);
-    return Array.from(profileMap.values());
-  } catch (e: any) {
-    console.error('[Instagram/Apify] Profile enrichment failed:', e.message?.slice(0, 80));
-    return [];
   }
+
+  console.log(`[Instagram/Apify] ${profileMap.size} unique profiles extracted`);
+  return Array.from(profileMap.values()).slice(0, limit);
 }
 
 // ── Main search function (used by lead-finder.ts) ─────────────────────────────
