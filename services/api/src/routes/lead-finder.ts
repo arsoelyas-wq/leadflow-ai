@@ -1006,55 +1006,50 @@ async function runFinder(params: FinderParams): Promise<{
   const sourceBreakdown: Record<string, number> = { google: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
 
-  // ── Phase 1: Google multi-term grid search (primary high-yield source) ────────
-  updateJob({ phase: 'Arama terimleri genişletiliyor...' });
-  const searchTerms = await expandSearchTerms(query, langCode, targetCount);
-  const searchAreas = getSearchAreas(city, targetCount);
-
+  // ── Phase 1: Google grid search (primary, single query for speed) ─────────────
   updateJob({ phase: 'Google Maps taranıyor...' });
   updateSource('google', 'running', 0);
 
-  const googleSeenIds = new Set<string>();
-  const googleCap = targetCount * 5; // stop when we have 5× buffer from Google alone
-  let googleTotal = 0;
+  const googleLeads = await googleGridSearch({
+    query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode,
+    onCount: (n) => updateSource('google', 'running', n),
+  });
+  allLeads.push(...googleLeads);
+  sourceBreakdown.google = googleLeads.length;
+  updateSource('google', 'done', googleLeads.length);
+  updateJob({ found: deduplicateLeads(allLeads).length });
+  console.log(`[LeadFinder] Google: ${googleLeads.length} raw results`);
 
-  outerGoogle:
-  for (const area of searchAreas) {
-    const areaCoords = area.city === city
-      ? coords
-      : await geocodeCity(area.city, countryName).catch(() => coords);
-
-    for (const term of searchTerms) {
-      if (googleTotal >= googleCap) break outerGoogle;
-
-      const termLeads = await googleGridSearch({
-        query: term,
-        lat: areaCoords.lat, lng: areaCoords.lng,
-        radiusKm: area.radiusKm,
-        targetCount: Math.max(30, Math.ceil(targetCount / searchTerms.length)),
-        langCode,
-        onCount: (n) => updateSource('google', 'running', googleTotal + n),
-      });
-
-      for (const lead of termLeads) {
-        const key = lead.place_id || lead.external_id;
-        if (key && googleSeenIds.has(key)) continue;
-        if (key) googleSeenIds.add(key);
-        allLeads.push(lead);
-        googleTotal++;
-      }
-      updateJob({ found: deduplicateLeads(allLeads).length });
-    }
-  }
-
-  sourceBreakdown.google = googleTotal;
-  updateSource('google', 'done', googleTotal);
-  console.log(`[LeadFinder] Google total (${searchTerms.length} terms, ${searchAreas.length} areas): ${googleTotal}`);
-
-  // ── Phase 2: All other sources in parallel ────────────────────────────────────
+  // ── Phase 2: All other sources + optional query expansion — all in parallel ────
+  // Query expansion: generate related terms and run lightweight single-point searches.
+  // Only fires when we don't already have enough from Google.
   updateJob({ phase: 'Ek kaynaklar paralel taranıyor...' });
 
-  const [apifyR, osmR, yelpR, fsqR, hereR, regR] = await Promise.allSettled([
+  const needsExpansion = targetCount >= 150 && googleLeads.length < targetCount * 1.5;
+
+  const expandedGooglePromise: Promise<RawLead[]> = needsExpansion
+    ? expandSearchTerms(query, langCode, targetCount).then(async (terms) => {
+        const extra: RawLead[] = [];
+        const seenIds = new Set(googleLeads.map(l => l.place_id).filter(Boolean) as string[]);
+        // Run each expansion term as a small single-area search (2×2 grid, fast)
+        await Promise.allSettled(terms.slice(1, 7).map(async (term) => {
+          const leads = await googleGridSearch({
+            query: term, lat: coords.lat, lng: coords.lng,
+            radiusKm, targetCount: 50, langCode,
+          });
+          for (const l of leads) {
+            if (l.place_id && seenIds.has(l.place_id)) continue;
+            if (l.place_id) seenIds.add(l.place_id);
+            extra.push(l);
+          }
+        }));
+        console.log(`[LeadFinder] Google expansion: +${extra.length} extra leads`);
+        return extra;
+      })
+    : Promise.resolve([]);
+
+  const [expandedR, apifyR, osmR, yelpR, fsqR, hereR, regR] = await Promise.allSettled([
+    expandedGooglePromise,
     APIFY_TOKEN ? apifySearch({ query, city, countryName, langCode, targetCount }) : Promise.resolve([]),
     osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }),
     yelpSearch({ query, city, countryName, targetCount }),
@@ -1063,7 +1058,8 @@ async function runFinder(params: FinderParams): Promise<{
     registrySearch({ query, country, city, limit: targetCount }),
   ]);
 
-  const otherResults: Array<{ name: string; r: PromiseSettledResult<RawLead[]> }> = [
+  const phaseResults: Array<{ name: string; r: PromiseSettledResult<RawLead[]> }> = [
+    { name: 'google',     r: expandedR },  // expansion hits also tagged google
     { name: 'apify',      r: apifyR },
     { name: 'osm',        r: osmR },
     { name: 'yelp',       r: yelpR },
@@ -1072,14 +1068,14 @@ async function runFinder(params: FinderParams): Promise<{
     { name: 'registry',   r: regR },
   ];
 
-  for (const { name, r } of otherResults) {
+  for (const { name, r } of phaseResults) {
     if (r.status === 'fulfilled') {
-      sourceBreakdown[name] = r.value.length;
+      sourceBreakdown[name] = (sourceBreakdown[name] || 0) + r.value.length;
       allLeads.push(...r.value);
-      updateSource(name, 'done', r.value.length);
-      console.log(`[LeadFinder] ${name}: ${r.value.length} results`);
+      if (name !== 'google') updateSource(name, 'done', r.value.length);
+      console.log(`[LeadFinder] ${name} (phase2): ${r.value.length} results`);
     } else {
-      updateSource(name, 'error', 0);
+      if (name !== 'google') updateSource(name, 'error', 0);
       console.error(`[LeadFinder] ${name} error:`, r.reason?.message?.slice(0, 80));
     }
   }
