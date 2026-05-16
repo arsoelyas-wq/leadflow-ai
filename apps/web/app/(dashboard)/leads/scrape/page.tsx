@@ -55,11 +55,17 @@ export default function LeadFinderPage() {
   const [enrichEmail,       setEnrichEmail]       = useState(false)
   const [minScore,          setMinScore]          = useState(0)
 
+  // List naming
+  const [listName, setListName] = useState('')
+
   // Credits & status
-  const [credits,    setCredits]    = useState<{ total: number; used: number } | null>(null)
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState('')
-  const [jobStatus,  setJobStatus]  = useState<any>(null)
+  const [credits,       setCredits]       = useState<{ total: number; used: number } | null>(null)
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState('')
+  const [jobStatus,     setJobStatus]     = useState<any>(null)
+  const [currentJobId,  setCurrentJobId]  = useState<string | null>(null)
+  const [previewLeads,  setPreviewLeads]  = useState<any[]>([])
+  const [loadingPreview,setLoadingPreview]= useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -106,7 +112,25 @@ export default function LeadFinderPage() {
                          : selectedCities.length === 1 ? selectedCities[0]
                          : `${selectedCities[0]} +${selectedCities.length - 1} şehir daha`
 
+  async function fetchPreview(jid: string | null, ids?: string[]) {
+    setLoadingPreview(true)
+    try {
+      if (jid) {
+        const r = await fetch(`${API}/api/lead-finder/job/${jid}/leads`, { headers: authH() })
+        const d = await r.json()
+        setPreviewLeads(d.leads || [])
+      } else if (ids?.length) {
+        const params = new URLSearchParams({ ids: ids.join(','), limit: '20' })
+        const r = await fetch(`${API}/api/leads?${params}`, { headers: authH() })
+        const d = await r.json()
+        setPreviewLeads(d.leads || [])
+      }
+    } catch {}
+    setLoadingPreview(false)
+  }
+
   function startPolling(id: string) {
+    setCurrentJobId(id)
     pollRef.current = setInterval(async () => {
       try {
         const r = await fetch(`${API}/api/lead-finder/job/${id}`, { headers: authH() })
@@ -115,6 +139,7 @@ export default function LeadFinderPage() {
         if (d.status === 'done' || d.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current)
           fetchCredits()
+          if (d.status === 'done') fetchPreview(id)
         }
       } catch {}
     }, 2000)
@@ -151,6 +176,7 @@ export default function LeadFinderPage() {
           requireWebsite,
           enrichEmail,
           sector: keyword,
+          listName: listName.trim() || undefined,
         }),
       })
       const d = await r.json()
@@ -167,7 +193,9 @@ export default function LeadFinderPage() {
           found: d.saved, saved: d.saved, skipped: d.skipped || 0,
           total: effectiveCount, query: keyword, city: cityDisplay,
           phase: `${d.saved} lead kaydedildi`,
+          listName: listName.trim() || undefined,
         })
+        if (d.savedLeadIds?.length) fetchPreview(null, d.savedLeadIds)
       }
     } catch (err: any) {
       setError(err.message || 'Bağlantı hatası')
@@ -293,10 +321,58 @@ export default function LeadFinderPage() {
                     Leadleri Görüntüle →
                   </button>
                 )}
-                <button onClick={() => { setJobStatus(null); if (pollRef.current) clearInterval(pollRef.current) }}
+                <button onClick={() => { setJobStatus(null); setPreviewLeads([]); setCurrentJobId(null); if (pollRef.current) clearInterval(pollRef.current) }}
                   className={`${totalSaved > 0 ? '' : 'flex-1 '} py-3 px-6 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition text-sm`}>
                   Yeni Arama
                 </button>
+              </div>
+            )}
+
+            {/* Lead preview table */}
+            {isDone && (loadingPreview || previewLeads.length > 0) && (
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-slate-300">
+                    {loadingPreview ? 'Önizleme yükleniyor...' : `İlk ${previewLeads.length} lead`}
+                  </p>
+                  {jobStatus?.listName && (
+                    <span className="text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                      📁 {jobStatus.listName}
+                    </span>
+                  )}
+                </div>
+                {!loadingPreview && previewLeads.length > 0 && (
+                  <div className="overflow-x-auto rounded-xl border border-slate-700">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-700 bg-slate-900/50">
+                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Firma</th>
+                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Telefon</th>
+                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Web</th>
+                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Şehir</th>
+                          <th className="px-3 py-2 text-right text-slate-400 font-medium">Puan</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewLeads.map((lead, i) => (
+                          <tr key={lead.id} className={`border-b border-slate-700/50 ${i % 2 === 0 ? '' : 'bg-slate-900/20'}`}>
+                            <td className="px-3 py-2 text-white font-medium max-w-[160px] truncate">{lead.company_name}</td>
+                            <td className="px-3 py-2 text-slate-300">{lead.phone || <span className="text-slate-600">—</span>}</td>
+                            <td className="px-3 py-2 text-slate-400 truncate max-w-[100px]">
+                              {lead.website ? <span className="text-blue-400">{lead.website.replace(/^https?:\/\//, '').split('/')[0]}</span> : <span className="text-slate-600">—</span>}
+                            </td>
+                            <td className="px-3 py-2 text-slate-400">{lead.city || '—'}</td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={`font-semibold ${lead.score >= 50 ? 'text-emerald-400' : lead.score >= 30 ? 'text-blue-400' : 'text-slate-500'}`}>
+                                {lead.score}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -603,6 +679,23 @@ export default function LeadFinderPage() {
 
           </div>
         )}
+
+        {/* Liste Adı */}
+        <div className="space-y-2">
+          <label className="text-slate-300 text-sm font-medium flex items-center gap-2">
+            📁 Liste Adı
+            <span className="text-slate-500 text-xs font-normal">(isteğe bağlı)</span>
+          </label>
+          <input
+            value={listName}
+            onChange={e => setListName(e.target.value)}
+            placeholder="Örn: İstanbul Restauranlar Mayıs 2026"
+            className="w-full bg-slate-900/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500 transition"
+          />
+          {listName.trim() && (
+            <p className="text-xs text-slate-500">Bu leadler "📁 {listName.trim()}" listesine kaydedilecek ve CRM'de filtrelenebilecek.</p>
+          )}
+        </div>
 
         {/* Error */}
         {error && (

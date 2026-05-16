@@ -62,6 +62,9 @@ interface FinderJob {
   phase: string;
   error?: string;
   startedAt: number;
+  leadIds?: string[];
+  listName?: string;
+  userId?: string;
 }
 
 // ── Job store ─────────────────────────────────────────────────────────────────
@@ -75,7 +78,7 @@ setInterval(() => {
   }
 }, 30 * 60 * 1000);
 
-function createJob(query: string, cities: string[], total: number): FinderJob {
+function createJob(query: string, cities: string[], total: number, userId: string, listName?: string): FinderJob {
   const city = cities.join(', ');
   return {
     status: 'running',
@@ -90,6 +93,7 @@ function createJob(query: string, cities: string[], total: number): FinderJob {
     },
     found: 0, saved: 0, skipped: 0, total,
     query, city, phase: 'Başlatılıyor...', startedAt: Date.now(),
+    leadIds: [], userId, listName,
   };
 }
 
@@ -973,6 +977,7 @@ interface FinderParams {
   cities: string[];
   country: string;
   sector?: string;
+  listName?: string;
   targetCount: number;
   radiusKm: number;
   requirePhone: boolean;
@@ -986,8 +991,9 @@ async function runFinder(params: FinderParams): Promise<{
   saved: number;
   skipped: number;
   sourceBreakdown: Record<string, number>;
+  savedLeadIds: string[];
 }> {
-  const { query, cities, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId } = params;
+  const { query, cities, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId, listName } = params;
 
   const updateJob = (patch: Partial<FinderJob>) => {
     if (!jobId) return;
@@ -1091,28 +1097,38 @@ async function runFinder(params: FinderParams): Promise<{
   // Batch insert to Supabase
   updateJob({ phase: 'Veritabanına kaydediliyor...' });
   let saved = 0;
-  const toInsert = unique.map(l => ({
-    user_id: userId,
-    company_name: l.company_name,
-    phone:   l.phone   || null,
-    email:   l.email   || null,
-    website: l.website || null,
-    city:    l.searchCity || cities[0],
-    sector:  params.sector || query,
-    source:  l.sources && l.sources.length > 1 ? l.sources.join('+') : (l.source || 'lead_finder'),
-    status:  'new',
-    score:   l.score || 0,
-    notes:   [l.address, l.category].filter(Boolean).join(' | ') || null,
-  }));
+  const insertedIds: string[] = [];
+  const toInsert = unique.map(l => {
+    const notesBase = [l.address, l.category].filter(Boolean).join(' | ') || null;
+    const notes = listName
+      ? `[📁 ${listName}]${notesBase ? ` | ${notesBase}` : ''}`
+      : notesBase;
+    return {
+      user_id: userId,
+      company_name: l.company_name,
+      phone:   l.phone   || null,
+      email:   l.email   || null,
+      website: l.website || null,
+      city:    l.searchCity || cities[0],
+      sector:  params.sector || query,
+      source:  l.sources && l.sources.length > 1 ? l.sources.join('+') : (l.source || 'lead_finder'),
+      status:  'new',
+      score:   l.score || 0,
+      notes,
+    };
+  });
 
   for (let i = 0; i < toInsert.length; i += 50) {
     const { data, error } = await supabase.from('leads').insert(toInsert.slice(i, i + 50)).select('id');
     if (error) console.error('[LeadFinder] Insert error:', error.message);
-    if (data) saved += data.length;
-    updateJob({ saved });
+    if (data) {
+      saved += data.length;
+      insertedIds.push(...data.map((r: any) => r.id));
+    }
+    updateJob({ saved, leadIds: insertedIds });
   }
 
-  return { saved, skipped, sourceBreakdown };
+  return { saved, skipped, sourceBreakdown, savedLeadIds: insertedIds };
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -1121,7 +1137,7 @@ async function runFinder(params: FinderParams): Promise<{
 router.post('/search', async (req: any, res: any) => {
   try {
     const {
-      query, city, cities: citiesRaw, country = 'TR', sector,
+      query, city, cities: citiesRaw, country = 'TR', sector, listName,
       targetCount = 50, radiusKm = 20,
       requirePhone = false, requireWebsite = false, enrichEmail = false,
     } = req.body;
@@ -1151,7 +1167,7 @@ router.post('/search', async (req: any, res: any) => {
 
     if (isAsync) {
       const jobId = `lf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const job   = createJob(query, cities, limit);
+      const job   = createJob(query, cities, limit, userId, listName);
       jobs.set(jobId, job);
 
       // Reserve credits
@@ -1160,13 +1176,14 @@ router.post('/search', async (req: any, res: any) => {
         .eq('id', userId);
 
       // Fire and forget
-      runFinder({ query, cities, country, sector, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId })
-        .then(({ saved, skipped, sourceBreakdown }) => {
+      runFinder({ query, cities, country, sector, listName, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId })
+        .then(({ saved, skipped, sourceBreakdown, savedLeadIds }) => {
           const j = jobs.get(jobId);
           if (j) {
             j.status  = 'done';
             j.saved   = saved;
             j.skipped = skipped;
+            j.leadIds = savedLeadIds;
             j.phase   = `${saved} lead kaydedildi${skipped > 0 ? `, ${skipped} tekrar atlandı` : ''}`;
           }
           const diff = limit - saved;
@@ -1191,8 +1208,8 @@ router.post('/search', async (req: any, res: any) => {
     }
 
     // Synchronous path (≤50 leads, no email enrichment)
-    const { saved, skipped, sourceBreakdown } = await runFinder({
-      query, cities, country, sector, targetCount: limit, radiusKm,
+    const { saved, skipped, sourceBreakdown, savedLeadIds } = await runFinder({
+      query, cities, country, sector, listName, targetCount: limit, radiusKm,
       requirePhone, requireWebsite, enrichEmail: false, userId,
     });
 
@@ -1201,7 +1218,7 @@ router.post('/search', async (req: any, res: any) => {
       .eq('id', userId);
 
     res.json({
-      ok: true, saved, skipped, sourceBreakdown,
+      ok: true, saved, skipped, sourceBreakdown, savedLeadIds,
       message: `${saved} lead başarıyla eklendi!`,
     });
   } catch (e: any) {
@@ -1215,6 +1232,22 @@ router.get('/job/:jobId', (req: any, res: any) => {
   const job = jobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: 'Job bulunamadı' });
   res.json(job);
+});
+
+// GET /api/lead-finder/job/:jobId/leads — fetch preview of saved leads for a completed job
+router.get('/job/:jobId/leads', async (req: any, res: any) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job bulunamadı' });
+  if (!job.leadIds?.length) return res.json({ leads: [] });
+
+  const { data, error } = await supabase
+    .from('leads')
+    .select('id, company_name, phone, email, website, city, score, sector, status')
+    .in('id', job.leadIds.slice(0, 50))
+    .order('score', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ leads: data || [] });
 });
 
 // GET /api/lead-finder/test-apify — sanity-check Apify with a small query

@@ -12,7 +12,7 @@ const supabase = createClient(
 // GET /api/leads — Liste (filtre + sayfalama)
 router.get('/', authMiddleware, async (req: any, res: any) => {
   try {
-    const { status, source, city, search, sector, page = 1, limit = 20 } = req.query;
+    const { status, source, city, search, sector, ids, list, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
 
     let query = supabase
@@ -27,6 +27,11 @@ router.get('/', authMiddleware, async (req: any, res: any) => {
     if (city)   query = query.ilike('city', `%${city}%`);
     if (sector) query = query.ilike('sector', `%${sector}%`);
     if (search) query = query.ilike('company_name', `%${search}%`);
+    if (ids) {
+      const idList = String(ids).split(',').filter(Boolean);
+      if (idList.length > 0) query = query.in('id', idList);
+    }
+    if (list) query = query.ilike('notes', `[📁 ${list}]%`);
 
     const { data, error, count } = await query;
     if (error) throw error;
@@ -112,6 +117,29 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buf);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/leads/lists — Distinct named list names parsed from notes field
+router.get('/lists', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('notes')
+      .eq('user_id', req.userId)
+      .ilike('notes', '[📁%')
+      .limit(2000);
+    if (error) throw error;
+
+    const listSet = new Set<string>();
+    const re = /^\[📁 (.+?)\]/;
+    for (const row of data || []) {
+      const m = (row.notes || '').match(re);
+      if (m) listSet.add(m[1]);
+    }
+    res.json({ lists: [...listSet].sort() });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

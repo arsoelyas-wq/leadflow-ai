@@ -49,6 +49,8 @@ export default function LeadsPage() {
   const [dmResults, setDmResults] = useState<Record<string, any>>({})
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [list, setList] = useState('')
+  const [lists, setLists] = useState<string[]>([])
   
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
@@ -62,6 +64,7 @@ export default function LeadsPage() {
       if (search) params.set('search', search)
       if (status) params.set('status', status)
       if (sector) params.set('sector', sector)
+      if (list)   params.set('list', list)
       const data = await api.get(`/api/leads?${params}`)
       setLeads(data.leads)
       setTotal(data.total)
@@ -79,8 +82,15 @@ export default function LeadsPage() {
     } catch {}
   }
 
-  useEffect(() => { loadSectors() }, [])
-  useEffect(() => { load() }, [page, status, sector])
+  const loadLists = async () => {
+    try {
+      const data = await api.get('/api/leads/lists')
+      setLists(data.lists || [])
+    } catch {}
+  }
+
+  useEffect(() => { loadSectors(); loadLists() }, [])
+  useEffect(() => { load() }, [page, status, sector, list])
   useEffect(() => {
     const t = setTimeout(load, 400)
     return () => clearTimeout(t)
@@ -239,6 +249,32 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
+
+      {/* Saved lists filter */}
+      {lists.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-slate-400 text-sm">📁 Listeler:</span>
+          <button
+            onClick={() => { setList(''); setPage(1) }}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition border ${
+              !list ? 'bg-blue-600/20 text-blue-300 border-blue-500/40' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
+            }`}
+          >
+            Tümü
+          </button>
+          {lists.map(l => (
+            <button
+              key={l}
+              onClick={() => { setList(list === l ? '' : l); setPage(1) }}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition border flex items-center gap-1 ${
+                list === l ? 'bg-blue-600/20 text-blue-300 border-blue-500/40' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
+              }`}
+            >
+              📁 {l}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Bulk actions */}
       {selected.length > 0 && (
