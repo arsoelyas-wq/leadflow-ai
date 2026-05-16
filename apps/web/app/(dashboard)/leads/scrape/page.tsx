@@ -12,13 +12,24 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.u
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
+function getTimeEstimate(count: number): string {
+  if (count <= 20)   return '~20 sn'
+  if (count <= 50)   return '~40 sn'
+  if (count <= 100)  return '~1.5 dk'
+  if (count <= 200)  return '~3 dk'
+  if (count <= 300)  return '~5 dk'
+  if (count <= 500)  return '~7 dk'
+  if (count <= 750)  return '~11 dk'
+  return '~15 dk'
+}
+
 const LEAD_COUNTS = [
-  { value: 20,   label: '20',   badge: null,      time: '~20 sn', color: 'border-slate-600 hover:border-slate-500' },
-  { value: 50,   label: '50',   badge: null,      time: '~40 sn', color: 'border-slate-600 hover:border-slate-500' },
-  { value: 100,  label: '100',  badge: 'Popüler', time: '~1.5 dk', color: 'border-blue-500/50 hover:border-blue-400' },
-  { value: 200,  label: '200',  badge: null,      time: '~3 dk',  color: 'border-slate-600 hover:border-slate-500' },
-  { value: 500,  label: '500',  badge: 'Pro',     time: '~7 dk',  color: 'border-purple-500/50 hover:border-purple-400' },
-  { value: 1000, label: '1000', badge: 'Max',     time: '~15 dk', color: 'border-amber-500/50 hover:border-amber-400' },
+  { value: 20,   label: '20',   badge: null,      color: 'border-slate-600 hover:border-slate-500' },
+  { value: 50,   label: '50',   badge: null,      color: 'border-slate-600 hover:border-slate-500' },
+  { value: 100,  label: '100',  badge: 'Popüler', color: 'border-blue-500/50 hover:border-blue-400' },
+  { value: 200,  label: '200',  badge: null,      color: 'border-slate-600 hover:border-slate-500' },
+  { value: 500,  label: '500',  badge: 'Pro',     color: 'border-purple-500/50 hover:border-purple-400' },
+  { value: 1000, label: '1000', badge: 'Max',     color: 'border-amber-500/50 hover:border-amber-400' },
 ]
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -38,10 +49,11 @@ export default function LeadFinderPage() {
   const [radiusKm, setRadiusKm]       = useState(20)
 
   // Quality filters
-  const [requirePhone,   setRequirePhone]   = useState(false)
-  const [requireWebsite, setRequireWebsite] = useState(false)
-  const [enrichEmail,    setEnrichEmail]    = useState(false)
-  const [minScore,       setMinScore]       = useState(0)
+  const [requirePhone,      setRequirePhone]      = useState(false)
+  const [requireWebsite,    setRequireWebsite]    = useState(false)
+  const [enrichEmail,       setEnrichEmail]       = useState(false)
+  const [includeInstagram,  setIncludeInstagram]  = useState(false)
+  const [minScore,          setMinScore]          = useState(0)
 
   // Credits & status
   const [credits,    setCredits]    = useState<{ total: number; used: number } | null>(null)
@@ -111,6 +123,7 @@ export default function LeadFinderPage() {
           requirePhone,
           requireWebsite,
           enrichEmail,
+          includeInstagram,
           sector: keyword,
         }),
       })
@@ -373,7 +386,7 @@ export default function LeadFinderPage() {
               <button
                 type="button"
                 key={opt.value}
-                onClick={() => { setMaxResults(opt.value); setShowCustom(false) }}
+                onClick={() => { setMaxResults(opt.value); setShowCustom(false); setCustomCount('') }}
                 className={`relative py-2.5 px-1 rounded-xl border text-center transition ${
                   !showCustom && maxResults === opt.value
                     ? 'bg-blue-600/20 border-blue-500 text-white'
@@ -386,26 +399,83 @@ export default function LeadFinderPage() {
                   </span>
                 )}
                 <p className="text-sm font-bold">{opt.label}</p>
-                <p className="text-[10px] opacity-60 mt-0.5">{opt.time}</p>
+                <p className="text-[10px] opacity-60 mt-0.5">{getTimeEstimate(opt.value)}</p>
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => setShowCustom(s => !s)}
-            className="text-xs text-slate-500 hover:text-slate-300 transition"
+
+          {/* Custom count */}
+          <div
+            onClick={() => { setShowCustom(true) }}
+            className={`flex items-center gap-3 rounded-xl border px-4 py-3 cursor-text transition ${
+              showCustom
+                ? 'border-blue-500 bg-blue-500/5'
+                : 'border-dashed border-slate-600 hover:border-slate-500 bg-slate-800/20'
+            }`}
           >
-            {showCustom ? '← Hazır seçenekler' : 'Özel sayı gir →'}
-          </button>
-          {showCustom && (
+            <span className="text-slate-400 text-sm shrink-0">✏️ Özel sayı:</span>
             <input
               type="number"
               value={customCount}
-              onChange={e => setCustomCount(e.target.value)}
+              onFocus={() => setShowCustom(true)}
+              onChange={e => { setCustomCount(e.target.value); setShowCustom(true) }}
               placeholder="Örn: 300"
-              min={10} max={1000}
-              className="w-full bg-slate-900/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
+              min={10} max={2000}
+              className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-500"
             />
+            {showCustom && customCount && (
+              <span className="text-xs text-slate-400 shrink-0">{getTimeEstimate(Number(customCount))}</span>
+            )}
+          </div>
+        </div>
+
+        {/* Sources */}
+        <div className="space-y-2">
+          <label className="text-slate-300 text-sm font-medium">Kaynaklar</label>
+          <div className="grid grid-cols-2 gap-2">
+            {/* Google Maps — always active */}
+            <div className="flex items-center gap-3 p-3 rounded-xl border border-blue-500/40 bg-blue-500/5">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                <MapPin size={15} className="text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">Google Maps</p>
+                <p className="text-[10px] text-slate-400">Birincil kaynak</p>
+              </div>
+              <span className="ml-auto text-[10px] font-medium text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
+            </div>
+
+            {/* Instagram — optional toggle */}
+            <button
+              type="button"
+              onClick={() => setIncludeInstagram(s => !s)}
+              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${
+                includeInstagram
+                  ? 'border-pink-500/50 bg-gradient-to-r from-pink-500/10 to-purple-500/10'
+                  : 'border-slate-600 bg-slate-800/30 hover:border-slate-500'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition ${
+                includeInstagram ? 'bg-gradient-to-br from-pink-500/30 to-purple-500/30' : 'bg-slate-700/50'
+              }`}>
+                <span className="text-base">📸</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-white">Instagram</p>
+                <p className="text-[10px] text-slate-400">Bio'dan email/tel çeker</p>
+              </div>
+              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${
+                includeInstagram ? 'bg-pink-500 border-pink-500' : 'border-slate-600'
+              }`}>
+                {includeInstagram && <span className="text-white text-[9px] font-bold">✓</span>}
+              </div>
+            </button>
+          </div>
+          {includeInstagram && (
+            <p className="text-[10px] text-pink-400/70 flex items-center gap-1">
+              <Info size={10} />
+              Instagram, Google'da olmayan işletmeleri bulur. Takipçi sayısı &amp; bio iletişim bilgisi çeker.
+            </p>
           )}
         </div>
 
@@ -470,17 +540,16 @@ export default function LeadFinderPage() {
 
             {/* Source info */}
             <div className="bg-slate-900/40 rounded-xl p-3 space-y-2">
-              <p className="text-xs text-slate-500 flex items-center gap-1"><Info size={11} /> Kaynak sırası (otomatik, gerektiğinde devreye girer):</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1"><Info size={11} /> Gelecekte eklenecek kaynaklar:</p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { label: 'Google Maps', cls: 'bg-blue-500/20 text-blue-400' },
                   { label: 'OpenStreetMap', cls: 'bg-emerald-500/20 text-emerald-400' },
                   { label: 'Yelp', cls: 'bg-red-500/20 text-red-400' },
                   { label: 'Foursquare', cls: 'bg-indigo-500/20 text-indigo-400' },
                   { label: 'HERE Maps', cls: 'bg-purple-500/20 text-purple-400' },
                   { label: 'Resmi Sicil', cls: 'bg-amber-500/20 text-amber-400' },
                 ].map(({ label, cls }) => (
-                  <span key={label} className={`px-2 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>
+                  <span key={label} className={`px-2 py-1 rounded-lg text-xs font-medium opacity-50 ${cls}`}>{label}</span>
                 ))}
               </div>
             </div>
@@ -521,7 +590,7 @@ export default function LeadFinderPage() {
         {/* Expected time */}
         {keyword && city && hasEnough && (
           <p className="text-center text-xs text-slate-500">
-            Tahmini süre: {LEAD_COUNTS.find(l => l.value === maxResults)?.time || '~2 dk'}
+            Tahmini süre: {getTimeEstimate(effectiveCount)}
             {isAsync ? ' · Arka planda çalışır, sayfadan ayrılabilirsiniz' : ''}
           </p>
         )}
