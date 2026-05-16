@@ -875,6 +875,72 @@ async function discoverEmail(website: string): Promise<string | null> {
   return null;
 }
 
+// ── Smart Query Expansion (Claude Haiku — fast, cheap) ────────────────────────
+// Generates related search terms so Google grid covers more business sub-types.
+// For "mobilya mağazası" → ["mobilya", "dekorasyon", "koltuk", "ofis mobilyası", ...]
+
+async function expandSearchTerms(query: string, langCode: string, targetCount: number): Promise<string[]> {
+  if (targetCount < 150) return [query];
+  const termCount = targetCount <= 300 ? 6 : 12;
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 350,
+      messages: [{
+        role: 'user',
+        content: `Generate ${termCount} alternative Google Maps search terms for "${query}". Include synonyms, subcategories, and closely related business types. Language code: ${langCode}. Return ONLY a compact JSON array, no explanation: ["term1","term2",...]`,
+      }],
+    });
+    const text = (r.content[0] as any)?.text || '';
+    const match = text.match(/\[[\s\S]*?\]/);
+    if (!match) return [query];
+    const terms: string[] = JSON.parse(match[0]);
+    const all = [query, ...terms.filter((t: string) => t && t.toLowerCase() !== query.toLowerCase())];
+    console.log(`[LeadFinder] Query expanded: "${query}" → ${all.length} terms`);
+    return all.slice(0, termCount + 1);
+  } catch (e: any) {
+    console.warn('[LeadFinder] Query expansion skipped:', e.message?.slice(0, 60));
+    return [query];
+  }
+}
+
+// ── Geographic Sub-Area Expansion ─────────────────────────────────────────────
+// For 300+ lead requests in large cities, also search popular districts.
+
+const CITY_SUBAREAS: Record<string, string[]> = {
+  istanbul:    ['Kadıköy', 'Beşiktaş', 'Şişli', 'Fatih', 'Üsküdar', 'Maltepe', 'Ümraniye', 'Bağcılar', 'Esenyurt', 'Bakırköy'],
+  ankara:      ['Çankaya', 'Keçiören', 'Yenimahalle', 'Etimesgut', 'Sincan', 'Gölbaşı'],
+  izmir:       ['Bornova', 'Karşıyaka', 'Buca', 'Konak', 'Çiğli', 'Bayraklı'],
+  london:      ['Camden', 'Islington', 'Hackney', 'Tower Hamlets', 'Southwark', 'Lambeth', 'Croydon'],
+  paris:       ['Montmartre', 'Le Marais', 'Batignolles', 'Belleville', 'Vincennes'],
+  berlin:      ['Mitte', 'Prenzlauer Berg', 'Friedrichshain', 'Kreuzberg', 'Charlottenburg'],
+  madrid:      ['Salamanca', 'Chamberí', 'Arganzuela', 'Carabanchel', 'Vallecas'],
+  dubai:       ['Deira', 'Bur Dubai', 'Jumeirah', 'Business Bay', 'Al Barsha', 'Silicon Oasis'],
+  newyork:     ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island'],
+  losangeles:  ['Hollywood', 'Downtown LA', 'Santa Monica', 'Long Beach', 'Pasadena'],
+  seoul:       ['Gangnam', 'Mapo', 'Jongno', 'Yongsan', 'Seocho', 'Songpa'],
+  tokyo:       ['Shinjuku', 'Shibuya', 'Minato', 'Chuo', 'Sumida', 'Koto'],
+  sydney:      ['CBD', 'Parramatta', 'Bondi', 'Chatswood', 'Manly'],
+  toronto:     ['Downtown', 'North York', 'Scarborough', 'Etobicoke', 'Mississauga'],
+  moscow:      ['Arbat', 'Zamoskvorechye', 'Presnensky', 'Khamovniki', 'Basmanny'],
+  cairo:       ['Heliopolis', 'Maadi', 'Dokki', 'Zamalek', 'Nasr City'],
+  riyadh:      ['Al Malaz', 'Al Olaya', 'Al Nakheel', 'Al Murabba', 'Al Safa'],
+};
+
+function getSearchAreas(city: string, targetCount: number): Array<{ city: string; radiusKm: number }> {
+  if (targetCount < 300) return [{ city, radiusKm: 20 }];
+  const key = normKey(city);
+  const subs = CITY_SUBAREAS[key] || CITY_SUBAREAS[city.toLowerCase().replace(/\s+/g, '')];
+  if (!subs) return [{ city, radiusKm: 25 }];
+  const extraCount = Math.min(Math.ceil((targetCount - 200) / 80), subs.length);
+  return [
+    { city, radiusKm: 20 },
+    ...subs.slice(0, extraCount).map(s => ({ city: `${s}, ${city}`, radiusKm: 8 })),
+  ];
+}
+
 // ── Language & country name maps ──────────────────────────────────────────────
 
 const LANG_MAP: Record<string, string> = {
@@ -937,47 +1003,89 @@ async function runFinder(params: FinderParams): Promise<{
   updateJob({ phase: 'Şehir koordinatları alınıyor...' });
   const coords = await geocodeCity(city, countryName);
 
-  // Sequential waterfall: run sources one by one; stop early when we have 2× target
-  // (2× buffer accounts for CRM dedup removing already-saved leads).
-  const WATERFALL_TARGET = targetCount * 2;
   const sourceBreakdown: Record<string, number> = { google: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
-  let deduped: RawLead[] = [];
 
-  const pipeline: Array<{ name: string; fn: () => Promise<RawLead[]> }> = [
-    { name: 'google',     fn: () => googleGridSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode, onCount: (n) => updateSource('google', 'running', n) }) },
-    { name: 'apify',      fn: () => apifySearch({ query, city, countryName, langCode, targetCount }) },
-    { name: 'osm',        fn: () => osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }) },
-    { name: 'yelp',       fn: () => yelpSearch({ query, city, countryName, targetCount }) },
-    { name: 'foursquare', fn: () => foursquareSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount }) },
-    { name: 'here',       fn: () => hereSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }) },
-    { name: 'registry',   fn: () => registrySearch({ query, country, city, limit: targetCount }) },
-  ];
+  // ── Phase 1: Google multi-term grid search (primary high-yield source) ────────
+  updateJob({ phase: 'Arama terimleri genişletiliyor...' });
+  const searchTerms = await expandSearchTerms(query, langCode, targetCount);
+  const searchAreas = getSearchAreas(city, targetCount);
 
-  for (const { name, fn } of pipeline) {
-    const j = jobId ? jobs.get(jobId) : null;
-    if (j?.sources[name]?.status === 'skipped') continue;
+  updateJob({ phase: 'Google Maps taranıyor...' });
+  updateSource('google', 'running', 0);
 
-    if (deduped.length >= WATERFALL_TARGET) {
-      updateSource(name, 'skipped', 0);
-      continue;
-    }
+  const googleSeenIds = new Set<string>();
+  const googleCap = targetCount * 5; // stop when we have 5× buffer from Google alone
+  let googleTotal = 0;
 
-    updateJob({ phase: name === 'google' ? 'Google Maps taranıyor...' : 'Ek kaynaklar aranıyor...' });
-    updateSource(name, 'running', 0);
+  outerGoogle:
+  for (const area of searchAreas) {
+    const areaCoords = area.city === city
+      ? coords
+      : await geocodeCity(area.city, countryName).catch(() => coords);
 
-    try {
-      const results = await fn();
-      sourceBreakdown[name] = results.length;
-      allLeads.push(...results);
-      deduped = deduplicateLeads(allLeads);
-      updateSource(name, 'done', results.length);
-      updateJob({ found: deduped.length });
-    } catch (e: any) {
-      updateSource(name, 'error', 0);
-      console.error(`[LeadFinder] ${name} error:`, e.message?.slice(0, 80));
+    for (const term of searchTerms) {
+      if (googleTotal >= googleCap) break outerGoogle;
+
+      const termLeads = await googleGridSearch({
+        query: term,
+        lat: areaCoords.lat, lng: areaCoords.lng,
+        radiusKm: area.radiusKm,
+        targetCount: Math.max(30, Math.ceil(targetCount / searchTerms.length)),
+        langCode,
+        onCount: (n) => updateSource('google', 'running', googleTotal + n),
+      });
+
+      for (const lead of termLeads) {
+        const key = lead.place_id || lead.external_id;
+        if (key && googleSeenIds.has(key)) continue;
+        if (key) googleSeenIds.add(key);
+        allLeads.push(lead);
+        googleTotal++;
+      }
+      updateJob({ found: deduplicateLeads(allLeads).length });
     }
   }
+
+  sourceBreakdown.google = googleTotal;
+  updateSource('google', 'done', googleTotal);
+  console.log(`[LeadFinder] Google total (${searchTerms.length} terms, ${searchAreas.length} areas): ${googleTotal}`);
+
+  // ── Phase 2: All other sources in parallel ────────────────────────────────────
+  updateJob({ phase: 'Ek kaynaklar paralel taranıyor...' });
+
+  const [apifyR, osmR, yelpR, fsqR, hereR, regR] = await Promise.allSettled([
+    APIFY_TOKEN ? apifySearch({ query, city, countryName, langCode, targetCount }) : Promise.resolve([]),
+    osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }),
+    yelpSearch({ query, city, countryName, targetCount }),
+    foursquareSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount }),
+    hereSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm }),
+    registrySearch({ query, country, city, limit: targetCount }),
+  ]);
+
+  const otherResults: Array<{ name: string; r: PromiseSettledResult<RawLead[]> }> = [
+    { name: 'apify',      r: apifyR },
+    { name: 'osm',        r: osmR },
+    { name: 'yelp',       r: yelpR },
+    { name: 'foursquare', r: fsqR },
+    { name: 'here',       r: hereR },
+    { name: 'registry',   r: regR },
+  ];
+
+  for (const { name, r } of otherResults) {
+    if (r.status === 'fulfilled') {
+      sourceBreakdown[name] = r.value.length;
+      allLeads.push(...r.value);
+      updateSource(name, 'done', r.value.length);
+      console.log(`[LeadFinder] ${name}: ${r.value.length} results`);
+    } else {
+      updateSource(name, 'error', 0);
+      console.error(`[LeadFinder] ${name} error:`, r.reason?.message?.slice(0, 80));
+    }
+  }
+
+  let deduped = deduplicateLeads(allLeads);
+  updateJob({ found: deduped.length });
 
   updateJob({ phase: 'Tekrarlar temizleniyor...' });
 
