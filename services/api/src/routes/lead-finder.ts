@@ -42,6 +42,7 @@ interface RawLead {
   place_id?: string;
   external_id?: string;
   score?: number;
+  searchCity?: string;
 }
 
 interface SourceStat {
@@ -74,7 +75,8 @@ setInterval(() => {
   }
 }, 30 * 60 * 1000);
 
-function createJob(query: string, city: string, total: number): FinderJob {
+function createJob(query: string, cities: string[], total: number): FinderJob {
+  const city = cities.join(', ');
   return {
     status: 'running',
     sources: {
@@ -968,7 +970,7 @@ const COUNTRY_NAME_MAP: Record<string, string> = {
 
 interface FinderParams {
   query: string;
-  city: string;
+  cities: string[];
   country: string;
   sector?: string;
   targetCount: number;
@@ -985,7 +987,7 @@ async function runFinder(params: FinderParams): Promise<{
   skipped: number;
   sourceBreakdown: Record<string, number>;
 }> {
-  const { query, city, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId } = params;
+  const { query, cities, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId } = params;
 
   const updateJob = (patch: Partial<FinderJob>) => {
     if (!jobId) return;
@@ -1002,26 +1004,33 @@ async function runFinder(params: FinderParams): Promise<{
   const countryName = COUNTRY_NAME_MAP[country] || country;
   const langCode    = LANG_MAP[country] || 'en';
 
-  updateJob({ phase: 'Şehir koordinatları alınıyor...' });
-  const coords = await geocodeCity(city, countryName);
-
   const sourceBreakdown: Record<string, number> = { google: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
 
-  // ── Google grid search ────────────────────────────────────────────────────────
-  updateJob({ phase: 'Google Maps taranıyor...' });
+  // ── Google grid search — one pass per city ───────────────────────────────────
   updateSource('google', 'running', 0);
+  const perCityTarget = Math.max(10, Math.ceil(targetCount / cities.length));
 
-  const googleLeads = await googleGridSearch({
-    query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode,
-    onCount: (n) => updateSource('google', 'running', n),
-  });
-  allLeads.push(...googleLeads);
-  sourceBreakdown.google = googleLeads.length;
-  updateSource('google', 'done', googleLeads.length);
-  updateJob({ found: deduplicateLeads(allLeads).length });
-  console.log(`[LeadFinder] Google: ${googleLeads.length} raw results`);
+  for (let i = 0; i < cities.length; i++) {
+    const cityName = cities[i];
+    updateJob({ phase: cities.length > 1 ? `${cityName} taranıyor... (${i + 1}/${cities.length})` : 'Google Maps taranıyor...' });
 
+    const coords = await geocodeCity(cityName, countryName);
+    const cityLeads = await googleGridSearch({
+      query, lat: coords.lat, lng: coords.lng, radiusKm,
+      targetCount: perCityTarget,
+      langCode,
+      onCount: (n) => updateSource('google', 'running', allLeads.length + n),
+    });
+
+    cityLeads.forEach(l => { l.searchCity = cityName; });
+    allLeads.push(...cityLeads);
+    sourceBreakdown.google += cityLeads.length;
+    updateJob({ found: deduplicateLeads(allLeads).length });
+    console.log(`[LeadFinder] Google ${cityName}: ${cityLeads.length} raw results`);
+  }
+
+  updateSource('google', 'done', sourceBreakdown.google);
   updateSource('apify', 'skipped', 0);
 
   for (const name of ['osm', 'yelp', 'foursquare', 'here', 'registry']) {
@@ -1088,7 +1097,7 @@ async function runFinder(params: FinderParams): Promise<{
     phone:   l.phone   || null,
     email:   l.email   || null,
     website: l.website || null,
-    city,
+    city:    l.searchCity || cities[0],
     sector:  params.sector || query,
     source:  l.sources && l.sources.length > 1 ? l.sources.join('+') : (l.source || 'lead_finder'),
     status:  'new',
@@ -1112,13 +1121,18 @@ async function runFinder(params: FinderParams): Promise<{
 router.post('/search', async (req: any, res: any) => {
   try {
     const {
-      query, city, country = 'TR', sector,
+      query, city, cities: citiesRaw, country = 'TR', sector,
       targetCount = 50, radiusKm = 20,
       requirePhone = false, requireWebsite = false, enrichEmail = false,
     } = req.body;
     const userId = req.userId;
 
-    if (!query || !city) return res.status(400).json({ error: 'query ve city zorunlu' });
+    // Normalise: accept cities[] array or fall back to single city string
+    const cities: string[] = Array.isArray(citiesRaw) && citiesRaw.length > 0
+      ? citiesRaw
+      : city ? [city] : [];
+
+    if (!query || cities.length === 0) return res.status(400).json({ error: 'query ve en az bir city zorunlu' });
 
     const limit = Math.max(10, Math.min(Number(targetCount), 1000));
 
@@ -1133,11 +1147,11 @@ router.post('/search', async (req: any, res: any) => {
       });
     }
 
-    const isAsync = limit > 50 || enrichEmail;
+    const isAsync = limit > 50 || enrichEmail || cities.length > 1;
 
     if (isAsync) {
       const jobId = `lf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      const job   = createJob(query, city, limit);
+      const job   = createJob(query, cities, limit);
       jobs.set(jobId, job);
 
       // Reserve credits
@@ -1146,7 +1160,7 @@ router.post('/search', async (req: any, res: any) => {
         .eq('id', userId);
 
       // Fire and forget
-      runFinder({ query, city, country, sector, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId })
+      runFinder({ query, cities, country, sector, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId })
         .then(({ saved, skipped, sourceBreakdown }) => {
           const j = jobs.get(jobId);
           if (j) {
@@ -1178,7 +1192,7 @@ router.post('/search', async (req: any, res: any) => {
 
     // Synchronous path (≤50 leads, no email enrichment)
     const { saved, skipped, sourceBreakdown } = await runFinder({
-      query, city, country, sector, targetCount: limit, radiusKm,
+      query, cities, country, sector, targetCount: limit, radiusKm,
       requirePhone, requireWebsite, enrichEmail: false, userId,
     });
 

@@ -11,15 +11,14 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.u
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
-function getTimeEstimate(count: number): string {
-  if (count <= 20)   return '~20 sn'
-  if (count <= 50)   return '~40 sn'
-  if (count <= 100)  return '~1.5 dk'
-  if (count <= 200)  return '~3 dk'
-  if (count <= 300)  return '~5 dk'
-  if (count <= 500)  return '~7 dk'
-  if (count <= 750)  return '~11 dk'
-  return '~15 dk'
+function getTimeEstimate(count: number, cityCount = 1): string {
+  const base = count <= 20 ? 20 : count <= 50 ? 40 : count <= 100 ? 90
+             : count <= 200 ? 180 : count <= 300 ? 300 : count <= 500 ? 420
+             : count <= 750 ? 660 : 900
+  const total = base + (cityCount - 1) * 12  // +12s geocoding per extra city
+  if (total < 60)  return `~${total} sn`
+  const m = Math.ceil(total / 60)
+  return m < 60 ? `~${m} dk` : `~${(m / 60).toFixed(1)} sa`
 }
 
 const LEAD_COUNTS = [
@@ -37,15 +36,18 @@ export default function LeadFinderPage() {
   const router = useRouter()
 
   // Form state
-  const [keyword, setKeyword]         = useState('')
-  const [city, setCity]               = useState('')
-  const [country, setCountry]         = useState('TR')
+  const [keyword, setKeyword]             = useState('')
+  const [country, setCountry]             = useState('TR')
   const [countrySearch, setCountrySearch] = useState('')
-  const [maxResults, setMaxResults]   = useState(100)
-  const [showCustom, setShowCustom]   = useState(false)
-  const [customCount, setCustomCount] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [radiusKm, setRadiusKm]       = useState(20)
+  const [selectedCities, setSelectedCities] = useState<string[]>([])
+  const [citySearch, setCitySearch]       = useState('')
+  const [cityOpen, setCityOpen]           = useState(false)
+  const cityRef = useRef<HTMLDivElement>(null)
+  const [maxResults, setMaxResults]       = useState(100)
+  const [showCustom, setShowCustom]       = useState(false)
+  const [customCount, setCustomCount]     = useState('')
+  const [showFilters, setShowFilters]     = useState(false)
+  const [radiusKm, setRadiusKm]           = useState(20)
 
   // Quality filters
   const [requirePhone,      setRequirePhone]      = useState(false)
@@ -62,11 +64,24 @@ export default function LeadFinderPage() {
 
   useEffect(() => {
     fetchCredits()
-    setCity(CITIES['TR'][0])
+    setSelectedCities([CITIES['TR'][0]])
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
 
-  useEffect(() => { setCity(CITIES[country]?.[0] || '') }, [country])
+  useEffect(() => {
+    const first = CITIES[country]?.[0]
+    setSelectedCities(first ? [first] : [])
+    setCitySearch('')
+    setCityOpen(false)
+  }, [country])
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (cityRef.current && !cityRef.current.contains(e.target as Node)) setCityOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   async function fetchCredits() {
     try {
@@ -79,7 +94,17 @@ export default function LeadFinderPage() {
   const effectiveCount = showCustom && customCount ? Math.min(Number(customCount), 1000) : maxResults
   const available      = credits ? credits.total - credits.used : 0
   const hasEnough      = available >= effectiveCount
-  const isAsync        = effectiveCount > 50 || enrichEmail
+  const isAsync        = effectiveCount > 50 || enrichEmail || selectedCities.length > 1
+
+  const availableCities  = CITIES[country] || []
+  const filteredCityList = citySearch
+    ? availableCities.filter(c => c.toLowerCase().includes(citySearch.toLowerCase()))
+    : availableCities
+  const toggleCity       = (c: string) => setSelectedCities(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])
+  const selectAllCities  = () => setSelectedCities([...availableCities])
+  const cityLabel        = selectedCities.length === 0 ? 'Şehir seçin...'
+                         : selectedCities.length === 1 ? selectedCities[0]
+                         : `${selectedCities[0]} +${selectedCities.length - 1} şehir daha`
 
   function startPolling(id: string) {
     pollRef.current = setInterval(async () => {
@@ -97,16 +122,18 @@ export default function LeadFinderPage() {
 
   async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault()
-    if (!keyword) { setError('Arama terimi girin'); return }
-    if (!city)    { setError('Şehir seçin'); return }
+    if (!keyword)                  { setError('Arama terimi girin'); return }
+    if (selectedCities.length === 0) { setError('En az bir şehir seçin'); return }
 
     setLoading(true); setError('')
+
+    const cityDisplay = selectedCities.join(', ')
 
     // Optimistic job state while waiting for API
     setJobStatus({
       status: 'running',
       found: 0, saved: 0, skipped: 0, total: effectiveCount,
-      query: keyword, city, phase: 'Bağlanıyor...',
+      query: keyword, city: cityDisplay, phase: 'Bağlanıyor...',
     })
 
     try {
@@ -115,7 +142,9 @@ export default function LeadFinderPage() {
         headers: authH(),
         body: JSON.stringify({
           query: keyword,
-          city, country,
+          cities: selectedCities,
+          city: selectedCities[0],
+          country,
           targetCount: effectiveCount,
           radiusKm,
           requirePhone,
@@ -130,14 +159,13 @@ export default function LeadFinderPage() {
       if (d.async) {
         startPolling(d.jobId)
       } else {
-        // Sync response — build a fake "done" job status
         setJobStatus({
           status: 'done',
           sources: Object.fromEntries(
             Object.entries(d.sourceBreakdown || {}).map(([k, v]) => [k, { status: 'done', count: v as number }])
           ),
           found: d.saved, saved: d.saved, skipped: d.skipped || 0,
-          total: effectiveCount, query: keyword, city,
+          total: effectiveCount, query: keyword, city: cityDisplay,
           phase: `${d.saved} lead kaydedildi`,
         })
       }
@@ -361,17 +389,96 @@ export default function LeadFinderPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-slate-300 text-sm font-medium flex items-center gap-2">
-              <MapPin size={14} /> Şehir
-            </label>
-            <select
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              className="w-full bg-slate-900/60 border border-slate-600 rounded-xl px-3 py-3 text-sm text-slate-300 focus:outline-none focus:border-blue-500 h-[calc(100%-2rem)]"
-            >
-              {(CITIES[country] || []).map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+          {/* City multi-select */}
+          <div className="space-y-2" ref={cityRef}>
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 text-sm font-medium flex items-center gap-2">
+                <MapPin size={14} /> Şehir
+              </label>
+              {selectedCities.length > 0 && (
+                <div className="flex items-center gap-2">
+                  {selectedCities.length > 1 && (
+                    <span className="text-[10px] font-semibold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
+                      {selectedCities.length} şehir
+                    </span>
+                  )}
+                  <button type="button" onClick={() => setSelectedCities([])} className="text-[11px] text-slate-400 hover:text-white transition">
+                    Temizle
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Trigger */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setCityOpen(s => !s)}
+                className="w-full bg-slate-900/60 border border-slate-600 hover:border-slate-500 focus:border-blue-500 rounded-xl px-4 py-2.5 text-sm text-left flex items-center justify-between transition focus:outline-none"
+              >
+                <span className={selectedCities.length ? 'text-white' : 'text-slate-500'}>{cityLabel}</span>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform shrink-0 ${cityOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown */}
+              {cityOpen && (
+                <div className="absolute z-50 left-0 right-0 top-[calc(100%+4px)] bg-slate-800 border border-slate-600 rounded-xl shadow-2xl overflow-hidden">
+                  {/* Search + bulk actions */}
+                  <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-700/80">
+                    <Search size={13} className="text-slate-500 shrink-0" />
+                    <input
+                      value={citySearch}
+                      onChange={e => setCitySearch(e.target.value)}
+                      placeholder="Şehir ara..."
+                      className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+                      autoFocus
+                    />
+                    <button type="button" onClick={selectAllCities} className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition whitespace-nowrap">Tümü</button>
+                    <span className="text-slate-700">·</span>
+                    <button type="button" onClick={() => setSelectedCities([])} className="text-[11px] text-slate-400 hover:text-white transition whitespace-nowrap">Temizle</button>
+                  </div>
+
+                  {/* City grid */}
+                  <div className="max-h-56 overflow-y-auto p-1.5 grid grid-cols-2 gap-0.5">
+                    {filteredCityList.map(c => {
+                      const active = selectedCities.includes(c)
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => toggleCity(c)}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-left transition ${
+                            active ? 'bg-blue-600/25 text-blue-200' : 'text-slate-300 hover:bg-slate-700/60 hover:text-white'
+                          }`}
+                        >
+                          <div className={`w-3.5 h-3.5 rounded border shrink-0 flex items-center justify-center transition ${
+                            active ? 'bg-blue-500 border-blue-500' : 'border-slate-500'
+                          }`}>
+                            {active && <span className="text-white text-[8px] font-bold leading-none">✓</span>}
+                          </div>
+                          <span className="truncate">{c}</span>
+                        </button>
+                      )
+                    })}
+                    {filteredCityList.length === 0 && (
+                      <p className="col-span-2 text-center text-slate-500 text-xs py-4">Sonuç bulunamadı</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Selected chips (when > 1) */}
+            {selectedCities.length > 1 && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {selectedCities.map(c => (
+                  <span key={c} className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/15 border border-blue-500/25 text-blue-300 text-xs rounded-lg">
+                    {c}
+                    <button type="button" onClick={() => toggleCity(c)} className="text-blue-400 hover:text-white leading-none ml-0.5">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -396,7 +503,7 @@ export default function LeadFinderPage() {
                   </span>
                 )}
                 <p className="text-sm font-bold">{opt.label}</p>
-                <p className="text-[10px] opacity-60 mt-0.5">{getTimeEstimate(opt.value)}</p>
+                <p className="text-[10px] opacity-60 mt-0.5">{getTimeEstimate(opt.value, selectedCities.length)}</p>
               </button>
             ))}
           </div>
@@ -508,7 +615,7 @@ export default function LeadFinderPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading || !hasEnough || !keyword || !city}
+          disabled={loading || !hasEnough || !keyword || selectedCities.length === 0}
           className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base transition flex items-center justify-center gap-2"
         >
           {loading
@@ -529,9 +636,9 @@ export default function LeadFinderPage() {
         )}
 
         {/* Expected time */}
-        {keyword && city && hasEnough && (
+        {keyword && selectedCities.length > 0 && hasEnough && (
           <p className="text-center text-xs text-slate-500">
-            Tahmini süre: {getTimeEstimate(effectiveCount)}
+            Tahmini süre: {getTimeEstimate(effectiveCount, selectedCities.length)}
             {isAsync ? ' · Arka planda çalışır, sayfadan ayrılabilirsiniz' : ''}
           </p>
         )}
