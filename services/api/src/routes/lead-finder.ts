@@ -1155,18 +1155,57 @@ router.get('/test-apify', async (req: any, res: any) => {
   const query  = String(req.query.q    || 'restoran');
   const city   = String(req.query.city || 'Istanbul');
   const t0 = Date.now();
+
+  // Step 1: verify token validity
+  let userInfo: any = null;
+  let tokenError: string | null = null;
   try {
-    const leads = await apifySearch({ query, city, countryName: 'Turkey', langCode: 'tr', targetCount: 10 });
-    res.json({
-      ok: true,
-      tokenPresent: true,
-      durationMs: Date.now() - t0,
-      count: leads.length,
-      sample: leads.slice(0, 3),
+    const axios = require('axios');
+    const userRes = await axios.get(`https://api.apify.com/v2/users/me`, {
+      headers: { Authorization: `Bearer ${APIFY_TOKEN}` },
+      timeout: 10000,
     });
+    userInfo = { username: userRes.data?.data?.username, plan: userRes.data?.data?.plan?.id };
   } catch (e: any) {
-    res.status(500).json({ ok: false, error: e.message, durationMs: Date.now() - t0 });
+    tokenError = e.response?.data?.error?.message || e.message;
   }
+
+  if (tokenError) {
+    return res.status(200).json({ ok: false, stage: 'token_validation', error: tokenError, durationMs: Date.now() - t0 });
+  }
+
+  // Step 2: run a tiny actor call and capture error details
+  let actorError: string | null = null;
+  let leads: any[] = [];
+  try {
+    const { ApifyClient } = require('apify-client');
+    const client = new ApifyClient({ token: APIFY_TOKEN });
+    const runPromise = client.actor('compass/crawler-google-places').call({
+      searchStringsArray: [`${query} ${city}`],
+      maxCrawledPlacesPerSearch: 5,
+      language: 'tr',
+      exportPlaceUrls: false,
+      additionalInfo: false,
+      maxReviews: 0,
+    });
+    const timeout = new Promise<never>((_, rej) =>
+      setTimeout(() => rej(new Error('Apify 3min timeout')), 180_000));
+    const run: any = await Promise.race([runPromise, timeout]);
+    const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: 10 });
+    leads = (items || []).map((p: any) => ({ name: p.title || p.name, phone: p.phone, address: p.address }));
+  } catch (e: any) {
+    actorError = e.message?.slice(0, 300);
+  }
+
+  res.json({
+    ok: !actorError,
+    tokenPresent: true,
+    userInfo,
+    actorError,
+    durationMs: Date.now() - t0,
+    count: leads.length,
+    sample: leads.slice(0, 3),
+  });
 });
 
 // GET /api/lead-finder/sources — which sources are active
