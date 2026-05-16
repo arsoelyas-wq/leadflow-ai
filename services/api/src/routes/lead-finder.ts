@@ -976,6 +976,7 @@ interface FinderParams {
   requirePhone: boolean;
   requireWebsite: boolean;
   enrichEmail: boolean;
+  includeGoogle: boolean;
   includeInstagram: boolean;
   userId: string;
   jobId?: string;
@@ -986,7 +987,7 @@ async function runFinder(params: FinderParams): Promise<{
   skipped: number;
   sourceBreakdown: Record<string, number>;
 }> {
-  const { query, city, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, includeInstagram, userId, jobId } = params;
+  const { query, city, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, includeGoogle, includeInstagram, userId, jobId } = params;
 
   const updateJob = (patch: Partial<FinderJob>) => {
     if (!jobId) return;
@@ -1003,25 +1004,31 @@ async function runFinder(params: FinderParams): Promise<{
   const countryName = COUNTRY_NAME_MAP[country] || country;
   const langCode    = LANG_MAP[country] || 'en';
 
-  updateJob({ phase: 'Şehir koordinatları alınıyor...' });
-  const coords = await geocodeCity(city, countryName);
+  const coords = includeGoogle
+    ? (updateJob({ phase: 'Şehir koordinatları alınıyor...' }), await geocodeCity(city, countryName))
+    : { lat: 0, lng: 0 };
 
   const sourceBreakdown: Record<string, number> = { google: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
 
-  // ── Phase 1: Google grid search (primary, single query for speed) ─────────────
-  updateJob({ phase: 'Google Maps taranıyor...' });
-  updateSource('google', 'running', 0);
+  // ── Phase 1: Google grid search (primary, optional) ──────────────────────────
+  if (includeGoogle) {
+    updateJob({ phase: 'Google Maps taranıyor...' });
+    updateSource('google', 'running', 0);
 
-  const googleLeads = await googleGridSearch({
-    query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode,
-    onCount: (n) => updateSource('google', 'running', n),
-  });
-  allLeads.push(...googleLeads);
-  sourceBreakdown.google = googleLeads.length;
-  updateSource('google', 'done', googleLeads.length);
-  updateJob({ found: deduplicateLeads(allLeads).length });
-  console.log(`[LeadFinder] Google: ${googleLeads.length} raw results`);
+    const googleLeads = await googleGridSearch({
+      query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount, langCode,
+      onCount: (n) => updateSource('google', 'running', n),
+    });
+    allLeads.push(...googleLeads);
+    sourceBreakdown.google = googleLeads.length;
+    updateSource('google', 'done', googleLeads.length);
+    updateJob({ found: deduplicateLeads(allLeads).length });
+    console.log(`[LeadFinder] Google: ${googleLeads.length} raw results`);
+  } else {
+    updateSource('google', 'skipped', 0);
+    console.log('[LeadFinder] Google Maps skipped (not selected)');
+  }
 
   // ── Phase 2: Instagram (optional, parallel) ───────────────────────────────────
   if (includeInstagram) {
@@ -1143,7 +1150,7 @@ router.post('/search', async (req: any, res: any) => {
       query, city, country = 'TR', sector,
       targetCount = 50, radiusKm = 20,
       requirePhone = false, requireWebsite = false, enrichEmail = false,
-      includeInstagram = false,
+      includeInstagram = false, includeGoogle = true,
     } = req.body;
     const userId = req.userId;
 
@@ -1175,7 +1182,7 @@ router.post('/search', async (req: any, res: any) => {
         .eq('id', userId);
 
       // Fire and forget
-      runFinder({ query, city, country, sector, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, includeInstagram, userId, jobId })
+      runFinder({ query, city, country, sector, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, includeGoogle, includeInstagram, userId, jobId })
         .then(({ saved, skipped, sourceBreakdown }) => {
           const j = jobs.get(jobId);
           if (j) {
@@ -1208,7 +1215,7 @@ router.post('/search', async (req: any, res: any) => {
     // Synchronous path (≤50 leads, no email enrichment)
     const { saved, skipped, sourceBreakdown } = await runFinder({
       query, city, country, sector, targetCount: limit, radiusKm,
-      requirePhone, requireWebsite, enrichEmail: false, includeInstagram, userId,
+      requirePhone, requireWebsite, enrichEmail: false, includeGoogle, includeInstagram, userId,
     });
 
     await supabase.from('users')

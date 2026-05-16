@@ -53,6 +53,7 @@ export default function LeadFinderPage() {
   const [requireWebsite,    setRequireWebsite]    = useState(false)
   const [enrichEmail,       setEnrichEmail]       = useState(false)
   const [includeInstagram,  setIncludeInstagram]  = useState(false)
+  const [includeGoogle,     setIncludeGoogle]     = useState(true)
   const [minScore,          setMinScore]          = useState(0)
 
   // Credits & status
@@ -101,6 +102,7 @@ export default function LeadFinderPage() {
     e.preventDefault()
     if (!keyword) { setError('Arama terimi girin'); return }
     if (!city)    { setError('Şehir seçin'); return }
+    if (!includeGoogle && !includeInstagram) { setError('En az bir kaynak seçin'); return }
 
     setLoading(true); setError('')
 
@@ -124,6 +126,7 @@ export default function LeadFinderPage() {
           requireWebsite,
           enrichEmail,
           includeInstagram,
+          includeGoogle,
           sector: keyword,
         }),
       })
@@ -433,17 +436,31 @@ export default function LeadFinderPage() {
         <div className="space-y-2">
           <label className="text-slate-300 text-sm font-medium">Kaynaklar</label>
           <div className="grid grid-cols-2 gap-2">
-            {/* Google Maps — always active */}
-            <div className="flex items-center gap-3 p-3 rounded-xl border border-blue-500/40 bg-blue-500/5">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                <MapPin size={15} className="text-blue-400" />
+            {/* Google Maps — toggleable */}
+            <button
+              type="button"
+              onClick={() => setIncludeGoogle(s => !s)}
+              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${
+                includeGoogle
+                  ? 'border-blue-500/50 bg-blue-500/5'
+                  : 'border-slate-600 bg-slate-800/30 hover:border-slate-500'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition ${
+                includeGoogle ? 'bg-blue-500/20' : 'bg-slate-700/50'
+              }`}>
+                <MapPin size={15} className={includeGoogle ? 'text-blue-400' : 'text-slate-500'} />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-white">Google Maps</p>
-                <p className="text-[10px] text-slate-400">Birincil kaynak</p>
+                <p className="text-[10px] text-slate-400">İşletme dizini</p>
               </div>
-              <span className="ml-auto text-[10px] font-medium text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full shrink-0">Aktif</span>
-            </div>
+              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${
+                includeGoogle ? 'bg-blue-500 border-blue-500' : 'border-slate-600'
+              }`}>
+                {includeGoogle && <span className="text-white text-[9px] font-bold">✓</span>}
+              </div>
+            </button>
 
             {/* Instagram — optional toggle */}
             <button
@@ -538,21 +555,6 @@ export default function LeadFinderPage() {
               </div>
             </div>
 
-            {/* Source info */}
-            <div className="bg-slate-900/40 rounded-xl p-3 space-y-2">
-              <p className="text-xs text-slate-500 flex items-center gap-1"><Info size={11} /> Gelecekte eklenecek kaynaklar:</p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: 'OpenStreetMap', cls: 'bg-emerald-500/20 text-emerald-400' },
-                  { label: 'Yelp', cls: 'bg-red-500/20 text-red-400' },
-                  { label: 'Foursquare', cls: 'bg-indigo-500/20 text-indigo-400' },
-                  { label: 'HERE Maps', cls: 'bg-purple-500/20 text-purple-400' },
-                  { label: 'Resmi Sicil', cls: 'bg-amber-500/20 text-amber-400' },
-                ].map(({ label, cls }) => (
-                  <span key={label} className={`px-2 py-1 rounded-lg text-xs font-medium opacity-50 ${cls}`}>{label}</span>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 

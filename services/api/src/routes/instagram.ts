@@ -246,7 +246,7 @@ function scoreIgLead(p: IgProfile): number {
 
 // ── Main search function (used by lead-finder.ts) ─────────────────────────────
 
-export async function instagramSearch(params: {
+async function instagramSearch(params: {
   query: string;
   city: string;
   limit: number;
@@ -357,3 +357,4 @@ router.get('/stats', async (req: any, res: any) => {
 });
 
 module.exports = router;
+module.exports.instagramSearch = instagramSearch;
