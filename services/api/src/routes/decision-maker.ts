@@ -149,27 +149,87 @@ function getDomain(website: string): string {
   }
 }
 
-// ── LinkedIn Voyager API (direct, no RapidAPI) ────────────────────────────────
+// ── LinkedIn — 4-layer strategy ───────────────────────────────────────────────
+//
+//  Layer 1: Voyager API via residential proxy (LINKEDIN_PROXY_URL env var)
+//           e.g. http://user:pass@proxy.example.com:8000
+//           OR   http://auto:APIFY_TOKEN@proxy.apify.com:8000  (Apify proxy)
+//  Layer 2: Apify actor (apify/linkedin-profile-scraper) — APIFY_TOKEN
+//  Layer 3: Google CSE → extract LinkedIn profile URLs → parse name/title
+//  Layer 4: Google-indexed LinkedIn (existing, no LinkedIn access needed)
+//
+//  WHY 404s: Railway uses datacenter IPs; LinkedIn blocks them silently (404 not 403).
+//  All professional scrapers (Apify, PhantomBuster) use residential proxies.
 
 interface LiSession { liAt: string; csrf: string; expiresAt: number; }
 let liSession: LiSession | null = null;
+
+// Build axios config — adds residential proxy if LINKEDIN_PROXY_URL is set
+function liAxiosConfig(s: LiSession, extraOptions: any = {}): any {
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'application/vnd.linkedin.normalized+json+2.1',
+    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
+    'x-li-lang': 'tr_TR',
+    'x-restli-protocol-version': '2.0.0',
+    'x-li-track': JSON.stringify({ clientVersion: '1.13.14', osName: 'web', timezoneOffset: 3, timezone: 'Europe/Istanbul', mpName: 'voyager-web' }),
+    'csrf-token': s.csrf,
+    'Cookie': `li_at=${s.liAt}; JSESSIONID="${s.csrf}"`,
+    'x-requested-with': 'XMLHttpRequest',
+    'Referer': 'https://www.linkedin.com/search/results/people/',
+    'sec-fetch-site': 'same-origin',
+    'sec-fetch-mode': 'cors',
+  };
+
+  const cfg: any = { headers, timeout: 15000, ...extraOptions };
+
+  const proxyUrl = process.env.LINKEDIN_PROXY_URL;
+  if (proxyUrl) {
+    try {
+      const p = new URL(proxyUrl);
+      cfg.proxy = {
+        protocol: p.protocol.replace(':', ''),
+        host: p.hostname,
+        port: parseInt(p.port) || 8000,
+        auth: p.username ? { username: decodeURIComponent(p.username), password: decodeURIComponent(p.password) } : undefined,
+      };
+      console.log(`[LinkedIn] Using proxy: ${p.hostname}:${p.port}`);
+    } catch (e: any) { console.warn('[LinkedIn] Invalid proxy URL:', e.message); }
+  }
+
+  return cfg;
+}
 
 async function getLiSession(): Promise<LiSession | null> {
   if (!LINKEDIN_LI_AT) return null;
   if (liSession && liSession.expiresAt > Date.now()) return liSession;
 
-  try {
-    const resp = await axios.get('https://www.linkedin.com/feed/', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Cookie': `li_at=${LINKEDIN_LI_AT}`,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'tr-TR,tr;q=0.9',
-      },
-      timeout: 12000,
-      maxRedirects: 3,
-    });
+  const proxyUrl = process.env.LINKEDIN_PROXY_URL;
+  const axiosCfg: any = {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Cookie': `li_at=${LINKEDIN_LI_AT}`,
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'tr-TR,tr;q=0.9',
+    },
+    timeout: 15000,
+    maxRedirects: 3,
+  };
 
+  if (proxyUrl) {
+    try {
+      const p = new URL(proxyUrl);
+      axiosCfg.proxy = {
+        protocol: p.protocol.replace(':', ''),
+        host: p.hostname,
+        port: parseInt(p.port) || 8000,
+        auth: p.username ? { username: decodeURIComponent(p.username), password: decodeURIComponent(p.password) } : undefined,
+      };
+    } catch {}
+  }
+
+  try {
+    const resp = await axios.get('https://www.linkedin.com/feed/', axiosCfg);
     let csrf = '';
     for (const c of (resp.headers['set-cookie'] || [])) {
       const m = c.match(/JSESSIONID=([^;]+)/i);
@@ -179,11 +239,13 @@ async function getLiSession(): Promise<LiSession | null> {
       const m = String(resp.data).match(/"JSESSIONID"\s*:\s*"([^"]+)"/);
       if (m) csrf = m[1].trim();
     }
-    if (!csrf) { console.warn('[LinkedIn] No JSESSIONID'); return null; }
-
+    if (!csrf) {
+      console.warn('[LinkedIn] No JSESSIONID — session may be expired or IP blocked');
+      return null;
+    }
     if (!csrf.startsWith('ajax:')) csrf = `ajax:${csrf}`;
     liSession = { liAt: LINKEDIN_LI_AT, csrf, expiresAt: Date.now() + 25 * 60 * 1000 };
-    console.log('[LinkedIn] Session OK');
+    console.log('[LinkedIn] Session OK' + (proxyUrl ? ' (proxy)' : ' (direct — may be blocked by Railway IP)'));
     return liSession;
   } catch (e: any) {
     console.error('[LinkedIn] Session error:', e.message?.slice(0, 80));
@@ -191,45 +253,22 @@ async function getLiSession(): Promise<LiSession | null> {
   }
 }
 
-function liHeaders(s: LiSession): any {
-  return {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Accept': 'application/vnd.linkedin.normalized+json+2.1',
-    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8',
-    'x-li-lang': 'tr_TR',
-    'x-restli-protocol-version': '2.0.0',
-    'x-li-track': JSON.stringify({ clientVersion: '1.13.9', osName: 'web', timezoneOffset: 3, timezone: 'Europe/Istanbul', mpName: 'voyager-web' }),
-    'csrf-token': s.csrf,
-    'Cookie': `li_at=${s.liAt}; JSESSIONID="${s.csrf}"`,
-    'x-requested-with': 'XMLHttpRequest',
-    'Referer': 'https://www.linkedin.com/',
-    'authority': 'www.linkedin.com',
-  };
-}
-
-// Extract urn:li:company:ID from any value recursively (shallow — 2 levels)
+// Extract urn:li:company:ID from any nested value
 function extractCompanyId(obj: any): string | null {
-  if (!obj || typeof obj !== 'object') return null;
   const str = JSON.stringify(obj);
   const m = str.match(/urn:li:company:(\d+)/);
   return m ? m[1] : null;
 }
 
-// Extract people results from blended search response
+// Parse people array from any blended search response shape
 function extractPeopleFromBlended(data: any): DecisionMaker[] {
   const results: DecisionMaker[] = [];
   const seen = new Set<string>();
   const groups = data?.elements || data?.data?.elements || [];
   for (const group of groups) {
-    const hits = group.elements || group.items || [];
-    for (const hit of hits) {
-      const name  = hit.title?.text?.trim()
-                 || hit.name?.trim()
-                 || null;
-      const title = hit.primarySubtitle?.text?.trim()
-                 || hit.headline?.text?.trim()
-                 || hit.occupation?.trim()
-                 || null;
+    for (const hit of (group.elements || group.items || [])) {
+      const name  = hit.title?.text?.trim() || hit.name?.trim() || null;
+      const title = hit.primarySubtitle?.text?.trim() || hit.headline?.text?.trim() || hit.occupation?.trim() || null;
       const url   = hit.navigationUrl || hit.profileUrl || '';
       if (!name || !isRealName(name)) continue;
       const nk = latinize(name).toLowerCase();
@@ -247,124 +286,216 @@ function extractPeopleFromBlended(data: any): DecisionMaker[] {
   return results;
 }
 
+// ── Layer 1: Voyager API (works with proxy; blocked without on Railway) ────────
+
 async function liCompanyId(name: string, s: LiSession): Promise<string | null> {
-  // Strategy 1: typeahead/hits (hitsV2 was deprecated — using hits)
+  const cleanName = name.length > 60 ? name.slice(0, 60) : name; // LI rejects long queries
+
+  // Try 1: typeahead/hits (replaces deprecated hitsV2)
   try {
-    const resp = await axios.get('https://www.linkedin.com/voyager/api/typeahead/hits', {
-      params: { keywords: name, q: 'type', type: 'COMPANY', useCase: 'PEOPLE_SEARCH' },
-      headers: liHeaders(s),
-      timeout: 10000,
-    });
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/typeahead/hits',
+      { ...liAxiosConfig(s), params: { keywords: cleanName, q: 'type', type: 'COMPANY', useCase: 'PEOPLE_SEARCH' } }
+    );
     for (const el of resp.data?.elements || []) {
       const id = extractCompanyId(el);
-      if (id) { console.log(`[LinkedIn] Company via typeahead: "${name}" → ${id}`); return id; }
+      if (id) { console.log(`[LinkedIn/Voyager] typeahead: "${cleanName}" → ${id}`); return id; }
     }
-  } catch (e: any) { console.warn('[LinkedIn] typeahead/hits:', e.message?.slice(0, 60)); }
+  } catch (e: any) { console.warn('[LinkedIn/Voyager] typeahead:', e.response?.status || e.message?.slice(0, 50)); }
 
-  // Strategy 2: blended search filtered to COMPANY result type
+  // Try 2: blended search with company filter
   try {
-    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
-      params: { keywords: name, q: 'blended', origin: 'SWITCH_SEARCH_VERTICAL', filters: 'List(resultType->COMPANY)' },
-      headers: liHeaders(s),
-      timeout: 10000,
-    });
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended',
+      { ...liAxiosConfig(s), params: { keywords: cleanName, q: 'blended', origin: 'SWITCH_SEARCH_VERTICAL', filters: 'List(resultType->COMPANY)' } }
+    );
     for (const group of resp.data?.elements || []) {
       for (const el of group.elements || []) {
         const id = extractCompanyId(el);
-        if (id) { console.log(`[LinkedIn] Company via blended: "${name}" → ${id}`); return id; }
+        if (id) { console.log(`[LinkedIn/Voyager] blended company: "${cleanName}" → ${id}`); return id; }
       }
     }
-  } catch (e: any) { console.warn('[LinkedIn] blended/company:', e.message?.slice(0, 60)); }
+  } catch (e: any) { console.warn('[LinkedIn/Voyager] blended company:', e.response?.status || e.message?.slice(0, 50)); }
 
-  console.warn(`[LinkedIn] Company ID not found for: "${name}"`);
   return null;
 }
 
 async function liPeople(companyId: string, s: LiSession): Promise<DecisionMaker[]> {
-  // Strategy 1: classic filter format
+  // Try 1: classic filter format
   try {
-    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
-      params: { count: 25, filters: `List(currentCompany->${companyId})`, origin: 'COMPANY_PAGE_CANNED_SEARCH', q: 'people' },
-      headers: liHeaders(s), timeout: 12000,
-    });
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended',
+      { ...liAxiosConfig(s), params: { count: 25, filters: `List(currentCompany->${companyId})`, origin: 'COMPANY_PAGE_CANNED_SEARCH', q: 'people' } }
+    );
     const found = extractPeopleFromBlended(resp.data);
-    if (found.length > 0) { console.log(`[LinkedIn] ${found.length} people via company ID`); return found; }
-  } catch (e: any) { console.warn('[LinkedIn] people/classic:', e.message?.slice(0, 60)); }
+    if (found.length > 0) { console.log(`[LinkedIn/Voyager] ${found.length} people via company ID`); return found; }
+  } catch (e: any) { console.warn('[LinkedIn/Voyager] people classic:', e.response?.status || e.message?.slice(0, 50)); }
 
-  // Strategy 2: new structured filter format
+  // Try 2: structured filter format (newer LinkedIn API)
   try {
-    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
-      params: {
-        count: 25, q: 'people', origin: 'COMPANY_PAGE_CANNED_SEARCH',
-        filters: `List((name:currentCompany,values:List((id:${companyId},selectionType:INCLUDED))))`,
-      },
-      headers: liHeaders(s), timeout: 12000,
-    });
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended',
+      { ...liAxiosConfig(s), params: { count: 25, q: 'people', origin: 'COMPANY_PAGE_CANNED_SEARCH', filters: `List((name:currentCompany,values:List((id:${companyId},selectionType:INCLUDED))))` } }
+    );
     const found = extractPeopleFromBlended(resp.data);
-    if (found.length > 0) { console.log(`[LinkedIn] ${found.length} people via structured filter`); return found; }
-  } catch (e: any) { console.warn('[LinkedIn] people/structured:', e.message?.slice(0, 60)); }
+    if (found.length > 0) { console.log(`[LinkedIn/Voyager] ${found.length} people via structured filter`); return found; }
+  } catch (e: any) { console.warn('[LinkedIn/Voyager] people structured:', e.response?.status || e.message?.slice(0, 50)); }
 
   return [];
 }
 
-// Fallback: search people by company name as keyword (no company ID required)
 async function liPeopleByKeyword(companyName: string, s: LiSession): Promise<DecisionMaker[]> {
   try {
-    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
-      params: { keywords: companyName, q: 'people', count: 25, origin: 'GLOBAL_SEARCH_HEADER' },
-      headers: liHeaders(s), timeout: 12000,
-    });
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended',
+      { ...liAxiosConfig(s), params: { keywords: companyName.slice(0, 60), q: 'people', count: 25, origin: 'GLOBAL_SEARCH_HEADER' } }
+    );
     const found = extractPeopleFromBlended(resp.data);
-    if (found.length > 0) console.log(`[LinkedIn] ${found.length} people via keyword fallback`);
+    if (found.length > 0) console.log(`[LinkedIn/Voyager] ${found.length} people via keyword`);
     return found;
   } catch (e: any) {
-    console.warn('[LinkedIn] keyword fallback:', e.message?.slice(0, 60));
+    console.warn('[LinkedIn/Voyager] keyword:', e.response?.status || e.message?.slice(0, 50));
     return [];
   }
 }
 
-async function findViaLinkedInVoyager(companyName: string): Promise<DecisionMaker[]> {
-  const s = await getLiSession();
-  if (!s) return [];
+// ── Layer 2: Apify linkedin-profile-scraper ───────────────────────────────────
+// Input: array of LinkedIn profile URLs found via Google
+// Apify uses residential proxies — bypasses LinkedIn IP blocks
 
-  // Step 1: try to get company ID for precise filtering
-  const id = await liCompanyId(companyName, s);
-  if (id) {
-    await sleep(500);
-    const byId = await liPeople(id, s);
-    if (byId.length > 0) return byId;
+async function apifyLinkedInEnrich(profileUrls: string[]): Promise<DecisionMaker[]> {
+  const APIFY_TOKEN = process.env.APIFY_TOKEN;
+  if (!APIFY_TOKEN || !profileUrls.length) return [];
+
+  console.log(`[Apify/LinkedIn] Enriching ${profileUrls.length} profiles...`);
+  try {
+    const { ApifyClient } = require('apify-client');
+    const client = new ApifyClient({ token: APIFY_TOKEN });
+    const run = await Promise.race([
+      client.actor('apify/linkedin-profile-scraper').call({ profileUrls: profileUrls.slice(0, 10) }),
+      new Promise<never>((_, r) => setTimeout(() => r(new Error('Apify timeout')), 90_000)),
+    ]) as any;
+
+    const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: 15 });
+    const results: DecisionMaker[] = (items || [])
+      .filter((item: any) => isRealName(item.fullName || item.name || ''))
+      .map((item: any) => ({
+        name:          item.fullName || item.name || null,
+        title:         item.headline || item.occupation || null,
+        email:         item.email    || null,
+        phone:         null,
+        linkedinUrl:   item.url      || item.linkedinUrl || null,
+        source:        'LinkedIn (Apify)',
+        confidence:    isDMTitle(item.headline || '') ? 'high' : 'medium',
+        isDecisionMaker: isDMTitle(item.headline || ''),
+      }));
+
+    console.log(`[Apify/LinkedIn] ${results.length} profiles enriched`);
+    return results;
+  } catch (e: any) {
+    console.warn('[Apify/LinkedIn]', e.message?.slice(0, 80));
+    return [];
   }
-
-  // Step 2: fallback — search people by company name as keyword
-  await sleep(400);
-  return liPeopleByKeyword(companyName, s);
 }
 
-// Google-indexed LinkedIn fallback (improved — 13 titles)
-async function findViaLinkedInGoogle(companyName: string): Promise<DecisionMaker[]> {
-  const TITLES = ['CEO','Genel Müdür','Kurucu','Founder','Owner','Director',
-    'Managing Director','Direktör','Satın Alma Müdürü','Satış Müdürü',
-    'Yönetici','Partner','Ortak'];
-  const results: DecisionMaker[] = [];
-  const seen = new Set<string>();
+// ── Layer 3: Google CSE → LinkedIn profile URLs → name/title extraction ────────
+// Works without LinkedIn access. Google indexes LinkedIn's public snippets.
 
-  for (const title of TITLES.slice(0, 6)) {
+async function findViaGoogleLinkedIn(companyName: string): Promise<DecisionMaker[]> {
+  const short = companyName.replace(/\s+(A\.Ş\.|Ltd\.?|Ş\.?T\.?İ\.?|ve Tic\.?|San\.?|Dış|İnş\.?|Otomotiv).*$/i, '').trim().slice(0, 50);
+
+  const queries = [
+    `site:linkedin.com/in "${short}" CEO OR kurucu OR "genel müdür" OR founder OR director OR sahip OR owner`,
+    `site:linkedin.com/in "${short}" müdür OR manager OR direktör OR ortak OR partner`,
+    `site:linkedin.com/in "${short}"`,
+    `"${short}" site:linkedin.com/in satın alma OR pazarlama OR ticaret OR üretim`,
+  ];
+
+  const results: DecisionMaker[] = [];
+  const seenUrls = new Set<string>();
+  const seenNames = new Set<string>();
+
+  for (const q of queries) {
     try {
-      const items = await googleCSE(`"${companyName}" "${title}" site:linkedin.com/in`, 5);
+      const items = await googleCSE(q, 8);
       for (const item of items) {
-        if (!item.url.includes('linkedin.com/in/')) continue;
-        let name = item.title
-          .replace(/\s*[-–|]\s*LinkedIn.*/i, '')
-          .replace(new RegExp(`\\s*[-–|]?\\s*${title}\\s*`, 'gi'), '')
-          .replace(/\s*[-–|]\s*.+$/, '').trim();
-        if (!isRealName(name) || seen.has(name.toLowerCase())) continue;
-        seen.add(name.toLowerCase());
-        results.push({ name, title, email: null, phone: null, linkedinUrl: item.url, source: 'LinkedIn (Google)', confidence: 'medium', isDecisionMaker: true });
+        if (!item.url.includes('linkedin.com/in/') || seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+
+        // "Ahmet Yılmaz - CEO at Firma | LinkedIn" → name: "Ahmet Yılmaz", title: "CEO"
+        const titleParts = item.title.replace(/\s*\|\s*LinkedIn.*$/i, '').split(/\s*[-–]\s*/);
+        const name  = titleParts[0]?.trim() || '';
+        const title = titleParts[1]?.replace(/\s+at\s+.*/i, '').trim() || null;
+
+        if (!isRealName(name)) continue;
+        const nk = latinize(name).toLowerCase();
+        if (seenNames.has(nk)) continue;
+        seenNames.add(nk);
+
+        const isDM = isDMTitle(title || '') || isDMTitle(item.snippet);
+        results.push({
+          name, title, email: null, phone: null,
+          linkedinUrl: item.url,
+          source: 'LinkedIn (Google)',
+          confidence: isDM ? 'medium' : 'low',
+          isDecisionMaker: isDM,
+        });
       }
-      await sleep(150);
+      await sleep(200);
     } catch {}
   }
+
+  // If we found URLs and have Apify, enrich them
+  const profileUrls = [...seenUrls];
+  if (profileUrls.length > 0 && process.env.APIFY_TOKEN) {
+    const enriched = await apifyLinkedInEnrich(profileUrls);
+    if (enriched.length > 0) {
+      // Merge enriched data into existing results
+      for (const e of enriched) {
+        const nk = latinize(e.name || '').toLowerCase();
+        const existing = results.find(r => latinize(r.name || '').toLowerCase() === nk);
+        if (existing) {
+          existing.email       = existing.email       || e.email;
+          existing.title       = existing.title       || e.title;
+          existing.confidence  = 'high'; // Apify-confirmed
+          existing.source      = 'LinkedIn (Apify)';
+        } else if (isRealName(e.name)) {
+          results.push(e);
+        }
+      }
+    }
+  }
+
+  console.log(`[LinkedIn/Google] ${results.length} people from ${seenUrls.size} profile URLs`);
   return results;
+}
+
+// ── Main LinkedIn orchestrator ────────────────────────────────────────────────
+
+async function findViaLinkedInVoyager(companyName: string): Promise<DecisionMaker[]> {
+  const hasProxy = !!process.env.LINKEDIN_PROXY_URL;
+
+  // Layer 1: Voyager API — only reliable with proxy (Railway IPs are blocked)
+  const s = await getLiSession();
+  if (s) {
+    const id = await liCompanyId(companyName, s);
+    if (id) {
+      await sleep(500);
+      const byId = await liPeople(id, s);
+      if (byId.length > 0) return byId;
+    }
+    if (hasProxy) {
+      // Only bother with keyword search if proxy is configured (saves time otherwise)
+      await sleep(400);
+      const byKw = await liPeopleByKeyword(companyName, s);
+      if (byKw.length > 0) return byKw;
+    } else {
+      console.log('[LinkedIn] No proxy configured — Voyager API will not work from Railway IP. Add LINKEDIN_PROXY_URL.');
+    }
+  }
+
+  // Layers 2+3: Google CSE + optional Apify enrichment (always available)
+  return findViaGoogleLinkedIn(companyName);
+}
+
+// Legacy alias — now delegates to the unified findViaGoogleLinkedIn
+async function findViaLinkedInGoogle(companyName: string): Promise<DecisionMaker[]> {
+  return findViaGoogleLinkedIn(companyName);
 }
 
 // ── Google CSE helper ─────────────────────────────────────────────────────────
@@ -938,42 +1069,70 @@ router.get('/stats', async (req: any, res: any) => {
 });
 
 // Public diagnostic — no auth
+// Usage: GET /api/decision-maker/test-linkedin?company=Microsoft
 router.get('/test-linkedin', async (req: any, res: any) => {
   const t0 = Date.now();
   liSession = null;
-  const s = await getLiSession();
-  if (!s) return res.json({ ok: false, step: 'session', error: 'Session alınamadı — LINKEDIN_LI_AT geçersiz veya süresi dolmuş', durationMs: Date.now() - t0 });
 
-  const report: any = { ok: true, session: true, csrf: s.csrf.slice(0, 20) + '...', tests: {} };
-
-  // Test 1: me endpoint
-  try {
-    const r = await axios.get('https://www.linkedin.com/voyager/api/me', { headers: liHeaders(s), timeout: 8000 });
-    const me = r.data?.included?.[0];
-    report.tests.me = { ok: true, user: me ? `${me.firstName || ''} ${me.lastName || ''}`.trim() || 'ok' : 'ok' };
-  } catch (e: any) { report.tests.me = { ok: false, error: e.message?.slice(0, 80) }; }
-
-  // Test 2: typeahead/hits (company search)
+  const hasProxy  = !!process.env.LINKEDIN_PROXY_URL;
+  const hasApify  = !!process.env.APIFY_TOKEN;
+  const hasLiAt   = !!LINKEDIN_LI_AT;
   const testCompany = (req.query.company as string) || 'Microsoft';
-  try {
-    const r = await axios.get('https://www.linkedin.com/voyager/api/typeahead/hits', {
-      params: { keywords: testCompany, q: 'type', type: 'COMPANY', useCase: 'PEOPLE_SEARCH' },
-      headers: liHeaders(s), timeout: 8000,
-    });
-    const count = r.data?.elements?.length || 0;
-    const id    = count > 0 ? extractCompanyId(r.data.elements[0]) : null;
-    report.tests.typeahead = { ok: true, results: count, sampleId: id };
-  } catch (e: any) { report.tests.typeahead = { ok: false, status: e.response?.status, error: e.message?.slice(0, 80) }; }
 
-  // Test 3: people keyword search
+  const report: any = {
+    config: {
+      LINKEDIN_LI_AT: hasLiAt ? 'set' : 'MISSING',
+      LINKEDIN_PROXY_URL: hasProxy ? process.env.LINKEDIN_PROXY_URL!.replace(/:[^:@]+@/, ':***@') : 'not set — Voyager API blocked on Railway without this',
+      APIFY_TOKEN: hasApify ? 'set (Layer 2 active)' : 'not set (Layer 2 disabled)',
+    },
+    explanation: 'Railway datacenter IPs are blocked by LinkedIn (returns 404). Set LINKEDIN_PROXY_URL to a residential proxy to enable Voyager API. Without proxy, system uses Google+Apify fallback.',
+    tests: {},
+    durationMs: 0,
+  };
+
+  if (!hasLiAt) {
+    report.tests.session = { ok: false, error: 'LINKEDIN_LI_AT not set' };
+  } else {
+    // Session test
+    const s = await getLiSession();
+    if (!s) {
+      report.tests.session = { ok: false, error: hasProxy ? 'Session failed — check proxy + li_at validity' : 'Session failed — likely IP blocked (add LINKEDIN_PROXY_URL)' };
+    } else {
+      report.tests.session = { ok: true, csrf: s.csrf.slice(0, 18) + '...' };
+
+      // Voyager typeahead test
+      try {
+        const r = await axios.get('https://www.linkedin.com/voyager/api/typeahead/hits',
+          { ...liAxiosConfig(s), params: { keywords: testCompany, q: 'type', type: 'COMPANY', useCase: 'PEOPLE_SEARCH' } }
+        );
+        const id = r.data?.elements?.length ? extractCompanyId(r.data.elements[0]) : null;
+        report.tests.voyager_company = { ok: true, results: r.data?.elements?.length || 0, sampleId: id };
+      } catch (e: any) {
+        report.tests.voyager_company = { ok: false, status: e.response?.status, error: e.message?.slice(0, 80),
+          hint: e.response?.status === 404 ? 'IP blocked by LinkedIn — add LINKEDIN_PROXY_URL' : 'Check li_at validity' };
+      }
+
+      // Voyager people search test
+      try {
+        const r = await axios.get('https://www.linkedin.com/voyager/api/search/blended',
+          { ...liAxiosConfig(s), params: { keywords: testCompany, q: 'people', count: 5, origin: 'GLOBAL_SEARCH_HEADER' } }
+        );
+        const people = extractPeopleFromBlended(r.data);
+        report.tests.voyager_people = { ok: true, results: people.length, sample: people[0]?.name || null };
+      } catch (e: any) {
+        report.tests.voyager_people = { ok: false, status: e.response?.status, error: e.message?.slice(0, 80) };
+      }
+    }
+  }
+
+  // Google → LinkedIn URL test (always works)
   try {
-    const r = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
-      params: { keywords: testCompany, q: 'people', count: 5, origin: 'GLOBAL_SEARCH_HEADER' },
-      headers: liHeaders(s), timeout: 8000,
-    });
-    const people = extractPeopleFromBlended(r.data);
-    report.tests.peoplekw = { ok: true, results: people.length, sample: people[0]?.name || null };
-  } catch (e: any) { report.tests.peoplekw = { ok: false, status: e.response?.status, error: e.message?.slice(0, 80) }; }
+    const items = await googleCSE(`site:linkedin.com/in "${testCompany}" CEO OR director`, 3);
+    const urls = items.filter(i => i.url.includes('linkedin.com/in/')).map(i => i.url);
+    report.tests.google_linkedin = { ok: true, urlsFound: urls.length, sample: urls[0] || null };
+  } catch (e: any) {
+    report.tests.google_linkedin = { ok: false, error: e.message?.slice(0, 80) };
+  }
 
   report.durationMs = Date.now() - t0;
   report.testCompany = testCompany;
