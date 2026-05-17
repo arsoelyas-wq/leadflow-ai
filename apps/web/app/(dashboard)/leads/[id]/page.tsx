@@ -7,6 +7,7 @@ import {
   Star, Edit2, Save, X, MessageSquare, Send, RefreshCw, Link2,
   Crosshair, TrendingUp, Zap, ChevronDown, ChevronUp, Copy, CheckCircle,
   Target, AlertTriangle, BarChart3, Lightbulb, DollarSign, ShieldAlert,
+  Flame, Clock, Swords, Users, Activity, Building2, Network,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -19,23 +20,81 @@ interface ScoringData {
 }
 
 interface Lead {
-  id:            string
-  company_name:  string
-  contact_name?: string
-  phone?:        string
-  email?:        string
-  instagram?:    string
-  website?:      string
-  city?:         string
-  sector?:       string
-  source:        string
-  score:         number
-  status:        string
-  notes?:        string
-  created_at:    string
-  ai_grade?:     string
-  ai_priority?:  string
-  scoringData?:  ScoringData
+  id:                 string
+  company_name:       string
+  contact_name?:      string
+  phone?:             string
+  email?:             string
+  instagram?:         string
+  website?:           string
+  city?:              string
+  sector?:            string
+  source:             string
+  score:              number
+  status:             string
+  notes?:             string
+  created_at:         string
+  ai_grade?:          string
+  ai_priority?:       string
+  scoringData?:       ScoringData
+  hot_score?:         number
+  ai_summary?:        string
+  company_size?:      string
+  revenue_estimate?:  string
+  enrichment_status?: string
+}
+
+interface Activity {
+  id:         string
+  event_type: string
+  metadata:   any
+  created_at: string
+}
+
+interface BattleCard {
+  openingLine?: string
+  painPoints?:  string[]
+  valueProps?:  string[]
+  objections?:  { objection: string; response: string }[]
+  closingAsk?:  string
+  redFlags?:    string[]
+  confidence?:  string
+}
+
+interface Timing {
+  dayLabel:   string
+  timeLabel:  string
+  isoDate:    string
+  confidence: string
+  reasoning:  string
+}
+
+const ACTIVITY_ICON: Record<string, string> = {
+  email_open:      '📬',
+  email_click:     '🔗',
+  site_visit:      '👁️',
+  whatsapp_reply:  '💬',
+  call_made:       '📞',
+  call_missed:     '📵',
+  status_change:   '🔄',
+  score_change:    '⭐',
+  dm_found:        '🎯',
+  enriched:        '✨',
+  note_added:      '📝',
+}
+
+const ACTIVITY_LABEL: Record<string, string> = {
+  email_open:      'Email açıldı',
+  email_click:     'Link tıklandı',
+  site_visit:      'Siteyi ziyaret etti',
+  whatsapp_reply:  'WhatsApp yanıtladı',
+  call_made:       'Arama yapıldı',
+  call_missed:     'Arama cevaplanmadı',
+  status_change:   'Durum güncellendi',
+  score_change:    'Skor güncellendi',
+  dm_found:        'Karar verici bulundu',
+  enriched:        'Lead zenginleştirildi',
+  note_added:      'Not eklendi',
 }
 
 const STATUS_OPTS = [
@@ -100,6 +159,27 @@ export default function LeadDetailPage() {
   const [findingDM, setFindingDM] = useState(false)
   const [dmResult, setDmResult]   = useState<any>(null)
 
+  // Activity timeline
+  const [activities, setActivities]             = useState<Activity[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
+
+  // Battle Card
+  const [battlecard, setBattlecard]             = useState<BattleCard | null>(null)
+  const [bcLoading, setBcLoading]               = useState(false)
+  const [bcExpanded, setBcExpanded]             = useState(false)
+
+  // Right Moment timing
+  const [timing, setTiming]                     = useState<Timing | null>(null)
+
+  // Network connections
+  const [connections, setConnections]           = useState<any[]>([])
+
+  // Enrichment
+  const [enriching, setEnriching]               = useState(false)
+
+  // Community benchmarks
+  const [community, setCommunity]               = useState<any>(null)
+
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
     setTimeout(() => setMsg(null), 5000)
@@ -116,14 +196,79 @@ export default function LeadDetailPage() {
       .then(data => {
         setLead(data.lead)
         setNotes(data.lead.notes || '')
-        // Auto-analyze if not yet scored
-        if (!data.lead.ai_grade) {
-          triggerAIAnalysis(data.lead.id)
-        }
+        if (!data.lead.ai_grade) triggerAIAnalysis(data.lead.id)
+        // Load supporting data in parallel
+        loadActivity(data.lead.id)
+        loadTiming(data.lead.id)
+        loadConnections(data.lead.id)
+        if (data.lead.sector) loadCommunity(data.lead.sector)
       })
       .catch(() => router.push('/leads'))
       .finally(() => setLoading(false))
   }, [id])
+
+  const loadActivity = async (leadId: string) => {
+    setActivitiesLoading(true)
+    try {
+      const data = await api.get(`/api/activity/lead/${leadId}`)
+      setActivities(data.activities || [])
+    } catch {} finally { setActivitiesLoading(false) }
+  }
+
+  const loadTiming = async (leadId: string) => {
+    try {
+      const data = await api.get(`/api/battlecard/timing/${leadId}`)
+      if (data.timing) setTiming(data.timing)
+    } catch {}
+  }
+
+  const loadConnections = async (leadId: string) => {
+    try {
+      const data = await api.get(`/api/network/lead/${leadId}`)
+      setConnections(data.connections || [])
+    } catch {}
+  }
+
+  const loadCommunity = async (sector: string) => {
+    try {
+      const data = await api.get(`/api/battlecard/community/${encodeURIComponent(sector)}`)
+      if (data.stats) setCommunity(data.stats)
+    } catch {}
+  }
+
+  const generateBattleCard = async () => {
+    if (!lead) return
+    setBcLoading(true)
+    setBcExpanded(true)
+    try {
+      const data = await api.post('/api/battlecard/generate', { leadId: lead.id })
+      setBattlecard(data.battlecard)
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setBcLoading(false) }
+  }
+
+  const triggerEnrichment = async () => {
+    if (!lead) return
+    setEnriching(true)
+    try {
+      await api.post(`/api/enrichment/trigger/${lead.id}`, {})
+      showMsg('success', 'Zenginleştirme kuyruğa alındı, birkaç saniye sonra tamamlanır')
+      setTimeout(async () => {
+        const data = await api.get(`/api/enrichment/status/${lead.id}`)
+        setLead(prev => prev ? { ...prev, ...data } : prev)
+      }, 5000)
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setEnriching(false) }
+  }
+
+  const logCall = async () => {
+    if (!lead) return
+    try {
+      await api.post('/api/activity/log', { leadId: lead.id, eventType: 'call_made', metadata: {} })
+      showMsg('success', 'Arama kaydedildi')
+      loadActivity(lead.id)
+    } catch {}
+  }
 
   const updateStatus = async (newStatus: string) => {
     if (!lead) return
@@ -233,6 +378,11 @@ export default function LeadDetailPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {(lead.hot_score || 0) >= 30 && (
+            <span className="flex items-center gap-1 px-2.5 py-1 bg-red-500/15 border border-red-500/30 text-red-400 text-xs rounded-lg font-semibold animate-pulse">
+              <Flame size={12} /> Sıcak Lead
+            </span>
+          )}
           {lead.ai_grade && (
             <span className={`px-3 py-1 rounded-lg text-sm font-bold border ${GRADE_STYLE[lead.ai_grade] || ''}`}>
               {lead.ai_grade}
@@ -521,6 +671,163 @@ export default function LeadDetailPage() {
             )}
           </div>
 
+          {/* ── AI Savaş Kartı (Battle Card) ── */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+            <button
+              onClick={() => {
+                if (!battlecard && !bcLoading) generateBattleCard()
+                else setBcExpanded(v => !v)
+              }}
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-700/30 transition"
+            >
+              <h2 className="text-white font-semibold text-sm flex items-center gap-2">
+                <Swords size={15} className="text-red-400" /> AI Savaş Kartı
+                <span className="text-xs font-normal text-slate-500">Satış koçu</span>
+              </h2>
+              <div className="flex items-center gap-2">
+                {bcLoading && <RefreshCw size={13} className="animate-spin text-red-400" />}
+                {!battlecard && !bcLoading && (
+                  <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg">Oluştur</span>
+                )}
+                {battlecard && (bcExpanded ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />)}
+              </div>
+            </button>
+
+            {bcExpanded && bcLoading && (
+              <div className="px-5 pb-5 text-center py-8">
+                <Swords size={20} className="text-red-400 mx-auto mb-2 animate-pulse" />
+                <p className="text-slate-400 text-sm">AI savaş kartı hazırlanıyor...</p>
+              </div>
+            )}
+
+            {bcExpanded && battlecard && (
+              <div className="border-t border-slate-700 p-5 space-y-4">
+                {/* Açılış Cümlesi */}
+                {battlecard.openingLine && (
+                  <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-blue-400 text-xs font-semibold">💬 Açılış Cümlesi</h3>
+                      <button onClick={() => copyText(battlecard.openingLine!, 'bc_open')}
+                        className="text-slate-500 hover:text-white transition">
+                        {copied === 'bc_open' ? <CheckCircle size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                      </button>
+                    </div>
+                    <p className="text-slate-200 text-sm font-medium leading-relaxed">"{battlecard.openingLine}"</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Acı Noktaları */}
+                  {battlecard.painPoints?.length && (
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3">
+                      <h3 className="text-red-400 text-xs font-semibold mb-2">🎯 Acı Noktaları</h3>
+                      {battlecard.painPoints.map((p, i) => (
+                        <p key={i} className="text-slate-300 text-xs">• {p}</p>
+                      ))}
+                    </div>
+                  )}
+                  {/* Değer Önerileri */}
+                  {battlecard.valueProps?.length && (
+                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
+                      <h3 className="text-emerald-400 text-xs font-semibold mb-2">✅ Güçlü Argümanlar</h3>
+                      {battlecard.valueProps.map((v, i) => (
+                        <p key={i} className="text-slate-300 text-xs">• {v}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* İtiraz Yönetimi */}
+                {battlecard.objections?.length && (
+                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
+                    <h3 className="text-yellow-400 text-xs font-semibold mb-2">⚡ İtiraz → Karşı Cevap</h3>
+                    <div className="space-y-2">
+                      {battlecard.objections.map((o, i) => (
+                        <div key={i} className="text-xs">
+                          <span className="text-slate-400">"{o.objection}"</span>
+                          <span className="text-emerald-400 ml-2">→ {o.response}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  {/* Kapanış */}
+                  {battlecard.closingAsk && (
+                    <div className="flex-1 bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
+                      <h3 className="text-violet-400 text-xs font-semibold mb-1">🔒 Kapanış Sorusu</h3>
+                      <p className="text-slate-300 text-xs">{battlecard.closingAsk}</p>
+                    </div>
+                  )}
+                  {/* Kapanma İhtimali */}
+                  {battlecard.confidence && (
+                    <div className="text-center px-4">
+                      <div className="text-2xl font-bold text-emerald-400">%{battlecard.confidence}</div>
+                      <div className="text-xs text-slate-500">kapanma</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Red Flags */}
+                {battlecard.redFlags?.length && (
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3">
+                    <h3 className="text-red-400 text-xs font-semibold mb-1">🚩 Dikkat Et</h3>
+                    {battlecard.redFlags.map((f, i) => (
+                      <p key={i} className="text-slate-300 text-xs">• {f}</p>
+                    ))}
+                  </div>
+                )}
+
+                <button onClick={generateBattleCard} disabled={bcLoading}
+                  className="text-xs text-slate-500 hover:text-white transition flex items-center gap-1">
+                  <RefreshCw size={10} /> Yenile
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Aktivite Akışı ── */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-semibold text-sm flex items-center gap-2">
+                <Activity size={15} className="text-cyan-400" /> Aktivite Akışı
+              </h2>
+              <button onClick={() => logCall()}
+                className="flex items-center gap-1 px-2.5 py-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-400 text-xs rounded-lg transition">
+                <Phone size={11} /> Arama Kaydet
+              </button>
+            </div>
+            {activitiesLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <RefreshCw size={16} className="animate-spin text-slate-500" />
+              </div>
+            ) : activities.length === 0 ? (
+              <div className="text-center py-6">
+                <Activity size={28} className="text-slate-600 mx-auto mb-2" />
+                <p className="text-slate-500 text-xs">Henüz aktivite kaydı yok</p>
+                <p className="text-slate-600 text-xs mt-1">Email gönder, ara veya WhatsApp mesajı at — otomatik kaydedilir</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activities.slice(0, 12).map(act => (
+                  <div key={act.id} className="flex items-start gap-3">
+                    <span className="text-base leading-none mt-0.5 shrink-0">{ACTIVITY_ICON[act.event_type] || '🔔'}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-300 text-xs font-medium">{ACTIVITY_LABEL[act.event_type] || act.event_type}</p>
+                      {act.metadata?.message && (
+                        <p className="text-slate-500 text-xs truncate">{act.metadata.message}</p>
+                      )}
+                    </div>
+                    <span className="text-slate-600 text-xs shrink-0">
+                      {new Date(act.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Notlar */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
@@ -556,6 +863,77 @@ export default function LeadDetailPage() {
 
         {/* ── Sağ Kolon ── */}
         <div className="space-y-4">
+
+          {/* ── Hot Score ── */}
+          {(lead.hot_score || 0) > 0 && (
+            <div className={`border rounded-xl p-4 ${(lead.hot_score || 0) >= 30 ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/20'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold flex items-center gap-1.5 text-amber-300">
+                  <Flame size={13} /> Sıcaklık Skoru
+                </h3>
+                <span className={`text-lg font-bold ${(lead.hot_score || 0) >= 50 ? 'text-red-400' : 'text-amber-400'}`}>
+                  {lead.hot_score}
+                </span>
+              </div>
+              <div className="w-full bg-slate-700 rounded-full h-1.5">
+                <div className={`h-1.5 rounded-full ${(lead.hot_score || 0) >= 50 ? 'bg-red-500' : 'bg-amber-500'}`}
+                  style={{ width: `${Math.min((lead.hot_score || 0), 100)}%` }} />
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">Son 7 gün aktivite bazlı</p>
+            </div>
+          )}
+
+          {/* ── Doğru An (Right Moment) ── */}
+          {timing && (
+            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+              <h3 className="text-slate-400 text-xs mb-3 flex items-center gap-1.5">
+                <Clock size={13} /> En İyi Arama Zamanı
+              </h3>
+              <div className="text-center mb-2">
+                <div className="text-xl font-bold text-cyan-400">{timing.timeLabel}</div>
+                <div className="text-sm text-white font-medium">{timing.dayLabel}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{timing.isoDate}</div>
+              </div>
+              <div className={`text-center text-xs px-2 py-1 rounded-lg ${
+                timing.confidence === 'high' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700 text-slate-400'
+              }`}>
+                {timing.confidence === 'high' ? '✓ Veri bazlı' : '~ Sektör ortalaması'}
+              </div>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">{timing.reasoning}</p>
+            </div>
+          )}
+
+          {/* ── Şirket Bilgileri ── */}
+          {(lead.ai_summary || lead.company_size || lead.revenue_estimate) && (
+            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-slate-400 text-xs flex items-center gap-1.5">
+                  <Building2 size={13} /> Şirket Bilgileri
+                </h3>
+                <button onClick={triggerEnrichment} disabled={enriching}
+                  className="text-slate-600 hover:text-slate-400 transition">
+                  <RefreshCw size={11} className={enriching ? 'animate-spin' : ''} />
+                </button>
+              </div>
+              {lead.company_size && (
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-slate-500">Çalışan</span>
+                  <span className="text-white font-medium">~{lead.company_size}</span>
+                </div>
+              )}
+              {lead.revenue_estimate && (
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-slate-500">Tahmini Ciro</span>
+                  <span className="text-emerald-400 font-medium">{lead.revenue_estimate}</span>
+                </div>
+              )}
+              {lead.ai_summary && (
+                <p className="text-slate-400 text-xs leading-relaxed border-t border-slate-700 pt-2 mt-2">
+                  {lead.ai_summary}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Puan + Grade */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
@@ -648,6 +1026,61 @@ export default function LeadDetailPage() {
               )}
             </div>
           </div>
+          {/* ── Bağlantılar (Network) ── */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-slate-400 text-xs flex items-center gap-1.5">
+                <Network size={13} /> Ağ Bağlantıları
+              </h3>
+              <Link href="/network" className="text-slate-600 hover:text-slate-400 text-xs transition">
+                Haritaya git →
+              </Link>
+            </div>
+            {connections.length === 0 ? (
+              <p className="text-slate-600 text-xs text-center py-3">
+                Henüz bağlantı yok.<br />
+                <Link href="/network" className="text-blue-500 hover:text-blue-400">Ağ haritasından ekle →</Link>
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {connections.slice(0, 4).map((c: any) => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <span className="text-xs text-slate-600 shrink-0">{c.direction === 'out' ? '→' : '←'}</span>
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/leads/${c.peer.id}`}
+                        className="text-xs text-white hover:text-blue-400 transition truncate block font-medium">
+                        {c.peer.company_name}
+                      </Link>
+                    </div>
+                    <span className="text-xs text-slate-600 shrink-0 bg-slate-700 px-1.5 py-0.5 rounded">{c.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Sektör Benchmark ── */}
+          {community && (
+            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+              <h3 className="text-slate-400 text-xs mb-3 flex items-center gap-1.5">
+                <Users size={13} /> Sektör Benchmarkı
+              </h3>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-slate-900/50 rounded-lg p-2">
+                  <div className="text-lg font-bold text-blue-400">%{community.replyRate}</div>
+                  <div className="text-xs text-slate-500">Cevap oranı</div>
+                </div>
+                <div className="bg-slate-900/50 rounded-lg p-2">
+                  <div className="text-lg font-bold text-emerald-400">%{community.winRate}</div>
+                  <div className="text-xs text-slate-500">Kazanma oranı</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-2 text-xs">
+                <span className="text-slate-500">Ort. Puan: <span className="text-white">{community.avgScore}</span></span>
+                <span className="text-slate-500">{community.totalLeads} lead</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

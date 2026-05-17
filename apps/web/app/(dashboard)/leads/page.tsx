@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
-import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw, Download, Tag } from 'lucide-react'
+import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw, Download, Tag, Flame } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -17,6 +17,7 @@ interface Lead {
   source: string
   score: number
   ai_grade?: string
+  hot_score?: number
   status: string
   created_at: string
 }
@@ -373,7 +374,12 @@ export default function LeadsPage() {
                       {lead.company_name[0]}
                     </div>
                     <div>
-                      <p className="text-white font-medium text-sm">{lead.company_name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-white font-medium text-sm">{lead.company_name}</p>
+                        {(lead.hot_score || 0) >= 30 && (
+                          <Flame size={12} className="text-red-400 shrink-0" title="Sıcak lead!" />
+                        )}
+                      </div>
                       {lead.city && <p className="text-slate-400 text-xs">{lead.city}</p>}
                       {lead.sector && (
                         <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 bg-indigo-500/15 text-indigo-400 text-xs rounded">

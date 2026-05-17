@@ -1128,6 +1128,24 @@ async function runFinder(params: FinderParams): Promise<{
     updateJob({ saved, leadIds: insertedIds });
   }
 
+  // Auto-enrich new leads in background (fire-and-forget)
+  try {
+    const { addEnrichmentJob } = require('../lib/queue');
+    for (let i = 0; i < insertedIds.length; i++) {
+      const src = unique[i];
+      if (src) {
+        addEnrichmentJob({
+          leadId: insertedIds[i],
+          userId: (toInsert[0] as any)?.user_id || '',
+          website: src.website || undefined,
+          companyName: src.company_name,
+          city: src.searchCity || undefined,
+          sector: src.category || undefined,
+        }).catch(() => {});
+      }
+    }
+  } catch {}
+
   return { saved, skipped, sourceBreakdown, savedLeadIds: insertedIds };
 }
 

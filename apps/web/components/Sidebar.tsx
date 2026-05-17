@@ -14,7 +14,7 @@ import {
   QrCode, Trophy, FileBarChart, Brain, ChevronDown,
   Crosshair, Star, RefreshCw, DollarSign, Wallet,
   ChevronRight, Crown, Sparkle, Flame, Rocket, UsersRound,
-  BarChart2
+  BarChart2, Network
 } from 'lucide-react'
 
 type PlanGate = 'all' | 'growth' | 'pro' | 'enterprise'
@@ -44,6 +44,7 @@ const groups: NavGroup[] = [
     items: [
       { href: '/leads',          label: 'Leadler',         icon: Users },
       { href: '/lead-machine',   label: 'Lead Makinesi',   icon: Target },
+      { href: '/network',        label: 'Ağ Haritası',     icon: Network },
       { href: '/decision-maker', label: 'Karar Verici',    icon: Crosshair, plan: 'pro' },
       { href: '/health-scores',  label: 'Müşteri Sağlığı', icon: Heart, plan: 'pro' },
     ],

@@ -171,6 +171,21 @@ app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-r
 app.use('/api/ads-automation',           authMiddleware, require('./routes/ads-automation'));
 app.use('/api/lead-finder',              authMiddleware, scrapeLimiter, require('./routes/lead-finder'));
 
+// Activity tracking (pixel is public, rest protected)
+const { router: activityRouter } = require('./routes/activity');
+app.get('/api/activity/pixel/:token', (req: any, res: any, next: any) => { req.url = `/pixel/${req.params.token}`; activityRouter(req, res, next); });
+app.use('/api/activity',             authMiddleware, activityRouter);
+
+// Lead enrichment pipeline
+const { router: enrichmentRouter } = require('./routes/enrichment');
+app.use('/api/enrichment',           authMiddleware, enrichmentRouter);
+
+// Referral graph / network
+app.use('/api/network',              authMiddleware, require('./routes/network'));
+
+// AI Battle Card + Right Moment + Community stats
+app.use('/api/battlecard',           authMiddleware, aiLimiter, require('./routes/battlecard'));
+
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
 app.use('/api/settings/business-profile', authMiddleware, require('./routes/business-profile'));
