@@ -8,11 +8,9 @@ const { v4: uuidv4 } = require('uuid');
 const router   = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// Correct base URL and auth header from official docs
+// Correct base URL and auth header from official docs (linkdapi.com/docs)
 const LINKDAPI_BASE = 'https://linkdapi.com';
 const LINKDAPI_KEY  = process.env.LINKDAPI_KEY;
-const GOOGLE_KEY    = process.env.GOOGLE_CUSTOM_SEARCH_KEY;
-const GOOGLE_CX     = process.env.GOOGLE_SEARCH_ENGINE_ID;
 const HUNTER_KEY    = process.env.HUNTER_API_KEY;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -149,50 +147,72 @@ async function linkd(path: string, params: any = {}): Promise<any> {
   return r.data?.data ?? r.data;
 }
 
-// ── Step 1: Google CSE — find LinkedIn profile URLs for DMs at company ─────────
+const GOOGLE_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+};
 
-async function findDMProfileUrls(companyName: string, website?: string): Promise<string[]> {
-  if (!GOOGLE_KEY || !GOOGLE_CX) return [];
+// ── Step 1: Find LinkedIn profile URLs via direct Google HTML scraping ─────────
+// No API key needed — no daily quota limits.
 
-  // Strip Turkish legal suffixes + limit length
+async function googleLinkedInSearch(query: string): Promise<string[]> {
+  const cacheKey = query;
+  const cached = googleCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < GOOGLE_CACHE_TTL) return cached.results;
+
+  try {
+    const r = await axios.get(
+      `https://www.google.com/search?q=${encodeURIComponent(query)}&num=8&hl=tr`,
+      { headers: GOOGLE_HEADERS, timeout: 10000 }
+    );
+    const $ = cheerio.load(r.data);
+    const urls: string[] = [];
+
+    // Extract href from all anchor tags in result divs
+    $('a[href]').each((_: any, el: any) => {
+      const href = $(el).attr('href') || '';
+      // Google wraps URLs in /url?q=... or exposes them directly
+      const match = href.match(/(?:\/url\?q=)?(https?:\/\/(?:www\.)?linkedin\.com\/in\/[^&"'\s/]+)/);
+      if (match) {
+        const url = decodeURIComponent(match[1]).split('?')[0];
+        if (!urls.includes(url)) urls.push(url);
+      }
+    });
+
+    googleCache.set(cacheKey, { results: urls, ts: Date.now() });
+    console.log(`[DMFinder] Google HTML found ${urls.length} LinkedIn URLs`);
+    return urls;
+  } catch (e: any) {
+    console.warn(`[DMFinder] Google HTML scrape:`, e.message?.slice(0, 60));
+    return [];
+  }
+}
+
+async function findDMProfileUrls(companyName: string): Promise<string[]> {
+  // Strip Turkish legal suffixes + special chars + limit length
   const shortName = companyName
+    .replace(/[|&]/g, ' ')
     .replace(/\s+(A\.Ş\.|Ltd\.?|Ş\.?T\.?İ\.?|ve Tic\.?|San\.?|Dış Tic\.?|İnş\.?)\s*/gi, ' ')
-    .trim().slice(0, 50);
-
-  const queries = [
-    `site:linkedin.com/in "${shortName}" (CEO OR founder OR "general manager" OR director OR owner OR "managing director")`,
-    `site:linkedin.com/in "${shortName}" (kurucu OR "genel müdür" OR direktör OR "satın alma" OR yönetici OR sahibi)`,
-  ];
+    .replace(/\s+/g, ' ').trim().slice(0, 45);
 
   const seen = new Set<string>();
   const urls: string[] = [];
 
-  for (const q of queries) {
-    const cacheKey = q;
-    const cached = googleCache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < GOOGLE_CACHE_TTL) {
-      cached.results.forEach(u => { if (!seen.has(u)) { seen.add(u); urls.push(u); } });
-      continue;
-    }
+  const addUrls = (found: string[]) => {
+    for (const u of found) if (!seen.has(u)) { seen.add(u); urls.push(u); }
+  };
 
-    try {
-      const r = await axios.get('https://www.googleapis.com/customsearch/v1', {
-        params: { key: GOOGLE_KEY, cx: GOOGLE_CX, q, num: 5 },
-        timeout: 8000,
-      });
-      const found: string[] = [];
-      for (const item of r.data?.items || []) {
-        if (item.link?.includes('linkedin.com/in/')) {
-          found.push(item.link);
-          if (!seen.has(item.link)) { seen.add(item.link); urls.push(item.link); }
-        }
-      }
-      googleCache.set(cacheKey, { results: found, ts: Date.now() });
-      await sleep(600); // stay under rate limit
-    } catch (e: any) {
-      console.warn(`[DMFinder] Google CSE (${shortName}):`, e.message?.slice(0,60));
-      if (e.response?.status === 429) break; // stop if rate-limited, don't waste quota
-    }
+  // English DM titles query
+  const q1 = `site:linkedin.com/in "${shortName}" (CEO OR founder OR director OR "general manager" OR owner OR "managing director" OR "procurement")`;
+  addUrls(await googleLinkedInSearch(q1));
+  await sleep(700);
+
+  // Turkish DM titles query (only if first query found nothing)
+  if (urls.length === 0) {
+    const q2 = `site:linkedin.com/in "${shortName}" (kurucu OR "genel müdür" OR direktör OR "satın alma" OR yönetici OR sahibi)`;
+    addUrls(await googleLinkedInSearch(q2));
+    await sleep(700);
   }
 
   console.log(`[DMFinder] Google found ${urls.length} profile URLs for "${shortName}"`);
@@ -365,8 +385,8 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
 
   const results: DMResult[] = [];
 
-  // Step 1: find LinkedIn profile URLs via Google CSE
-  const profileUrls = await findDMProfileUrls(company_name, website);
+  // Step 1: find LinkedIn profile URLs via Google HTML scraping
+  const profileUrls = await findDMProfileUrls(company_name);
 
   if (profileUrls.length > 0 && LINKDAPI_KEY) {
     // Step 2+3: fetch profile + contact info for each URL
@@ -547,12 +567,12 @@ router.get('/job/:jobId', (req: any, res: any) => {
 // GET /api/decision-maker-finder/status
 router.get('/status', (_req: any, res: any) => {
   res.json({
-    linkdapi:  !!LINKDAPI_KEY,
-    hunter:    !!HUNTER_KEY,
-    googleCse: !!(GOOGLE_KEY && GOOGLE_CX),
-    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    linkdapi:   !!LINKDAPI_KEY,
+    hunter:     !!HUNTER_KEY,
+    googleScrape: true, // always available — no API key needed
+    anthropic:  !!process.env.ANTHROPIC_API_KEY,
     linkdapiBase: LINKDAPI_BASE,
-    mode: LINKDAPI_KEY ? 'full (LinkdAPI + Google CSE + Hunter)' : 'fallback (Google CSE + website scraping)',
+    mode: LINKDAPI_KEY ? 'full (Google scrape → LinkdAPI profile → Hunter.io)' : 'fallback (Google scrape → website scraping)',
   });
 });
 
