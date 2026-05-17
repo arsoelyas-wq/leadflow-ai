@@ -47,6 +47,8 @@ export default function LeadsPage() {
   const [selected, setSelected] = useState<string[]>([])
   const [findingDM, setFindingDM] = useState<string | null>(null)
   const [dmResults, setDmResults] = useState<Record<string, any>>({})
+  const [bulkDmRunning, setBulkDmRunning] = useState(false)
+  const [bulkDmProgress, setBulkDmProgress] = useState<{ completed: number; total: number } | null>(null)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [exporting, setExporting] = useState(false)
   const [list, setList] = useState('')
@@ -168,22 +170,48 @@ export default function LeadsPage() {
     }
   }
 
-  // Tek lead için karar verici bul
+  // Tek lead için karar verici bul (LinkdAPI chain)
   const findDecisionMaker = async (lead: Lead) => {
     setFindingDM(lead.id)
     try {
-      const data = await api.post('/api/decision-maker/find', {
-        companyName: lead.company_name,
-        website: lead.website || '',
-        city: lead.city || '',
-        leadId: lead.id,
-      })
+      const data = await api.post('/api/decision-maker-finder/find', { leadId: lead.id })
       setDmResults(prev => ({ ...prev, [lead.id]: data }))
-      if (data.found > 0) load() // Lead güncellendi
+      if (data.found > 0) load()
     } catch (e: any) {
-      alert(e.message)
+      showMsg('error', e.message)
     } finally {
       setFindingDM(null)
+    }
+  }
+
+  // Toplu karar verici bul
+  const bulkFindDMs = async () => {
+    if (!selected.length) return
+    setBulkDmRunning(true)
+    setBulkDmProgress({ completed: 0, total: selected.length })
+    try {
+      const data = await api.post('/api/decision-maker-finder/bulk', { leadIds: selected })
+      if (!data.jobId) throw new Error('Job başlatılamadı')
+      const jobId = data.jobId
+      const iv = setInterval(async () => {
+        try {
+          const job = await api.get(`/api/decision-maker-finder/job/${jobId}`)
+          setBulkDmProgress({ completed: job.completed, total: job.total })
+          if (job.status === 'done' || job.status === 'error') {
+            clearInterval(iv)
+            setBulkDmRunning(false)
+            setBulkDmProgress(null)
+            setSelected([])
+            load()
+            const found = (job.results || []).filter((r: any) => r.found).length
+            showMsg('success', `${found}/${job.total} firmada karar verici bulundu`)
+          }
+        } catch { clearInterval(iv); setBulkDmRunning(false) }
+      }, 3000)
+    } catch (e: any) {
+      showMsg('error', e.message)
+      setBulkDmRunning(false)
+      setBulkDmProgress(null)
     }
   }
 
@@ -278,9 +306,14 @@ export default function LeadsPage() {
 
       {/* Bulk actions */}
       {selected.length > 0 && (
-        <div className="flex items-center gap-3 bg-blue-600/10 border border-blue-500/30 rounded-lg px-4 py-3">
-          <span className="text-blue-300 text-sm">{selected.length} seçili</span>
+        <div className="flex items-center gap-3 bg-blue-600/10 border border-blue-500/30 rounded-lg px-4 py-3 flex-wrap">
+          <span className="text-blue-300 text-sm font-medium">{selected.length} seçili</span>
           <div className="flex gap-2 ml-auto flex-wrap">
+            <button onClick={bulkFindDMs} disabled={bulkDmRunning}
+              className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-300 text-xs rounded-lg transition flex items-center gap-1 disabled:opacity-60">
+              {bulkDmRunning ? <RefreshCw size={12} className="animate-spin" /> : <Crosshair size={12} />}
+              {bulkDmRunning && bulkDmProgress ? `KV Aranıyor ${bulkDmProgress.completed}/${bulkDmProgress.total}` : 'KV Bul'}
+            </button>
             {['contacted', 'replied', 'won', 'lost'].map(s => (
               <button key={s} onClick={() => bulkStatus(s)}
                 className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition">
@@ -353,7 +386,14 @@ export default function LeadsPage() {
                   ) : dmResults[lead.id] ? (
                     <div>
                       {dmResults[lead.id].found > 0 ? (
-                        <p className="text-emerald-400 text-xs">{dmResults[lead.id].decisionMakers[0]?.name}</p>
+                        <div>
+                          <p className="text-emerald-400 text-xs font-medium">
+                            {dmResults[lead.id].bestName || dmResults[lead.id].decisionMakers?.[0]?.fullName}
+                          </p>
+                          {dmResults[lead.id].bestTitle && (
+                            <p className="text-slate-500 text-xs truncate max-w-32">{dmResults[lead.id].bestTitle}</p>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-slate-500 text-xs">Bulunamadı</p>
                       )}

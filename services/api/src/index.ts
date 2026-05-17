@@ -86,6 +86,7 @@ app.use('/api/quality',              authMiddleware, require('./routes/quality')
 app.use('/api/quality-v2',           authMiddleware, require('./routes/quality-v2'));
 app.use('/api/competitor',           authMiddleware, require('./routes/competitor'));
 app.use('/api/decision-maker',       authMiddleware, dmRouter);
+app.use('/api/decision-maker-finder', authMiddleware, require('./routes/decision-maker-finder'));
 app.use('/api/persons',              authMiddleware, require('./routes/persons'));
 app.use('/api/sources',              authMiddleware, require('./routes/sources'));
 app.use('/api/instagram',            authMiddleware, require('./routes/instagram'));
