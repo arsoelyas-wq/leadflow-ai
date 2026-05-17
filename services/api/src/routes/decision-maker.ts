@@ -207,58 +207,118 @@ function liHeaders(s: LiSession): any {
   };
 }
 
+// Extract urn:li:company:ID from any value recursively (shallow — 2 levels)
+function extractCompanyId(obj: any): string | null {
+  if (!obj || typeof obj !== 'object') return null;
+  const str = JSON.stringify(obj);
+  const m = str.match(/urn:li:company:(\d+)/);
+  return m ? m[1] : null;
+}
+
+// Extract people results from blended search response
+function extractPeopleFromBlended(data: any): DecisionMaker[] {
+  const results: DecisionMaker[] = [];
+  const seen = new Set<string>();
+  const groups = data?.elements || data?.data?.elements || [];
+  for (const group of groups) {
+    const hits = group.elements || group.items || [];
+    for (const hit of hits) {
+      const name  = hit.title?.text?.trim()
+                 || hit.name?.trim()
+                 || null;
+      const title = hit.primarySubtitle?.text?.trim()
+                 || hit.headline?.text?.trim()
+                 || hit.occupation?.trim()
+                 || null;
+      const url   = hit.navigationUrl || hit.profileUrl || '';
+      if (!name || !isRealName(name)) continue;
+      const nk = latinize(name).toLowerCase();
+      if (seen.has(nk)) continue;
+      seen.add(nk);
+      results.push({
+        name, title, email: null, phone: null,
+        linkedinUrl: url ? (url.startsWith('http') ? url : `https://www.linkedin.com${url}`) : null,
+        source: 'LinkedIn',
+        confidence: isDMTitle(title || '') ? 'high' : 'medium',
+        isDecisionMaker: isDMTitle(title || ''),
+      });
+    }
+  }
+  return results;
+}
+
 async function liCompanyId(name: string, s: LiSession): Promise<string | null> {
+  // Strategy 1: typeahead/hits (hitsV2 was deprecated — using hits)
   try {
-    const resp = await axios.get('https://www.linkedin.com/voyager/api/typeahead/hitsV2', {
-      params: { keywords: name, origin: 'SWITCH_SEARCH_VERTICAL', q: 'blended', type: 'COMPANY' },
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/typeahead/hits', {
+      params: { keywords: name, q: 'type', type: 'COMPANY', useCase: 'PEOPLE_SEARCH' },
       headers: liHeaders(s),
       timeout: 10000,
     });
-    const elements = resp.data?.elements || resp.data?.data?.elements || [];
-    for (const el of elements) {
-      const urn = el.hitInfo?.['com.linkedin.voyager.typeahead.TypeaheadHit']?.objectUrn
-                || el.trackingUrn || el.objectUrn || '';
-      const id = urn.match(/urn:li:company:(\d+)/)?.[1];
-      if (id) {
-        console.log(`[LinkedIn] Company "${el.displayField || name}" → ID ${id}`);
-        return id;
+    for (const el of resp.data?.elements || []) {
+      const id = extractCompanyId(el);
+      if (id) { console.log(`[LinkedIn] Company via typeahead: "${name}" → ${id}`); return id; }
+    }
+  } catch (e: any) { console.warn('[LinkedIn] typeahead/hits:', e.message?.slice(0, 60)); }
+
+  // Strategy 2: blended search filtered to COMPANY result type
+  try {
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
+      params: { keywords: name, q: 'blended', origin: 'SWITCH_SEARCH_VERTICAL', filters: 'List(resultType->COMPANY)' },
+      headers: liHeaders(s),
+      timeout: 10000,
+    });
+    for (const group of resp.data?.elements || []) {
+      for (const el of group.elements || []) {
+        const id = extractCompanyId(el);
+        if (id) { console.log(`[LinkedIn] Company via blended: "${name}" → ${id}`); return id; }
       }
     }
-    return null;
-  } catch (e: any) {
-    console.error('[LinkedIn] Company search:', e.message?.slice(0, 80));
-    return null;
-  }
+  } catch (e: any) { console.warn('[LinkedIn] blended/company:', e.message?.slice(0, 60)); }
+
+  console.warn(`[LinkedIn] Company ID not found for: "${name}"`);
+  return null;
 }
 
 async function liPeople(companyId: string, s: LiSession): Promise<DecisionMaker[]> {
+  // Strategy 1: classic filter format
   try {
     const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
       params: { count: 25, filters: `List(currentCompany->${companyId})`, origin: 'COMPANY_PAGE_CANNED_SEARCH', q: 'people' },
-      headers: liHeaders(s),
-      timeout: 12000,
+      headers: liHeaders(s), timeout: 12000,
     });
+    const found = extractPeopleFromBlended(resp.data);
+    if (found.length > 0) { console.log(`[LinkedIn] ${found.length} people via company ID`); return found; }
+  } catch (e: any) { console.warn('[LinkedIn] people/classic:', e.message?.slice(0, 60)); }
 
-    const results: DecisionMaker[] = [];
-    for (const el of resp.data?.elements || []) {
-      for (const hit of el.elements || []) {
-        const name  = hit.title?.text?.trim() || null;
-        const title = hit.primarySubtitle?.text?.trim() || null;
-        const url   = hit.navigationUrl || '';
-        if (!name || !isRealName(name)) continue;
-        results.push({
-          name, title, email: null, phone: null,
-          linkedinUrl: url.startsWith('http') ? url : `https://www.linkedin.com${url}`,
-          source: 'LinkedIn',
-          confidence: isDMTitle(title || '') ? 'high' : 'medium',
-          isDecisionMaker: isDMTitle(title || ''),
-        });
-      }
-    }
-    console.log(`[LinkedIn] ${results.length} people found`);
-    return results;
+  // Strategy 2: new structured filter format
+  try {
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
+      params: {
+        count: 25, q: 'people', origin: 'COMPANY_PAGE_CANNED_SEARCH',
+        filters: `List((name:currentCompany,values:List((id:${companyId},selectionType:INCLUDED))))`,
+      },
+      headers: liHeaders(s), timeout: 12000,
+    });
+    const found = extractPeopleFromBlended(resp.data);
+    if (found.length > 0) { console.log(`[LinkedIn] ${found.length} people via structured filter`); return found; }
+  } catch (e: any) { console.warn('[LinkedIn] people/structured:', e.message?.slice(0, 60)); }
+
+  return [];
+}
+
+// Fallback: search people by company name as keyword (no company ID required)
+async function liPeopleByKeyword(companyName: string, s: LiSession): Promise<DecisionMaker[]> {
+  try {
+    const resp = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
+      params: { keywords: companyName, q: 'people', count: 25, origin: 'GLOBAL_SEARCH_HEADER' },
+      headers: liHeaders(s), timeout: 12000,
+    });
+    const found = extractPeopleFromBlended(resp.data);
+    if (found.length > 0) console.log(`[LinkedIn] ${found.length} people via keyword fallback`);
+    return found;
   } catch (e: any) {
-    console.error('[LinkedIn] People search:', e.message?.slice(0, 80));
+    console.warn('[LinkedIn] keyword fallback:', e.message?.slice(0, 60));
     return [];
   }
 }
@@ -266,10 +326,18 @@ async function liPeople(companyId: string, s: LiSession): Promise<DecisionMaker[
 async function findViaLinkedInVoyager(companyName: string): Promise<DecisionMaker[]> {
   const s = await getLiSession();
   if (!s) return [];
+
+  // Step 1: try to get company ID for precise filtering
   const id = await liCompanyId(companyName, s);
-  if (!id) return [];
-  await sleep(600);
-  return liPeople(id, s);
+  if (id) {
+    await sleep(500);
+    const byId = await liPeople(id, s);
+    if (byId.length > 0) return byId;
+  }
+
+  // Step 2: fallback — search people by company name as keyword
+  await sleep(400);
+  return liPeopleByKeyword(companyName, s);
 }
 
 // Google-indexed LinkedIn fallback (improved — 13 titles)
@@ -872,16 +940,44 @@ router.get('/stats', async (req: any, res: any) => {
 // Public diagnostic — no auth
 router.get('/test-linkedin', async (req: any, res: any) => {
   const t0 = Date.now();
-  liSession = null; // Force fresh session
+  liSession = null;
   const s = await getLiSession();
-  if (!s) return res.json({ ok: false, error: 'Session alınamadı — LINKEDIN_LI_AT kontrol edin', durationMs: Date.now() - t0 });
+  if (!s) return res.json({ ok: false, step: 'session', error: 'Session alınamadı — LINKEDIN_LI_AT geçersiz veya süresi dolmuş', durationMs: Date.now() - t0 });
+
+  const report: any = { ok: true, session: true, csrf: s.csrf.slice(0, 20) + '...', tests: {} };
+
+  // Test 1: me endpoint
   try {
-    const resp = await axios.get('https://www.linkedin.com/voyager/api/me', { headers: liHeaders(s), timeout: 8000 });
-    const me = resp.data?.included?.[0];
-    res.json({ ok: true, user: me ? `${me.firstName} ${me.lastName}` : 'Oturum açık', csrf: s.csrf.slice(0, 20) + '...', durationMs: Date.now() - t0 });
-  } catch (e: any) {
-    res.json({ ok: false, sessionEstablished: true, apiError: e.message?.slice(0, 200), durationMs: Date.now() - t0 });
-  }
+    const r = await axios.get('https://www.linkedin.com/voyager/api/me', { headers: liHeaders(s), timeout: 8000 });
+    const me = r.data?.included?.[0];
+    report.tests.me = { ok: true, user: me ? `${me.firstName || ''} ${me.lastName || ''}`.trim() || 'ok' : 'ok' };
+  } catch (e: any) { report.tests.me = { ok: false, error: e.message?.slice(0, 80) }; }
+
+  // Test 2: typeahead/hits (company search)
+  const testCompany = (req.query.company as string) || 'Microsoft';
+  try {
+    const r = await axios.get('https://www.linkedin.com/voyager/api/typeahead/hits', {
+      params: { keywords: testCompany, q: 'type', type: 'COMPANY', useCase: 'PEOPLE_SEARCH' },
+      headers: liHeaders(s), timeout: 8000,
+    });
+    const count = r.data?.elements?.length || 0;
+    const id    = count > 0 ? extractCompanyId(r.data.elements[0]) : null;
+    report.tests.typeahead = { ok: true, results: count, sampleId: id };
+  } catch (e: any) { report.tests.typeahead = { ok: false, status: e.response?.status, error: e.message?.slice(0, 80) }; }
+
+  // Test 3: people keyword search
+  try {
+    const r = await axios.get('https://www.linkedin.com/voyager/api/search/blended', {
+      params: { keywords: testCompany, q: 'people', count: 5, origin: 'GLOBAL_SEARCH_HEADER' },
+      headers: liHeaders(s), timeout: 8000,
+    });
+    const people = extractPeopleFromBlended(r.data);
+    report.tests.peoplekw = { ok: true, results: people.length, sample: people[0]?.name || null };
+  } catch (e: any) { report.tests.peoplekw = { ok: false, status: e.response?.status, error: e.message?.slice(0, 80) }; }
+
+  report.durationMs = Date.now() - t0;
+  report.testCompany = testCompany;
+  res.json(report);
 });
 
 module.exports = router;
