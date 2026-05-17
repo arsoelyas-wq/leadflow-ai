@@ -763,6 +763,38 @@ async function findDecisionMakers(params: { companyName: string; website?: strin
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
+// LinkedIn-only employee search (no website/Google)
+router.post('/linkedin', async (req: any, res: any) => {
+  try {
+    const { companyName, leadId } = req.body;
+    if (!companyName) return res.status(400).json({ error: 'companyName zorunlu' });
+
+    // 1. LinkedIn Voyager API (direct)
+    let employees = await findViaLinkedInVoyager(companyName);
+
+    // 2. Fallback: Google-indexed LinkedIn profiles
+    if (employees.length === 0) {
+      employees = await findViaLinkedInGoogle(companyName);
+    }
+
+    // 3. Auto-save best DM if leadId provided
+    if (leadId && employees.length > 0) {
+      const best = employees.find(e => e.isDecisionMaker && isRealName(e.name)) || employees[0];
+      const upd: any = {};
+      if (best.name  && isRealName(best.name)) upd.contact_name = best.name;
+      if (best.phone) upd.phone = best.phone;
+      if (best.email) upd.email = best.email;
+      if (Object.keys(upd).length) {
+        await supabase.from('leads').update(upd).eq('id', leadId).eq('user_id', req.userId);
+      }
+    }
+
+    res.json({ company: companyName, found: employees.length, employees });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post('/find', async (req: any, res: any) => {
   try {
     const { companyName, website, city, leadId } = req.body;
