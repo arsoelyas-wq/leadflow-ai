@@ -377,7 +377,7 @@ export default function LeadsPage() {
                       <div className="flex items-center gap-1.5">
                         <p className="text-white font-medium text-sm">{lead.company_name}</p>
                         {(lead.hot_score || 0) >= 30 && (
-                          <Flame size={12} className="text-red-400 shrink-0" title="Sıcak lead!" />
+                          <Flame size={12} className="text-red-400 shrink-0" />
                         )}
                       </div>
                       {lead.city && <p className="text-slate-400 text-xs">{lead.city}</p>}
