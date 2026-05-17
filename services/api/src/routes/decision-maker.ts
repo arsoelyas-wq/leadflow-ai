@@ -756,7 +756,7 @@ async function findDecisionMakers(params: { companyName: string; website?: strin
     }
   }
 
-  const results = merge(all).slice(0, 20);
+  const results = merge(all).slice(0, 50);
   console.log(`[DM] Done: ${results.length} results (${results.filter(r => r.isDecisionMaker).length} DM, ${results.filter(r => r.email).length} emails, ${results.filter(r => r.phone).length} phones)`);
   return results;
 }
@@ -790,9 +790,13 @@ router.post('/find', async (req: any, res: any) => {
 
 router.post('/batch', async (req: any, res: any) => {
   try {
-    const { leadIds, maxLeads = 10 } = req.body;
-    let q = supabase.from('leads').select('id,company_name,website,city,contact_name,score').eq('user_id', req.userId).is('contact_name', null).limit(maxLeads);
-    if (leadIds?.length) q = q.in('id', leadIds);
+    const { leadIds, maxLeads = 20 } = req.body;
+    let q = supabase.from('leads').select('id,company_name,website,city,contact_name,score').eq('user_id', req.userId).is('contact_name', null);
+    if (leadIds?.length) {
+      q = q.in('id', leadIds); // explicit selection — no arbitrary limit
+    } else {
+      q = q.limit(maxLeads);
+    }
     const { data: leads, error } = await q;
     if (error) throw error;
     if (!leads?.length) return res.json({ message: 'Taranacak lead yok', updated: 0 });
