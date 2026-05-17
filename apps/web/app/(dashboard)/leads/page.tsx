@@ -16,8 +16,16 @@ interface Lead {
   sector?: string
   source: string
   score: number
+  ai_grade?: string
   status: string
   created_at: string
+}
+
+const GRADE_COLOR: Record<string, string> = {
+  A: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+  B: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+  C: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
+  D: 'bg-red-500/20 text-red-300 border-red-500/40',
 }
 
 const STATUS_OPTS = ['', 'new', 'contacted', 'qualified', 'replied', 'offered', 'won', 'lost']
@@ -445,7 +453,12 @@ export default function LeadsPage() {
                 </td>
                 <td className="p-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-16 bg-slate-700 rounded-full h-1.5">
+                    {lead.ai_grade && (
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold border ${GRADE_COLOR[lead.ai_grade] || 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+                        {lead.ai_grade}
+                      </span>
+                    )}
+                    <div className="w-12 bg-slate-700 rounded-full h-1.5">
                       <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${lead.score}%` }} />
                     </div>
                     <span className="text-white text-sm font-medium">{lead.score}</span>
