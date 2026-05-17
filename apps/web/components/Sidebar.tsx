@@ -42,13 +42,10 @@ const groups: NavGroup[] = [
     icon: Users,
     defaultOpen: true,
     items: [
-      { href: '/leads',          label: 'Leadler',          icon: Users },
-      { href: '/lead-machine',   label: 'Lead Makinesi',    icon: Target },
-      { href: '/lead-hunter',    label: '7/24 Lead Avcısı', icon: Bot,    plan: 'growth', badge: 'AI' },
-      { href: '/lead-quality',   label: 'Lead Kalite AI',   icon: Star,   plan: 'growth', badge: 'AI' },
-      { href: '/decision-maker', label: 'Karar Verici',     icon: Crosshair, plan: 'pro' },
-      { href: '/health-scores',  label: 'Müşteri Sağlığı',  icon: Heart,  plan: 'pro' },
-      { href: '/trade-fair',     label: 'Fuar Asistanı',    icon: MapPin, plan: 'pro' },
+      { href: '/leads',          label: 'Leadler',         icon: Users },
+      { href: '/lead-machine',   label: 'Lead Makinesi',   icon: Target },
+      { href: '/decision-maker', label: 'Karar Verici',    icon: Crosshair, plan: 'pro' },
+      { href: '/health-scores',  label: 'Müşteri Sağlığı', icon: Heart, plan: 'pro' },
     ],
   },
   {
