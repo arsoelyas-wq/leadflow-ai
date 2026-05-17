@@ -118,7 +118,7 @@ export default function DecisionMakerPage() {
   const selectAll  = () => setSelectedIds(new Set(filtered.map(l => l.id)))
   const clearAll   = () => setSelectedIds(new Set())
 
-  // ── LinkedIn scan ─────────────────────────────────────────────────────────
+  // ── Scan via LinkdAPI chain ───────────────────────────────────────────────
 
   const runScan = async () => {
     const toScan = leads.filter(l => selectedIds.has(l.id))
@@ -130,14 +130,22 @@ export default function DecisionMakerPage() {
 
     for (const lead of toScan) {
       try {
-        const data = await api.post('/api/decision-maker/linkedin', {
-          companyName: lead.company_name,
-          leadId:      lead.id,
-        })
+        const data = await api.post('/api/decision-maker-finder/find', { leadId: lead.id })
+
+        // Map DMResult → Employee shape used by the UI
+        const employees: Employee[] = (data.decisionMakers || []).map((dm: any) => ({
+          name:            dm.fullName || `${dm.firstName || ''} ${dm.lastName || ''}`.trim() || null,
+          title:           dm.title || null,
+          email:           dm.email || null,
+          phone:           dm.phone || null,
+          linkedinUrl:     dm.linkedinUrl || null,
+          source:          dm.source || 'LinkdAPI',
+          confidence:      dm.confidence >= 70 ? 'high' : dm.confidence >= 40 ? 'medium' : 'low',
+          isDecisionMaker: true,
+        }))
+
         setResults(prev => prev.map(r =>
-          r.leadId === lead.id
-            ? { ...r, employees: data.employees || [], done: true }
-            : r
+          r.leadId === lead.id ? { ...r, employees, done: true } : r
         ))
       } catch (e: any) {
         setResults(prev => prev.map(r =>
@@ -192,8 +200,8 @@ export default function DecisionMakerPage() {
           Karar Verici Bulucu
         </h1>
         <p className="text-slate-400 mt-1 text-sm flex items-center gap-1.5">
-          <Linkedin size={13} className="text-blue-400" />
-          LinkedIn'den şirket çalışanlarını ve karar vericileri bul
+          <Crosshair size={13} className="text-violet-400" />
+          LinkdAPI + Claude AI ile karar vericileri otomatik bul ve kaydet
         </p>
       </div>
 
@@ -280,11 +288,11 @@ export default function DecisionMakerPage() {
               ? 'bg-blue-600 hover:bg-blue-500 text-white'
               : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
           }`}>
-          <Linkedin size={14} />
+          <Crosshair size={14} />
           {scanning
             ? `${doneCount}/${results.length} Taranıyor...`
             : selectedIds.size > 0
-            ? `${selectedIds.size} Şirketi LinkedIn'de Ara`
+            ? `${selectedIds.size} Şirketi Tara`
             : 'Lead Seçin'}
         </button>
       </div>
