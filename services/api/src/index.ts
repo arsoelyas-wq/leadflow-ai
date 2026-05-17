@@ -66,6 +66,13 @@ app.get('/api/lead-finder/test-apify', (req: any, res: any, next: any) => {
   lfRouter(req, res, next);
 });
 
+// Public diagnostic: test LinkedIn Voyager session (no user data exposed)
+const dmRouter = require('./routes/decision-maker');
+app.get('/api/decision-maker/test-linkedin', (req: any, res: any, next: any) => {
+  req.url = '/test-linkedin';
+  dmRouter(req, res, next);
+});
+
 // PROTECTED
 app.use('/api/leads',                authMiddleware, require('./routes/leads'));
 app.use('/api/scrape',               authMiddleware, scrapeLimiter, require('./routes/scrape'));
@@ -78,7 +85,7 @@ app.use('/api/links',                authMiddleware, linksRouter);
 app.use('/api/quality',              authMiddleware, require('./routes/quality'));
 app.use('/api/quality-v2',           authMiddleware, require('./routes/quality-v2'));
 app.use('/api/competitor',           authMiddleware, require('./routes/competitor'));
-app.use('/api/decision-maker',       authMiddleware, require('./routes/decision-maker'));
+app.use('/api/decision-maker',       authMiddleware, dmRouter);
 app.use('/api/persons',              authMiddleware, require('./routes/persons'));
 app.use('/api/sources',              authMiddleware, require('./routes/sources'));
 app.use('/api/instagram',            authMiddleware, require('./routes/instagram'));
