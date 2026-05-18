@@ -55,13 +55,9 @@ const groups: NavGroup[] = [
     icon: Kanban,
     defaultOpen: true,
     items: [
-      { href: '/pipeline',      label: 'Pipeline & Kanban',  icon: Kanban },
-      { href: '/workflow',      label: 'Workflow Engine',    icon: Workflow, plan: 'growth' },
-      { href: '/proposals',     label: 'Teklif & Pazarlık',  icon: FileText },
-      { href: '/sales-coach',   label: 'AI Satış Koçu',      icon: GraduationCap, plan: 'growth', badge: 'AI' },
-      { href: '/smart-timing',  label: 'Akıllı Zamanlama',   icon: Clock,   plan: 'growth' },
-      { href: '/crisis-radar',  label: 'Kriz & Fırsat',      icon: Radar,   plan: 'pro' },
-      { href: '/emotional-iq',  label: 'Duygusal Zeka',      icon: Brain,   plan: 'pro', badge: 'AI' },
+      { href: '/pipeline',  label: 'Pipeline & Kanban',    icon: Kanban },
+      { href: '/proposals', label: 'Teklifler',            icon: FileText },
+      { href: '/workflow',  label: 'Otomasyon Akışları',   icon: Workflow, plan: 'growth' },
     ],
   },
   {
