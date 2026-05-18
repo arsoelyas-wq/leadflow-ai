@@ -69,9 +69,6 @@ const groups: NavGroup[] = [
       { href: '/campaigns',       label: 'WA Kampanya',      icon: Megaphone },
       { href: '/email-campaigns', label: 'Email Kampanya',   icon: Mail },
       { href: '/sms-campaigns',   label: 'SMS Kampanya',     icon: Smartphone },
-      { href: '/sequences',       label: 'AI Sekanslar',     icon: Bot,    plan: 'growth', badge: 'AI' },
-      { href: '/ab-testing',      label: 'A/B Test',         icon: FlaskConical, plan: 'growth' },
-      { href: '/retargeting',     label: 'Retargeting',      icon: RefreshCw,    plan: 'pro' },
     ],
   },
   {
