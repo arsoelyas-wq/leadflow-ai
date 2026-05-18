@@ -186,6 +186,11 @@ app.use('/api/network',              authMiddleware, require('./routes/network')
 // AI Battle Card + Right Moment + Community stats
 app.use('/api/battlecard',           authMiddleware, aiLimiter, require('./routes/battlecard'));
 
+// Workflow V2 — visual node engine
+const { router: wfV2Router, triggerWorkflowEvent } = require('./routes/workflow-v2');
+app.use('/api/workflow-v2',          authMiddleware, wfV2Router);
+(global as any).triggerWorkflowEvent = triggerWorkflowEvent;
+
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
 app.use('/api/settings/business-profile', authMiddleware, require('./routes/business-profile'));
