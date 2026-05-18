@@ -980,6 +980,28 @@ router.post('/from-template/:templateId', async (req: any, res: any) => {
   }
 });
 
+// All leads for wizard enrollment picker (no pagination, minimal fields)
+router.get('/meta/leads-all', async (req: any, res: any) => {
+  try {
+    const { search, status } = req.query;
+    let q = supabase
+      .from('leads')
+      .select('id, company_name, contact_name, city, sector, status, score, phone, email')
+      .eq('user_id', req.userId)
+      .order('score', { ascending: false })
+      .limit(5000);
+
+    if (search) q = q.ilike('company_name', `%${search}%`);
+    if (status) q = q.eq('status', status);
+
+    const { data, error } = await q;
+    if (error) throw error;
+    res.json({ leads: data || [], total: (data || []).length });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Start the scheduler when this module is first loaded
 startWorkflowScheduler();
 

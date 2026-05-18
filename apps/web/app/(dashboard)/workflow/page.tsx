@@ -446,7 +446,7 @@ export default function WorkflowPage() {
     setSelectedLeads([])
     setWizConfig({ goal: 'welcome', name: '', channel: 'whatsapp', useAI: true, followUps: 2, waitDays: 2, message: '', smartTiming: true })
     if (!allLeads.length) {
-      api.get('/api/leads?limit=200').then(d => setAllLeads(d.leads || [])).catch(() => {})
+      api.get('/api/workflow-v2/meta/leads-all').then(d => setAllLeads(d.leads || [])).catch(() => {})
     }
     setView('wizard')
   }
