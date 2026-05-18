@@ -191,6 +191,11 @@ const { router: wfV2Router, triggerWorkflowEvent } = require('./routes/workflow-
 app.use('/api/workflow-v2',          authMiddleware, wfV2Router);
 (global as any).triggerWorkflowEvent = triggerWorkflowEvent;
 
+// AI Sales Agent — autonomous research + outreach + conversation engine
+const { router: aiAgentRouter, processIncomingMessage: _piMsg } = require('./routes/ai-agent');
+app.use('/api/ai-agent',             authMiddleware, aiLimiter, aiAgentRouter);
+(global as any).processIncomingWhatsApp = _piMsg;
+
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings',   authMiddleware, settingsRouter);
 app.use('/api/settings/business-profile', authMiddleware, require('./routes/business-profile'));

@@ -58,6 +58,7 @@ const groups: NavGroup[] = [
       { href: '/pipeline',  label: 'Pipeline & Kanban',    icon: Kanban },
       { href: '/proposals', label: 'Teklifler',            icon: FileText },
       { href: '/workflow',  label: 'Workflow Engine',       icon: Zap,      plan: 'growth', badge: 'V2' },
+      { href: '/agent',     label: 'AI Satış Ajanı',       icon: Bot,      plan: 'pro',    badge: 'AI' },
     ],
   },
   {

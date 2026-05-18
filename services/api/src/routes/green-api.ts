@@ -50,7 +50,7 @@ router.post('/webhook', async (req: any, res: any) => {
     }
 
     // Mesajı kaydet
-    await supabase.from('messages').insert([{
+    const { data: savedMsg } = await supabase.from('messages').insert([{
       user_id: realUserId,
       lead_id: lead?.id,
       channel: 'whatsapp',
@@ -60,9 +60,16 @@ router.post('/webhook', async (req: any, res: any) => {
       sent_at: timestamp ? new Date(Number(timestamp) * 1000).toISOString() : new Date().toISOString(),
       agent_id: memberId,
       agent_name: memberName,
-    }]);
+    }]).select('id').single();
 
     console.log(`Mesaj kaydedildi: ${memberName} -> ${phone}: ${text.slice(0, 50)}`);
+
+    // AI Agent hook — trigger real-time response if agent is active for this user
+    if (lead?.id && (global as any).processIncomingWhatsApp) {
+      setImmediate(() => {
+        (global as any).processIncomingWhatsApp(lead.id, realUserId, text, 'whatsapp', savedMsg?.id);
+      });
+    }
   } catch (e: any) {
     console.error('Webhook error:', e.message);
   }
