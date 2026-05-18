@@ -152,7 +152,9 @@ app.use('/api/video-outreach',       authMiddleware, require('./routes/video-out
 app.use('/v',                          require('./routes/video-tracking'));
 app.use('/api/avatar',               authMiddleware, require('./routes/avatar'));
 app.use('/api/retargeting',          authMiddleware, require('./routes/retargeting'));
-app.use('/api/proposals',            authMiddleware, require('./routes/proposals'));
+const { router: proposalsRouter, portalRouter: proposalPortalRouter } = require('./routes/proposals');
+app.use('/api/proposals/portal',     proposalPortalRouter);           // public — token-based
+app.use('/api/proposals',            authMiddleware, proposalsRouter);
 app.use('/api/smart-timing',         authMiddleware, require('./routes/smart-timing'));
 app.use('/api/vision',               authMiddleware, require('./routes/vision'));
 app.use('/api/health-scores',        authMiddleware, require('./routes/health-scores'));
