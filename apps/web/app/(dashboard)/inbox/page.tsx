@@ -70,8 +70,7 @@ export default function UnifiedInboxPage() {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
   }
 
-  const load = async () => {
-    setLoading(true)
+  const fetchConversations = async () => {
     try {
       const [c, s] = await Promise.allSettled([
         api.get('/api/inbox/conversations'),
@@ -79,7 +78,13 @@ export default function UnifiedInboxPage() {
       ])
       if (c.status === 'fulfilled') setConversations(c.value.conversations || [])
       if (s.status === 'fulfilled') setStats(s.value)
-    } catch {} finally { setLoading(false) }
+    } catch {}
+  }
+
+  const load = async () => {
+    setLoading(true)
+    await fetchConversations()
+    setLoading(false)
   }
 
   const loadMessages = async (lead: any) => {
@@ -93,15 +98,15 @@ export default function UnifiedInboxPage() {
       if (msgs.status === 'fulfilled') setMessages(msgs.value.messages || [])
       if (detail.status === 'fulfilled') setLeadDetail(detail.value.lead || detail.value)
       await api.patch(`/api/inbox/read/${lead.id}`, {})
-      load()
+      fetchConversations()
     } catch {}
   }
 
   useEffect(() => { load() }, [])
 
-  // Konuşma listesini 30 saniyede bir güncelle
+  // Konuşma listesini 30 saniyede bir sessizce güncelle (spinner olmadan)
   useEffect(() => {
-    const t = setInterval(() => load(), 30000)
+    const t = setInterval(() => fetchConversations(), 30000)
     return () => clearInterval(t)
   }, [])
 

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { Mail, Send, RefreshCw, Settings, CheckCircle, Sparkles, Eye, Search, X } from 'lucide-react'
+import { Mail, Send, RefreshCw, CheckCircle, Sparkles, Eye, Search, X } from 'lucide-react'
 
 const SMTP_PRESETS = [
   { name: 'Gmail', host: 'smtp.gmail.com', port: 587, hint: 'App Password kullanın: myaccount.google.com/security' },
@@ -21,7 +21,6 @@ export default function EmailCampaignsPage() {
   const [stats, setStats] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
-  const [settings, setSettings] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'send' | 'settings' | 'campaigns'>('send')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
@@ -53,7 +52,6 @@ export default function EmailCampaignsPage() {
       if (c.status === 'fulfilled') setCampaigns(c.value.campaigns || [])
       if (l.status === 'fulfilled') setLeads((l.value.leads || []).filter((l: any) => l.email))
       if (st.status === 'fulfilled' && st.value.settings) {
-        setSettings(st.value.settings)
         setSmtp(prev => ({ ...prev, ...st.value.settings }))
       }
     } catch {} finally { setLoading(false) }

@@ -166,7 +166,7 @@ export default function CampaignsPage() {
                     </div>
                     <div className="mb-2">
                       <div className="flex justify-between text-xs text-slate-400 mb-1">
-                        <span>{campaign.totalSent.toLocaleString('tr-TR')} gönderildi</span>
+                        <span>{(campaign.totalSent || 0).toLocaleString('tr-TR')} gönderildi</span>
                         <span className="text-emerald-400 font-medium">%{replyRate} yanıt oranı</span>
                       </div>
                       <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">

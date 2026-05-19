@@ -110,7 +110,7 @@ export default function NewCampaignPage() {
       : [...new Set([...selectedLeads, ...filteredLeads.map(l => l.id)])])
 
   const canNext = () => {
-    if (step === 1) return name.trim().length > 0 && channel.length > 0
+    if (step === 1) return name.trim().length > 0 && channel.length > 0 && (!isScheduled || scheduleAt.length > 0)
     if (step === 2) return customMessage.trim().length > 0
     if (step === 3) return selectedLeads.length > 0
     return false
