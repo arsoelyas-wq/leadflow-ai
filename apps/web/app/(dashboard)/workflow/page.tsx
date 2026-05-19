@@ -424,6 +424,12 @@ export default function WorkflowPage() {
   const [editorTrigger, setEditorTrigger] = useState('manual')
   const [editorNodes, setEditorNodes] = useState<WorkflowNode[]>([])
 
+  // Enroll modal state
+  const [enrollModalWfId, setEnrollModalWfId] = useState<string | null>(null)
+  const [enrollFilter, setEnrollFilter]       = useState('')
+  const [enrollSelected, setEnrollSelected]   = useState<string[]>([])
+  const [enrolling, setEnrolling]             = useState(false)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -583,8 +589,32 @@ export default function WorkflowPage() {
     })))
   }
 
+  const openEnrollModal = (wfId: string) => {
+    setEnrollModalWfId(wfId)
+    setEnrollSelected([])
+    setEnrollFilter('')
+    if (!allLeads.length) {
+      api.get('/api/workflow-v2/meta/leads-all').then(d => setAllLeads(d.leads || [])).catch(() => {})
+    }
+  }
+
+  const doEnroll = async () => {
+    if (!enrollModalWfId || !enrollSelected.length) return
+    setEnrolling(true)
+    try {
+      const res = await api.post(`/api/workflow-v2/${enrollModalWfId}/enroll-bulk`, { leadIds: enrollSelected })
+      setMsg(`${res.enrolled} lead eklendi${res.skipped ? `, ${res.skipped} zaten aktifti` : ''}`)
+      setEnrollModalWfId(null)
+      load()
+    } catch (e: any) { setMsg(e.message) }
+    setEnrolling(false)
+  }
+
   const filteredLeads = allLeads.filter(l =>
     !leadFilter || (l.company_name || '').toLowerCase().includes(leadFilter.toLowerCase())
+  )
+  const enrollFilteredLeads = allLeads.filter(l =>
+    !enrollFilter || (l.company_name || '').toLowerCase().includes(enrollFilter.toLowerCase())
   )
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -993,6 +1023,10 @@ export default function WorkflowPage() {
                       className={`p-2 rounded-lg transition ${wf.is_active ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'}`}>
                       {wf.is_active ? <Pause size={14} /> : <Play size={14} />}
                     </button>
+                    <button onClick={e => { e.stopPropagation(); openEnrollModal(wf.id) }}
+                      title="Lead ekle" className="flex items-center gap-1 px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 rounded-lg text-xs font-medium transition">
+                      <Users size={13} /> Lead
+                    </button>
                     <button onClick={e => { e.stopPropagation(); openEditor(wf) }}
                       className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition">
                       <Settings2 size={14} />
@@ -1021,7 +1055,7 @@ export default function WorkflowPage() {
                           { label: 'Aktif',       value: analytics.summary?.active    || 0, color: 'text-amber-400' },
                           { label: 'Tamamlandı',  value: analytics.summary?.completed || 0, color: 'text-emerald-400' },
                           { label: 'Hata',        value: analytics.summary?.error     || 0, color: 'text-red-400' },
-                          { label: 'Toplam Adım', value: analytics.totalSteps         || 0, color: 'text-cyan-400' },
+                          { label: 'Mesaj Gönderildi', value: analytics.messagesSent  || 0, color: 'text-cyan-400' },
                         ].map(s => (
                           <div key={s.label} className="bg-slate-900/50 rounded-xl p-3 text-center">
                             <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
@@ -1074,22 +1108,76 @@ export default function WorkflowPage() {
           <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-3">Hazır Şablonlar</p>
           <div className="grid grid-cols-3 gap-3">
             {templates.map(tpl => (
-              <button key={tpl.id} onClick={async () => {
-                setSaving(true)
-                try {
-                  await api.post('/api/workflow-v2', {
-                    name: tpl.name, trigger_type: tpl.trigger_type,
-                    trigger_config: tpl.trigger_config, nodes: tpl.nodes,
-                  })
-                  load()
-                } catch {} finally { setSaving(false) }
+              <button key={tpl.id} onClick={() => {
+                setEditorName(tpl.name)
+                setEditorTrigger(tpl.trigger_type)
+                setEditorNodes(tpl.nodes)
+                setEditWf(null)
+                setMsg(null)
+                setView('editor')
               }}
-                className="text-left p-4 bg-slate-800/30 border border-slate-700 hover:border-slate-600 rounded-xl transition">
+                className="text-left p-4 bg-slate-800/30 border border-slate-700 hover:border-amber-500/30 rounded-xl transition group">
                 <p className="text-white text-sm font-medium mb-1">{tpl.name}</p>
                 <p className="text-slate-500 text-xs mb-2 line-clamp-2">{tpl.description}</p>
-                <span className="text-xs text-slate-600">{TRIGGER_LABELS[tpl.trigger_type]} · {tpl.nodes.length} adım</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">{TRIGGER_LABELS[tpl.trigger_type]} · {tpl.nodes.length} adım</span>
+                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 transition">Düzenle &rarr;</span>
+                </div>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── ENROLL MODAL ─────────────────────────────────────────────────────── */}
+      {enrollModalWfId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+              <div>
+                <h2 className="text-white font-semibold">Lead Ekle</h2>
+                <p className="text-slate-500 text-xs mt-0.5">Seçilen leadler bu workflow'a dahil edilir</p>
+              </div>
+              <button onClick={() => setEnrollModalWfId(null)} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <input value={enrollFilter} onChange={e => setEnrollFilter(e.target.value)}
+                placeholder="Firma adı ara..."
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500" />
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">{enrollSelected.length} lead seçildi</span>
+                <button onClick={() => setEnrollSelected(enrollFilteredLeads.map(l => l.id))}
+                  className="text-amber-400 hover:text-amber-300">Tümünü seç</button>
+              </div>
+              <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+                {enrollFilteredLeads.slice(0, 100).map(l => (
+                  <label key={l.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-800/60 cursor-pointer">
+                    <input type="checkbox" checked={enrollSelected.includes(l.id)}
+                      onChange={e => setEnrollSelected(p => e.target.checked ? [...p, l.id] : p.filter(id => id !== l.id))}
+                      className="accent-amber-500 rounded shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-medium truncate">{l.company_name}</p>
+                      <p className="text-slate-500 text-xs truncate">{l.city}{l.sector ? ` · ${l.sector}` : ''}</p>
+                    </div>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${l.status === 'hot' ? 'bg-red-500/15 text-red-400' : 'bg-slate-700 text-slate-400'}`}>{l.status}</span>
+                  </label>
+                ))}
+                {enrollFilteredLeads.length === 0 && (
+                  <p className="text-slate-500 text-sm text-center py-6">Lead bulunamadı</p>
+                )}
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex gap-3">
+              <button onClick={() => setEnrollModalWfId(null)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm transition">
+                İptal
+              </button>
+              <button onClick={doEnroll} disabled={enrolling || !enrollSelected.length}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-900 font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
+                {enrolling ? <RefreshCw size={14} className="animate-spin" /> : <Users size={14} />}
+                {enrolling ? 'Ekleniyor...' : `${enrollSelected.length} Lead Ekle`}
+              </button>
+            </div>
           </div>
         </div>
       )}

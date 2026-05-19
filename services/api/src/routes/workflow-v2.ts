@@ -155,10 +155,6 @@ Sadece mesaj metnini döndür, başka bir şey yazma.`,
 
       if (smsSettings?.netgsm_user) {
         const phone = lead.phone.replace(/\D/g, '');
-        await fetch('https://api.netgsm.com.tr/sms/send/get', {
-          method: 'GET',
-          headers: {},
-        });
         const url = `https://api.netgsm.com.tr/sms/send/get?usercode=${smsSettings.netgsm_user}&password=${smsSettings.netgsm_pass}&gsmno=${phone}&message=${encodeURIComponent(body)}&msgheader=${smsSettings.netgsm_header || 'LEADFLOW'}`;
         await fetch(url);
       }
@@ -889,74 +885,74 @@ router.get('/:id/analytics', async (req: any, res: any) => {
     const summary = { active: 0, completed: 0, error: 0, cancelled: 0 };
     (enroll || []).forEach((e: any) => { if (summary[e.status as keyof typeof summary] !== undefined) summary[e.status as keyof typeof summary]++; });
 
-    res.json({ nodeStats, summary, totalSteps: (logs || []).length });
+    const messagesSent = (logs || []).filter((l: any) => l.node_type === 'message' && l.status === 'executed').length;
+    res.json({ nodeStats, summary, totalSteps: (logs || []).length, messagesSent });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// Workflow templates
-router.get('/meta/templates', async (req: any, res: any) => {
-  const templates = [
-    {
-      id: 'welcome_sequence',
-      name: 'Hoş Geldin Serisi',
-      description: 'Yeni lead için 3 günlük karşılama akışı',
-      trigger_type: 'lead_created',
-      trigger_config: {},
-      nodes: [
-        { id: 'n1', type: 'message', label: 'WhatsApp Karşılama', config: { channel: 'whatsapp', template: 'Merhaba {{isim}}! {{firma}} olarak sizi LeadFlow platformuna hoş geldiniz. Size nasıl yardımcı olabiliriz?' }, next: 'n2' },
-        { id: 'n2', type: 'wait', label: '2 Gün Bekle', config: { days: 2, useSmartTiming: true }, next: 'n3' },
-        { id: 'n3', type: 'message', label: 'Takip Mesajı', config: { channel: 'whatsapp', template: 'Merhaba {{isim}}, {{firma}} ile ilgili sorularınız var mı? Yardımcı olmaktan memnuniyet duyarım.', useAI: true }, next: 'n4' },
-        { id: 'n4', type: 'wait', label: '3 Gün Bekle', config: { days: 3 }, next: 'n5' },
-        { id: 'n5', type: 'condition', label: 'Sıcak mı?', config: { condField: 'hot_score', condOperator: 'gte', condValue: '30' }, nextTrue: 'n6', nextFalse: 'n7' },
-        { id: 'n6', type: 'action', label: 'Arama Etiketi', config: { actionType: 'add_tag', actionValue: 'arama_planla' }, next: 'n8' },
-        { id: 'n7', type: 'message', label: 'Veda Mesajı', config: { channel: 'email', subject: 'Size nasıl yardımcı olabiliriz?', template: 'Merhaba {{isim}}, ilerleyen günlerde bir fikir paylaşmak isteriz.' }, next: 'n8' },
-        { id: 'n8', type: 'end', label: 'Bitti', config: {} },
-      ],
-    },
-    {
-      id: 'proposal_followup',
-      name: 'Teklif Takip',
-      description: 'Teklif gönderildikten sonra akıllı takip',
-      trigger_type: 'stage_changed',
-      trigger_config: { to: 'proposal' },
-      nodes: [
-        { id: 'n1', type: 'wait', label: '1 Gün Bekle', config: { days: 1, useSmartTiming: true }, next: 'n2' },
-        { id: 'n2', type: 'message', label: 'Teklif Takip WA', config: { channel: 'whatsapp', template: 'Merhaba {{isim}}, teklifimizi inceleme fırsatı buldunuz mu? Sorularınız için buradayım.', useAI: true }, next: 'n3' },
-        { id: 'n3', type: 'wait', label: '3 Gün Bekle', config: { days: 3 }, next: 'n4' },
-        { id: 'n4', type: 'ab_split', label: 'A/B Test', config: { abVariants: { a: 'Teklifimiz hakkında bir güncelleme paylaşmak istedim.', b: 'Özel bir fırsat sunmak istiyorum, uygun musunuz?' }, splitPct: 50 }, nextA: 'n5', nextB: 'n5' },
-        { id: 'n5', type: 'message', label: 'A/B Mesajı', config: { channel: 'whatsapp', useAI: true }, next: 'n6' },
-        { id: 'n6', type: 'end', label: 'Bitti', config: {} },
-      ],
-    },
-    {
-      id: 'reactivation',
-      name: 'Yeniden Aktivasyon',
-      description: 'Soğumuş leadleri ısıtma akışı',
-      trigger_type: 'manual',
-      trigger_config: {},
-      nodes: [
-        { id: 'n1', type: 'condition', label: 'Eposta var mı?', config: { condField: 'email', condOperator: 'not_eq', condValue: '' }, nextTrue: 'n2', nextFalse: 'n3' },
-        { id: 'n2', type: 'message', label: 'Yeniden Bağlan Email', config: { channel: 'email', subject: 'Sizi özledik {{isim}}!', template: 'Merhaba {{isim}}, bir süredir görüşemedik. {{firma}} ile yeni gelişmeler var, paylaşmak istedim.', useAI: true }, next: 'n4' },
-        { id: 'n3', type: 'message', label: 'WhatsApp ile Dene', config: { channel: 'whatsapp', template: 'Merhaba {{isim}}! Uzun süredir görüşemedik, nasılsınız?', useAI: true }, next: 'n4' },
-        { id: 'n4', type: 'wait', label: '5 Gün Bekle', config: { days: 5 }, next: 'n5' },
-        { id: 'n5', type: 'action', label: 'Skoru Artır', config: { actionType: 'update_score', actionValue: '5' }, next: 'n6' },
-        { id: 'n6', type: 'end', label: 'Bitti', config: {} },
-      ],
-    },
-  ];
+// ─── Templates (module-level constant, used by both GET and POST routes) ────────
 
-  res.json({ templates });
+const WORKFLOW_TEMPLATES = [
+  {
+    id: 'welcome_sequence',
+    name: 'Hoş Geldin Serisi',
+    description: 'Yeni lead için 3 günlük karşılama akışı',
+    trigger_type: 'lead_created',
+    trigger_config: {},
+    nodes: [
+      { id: 'n1', type: 'message', label: 'WhatsApp Karşılama', config: { channel: 'whatsapp', template: 'Merhaba {{isim}}! {{firma}} olarak sizi LeadFlow platformuna hoş geldiniz. Size nasıl yardımcı olabiliriz?' }, next: 'n2' },
+      { id: 'n2', type: 'wait',    label: '2 Gün Bekle',    config: { days: 2, useSmartTiming: true }, next: 'n3' },
+      { id: 'n3', type: 'message', label: 'Takip Mesajı',   config: { channel: 'whatsapp', template: 'Merhaba {{isim}}, {{firma}} ile ilgili sorularınız var mı? Yardımcı olmaktan memnuniyet duyarım.', useAI: true }, next: 'n4' },
+      { id: 'n4', type: 'wait',    label: '3 Gün Bekle',    config: { days: 3 }, next: 'n5' },
+      { id: 'n5', type: 'condition', label: 'Sıcak mı?',    config: { condField: 'hot_score', condOperator: 'gte', condValue: '30' }, nextTrue: 'n6', nextFalse: 'n7' },
+      { id: 'n6', type: 'action',  label: 'Arama Etiketi',  config: { actionType: 'add_tag', actionValue: 'arama_planla' }, next: 'n8' },
+      { id: 'n7', type: 'message', label: 'Veda Mesajı',    config: { channel: 'email', subject: 'Size nasıl yardımcı olabiliriz?', template: 'Merhaba {{isim}}, ilerleyen günlerde bir fikir paylaşmak isteriz.' }, next: 'n8' },
+      { id: 'n8', type: 'end',     label: 'Bitti',          config: {} },
+    ],
+  },
+  {
+    id: 'proposal_followup',
+    name: 'Teklif Takip',
+    description: 'Teklif gönderildikten sonra akıllı takip',
+    trigger_type: 'stage_changed',
+    trigger_config: { to: 'proposal' },
+    nodes: [
+      { id: 'n1', type: 'wait',     label: '1 Gün Bekle',     config: { days: 1, useSmartTiming: true }, next: 'n2' },
+      { id: 'n2', type: 'message',  label: 'Teklif Takip WA', config: { channel: 'whatsapp', template: 'Merhaba {{isim}}, teklifimizi inceleme fırsatı buldunuz mu? Sorularınız için buradayım.', useAI: true }, next: 'n3' },
+      { id: 'n3', type: 'wait',     label: '3 Gün Bekle',     config: { days: 3 }, next: 'n4' },
+      { id: 'n4', type: 'ab_split', label: 'A/B Test',        config: { abVariants: { a: 'Teklifimiz hakkında bir güncelleme paylaşmak istedim.', b: 'Özel bir fırsat sunmak istiyorum, uygun musunuz?' }, splitPct: 50 }, nextA: 'n5', nextB: 'n5' },
+      { id: 'n5', type: 'message',  label: 'A/B Mesajı',      config: { channel: 'whatsapp', useAI: true }, next: 'n6' },
+      { id: 'n6', type: 'end',      label: 'Bitti',           config: {} },
+    ],
+  },
+  {
+    id: 'reactivation',
+    name: 'Yeniden Aktivasyon',
+    description: 'Soğumuş leadleri ısıtma akışı',
+    trigger_type: 'manual',
+    trigger_config: {},
+    nodes: [
+      { id: 'n1', type: 'condition', label: 'Eposta var mı?',      config: { condField: 'email', condOperator: 'not_eq', condValue: '' }, nextTrue: 'n2', nextFalse: 'n3' },
+      { id: 'n2', type: 'message',   label: 'Yeniden Bağlan Email', config: { channel: 'email', subject: 'Sizi özledik {{isim}}!', template: 'Merhaba {{isim}}, bir süredir görüşemedik. {{firma}} ile yeni gelişmeler var, paylaşmak istedim.', useAI: true }, next: 'n4' },
+      { id: 'n3', type: 'message',   label: 'WhatsApp ile Dene',   config: { channel: 'whatsapp', template: 'Merhaba {{isim}}! Uzun süredir görüşemedik, nasılsınız?', useAI: true }, next: 'n4' },
+      { id: 'n4', type: 'wait',      label: '5 Gün Bekle',         config: { days: 5 }, next: 'n5' },
+      { id: 'n5', type: 'action',    label: 'Skoru Artır',         config: { actionType: 'update_score', actionValue: '5' }, next: 'n6' },
+      { id: 'n6', type: 'end',       label: 'Bitti',               config: {} },
+    ],
+  },
+];
+
+// Workflow templates
+router.get('/meta/templates', (_req: any, res: any) => {
+  res.json({ templates: WORKFLOW_TEMPLATES });
 });
 
 // Create from template
 router.post('/from-template/:templateId', async (req: any, res: any) => {
   try {
-    // Re-fetch templates via internal call
-    const tplRes = await fetch(`http://localhost:${process.env.PORT || 3001}/api/workflow-v2/meta/templates`);
-    const { templates } = await tplRes.json();
-    const tpl = templates.find((t: any) => t.id === req.params.templateId);
+    const tpl = WORKFLOW_TEMPLATES.find((t: any) => t.id === req.params.templateId);
     if (!tpl) return res.status(404).json({ error: 'Şablon bulunamadı' });
 
     const { data, error } = await supabase
