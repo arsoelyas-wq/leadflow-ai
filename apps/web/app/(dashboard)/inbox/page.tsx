@@ -14,6 +14,14 @@ const CHANNEL_CONFIG: Record<string, { icon: string; label: string; color: strin
 
 const AVATAR_COLORS = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#be185d']
 
+const QUICK_REPLIES = [
+  'Teşekkür ederiz, en kısa sürede geri dönüyoruz.',
+  'Kataloğumuzu gönderdik, incelemenizi rica ederiz.',
+  'Toplantı için uygun zamanınızı paylaşır mısınız?',
+  'Teklifinizi hazırlıyoruz, yakında iletiyoruz.',
+  'Şu an müsait değilim, sizi sonra arayacağım.',
+]
+
 function avatarColor(name: string) {
   let h = 0
   for (let i = 0; i < (name || '').length; i++) h = name.charCodeAt(i) + h * 31
@@ -90,6 +98,25 @@ export default function UnifiedInboxPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Konuşma listesini 30 saniyede bir güncelle
+  useEffect(() => {
+    const t = setInterval(() => load(), 30000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Açık konuşmanın mesajlarını 15 saniyede bir güncelle
+  useEffect(() => {
+    if (!selectedLead) return
+    const t = setInterval(async () => {
+      try {
+        const data = await api.get(`/api/inbox/messages?leadId=${selectedLead.id}`)
+        setMessages(data.messages || [])
+      } catch {}
+    }, 15000)
+    return () => clearInterval(t)
+  }, [selectedLead])
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   const send = async () => {
@@ -203,9 +230,15 @@ export default function UnifiedInboxPage() {
               <p className="text-white font-semibold text-sm">{selectedLead.company_name}</p>
               <p className="text-slate-400 text-xs">{selectedLead.phone || selectedLead.email || '—'}</p>
             </div>
-            <button onClick={() => load()} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
-              <RefreshCw size={14} />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-xs text-emerald-400">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                Canlı
+              </span>
+              <button onClick={() => loadMessages(selectedLead)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                <RefreshCw size={14} />
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -241,6 +274,15 @@ export default function UnifiedInboxPage() {
                 {msg.text}
               </div>
             )}
+            {/* Hızlı yanıtlar */}
+            <div className="flex gap-1 mb-2 overflow-x-auto pb-1 scrollbar-hide">
+              {QUICK_REPLIES.map(qr => (
+                <button key={qr} onClick={() => setNewMessage(qr)}
+                  className="px-2.5 py-1 text-xs rounded-lg border border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-500 transition whitespace-nowrap flex-shrink-0">
+                  {qr.substring(0, 28)}…
+                </button>
+              ))}
+            </div>
             <div className="flex gap-1 mb-2 flex-wrap">
               {Object.entries(CHANNEL_CONFIG).map(([ch, info]) => (
                 <button key={ch} onClick={() => setChannel(ch)}

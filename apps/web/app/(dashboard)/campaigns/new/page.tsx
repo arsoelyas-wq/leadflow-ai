@@ -62,6 +62,9 @@ export default function NewCampaignPage() {
   const [error, setError] = useState('')
   const [leadSearch, setLeadSearch] = useState('')
   const [leadStatusFilter, setLeadStatusFilter] = useState('all')
+  const [isScheduled, setIsScheduled] = useState(false)
+  const [scheduleAt, setScheduleAt] = useState('')
+  const [leadsTotal, setLeadsTotal] = useState(0)
 
   useEffect(() => {
     if (step === 3) loadLeads()
@@ -70,8 +73,18 @@ export default function NewCampaignPage() {
   const loadLeads = async () => {
     setLoadingLeads(true)
     try {
-      const data = await api.get('/api/leads?limit=500')
-      setLeads(data.leads || [])
+      const all: Lead[] = []
+      let offset = 0
+      const pageSize = 200
+      while (true) {
+        const data = await api.get(`/api/leads?limit=${pageSize}&offset=${offset}`)
+        const batch: Lead[] = data.leads || []
+        all.push(...batch)
+        if (data.total != null) setLeadsTotal(data.total)
+        if (batch.length < pageSize) break
+        offset += pageSize
+      }
+      setLeads(all)
     } catch {
       setLeads([])
     } finally {
@@ -107,7 +120,10 @@ export default function NewCampaignPage() {
     setSaving(true)
     setError('')
     try {
-      await api.post('/api/campaigns', { name, channel, messageTemplate: customMessage, leadIds: selectedLeads })
+      await api.post('/api/campaigns', {
+        name, channel, messageTemplate: customMessage, leadIds: selectedLeads,
+        ...(isScheduled && scheduleAt ? { scheduledAt: new Date(scheduleAt).toISOString() } : {}),
+      })
       router.push('/campaigns')
     } catch (e: any) { setError(e.message) }
     finally { setSaving(false) }
@@ -172,6 +188,33 @@ export default function NewCampaignPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Zamanlama */}
+            <div>
+              <label className="text-slate-300 text-sm font-medium block mb-3">Gönderim Zamanı</label>
+              <div className="flex gap-3">
+                <button onClick={() => setIsScheduled(false)}
+                  className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition ${!isScheduled ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                  ⚡ Hemen Gönder
+                </button>
+                <button onClick={() => setIsScheduled(true)}
+                  className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition ${isScheduled ? 'border-purple-500 bg-purple-500/10 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                  🗓 Zamanla
+                </button>
+              </div>
+              {isScheduled && (
+                <div className="mt-3">
+                  <input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition" />
+                  {scheduleAt && (
+                    <p className="text-purple-400 text-xs mt-1.5">
+                      {new Date(scheduleAt).toLocaleString('tr-TR', { dateStyle: 'full', timeStyle: 'short' })} tarihinde gönderilecek
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -271,12 +314,19 @@ export default function NewCampaignPage() {
                 ))}
               </div>
             )}
-            {selectedLeads.length > 0 && (
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-blue-300 text-sm">
-                <Users size={14} className="inline mr-1.5" />
-                {selectedLeads.length} lead seçildi · {filteredLeads.length} gösteriliyor / {leads.length} toplam
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              {selectedLeads.length > 0 ? (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-blue-300 text-sm flex-1">
+                  <Users size={14} className="inline mr-1.5" />
+                  {selectedLeads.length} lead seçildi · {filteredLeads.length} filtrede / {leads.length} yüklendi
+                  {leadsTotal > leads.length && <span className="text-slate-400"> / {leadsTotal} toplam</span>}
+                </div>
+              ) : (
+                <div className="text-slate-500 text-xs">
+                  {leads.length} lead yüklendi{leadsTotal > leads.length ? ` (toplam ${leadsTotal})` : ' (tümü)'}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -290,6 +340,7 @@ export default function NewCampaignPage() {
                 { label: 'Kanal', value: CHANNELS.find(c => c.id === channel)?.label },
                 { label: 'Lead Sayısı', value: `${selectedLeads.length} lead` },
                 { label: 'Mesaj Uzunluğu', value: `${customMessage.length} karakter` },
+                { label: 'Gönderim', value: isScheduled && scheduleAt ? new Date(scheduleAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }) : 'Hemen' },
               ].map(item => (
                 <div key={item.label} className="flex justify-between items-center py-3 border-b border-slate-700/50">
                   <span className="text-slate-400 text-sm">{item.label}</span>

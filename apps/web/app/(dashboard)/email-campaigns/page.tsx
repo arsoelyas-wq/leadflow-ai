@@ -31,6 +31,8 @@ export default function EmailCampaignsPage() {
   const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState(false)
+  const [isScheduled, setIsScheduled] = useState(false)
+  const [scheduleAt, setScheduleAt] = useState('')
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const [smtp, setSmtp] = useState({ smtp_host: '', smtp_port: 587, smtp_user: '', smtp_pass: '', from_name: '', from_email: '' })
@@ -94,7 +96,10 @@ export default function EmailCampaignsPage() {
       return showMsg('error', 'Konu, içerik ve en az 1 lead seçin')
     setSending(true)
     try {
-      const r = await api.post('/api/email/send', { subject: email.subject, html: email.html, text: email.text, leadIds: selectedLeads })
+      const r = await api.post('/api/email/send', {
+        subject: email.subject, html: email.html, text: email.text, leadIds: selectedLeads,
+        ...(isScheduled && scheduleAt ? { scheduledAt: new Date(scheduleAt).toISOString() } : {}),
+      })
       showMsg('success', r.message)
       setEmail({ subject: '', html: '', text: '', goal: '' })
       setSelectedLeads([])
@@ -297,10 +302,29 @@ export default function EmailCampaignsPage() {
                 </p>
               </div>
 
-              <button onClick={sendCampaign} disabled={sending || !email.subject || !email.html || !selectedLeads.length}
+              {/* Zamanlama */}
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <button onClick={() => setIsScheduled(false)}
+                    className={`flex-1 py-2 rounded-lg border text-xs font-medium transition ${!isScheduled ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                    ⚡ Hemen
+                  </button>
+                  <button onClick={() => setIsScheduled(true)}
+                    className={`flex-1 py-2 rounded-lg border text-xs font-medium transition ${isScheduled ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                    🗓 Zamanla
+                  </button>
+                </div>
+                {isScheduled && (
+                  <input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500" />
+                )}
+              </div>
+
+              <button onClick={sendCampaign} disabled={sending || !email.subject || !email.html || !selectedLeads.length || (isScheduled && !scheduleAt)}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition font-medium">
                 {sending ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
-                {sending ? 'Gönderiliyor...' : `${selectedLeads.length} Kişiye Gönder`}
+                {sending ? 'Gönderiliyor...' : isScheduled ? `${selectedLeads.length} Kişiye Zamanla` : `${selectedLeads.length} Kişiye Gönder`}
               </button>
             </div>
           </div>

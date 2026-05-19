@@ -55,6 +55,8 @@ export default function SMSPage() {
   const [testing, setTesting] = useState(false)
   const [testPhone, setTestPhone] = useState('')
   const [leadSearch, setLeadSearch] = useState('')
+  const [isScheduled, setIsScheduled] = useState(false)
+  const [scheduleAt, setScheduleAt] = useState('')
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 5000) }
@@ -63,7 +65,7 @@ export default function SMSPage() {
     try {
       const [s, l, c, st] = await Promise.allSettled([
         api.get('/api/sms/settings'),
-        api.get('/api/leads?limit=500'),
+        api.get('/api/leads?limit=1000'),
         api.get('/api/sms/campaigns'),
         api.get('/api/sms/stats'),
       ])
@@ -104,7 +106,10 @@ export default function SMSPage() {
     if (!message || !selectedLeads.length) return
     setSending(true)
     try {
-      const d = await api.post('/api/sms/send', { message, leadIds: selectedLeads })
+      const d = await api.post('/api/sms/send', {
+        message, leadIds: selectedLeads,
+        ...(isScheduled && scheduleAt ? { scheduledAt: new Date(scheduleAt).toISOString() } : {}),
+      })
       showMsg('success', d.message)
       setSelectedLeads([])
       load()
@@ -229,10 +234,29 @@ export default function SMSPage() {
                       <code className="text-green-400">{`{{firma}}`}</code> <code className="text-green-400">{`{{sehir}}`}</code>
                     </div>
                   </div>
-                  <button onClick={sendSMS} disabled={sending || !message || !selectedLeads.length}
+                  {/* Zamanlama */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <button onClick={() => setIsScheduled(false)}
+                        className={`flex-1 py-2 rounded-lg border text-xs font-medium transition ${!isScheduled ? 'bg-green-600 border-green-500 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                        ⚡ Hemen
+                      </button>
+                      <button onClick={() => setIsScheduled(true)}
+                        className={`flex-1 py-2 rounded-lg border text-xs font-medium transition ${isScheduled ? 'bg-purple-600 border-purple-500 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                        🗓 Zamanla
+                      </button>
+                    </div>
+                    {isScheduled && (
+                      <input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)}
+                        min={new Date().toISOString().slice(0, 16)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500" />
+                    )}
+                  </div>
+
+                  <button onClick={sendSMS} disabled={sending || !message || !selectedLeads.length || (isScheduled && !scheduleAt)}
                     className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
                     {sending ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
-                    {sending ? 'Gönderiliyor...' : `${selectedLeads.length} Kişiye Gönder`}
+                    {sending ? 'Gönderiliyor...' : isScheduled ? `${selectedLeads.length} Kişiye Zamanla` : `${selectedLeads.length} Kişiye Gönder`}
                   </button>
                 </div>
               </div>
