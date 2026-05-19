@@ -200,9 +200,14 @@ export default function ProposalPortalPage() {
       {/* Top bar */}
       <div className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between text-sm sticky top-0 z-10 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-xs font-bold">
-            {(proposal.sender_company || 'LF').substring(0, 2).toUpperCase()}
-          </div>
+          {proposal.company_logo_url ? (
+            <img src={proposal.company_logo_url} alt="logo"
+              className="w-7 h-7 rounded-lg object-cover border border-white/20" />
+          ) : (
+            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-xs font-bold">
+              {(proposal.sender_company || 'LF').substring(0, 2).toUpperCase()}
+            </div>
+          )}
           <span className="font-semibold">{proposal.sender_company || 'LeadFlow AI'}</span>
         </div>
         <div className="flex items-center gap-2 text-slate-400">
@@ -216,10 +221,20 @@ export default function ProposalPortalPage() {
         {/* Proposal header */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="bg-slate-900 px-8 py-6 text-white flex items-start justify-between">
-            <div>
-              <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Profesyonel Teklif</p>
-              <h1 className="text-2xl font-bold">TKL-{proposal.id.slice(-6).toUpperCase()}</h1>
-              <p className="text-slate-400 text-sm mt-1">{new Date().toLocaleDateString('tr-TR')}</p>
+            <div className="flex items-start gap-4">
+              {proposal.company_logo_url ? (
+                <img src={proposal.company_logo_url} alt="logo"
+                  className="w-14 h-14 rounded-xl object-cover border border-white/20 shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-blue-700 flex items-center justify-center text-xl font-bold shrink-0">
+                  {(proposal.sender_company || 'LF').substring(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">{proposal.sender_company || 'Profesyonel Teklif'}</p>
+                <h1 className="text-2xl font-bold">TKL-{proposal.id.slice(-6).toUpperCase()}</h1>
+                <p className="text-slate-400 text-sm mt-1">{new Date().toLocaleDateString('tr-TR')}</p>
+              </div>
             </div>
             <a href={`${API_URL}/api/proposals/portal/${token}/pdf`} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition">

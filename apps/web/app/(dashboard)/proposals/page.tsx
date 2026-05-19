@@ -1,11 +1,31 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  FileText, Plus, Send, RefreshCw, CheckCircle, Clock, XCircle,
+  FileText, Plus, Send, RefreshCw, CheckCircle,
   Zap, TrendingUp, Download, Link, Eye, Copy, Trash2,
-  ChevronDown, ChevronUp, Building2, AlertCircle,
+  ChevronDown, ChevronUp, Building2, AlertCircle, Image,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+
+const PROFILE_KEY = 'lf_company_profile'
+
+interface CompanyProfile {
+  senderCompany: string
+  companyLogoUrl: string
+  companyAddress: string
+  iban: string
+  bankName: string
+  companyPhone: string
+  companyEmail: string
+  paymentTerms: string
+}
+
+function loadProfile(): Partial<CompanyProfile> {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}') } catch { return {} }
+}
+function saveProfile(p: CompanyProfile) {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch {}
+}
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -58,20 +78,24 @@ export default function ProposalsPage() {
   const [createdResult, setCreatedResult] = useState<any>(null)
 
   // Create form
-  const [selectedLead, setSelectedLead]   = useState('')
-  const [senderCompany, setSenderCompany] = useState('')
-  const [validUntil, setValidUntil]       = useState('30 gün')
-  const [notes, setNotes]                 = useState('')
-  const [taxRate, setTaxRate]             = useState(18)
-  const [discountPct, setDiscountPct]     = useState(0)
-  const [paymentTerms, setPaymentTerms]   = useState('30 gün net')
-  const [iban, setIban]                   = useState('')
-  const [bankName, setBankName]           = useState('')
-  const [companyPhone, setCompanyPhone]   = useState('')
-  const [companyEmail, setCompanyEmail]   = useState('')
-  const [currency, setCurrency]           = useState('TRY')
-  const [showBankInfo, setShowBankInfo]   = useState(false)
-  const [items, setItems]                 = useState<Item[]>([{ name: '', unit: 'adet', qty: 1, price: 0 }])
+  const [selectedLead, setSelectedLead]       = useState('')
+  const [senderCompany, setSenderCompany]     = useState('')
+  const [companyLogoUrl, setCompanyLogoUrl]   = useState('')
+  const [companyAddress, setCompanyAddress]   = useState('')
+  const [validUntil, setValidUntil]           = useState('30 gün')
+  const [notes, setNotes]                     = useState('')
+  const [taxRate, setTaxRate]                 = useState(18)
+  const [discountPct, setDiscountPct]         = useState(0)
+  const [paymentTerms, setPaymentTerms]       = useState('30 gün net')
+  const [iban, setIban]                       = useState('')
+  const [bankName, setBankName]               = useState('')
+  const [companyPhone, setCompanyPhone]       = useState('')
+  const [companyEmail, setCompanyEmail]       = useState('')
+  const [currency, setCurrency]               = useState('TRY')
+  const [showCompanyProfile, setShowCompanyProfile] = useState(false)
+  const [logoError, setLogoError]             = useState(false)
+  const [items, setItems]                     = useState<Item[]>([{ name: '', unit: 'adet', qty: 1, price: 0 }])
+  const profileSaveRef = useRef(false)
 
   // Negotiate
   const [negMsg, setNegMsg]         = useState('')
@@ -101,6 +125,26 @@ export default function ProposalsPage() {
 
   useEffect(() => { load() }, [load])
 
+  // Load saved company profile on mount
+  useEffect(() => {
+    const p = loadProfile()
+    if (p.senderCompany)   setSenderCompany(p.senderCompany)
+    if (p.companyLogoUrl)  setCompanyLogoUrl(p.companyLogoUrl)
+    if (p.companyAddress)  setCompanyAddress(p.companyAddress)
+    if (p.iban)            setIban(p.iban)
+    if (p.bankName)        setBankName(p.bankName)
+    if (p.companyPhone)    setCompanyPhone(p.companyPhone)
+    if (p.companyEmail)    setCompanyEmail(p.companyEmail)
+    if (p.paymentTerms)    setPaymentTerms(p.paymentTerms)
+    profileSaveRef.current = true
+  }, [])
+
+  // Auto-save profile whenever any company field changes
+  useEffect(() => {
+    if (!profileSaveRef.current) return
+    saveProfile({ senderCompany, companyLogoUrl, companyAddress, iban, bankName, companyPhone, companyEmail, paymentTerms })
+  }, [senderCompany, companyLogoUrl, companyAddress, iban, bankName, companyPhone, companyEmail, paymentTerms])
+
   const addItem = () => setItems(prev => [...prev, { name: '', unit: 'adet', qty: 1, price: 0 }])
   const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i))
   const updateItem = (i: number, k: keyof Item, v: any) =>
@@ -123,6 +167,8 @@ export default function ProposalsPage() {
         taxRate, discountPercent: discountPct, paymentTerms,
         iban: iban || undefined, bankName: bankName || undefined,
         companyPhone: companyPhone || undefined, companyEmail: companyEmail || undefined,
+        companyAddress: companyAddress || undefined,
+        companyLogoUrl: companyLogoUrl || undefined,
         currency,
       })
       setCreatedResult(data)
@@ -386,19 +432,51 @@ export default function ProposalsPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">Gönderen Şirket</label>
-                  <input value={senderCompany} onChange={e => setSenderCompany(e.target.value)}
-                    placeholder="Şirketiniz" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+              {/* Company profile row with logo preview */}
+              <div className="flex items-start gap-3">
+                {/* Logo preview */}
+                <div className="shrink-0 mt-4">
+                  {companyLogoUrl && !logoError ? (
+                    <img src={companyLogoUrl} alt="logo"
+                      onError={() => setLogoError(true)}
+                      onLoad={() => setLogoError(false)}
+                      className="w-12 h-12 rounded-xl object-cover border border-slate-600/50" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-slate-700 border border-slate-600/50 flex items-center justify-center">
+                      <span className="text-sm font-bold text-slate-300">{senderCompany ? senderCompany.substring(0, 2).toUpperCase() : 'LF'}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">Geçerlilik</label>
-                  <select value={validUntil} onChange={e => setValidUntil(e.target.value)}
-                    className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500">
-                    {['7 gün', '15 gün', '30 gün', '45 gün', '60 gün'].map(v => <option key={v}>{v}</option>)}
-                  </select>
+                <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase tracking-wide">Gönderen Şirket</label>
+                    <input value={senderCompany} onChange={e => setSenderCompany(e.target.value)}
+                      placeholder="Şirketiniz" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase tracking-wide">Geçerlilik</label>
+                    <select value={validUntil} onChange={e => setValidUntil(e.target.value)}
+                      className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500">
+                      {['7 gün', '15 gün', '30 gün', '45 gün', '60 gün'].map(v => <option key={v}>{v}</option>)}
+                    </select>
+                  </div>
                 </div>
+              </div>
+
+              {/* Logo URL */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Image className="w-3 h-3" /> Logo URL (PDF ve portalde görünür)
+                </label>
+                <input value={companyLogoUrl} onChange={e => { setCompanyLogoUrl(e.target.value); setLogoError(false) }}
+                  placeholder="https://example.com/logo.png"
+                  className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 font-mono" />
+                {companyLogoUrl && logoError && (
+                  <p className="text-xs text-red-400">Logo yüklenemedi — URL'yi kontrol edin</p>
+                )}
+                {companyLogoUrl && !logoError && (
+                  <p className="text-xs text-emerald-400">Logo hazır ✓</p>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -441,14 +519,21 @@ export default function ProposalsPage() {
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 resize-none" />
               </div>
 
-              {/* Bank Info Toggle */}
-              <button onClick={() => setShowBankInfo(!showBankInfo)}
+              {/* Company profile toggle */}
+              <button onClick={() => setShowCompanyProfile(!showCompanyProfile)}
                 className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
-                {showBankInfo ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                Banka / İletişim Bilgileri
+                {showCompanyProfile ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                <Building2 className="w-3.5 h-3.5" />
+                Şirket Profili (Banka, İletişim, Adres)
+                <span className="text-xs text-emerald-500/70">otomatik kaydedilir</span>
               </button>
-              {showBankInfo && (
+              {showCompanyProfile && (
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 space-y-1">
+                    <label className="text-xs text-slate-400">Şirket Adresi</label>
+                    <input value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
+                      placeholder="Atatürk Cad. No:1, İstanbul" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                  </div>
                   <div className="space-y-1">
                     <label className="text-xs text-slate-400">Banka Adı</label>
                     <input value={bankName} onChange={e => setBankName(e.target.value)}
@@ -462,12 +547,12 @@ export default function ProposalsPage() {
                   <div className="space-y-1">
                     <label className="text-xs text-slate-400">Telefon</label>
                     <input value={companyPhone} onChange={e => setCompanyPhone(e.target.value)}
-                      className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                      placeholder="+90 212 000 00 00" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-slate-400">Email</label>
                     <input value={companyEmail} onChange={e => setCompanyEmail(e.target.value)}
-                      className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                      placeholder="info@sirket.com" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
                   </div>
                 </div>
               )}

@@ -39,6 +39,13 @@ function calcTotals(items: any[], discountPct: number, taxRate: number) {
 }
 
 function fmtMoney(n: number, currency = 'TRY') {
+  // Use text symbols — avoids glyph-missing issue on headless Linux Chrome
+  const sym = currency === 'TRY' ? 'TL' : currency === 'USD' ? 'USD' : 'EUR';
+  return `${Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${sym}`;
+}
+
+// For display in WA messages / API responses (not PDF), keep the ₺ symbol
+function fmtMoneyDisplay(n: number, currency = 'TRY') {
   const sym = currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€';
   return `${sym}${Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
