@@ -6,12 +6,12 @@ import {
   User, Key, Bell, Shield, Save, MessageSquare,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff,
   Send, Eye, EyeOff, Smartphone, QrCode, Bot, Linkedin, Video,
-  Lock, Globe, Table2
+  Lock, Globe, Table2, Zap, Download, FlaskConical
 } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user } = useAuth()
-  const [tab, setTab] = useState<'profile' | 'channels' | 'notifications' | 'security' | '2fa' | 'sheets'>('profile')
+  const [tab, setTab] = useState<'profile' | 'channels' | 'notifications' | 'security' | '2fa' | 'sheets' | 'meta-capi'>('profile')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [profile, setProfile] = useState({ name: user?.name || '', company: user?.company || '' })
@@ -52,6 +52,13 @@ export default function SettingsPage() {
   // Google Sheets
   const [sheetsId, setSheetsId] = useState('')
   const [sheetsSaving, setSheetsSaving] = useState(false)
+
+  // Meta CAPI
+  const [capi, setCapi] = useState({ pixelId: '', accessToken: '', testCode: '', enabled: false, hasToken: false })
+  const [capiSaving, setCapiSaving] = useState(false)
+  const [capiTesting, setCapiTesting] = useState(false)
+  const [capiNewToken, setCapiNewToken] = useState('')
+  const [capiEvents, setCapiEvents] = useState<any[]>([])
 
   // Bildirimler
   const [notifSupported, setNotifSupported] = useState(false)
@@ -98,6 +105,10 @@ export default function SettingsPage() {
       api.get('/api/sheets/settings').then(d => {
         if (d.settings?.sheet_id) setSheetsId(d.settings.sheet_id)
       }).catch(() => {})
+    }
+    if (tab === 'meta-capi') {
+      api.get('/api/meta-capi/settings').then(d => setCapi(d)).catch(() => {})
+      api.get('/api/meta-capi/events').then(d => setCapiEvents(d.events || [])).catch(() => {})
     }
     if (typeof window !== 'undefined') setNotifSupported('Notification' in window)
   }, [tab])
@@ -283,6 +294,7 @@ export default function SettingsPage() {
     { id: 'security', label: 'Güvenlik', icon: Shield },
     { id: '2fa', label: '2FA', icon: Lock },
     { id: 'sheets', label: 'Google Sheets', icon: Globe },
+    { id: 'meta-capi', label: 'Meta CAPI', icon: Zap },
   ]
 
   return (
@@ -788,6 +800,185 @@ export default function SettingsPage() {
                   📤 Şimdi Aktar
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* META CAPI */}
+          {tab === 'meta-capi' && (
+            <div className="space-y-6">
+              {/* Header card */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">📡</div>
+                  <div>
+                    <h2 className="text-white font-semibold">Meta Conversions API</h2>
+                    <p className="text-blue-300 text-xs">Server-side event tracking — iOS14 bypass, EMQ optimized</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${capi.enabled && capi.hasToken ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+                    <span className={`text-xs ${capi.enabled && capi.hasToken ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      {capi.enabled && capi.hasToken ? 'Aktif' : 'Pasif'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-slate-400 text-xs">
+                  LeadFlow→ Lead, Contact, InitiateCheckout, ViewContent, Purchase eventlerini otomatik Meta&apos;ya gönderir.
+                  Algoritma eğitimi için doğrudan sunucu tarafı veri = daha düşük CPL, daha yüksek ROAS.
+                </p>
+              </div>
+
+              {/* Configuration */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
+                <h3 className="text-white font-medium">Bağlantı Ayarları</h3>
+
+                <div>
+                  <label className="text-slate-400 text-xs mb-1.5 block">Pixel ID</label>
+                  <input value={capi.pixelId} onChange={e => setCapi(p => ({ ...p, pixelId: e.target.value }))}
+                    placeholder="123456789012345"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                  <p className="text-slate-500 text-xs mt-1">Meta Business Manager → Events Manager → Pixel → Settings</p>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-xs mb-1.5 block">
+                    Access Token
+                    {capi.hasToken && <span className="ml-2 text-emerald-400">✓ Kayıtlı</span>}
+                  </label>
+                  <input value={capiNewToken} onChange={e => setCapiNewToken(e.target.value)}
+                    type="password"
+                    placeholder={capi.hasToken ? '••••••••••••• (değiştirmek için yeni token girin)' : 'EAAxxxxxxx...'}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                  <p className="text-slate-500 text-xs mt-1">Events Manager → Settings → Generate Access Token</p>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-xs mb-1.5 block">Test Event Code <span className="text-slate-600">(opsiyonel)</span></label>
+                  <input value={capi.testCode} onChange={e => setCapi(p => ({ ...p, testCode: e.target.value }))}
+                    placeholder="TEST12345"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                  <p className="text-slate-500 text-xs mt-1">Events Manager → Test Events → Server Events</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <div className={`w-10 h-5 rounded-full transition relative ${capi.enabled ? 'bg-blue-600' : 'bg-slate-700'}`}
+                      onClick={() => setCapi(p => ({ ...p, enabled: !p.enabled }))}>
+                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${capi.enabled ? 'left-5' : 'left-0.5'}`} />
+                    </div>
+                    <span className="text-slate-300 text-sm">CAPI Aktif</span>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={async () => {
+                    setCapiSaving(true)
+                    try {
+                      await api.post('/api/meta-capi/settings', {
+                        pixelId:     capi.pixelId,
+                        accessToken: capiNewToken || undefined,
+                        testCode:    capi.testCode,
+                        enabled:     capi.enabled,
+                      })
+                      if (capiNewToken) { setCapiNewToken(''); setCapi(p => ({ ...p, hasToken: true })) }
+                      showMsg('success', 'Meta CAPI ayarları kaydedildi')
+                    } catch (e: any) { showMsg('error', e.message) }
+                    finally { setCapiSaving(false) }
+                  }} disabled={capiSaving || !capi.pixelId}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
+                    {capiSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    Kaydet
+                  </button>
+                  <button onClick={async () => {
+                    setCapiTesting(true)
+                    try {
+                      const d = await api.post('/api/meta-capi/test', {})
+                      showMsg('success', d.message)
+                      api.get('/api/meta-capi/events').then(d => setCapiEvents(d.events || [])).catch(() => {})
+                    } catch (e: any) { showMsg('error', e.message) }
+                    finally { setCapiTesting(false) }
+                  }} disabled={capiTesting || !capi.hasToken}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-xl transition">
+                    {capiTesting ? <RefreshCw size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+                    Test Gönder
+                  </button>
+                </div>
+              </div>
+
+              {/* Funnel event map */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                <h3 className="text-white font-medium mb-4">Otomatik Event Haritası</h3>
+                <div className="space-y-3">
+                  {[
+                    { event: 'Lead', trigger: 'Yeni lead oluşturuldu / scrape edildi', color: 'text-blue-400', dot: 'bg-blue-400' },
+                    { event: 'Contact', trigger: 'İlk mesaj gönderildi / pipeline Contacted adımı', color: 'text-cyan-400', dot: 'bg-cyan-400' },
+                    { event: 'InitiateCheckout', trigger: 'Teklif oluşturuldu / pipeline Proposal adımı', color: 'text-amber-400', dot: 'bg-amber-400' },
+                    { event: 'ViewContent', trigger: 'Müşteri teklif portalını görüntüledi', color: 'text-purple-400', dot: 'bg-purple-400' },
+                    { event: 'Purchase', trigger: 'Lead "Kazanıldı" statüsüne geçti (deal value ile)', color: 'text-emerald-400', dot: 'bg-emerald-400' },
+                  ].map(({ event, trigger, color, dot }) => (
+                    <div key={event} className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${dot} flex-shrink-0`} />
+                      <span className={`text-sm font-mono font-medium ${color} w-36 flex-shrink-0`}>{event}</span>
+                      <span className="text-slate-400 text-sm">→</span>
+                      <span className="text-slate-300 text-sm">{trigger}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 p-3 bg-slate-900 rounded-lg">
+                  <p className="text-slate-400 text-xs">
+                    Tüm PII veriler (email, telefon, isim) SHA-256 ile hashlenerek gönderilir.
+                    fbc (Facebook Click ID) ve fbp (Browser ID) EMQ skoru için otomatik eklenir.
+                    Her event benzersiz event_id ile gönderilir — Pixel çakışmaları önlenir.
+                  </p>
+                </div>
+              </div>
+
+              {/* Audience export */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                <h3 className="text-white font-medium mb-2">Custom Audience Export</h3>
+                <p className="text-slate-400 text-sm mb-4">SHA-256 hashli CSV — Meta Ads Manager&apos;a direkt yükleyin</p>
+                <div className="flex gap-3">
+                  {[
+                    { path: '/api/meta-capi/audience/won',  label: 'Kazanıldı Listesi',  cls: 'bg-emerald-600/20 hover:bg-emerald-600/30 border-emerald-600/40 text-emerald-300' },
+                    { path: '/api/meta-capi/audience/lost', label: 'Kaybedildi Listesi', cls: 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300' },
+                  ].map(({ path, label, cls }) => (
+                    <button key={path} onClick={async () => {
+                      const token = localStorage.getItem('token')
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+                      const res = await fetch(`${API_URL}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+                      const blob = await res.blob()
+                      const url  = URL.createObjectURL(blob)
+                      const a    = document.createElement('a')
+                      a.href     = url
+                      a.download = path.split('/').pop() + '.csv'
+                      a.click()
+                      URL.revokeObjectURL(url)
+                    }} className={`flex items-center gap-2 px-4 py-2.5 border text-sm rounded-xl transition ${cls}`}>
+                      <Download size={14} /> {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-slate-500 text-xs mt-3">
+                  Kazanıldı → mevcut müşterileri reklamlardan hariç tut veya Lookalike Audience oluştur
+                  · Kaybedildi → retargeting kampanyaları için hedefle
+                </p>
+              </div>
+
+              {/* Recent event log */}
+              {capiEvents.length > 0 && (
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                  <h3 className="text-white font-medium mb-4">Son CAPI Eventleri</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {capiEvents.slice(0, 20).map((ev: any) => (
+                      <div key={ev.id || ev.fired_at} className="flex items-center gap-3 text-xs py-1.5 border-b border-slate-700/50">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                        <span className="text-slate-400 w-32 flex-shrink-0 font-mono">{ev.event_name}</span>
+                        <span className="text-slate-300 flex-1 truncate">{ev.leads?.company_name || ev.lead_id}</span>
+                        <span className="text-slate-500 flex-shrink-0">{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

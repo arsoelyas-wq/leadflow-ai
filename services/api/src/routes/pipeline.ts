@@ -1,6 +1,7 @@
 export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const { fireCapiEvent } = require('../services/meta-capi');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -106,6 +107,28 @@ router.patch('/move', async (req: any, res: any) => {
         event_type: 'status_change',
         metadata:   { from: null, to: newStage },
       });
+    } catch {}
+
+    // Meta CAPI — fire appropriate funnel event (non-blocking)
+    try {
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', leadId)
+        .single();
+
+      if (lead) {
+        if (newStage === 'won') {
+          await fireCapiEvent(supabase, req.userId, lead, 'Purchase', {
+            value:   lead.deal_value || 0,
+            orderId: `won-${leadId}`,
+          });
+        } else if (newStage === 'proposal') {
+          await fireCapiEvent(supabase, req.userId, lead, 'InitiateCheckout');
+        } else if (newStage === 'contacted' || newStage === 'replied') {
+          await fireCapiEvent(supabase, req.userId, lead, 'Contact');
+        }
+      }
     } catch {}
 
     res.json({ success: true });

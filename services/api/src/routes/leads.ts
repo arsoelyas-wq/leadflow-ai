@@ -2,6 +2,7 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { authMiddleware } = require('../middleware/auth');
+const { fireCapiEvent } = require('../services/meta-capi');
 
 const router = express.Router();
 const supabase = createClient(
@@ -165,10 +166,11 @@ router.get('/:id', authMiddleware, async (req: any, res: any) => {
 // PATCH /api/leads/:id — Güncelle
 router.patch('/:id', authMiddleware, async (req: any, res: any) => {
   try {
-    const allowed = ['status', 'notes', 'score', 'contact_name', 'phone', 'email'];
+    const allowed = ['status', 'notes', 'score', 'contact_name', 'phone', 'email', 'deal_value'];
     const updates: any = {};
     allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
     updates.updated_at = new Date().toISOString();
+    if (updates.status === 'won') updates.won_at = new Date().toISOString();
 
     const { data, error } = await supabase
       .from('leads')
@@ -179,6 +181,61 @@ router.patch('/:id', authMiddleware, async (req: any, res: any) => {
       .single();
 
     if (error) throw error;
+
+    // Meta CAPI — fire on status transitions
+    if (data && updates.status) {
+      try {
+        if (updates.status === 'won') {
+          await fireCapiEvent(supabase, req.userId, data, 'Purchase', {
+            value:   data.deal_value || 0,
+            orderId: `won-${data.id}`,
+          });
+        } else if (updates.status === 'contacted' || updates.status === 'replied') {
+          await fireCapiEvent(supabase, req.userId, data, 'Contact');
+        } else if (updates.status === 'proposal') {
+          await fireCapiEvent(supabase, req.userId, data, 'InitiateCheckout');
+        }
+      } catch {}
+    }
+
+    res.json({ lead: data });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/leads — Manuel lead oluştur (UTM + fbc/fbp capture ile)
+router.post('/', authMiddleware, async (req: any, res: any) => {
+  try {
+    const {
+      company_name, contact_name, phone, email, website,
+      city, sector, source, notes, score,
+      utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+      fbc, fbp,
+    } = req.body;
+
+    if (!company_name) return res.status(400).json({ error: 'company_name zorunlu' });
+
+    const { data, error } = await supabase
+      .from('leads')
+      .insert([{
+        user_id: req.userId,
+        company_name, contact_name, phone, email, website,
+        city, sector, source: source || 'Manuel',
+        status: 'new', score: score || 50, notes,
+        utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+        fbc, fbp,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Fire Lead CAPI event
+    try { await fireCapiEvent(supabase, req.userId, data, 'Lead'); } catch {}
+
     res.json({ lead: data });
   } catch (e: any) {
     res.status(500).json({ error: e.message });

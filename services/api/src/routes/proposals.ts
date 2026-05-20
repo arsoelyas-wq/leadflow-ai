@@ -3,6 +3,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const Anthropic = require('@anthropic-ai/sdk');
 const crypto = require('crypto');
+const { fireCapiEvent } = require('../services/meta-capi');
 
 const router     = express.Router();
 const portalRouter = express.Router();
@@ -366,6 +367,17 @@ portalRouter.get('/:token', async (req: any, res: any) => {
 
     const items = JSON.parse(proposal.items || '[]');
     const totals = calcTotals(items, proposal.discount_percent || 0, proposal.tax_rate ?? 18);
+
+    // Meta CAPI — ViewContent on proposal portal view (non-blocking)
+    if (lead && proposal.user_id) {
+      try {
+        await fireCapiEvent(supabase, proposal.user_id, {
+          ...lead,
+          id:         proposal.lead_id,
+          deal_value: proposal.total_price,
+        }, 'ViewContent', { value: proposal.total_price || 0 });
+      } catch {}
+    }
 
     res.json({ proposal: { ...proposal, ...totals }, lead, items });
   } catch (e: any) {
