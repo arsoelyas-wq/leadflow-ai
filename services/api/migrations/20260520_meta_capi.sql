@@ -41,7 +41,16 @@ CREATE INDEX IF NOT EXISTS idx_meta_capi_events_lead    ON meta_capi_events (lea
 
 -- RLS
 ALTER TABLE meta_capi_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "meta_capi_events_user_isolation"
-  ON meta_capi_events
-  FOR ALL
-  USING (user_id = auth.uid());
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'meta_capi_events'
+      AND policyname = 'meta_capi_events_user_isolation'
+  ) THEN
+    CREATE POLICY "meta_capi_events_user_isolation"
+      ON meta_capi_events
+      FOR ALL
+      USING (user_id = auth.uid());
+  END IF;
+END $$;
