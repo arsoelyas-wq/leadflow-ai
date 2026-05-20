@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kill 479)",
+      "Bash(git commit -m ' *)",
+      "PowerShell(vercel --version 2>&1)",
+      "PowerShell(railway --version 2>&1)"
+    ]
+  }
+}

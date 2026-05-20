@@ -77,10 +77,9 @@ const groups: NavGroup[] = [
     label: 'Reklam Yönetimi',
     icon: Target,
     items: [
-      { href: '/ads',               label: 'Meta Ads',           icon: Megaphone },
-      { href: '/google-ads',        label: 'Google Ads',         icon: BarChart2 },
-      { href: '/ads-advanced',      label: 'Gelişmiş Reklam AI', icon: Brain, plan: 'pro', badge: 'AI' },
-      { href: '/meta-attribution',  label: 'Meta Attributionu',  icon: Zap, plan: 'growth', badge: 'CAPI' },
+      { href: '/ads',          label: 'Meta Ads',           icon: Megaphone },
+      { href: '/google-ads',   label: 'Google Ads',         icon: BarChart2 },
+      { href: '/ads-advanced', label: 'Gelişmiş Reklam AI', icon: Brain, plan: 'pro', badge: 'AI' },
     ],
   },
   {

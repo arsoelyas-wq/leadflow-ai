@@ -6,7 +6,7 @@ import AdsROI from './AdsROI'
 import {
   RefreshCw, Users, CheckCircle, Link, Target, BarChart2,
   ArrowUpRight, X, ChevronRight, ChevronDown, Sparkles,
-  AlertTriangle, Activity, Zap
+  AlertTriangle, Activity, Zap, TrendingUp, DollarSign, Download
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -28,6 +28,11 @@ const AI_MSGS = [
   'Kampanya planı hazırlanıyor...',
 ]
 
+interface AdResult {
+  campaign: string; source: string; leads: number
+  won: number; revenue: number; winRate: number; avgDeal: number
+}
+
 export default function AdsPage() {
   const searchParams = useSearchParams()
   const [connected, setConnected] = useState(false)
@@ -38,6 +43,10 @@ export default function AdsPage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Ad results (attribution)
+  const [adResults, setAdResults] = useState<AdResult[]>([])
+  const [adSummary, setAdSummary] = useState<any>(null)
 
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -72,14 +81,16 @@ export default function AdsPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [connRes, campRes, actRes] = await Promise.allSettled([
+      const [connRes, campRes, actRes, attrRes] = await Promise.allSettled([
         fetch(`${API}/api/ads/connection`, { headers: authH() }),
         fetch(`${API}/api/ads/my-campaigns`, { headers: authH() }),
         fetch(`${API}/api/ads-intelligence/activity`, { headers: authH() }),
+        fetch(`${API}/api/meta-capi/attribution`, { headers: authH() }),
       ])
       if (connRes.status === 'fulfilled') { const d = await connRes.value.json(); setConnected(d.connected) }
       if (campRes.status === 'fulfilled') { const d = await campRes.value.json(); setCampaigns(d.campaigns || []) }
       if (actRes.status === 'fulfilled') { const d = await actRes.value.json(); setActivities(d.activities || []); setLeadsToday(d.leads_today || 0) }
+      if (attrRes.status === 'fulfilled') { const d = await attrRes.value.json(); setAdResults(d.rows || []); setAdSummary(d.summary || null) }
     } catch {}
     setLoading(false)
   }
@@ -292,6 +303,80 @@ export default function AdsPage() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Ad Results — plain Turkish, no tech jargon */}
+        {adSummary && (adSummary.totalLeads > 0 || adResults.length > 0) && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-white">Reklam Sonuçlarım</h2>
+              <span className="text-xs text-slate-500">Reklamlardan gelen leadlerin satışa dönüşüm takibi</span>
+            </div>
+
+            {/* Summary row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 text-center">
+                <p className="text-2xl font-bold text-white">{adSummary.totalLeads}</p>
+                <p className="text-xs text-slate-400 mt-1">Reklamdan Gelen Lead</p>
+              </div>
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
+                <p className="text-2xl font-bold text-emerald-400">{adSummary.totalWon}</p>
+                <p className="text-xs text-slate-400 mt-1">Müşteriye Dönen</p>
+              </div>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
+                <p className="text-2xl font-bold text-amber-400">
+                  {adSummary.totalRevenue > 0 ? `₺${adSummary.totalRevenue.toLocaleString('tr-TR')}` : '—'}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">Toplam Kazanç</p>
+              </div>
+            </div>
+
+            {/* Per-campaign breakdown */}
+            {adResults.length > 0 && (
+              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-700/50 flex items-center justify-between">
+                  <span className="text-sm font-medium text-white">Kampanya Bazında</span>
+                  <button onClick={async () => {
+                    const res = await fetch(`${API}/api/meta-capi/audience/won`, { headers: authH() })
+                    const blob = await res.blob()
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a'); a.href = url; a.download = 'musteri-listesi.csv'; a.click()
+                    URL.revokeObjectURL(url)
+                  }} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition">
+                    <Download className="w-3.5 h-3.5" /> Müşteri Listesini İndir
+                  </button>
+                </div>
+                <div className="divide-y divide-slate-700/30">
+                  {adResults.slice(0, 8).map((row, i) => (
+                    <div key={i} className="flex items-center gap-4 px-5 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">
+                          {row.campaign !== '—' ? row.campaign : row.source}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">{row.leads} lead geldi</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {row.won > 0 && (
+                          <div className="flex items-center gap-1 text-emerald-400 text-sm font-medium">
+                            <TrendingUp className="w-3.5 h-3.5" />
+                            {row.won} müşteri
+                          </div>
+                        )}
+                        {row.revenue > 0 && (
+                          <div className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-semibold text-amber-400">
+                            ₺{row.revenue.toLocaleString('tr-TR')}
+                          </div>
+                        )}
+                        {row.won === 0 && (
+                          <span className="text-xs text-slate-600">Henüz müşteri yok</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

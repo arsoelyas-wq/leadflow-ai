@@ -294,7 +294,7 @@ export default function SettingsPage() {
     { id: 'security', label: 'Güvenlik', icon: Shield },
     { id: '2fa', label: '2FA', icon: Lock },
     { id: 'sheets', label: 'Google Sheets', icon: Globe },
-    { id: 'meta-capi', label: 'Meta CAPI', icon: Zap },
+    { id: 'meta-capi', label: 'Dönüşüm Takibi', icon: Zap },
   ]
 
   return (
@@ -809,10 +809,10 @@ export default function SettingsPage() {
               {/* Header card */}
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">📡</div>
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">📊</div>
                   <div>
-                    <h2 className="text-white font-semibold">Meta Conversions API</h2>
-                    <p className="text-blue-300 text-xs">Server-side event tracking — iOS14 bypass, EMQ optimized</p>
+                    <h2 className="text-white font-semibold">Reklam Dönüşüm Takibi</h2>
+                    <p className="text-blue-300 text-xs">Hangi reklamın müşteriye dönüştüğünü Meta&apos;ya otomatik bildir</p>
                   </div>
                   <div className="ml-auto flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${capi.enabled && capi.hasToken ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
@@ -822,8 +822,8 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <p className="text-slate-400 text-xs">
-                  LeadFlow→ Lead, Contact, InitiateCheckout, ViewContent, Purchase eventlerini otomatik Meta&apos;ya gönderir.
-                  Algoritma eğitimi için doğrudan sunucu tarafı veri = daha düşük CPL, daha yüksek ROAS.
+                  LeadFlow&apos;da bir lead&apos;i &quot;Kazanıldı&quot; olarak işaretlediğinizde Meta otomatik öğrenir.
+                  Böylece reklamlarınız zamanla daha doğru kişilere, daha düşük maliyetle ulaşır.
                 </p>
               </div>
 
@@ -904,30 +904,29 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Funnel event map */}
+              {/* How it works — plain Turkish */}
               <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <h3 className="text-white font-medium mb-4">Otomatik Event Haritası</h3>
+                <h3 className="text-white font-medium mb-4">Nasıl Çalışır?</h3>
                 <div className="space-y-3">
                   {[
-                    { event: 'Lead', trigger: 'Yeni lead oluşturuldu / scrape edildi', color: 'text-blue-400', dot: 'bg-blue-400' },
-                    { event: 'Contact', trigger: 'İlk mesaj gönderildi / pipeline Contacted adımı', color: 'text-cyan-400', dot: 'bg-cyan-400' },
-                    { event: 'InitiateCheckout', trigger: 'Teklif oluşturuldu / pipeline Proposal adımı', color: 'text-amber-400', dot: 'bg-amber-400' },
-                    { event: 'ViewContent', trigger: 'Müşteri teklif portalını görüntüledi', color: 'text-purple-400', dot: 'bg-purple-400' },
-                    { event: 'Purchase', trigger: 'Lead "Kazanıldı" statüsüne geçti (deal value ile)', color: 'text-emerald-400', dot: 'bg-emerald-400' },
-                  ].map(({ event, trigger, color, dot }) => (
-                    <div key={event} className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${dot} flex-shrink-0`} />
-                      <span className={`text-sm font-mono font-medium ${color} w-36 flex-shrink-0`}>{event}</span>
-                      <span className="text-slate-400 text-sm">→</span>
-                      <span className="text-slate-300 text-sm">{trigger}</span>
+                    { step: '1', label: 'Lead Geldi', desc: 'Yeni bir müşteri adayı oluştuğunda Meta&apos;ya bildirilir', dot: 'bg-blue-400' },
+                    { step: '2', label: 'İletişim Kuruldu', desc: 'İlk mesaj veya arama yapıldığında', dot: 'bg-cyan-400' },
+                    { step: '3', label: 'Teklif Gönderildi', desc: 'Fiyat teklifi oluşturulduğunda', dot: 'bg-amber-400' },
+                    { step: '4', label: 'Teklif Görüntülendi', desc: 'Müşteri teklifi incelediğinde', dot: 'bg-purple-400' },
+                    { step: '5', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olarak işaretlendiğinde — en önemli sinyal', dot: 'bg-emerald-400' },
+                  ].map(({ step, label, desc, dot }) => (
+                    <div key={step} className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full ${dot} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5`}>{step}</div>
+                      <div>
+                        <span className="text-sm font-medium text-white">{label}</span>
+                        <p className="text-slate-400 text-xs mt-0.5">{desc}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 p-3 bg-slate-900 rounded-lg">
+                <div className="mt-4 p-3 bg-slate-900/80 rounded-lg">
                   <p className="text-slate-400 text-xs">
-                    Tüm PII veriler (email, telefon, isim) SHA-256 ile hashlenerek gönderilir.
-                    fbc (Facebook Click ID) ve fbp (Browser ID) EMQ skoru için otomatik eklenir.
-                    Her event benzersiz event_id ile gönderilir — Pixel çakışmaları önlenir.
+                    Tüm veriler güvenli şekilde şifrelenerek Meta&apos;ya iletilir. Kişisel bilgiler (isim, telefon, e-posta) şifrelenmeden gönderilmez.
                   </p>
                 </div>
               </div>
