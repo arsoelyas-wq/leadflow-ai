@@ -18,7 +18,7 @@ function getURLParam(key: string): string {
 
 function storeUTM() {
   if (typeof window === 'undefined') return
-  const params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid']
+  const params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid']
   const stored: Record<string, string> = {}
   let hasNew = false
   params.forEach(p => {
@@ -56,6 +56,7 @@ export function initMetaTracking() {
 export function captureMetaParams(): {
   fbc?: string
   fbp?: string
+  gclid?: string
   utm_source?: string
   utm_medium?: string
   utm_campaign?: string
@@ -65,10 +66,12 @@ export function captureMetaParams(): {
   const utm  = getStoredUTM()
   const fbp  = getCookie('_fbp') || undefined
   const fbc  = getCookie('_fbc') || (utm.fbclid ? buildFbc(utm.fbclid) : undefined)
+  const gclid = utm.gclid || undefined
 
   return {
     fbc,
     fbp,
+    gclid,
     utm_source:   utm.utm_source   || undefined,
     utm_medium:   utm.utm_medium   || undefined,
     utm_campaign: utm.utm_campaign || undefined,

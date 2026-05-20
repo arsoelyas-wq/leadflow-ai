@@ -167,6 +167,7 @@ app.use('/api/push',                 authMiddleware, require('./routes/push'));
 app.use('/api/cultural',             authMiddleware, require('./routes/cultural'));
 app.use('/api/meta',                 authMiddleware, require('./routes/meta-intent'));
 app.use('/api/meta-capi',            authMiddleware, require('./routes/meta-capi'));
+app.use('/api/google-capi',          authMiddleware, require('./routes/google-capi'));
 app.use('/api/export',               authMiddleware, require('./routes/export-intelligence'));
 app.use('/api/ar',                   authMiddleware, require('./routes/ar-integration'));
 app.use('/api/sales-intelligence',   authMiddleware, require('./routes/sales-intelligence'));

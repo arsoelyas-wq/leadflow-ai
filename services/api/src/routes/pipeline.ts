@@ -2,6 +2,7 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { fireCapiEvent } = require('../services/meta-capi');
+const { fireGoogleConversion } = require('../services/google-enhanced-conversions');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -119,14 +120,13 @@ router.patch('/move', async (req: any, res: any) => {
 
       if (lead) {
         if (newStage === 'won') {
-          await fireCapiEvent(supabase, req.userId, lead, 'Purchase', {
-            value:   lead.deal_value || 0,
-            orderId: `won-${leadId}`,
-          });
+          await fireCapiEvent(supabase, req.userId, lead, 'Purchase', { value: lead.deal_value || 0, orderId: `won-${leadId}` });
+          await fireGoogleConversion(supabase, req.userId, lead, 'Purchase', { value: lead.deal_value || 0 });
         } else if (newStage === 'proposal') {
           await fireCapiEvent(supabase, req.userId, lead, 'InitiateCheckout');
         } else if (newStage === 'contacted' || newStage === 'replied') {
           await fireCapiEvent(supabase, req.userId, lead, 'Contact');
+          await fireGoogleConversion(supabase, req.userId, lead, 'LeadFormSubmit');
         }
       }
     } catch {}

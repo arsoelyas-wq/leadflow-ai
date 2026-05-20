@@ -3,6 +3,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const { authMiddleware } = require('../middleware/auth');
 const { fireCapiEvent } = require('../services/meta-capi');
+const { fireGoogleConversion } = require('../services/google-enhanced-conversions');
 
 const router = express.Router();
 const supabase = createClient(
@@ -186,12 +187,11 @@ router.patch('/:id', authMiddleware, async (req: any, res: any) => {
     if (data && updates.status) {
       try {
         if (updates.status === 'won') {
-          await fireCapiEvent(supabase, req.userId, data, 'Purchase', {
-            value:   data.deal_value || 0,
-            orderId: `won-${data.id}`,
-          });
+          await fireCapiEvent(supabase, req.userId, data, 'Purchase', { value: data.deal_value || 0, orderId: `won-${data.id}` });
+          await fireGoogleConversion(supabase, req.userId, data, 'Purchase', { value: data.deal_value || 0 });
         } else if (updates.status === 'contacted' || updates.status === 'replied') {
           await fireCapiEvent(supabase, req.userId, data, 'Contact');
+          await fireGoogleConversion(supabase, req.userId, data, 'LeadFormSubmit');
         } else if (updates.status === 'proposal') {
           await fireCapiEvent(supabase, req.userId, data, 'InitiateCheckout');
         }

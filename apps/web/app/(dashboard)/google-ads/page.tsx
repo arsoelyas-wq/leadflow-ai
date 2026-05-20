@@ -60,6 +60,10 @@ export default function GoogleAdsPage() {
   const [launching, setLaunching] = useState(false)
   const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Google conversion results
+  const [gResults, setGResults] = useState<any[]>([])
+  const [gSummary, setGSummary] = useState<any>(null)
+
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
   }
@@ -110,24 +114,20 @@ export default function GoogleAdsPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [connRes, campRes, actRes] = await Promise.allSettled([
+      const [connRes, campRes, actRes, attrRes] = await Promise.allSettled([
         fetch(`${API}/api/google-ads/connection`, { headers: authH() }),
         fetch(`${API}/api/google-campaign/campaigns-with-roi`, { headers: authH() }),
         fetch(`${API}/api/ads-intelligence/activity`, { headers: authH() }),
+        fetch(`${API}/api/google-capi/attribution`, { headers: authH() }),
       ])
-      if (connRes.status === 'fulfilled') {
-        const d = await connRes.value.json()
-        setConnected(d.connected)
-      }
-      if (campRes.status === 'fulfilled') {
-        const d = await campRes.value.json()
-        setCampaigns(d.campaigns || [])
-      }
+      if (connRes.status === 'fulfilled') { const d = await connRes.value.json(); setConnected(d.connected) }
+      if (campRes.status === 'fulfilled') { const d = await campRes.value.json(); setCampaigns(d.campaigns || []) }
       if (actRes.status === 'fulfilled') {
         const d = await actRes.value.json()
         setActivities((d.activities || []).filter((a: any) => a.platform === 'google' || a.type === 'new_leads'))
         setLeadsToday(d.leads_today || 0)
       }
+      if (attrRes.status === 'fulfilled') { const d = await attrRes.value.json(); setGResults(d.rows || []); setGSummary(d.summary || null) }
     } catch {}
     setLoading(false)
   }
@@ -399,6 +399,58 @@ export default function GoogleAdsPage() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* Google Conversion Results */}
+        {gSummary && (gSummary.totalLeads > 0 || gResults.length > 0) && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-white">Reklam Sonuçlarım</h2>
+              <span className="text-xs text-slate-500">Google reklamlarından gelen leadlerin satışa dönüşümü</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 text-center">
+                <p className="text-2xl font-bold text-white">{gSummary.totalLeads}</p>
+                <p className="text-xs text-slate-400 mt-1">Reklamdan Gelen Lead</p>
+              </div>
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
+                <p className="text-2xl font-bold text-emerald-400">{gSummary.totalWon}</p>
+                <p className="text-xs text-slate-400 mt-1">Müşteriye Dönen</p>
+              </div>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
+                <p className="text-2xl font-bold text-amber-400">
+                  {gSummary.totalRevenue > 0 ? `₺${gSummary.totalRevenue.toLocaleString('tr-TR')}` : '—'}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">Toplam Kazanç</p>
+              </div>
+            </div>
+            {gResults.length > 0 && (
+              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-700/50">
+                  <span className="text-sm font-medium text-white">Kampanya Bazında</span>
+                </div>
+                <div className="divide-y divide-slate-700/30">
+                  {gResults.slice(0, 6).map((row: any, i: number) => (
+                    <div key={i} className="flex items-center gap-4 px-5 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{row.campaign}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{row.leads} lead · gclid %{row.gclidPct}</p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {row.won > 0 && <span className="text-emerald-400 text-sm font-medium">{row.won} müşteri</span>}
+                        {row.revenue > 0 && (
+                          <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-semibold text-amber-400">
+                            ₺{row.revenue.toLocaleString('tr-TR')}
+                          </span>
+                        )}
+                        {row.won === 0 && <span className="text-xs text-slate-600">Henüz müşteri yok</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -6,12 +6,12 @@ import {
   User, Key, Bell, Shield, Save, MessageSquare,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff,
   Send, Eye, EyeOff, Smartphone, QrCode, Bot, Linkedin, Video,
-  Lock, Globe, Table2, Zap, Download, FlaskConical
+  Lock, Globe, Table2, Zap, Download, FlaskConical, TrendingUp
 } from 'lucide-react'
 
 export default function SettingsPage() {
   const { user } = useAuth()
-  const [tab, setTab] = useState<'profile' | 'channels' | 'notifications' | 'security' | '2fa' | 'sheets' | 'meta-capi'>('profile')
+  const [tab, setTab] = useState<'profile' | 'channels' | 'notifications' | 'security' | '2fa' | 'sheets' | 'meta-capi' | 'google-capi'>('profile')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [profile, setProfile] = useState({ name: user?.name || '', company: user?.company || '' })
@@ -59,6 +59,12 @@ export default function SettingsPage() {
   const [capiTesting, setCapiTesting] = useState(false)
   const [capiNewToken, setCapiNewToken] = useState('')
   const [capiEvents, setCapiEvents] = useState<any[]>([])
+
+  // Google Enhanced Conversions
+  const [gcapi, setGcapi] = useState({ customerId: '', conversionActionId: '', enabled: false, hasConnection: false })
+  const [gcapiSaving, setGcapiSaving] = useState(false)
+  const [gcapiTesting, setGcapiTesting] = useState(false)
+  const [gcapiEvents, setGcapiEvents] = useState<any[]>([])
 
   // Bildirimler
   const [notifSupported, setNotifSupported] = useState(false)
@@ -109,6 +115,10 @@ export default function SettingsPage() {
     if (tab === 'meta-capi') {
       api.get('/api/meta-capi/settings').then(d => setCapi(d)).catch(() => {})
       api.get('/api/meta-capi/events').then(d => setCapiEvents(d.events || [])).catch(() => {})
+    }
+    if (tab === 'google-capi') {
+      api.get('/api/google-capi/settings').then(d => setGcapi(d)).catch(() => {})
+      api.get('/api/google-capi/events').then(d => setGcapiEvents(d.events || [])).catch(() => {})
     }
     if (typeof window !== 'undefined') setNotifSupported('Notification' in window)
   }, [tab])
@@ -294,7 +304,8 @@ export default function SettingsPage() {
     { id: 'security', label: 'Güvenlik', icon: Shield },
     { id: '2fa', label: '2FA', icon: Lock },
     { id: 'sheets', label: 'Google Sheets', icon: Globe },
-    { id: 'meta-capi', label: 'Dönüşüm Takibi', icon: Zap },
+    { id: 'meta-capi',    label: 'Meta Dönüşüm',   icon: Zap },
+    { id: 'google-capi',  label: 'Google Dönüşüm', icon: TrendingUp },
   ]
 
   return (
@@ -968,6 +979,169 @@ export default function SettingsPage() {
                   <h3 className="text-white font-medium mb-4">Son CAPI Eventleri</h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {capiEvents.slice(0, 20).map((ev: any) => (
+                      <div key={ev.id || ev.fired_at} className="flex items-center gap-3 text-xs py-1.5 border-b border-slate-700/50">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                        <span className="text-slate-400 w-32 flex-shrink-0 font-mono">{ev.event_name}</span>
+                        <span className="text-slate-300 flex-1 truncate">{ev.leads?.company_name || ev.lead_id}</span>
+                        <span className="text-slate-500 flex-shrink-0">{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* GOOGLE ENHANCED CONVERSIONS */}
+          {tab === 'google-capi' && (
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">🎯</div>
+                  <div>
+                    <h2 className="text-white font-semibold">Google Reklam Dönüşüm Takibi</h2>
+                    <p className="text-blue-300 text-xs">Hangi Google reklamının müşteriye dönüştüğünü otomatik bildir</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${gcapi.enabled && gcapi.hasConnection ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+                    <span className={`text-xs ${gcapi.enabled && gcapi.hasConnection ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      {gcapi.enabled && gcapi.hasConnection ? 'Aktif' : gcapi.hasConnection ? 'Bağlı (Pasif)' : 'Google bağlı değil'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-slate-400 text-xs">
+                  LeadFlow&apos;da &quot;Kazanıldı&quot; olan her lead Google Ads&apos;e bildirilir.
+                  Smart Bidding hangi reklamın müşteri getirdiğini öğrenir — daha düşük tıklama maliyeti, daha yüksek dönüşüm oranı.
+                </p>
+              </div>
+
+              {/* Connection check */}
+              {!gcapi.hasConnection && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-amber-300 text-sm font-medium">Google Ads Hesabı Bağlı Değil</p>
+                    <p className="text-amber-400/70 text-xs mt-0.5">Önce Google Ads sayfasından hesabınızı bağlayın</p>
+                  </div>
+                  <a href="/google-ads" className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-sm rounded-xl transition">
+                    Google Ads →
+                  </a>
+                </div>
+              )}
+
+              {/* Configuration */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
+                <h3 className="text-white font-medium">Dönüşüm Ayarları</h3>
+
+                <div>
+                  <label className="text-slate-400 text-xs mb-1.5 block">Google Ads Müşteri Kimliği (Customer ID)</label>
+                  <input value={gcapi.customerId} onChange={e => setGcapi(p => ({ ...p, customerId: e.target.value }))}
+                    placeholder="123-456-7890"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                  <p className="text-slate-500 text-xs mt-1">Google Ads → Hesap Ayarları → Müşteri Kimliği</p>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 text-xs mb-1.5 block">Dönüşüm İşlemi Kimliği (Conversion Action ID)</label>
+                  <input value={gcapi.conversionActionId} onChange={e => setGcapi(p => ({ ...p, conversionActionId: e.target.value }))}
+                    placeholder="123456789"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                  <p className="text-slate-500 text-xs mt-1">Google Ads → Araçlar → Dönüşümler → Dönüşüm İşlemi → Kimlik</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-5 rounded-full transition relative cursor-pointer ${gcapi.enabled ? 'bg-blue-600' : 'bg-slate-700'}`}
+                    onClick={() => setGcapi(p => ({ ...p, enabled: !p.enabled }))}>
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${gcapi.enabled ? 'left-5' : 'left-0.5'}`} />
+                  </div>
+                  <span className="text-slate-300 text-sm">Google Enhanced Conversions Aktif</span>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={async () => {
+                    setGcapiSaving(true)
+                    try {
+                      await api.post('/api/google-capi/settings', {
+                        customerId:         gcapi.customerId,
+                        conversionActionId: gcapi.conversionActionId,
+                        enabled:            gcapi.enabled,
+                      })
+                      showMsg('success', 'Google dönüşüm ayarları kaydedildi')
+                    } catch (e: any) { showMsg('error', e.message) }
+                    finally { setGcapiSaving(false) }
+                  }} disabled={gcapiSaving || !gcapi.customerId || !gcapi.conversionActionId}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
+                    {gcapiSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    Kaydet
+                  </button>
+                  <button onClick={async () => {
+                    setGcapiTesting(true)
+                    try {
+                      const d = await api.post('/api/google-capi/test', {})
+                      showMsg('success', d.message)
+                      api.get('/api/google-capi/events').then(d => setGcapiEvents(d.events || [])).catch(() => {})
+                    } catch (e: any) { showMsg('error', e.message) }
+                    finally { setGcapiTesting(false) }
+                  }} disabled={gcapiTesting || !gcapi.hasConnection || !gcapi.enabled}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-xl transition">
+                    {gcapiTesting ? <RefreshCw size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+                    Test Gönder
+                  </button>
+                </div>
+              </div>
+
+              {/* How it works */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                <h3 className="text-white font-medium mb-4">Nasıl Çalışır?</h3>
+                <div className="space-y-3">
+                  {[
+                    { step: '1', label: 'Lead Reklamdan Geldi', desc: 'Google reklamına tıklayan kişi LeadFlow\'a düşer (gclid otomatik yakalanır)', dot: 'bg-blue-400' },
+                    { step: '2', label: 'İletişim Kuruldu', desc: 'Mesaj veya arama yapıldığında Google\'a "Lead" sinyali gönderilir', dot: 'bg-cyan-400' },
+                    { step: '3', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olunca Google\'a "Dönüşüm" bildirimi gider — deal değeri ile birlikte', dot: 'bg-emerald-400' },
+                    { step: '4', label: 'Smart Bidding Öğrenir', desc: 'Google algoritması hangi aramalar/hedef kitleler müşteri getirdi, sonraki reklamlarda daha iyi hedefleme yapar', dot: 'bg-amber-400' },
+                  ].map(({ step, label, desc, dot }) => (
+                    <div key={step} className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full ${dot} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5`}>{step}</div>
+                      <div>
+                        <span className="text-sm font-medium text-white">{label}</span>
+                        <p className="text-slate-400 text-xs mt-0.5">{desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 p-3 bg-slate-900/80 rounded-lg">
+                  <p className="text-slate-400 text-xs">
+                    Tüm veriler şifrelenerek (SHA-256) Google&apos;a iletilir. İsim, telefon ve e-posta şifrelenmeden gönderilmez.
+                    Customer Match için Kazanıldı listesini Google Ads&apos;e yükleyebilirsiniz.
+                  </p>
+                </div>
+              </div>
+
+              {/* Customer Match export */}
+              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 flex items-center justify-between">
+                <div>
+                  <h3 className="text-white font-medium">Customer Match Export</h3>
+                  <p className="text-slate-400 text-sm mt-0.5">Kazanıldı listesi → Google Ads Customer Match olarak yükle</p>
+                </div>
+                <button onClick={async () => {
+                  const token = localStorage.getItem('token')
+                  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+                  const res = await fetch(`${API_URL}/api/google-capi/audience/won`, { headers: { Authorization: `Bearer ${token}` } })
+                  const blob = await res.blob()
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a'); a.href = url; a.download = 'google-customer-match.csv'; a.click()
+                  URL.revokeObjectURL(url)
+                }} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/40 text-emerald-300 text-sm rounded-xl transition">
+                  <Download size={14} /> İndir
+                </button>
+              </div>
+
+              {/* Event log */}
+              {gcapiEvents.length > 0 && (
+                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+                  <h3 className="text-white font-medium mb-4">Son Gönderilen Dönüşümler</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {gcapiEvents.slice(0, 20).map((ev: any) => (
                       <div key={ev.id || ev.fired_at} className="flex items-center gap-3 text-xs py-1.5 border-b border-slate-700/50">
                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
                         <span className="text-slate-400 w-32 flex-shrink-0 font-mono">{ev.event_name}</span>
