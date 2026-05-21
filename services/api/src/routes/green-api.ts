@@ -64,6 +64,25 @@ router.post('/webhook', async (req: any, res: any) => {
 
     console.log(`Mesaj kaydedildi: ${memberName} -> ${phone}: ${text.slice(0, 50)}`);
 
+    // META CAPI — WhatsApp reply signal (non-blocking)
+    if (lead?.id && realUserId && text) {
+      try {
+        const { fireCapiEvent } = require('../services/meta-capi');
+        const { data: fullLead } = await supabase.from('leads').select('*').eq('id', lead.id).single();
+        if (fullLead) {
+          const positiveKeywords = ['evet', 'ilgiliyim', 'bilgi', 'fiyat', 'ne zaman', 'tamam', 'olur', 'peki', 'uygun', 'göster', 'istiyorum', 'yes', 'interested', 'ok', 'sure', 'send'];
+          const isPositive = positiveKeywords.some(w => text.toLowerCase().includes(w));
+          if (isPositive) {
+            // İlgi gösteren yanıt → Lead eventi (güçlü sinyal)
+            await fireCapiEvent(supabase, realUserId, fullLead, 'Lead', { value: 10 });
+          } else {
+            // Herhangi bir yanıt → Contact eventi (temel katılım sinyali)
+            await fireCapiEvent(supabase, realUserId, fullLead, 'Contact');
+          }
+        }
+      } catch { /* CAPI failure must not break WhatsApp flow */ }
+    }
+
     // AI Agent hook — trigger real-time response if agent is active for this user
     if (lead?.id && (global as any).processIncomingWhatsApp) {
       setImmediate(() => {

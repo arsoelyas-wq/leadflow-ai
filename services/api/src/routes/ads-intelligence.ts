@@ -153,27 +153,48 @@ async function sendLeadQualityFeedback(userId: string, leadId: string, quality: 
 async function createLookalikeAudience(userId: string, adAccountId: string) {
   try {
     const token = await getMetaToken(userId);
+
+    // Kazanılan leadleri deal_value ile çek — value-based lookalike için
     const { data: convertedLeads } = await supabase
       .from('leads')
-      .select('email, phone')
+      .select('email, phone, deal_value')
       .eq('user_id', userId)
       .eq('outcome', 'positive')
       .not('email', 'is', null)
-      .limit(100);
+      .limit(500);
 
-    if (!convertedLeads?.length || convertedLeads.length < 20) {
-      return { error: 'En az 20 donusen lead gerekli (su an: ' + (convertedLeads?.length || 0) + ')' };
+    // Ayrıca status=won olanları da dahil et
+    const { data: wonLeads } = await supabase
+      .from('leads')
+      .select('email, phone, deal_value')
+      .eq('user_id', userId)
+      .eq('status', 'won')
+      .not('email', 'is', null)
+      .limit(500);
+
+    // Birleştir, email'e göre deduplicate
+    const allLeads = [...(convertedLeads || []), ...(wonLeads || [])];
+    const seen = new Set<string>();
+    const uniqueLeads = allLeads.filter((l: any) => {
+      if (!l.email || seen.has(l.email)) return false;
+      seen.add(l.email); return true;
+    });
+
+    if (uniqueLeads.length < 20) {
+      return { error: 'En az 20 donusen lead gerekli (su an: ' + uniqueLeads.length + ')' };
     }
 
-    const schema = ['EMAIL', 'PHONE'];
-    const rows = convertedLeads.map((l: any) => [
+    // Value-based schema — yüksek değerli müşterilere daha fazla ağırlık verir
+    const schema = ['EMAIL', 'PHONE', 'VALUE'];
+    const rows = uniqueLeads.map((l: any) => [
       hashData(l.email?.toLowerCase() || ''),
       hashData(l.phone?.replace(/\D/g, '') || ''),
+      String(l.deal_value || 1000), // deal_value yoksa varsayılan 1000 TRY
     ]);
 
     const customAudienceRes = await metaPost(`/${adAccountId}/customaudiences`, token, {
       name: `LeadFlow Donusen Musteriler ${new Date().toLocaleDateString('tr-TR')}`,
-      description: 'LeadFlow CRM donusen musterilerden olusturuldu',
+      description: `LeadFlow CRM donusen musteriler — ${uniqueLeads.length} kisi, deger agirlikli`,
       subtype: 'CUSTOM',
       customer_file_source: 'PARTNER_PROVIDED_ONLY',
     });
@@ -181,11 +202,12 @@ async function createLookalikeAudience(userId: string, adAccountId: string) {
     const audienceId = customAudienceRes.id;
     await metaPost(`/${audienceId}/users`, token, { schema, data: rows });
 
+    // Value-based Lookalike — similarity değil value ile öğrenir
     const lookalikeRes = await metaPost(`/${adAccountId}/customaudiences`, token, {
-      name: `LeadFlow Lookalike ${new Date().toLocaleDateString('tr-TR')}`,
+      name: `LeadFlow Value Lookalike ${new Date().toLocaleDateString('tr-TR')}`,
       subtype: 'LOOKALIKE',
       origin_audience_id: audienceId,
-      lookalike_spec: { type: 'similarity', ratio: 0.01, country: 'TR' },
+      lookalike_spec: { type: 'value', ratio: 0.01, country: 'TR' },
     });
 
     await supabase.from('ad_audiences').insert([{
@@ -193,12 +215,13 @@ async function createLookalikeAudience(userId: string, adAccountId: string) {
       audience_id: lookalikeRes.id,
       source_audience_id: audienceId,
       name: lookalikeRes.name,
-      type: 'lookalike',
-      size_estimate: convertedLeads.length,
+      type: 'value_lookalike',
+      size_estimate: uniqueLeads.length,
       created_at: new Date().toISOString(),
     }]);
 
-    return { ok: true, audienceId: lookalikeRes.id, name: lookalikeRes.name, sourceSize: convertedLeads.length };
+    console.log(`[Lookalike] Value-based güncellendi: ${uniqueLeads.length} müşteri → ${lookalikeRes.id}`);
+    return { ok: true, audienceId: lookalikeRes.id, name: lookalikeRes.name, sourceSize: uniqueLeads.length };
   } catch (e: any) {
     return { error: e.response?.data?.error?.message || e.message };
   }
@@ -872,6 +895,31 @@ router.get('/activity', async (req: any, res: any) => {
     res.json({ ok: true, activities: unified, leads_today: leads24h });
   } catch (e: any) {
     res.json({ ok: true, activities: [], leads_today: 0 });
+  }
+});
+
+// ── AYLIK OTOMATİK VALUE LOOKALIKE GÜNCELLEME ────────────
+// Her ayın 1'i saat 09:00'da, Meta hesabı olan tüm kullanıcılar için güncelle
+require('node-cron').schedule('0 9 1 * *', async () => {
+  console.log('[Lookalike] Aylık value-based güncelleme başlıyor...');
+  try {
+    const { data: connections } = await supabase
+      .from('meta_connections')
+      .select('user_id, ad_account_id')
+      .not('access_token', 'is', null)
+      .not('ad_account_id', 'is', null);
+
+    for (const conn of connections || []) {
+      try {
+        const result = await createLookalikeAudience(conn.user_id, conn.ad_account_id);
+        if ((result as any).ok) {
+          console.log(`[Lookalike] ${conn.user_id}: ${(result as any).sourceSize} müşteri → başarılı`);
+        }
+      } catch { /* tek kullanıcı hatası diğerlerini etkilemez */ }
+      await new Promise(r => setTimeout(r, 2000)); // rate limit
+    }
+  } catch (e: any) {
+    console.error('[Lookalike] Aylık güncelleme hatası:', e.message);
   }
 });
 

@@ -291,6 +291,23 @@ router.post('/webhook/elevenlabs', async (req: any, res: any) => {
     if (analysis) { updates.analysis = analysis; updates.outcome = analysis.success_evaluation === 'success' ? 'positive' : 'negative'; }
     await supabase.from('voice_calls').update(updates).eq('eleven_conversation_id', conversation_id);
     if (call.lead_id) await supabase.from('leads').update({ status: updates.outcome === 'positive' ? 'responded' : 'contacted' }).eq('id', call.lead_id);
+
+    // META CAPI — voice call outcome signal (non-blocking, fire-and-forget)
+    if (call.lead_id && call.user_id) {
+      try {
+        const { fireCapiEvent } = require('../services/meta-capi');
+        const { data: lead } = await supabase.from('leads').select('*').eq('id', call.lead_id).single();
+        if (lead) {
+          if (updates.outcome === 'positive') {
+            // Positive call = strong buying signal → CompleteRegistration
+            await fireCapiEvent(supabase, call.user_id, lead, 'CompleteRegistration', { value: 25 });
+          } else if ((call.duration_seconds || 0) > 30 || updates.outcome !== 'negative') {
+            // Answered + talked > 30s = engagement signal → Contact
+            await fireCapiEvent(supabase, call.user_id, lead, 'Contact');
+          }
+        }
+      } catch { /* CAPI failure must not affect call logging */ }
+    }
   } catch (e: any) { console.error('Webhook error:', e.message); }
 });
 

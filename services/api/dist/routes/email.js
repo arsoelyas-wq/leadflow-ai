@@ -1,189 +1,225 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require('express');
-const resendPkg = require('resend');
-const Resend = resendPkg.Resend;
 const { createClient } = require('@supabase/supabase-js');
+const nodemailer = require('nodemailer');
 const router = express.Router();
-const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-// Tek email gonder
-router.post('/send', async (req, res) => {
+// ── SMTP TRANSPORTER OLUŞTUR ──────────────────────────────
+async function createTransporter(userId) {
+    const { data: settings } = await supabase.from('smtp_settings')
+        .select('*').eq('user_id', userId).single();
+    if (!settings?.smtp_host)
+        throw new Error('SMTP ayarları eksik — Ayarlar sayfasından SMTP bilgilerini girin');
+    return {
+        transporter: nodemailer.createTransport({
+            host: settings.smtp_host,
+            port: settings.smtp_port || 587,
+            secure: settings.smtp_port === 465,
+            auth: { user: settings.smtp_user, pass: settings.smtp_pass },
+            tls: { rejectUnauthorized: false },
+        }),
+        settings,
+    };
+}
+// ── AI EMAIL İÇERİĞİ ÜRET ────────────────────────────────
+async function generateEmailContent(subject, goal, companyName) {
     try {
-        const { to, subject, body, leadId } = req.body;
-        if (!to || !subject || !body) {
-            return res.status(400).json({ error: 'to, subject ve body zorunlu' });
-        }
-        const { data, error } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-            to: [to],
-            subject,
-            html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="border-bottom: 2px solid #B8892A; padding-bottom: 16px; margin-bottom: 24px;">
-            <h2 style="color: #1a1a2e; margin: 0; font-size: 18px;">LeadFlow AI</h2>
-          </div>
-          <div style="color: #333; line-height: 1.7; font-size: 14px;">
-            ${body.replace(/\n/g, '<br>')}
-          </div>
-          <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11px; color: #999;">
-            Bu email LeadFlow AI tarafindan otomatik gonderilmistir.
-          </div>
-        </div>
-      `
-        });
-        if (error)
-            throw new Error(error.message);
-        // Mesaji veritabanina kaydet
-        if (leadId) {
-            await supabase.from('messages').insert([{
-                    lead_id: leadId,
-                    channel: 'email',
-                    direction: 'outbound',
-                    content: `Konu: ${subject}\n\n${body}`,
-                    status: 'sent',
-                    sent_at: new Date().toISOString()
-                }]);
-            await supabase.from('leads')
-                .update({ status: 'contacted' })
-                .eq('id', leadId);
-        }
-        res.json({ message: 'Email basariyla gonderildi!', data });
-    }
-    catch (error) {
-        console.error('Email Error:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-// AI ile email olustur ve gonder
-router.post('/ai-send', async (req, res) => {
-    try {
-        const { leadId, senderProfile } = req.body;
-        const { data: lead, error } = await supabase
-            .from('leads')
-            .select('*')
-            .eq('id', leadId)
-            .single();
-        if (error || !lead) {
-            return res.status(404).json({ error: 'Lead bulunamadi' });
-        }
-        if (!lead.email) {
-            return res.status(400).json({ error: 'Bu leadin email adresi yok' });
-        }
-        // AI ile email olustur
         const Anthropic = require('@anthropic-ai/sdk');
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const aiResponse = await anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1000,
+        const resp = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 600,
             messages: [{
                     role: 'user',
-                    content: `Profesyonel B2B satis emaili yaz (Turkce):
-Gonderen: ${JSON.stringify(senderProfile || {})}
-Alici firma: ${lead.company_name}, ${lead.city}
-Sektor: ${lead.sector}
+                    content: `Profesyonel HTML email yaz. SADECE JSON döndür:
+Konu: ${subject}
+Hedef: ${goal}
+Şirket: ${companyName}
 
-SADECE JSON don:
 {
-  "subject": "Email konusu",
-  "body": "Email icerigi (duz metin, 3-4 paragraf)"
+  "subject": "email konusu",
+  "preheader": "önizleme metni max 90 karakter",
+  "html": "<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'><h2 style='color:#1e40af;'>Başlık</h2><p>Gövde metni...</p><a href='#' style='background:#1e40af;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px;'>CTA Butonu</a></div>",
+  "text": "düz metin versiyonu"
 }`
                 }]
         });
-        const rawText = aiResponse.content[0].text;
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch)
-            throw new Error('AI yanit formati hatali');
-        const { subject, body } = JSON.parse(jsonMatch[0]);
-        // Email gonder
-        const { data: emailData, error: emailError } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-            to: [lead.email],
-            subject,
-            html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="border-bottom: 2px solid #B8892A; padding-bottom: 16px; margin-bottom: 24px;">
-            <h2 style="color: #1a1a2e; margin: 0;">LeadFlow AI</h2>
-          </div>
-          <div style="color: #333; line-height: 1.7; font-size: 14px;">
-            ${body.replace(/\n/g, '<br>')}
-          </div>
-          <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11px; color: #999;">
-            Bu email LeadFlow AI tarafindan otomatik gonderilmistir.
-          </div>
-        </div>
-      `
-        });
-        if (emailError)
-            throw new Error(emailError.message);
-        await supabase.from('messages').insert([{
-                lead_id: lead.id,
-                channel: 'email',
-                direction: 'outbound',
-                content: `Konu: ${subject}\n\n${body}`,
-                status: 'sent',
-                sent_at: new Date().toISOString()
-            }]);
-        res.json({
-            message: 'AI email olusturuldu ve gonderildi!',
-            subject,
-            body,
-            emailData
-        });
+        const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+        return m ? JSON.parse(m[0]) : null;
     }
-    catch (error) {
-        console.error('AI Email Error:', error.message);
-        res.status(500).json({ error: error.message });
+    catch {
+        return null;
+    }
+}
+// ── SMTP AYARLARINI KAYDET ────────────────────────────────
+router.post('/settings', async (req, res) => {
+    try {
+        const { smtp_host, smtp_port, smtp_user, smtp_pass, from_name, from_email } = req.body;
+        if (!smtp_host || !smtp_user || !smtp_pass)
+            return res.status(400).json({ error: 'smtp_host, smtp_user, smtp_pass zorunlu' });
+        await supabase.from('smtp_settings').upsert([{
+                user_id: req.userId,
+                smtp_host, smtp_port: smtp_port || 587,
+                smtp_user, smtp_pass,
+                from_name: from_name || smtp_user,
+                from_email: from_email || smtp_user,
+                updated_at: new Date().toISOString(),
+            }], { onConflict: 'user_id' });
+        res.json({ message: 'SMTP ayarları kaydedildi' });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
-// Hosgeldin emaili gonder (kayit sonrasi)
-router.post('/welcome', async (req, res) => {
+// ── SMTP TEST ─────────────────────────────────────────────
+router.post('/test', async (req, res) => {
     try {
-        const { email, name } = req.body;
-        const { data, error } = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-            to: [email],
-            subject: 'LeadFlow AI\'a Hosgeldiniz! 50 Ucretsiz Lediniz Hazir',
-            html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #0a0a0f; color: #f5f0e8;">
-          <div style="text-align: center; margin-bottom: 40px;">
-            <h1 style="font-size: 32px; font-weight: 300; color: #f5f0e8; margin: 0;">
-              Lead<span style="color: #B8892A;">Flow</span> AI
-            </h1>
-          </div>
-          <div style="background: #15151f; border: 1px solid rgba(255,255,255,0.07); padding: 40px;">
-            <h2 style="color: #B8892A; font-weight: 400; margin-top: 0;">Hosgeldiniz, ${name}!</h2>
-            <p style="color: rgba(245,240,232,0.7); line-height: 1.8;">
-              LeadFlow AI hesabiniz olusturuldu. Size <strong style="color: #B8892A;">50 ucretsiz lead</strong> hediye ettik.
-            </p>
-            <p style="color: rgba(245,240,232,0.7); line-height: 1.8;">
-              Simdi yapabilecekleriniz:
-            </p>
-            <ul style="color: rgba(245,240,232,0.6); line-height: 2;">
-              <li>Google Maps'ten hedef sektorde lead cekin</li>
-              <li>AI ile kisisellestirilmis mesajlar olusturun</li>
-              <li>WhatsApp ve email ile otomatik goндerin</li>
-            </ul>
-            <div style="text-align: center; margin-top: 32px;">
-              <a href="http://192.168.1.37:3000/dashboard" 
-                style="background: #B8892A; color: #0a0a0f; padding: 14px 32px; text-decoration: none; font-weight: 600; display: inline-block;">
-                Dashboard'a Git →
-              </a>
-            </div>
-          </div>
-          <p style="text-align: center; color: rgba(245,240,232,0.2); font-size: 12px; margin-top: 24px;">
-            LeadFlow AI — Akilli Satis Otomasyonu
-          </p>
-        </div>
-      `
+        const { transporter, settings } = await createTransporter(req.userId);
+        await transporter.sendMail({
+            from: `${settings.from_name} <${settings.from_email}>`,
+            to: settings.smtp_user,
+            subject: 'LeadFlow AI — SMTP Test',
+            html: '<h2>✅ SMTP bağlantısı başarılı!</h2><p>LeadFlow AI email sistemi çalışıyor.</p>',
+            text: 'SMTP bağlantısı başarılı!',
         });
-        if (error)
-            throw new Error(error.message);
-        res.json({ message: 'Hosgeldin emaili gonderildi!', data });
+        res.json({ message: 'Test emaili gönderildi! Gelen kutunuzu kontrol edin.' });
     }
-    catch (error) {
-        console.error('Welcome Email Error:', error.message);
-        res.status(500).json({ error: error.message });
+    catch (e) {
+        res.status(500).json({ error: `SMTP hatası: ${e.message}` });
+    }
+});
+// ── SMTP AYARLARINI OKU ───────────────────────────────────
+router.get('/settings', async (req, res) => {
+    try {
+        const { data } = await supabase.from('smtp_settings').select('smtp_host,smtp_port,smtp_user,from_name,from_email,updated_at').eq('user_id', req.userId).single();
+        res.json({ settings: data || null });
+    }
+    catch {
+        res.json({ settings: null });
+    }
+});
+// ── EMAIL GÖNDER ──────────────────────────────────────────
+router.post('/send', async (req, res) => {
+    try {
+        const { subject, html, text, leadIds, scheduleAt } = req.body;
+        if (!subject || (!html && !text) || !leadIds?.length)
+            return res.status(400).json({ error: 'subject, html/text ve leadIds zorunlu' });
+        const { transporter, settings } = await createTransporter(req.userId);
+        const { data: leads } = await supabase.from('leads')
+            .select('id, email, company_name, contact_name')
+            .eq('user_id', req.userId)
+            .in('id', leadIds)
+            .not('email', 'is', null);
+        if (!leads?.length)
+            return res.status(400).json({ error: 'Email adresi olan lead bulunamadı' });
+        let sent = 0, failed = 0;
+        const errors = [];
+        for (const lead of leads) {
+            try {
+                const personalHtml = (html || '').replace(/\{isim\}/g, lead.contact_name || lead.company_name || 'Sayın Yetkili').replace(/\{sirket\}/g, lead.company_name || '');
+                const personalText = (text || '').replace(/\{isim\}/g, lead.contact_name || lead.company_name || '').replace(/\{sirket\}/g, lead.company_name || '');
+                await transporter.sendMail({
+                    from: `${settings.from_name} <${settings.from_email}>`,
+                    to: lead.email,
+                    subject,
+                    html: personalHtml,
+                    text: personalText || undefined,
+                });
+                await supabase.from('messages').insert([{
+                        user_id: req.userId, lead_id: lead.id,
+                        direction: 'out', content: subject,
+                        channel: 'email', sent_at: new Date().toISOString(),
+                    }]);
+                sent++;
+                await new Promise(r => setTimeout(r, 150)); // Rate limit
+            }
+            catch (e) {
+                failed++;
+                errors.push(`${lead.email}: ${e.message}`);
+            }
+        }
+        // Kampanya kaydet
+        await supabase.from('email_campaigns').insert([{
+                user_id: req.userId, subject, html, text,
+                sent_count: sent, failed_count: failed,
+                lead_count: leadIds.length,
+                from_email: settings.from_email,
+                sent_at: new Date().toISOString(),
+            }]);
+        res.json({ sent, failed, errors: errors.slice(0, 5), message: `${sent} email gönderildi, ${failed} başarısız` });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ── AI EMAIL ÜRET ─────────────────────────────────────────
+router.post('/generate', async (req, res) => {
+    try {
+        const { subject, goal } = req.body;
+        const { data: settings } = await supabase.from('smtp_settings').select('from_name').eq('user_id', req.userId).single();
+        const content = await generateEmailContent(subject || 'Özel Teklif', goal || 'Lead dönüşümü', settings?.from_name || 'Şirketimiz');
+        if (!content)
+            return res.status(500).json({ error: 'İçerik üretilemedi' });
+        res.json({ content });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ── TEK EMAIL GÖNDER ──────────────────────────────────────
+router.post('/send-single', async (req, res) => {
+    try {
+        const { to, subject, html, text, leadId } = req.body;
+        if (!to || !subject)
+            return res.status(400).json({ error: 'to ve subject zorunlu' });
+        const { transporter, settings } = await createTransporter(req.userId);
+        await transporter.sendMail({
+            from: `${settings.from_name} <${settings.from_email}>`,
+            to, subject,
+            html: html || `<p>${text}</p>`,
+            text: text || undefined,
+        });
+        if (leadId) {
+            await supabase.from('messages').insert([{
+                    user_id: req.userId, lead_id: leadId,
+                    direction: 'out', content: subject,
+                    channel: 'email', sent_at: new Date().toISOString(),
+                }]);
+        }
+        res.json({ message: 'Email gönderildi!' });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ── KAMPANYA LİSTESİ ──────────────────────────────────────
+router.get('/campaigns', async (req, res) => {
+    try {
+        const { data } = await supabase.from('email_campaigns').select('*')
+            .eq('user_id', req.userId).order('sent_at', { ascending: false }).limit(20);
+        res.json({ campaigns: data || [] });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ── STATS ─────────────────────────────────────────────────
+router.get('/stats', async (req, res) => {
+    try {
+        const [campaigns, smtpSettings] = await Promise.all([
+            supabase.from('email_campaigns').select('sent_count, failed_count').eq('user_id', req.userId),
+            supabase.from('smtp_settings').select('smtp_host, from_email').eq('user_id', req.userId).single(),
+        ]);
+        res.json({
+            totalCampaigns: campaigns.data?.length || 0,
+            totalSent: campaigns.data?.reduce((a, c) => a + (c.sent_count || 0), 0) || 0,
+            configured: !!smtpSettings.data?.smtp_host,
+            fromEmail: smtpSettings.data?.from_email || null,
+        });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 module.exports = router;

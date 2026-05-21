@@ -7,7 +7,6 @@ import { Zap, RefreshCw, AlertTriangle, TrendingUp, Search, Target, BarChart3, E
 const TABS = [
   { key:'smart', label:'Smart Launch', icon:'🚀' },
   { key:'monitor', label:'7/24 Monitor', icon:'👁️' },
-  { key:'capi', label:'CAPI', icon:'📡' },
   { key:'competitor', label:'Rakip Reklamlar', icon:'🕵️' },
   { key:'roas', label:'ROAS Tahmini', icon:'📈' },
   { key:'keywords', label:'Keyword Intel', icon:'🔍' },
@@ -21,7 +20,6 @@ export default function AdsAdvancedPage() {
   const [loading, setLoading] = useState(false)
   const [leads, setLeads] = useState<any[]>([])
   const [monitorAlerts, setMonitorAlerts] = useState<any[]>([])
-  const [capiStats, setCapiStats] = useState<any>(null)
   const [competitorAds, setCompetitorAds] = useState<any[]>([])
   const [competitorAnalysis, setCompetitorAnalysis] = useState<any>(null)
   const [roasPrediction, setRoasPrediction] = useState<any>(null)
@@ -33,7 +31,6 @@ export default function AdsAdvancedPage() {
   // Form states
   const [smartForm, setSmartForm] = useState({ product:'', sector:'', budget:'10', targetCountries:['TR'] })
   const [monitorForm, setMonitorForm] = useState({ adAccountId:'', minCtr:'0.5', maxCpm:'50' })
-  const [capiForm, setCapiForm] = useState({ eventName:'Lead', phone:'', email:'', value:'0' })
   const [competitorForm, setCompetitorForm] = useState({ keywords:'', country:'TR' })
   const [retargetForm, setRetargetForm] = useState({ audienceName:'LeadFlow Retargeting', days:'30' })
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
@@ -43,7 +40,6 @@ export default function AdsAdvancedPage() {
   useEffect(()=>{
     api.get('/api/ads-advanced/advanced/stats').then(d=>setStats(d)).catch(()=>{})
     api.get('/api/ads-advanced/monitor/alerts').then(d=>setMonitorAlerts(d.alerts||[])).catch(()=>{})
-    api.get('/api/ads-advanced/capi/stats').then(d=>setCapiStats(d)).catch(()=>{})
     api.get('/api/ads-advanced/retargeting/audiences').then(d=>setRetargetingAudiences(d.audiences||[])).catch(()=>{})
     api.get('/api/leads?limit=200').then(d=>setLeads(d.leads||[])).catch(()=>{})
   },[])
@@ -62,15 +58,6 @@ export default function AdsAdvancedPage() {
     try {
       await api.post('/api/ads-advanced/monitor/start', { adAccountId: monitorForm.adAccountId, alertThresholds: { minCtr: parseFloat(monitorForm.minCtr), maxCpm: parseFloat(monitorForm.maxCpm) }})
       showMsg('success', '7/24 izleme başladı!')
-    } catch(e:any){showMsg('error',e.message)} finally{setLoading(false)}
-  }
-
-  const sendCapiEvent = async () => {
-    setLoading(true)
-    try {
-      const d = await api.post('/api/ads-advanced/capi/event', capiForm)
-      showMsg('success', d.message)
-      api.get('/api/ads-advanced/capi/stats').then(d=>setCapiStats(d))
     } catch(e:any){showMsg('error',e.message)} finally{setLoading(false)}
   }
 
@@ -140,9 +127,8 @@ export default function AdsAdvancedPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {[
-            {l:'CAPI Events',v:stats.capiEvents,c:'text-blue-400'},
             {l:'ROAS Tahmin',v:stats.roasPredictions,c:'text-green-400'},
             {l:'Rakip Reklam',v:stats.competitorAds,c:'text-orange-400'},
             {l:'Retargeting',v:stats.retargetingAudiences,c:'text-purple-400'},
@@ -228,55 +214,6 @@ export default function AdsAdvancedPage() {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* 3. CAPI */}
-        {tab==='capi' && (
-          <div className="space-y-4">
-            <h2 className="text-white font-semibold flex items-center gap-2">📡 Conversion API (CAPI)</h2>
-            <p className="text-slate-400 text-sm">Meta CAPI ile server-side conversion tracking — reklam maliyetini %30-50 düşürür</p>
-            {capiStats && (
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-slate-900 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-400">{capiStats.total}</p>
-                  <p className="text-slate-400 text-xs">Toplam Event</p>
-                </div>
-                <div className="bg-slate-900 rounded-xl p-3">
-                  <p className="text-white text-xs font-medium mb-1">Event Türleri</p>
-                  {Object.entries(capiStats.byEvent||{}).map(([k,v]:any)=>(
-                    <p key={k} className="text-slate-300 text-xs">{k}: {v}</p>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="grid lg:grid-cols-2 gap-3">
-              <div>
-                <label className="text-slate-400 text-xs mb-1 block">Event Türü</label>
-                <select value={capiForm.eventName} onChange={e=>setCapiForm(p=>({...p,eventName:e.target.value}))}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                  {['Lead','Purchase','CompleteRegistration','AddToCart','InitiateCheckout','ViewContent'].map(e=>(
-                    <option key={e}>{e}</option>
-                  ))}
-                </select>
-              </div>
-              {[
-                {k:'phone',l:'Telefon (hash\'lenir)',p:'05001234567'},
-                {k:'email',l:'Email (hash\'lenir)',p:'info@sirket.com'},
-                {k:'value',l:'Değer (₺)',p:'1000'},
-              ].map(({k,l,p})=>(
-                <div key={k}>
-                  <label className="text-slate-400 text-xs mb-1 block">{l}</label>
-                  <input value={(capiForm as any)[k]} onChange={e=>setCapiForm(prev=>({...prev,[k]:e.target.value}))}
-                    placeholder={p} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"/>
-                </div>
-              ))}
-            </div>
-            <button onClick={sendCapiEvent} disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-              {loading?<RefreshCw size={14} className="animate-spin"/>:<CheckCircle size={14}/>}
-              CAPI Event Gönder
-            </button>
           </div>
         )}
 

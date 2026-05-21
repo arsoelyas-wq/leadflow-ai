@@ -6,7 +6,7 @@ import AdsROI from './AdsROI'
 import {
   RefreshCw, Users, CheckCircle, Link, Target, BarChart2,
   ArrowUpRight, X, ChevronRight, ChevronDown, Sparkles,
-  AlertTriangle, Activity, Zap, TrendingUp, DollarSign, Download
+  AlertTriangle, Activity, Zap, TrendingUp, DollarSign, Download, Brain
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -33,6 +33,106 @@ interface AdResult {
   won: number; revenue: number; winRate: number; avgDeal: number
 }
 
+const EVENT_LABELS: Record<string, string> = {
+  Lead: 'Yeni Lead', Contact: 'İletişim', InitiateCheckout: 'Teklif', Purchase: 'Satış', ViewContent: 'Görüntüleme',
+}
+
+function AlgorithmTrainingBanner({ platform, eventsToday, eventsTotal, lastAt, eventTypes }: {
+  platform: 'meta' | 'google'
+  eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[]
+}) {
+  const isMeta = platform === 'meta'
+  const isActive = eventsTotal > 0
+
+  function relativeTime(iso: string | null) {
+    if (!iso) return '—'
+    const diff = Date.now() - new Date(iso).getTime()
+    const m = Math.floor(diff / 60000)
+    if (m < 1) return 'Az önce'
+    if (m < 60) return `${m} dk önce`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h} saat önce`
+    return `${Math.floor(h / 24)} gün önce`
+  }
+
+  const STEPS = isMeta
+    ? ['Lead', 'Contact', 'InitiateCheckout', 'Purchase']
+    : ['Lead', 'Contact', 'Purchase']
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border p-5 ${isActive ? 'bg-gradient-to-r from-blue-950/60 via-purple-950/40 to-blue-950/60 border-blue-500/25' : 'bg-slate-800/40 border-slate-700/50'}`}>
+      {isActive && (
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-purple-600/8 to-blue-600/5 animate-pulse pointer-events-none" />
+      )}
+      <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+        {/* Left: status */}
+        <div className="flex items-start gap-3 flex-1">
+          <div className={`mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-blue-500/20' : 'bg-slate-700'}`}>
+            <Brain size={18} className={isActive ? 'text-blue-400' : 'text-slate-500'} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="text-white font-semibold text-sm">
+                {isMeta ? 'Meta' : 'Google'} Algoritması Eğitiliyor
+              </h3>
+              {isActive ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/25">
+                  <span className="relative flex w-1.5 h-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                  </span>
+                  AKTİF
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 border border-slate-600">
+                  BEKLEMEDE
+                </span>
+              )}
+            </div>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              {isActive
+                ? 'Her müşteri kazandığınızda veriler otomatik iletiliyor — reklamlarınız zamanla daha ucuz ve etkili hale geliyor'
+                : 'Ayarlar > Meta Dönüşüm bölümünden sistemi aktifleştirin — her satış algoritmayı eğitecek'}
+            </p>
+            {/* Event type pills */}
+            {isActive && (
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                <span className="text-slate-500 text-[10px]">Öğrenilen:</span>
+                {STEPS.map(step => {
+                  const done = eventTypes.includes(step)
+                  return (
+                    <span key={step} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] border ${done ? 'bg-blue-500/20 border-blue-500/30 text-blue-300' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>
+                      {done && <span className="w-1 h-1 bg-blue-400 rounded-full" />}
+                      {EVENT_LABELS[step] || step}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        {/* Right: counters */}
+        {isActive && (
+          <div className="flex items-center gap-5 sm:gap-6 flex-shrink-0 pl-12 sm:pl-0">
+            <div className="text-center">
+              <p className="text-xl font-bold text-blue-400">{eventsToday}</p>
+              <p className="text-slate-500 text-[10px] mt-0.5">Bugün</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-purple-400">{eventsTotal}</p>
+              <p className="text-slate-500 text-[10px] mt-0.5">Toplam</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-white">{relativeTime(lastAt)}</p>
+              <p className="text-slate-500 text-[10px] mt-0.5">Son eğitim</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function AdsPage() {
   const searchParams = useSearchParams()
   const [connected, setConnected] = useState(false)
@@ -47,6 +147,9 @@ export default function AdsPage() {
   // Ad results (attribution)
   const [adResults, setAdResults] = useState<AdResult[]>([])
   const [adSummary, setAdSummary] = useState<any>(null)
+
+  // Meta CAPI algorithm training status
+  const [capiStatus, setCapiStatus] = useState<{ eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[] }>({ eventsToday: 0, eventsTotal: 0, lastAt: null, eventTypes: [] })
 
   // Wizard state
   const [wizardOpen, setWizardOpen] = useState(false)
@@ -81,16 +184,25 @@ export default function AdsPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [connRes, campRes, actRes, attrRes] = await Promise.allSettled([
+      const [connRes, campRes, actRes, attrRes, capiEvRes] = await Promise.allSettled([
         fetch(`${API}/api/ads/connection`, { headers: authH() }),
         fetch(`${API}/api/ads/my-campaigns`, { headers: authH() }),
         fetch(`${API}/api/ads-intelligence/activity`, { headers: authH() }),
         fetch(`${API}/api/meta-capi/attribution`, { headers: authH() }),
+        fetch(`${API}/api/meta-capi/events`, { headers: authH() }),
       ])
       if (connRes.status === 'fulfilled') { const d = await connRes.value.json(); setConnected(d.connected) }
       if (campRes.status === 'fulfilled') { const d = await campRes.value.json(); setCampaigns(d.campaigns || []) }
       if (actRes.status === 'fulfilled') { const d = await actRes.value.json(); setActivities(d.activities || []); setLeadsToday(d.leads_today || 0) }
       if (attrRes.status === 'fulfilled') { const d = await attrRes.value.json(); setAdResults(d.rows || []); setAdSummary(d.summary || null) }
+      if (capiEvRes.status === 'fulfilled') {
+        const d = await capiEvRes.value.json()
+        const events: any[] = d.events || (Array.isArray(d) ? d : [])
+        const todayStr = new Date().toDateString()
+        const eventsToday = events.filter((e: any) => new Date(e.fired_at).toDateString() === todayStr && e.success).length
+        const eventTypes = [...new Set(events.filter((e: any) => e.success).map((e: any) => e.event_name))] as string[]
+        setCapiStatus({ eventsTotal: events.filter((e: any) => e.success).length, eventsToday, lastAt: events[0]?.fired_at || null, eventTypes })
+      }
     } catch {}
     setLoading(false)
   }
@@ -196,6 +308,15 @@ export default function AdsPage() {
             </button>
           </div>
         </div>
+
+        {/* Algorithm Training Banner */}
+        <AlgorithmTrainingBanner
+          platform="meta"
+          eventsToday={capiStatus.eventsToday}
+          eventsTotal={capiStatus.eventsTotal}
+          lastAt={capiStatus.lastAt}
+          eventTypes={capiStatus.eventTypes}
+        />
 
         {/* 3 Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

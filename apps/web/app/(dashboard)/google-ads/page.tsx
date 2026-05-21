@@ -5,7 +5,7 @@ import AdsAdvanced from './AdsAdvanced'
 import {
   RefreshCw, Users, CheckCircle, Link, Target, BarChart2,
   ArrowUpRight, X, ChevronRight, ChevronDown, Sparkles,
-  AlertTriangle, Activity, Zap, Globe, TrendingUp
+  AlertTriangle, Activity, Zap, Globe, TrendingUp, Brain
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -31,6 +31,95 @@ function qsColor(score: number) {
   if (score >= 7) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
   if (score >= 4) return 'text-amber-400 bg-amber-500/10 border-amber-500/25'
   return 'text-red-400 bg-red-500/10 border-red-500/25'
+}
+
+const GEVENT_LABELS: Record<string, string> = {
+  Lead: 'Yeni Lead', Contact: 'İletişim', Purchase: 'Satış',
+}
+
+function GoogleAlgorithmBanner({ eventsToday, eventsTotal, lastAt, eventTypes }: {
+  eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[]
+}) {
+  const isActive = eventsTotal > 0
+
+  function relativeTime(iso: string | null) {
+    if (!iso) return '—'
+    const diff = Date.now() - new Date(iso).getTime()
+    const m = Math.floor(diff / 60000)
+    if (m < 1) return 'Az önce'
+    if (m < 60) return `${m} dk önce`
+    const h = Math.floor(m / 60)
+    if (h < 24) return `${h} saat önce`
+    return `${Math.floor(h / 24)} gün önce`
+  }
+
+  const STEPS = ['Lead', 'Contact', 'Purchase']
+
+  return (
+    <div className={`relative overflow-hidden rounded-2xl border p-5 ${isActive ? 'bg-gradient-to-r from-emerald-950/50 via-blue-950/40 to-emerald-950/50 border-emerald-500/20' : 'bg-slate-800/40 border-slate-700/50'}`}>
+      {isActive && (
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/4 via-blue-600/6 to-emerald-600/4 animate-pulse pointer-events-none" />
+      )}
+      <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex items-start gap-3 flex-1">
+          <div className={`mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-emerald-500/20' : 'bg-slate-700'}`}>
+            <Brain size={18} className={isActive ? 'text-emerald-400' : 'text-slate-500'} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="text-white font-semibold text-sm">Google Algoritması Eğitiliyor</h3>
+              {isActive ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/25">
+                  <span className="relative flex w-1.5 h-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                  </span>
+                  AKTİF
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 border border-slate-600">BEKLEMEDE</span>
+              )}
+            </div>
+            <p className="text-slate-400 text-xs leading-relaxed">
+              {isActive
+                ? 'Google Smart Bidding her dönüşümden öğreniyor — reklamlarınız daha doğru kişilere, daha düşük maliyetle ulaşıyor'
+                : 'Ayarlar > Google Dönüşüm bölümünden sistemi aktifleştirin — her satış Smart Bidding\'i eğitecek'}
+            </p>
+            {isActive && (
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                <span className="text-slate-500 text-[10px]">Öğrenilen:</span>
+                {STEPS.map(step => {
+                  const done = eventTypes.includes(step)
+                  return (
+                    <span key={step} className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] border ${done ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>
+                      {done && <span className="w-1 h-1 bg-emerald-400 rounded-full" />}
+                      {GEVENT_LABELS[step] || step}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        {isActive && (
+          <div className="flex items-center gap-5 sm:gap-6 flex-shrink-0 pl-12 sm:pl-0">
+            <div className="text-center">
+              <p className="text-xl font-bold text-emerald-400">{eventsToday}</p>
+              <p className="text-slate-500 text-[10px] mt-0.5">Bugün</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xl font-bold text-blue-400">{eventsTotal}</p>
+              <p className="text-slate-500 text-[10px] mt-0.5">Toplam</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-white">{relativeTime(lastAt)}</p>
+              <p className="text-slate-500 text-[10px] mt-0.5">Son eğitim</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function GoogleAdsPage() {
@@ -63,6 +152,9 @@ export default function GoogleAdsPage() {
   // Google conversion results
   const [gResults, setGResults] = useState<any[]>([])
   const [gSummary, setGSummary] = useState<any>(null)
+
+  // Google CAPI algorithm training status
+  const [gcapiStatus, setGcapiStatus] = useState<{ eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[] }>({ eventsToday: 0, eventsTotal: 0, lastAt: null, eventTypes: [] })
 
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
@@ -114,11 +206,12 @@ export default function GoogleAdsPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [connRes, campRes, actRes, attrRes] = await Promise.allSettled([
+      const [connRes, campRes, actRes, attrRes, gcapiEvRes] = await Promise.allSettled([
         fetch(`${API}/api/google-ads/connection`, { headers: authH() }),
         fetch(`${API}/api/google-campaign/campaigns-with-roi`, { headers: authH() }),
         fetch(`${API}/api/ads-intelligence/activity`, { headers: authH() }),
         fetch(`${API}/api/google-capi/attribution`, { headers: authH() }),
+        fetch(`${API}/api/google-capi/events`, { headers: authH() }),
       ])
       if (connRes.status === 'fulfilled') { const d = await connRes.value.json(); setConnected(d.connected) }
       if (campRes.status === 'fulfilled') { const d = await campRes.value.json(); setCampaigns(d.campaigns || []) }
@@ -128,6 +221,14 @@ export default function GoogleAdsPage() {
         setLeadsToday(d.leads_today || 0)
       }
       if (attrRes.status === 'fulfilled') { const d = await attrRes.value.json(); setGResults(d.rows || []); setGSummary(d.summary || null) }
+      if (gcapiEvRes.status === 'fulfilled') {
+        const d = await gcapiEvRes.value.json()
+        const events: any[] = d.events || (Array.isArray(d) ? d : [])
+        const todayStr = new Date().toDateString()
+        const eventsToday = events.filter((e: any) => new Date(e.fired_at).toDateString() === todayStr && e.success).length
+        const eventTypes = [...new Set(events.filter((e: any) => e.success).map((e: any) => e.event_name))] as string[]
+        setGcapiStatus({ eventsTotal: events.filter((e: any) => e.success).length, eventsToday, lastAt: events[0]?.fired_at || null, eventTypes })
+      }
     } catch {}
     setLoading(false)
   }
@@ -257,6 +358,14 @@ export default function GoogleAdsPage() {
             </button>
           </div>
         </div>
+
+        {/* Algorithm Training Banner */}
+        <GoogleAlgorithmBanner
+          eventsToday={gcapiStatus.eventsToday}
+          eventsTotal={gcapiStatus.eventsTotal}
+          lastAt={gcapiStatus.lastAt}
+          eventTypes={gcapiStatus.eventTypes}
+        />
 
         {/* 3 Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

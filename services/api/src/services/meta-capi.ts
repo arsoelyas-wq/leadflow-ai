@@ -201,7 +201,7 @@ export async function fireCapiEvent(
   supabase: any,
   userId: string,
   lead: any,
-  eventName: 'Lead' | 'Contact' | 'InitiateCheckout' | 'ViewContent' | 'Purchase',
+  eventName: 'Lead' | 'Contact' | 'InitiateCheckout' | 'ViewContent' | 'Purchase' | 'CompleteRegistration',
   extra: { value?: number; orderId?: string } = {}
 ): Promise<void> {
   const settings = await getMetaSettings(supabase, userId);
