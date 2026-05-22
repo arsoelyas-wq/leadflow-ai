@@ -148,7 +148,10 @@ app.use('/api/abtests',              authMiddleware, require('./routes/ab-testin
 app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-numbers'));
 app.use('/api/shadow',               authMiddleware, require('./routes/shadow'));
 app.use('/api/visual-trends',        authMiddleware, require('./routes/visual-trends'));
-app.use('/api/video-outreach',       authMiddleware, require('./routes/video-outreach'));
+// HeyGen webhook public (no auth, called by HeyGen servers)
+const videoOutreachRouter = require('./routes/video-outreach');
+app.post('/api/video-outreach/heygen-webhook', (req: any, res: any, next: any) => { req.url = '/heygen-webhook'; videoOutreachRouter(req, res, next); });
+app.use('/api/video-outreach',       authMiddleware, videoOutreachRouter);
 app.use('/v',                          require('./routes/video-tracking'));
 app.use('/api/avatar',               authMiddleware, require('./routes/avatar'));
 app.use('/api/retargeting',          authMiddleware, require('./routes/retargeting'));
