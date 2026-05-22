@@ -22,57 +22,310 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function makeTrackingCode() { return crypto.randomBytes(10).toString('hex'); }
 function trackingUrl(code: string) { return `${API_BASE}/v/${code}`; }
 
+// ─── BRAND NAME EXTRACTION ───────────────────────────────────────────────────
+
+function extractBrandName(legalName: string): string {
+  if (!legalName) return '';
+  return legalName
+    .replace(/\b(A\.Ş\.|LTD\. ŞTİ\.|LTD\. STI\.|LTD\.|ŞTİ\.|STI\.|SAN\. VE TİC\. A\.Ş\.|SAN\. VE TİC\. LTD\. ŞTİ\.|SAN\. A\.Ş\.|TİC\. A\.Ş\.|VE TİC\. A\.Ş\.|VE TİC\. LTD\. ŞTİ\.|VE TİC\.|SAN\. TİC\.|SAN\.|TİC\.|İNŞ\.|İNŞAAT|TAAH\.|MÜH\.|PAZ\.|DIŞ TİC\.|A\.S\.|LTD\.)\b/gi, '')
+    .replace(/\b(VE|ve|AND|&)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter((w: string) => w.length > 1)
+    .slice(0, 3)
+    .join(' ') || legalName.split(' ')[0];
+}
+
+// ─── LEAD RESEARCH ───────────────────────────────────────────────────────────
+
+interface LeadResearch {
+  brandName: string;
+  website: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  linkedin: string | null;
+  pains: string[];
+  positives: string[];
+  opportunity: string;
+  hookLine: string;
+  reviewSummary: string;
+  quality: 'web_search' | 'website' | 'sector';
+}
+
+// Agentic web search loop using claude-sonnet with web_search_20250305 tool
+async function researchWithWebSearch(lead: any, profile: any): Promise<LeadResearch> {
+  const companyName = lead.company_name;
+  const country     = lead.country || 'Türkiye';
+  const ourCompany  = profile?.company?.name || 'şirketimiz';
+  const product     = profile?.product?.description || 'hizmetimiz';
+
+  const prompt = `"${companyName}" şirketini (${country}) derinlemesine araştır.
+
+Şunları bul:
+1. Bu şirketin gerçek marka adı — kısa, kullandıkları marka ismi, hukuki tam isim değil
+2. Resmi web sitesi ve sosyal medya hesapları (Instagram, Facebook, LinkedIn)
+3. Google Yorumlar, şikayetvar.com, Trustpilot, ekşi sözlük veya benzer platformlardaki müşteri şikayetleri ve sorunları
+4. Bu şirketin yaşadığı en kritik 2-3 spesifik sorun (genel sektör sorunu değil, bu şirkete özel)
+5. "${ourCompany}" firmasının "${product}" ürününün bu şirketin ÖZEL sorunlarını nasıl çözebileceği
+
+JSON formatında yanıt ver (başka hiçbir şey yazma, sadece JSON):
+{
+  "brandName": "kısa marka adı",
+  "website": "site URL veya null",
+  "instagram": "instagram URL veya null",
+  "facebook": "facebook URL veya null",
+  "linkedin": "linkedin URL veya null",
+  "pains": ["şirkete özel sorun 1", "sorun 2", "sorun 3"],
+  "positives": ["güçlü yön 1"],
+  "opportunity": "ürünümüzün bu şirkete nasıl yardım ettiği — 1 cümle, spesifik",
+  "hookLine": "videonun ilk 4 saniyesinde söylenecek, dikkat çekici, onların spesifik sorununa değinen 1 cümle",
+  "reviewSummary": "bulunan yorumların kısa özeti"
+}`;
+
+  const messages: any[] = [{ role: 'user', content: prompt }];
+  let finalText = '';
+
+  for (let turn = 0; turn < 12; turn++) {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2500,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }] as any,
+      messages,
+    });
+
+    messages.push({ role: 'assistant', content: response.content });
+
+    if (response.stop_reason === 'end_turn') {
+      const textBlock = response.content.find((c: any) => c.type === 'text');
+      finalText = (textBlock as any)?.text || '';
+      break;
+    }
+
+    if (response.stop_reason === 'tool_use') {
+      const toolUses = response.content.filter((c: any) => c.type === 'tool_use');
+      // For web_search_20250305, results are server-managed — send acknowledgments to continue
+      const toolResults = toolUses.map((tu: any) => ({
+        type: 'tool_result',
+        tool_use_id: tu.id,
+        content: '',
+      }));
+      if (toolResults.length > 0) {
+        messages.push({ role: 'user', content: toolResults });
+      } else {
+        break; // No tool_use blocks, unexpected state
+      }
+    } else {
+      // max_tokens or other stop reason — extract any text
+      const textBlock = response.content.find((c: any) => c.type === 'text');
+      if (textBlock) finalText = (textBlock as any).text;
+      break;
+    }
+  }
+
+  if (!finalText) throw new Error('No text output from web search research');
+
+  const jsonMatch = finalText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No valid JSON in research output');
+
+  const parsed = JSON.parse(jsonMatch[0]);
+  return { ...parsed, quality: 'web_search' };
+}
+
+// Fallback: fetch website HTML + Claude sector knowledge
+async function researchFromWebsite(lead: any, profile: any): Promise<LeadResearch> {
+  const fallbackBrand = extractBrandName(lead.company_name);
+  let websiteContext = '';
+  let websiteUrl: string | null = null;
+  let instagram: string | null = null;
+  let facebook: string | null = null;
+  let linkedin: string | null = null;
+
+  // Try to fetch the website
+  const urlsToTry = [
+    lead.website,
+    lead.website ? null : `https://${lead.company_name.toLowerCase().replace(/\s+/g, '').slice(0, 20)}.com`,
+    lead.website ? null : `https://www.${fallbackBrand.toLowerCase().replace(/\s+/g, '')}.com`,
+  ].filter(Boolean);
+
+  for (const url of urlsToTry) {
+    try {
+      const r = await axios.get(url, {
+        timeout: 8000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        maxRedirects: 3,
+      });
+      const html = String(r.data);
+      websiteUrl = url;
+
+      // Extract title / og:title
+      const titleMatch = html.match(/property="og:title"[^>]*content="([^"]+)"/i) ||
+                         html.match(/<title[^>]*>([^<|–-]+)/i);
+      if (titleMatch?.[1]) websiteContext += `Site başlığı: ${titleMatch[1].trim()}\n`;
+
+      // Extract description
+      const descMatch = html.match(/property="og:description"[^>]*content="([^"]+)"/i) ||
+                        html.match(/name="description"[^>]*content="([^"]+)"/i);
+      if (descMatch?.[1]) websiteContext += `Açıklama: ${descMatch[1].trim()}\n`;
+
+      // Extract social links
+      const igMatch = html.match(/https?:\/\/(?:www\.)?instagram\.com\/[^"'\/\s?&#]+/i);
+      if (igMatch) instagram = igMatch[0];
+      const fbMatch = html.match(/https?:\/\/(?:www\.)?facebook\.com\/[^"'\/\s?&#]+/i);
+      if (fbMatch) facebook = fbMatch[0];
+      const liMatch = html.match(/https?:\/\/(?:www\.)?linkedin\.com\/company\/[^"'\/\s?&#]+/i);
+      if (liMatch) linkedin = liMatch[0];
+
+      break;
+    } catch {}
+  }
+
+  // Claude sector-based analysis
+  try {
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{
+        role: 'user',
+        content: `Şirket: "${lead.company_name}"
+Ülke: ${lead.country || 'Türkiye'}
+Sektör: ${lead.sector || 'bilinmiyor'}
+${websiteContext ? `Web içeriği:\n${websiteContext}` : ''}
+Bizim ürün/hizmet: ${profile?.product?.description || ''}
+Bizim şirket: ${profile?.company?.name || ''}
+
+Bu sektördeki şirketlerin yaşadığı en yaygın 2-3 spesifik sorunu ve bu şirkete özel fırsatı JSON olarak ver:
+{
+  "brandName": "${fallbackBrand}",
+  "pains": ["sektöre özel sorun 1", "sorun 2"],
+  "positives": [],
+  "opportunity": "ürünün bu şirkete faydası",
+  "hookLine": "dikkat çekici opener"
+}`,
+      }],
+    });
+    const text = ((r.content[0] as any)?.text || '');
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        brandName: parsed.brandName || fallbackBrand,
+        website: websiteUrl,
+        instagram, facebook, linkedin,
+        pains: parsed.pains || [],
+        positives: parsed.positives || [],
+        opportunity: parsed.opportunity || '',
+        hookLine: parsed.hookLine || '',
+        reviewSummary: '',
+        quality: websiteContext ? 'website' : 'sector',
+      };
+    }
+  } catch {}
+
+  return {
+    brandName: fallbackBrand,
+    website: websiteUrl,
+    instagram, facebook, linkedin,
+    pains: [],
+    positives: [],
+    opportunity: '',
+    hookLine: '',
+    reviewSummary: '',
+    quality: 'sector',
+  };
+}
+
+async function researchLead(lead: any, profile: any): Promise<LeadResearch> {
+  try {
+    return await researchWithWebSearch(lead, profile);
+  } catch (e: any) {
+    console.log(`[Research] Web search failed for "${lead.company_name}", using fallback:`, e.message?.slice(0, 100));
+    return await researchFromWebsite(lead, profile);
+  }
+}
+
 // ─── AI HELPERS ──────────────────────────────────────────────────────────────
 
-async function generateScript(lead: any, profile: any, language: string): Promise<string> {
+async function generateScript(lead: any, profile: any, language: string, research?: LeadResearch | null): Promise<string> {
   const langNames: Record<string, string> = {
     tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', ar: 'Arapça', fr: 'Fransızca',
     ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
   };
+
+  const brandName  = research?.brandName || extractBrandName(lead.company_name);
+  const pains      = research?.pains || [];
+  const hookLine   = research?.hookLine || '';
+  const opportunity = research?.opportunity || '';
+  const reviewNote = research?.reviewSummary ? `Bulunan yorumlar: ${research.reviewSummary}` : '';
+
+  const painSection = pains.length > 0
+    ? `Tespit edilen spesifik sorunlar: ${pains.join('; ')}`
+    : `Sektör: ${lead.sector || ''}`;
+
   try {
     const r = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 300,
+      max_tokens: 500,
+      system: 'Sen bir satış videosu script yazarısın. PAS (Problem-Agitate-Solve) + Hook çerçevesinde doğal, etkili scriptler yazıyorsun. Yapay zeka olduğunu hiç belli etme.',
       messages: [{
         role: 'user',
-        content: `${profile?.company?.name || 'Şirket'} adına ${lead.company_name} firmasına ${langNames[language] || 'Türkçe'} dilinde kişisel satış videosu için script yaz.
-Ürün: ${profile?.product?.description || ''}
-Muhatap: ${lead.contact_name || lead.company_name}
-Sektör: ${lead.sector || ''}
-Ülke: ${lead.country || ''}
+        content: `${langNames[language] || 'Türkçe'} dilinde, 30 saniyelik (60-80 kelime) kişiselleştirilmiş video satış scripti yaz.
 
-KURALLAR:
-- Max 30 saniye (60-80 kelime)
-- Doğal, samimi, insan gibi konuş
-- İsmi kullan: ${lead.contact_name || lead.company_name}
-- Değer öner, randevu veya numune teklif et
-- Yapay zeka olduğunu ASLA söyleme
-- ${langNames[language] || 'Türkçe'} dilinde yaz
+HEDEF: ${brandName}
+İLETİŞİM: ${lead.contact_name || brandName}
+BİZİM ŞİRKET: ${profile?.company?.name || ''}
+ÜRÜN/HİZMET: ${profile?.product?.description || ''}
+${painSection}
+${opportunity ? `Çözüm açısı: ${opportunity}` : ''}
+${hookLine ? `Araştırmada bulunan hook önerisi: "${hookLine}"` : ''}
+${reviewNote}
 
-Sadece konuşma metnini yaz, başka bir şey yazma.`
-      }]
+ZORUNLU YAPI (kesinlikle uy):
+🎯 HOOK (ilk 3-4 saniye): Dikkat çekici başlangıç. ${hookLine ? `Bunu kullan veya geliştir: "${hookLine}"` : `"${brandName}" ile başla, onların spesifik sorunu veya sektörlerindeki şaşırtıcı bir gerçeği söyle.`} İzleyiciyi hemen yakalamalı.
+📌 PROBLEM (4-5 saniye): Bu sorunu net ve somut söyle.
+💥 AGİTATE (3 saniye): Bu sorunun sonuçlarını/maliyetini belirt.
+💡 ÇÖZÜM (12-15 saniye): Ürünümüz bu sorunu tam olarak nasıl çözüyor — spesifik, inandırıcı.
+✅ KANIT (2-3 saniye): Kısa sonuç ima et veya sektördeki benzer başarıya değin.
+📞 CTA (2-3 saniye): Yumuşak — "5 dakikanız var mı?" veya "Bir görüşme yapalım."
+
+KESIN KURALLAR:
+- "${brandName}" kullan, ASLA tam hukuki ismi yazma
+- Doğal, insan gibi konuş — robot/kurumsal dil YASAK
+- Yapay zeka, AI, asistan gibi kelimeler YASAK
+- Sadece konuşma metnini yaz, başka hiçbir şey ekleme
+- Dil: ${langNames[language] || 'Türkçe'}`,
+      }],
     });
-    return r.content[0]?.text || '';
+    return ((r.content[0] as any)?.text || '').trim();
   } catch {
-    return `Merhaba ${lead.contact_name || lead.company_name}! ${profile?.company?.name || 'Şirketimiz'} adına sizinle iletişime geçmek istedik. Size özel bir teklifimiz var, görüşmek ister misiniz?`;
+    return `Merhaba ${brandName}! ${profile?.company?.name || 'Şirketimiz'} olarak sizin sektörünüzdeki en kritik sorunu çözen bir çözüm geliştirdik. Size özel hazırladığımız bu videoyu izledikten sonra 5 dakikanızı bize ayırır mısınız?`;
   }
 }
 
-// Claude Haiku — hızlı, ucuz, WhatsApp intro mesajı
-async function generateWhatsAppIntro(lead: any, profile: any): Promise<string> {
+// Claude Haiku — hızlı WhatsApp intro (marka adıyla, araştırmaya göre)
+async function generateWhatsAppIntro(lead: any, profile: any, research?: LeadResearch | null): Promise<string> {
+  const brandName  = research?.brandName || extractBrandName(lead.company_name);
+  const opportunity = research?.opportunity || '';
+  const pain       = research?.pains?.[0] || '';
+
   try {
     const r = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 120,
+      max_tokens: 150,
       messages: [{
         role: 'user',
-        content: `Kısa WhatsApp mesajı yaz. Alıcı: ${lead.contact_name || lead.company_name}. Şirket: ${profile?.company?.name || 'bizim şirket'}. Ürün: ${profile?.product?.description || 'hizmetlerimiz'}. Amaç: kişiye özel hazırladığımız videoyu izlemesini istemek. Samimi, 1-2 cümle. Emoji veya link yok. Sadece mesaj metni.`
-      }]
+        content: `Kısa WhatsApp mesajı yaz.
+Alıcı marka adı: ${brandName}
+Bizim şirket: ${profile?.company?.name || ''}
+${pain ? `Onların tespit edilen sorunu: ${pain}` : `Ürün: ${profile?.product?.description || ''}`}
+${opportunity ? `Bağlam: ${opportunity}` : ''}
+Amaç: kişiye özel hazırladığımız videoyu izlemesini istemek.
+Samimi, doğal, 1-2 cümle. Emoji yok, link yok. Sadece mesaj metni. "${brandName}" olarak hitap et.`,
+      }],
     });
-    return (r.content[0]?.text || '').trim();
+    return ((r.content[0] as any)?.text || '').trim();
   } catch {
-    const firstName = (lead.contact_name || lead.company_name || '').split(' ')[0];
-    return `Merhaba ${firstName}! Sizin için özel bir video hazırladık, izlemenizi isteriz.`;
+    return `Merhaba ${brandName.split(' ')[0]}! Sizin için özel bir video hazırladık, izlemenizi isteriz.`;
   }
 }
 
@@ -181,25 +434,23 @@ router.get('/check-duplicates', async (req: any, res: any) => {
       .eq('user_id', req.userId)
       .in('lead_id', leadIds)
       .order('created_at', { ascending: false });
-    // Keep latest per lead
     const seen = new Set<string>();
     const existing = (data || []).filter((v: any) => { if (seen.has(v.lead_id)) return false; seen.add(v.lead_id); return true; });
     res.json({ existing });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/video-outreach/status/:id — tek video durumu
+// GET /api/video-outreach/status/:id — single video with live HeyGen check
 router.get('/status/:id', async (req: any, res: any) => {
   try {
     const { data: video } = await supabase
       .from('video_outreach')
-      .select('id, status, video_url, thumbnail_url, heygen_video_id, view_count, first_viewed_at, error_message, leads(company_name)')
+      .select('id, status, video_url, thumbnail_url, heygen_video_id, view_count, first_viewed_at, error_message, research_data, leads(company_name)')
       .eq('id', req.params.id)
       .eq('user_id', req.userId)
       .single();
     if (!video) return res.status(404).json({ error: 'Video bulunamadı' });
 
-    // Eğer hâlâ processing ise HeyGen'den canlı kontrol et
     if (video.status === 'processing' && video.heygen_video_id) {
       try {
         const result = await checkVideoStatus(video.heygen_video_id);
@@ -216,20 +467,16 @@ router.get('/status/:id', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/video-outreach/campaign/:id — kampanya ilerleme
+// GET /api/video-outreach/campaign/:id — campaign progress
 router.get('/campaign/:id', async (req: any, res: any) => {
   try {
     const { data: campaign } = await supabase
-      .from('video_campaigns')
-      .select('*')
-      .eq('id', req.params.id)
-      .eq('user_id', req.userId)
-      .single();
+      .from('video_campaigns').select('*').eq('id', req.params.id).eq('user_id', req.userId).single();
     if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
 
     const { data: videos } = await supabase
       .from('video_outreach')
-      .select('id, status, video_url, thumbnail_url, leads(company_name), view_count')
+      .select('id, status, video_url, thumbnail_url, leads(company_name), view_count, research_data')
       .eq('campaign_id', req.params.id)
       .eq('user_id', req.userId);
 
@@ -241,7 +488,7 @@ router.get('/campaign/:id', async (req: any, res: any) => {
         total:      campaign.total_leads,
         created:    vids.length,
         completed:  vids.filter((v: any) => v.status === 'completed').length,
-        processing: vids.filter((v: any) => v.status === 'processing').length,
+        processing: vids.filter((v: any) => ['processing','generating','researching'].includes(v.status)).length,
         failed:     vids.filter((v: any) => v.status === 'failed').length,
         percent:    campaign.total_leads > 0 ? Math.round((vids.filter((v: any) => v.status === 'completed').length / campaign.total_leads) * 100) : 0,
       },
@@ -266,22 +513,33 @@ router.post('/generate/single', async (req: any, res: any) => {
       user_id: userId, lead_id: leadId,
       avatar_id: avatarId, voice_id: voiceId,
       aspect_ratio: aspectRatio, language,
-      auto_send: autoSend, status: 'generating',
+      auto_send: autoSend, status: 'researching',
       tracking_code: code,
     }]).select().single();
 
-    res.json({ ok: true, videoId: videoRecord?.id, message: 'Video oluşturuluyor...' });
+    res.json({ ok: true, videoId: videoRecord?.id, message: 'Araştırma başladı, video oluşturuluyor...' });
 
-    // Arka plan pipeline
     (async () => {
       try {
-        const script = customScript || await generateScript(lead, profile, language);
+        // Phase 1: Deep research
+        console.log(`[Video] Araştırılıyor: ${lead.company_name}`);
+        const research = await researchLead(lead, profile);
+        await supabase.from('video_outreach').update({
+          research_data: research,
+          research_quality: research.quality,
+          status: 'generating',
+        }).eq('id', videoRecord?.id);
+        console.log(`[Video] Araştırma tamamlandı: ${research.brandName} (${research.quality}) — sorunlar: ${research.pains.slice(0,2).join(', ')}`);
+
+        // Phase 2: Script
+        const script = customScript || await generateScript(lead, profile, language, research);
         await supabase.from('video_outreach').update({ script }).eq('id', videoRecord?.id);
 
-        const audioBuffer  = await generateAudio(script, voiceId);
+        // Phase 3: Audio + Video
+        const audioBuffer   = await generateAudio(script, voiceId);
         const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio });
         await supabase.from('video_outreach').update({ heygen_video_id: heygenVideoId, status: 'processing' }).eq('id', videoRecord?.id);
-        console.log(`[Video] HeyGen ID: ${heygenVideoId} (${lead.company_name})`);
+        console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName})`);
       } catch (err: any) {
         console.error('[Video] Hata:', err.message);
         await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', videoRecord?.id);
@@ -297,10 +555,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
     let { leadIds, avatarId, voiceId, aspectRatio = '9:16', language, autoSend = false, campaignName } = req.body;
     if (!leadIds?.length || !avatarId || !voiceId) return res.status(400).json({ error: 'Parametreler eksik' });
 
-    // Maksimum 20 lead
-    if (leadIds.length > MAX_CAMPAIGN_LEADS) {
-      leadIds = leadIds.slice(0, MAX_CAMPAIGN_LEADS);
-    }
+    if (leadIds.length > MAX_CAMPAIGN_LEADS) leadIds = leadIds.slice(0, MAX_CAMPAIGN_LEADS);
 
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
     const { data: campaign } = await supabase.from('video_campaigns').insert([{
@@ -310,17 +565,36 @@ router.post('/generate/campaign', async (req: any, res: any) => {
       avatar_id: avatarId, voice_id: voiceId,
     }]).select().single();
 
-    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} video oluşturuluyor` });
+    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead araştırılıp video oluşturuluyor` });
 
     (async () => {
+      // Phase 1: Parallel research for all leads (batches of 4)
+      const leadDataMap: Record<string, any> = {};
+      const researchMap: Record<string, LeadResearch> = {};
+
+      console.log(`[Campaign] ${leadIds.length} lead için araştırma başlıyor...`);
+      for (let i = 0; i < leadIds.length; i += 4) {
+        const batch = leadIds.slice(i, i + 4);
+        await Promise.allSettled(batch.map(async (leadId: string) => {
+          const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+          if (!lead) return;
+          leadDataMap[leadId] = lead;
+          researchMap[leadId] = await researchLead(lead, profile);
+          console.log(`[Campaign] Araştırıldı: ${researchMap[leadId].brandName} — ${researchMap[leadId].pains.slice(0,2).join(', ')}`);
+        }));
+        await sleep(1500); // Rate limit buffer between batches
+      }
+
+      // Phase 2: Generate videos sequentially
       let created = 0;
       for (const leadId of leadIds) {
         try {
-          const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
+          const lead     = leadDataMap[leadId];
+          const research = researchMap[leadId];
           if (!lead) { created++; continue; }
 
           const callLang = language || getLanguageByCountry(lead.country_code || '') || 'tr';
-          const script   = await generateScript(lead, profile, callLang);
+          const script   = await generateScript(lead, profile, callLang, research);
           const audio    = await generateAudio(script, voiceId);
           const heygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio });
           const code     = makeTrackingCode();
@@ -332,19 +606,25 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             aspect_ratio: aspectRatio, language: callLang,
             auto_send: autoSend, status: 'processing',
             tracking_code: code,
+            research_data: research || null,
+            research_quality: research?.quality || null,
           }]);
 
           created++;
           await supabase.from('video_campaigns').update({ videos_created: created }).eq('id', campaign?.id);
           await sleep(2000);
-        } catch (err: any) { console.error(`[Campaign] Lead ${leadId}:`, err.message); created++; }
+        } catch (err: any) {
+          console.error(`[Campaign] Lead ${leadId}:`, err.message);
+          created++;
+        }
       }
       await supabase.from('video_campaigns').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', campaign?.id);
+      console.log(`[Campaign] Tamamlandı: ${campaign?.id}, ${created} video`);
     })();
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/video-outreach/retry/:id — başarısız videoyu yeniden dene
+// POST /api/video-outreach/retry/:id
 router.post('/retry/:id', async (req: any, res: any) => {
   try {
     const { data: video } = await supabase.from('video_outreach').select('*').eq('id', req.params.id).eq('user_id', req.userId).single();
@@ -354,14 +634,22 @@ router.post('/retry/:id', async (req: any, res: any) => {
     const { data: lead }    = await supabase.from('leads').select('*').eq('id', video.lead_id).single();
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
 
-    await supabase.from('video_outreach').update({ status: 'generating', error_message: null }).eq('id', video.id);
-    res.json({ ok: true, message: 'Video yeniden oluşturuluyor' });
+    await supabase.from('video_outreach').update({ status: 'researching', error_message: null }).eq('id', video.id);
+    res.json({ ok: true, message: 'Araştırılıp yeniden oluşturuluyor' });
 
     (async () => {
       try {
-        const script = video.script || await generateScript(lead, profile, video.language || 'tr');
+        // Reuse cached research if available
+        const research: LeadResearch = video.research_data || await researchLead(lead, profile);
+        if (!video.research_data) {
+          await supabase.from('video_outreach').update({ research_data: research, research_quality: research.quality }).eq('id', video.id);
+        }
+
+        await supabase.from('video_outreach').update({ status: 'generating' }).eq('id', video.id);
+        const script = video.script || await generateScript(lead, profile, video.language || 'tr', research);
         if (!video.script) await supabase.from('video_outreach').update({ script }).eq('id', video.id);
-        const audio  = await generateAudio(script, video.voice_id);
+
+        const audio    = await generateAudio(script, video.voice_id);
         const heygenId = await generateHeygenVideo({ avatarId: video.avatar_id, audioBuffer: audio, aspectRatio: video.aspect_ratio });
         await supabase.from('video_outreach').update({ heygen_video_id: heygenId, status: 'processing' }).eq('id', video.id);
       } catch (err: any) {
@@ -371,7 +659,7 @@ router.post('/retry/:id', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/video-outreach/send — Tracking URL'li kişisel WhatsApp mesajıyla gönder
+// POST /api/video-outreach/send — tracking URL + AI-personalized WhatsApp intro
 router.post('/send', async (req: any, res: any) => {
   try {
     const { videoId } = req.body;
@@ -384,7 +672,7 @@ router.post('/send', async (req: any, res: any) => {
     if (!lead?.phone) return res.status(400).json({ error: 'Lead telefon numarası yok' });
 
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
-    const intro   = await generateWhatsAppIntro(lead, profile);
+    const intro   = await generateWhatsAppIntro(lead, profile, video.research_data);
     const tUrl    = video.tracking_code ? trackingUrl(video.tracking_code) : video.video_url;
     const message = `${intro}\n\n${tUrl}`;
 
@@ -412,16 +700,17 @@ router.get('/videos', async (req: any, res: any) => {
 // GET /api/video-outreach/stats
 router.get('/stats', async (req: any, res: any) => {
   try {
-    const { data } = await supabase.from('video_outreach').select('status, sent_at, view_count, language').eq('user_id', req.userId);
+    const { data } = await supabase.from('video_outreach').select('status, sent_at, view_count, language, research_quality').eq('user_id', req.userId);
     const videos = data || [];
     res.json({
-      total:      videos.length,
-      completed:  videos.filter((v: any) => v.status === 'completed').length,
-      processing: videos.filter((v: any) => ['processing','generating'].includes(v.status)).length,
-      sent:       videos.filter((v: any) => v.sent_at).length,
-      failed:     videos.filter((v: any) => v.status === 'failed').length,
-      viewed:     videos.filter((v: any) => (v.view_count || 0) > 0).length,
-      total_views: videos.reduce((s: number, v: any) => s + (v.view_count || 0), 0),
+      total:        videos.length,
+      completed:    videos.filter((v: any) => v.status === 'completed').length,
+      processing:   videos.filter((v: any) => ['processing','generating','researching'].includes(v.status)).length,
+      sent:         videos.filter((v: any) => v.sent_at).length,
+      failed:       videos.filter((v: any) => v.status === 'failed').length,
+      viewed:       videos.filter((v: any) => (v.view_count || 0) > 0).length,
+      total_views:  videos.reduce((s: number, v: any) => s + (v.view_count || 0), 0),
+      web_researched: videos.filter((v: any) => v.research_quality === 'web_search').length,
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -433,21 +722,24 @@ router.post('/preview-script', async (req: any, res: any) => {
     const { data: lead }    = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
     if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
-    const script = await generateScript(lead, profile, language || 'tr');
-    res.json({ ok: true, script, leadId, leadName: lead.company_name });
+
+    // Lightweight research for preview (fallback only — don't use full web search for previews)
+    const research = await researchFromWebsite(lead, profile);
+    const script   = await generateScript(lead, profile, language || 'tr', research);
+    res.json({ ok: true, script, leadId, leadName: lead.company_name, brandName: research.brandName, pains: research.pains });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/video-outreach/heygen-webhook — HeyGen'den video hazır bildirimi
+// POST /api/video-outreach/heygen-webhook — HeyGen video ready notification
 router.post('/heygen-webhook', async (req: any, res: any) => {
   try {
-    res.sendStatus(200); // HeyGen'e hemen OK
+    res.sendStatus(200);
     const { event, event_data } = req.body;
     if (!event_data?.video_id) return;
 
     const heygenVideoId = event_data.video_id;
     const { data: video } = await supabase.from('video_outreach')
-      .select('id, user_id, lead_id, auto_send, tracking_code')
+      .select('id, user_id, lead_id, auto_send, tracking_code, research_data')
       .eq('heygen_video_id', heygenVideoId)
       .single();
     if (!video) return;
@@ -463,10 +755,9 @@ router.post('/heygen-webhook', async (req: any, res: any) => {
         const { data: lead }    = await supabase.from('leads').select('phone, contact_name, company_name').eq('id', video.lead_id).single();
         const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', video.user_id).single();
         if (lead?.phone) {
-          const intro   = await generateWhatsAppIntro(lead, profile);
+          const intro   = await generateWhatsAppIntro(lead, profile, video.research_data);
           const tUrl    = video.tracking_code ? trackingUrl(video.tracking_code) : event_data.video_url;
-          const message = `${intro}\n\n${tUrl}`;
-          await sendWhatsApp(video.user_id, lead.phone, message).catch(() => {});
+          await sendWhatsApp(video.user_id, lead.phone, `${intro}\n\n${tUrl}`).catch(() => {});
           await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', video.id);
         }
       }
@@ -486,11 +777,11 @@ function getLanguageByCountry(countryCode: string): string {
   return map[countryCode?.toUpperCase()] || 'en';
 }
 
-// ─── 5 DAKİKA POLLING — HeyGen webhook yedek olarak ──────────────────────────
+// ─── 5 DAKİKA POLLING — HeyGen webhook yedek ─────────────────────────────────
 setInterval(async () => {
   try {
     const { data: processing } = await supabase.from('video_outreach')
-      .select('id, heygen_video_id, auto_send, lead_id, user_id, tracking_code')
+      .select('id, heygen_video_id, auto_send, lead_id, user_id, tracking_code, research_data')
       .eq('status', 'processing').limit(10);
 
     for (const v of processing || []) {
@@ -505,10 +796,9 @@ setInterval(async () => {
             const { data: lead }    = await supabase.from('leads').select('phone, contact_name, company_name').eq('id', v.lead_id).single();
             const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', v.user_id).single();
             if (lead?.phone) {
-              const intro   = await generateWhatsAppIntro(lead, profile);
+              const intro   = await generateWhatsAppIntro(lead, profile, v.research_data);
               const tUrl    = v.tracking_code ? trackingUrl(v.tracking_code) : result.url;
-              const message = `${intro}\n\n${tUrl}`;
-              await sendWhatsApp(v.user_id, lead.phone, message).catch(() => {});
+              await sendWhatsApp(v.user_id, lead.phone, `${intro}\n\n${tUrl}`).catch(() => {});
               await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', v.id);
             }
           }

@@ -622,15 +622,22 @@ function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, aut
   )
 }
 
+const STATUS_MESSAGES: Record<string, { label: string; desc: string; color: string }> = {
+  researching: { label: 'Araştırılıyor', desc: 'Web sitesi, sosyal medya ve müşteri yorumları analiz ediliyor...', color: 'text-amber-400' },
+  generating:  { label: 'Script Yazılıyor', desc: 'Claude PAS çerçevesinde kişisel script yazıyor...', color: 'text-blue-400' },
+  processing:  { label: 'Video Oluşturuluyor', desc: 'HeyGen avatarla video render ediliyor...', color: 'text-purple-400' },
+}
+
 // ADIM 6: Sonuç — single video
 function StepResultSingle({ videoId, onReset }: { videoId: string; onReset: () => void }) {
-  const [status, setStatus] = useState('generating')
+  const [status, setStatus] = useState('researching')
   const [videoUrl, setVideoUrl] = useState('')
+  const [research, setResearch] = useState<any>(null)
   const [checking, setChecking] = useState(false)
 
   useEffect(() => {
     checkStatus()
-    const interval = setInterval(checkStatus, 10000)
+    const interval = setInterval(checkStatus, 8000)
     return () => clearInterval(interval)
   }, [videoId])
 
@@ -642,23 +649,67 @@ function StepResultSingle({ videoId, onReset }: { videoId: string; onReset: () =
       const d = await r.json()
       if (d.status) setStatus(d.status)
       if (d.video_url) setVideoUrl(d.video_url)
+      if (d.research_data) setResearch(d.research_data)
     } catch {}
     setChecking(false)
   }
 
+  const statusInfo = STATUS_MESSAGES[status]
+
   return (
     <div className="space-y-5 text-center">
       <div>
-        <h2 className="text-xl font-bold text-white mb-1">Video Oluşturuluyor</h2>
-        <p className="text-slate-400 text-sm">Videonuz hazırlanıyor. Bu birkaç dakika sürebilir.</p>
+        <h2 className="text-xl font-bold text-white mb-1">Video Hazırlanıyor</h2>
+        <p className="text-slate-400 text-sm">Her aşama tamamlandıkça güncelleniyor.</p>
       </div>
 
-      {(status === 'generating' || status === 'processing') ? (
-        <div className="py-12 space-y-4">
+      {/* Phase progress */}
+      <div className="flex items-center justify-center gap-2">
+        {['researching', 'generating', 'processing'].map((s, i) => {
+          const phases = ['researching', 'generating', 'processing', 'completed']
+          const currentIdx = phases.indexOf(status)
+          const stepIdx = i
+          const done = currentIdx > stepIdx
+          const active = currentIdx === stepIdx
+          return (
+            <div key={s} className="flex items-center gap-2">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${active ? 'bg-purple-600/20 text-purple-300 border border-purple-500/30' : done ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-600'}`}>
+                {done ? '✓' : active ? <RefreshCw className="w-3 h-3 animate-spin inline"/> : '○'}
+                <span className="ml-1">{STATUS_MESSAGES[s]?.label}</span>
+              </div>
+              {i < 2 && <div className={`w-4 h-0.5 ${done ? 'bg-emerald-500' : 'bg-slate-700'}`}/>}
+            </div>
+          )
+        })}
+      </div>
+
+      {(status === 'researching' || status === 'generating' || status === 'processing') ? (
+        <div className="py-8 space-y-4">
           <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto">
             <RefreshCw className="w-8 h-8 text-purple-400 animate-spin"/>
           </div>
-          <p className="text-slate-400">Script yazılıyor, ses üretiliyor, video oluşturuluyor...</p>
+          <p className={`font-medium ${statusInfo?.color || 'text-slate-400'}`}>{statusInfo?.desc}</p>
+
+          {/* Show research findings when available */}
+          {research && research.pains?.length > 0 && (
+            <div className="max-w-sm mx-auto p-4 bg-slate-900 border border-slate-700 rounded-2xl text-left space-y-2">
+              <p className="text-xs text-slate-500 font-medium">ARAŞTIRMA SONUÇLARI</p>
+              <p className="text-white text-sm font-medium">{research.brandName}</p>
+              {research.pains.slice(0,3).map((pain: string, i: number) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-orange-400 text-xs mt-0.5">●</span>
+                  <p className="text-slate-400 text-xs">{pain}</p>
+                </div>
+              ))}
+              {research.hookLine && (
+                <div className="pt-1 border-t border-slate-800">
+                  <p className="text-xs text-slate-500">Hook:</p>
+                  <p className="text-purple-300 text-xs italic">"{research.hookLine}"</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-center gap-2">
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}/>
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}/>
@@ -725,6 +776,14 @@ function StepResultCampaign({ campaignId, onReset }: { campaignId: string; onRes
   const videos: any[] = data?.videos || []
   const isDone = campaign?.status === 'completed'
 
+  function videoStatusLabel(status: string) {
+    if (status === 'completed') return { label: 'Hazır', cls: 'bg-emerald-500/15 text-emerald-400' }
+    if (status === 'researching') return { label: 'Araştırılıyor', cls: 'bg-amber-500/15 text-amber-400' }
+    if (status === 'generating') return { label: 'Script', cls: 'bg-blue-500/15 text-blue-400' }
+    if (status === 'processing') return { label: 'Video', cls: 'bg-purple-500/15 text-purple-400' }
+    return { label: 'Başarısız', cls: 'bg-red-500/15 text-red-400' }
+  }
+
   return (
     <div className="space-y-5">
       <div className="text-center">
@@ -736,7 +795,6 @@ function StepResultCampaign({ campaignId, onReset }: { campaignId: string; onRes
 
       {progress && (
         <div className="space-y-3">
-          {/* İlerleme çubuğu */}
           <div className="flex items-center justify-between text-sm mb-1">
             <span className="text-slate-400">İlerleme</span>
             <span className="text-white font-medium">{progress.completed} / {progress.total} tamamlandı</span>
@@ -765,28 +823,34 @@ function StepResultCampaign({ campaignId, onReset }: { campaignId: string; onRes
       {/* Video listesi */}
       {videos.length > 0 && (
         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-          {videos.map((v: any) => (
-            <div key={v.id} className="flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700 rounded-xl">
-              <div className="w-10 h-8 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0">
-                {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover"/> :
-                  <div className="w-full h-full flex items-center justify-center">
-                    {v.status === 'processing' || v.status === 'generating' ? <RefreshCw className="w-3 h-3 animate-spin text-slate-500"/> : <Video className="w-3 h-3 text-slate-600"/>}
-                  </div>}
+          {videos.map((v: any) => {
+            const { label, cls } = videoStatusLabel(v.status)
+            const isLoading = ['researching', 'generating', 'processing'].includes(v.status)
+            const research = v.research_data
+            return (
+              <div key={v.id} className="flex items-center gap-3 p-3 bg-slate-800/50 border border-slate-700 rounded-xl">
+                <div className="w-10 h-8 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0">
+                  {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover"/> :
+                    <div className="w-full h-full flex items-center justify-center">
+                      {isLoading ? <RefreshCw className="w-3 h-3 animate-spin text-slate-500"/> : <Video className="w-3 h-3 text-slate-600"/>}
+                    </div>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm truncate">{research?.brandName || v.leads?.company_name}</p>
+                  {research?.pains?.[0] && (
+                    <p className="text-orange-400/70 text-xs truncate">● {research.pains[0]}</p>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${cls}`}>{label}</span>
+                {v.video_url && (
+                  <a href={v.video_url} target="_blank" rel="noopener noreferrer"
+                    className="p-1.5 bg-slate-700 hover:bg-purple-600 rounded-lg transition shrink-0">
+                    <Play className="w-3 h-3 text-white"/>
+                  </a>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm truncate">{v.leads?.company_name}</p>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${v.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : v.status === 'processing' || v.status === 'generating' ? 'bg-blue-500/15 text-blue-400' : 'bg-red-500/15 text-red-400'}`}>
-                {v.status === 'completed' ? 'Hazır' : v.status === 'processing' || v.status === 'generating' ? 'İşleniyor' : 'Başarısız'}
-              </span>
-              {v.video_url && (
-                <a href={v.video_url} target="_blank" rel="noopener noreferrer"
-                  className="p-1.5 bg-slate-700 hover:bg-purple-600 rounded-lg transition shrink-0">
-                  <Play className="w-3 h-3 text-white"/>
-                </a>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -978,13 +1042,21 @@ export default function VideoOutreachPage() {
                 <div className="w-16 h-12 bg-slate-900 rounded-xl overflow-hidden flex-shrink-0">
                   {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover"/> :
                     <div className="w-full h-full flex items-center justify-center">
-                      {v.status === 'processing' || v.status === 'generating' ? <RefreshCw className="w-4 h-4 animate-spin text-slate-500"/> : <Video className="w-4 h-4 text-slate-600"/>}
+                      {['processing','generating','researching'].includes(v.status) ? <RefreshCw className="w-4 h-4 animate-spin text-slate-500"/> : <Video className="w-4 h-4 text-slate-600"/>}
                     </div>}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{v.leads?.company_name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2">
+                    <p className="text-white text-sm font-medium truncate">{v.research_data?.brandName || v.leads?.company_name}</p>
+                    {v.research_quality === 'web_search' && (
+                      <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded shrink-0">🔍 Araştırıldı</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <p className="text-slate-500 text-xs">{LANG_MAP[v.language]?.flag} {v.aspect_ratio}</p>
+                    {v.research_data?.pains?.[0] && (
+                      <p className="text-orange-400/60 text-xs truncate max-w-[180px]">● {v.research_data.pains[0]}</p>
+                    )}
                     {(v.view_count || 0) > 0 && (
                       <span className="flex items-center gap-1 text-xs text-blue-400">
                         <Eye className="w-3 h-3"/> {v.view_count} kez izlendi
@@ -994,8 +1066,8 @@ export default function VideoOutreachPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${v.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : v.status === 'processing' || v.status === 'generating' ? 'bg-blue-500/15 text-blue-400' : 'bg-red-500/15 text-red-400'}`}>
-                    {v.status === 'completed' ? 'Hazır' : v.status === 'processing' || v.status === 'generating' ? 'İşleniyor' : 'Başarısız'}
+                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${v.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : v.status === 'researching' ? 'bg-amber-500/15 text-amber-400' : ['processing','generating'].includes(v.status) ? 'bg-blue-500/15 text-blue-400' : 'bg-red-500/15 text-red-400'}`}>
+                    {v.status === 'completed' ? 'Hazır' : v.status === 'researching' ? 'Araştırılıyor' : ['processing','generating'].includes(v.status) ? 'İşleniyor' : 'Başarısız'}
                   </span>
                   {v.video_url && <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-slate-700 hover:bg-purple-600 rounded-lg transition"><Play className="w-3.5 h-3.5 text-white"/></a>}
                   {v.status === 'completed' && !v.sent_at && v.leads?.phone && (
