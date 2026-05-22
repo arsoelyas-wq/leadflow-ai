@@ -51,6 +51,9 @@ interface LeadResearch {
   hookLine: string;
   reviewSummary: string;
   quality: 'web_search' | 'website' | 'sector';
+  jobSignals?: string[];
+  techStack?: string[];
+  growthStage?: string;
 }
 
 // Agentic web search loop using claude-sonnet with web_search_20250305 tool
@@ -80,7 +83,10 @@ JSON formatında yanıt ver (başka hiçbir şey yazma, sadece JSON):
   "positives": ["güçlü yön 1"],
   "opportunity": "ürünümüzün bu şirkete nasıl yardım ettiği — 1 cümle, spesifik",
   "hookLine": "videonun ilk 4 saniyesinde söylenecek, dikkat çekici, onların spesifik sorununa değinen 1 cümle",
-  "reviewSummary": "bulunan yorumların kısa özeti"
+  "reviewSummary": "bulunan yorumların kısa özeti",
+  "jobSignals": ["varsa aktif iş ilanı sinyali"],
+  "techStack": ["WordPress", "HubSpot"],
+  "growthStage": "startup | growing | established | declining"
 }`;
 
   const messages: any[] = [{ role: 'user', content: prompt }];
@@ -129,7 +135,7 @@ JSON formatında yanıt ver (başka hiçbir şey yazma, sadece JSON):
   if (!jsonMatch) throw new Error('No valid JSON in research output');
 
   const parsed = JSON.parse(jsonMatch[0]);
-  return { ...parsed, quality: 'web_search' };
+  return { ...parsed, quality: 'web_search' as const };
 }
 
 // Fallback: fetch website HTML + Claude sector knowledge
@@ -176,6 +182,11 @@ async function researchFromWebsite(lead: any, profile: any): Promise<LeadResearc
       const liMatch = html.match(/https?:\/\/(?:www\.)?linkedin\.com\/company\/[^"'\/\s?&#]+/i);
       if (liMatch) linkedin = liMatch[0];
 
+      const detectedStack = detectTechStack(html);
+      if (detectedStack.length) {
+        websiteContext += `Tespit edilen teknolojiler: ${detectedStack.join(', ')}\n`;
+      }
+
       break;
     } catch {}
   }
@@ -217,7 +228,8 @@ Bu sektördeki şirketlerin yaşadığı en yaygın 2-3 spesifik sorunu ve bu ş
         opportunity: parsed.opportunity || '',
         hookLine: parsed.hookLine || '',
         reviewSummary: '',
-        quality: websiteContext ? 'website' : 'sector',
+        quality: (websiteContext ? 'website' : 'sector') as 'website' | 'sector',
+        techStack: parsed.techStack || [],
       };
     }
   } catch {}
@@ -232,7 +244,114 @@ Bu sektördeki şirketlerin yaşadığı en yaygın 2-3 spesifik sorunu ve bu ş
     hookLine: '',
     reviewSummary: '',
     quality: 'sector',
+    techStack: [],
   };
+}
+
+// ─── TECH STACK DETECTION ─────────────────────────────────────────────────────
+
+function detectTechStack(html: string): string[] {
+  const checks: [RegExp, string][] = [
+    [/wordpress/i, 'WordPress'],
+    [/shopify/i, 'Shopify'],
+    [/woocommerce/i, 'WooCommerce'],
+    [/hubspot/i, 'HubSpot'],
+    [/salesforce/i, 'Salesforce'],
+    [/intercom/i, 'Intercom'],
+    [/zendesk/i, 'Zendesk'],
+    [/gtag\.js|google-analytics|analytics\.js/i, 'Google Analytics'],
+    [/fbevents\.js|facebook\.net\/en_US\/fbevents/i, 'Meta Pixel'],
+    [/crisp\.chat|window\.\$crisp/i, 'Crisp'],
+    [/tawk\.to/i, 'Tawk.to'],
+    [/drift\.com/i, 'Drift'],
+    [/mailchimp/i, 'Mailchimp'],
+    [/klaviyo/i, 'Klaviyo'],
+    [/ikas\.com/i, 'İkas'],
+    [/ticimax/i, 'Ticimax'],
+    [/ideasoft/i, 'IdeaSoft'],
+    [/webflow\.com/i, 'Webflow'],
+    [/squarespace/i, 'Squarespace'],
+    [/wix\.com/i, 'Wix'],
+    [/n11\.com|hepsiburada\.com|trendyol\.com/i, 'Marketplace'],
+  ];
+  return [...new Set(checks.filter(([rx]) => rx.test(html)).map(([, name]) => name))];
+}
+
+// ─── OPTIMAL SEND TIME ────────────────────────────────────────────────────────
+
+function getOptimalSendTime(lead: any, research?: LeadResearch | null): { time: string; reason: string } {
+  const sector = (lead.sector || '').toLowerCase();
+  const windows: [string[], { time: string; reason: string }][] = [
+    [['restoran', 'restaurant', 'yiyecek', 'food', 'cafe', 'kafe'],
+     { time: '10:30', reason: 'Sabah hazırlığı sonrası, öğlen öncesi' }],
+    [['otel', 'hotel', 'turizm', 'tourism', 'tatil'],
+     { time: '09:30', reason: 'Rezervasyon peak saatinden önce' }],
+    [['e-ticaret', 'ecommerce', 'mağaza', 'retail', 'shop'],
+     { time: '11:00', reason: 'Sabah trafiği açıldıktan sonra' }],
+    [['sağlık', 'health', 'klinik', 'doktor', 'eczane'],
+     { time: '12:30', reason: 'Öğle arası hasta yoğunluğu düştüğünde' }],
+    [['eğitim', 'okul', 'kurs', 'education', 'training'],
+     { time: '14:00', reason: 'Öğleden sonra, ders arası' }],
+    [['inşaat', 'construction', 'emlak', 'real estate', 'yapı'],
+     { time: '09:00', reason: 'Saha aktivitesi başlamadan önce' }],
+    [['yazılım', 'software', 'teknoloji', 'tech', 'bilişim'],
+     { time: '10:00', reason: 'Daily standup sonrası focus bloğu' }],
+  ];
+  for (const [keywords, window] of windows) {
+    if (keywords.some(k => sector.includes(k))) return window;
+  }
+  return { time: '10:00', reason: 'B2B iletişim için optimal sabah penceresi' };
+}
+
+// ─── A/B HOOK GENERATION ─────────────────────────────────────────────────────
+
+async function generateHooks(lead: any, profile: any, research?: LeadResearch | null): Promise<{ hookA: string; hookB: string }> {
+  const brandName = research?.brandName || extractBrandName(lead.company_name);
+  const pain      = research?.pains?.[0] || '';
+  const hookBase  = research?.hookLine || '';
+
+  try {
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{
+        role: 'user',
+        content: `Video satış scriptinin ilk 4 saniyesi için 2 hook yaz.
+Marka: ${brandName}
+${pain ? `Sorun: ${pain}` : ''}
+${hookBase ? `Referans: ${hookBase}` : ''}
+Hook A: Şaşırtıcı istatistik veya sorunu vurgulayan yaklaşım
+Hook B: Fırsat ve kazancı öne çıkaran yaklaşım
+JSON: {"hookA":"...","hookB":"..."}`,
+      }],
+    });
+    const match = ((r.content[0] as any)?.text || '').match(/\{[\s\S]*\}/);
+    if (match) {
+      const p = JSON.parse(match[0]);
+      return { hookA: p.hookA || hookBase || '', hookB: p.hookB || '' };
+    }
+  } catch {}
+  return { hookA: hookBase || '', hookB: '' };
+}
+
+// ─── SCRIPT QUALITY SCORING ───────────────────────────────────────────────────
+
+async function scoreScript(script: string, research?: LeadResearch | null): Promise<number> {
+  try {
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 10,
+      messages: [{
+        role: 'user',
+        content: `Video satış scriptini 1-10 puan ver. Kriterler: kişiselleştirme (3p), hook gücü (2p), CTA netliği (2p), doğallık (2p), uzunluk (1p).
+Script: "${script.slice(0, 280)}"
+${research?.pains?.[0] ? `Hedef sorun: ${research.pains[0]}` : ''}
+Sadece sayı (1-10):`,
+      }],
+    });
+    const num = parseInt(((r.content[0] as any)?.text || '').match(/\d+/)?.[0] || '0', 10);
+    return Math.min(10, Math.max(1, num));
+  } catch { return 0; }
 }
 
 async function researchLead(lead: any, profile: any): Promise<LeadResearch> {
@@ -531,15 +650,40 @@ router.post('/generate/single', async (req: any, res: any) => {
         }).eq('id', videoRecord?.id);
         console.log(`[Video] Araştırma tamamlandı: ${research.brandName} (${research.quality}) — sorunlar: ${research.pains.slice(0,2).join(', ')}`);
 
-        // Phase 2: Script
+        // Phase 2: Script + hooks + scoring in parallel
         const script = customScript || await generateScript(lead, profile, language, research);
-        await supabase.from('video_outreach').update({ script }).eq('id', videoRecord?.id);
+        const [hooksResult, scoreResult] = await Promise.allSettled([
+          generateHooks(lead, profile, research),
+          scoreScript(script, research),
+        ]);
+        const hooks = hooksResult.status === 'fulfilled' ? hooksResult.value : { hookA: '', hookB: '' };
+        const score = scoreResult.status === 'fulfilled' ? scoreResult.value : 0;
+        const timing = getOptimalSendTime(lead, research);
+
+        const now = new Date();
+        const [th, tm] = timing.time.split(':').map(Number);
+        const optimalAt = new Date(now);
+        optimalAt.setHours(th, tm, 0, 0);
+        if (optimalAt <= now) optimalAt.setDate(optimalAt.getDate() + 1);
+
+        await supabase.from('video_outreach').update({
+          script,
+          hook_a: hooks.hookA,
+          hook_b: hooks.hookB,
+          active_hook: 'a',
+          script_score: score,
+          optimal_send_at: optimalAt.toISOString(),
+          send_time_reason: timing.reason,
+          tech_stack: research.techStack || null,
+          job_signals: research.jobSignals || null,
+          growth_stage: research.growthStage || null,
+        }).eq('id', videoRecord?.id);
 
         // Phase 3: Audio + Video
         const audioBuffer   = await generateAudio(script, voiceId);
         const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio });
         await supabase.from('video_outreach').update({ heygen_video_id: heygenVideoId, status: 'processing' }).eq('id', videoRecord?.id);
-        console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName})`);
+        console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName}) score:${score}`);
       } catch (err: any) {
         console.error('[Video] Hata:', err.message);
         await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', videoRecord?.id);
@@ -595,6 +739,19 @@ router.post('/generate/campaign', async (req: any, res: any) => {
 
           const callLang = language || getLanguageByCountry(lead.country_code || '') || 'tr';
           const script   = await generateScript(lead, profile, callLang, research);
+          const [hooksR, scoreR] = await Promise.allSettled([
+            generateHooks(lead, profile, research),
+            scoreScript(script, research),
+          ]);
+          const hooks   = hooksR.status === 'fulfilled' ? hooksR.value : { hookA: '', hookB: '' };
+          const score   = scoreR.status === 'fulfilled' ? scoreR.value : 0;
+          const timing  = getOptimalSendTime(lead, research);
+          const nowC    = new Date();
+          const [ch, cm] = timing.time.split(':').map(Number);
+          const optAt   = new Date(nowC);
+          optAt.setHours(ch, cm, 0, 0);
+          if (optAt <= nowC) optAt.setDate(optAt.getDate() + 1);
+
           const audio    = await generateAudio(script, voiceId);
           const heygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio });
           const code     = makeTrackingCode();
@@ -608,6 +765,13 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             tracking_code: code,
             research_data: research || null,
             research_quality: research?.quality || null,
+            hook_a: hooks.hookA, hook_b: hooks.hookB, active_hook: 'a',
+            script_score: score,
+            optimal_send_at: optAt.toISOString(),
+            send_time_reason: timing.reason,
+            tech_stack: research?.techStack || null,
+            job_signals: research?.jobSignals || null,
+            growth_stage: research?.growthStage || null,
           }]);
 
           created++;
@@ -678,6 +842,10 @@ router.post('/send', async (req: any, res: any) => {
 
     await sendWhatsApp(req.userId, lead.phone, message);
     await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', videoId);
+
+    const { createSequenceForSentVideo } = require('./video-sequences');
+    createSequenceForSentVideo(videoId, req.userId, video.lead_id, video.research_data, profile).catch(() => {});
+
     res.json({ ok: true, message: 'Video gönderildi' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -759,12 +927,63 @@ router.post('/heygen-webhook', async (req: any, res: any) => {
           const tUrl    = video.tracking_code ? trackingUrl(video.tracking_code) : event_data.video_url;
           await sendWhatsApp(video.user_id, lead.phone, `${intro}\n\n${tUrl}`).catch(() => {});
           await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', video.id);
+          const { createSequenceForSentVideo } = require('./video-sequences');
+          createSequenceForSentVideo(video.id, video.user_id, video.lead_id, video.research_data, profile).catch(() => {});
         }
       }
     } else if (event === 'video_status.fail') {
       await supabase.from('video_outreach').update({ status: 'failed', error_message: event_data.error || 'HeyGen hatası' }).eq('id', video.id);
     }
   } catch (e: any) { console.error('[HeyGen Webhook]', e.message); }
+});
+
+// GET /api/video-outreach/analytics — performance matrix by sector + hook type
+router.get('/analytics', async (req: any, res: any) => {
+  try {
+    const { data: logs } = await supabase
+      .from('video_performance_log')
+      .select('sector, hook_type, watch_percent, sequence_step_reached, converted')
+      .eq('user_id', req.userId);
+
+    const byHook: Record<string, { count: number; avgWatch: number }> = {};
+    const bySector: Record<string, { count: number; avgWatch: number; conversions: number }> = {};
+
+    for (const log of logs || []) {
+      if (log.hook_type) {
+        if (!byHook[log.hook_type]) byHook[log.hook_type] = { count: 0, avgWatch: 0 };
+        const h = byHook[log.hook_type];
+        h.avgWatch = Math.round((h.avgWatch * h.count + (log.watch_percent || 0)) / (h.count + 1));
+        h.count++;
+      }
+      if (log.sector) {
+        if (!bySector[log.sector]) bySector[log.sector] = { count: 0, avgWatch: 0, conversions: 0 };
+        const s = bySector[log.sector];
+        s.avgWatch = Math.round((s.avgWatch * s.count + (log.watch_percent || 0)) / (s.count + 1));
+        s.count++;
+        if (log.converted) s.conversions++;
+      }
+    }
+
+    const { data: videos } = await supabase
+      .from('video_outreach')
+      .select('hook_a, hook_b, active_hook, avg_watch_percent, max_watch_percent, script_score, growth_stage')
+      .eq('user_id', req.userId)
+      .not('script_score', 'is', null);
+
+    const avgScore = videos?.length
+      ? Math.round((videos as any[]).reduce((s, v) => s + (v.script_score || 0), 0) / videos.length)
+      : 0;
+
+    res.json({
+      by_hook: byHook,
+      by_sector: Object.entries(bySector)
+        .sort((a, b) => b[1].avgWatch - a[1].avgWatch)
+        .slice(0, 10)
+        .map(([sector, stats]) => ({ sector, ...stats })),
+      avg_script_score: avgScore,
+      total_analyzed: videos?.length || 0,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── YARDIMCI ────────────────────────────────────────────────────────────────
@@ -800,6 +1019,8 @@ setInterval(async () => {
               const tUrl    = v.tracking_code ? trackingUrl(v.tracking_code) : result.url;
               await sendWhatsApp(v.user_id, lead.phone, `${intro}\n\n${tUrl}`).catch(() => {});
               await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', v.id);
+              const { createSequenceForSentVideo } = require('./video-sequences');
+              createSequenceForSentVideo(v.id, v.user_id, v.lead_id, v.research_data, profile).catch(() => {});
             }
           }
         } else if (result.status === 'failed') {

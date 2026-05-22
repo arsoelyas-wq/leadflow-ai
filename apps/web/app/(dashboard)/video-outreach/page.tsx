@@ -5,7 +5,7 @@ import {
   Video, Play, Square, RefreshCw, Send, CheckCircle,
   AlertTriangle, Zap, Search, ChevronLeft, ChevronRight,
   Mic, Volume2, ArrowRight, ArrowLeft, Users, Globe2,
-  BarChart2, Clock, Eye, RotateCcw, CreditCard
+  BarChart2, Clock, Eye, RotateCcw, CreditCard, TrendingUp, Star, Timer
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -879,6 +879,8 @@ export default function VideoOutreachPage() {
   const [isCampaign, setIsCampaign] = useState(false)
   const [scripts, setScripts] = useState<any[]>([])
   const [showVideos, setShowVideos] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [analytics, setAnalytics] = useState<any>(null)
   const [duplicates, setDuplicates] = useState<any[]>([])
 
   // Wizard state
@@ -913,6 +915,14 @@ export default function VideoOutreachPage() {
       if (l.status === 'fulfilled') setLeads((l.value as any).leads || [])
       if (v.status === 'fulfilled') { const d = await (v.value as any).json(); setVideos(d.videos || []) }
       if (s.status === 'fulfilled') { const d = await (s.value as any).json(); setStats(d) }
+    } catch {}
+  }
+
+  async function loadAnalytics() {
+    try {
+      const r = await fetch(`${API}/api/video-outreach/analytics`, { headers: authH() })
+      const d = await r.json()
+      setAnalytics(d)
     } catch {}
   }
 
@@ -1016,6 +1026,10 @@ export default function VideoOutreachPage() {
               <span>{stats.total} toplam</span>
             </div>
           )}
+          <button onClick={() => { setShowAnalytics(!showAnalytics); if (!showAnalytics) loadAnalytics() }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${showAnalytics ? 'bg-blue-600 text-white' : 'bg-slate-800 border border-slate-700 text-slate-300'}`}>
+            <TrendingUp className="w-4 h-4"/> Analitik
+          </button>
           <button onClick={() => { setShowVideos(!showVideos); if (!showVideos) loadAll() }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${showVideos ? 'bg-purple-600 text-white' : 'bg-slate-800 border border-slate-700 text-slate-300'}`}>
             <Eye className="w-4 h-4"/> Videolar ({videos.length})
@@ -1029,6 +1043,73 @@ export default function VideoOutreachPage() {
         </div>
       )}
 
+      {/* Analytics panel */}
+      {showAnalytics && (
+        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
+            <h3 className="font-semibold text-white flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-400"/> Performans Matrisi</h3>
+            <button onClick={loadAnalytics} className="p-1.5 text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4"/></button>
+          </div>
+          {analytics ? (
+            <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Avg script score */}
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Script Kalitesi</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-4xl font-bold text-white">{analytics.avg_script_score || '—'}</div>
+                  <div>
+                    <div className="flex gap-0.5">
+                      {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                        <div key={n} className={`w-3 h-5 rounded-sm ${n <= (analytics.avg_script_score || 0) ? 'bg-purple-500' : 'bg-slate-700'}`}/>
+                      ))}
+                    </div>
+                    <p className="text-slate-500 text-xs mt-1">{analytics.total_analyzed} video analiz edildi</p>
+                  </div>
+                </div>
+                {analytics.by_hook && Object.keys(analytics.by_hook).length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-slate-700">
+                    <p className="text-xs text-slate-500">Hook A/B Karşılaştırması</p>
+                    {Object.entries(analytics.by_hook).map(([hook, stats]: [string, any]) => (
+                      <div key={hook} className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 w-14">Hook {hook.toUpperCase()}</span>
+                        <div className="flex-1 bg-slate-700 rounded-full h-2">
+                          <div className="h-full bg-blue-500 rounded-full" style={{ width: `${stats.avgWatch}%` }}/>
+                        </div>
+                        <span className="text-xs text-white w-10 text-right">%{stats.avgWatch}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Top sectors */}
+              <div className="md:col-span-2 space-y-3">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Sektöre Göre İzlenme</p>
+                {analytics.by_sector?.length > 0 ? (
+                  <div className="space-y-2">
+                    {analytics.by_sector.slice(0, 6).map((s: any) => (
+                      <div key={s.sector} className="flex items-center gap-3">
+                        <span className="text-xs text-slate-300 w-32 truncate">{s.sector || 'Bilinmiyor'}</span>
+                        <div className="flex-1 bg-slate-700 rounded-full h-2.5">
+                          <div className="h-full bg-gradient-to-r from-purple-600 to-blue-500 rounded-full transition-all"
+                            style={{ width: `${s.avgWatch}%` }}/>
+                        </div>
+                        <span className="text-xs text-white w-8 text-right">%{s.avgWatch}</span>
+                        <span className="text-xs text-slate-600 w-10 text-right">{s.count} video</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-600 text-sm py-4">Henüz yeterli veri yok. Videolar izlendikçe burada görünecek.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center py-8"><RefreshCw className="w-5 h-5 animate-spin text-blue-400"/></div>
+          )}
+        </div>
+      )}
+
       {/* Video listesi */}
       {showVideos && (
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
@@ -1037,52 +1118,76 @@ export default function VideoOutreachPage() {
             <button onClick={loadAll} className="p-1.5 text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4"/></button>
           </div>
           <div className="divide-y divide-slate-700/50">
-            {videos.map(v => (
-              <div key={v.id} className="flex items-center gap-4 p-4">
-                <div className="w-16 h-12 bg-slate-900 rounded-xl overflow-hidden flex-shrink-0">
-                  {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover"/> :
-                    <div className="w-full h-full flex items-center justify-center">
-                      {['processing','generating','researching'].includes(v.status) ? <RefreshCw className="w-4 h-4 animate-spin text-slate-500"/> : <Video className="w-4 h-4 text-slate-600"/>}
-                    </div>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-white text-sm font-medium truncate">{v.research_data?.brandName || v.leads?.company_name}</p>
-                    {v.research_quality === 'web_search' && (
-                      <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded shrink-0">🔍 Araştırıldı</span>
+            {videos.map(v => {
+              const watchPct = v.max_watch_percent || 0
+              const watchColor = watchPct >= 90 ? 'bg-emerald-500' : watchPct >= 60 ? 'bg-blue-500' : watchPct >= 20 ? 'bg-amber-500' : 'bg-slate-600'
+              return (
+              <div key={v.id} className="p-4 space-y-2">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-12 bg-slate-900 rounded-xl overflow-hidden flex-shrink-0">
+                    {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover"/> :
+                      <div className="w-full h-full flex items-center justify-center">
+                        {['processing','generating','researching'].includes(v.status) ? <RefreshCw className="w-4 h-4 animate-spin text-slate-500"/> : <Video className="w-4 h-4 text-slate-600"/>}
+                      </div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-white text-sm font-medium truncate">{v.research_data?.brandName || v.leads?.company_name}</p>
+                      {v.research_quality === 'web_search' && (
+                        <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded shrink-0">🔍 Araştırıldı</span>
+                      )}
+                      {v.script_score > 0 && (
+                        <span className="flex items-center gap-0.5 text-xs text-purple-400 shrink-0">
+                          <Star className="w-3 h-3"/> {v.script_score}/10
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <p className="text-slate-500 text-xs">{LANG_MAP[v.language]?.flag} {v.aspect_ratio}</p>
+                      {v.research_data?.pains?.[0] && (
+                        <p className="text-orange-400/60 text-xs truncate max-w-[180px]">● {v.research_data.pains[0]}</p>
+                      )}
+                      {(v.view_count || 0) > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-blue-400">
+                          <Eye className="w-3 h-3"/> {v.view_count}x izlendi
+                        </span>
+                      )}
+                      {v.sent_at && <span className="text-xs text-teal-400">Gönderildi ✓</span>}
+                      {!v.sent_at && v.optimal_send_at && v.status === 'completed' && (
+                        <span className="flex items-center gap-1 text-xs text-amber-400">
+                          <Timer className="w-3 h-3"/> {new Date(v.optimal_send_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}'de gönder
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${v.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : v.status === 'researching' ? 'bg-amber-500/15 text-amber-400' : ['processing','generating'].includes(v.status) ? 'bg-blue-500/15 text-blue-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {v.status === 'completed' ? 'Hazır' : v.status === 'researching' ? 'Araştırılıyor' : ['processing','generating'].includes(v.status) ? 'İşleniyor' : 'Başarısız'}
+                    </span>
+                    {v.video_url && <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-slate-700 hover:bg-purple-600 rounded-lg transition"><Play className="w-3.5 h-3.5 text-white"/></a>}
+                    {v.status === 'completed' && !v.sent_at && v.leads?.phone && (
+                      <button onClick={() => sendVideo(v.id)} className="p-1.5 bg-teal-600 hover:bg-teal-500 rounded-lg">
+                        <Send className="w-3.5 h-3.5 text-white"/>
+                      </button>
+                    )}
+                    {v.status === 'failed' && (
+                      <button onClick={() => retryVideo(v.id)} title="Yeniden dene" className="p-1.5 bg-orange-600 hover:bg-orange-500 rounded-lg">
+                        <RotateCcw className="w-3.5 h-3.5 text-white"/>
+                      </button>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    <p className="text-slate-500 text-xs">{LANG_MAP[v.language]?.flag} {v.aspect_ratio}</p>
-                    {v.research_data?.pains?.[0] && (
-                      <p className="text-orange-400/60 text-xs truncate max-w-[180px]">● {v.research_data.pains[0]}</p>
-                    )}
-                    {(v.view_count || 0) > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-blue-400">
-                        <Eye className="w-3 h-3"/> {v.view_count} kez izlendi
-                      </span>
-                    )}
-                    {v.sent_at && <span className="text-xs text-teal-400">Gönderildi ✓</span>}
+                </div>
+                {/* Watch percent bar */}
+                {watchPct > 0 && (
+                  <div className="flex items-center gap-2 ml-20">
+                    <div className="flex-1 bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${watchColor}`} style={{ width: `${watchPct}%` }}/>
+                    </div>
+                    <span className="text-xs text-slate-500 w-10 text-right">%{watchPct} izlendi</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${v.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : v.status === 'researching' ? 'bg-amber-500/15 text-amber-400' : ['processing','generating'].includes(v.status) ? 'bg-blue-500/15 text-blue-400' : 'bg-red-500/15 text-red-400'}`}>
-                    {v.status === 'completed' ? 'Hazır' : v.status === 'researching' ? 'Araştırılıyor' : ['processing','generating'].includes(v.status) ? 'İşleniyor' : 'Başarısız'}
-                  </span>
-                  {v.video_url && <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-slate-700 hover:bg-purple-600 rounded-lg transition"><Play className="w-3.5 h-3.5 text-white"/></a>}
-                  {v.status === 'completed' && !v.sent_at && v.leads?.phone && (
-                    <button onClick={() => sendVideo(v.id)} className="p-1.5 bg-teal-600 hover:bg-teal-500 rounded-lg">
-                      <Send className="w-3.5 h-3.5 text-white"/>
-                    </button>
-                  )}
-                  {v.status === 'failed' && (
-                    <button onClick={() => retryVideo(v.id)} title="Yeniden dene" className="p-1.5 bg-orange-600 hover:bg-orange-500 rounded-lg">
-                      <RotateCcw className="w-3.5 h-3.5 text-white"/>
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-            ))}
+            )})}
             {videos.length === 0 && <div className="text-center py-8 text-slate-600 text-sm">Henüz video yok</div>}
           </div>
         </div>

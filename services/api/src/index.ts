@@ -153,6 +153,9 @@ const videoOutreachRouter = require('./routes/video-outreach');
 app.post('/api/video-outreach/heygen-webhook', (req: any, res: any, next: any) => { req.url = '/heygen-webhook'; videoOutreachRouter(req, res, next); });
 app.use('/api/video-outreach',       authMiddleware, videoOutreachRouter);
 app.use('/v',                          require('./routes/video-tracking'));
+// Video sequences — multi-touch outreach engine
+const { router: videoSeqRouter, checkAndAdvanceSequences } = require('./routes/video-sequences');
+app.use('/api/video-sequences',      authMiddleware, videoSeqRouter);
 app.use('/api/avatar',               authMiddleware, require('./routes/avatar'));
 app.use('/api/retargeting',          authMiddleware, require('./routes/retargeting'));
 const { router: proposalsRouter, portalRouter: proposalPortalRouter } = require('./routes/proposals');
@@ -231,5 +234,6 @@ function scheduleDailyTenderScan() {
 scheduleDailyTenderScan();
 const { runNightlyCollection } = require('./routes/data-collector');
 require('node-cron').schedule('0 2 * * *', () => { runNightlyCollection(); });
+require('node-cron').schedule('*/10 * * * *', () => { checkAndAdvanceSequences(); });
 
 app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));
