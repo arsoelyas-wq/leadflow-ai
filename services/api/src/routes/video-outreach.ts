@@ -945,10 +945,10 @@ router.post('/generate/single', async (req: any, res: any) => {
 
         // Priority: stock avatar > personal replica > HeyGen
         if (stockSeedUrl) {
-          // Stock avatar: always LatentSync
+          // Stock avatar: MuseTalk if RunPod ready, else LatentSync fallback
           try {
             const result = await generateVideoEngine({
-              engine:         'latentsync',
+              engine:         'museTalk',
               audioBuffer,
               avatarVideoUrl: stockSeedUrl,
               backgroundUrl,
@@ -961,10 +961,10 @@ router.post('/generate/single', async (req: any, res: any) => {
             console.warn('[Video] LatentSync (stock avatar) failed:', engineErr.message);
           }
         } else if (replica) {
-          // Personal replica: LatentSync or Gaussian
+          // Personal replica: MuseTalk (zero-shot, RunPod) or LatentSync fallback
           try {
             const result = await generateVideoEngine({
-              engine:         replica.engine,
+              engine:         'museTalk',
               audioBuffer,
               avatarVideoUrl: replica.gaussian_model_url || replica.seed_video_url,
               backgroundUrl,
@@ -1091,7 +1091,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           if (campStockSeedUrl) {
             try {
               const result = await generateVideoEngine({
-                engine:         'latentsync',
+                engine:         'museTalk',
                 audioBuffer:    audio,
                 avatarVideoUrl: campStockSeedUrl,
                 backgroundUrl:  campaignBgUrl,

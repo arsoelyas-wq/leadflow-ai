@@ -8,9 +8,9 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export interface VideoEngineParams {
-  engine:          'latentsync' | 'heygen' | 'gaussian';
+  engine:          'museTalk' | 'latentsync' | 'heygen' | 'gaussian';
   audioBuffer:     Buffer;
-  avatarVideoUrl?: string;   // seed video for LatentSync/Gaussian (personal replica or stock avatar)
+  avatarVideoUrl?: string;   // seed video (personal replica or stock avatar)
   avatarId?:       string;   // HeyGen avatar ID
   backgroundUrl?:  string;
   aspectRatio?:    string;   // '9:16' | '16:9' | '1:1'
@@ -18,53 +18,109 @@ export interface VideoEngineParams {
   userId?:         string;
   voiceId?:        string;
   language?:       string;
+  skipEnhance?:    boolean;  // skip CodeFormer+ESRGAN for speed
 }
 
 export interface VideoEngineResult {
   videoUrl:   string;
   engine:     string;
   durationMs: number;
+  stages?:    string[];
 }
+
+// ─── QUALITY NOTES ────────────────────────────────────────────────────────────
+// museTalk (RunPod):  ⭐⭐⭐⭐⭐ head movement + eye blink + CodeFormer + 4x upscale
+// latentsync (Repl):  ⭐⭐⭐⭐  lips only, photorealistic, no head movement
+// heygen:             ⭐⭐⭐⭐⭐ industry standard, but expensive
+// Priority: museTalk → latentsync → heygen
 
 // ─── MAIN DISPATCHER ──────────────────────────────────────────────────────────
 
 export async function generateVideo(params: VideoEngineParams): Promise<VideoEngineResult> {
   const t0 = Date.now();
 
+  // MuseTalk (RunPod) — highest quality, requires RUNPOD_API_KEY + RUNPOD_ENDPOINT_ID
+  if (params.engine === 'museTalk' || params.engine === 'gaussian') {
+    if (process.env.RUNPOD_API_KEY && process.env.RUNPOD_ENDPOINT_ID) {
+      const result = await generateWithMuseTalk(params);
+      return { ...result, durationMs: Date.now() - t0 };
+    }
+    // Fallback: LatentSync if RunPod not configured
+    console.warn('[VideoEngine] RunPod not configured — falling back to LatentSync');
+    const url = await generateWithLatentSync(params);
+    return { videoUrl: url, engine: 'latentsync', durationMs: Date.now() - t0 };
+  }
+
   if (params.engine === 'latentsync') {
     const url = await generateWithLatentSync(params);
     return { videoUrl: url, engine: 'latentsync', durationMs: Date.now() - t0 };
   }
 
-  if (params.engine === 'gaussian') {
-    const url = await generateWithGaussian(params);
-    return { videoUrl: url, engine: 'gaussian', durationMs: Date.now() - t0 };
-  }
-
-  // Default: HeyGen
+  // HeyGen (fallback / explicit)
   const url = await generateWithHeyGen(params);
   return { videoUrl: url, engine: 'heygen', durationMs: Date.now() - t0 };
 }
 
+// ─── MUSETALK (RunPod) ────────────────────────────────────────────────────────
+// Pipeline: MuseTalk generation → CodeFormer face restore → Real-ESRGAN 4x
+// Quality: ⭐⭐⭐⭐⭐ — head movement, eye blink, expressions, 4K output
+// Cost: ~$0.15-0.25/video on RTX 4090
+// MuseTalk is zero-shot — no training needed per person
+
+async function generateWithMuseTalk(params: VideoEngineParams): Promise<Omit<VideoEngineResult, 'durationMs'>> {
+  const { audioBuffer, avatarVideoUrl, userId, skipEnhance } = params;
+  if (!avatarVideoUrl) throw new Error('MuseTalk requires avatarVideoUrl (seed video)');
+
+  const audioUrl = await uploadTempBuffer(audioBuffer, `audio_${Date.now()}.mp3`, 'audio/mpeg', userId);
+
+  const runRes = await axios.post(
+    `https://api.runpod.io/v2/${process.env.RUNPOD_ENDPOINT_ID}/run`,
+    {
+      input: {
+        seed_video_url: avatarVideoUrl,
+        audio_url:      audioUrl,
+        user_id:        userId || 'anon',
+        skip_enhance:   skipEnhance ?? false,
+        fidelity:       0.7,   // CodeFormer: 0=max enhance, 1=max identity preserve
+        upscale:        2,     // Real-ESRGAN: 2x (balanced) or 4 (max quality)
+      },
+    },
+    {
+      headers: {
+        Authorization:  `Bearer ${process.env.RUNPOD_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000,
+    }
+  );
+
+  const jobId = runRes.data?.id;
+  if (!jobId) throw new Error('RunPod job failed to start');
+
+  const result = await pollRunPodJob(jobId, 600_000); // 10 min max
+  return {
+    videoUrl: result.video_url,
+    engine:   'museTalk',
+    stages:   result.stages || ['museTalk'],
+  };
+}
+
 // ─── LATENTSYNC (Replicate) ───────────────────────────────────────────────────
-// ByteDance LatentSync — diffusion lipsync on any base video
-// Cost: ~$0.088 per run, ~90s generation
-// Quality: photorealistic, production-grade
+// ByteDance LatentSync — diffusion lip-sync, lips only
+// Quality: ⭐⭐⭐⭐ — very good lip-sync, no head movement
+// Cost: ~$0.088/video, ~90s
 
 async function generateWithLatentSync(params: VideoEngineParams): Promise<string> {
   const { audioBuffer, avatarVideoUrl, userId } = params;
-
-  if (!avatarVideoUrl) throw new Error('LatentSync requires avatarVideoUrl (replica seed)');
+  if (!avatarVideoUrl) throw new Error('LatentSync requires avatarVideoUrl');
   if (!process.env.REPLICATE_API_TOKEN) throw new Error('REPLICATE_API_TOKEN not set');
 
-  // Upload audio to temp storage so Replicate can fetch it
   const audioUrl = await uploadTempBuffer(audioBuffer, `audio_${Date.now()}.mp3`, 'audio/mpeg', userId);
 
-  // Call Replicate — LatentSync
   const replicateRes = await axios.post(
     'https://api.replicate.com/v1/predictions',
     {
-      version: 'a84b0568a4ef50a63d0e9e1d2e7b47daed1b17e35fed7e8fbe4b70bce3a2bea5', // latentsync
+      version: 'a84b0568a4ef50a63d0e9e1d2e7b47daed1b17e35fed7e8fbe4b70bce3a2bea5',
       input: {
         video:     avatarVideoUrl,
         audio:     audioUrl,
@@ -74,7 +130,7 @@ async function generateWithLatentSync(params: VideoEngineParams): Promise<string
     },
     {
       headers: {
-        Authorization: `Token ${process.env.REPLICATE_API_TOKEN}`,
+        Authorization:  `Token ${process.env.REPLICATE_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
     }
@@ -83,45 +139,10 @@ async function generateWithLatentSync(params: VideoEngineParams): Promise<string
   const predictionId = replicateRes.data?.id;
   if (!predictionId) throw new Error('Replicate prediction failed to start');
 
-  // Poll for completion (max 3 min)
-  const videoUrl = await pollReplicatePrediction(predictionId, 180_000);
-  return videoUrl;
+  return pollReplicatePrediction(predictionId, 180_000);
 }
 
-// ─── GAUSSIAN (RunPod self-hosted — future) ───────────────────────────────────
-
-async function generateWithGaussian(params: VideoEngineParams): Promise<string> {
-  if (!process.env.RUNPOD_API_KEY || !process.env.RUNPOD_ENDPOINT_ID) {
-    // Fallback to LatentSync if Gaussian not configured
-    console.warn('[VideoEngine] Gaussian not configured, falling back to LatentSync');
-    return generateWithLatentSync({ ...params, engine: 'latentsync' });
-  }
-
-  const { audioBuffer, avatarVideoUrl, userId } = params;
-  if (!avatarVideoUrl) throw new Error('Gaussian requires avatarVideoUrl (trained model URL)');
-
-  const audioUrl = await uploadTempBuffer(audioBuffer, `audio_${Date.now()}.mp3`, 'audio/mpeg', userId);
-
-  const runRes = await axios.post(
-    `https://api.runpod.io/v2/${process.env.RUNPOD_ENDPOINT_ID}/run`,
-    {
-      input: {
-        model_url: avatarVideoUrl,
-        audio_url: audioUrl,
-        task: 'inference',
-      },
-    },
-    { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`, 'Content-Type': 'application/json' } }
-  );
-
-  const jobId = runRes.data?.id;
-  if (!jobId) throw new Error('RunPod job failed to start');
-
-  const videoUrl = await pollRunPodJob(jobId, 300_000);
-  return videoUrl;
-}
-
-// ─── HEYGEN (existing API, enhanced with emotion) ─────────────────────────────
+// ─── HEYGEN ───────────────────────────────────────────────────────────────────
 
 async function generateWithHeyGen(params: VideoEngineParams): Promise<string> {
   const { audioBuffer, avatarId, backgroundUrl, aspectRatio = '9:16' } = params;
@@ -130,7 +151,6 @@ async function generateWithHeyGen(params: VideoEngineParams): Promise<string> {
 
   const HEYGEN_BASE = 'https://api.heygen.com';
 
-  // Upload audio
   const formData = new FormData();
   formData.append('audio', audioBuffer, { filename: 'audio.mp3', contentType: 'audio/mpeg' });
   const uploadRes = await axios.post(`${HEYGEN_BASE}/v1/asset`, formData, {
@@ -140,25 +160,11 @@ async function generateWithHeyGen(params: VideoEngineParams): Promise<string> {
   const audioAssetId = uploadRes.data?.data?.id;
   if (!audioAssetId) throw new Error('HeyGen audio upload failed');
 
-  const character: any = {
-    type:         'avatar',
-    avatar_id:    avatarId,
-    avatar_style: 'normal',
-  };
+  const character: any = { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' };
+  if (backgroundUrl) { character.scale = 0.4; character.offset = { x: -0.4, y: -0.35 }; }
 
-  if (backgroundUrl) {
-    character.scale  = 0.4;
-    character.offset = { x: -0.4, y: -0.35 };
-  }
-
-  const videoInput: any = {
-    character,
-    voice: { type: 'audio', audio_asset_id: audioAssetId },
-  };
-
-  if (backgroundUrl) {
-    videoInput.background = { type: 'image', url: backgroundUrl };
-  }
+  const videoInput: any = { character, voice: { type: 'audio', audio_asset_id: audioAssetId } };
+  if (backgroundUrl) videoInput.background = { type: 'image', url: backgroundUrl };
 
   const createRes = await axios.post(
     `${HEYGEN_BASE}/v2/video/generate`,
@@ -167,8 +173,8 @@ async function generateWithHeyGen(params: VideoEngineParams): Promise<string> {
       dimension: aspectRatio === '16:9'
         ? { width: 1280, height: 720 }
         : aspectRatio === '1:1'
-          ? { width: 720,  height: 720 }
-          : { width: 720,  height: 1280 },
+          ? { width: 720, height: 720 }
+          : { width: 720, height: 1280 },
     },
     { headers: { 'X-Api-Key': process.env.HEYGEN_API_KEY, 'Content-Type': 'application/json' }, timeout: 30000 }
   );
@@ -176,7 +182,6 @@ async function generateWithHeyGen(params: VideoEngineParams): Promise<string> {
   const videoId = createRes.data?.data?.video_id;
   if (!videoId) throw new Error('HeyGen video creation failed');
 
-  // Poll for HeyGen completion
   for (let i = 0; i < 90; i++) {
     await new Promise(r => setTimeout(r, 10000));
     const statusRes = await axios.get(`${HEYGEN_BASE}/v1/video_status.get?video_id=${videoId}`, {
@@ -215,7 +220,7 @@ async function pollReplicatePrediction(id: string, timeoutMs: number): Promise<s
   throw new Error('Replicate prediction timed out');
 }
 
-async function pollRunPodJob(id: string, timeoutMs: number): Promise<string> {
+async function pollRunPodJob(id: string, timeoutMs: number): Promise<any> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 8000));
@@ -224,37 +229,31 @@ async function pollRunPodJob(id: string, timeoutMs: number): Promise<string> {
       { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}` } }
     );
     const { status, output } = res.data;
-    if (status === 'COMPLETED' && output?.video_url) return output.video_url;
+    if (status === 'COMPLETED') {
+      if (output?.error) throw new Error(`RunPod worker error: ${output.error}`);
+      if (output?.video_url) return output;
+      throw new Error('RunPod completed but no video_url in output');
+    }
     if (status === 'FAILED') throw new Error('RunPod job failed');
   }
   throw new Error('RunPod job timed out');
 }
 
-// ─── TRAINING HELPERS ─────────────────────────────────────────────────────────
+// ─── TRAINING ─────────────────────────────────────────────────────────────────
+// MuseTalk is zero-shot — no training needed.
+// 'gaussian' engine kept for backward compat — maps to museTalk inference.
 
-// Kick off a LatentSync-compatible "talking head" fine-tune on Replicate
-// or a full GSTalker 3DGS training on RunPod for higher quality
 export async function trainReplicaModel(opts: {
   seedVideoUrl: string;
   replicaId:    string;
   userId:       string;
-  engine:       'latentsync' | 'gaussian';
+  engine:       'latentsync' | 'gaussian' | 'museTalk';
 }): Promise<{ jobId: string; provider: string }> {
-  const { seedVideoUrl, replicaId, userId, engine } = opts;
+  const { seedVideoUrl, replicaId } = opts;
 
-  if (engine === 'gaussian' && process.env.RUNPOD_API_KEY && process.env.RUNPOD_ENDPOINT_ID) {
-    const res = await axios.post(
-      `https://api.runpod.io/v2/${process.env.RUNPOD_ENDPOINT_ID}/run`,
-      { input: { seed_video_url: seedVideoUrl, replica_id: replicaId, task: 'train' } },
-      { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`, 'Content-Type': 'application/json' } }
-    );
-    return { jobId: res.data.id, provider: 'runpod' };
-  }
-
-  // For LatentSync, no training needed — seed video IS the avatar
-  // Just record the job as instant success
+  // MuseTalk/Gaussian: zero-shot — seed video is the model, mark as ready immediately
   await supabase.from('user_replicas').update({
-    gaussian_model_url: seedVideoUrl,  // seed video used directly
+    gaussian_model_url: seedVideoUrl,
     status: 'ready',
   }).eq('id', replicaId);
 
