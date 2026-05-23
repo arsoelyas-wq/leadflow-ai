@@ -343,9 +343,9 @@ async function scoreScript(script: string, research?: LeadResearch | null): Prom
       max_tokens: 10,
       messages: [{
         role: 'user',
-        content: `Video satış scriptini 1-10 puan ver. Kriterler: kişiselleştirme (3p), hook gücü (2p), CTA netliği (2p), doğallık (2p), uzunluk (1p).
-Script: "${script.slice(0, 280)}"
-${research?.pains?.[0] ? `Hedef sorun: ${research.pains[0]}` : ''}
+        content: `Video satış scriptini 1-10 puan ver. Kriterler: spesifik sorun adlandırma (3p), hook gücü (2p), CTA netliği (2p), doğallık (2p), uzunluk 85-100 kelime (1p).
+Script: "${script.slice(0, 350)}"
+${research?.pains?.[0] ? `Beklenen spesifik sorun: ${research.pains[0]}` : ''}
 Sadece sayı (1-10):`,
       }],
     });
@@ -371,53 +371,76 @@ async function generateScript(lead: any, profile: any, language: string, researc
     ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
   };
 
-  const brandName  = research?.brandName || extractBrandName(lead.company_name);
-  const pains      = research?.pains || [];
-  const hookLine   = research?.hookLine || '';
+  const brandName   = research?.brandName || extractBrandName(lead.company_name);
+  const pains       = research?.pains || [];
+  const hookLine    = research?.hookLine || '';
   const opportunity = research?.opportunity || '';
-  const reviewNote = research?.reviewSummary ? `Bulunan yorumlar: ${research.reviewSummary}` : '';
+  const reviewNote  = research?.reviewSummary ? `Müşteri yorumlarından tespit: ${research.reviewSummary}` : '';
+  const ourCompany  = profile?.company?.name || 'Biz';
+  const product     = profile?.product?.description || 'çözümümüz';
+  const lang        = langNames[language] || 'Türkçe';
 
-  const painSection = pains.length > 0
-    ? `Tespit edilen spesifik sorunlar: ${pains.join('; ')}`
-    : `Sektör: ${lead.sector || ''}`;
+  // Build specific pain context — this is the core of personalization
+  let painContext = '';
+  if (pains.length >= 2) {
+    painContext = `Araştırmamızda ${brandName} için tespit ettiğimiz GERÇEK SORUNLAR:
+1. ${pains[0]}
+2. ${pains[1]}
+${pains[2] ? `3. ${pains[2]}` : ''}
+Bu sorunları scriptte açıkça ve doğrudan adlandır. "Sektörünüzdeki sorun" gibi genel ifadeler YASAK.`;
+  } else if (pains.length === 1) {
+    painContext = `Tespit edilen kritik sorun: "${pains[0]}"
+Bu sorunu scriptte açıkça söyle, genel ifade kullanma.`;
+  } else {
+    painContext = `Sektör: ${lead.sector || 'bilinmiyor'}
+Sektörde yaygın 2 spesifik sorunu bul ve söyle — genel "sektörünüzdeki sorun" yasak.`;
+  }
 
   try {
     const r = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 500,
-      system: 'Sen bir satış videosu script yazarısın. PAS (Problem-Agitate-Solve) + Hook çerçevesinde doğal, etkili scriptler yazıyorsun. Yapay zeka olduğunu hiç belli etme.',
+      max_tokens: 700,
+      system: `Sen dünya klasmanında bir satış videosu script yazarısın. Araştırma verileriyle desteklenmiş, her lead için tamamen özel, 35-40 saniyelik (85-100 kelime) scriptler yazıyorsun. Genel ve jenerik ifadeler asla kullanmıyorsun — her cümle o şirkete özel olmalı.`,
       messages: [{
         role: 'user',
-        content: `${langNames[language] || 'Türkçe'} dilinde, 30 saniyelik (60-80 kelime) kişiselleştirilmiş video satış scripti yaz.
+        content: `${lang} dilinde, 35-40 saniyelik (85-100 kelime) kişiselleştirilmiş video satış scripti yaz.
 
-HEDEF: ${brandName}
-İLETİŞİM: ${lead.contact_name || brandName}
-BİZİM ŞİRKET: ${profile?.company?.name || ''}
-ÜRÜN/HİZMET: ${profile?.product?.description || ''}
-${painSection}
-${opportunity ? `Çözüm açısı: ${opportunity}` : ''}
-${hookLine ? `Araştırmada bulunan hook önerisi: "${hookLine}"` : ''}
+═══ HEDEF ŞİRKET ═══
+Marka adı: ${brandName}
+Sektör: ${lead.sector || 'bilinmiyor'}
+Ülke: ${lead.country || 'Türkiye'}
+
+═══ BİZİM KİMLİĞİMİZ ═══
+Şirket: ${ourCompany}
+Ürün/Hizmet: ${product}
+${opportunity ? `Bu şirkete faydamız: ${opportunity}` : ''}
+
+═══ ARAŞTIRMA VERİLERİ ═══
+${painContext}
+${hookLine ? `Dikkat çekici opener önerisi: "${hookLine}"` : ''}
 ${reviewNote}
 
-ZORUNLU YAPI (kesinlikle uy):
-🎯 HOOK (ilk 3-4 saniye): Dikkat çekici başlangıç. ${hookLine ? `Bunu kullan veya geliştir: "${hookLine}"` : `"${brandName}" ile başla, onların spesifik sorunu veya sektörlerindeki şaşırtıcı bir gerçeği söyle.`} İzleyiciyi hemen yakalamalı.
-📌 PROBLEM (4-5 saniye): Bu sorunu net ve somut söyle.
-💥 AGİTATE (3 saniye): Bu sorunun sonuçlarını/maliyetini belirt.
-💡 ÇÖZÜM (12-15 saniye): Ürünümüz bu sorunu tam olarak nasıl çözüyor — spesifik, inandırıcı.
-✅ KANIT (2-3 saniye): Kısa sonuç ima et veya sektördeki benzer başarıya değin.
-📞 CTA (2-3 saniye): Yumuşak — "5 dakikanız var mı?" veya "Bir görüşme yapalım."
+═══ SCRIPT YAPISI (kesin sıra ve saniye) ═══
+[0-5 sn] HOOK: ${hookLine ? `"${hookLine}" kullan veya geliştir.` : `"${brandName}" ile başla, onların spesifik sorununu veya bu sektördeki şaşırtıcı bir gerçeği direk söyle.`} Jenerik "merhaba" açılışı yasak.
+[5-12 sn] SORUN: Tespit ettiğimiz 1-2 spesifik sorunu ismiyle söyle. Soyut değil, somut. Örn: "Müşterilerinizin %X'i şunu şikayet ediyor" veya "Şu süreç size her ay şunu kaybettiriyor" gibi.
+[12-20 sn] ÇÖZÜM: ${product} bu sorunu tam olarak nasıl çözüyor — 1-2 somut mekanizma söyle.
+[20-28 sn] KANIT/SONUÇ: Benzer bir müşteride ya da sektörde elde edilen somut fayda ima et (rakam veya etki).
+[28-38 sn] CTA: Detaylı konuşmak için 15 dakikalık görüşme talep et. Nazik, baskısız, net.
 
-KESIN KURALLAR:
-- "${brandName}" kullan, ASLA tam hukuki ismi yazma
-- Doğal, insan gibi konuş — robot/kurumsal dil YASAK
-- Yapay zeka, AI, asistan gibi kelimeler YASAK
-- Sadece konuşma metnini yaz, başka hiçbir şey ekleme
-- Dil: ${langNames[language] || 'Türkçe'}`,
+═══ DEMİR KURALLAR ═══
+- "${brandName}" kullan, ASLA hukuki tam isim veya "Sayın Yetkili" yazma
+- Araştırma verilerini kullan — "sektörünüzdeki sorunlar" gibi genel ifade TAMAMEN YASAK
+- Doğal konuşma dili — kurumsal, robotik, yapay dil YASAK
+- "yapay zeka", "AI", "sistem" kelimeleri YASAK
+- Kelime sayısı 85-100 arası olmalı
+- Sadece konuşma metnini yaz, başka HİÇBİR şey ekleme
+- Dil: ${lang}`,
       }],
     });
     return ((r.content[0] as any)?.text || '').trim();
   } catch {
-    return `Merhaba ${brandName}! ${profile?.company?.name || 'Şirketimiz'} olarak sizin sektörünüzdeki en kritik sorunu çözen bir çözüm geliştirdik. Size özel hazırladığımız bu videoyu izledikten sonra 5 dakikanızı bize ayırır mısınız?`;
+    const fallbackPain = pains[0] || `${lead.sector || 'sektörünüzdeki'} en kritik zorluk`;
+    return `${brandName}! ${ourCompany} olarak işinizi inceledik ve ${fallbackPain} konusunda size özel bir çözüm geliştirdik. ${product} sayesinde bu sorunu kalıcı olarak çözüp operasyonel verimliliğinizi artırabilirsiniz. Benzer sektördeki müşterilerimizde ciddi iyileşmeler gördük. Bu konuyu 15 dakikalık bir görüşmede detaylı anlatmak isterim — uygun bir zaman var mı?`;
   }
 }
 
