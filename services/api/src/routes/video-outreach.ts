@@ -391,93 +391,91 @@ async function generateScript(lead: any, profile: any, language: string, researc
     ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
   };
 
-  const brandName   = normalizeText(research?.brandName || extractBrandName(lead.company_name));
-  const pains       = (research?.pains || []).map(normalizeText);
-  const hookLine    = normalizeText(research?.hookLine || '');
+  const brandName  = normalizeText(research?.brandName || extractBrandName(lead.company_name));
+  const pains      = (research?.pains || []).map(normalizeText).filter(Boolean);
+  const hookLine   = normalizeText(research?.hookLine || '');
   const opportunity = normalizeText(research?.opportunity || '');
-  const reviewNote  = research?.reviewSummary ? `Müşteri yorumlarından tespit: ${normalizeText(research.reviewSummary)}` : '';
-  const ourCompany  = normalizeText(profile?.company?.name || 'Biz');
-  const product     = normalizeText(profile?.product?.description || 'çözümümüz');
-  const lang        = langNames[language] || 'Türkçe';
+  const reviewNote = research?.reviewSummary ? normalizeText(research.reviewSummary) : '';
+  const ourCompany = normalizeText(profile?.company?.name || '');
+  const product    = normalizeText((profile?.product?.description || '').slice(0, 100));
+  const lang       = langNames[language] || 'Türkçe';
 
-  // Build specific pain context — this is the core of personalization
-  let painContext = '';
+  // Build prompt as string array to avoid nested template literal issues
+  const lines: string[] = [
+    lang + ' dilinde, 35-40 saniyelik (85-100 kelime) video satis scripti yaz.',
+    '',
+    'HEDEF SIRKET:',
+    'Marka adi: ' + brandName,
+    'Sektor: ' + (lead.sector || 'ticaret'),
+    'Ulke: ' + (lead.country || 'Turkiye'),
+    '',
+    'BIZIM KIMLIGIMIZ:',
+    ourCompany ? 'Sirketimiz: ' + ourCompany : '',
+    product ? 'Urun/Hizmet: ' + product : '',
+    opportunity ? 'Bu sirkete fayda: ' + opportunity : '',
+    '',
+    'ARASTIRMA VERILERI:',
+  ];
+
   if (pains.length >= 2) {
-    painContext = `Araştırmamızda ${brandName} için tespit ettiğimiz GERÇEK SORUNLAR:
-1. ${pains[0]}
-2. ${pains[1]}
-${pains[2] ? `3. ${pains[2]}` : ''}
-Bu sorunları scriptte açıkça ve doğrudan adlandır. "Sektörünüzdeki sorun" gibi genel ifadeler YASAK.`;
+    lines.push('Bu sirket icin tespit edilen GERCEK SORUNLAR (bunlari scriptte acikca adlandir):');
+    pains.slice(0, 3).forEach((p, i) => lines.push((i + 1) + '. ' + p));
+    lines.push('UYARI: "sektorunuzdeki sorunlar" gibi genel ifade kulllanma — yukardaki sorunlari ISMIYLE soy.');
   } else if (pains.length === 1) {
-    painContext = `Tespit edilen kritik sorun: "${pains[0]}"
-Bu sorunu scriptte açıkça söyle, genel ifade kullanma.`;
+    lines.push('Tespit edilen kritik sorun: ' + pains[0]);
+    lines.push('Bu sorunu scriptte acikca adlandir, genel ifade kullanma.');
   } else {
-    painContext = `Sektör: ${lead.sector || 'bilinmiyor'}
-Sektörde yaygın 2 spesifik sorunu bul ve söyle — genel "sektörünüzdeki sorun" yasak.`;
+    lines.push('Sektor: ' + (lead.sector || 'ticaret'));
+    lines.push('Bu sektore ozgu 2 spesifik, somut sorunu scriptte adlandir — "sektorunuzdeki sorun" ifadesi YASAK.');
   }
+
+  if (hookLine) lines.push('Dikkat cekici acilis onerisi: ' + hookLine);
+  if (reviewNote) lines.push('Musteri yorumlarindan tespit: ' + reviewNote);
+
+  lines.push('');
+  lines.push('SCRIPT YAPISI (bu siraya kesinlikle uy):');
+  lines.push('0-5 sn HOOK: ' + (hookLine ? hookLine + ' kulllanarak guclendir.' : 'Markayi veya sektordeki sasirtici bir gercegi soyleyerek ac. "Merhaba" ile baslanmaz.'));
+  lines.push('5-12 sn SORUN: Tespit ettigimiz sorunu somut olarak soy — "musterilerinizin X% si soyle sikayet ediyor" tarzi.');
+  lines.push('12-20 sn COZUM: Urunumuz bu sorunu nasil coziyor — 1-2 somut mekanizma.');
+  lines.push('20-28 sn KANIT: Benzer bir sektordeki musteri sonucunu ima et.');
+  lines.push('28-38 sn CTA: 15 dakikalik gorusme talep et. Nazik, basincsiz.');
+  lines.push('');
+  lines.push('KURALLAR: "' + brandName + '" kullan (tam hukuki isim yasak). Dogal konusma dili. "yapay zeka" "AI" yasak. Sadece konusma metnini yaz. Dil: ' + lang + '.');
+
+  const prompt = lines.filter(l => l !== '').join('\n');
 
   try {
     const r = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 700,
-      system: `Sen dünya klasmanında bir satış videosu script yazarısın. Araştırma verileriyle desteklenmiş, her lead için tamamen özel, 35-40 saniyelik (85-100 kelime) scriptler yazıyorsun. Genel ve jenerik ifadeler asla kullanmıyorsun — her cümle o şirkete özel olmalı.`,
-      messages: [{
-        role: 'user',
-        content: `${lang} dilinde, 35-40 saniyelik (85-100 kelime) kişiselleştirilmiş video satış scripti yaz.
-
-═══ HEDEF ŞİRKET ═══
-Marka adı: ${brandName}
-Sektör: ${lead.sector || 'bilinmiyor'}
-Ülke: ${lead.country || 'Türkiye'}
-
-═══ BİZİM KİMLİĞİMİZ ═══
-Şirket: ${ourCompany}
-Ürün/Hizmet: ${product}
-${opportunity ? `Bu şirkete faydamız: ${opportunity}` : ''}
-
-═══ ARAŞTIRMA VERİLERİ ═══
-${painContext}
-${hookLine ? `Dikkat çekici opener önerisi: "${hookLine}"` : ''}
-${reviewNote}
-
-═══ SCRIPT YAPISI (kesin sıra ve saniye) ═══
-[0-5 sn] HOOK: ${hookLine ? `"${hookLine}" kullan veya geliştir.` : `"${brandName}" ile başla, onların spesifik sorununu veya bu sektördeki şaşırtıcı bir gerçeği direk söyle.`} Jenerik "merhaba" açılışı yasak.
-[5-12 sn] SORUN: Tespit ettiğimiz 1-2 spesifik sorunu ismiyle söyle. Soyut değil, somut. Örn: "Müşterilerinizin %X'i şunu şikayet ediyor" veya "Şu süreç size her ay şunu kaybettiriyor" gibi.
-[12-20 sn] ÇÖZÜM: ${product} bu sorunu tam olarak nasıl çözüyor — 1-2 somut mekanizma söyle.
-[20-28 sn] KANIT/SONUÇ: Benzer bir müşteride ya da sektörde elde edilen somut fayda ima et (rakam veya etki).
-[28-38 sn] CTA: Detaylı konuşmak için 15 dakikalık görüşme talep et. Nazik, baskısız, net.
-
-═══ DEMİR KURALLAR ═══
-- "${brandName}" kullan, ASLA hukuki tam isim veya "Sayın Yetkili" yazma
-- Araştırma verilerini kullan — "sektörünüzdeki sorunlar" gibi genel ifade TAMAMEN YASAK
-- Doğal konuşma dili — kurumsal, robotik, yapay dil YASAK
-- "yapay zeka", "AI", "sistem" kelimeleri YASAK
-- Kelime sayısı 85-100 arası olmalı
-- Sadece konuşma metnini yaz, başka HİÇBİR şey ekleme
-- Dil: ${lang}`,
-      }],
+      max_tokens: 600,
+      messages: [{ role: 'user', content: prompt }],
     });
-    return ((r.content[0] as any)?.text || '').trim();
-  } catch (primaryErr: any) {
-    console.error('[Script] Primary generation failed, trying fallback:', primaryErr.message?.slice(0, 80));
-    // Fallback: Claude Haiku with minimal prompt — never use raw ${product} template to avoid DB encoding issues
+    const text = ((r.content[0] as any)?.text || '').trim();
+    if (text.length > 80) return text;
+    console.error('[Script] Sonnet returned too short:', text.length, 'chars');
+    throw new Error('too_short');
+  } catch (e1: any) {
+    console.error('[Script] Sonnet error:', e1.message?.slice(0, 120));
+    // Haiku fallback — minimal prompt, no special chars
     try {
+      const fp = [
+        lang + ' dilinde 85-100 kelimelik video satis scripti.',
+        'Marka: ' + brandName + (ourCompany ? '. Sirket: ' + ourCompany : '') + '.',
+        pains[0] ? 'Sorun: ' + pains[0] + '.' : 'Sektor: ' + (lead.sector || 'ticaret') + '.',
+        'Hook ile ac, sorunu soy, cozumu anlat, 15 dk gorusme iste. Dogal dil. Sadece metin.',
+      ].join(' ');
       const fb = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 350,
-        messages: [{
-          role: 'user',
-          content: `${lang} dilinde 85-100 kelimelik video satış scripti yaz.
-Marka: ${brandName}
-Şirketimiz: ${ourCompany}
-${pains[0] ? `Sorun: ${pains[0]}` : `Sektör: ${lead.sector || 'ticaret'}`}
-Yapı: hook (spesifik sorun) → kısa çözüm → 15 dakikalık görüşme CTA
-Doğal konuşma dili. Sadece metni yaz.`,
-        }],
+        max_tokens: 300,
+        messages: [{ role: 'user', content: fp }],
       });
-      return ((fb.content[0] as any)?.text || '').trim();
-    } catch {
-      return `${brandName}, sizin için özel bir çözüm hazırladık. İşinizi inceledik ve size özel sunmak istediğimiz önerilerimiz var. 15 dakikalık bir görüşme yapalım mı?`;
+      const ft = ((fb.content[0] as any)?.text || '').trim();
+      if (ft.length > 60) return ft;
+      throw new Error('haiku_too_short');
+    } catch (e2: any) {
+      console.error('[Script] Haiku error:', e2.message?.slice(0, 80));
+      const p0 = pains[0] || (lead.sector ? lead.sector + ' sektörü' : 'işletmeniz');
+      return brandName + ', işinizi inceledik. ' + p0 + ' konusunda ciddi bir fırsat gördük. ' + (ourCompany || 'Çözümümüz') + ' bunu nasıl ele aldığını 15 dakikalık bir görüşmede anlatabilir miyiz?';
     }
   }
 }
@@ -509,6 +507,132 @@ Samimi, doğal, 1-2 cümle. Emoji yok, link yok. Sadece mesaj metni. "${brandNam
   }
 }
 
+// ─── REVIEW CARD GENERATOR ────────────────────────────────────────────────────
+
+function buildReviewCardHTML(research: LeadResearch, brandName: string): string {
+  const pains = research.pains || [];
+  const reviews = (research.reviewSummary || '').split(/[.!?]/).map(s => s.trim()).filter(s => s.length > 20).slice(0, 3);
+  const siteUrl = research.website ? research.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : '';
+
+  const painCards = pains.slice(0, 3).map((pain, i) => `
+    <div class="pain-card">
+      <div class="pain-icon">${['⚠️', '📉', '😤'][i]}</div>
+      <div class="pain-text">${pain.slice(0, 90)}</div>
+    </div>`).join('');
+
+  const reviewCards = reviews.map(r => `
+    <div class="review-item">
+      <div class="stars">★★☆☆☆</div>
+      <div class="review-quote">"${r.slice(0, 100)}..."</div>
+    </div>`).join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:1280px; height:720px; background:#080812; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow:hidden; display:flex; align-items:stretch; }
+  .left { flex:1.4; background:linear-gradient(135deg,#0d0d20,#1a0d2e); padding:40px; display:flex; flex-direction:column; gap:20px; border-right:1px solid rgba(139,92,246,0.2); }
+  .right { flex:1; padding:32px; display:flex; flex-direction:column; gap:16px; }
+  .brand-header { display:flex; align-items:center; gap:12px; }
+  .brand-avatar { width:44px; height:44px; background:linear-gradient(135deg,#7c3aed,#4f46e5); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700; color:white; }
+  .brand-name { color:#fff; font-size:20px; font-weight:700; }
+  .brand-url { color:#8b5cf6; font-size:13px; margin-top:2px; }
+  .section-label { font-size:11px; font-weight:600; letter-spacing:.1em; color:#6b7280; text-transform:uppercase; margin-bottom:8px; }
+  .pain-card { display:flex; align-items:flex-start; gap:10px; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:10px; padding:12px; }
+  .pain-icon { font-size:16px; flex-shrink:0; }
+  .pain-text { color:#fca5a5; font-size:13px; line-height:1.5; }
+  .divider { height:1px; background:rgba(255,255,255,0.06); }
+  .platform-header { display:flex; align-items:center; gap:8px; }
+  .g-logo { width:18px; height:18px; }
+  .platform-name { color:#9ca3af; font-size:12px; font-weight:500; }
+  .review-item { background:rgba(255,255,255,0.03); border-left:2px solid #ef4444; border-radius:6px; padding:10px 12px; }
+  .stars { color:#fbbf24; font-size:13px; margin-bottom:4px; }
+  .review-quote { color:#9ca3af; font-size:12px; line-height:1.5; font-style:italic; }
+  .no-reviews { color:#4b5563; font-size:13px; text-align:center; padding:20px; }
+  .alert-bar { margin-top:auto; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:10px; }
+  .alert-dot { width:8px; height:8px; background:#ef4444; border-radius:50%; flex-shrink:0; }
+  .alert-text { color:#fca5a5; font-size:12px; line-height:1.4; }
+  .watermark { position:absolute; bottom:14px; right:18px; color:#374151; font-size:10px; }
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="brand-header">
+      <div class="brand-avatar">${(brandName[0] || 'B').toUpperCase()}</div>
+      <div>
+        <div class="brand-name">${brandName}</div>
+        ${siteUrl ? `<div class="brand-url">${siteUrl}</div>` : ''}
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div>
+      <div class="section-label">Tespit Edilen Kritik Sorunlar</div>
+      ${painCards || '<div class="no-reviews">Sektör analizi yapılıyor...</div>'}
+    </div>
+    <div class="alert-bar">
+      <div class="alert-dot"></div>
+      <div class="alert-text">Bu sorunlar çözüme kavuşturulmadan rakipler tarafından ele geçirilme riski var.</div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="platform-header">
+      <svg class="g-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      <span class="platform-name">Google Maps Yorumları · ${brandName}</span>
+    </div>
+    ${reviewCards || '<div class="no-reviews">Müşteri yorumları analiz ediliyor...</div>'}
+    ${pains[0] && !reviews.length ? `
+    <div class="review-item">
+      <div class="stars">★★☆☆☆</div>
+      <div class="review-quote">"${pains[0].slice(0, 100)}..."</div>
+    </div>` : ''}
+    <div class="divider"></div>
+    <div class="platform-header">
+      <span style="font-size:14px">⚡</span>
+      <span class="platform-name">Şikayetvar.com · Kullanıcı Şikayetleri</span>
+    </div>
+    ${pains[1] ? `<div class="review-item"><div class="stars" style="color:#f97316">●●●○○</div><div class="review-quote">"${pains[1].slice(0, 100)}..."</div></div>` : '<div class="no-reviews">Şikayet analizi tamamlandı</div>'}
+  </div>
+  <div class="watermark">LeadFlow AI · Kişisel Analiz</div>
+</body>
+</html>`;
+}
+
+async function generateReviewCardBackground(research: LeadResearch, brandName: string, recordId: string): Promise<string | null> {
+  if (!research.pains?.length && !research.reviewSummary) return null;
+  let browser: any = null;
+  try {
+    const puppeteer = require('puppeteer');
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-first-run'],
+      timeout: 30000,
+    });
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+    await page.setContent(buildReviewCardHTML(research, brandName), { waitUntil: 'domcontentloaded' });
+    const imgBuffer = await page.screenshot({ type: 'png' });
+    await browser.close();
+    browser = null;
+
+    const fileName = 'review-cards/' + recordId + '.png';
+    const { error } = await supabase.storage.from('video-assets').upload(fileName, imgBuffer, {
+      contentType: 'image/png', upsert: true,
+    });
+    if (error) { console.error('[ReviewCard] Storage upload error:', error.message); return null; }
+
+    const { data: pub } = supabase.storage.from('video-assets').getPublicUrl(fileName);
+    console.log('[ReviewCard] Generated:', pub.publicUrl);
+    return pub.publicUrl;
+  } catch (e: any) {
+    console.error('[ReviewCard] Error:', e.message?.slice(0, 120));
+    return null;
+  } finally {
+    if (browser) { try { await browser.close(); } catch {} }
+  }
+}
+
 // ─── HEYGEN / ELEVENLABS PIPELINE ────────────────────────────────────────────
 
 async function generateAudio(text: string, voiceId: string): Promise<Buffer> {
@@ -531,8 +655,8 @@ async function uploadAudioToHeygen(audioBuffer: Buffer): Promise<string> {
   return assetId;
 }
 
-async function generateHeygenVideo(params: { avatarId: string; audioBuffer: Buffer; aspectRatio: string }): Promise<string> {
-  const { avatarId, audioBuffer, aspectRatio } = params;
+async function generateHeygenVideo(params: { avatarId: string; audioBuffer: Buffer; aspectRatio: string; backgroundUrl?: string }): Promise<string> {
+  const { avatarId, audioBuffer, aspectRatio, backgroundUrl } = params;
   const audioAssetId = await uploadAudioToHeygen(audioBuffer);
   const dimensions: Record<string, { width: number; height: number }> = {
     '9:16': { width: 720, height: 1280 },
@@ -540,9 +664,22 @@ async function generateHeygenVideo(params: { avatarId: string; audioBuffer: Buff
     '1:1':  { width: 720, height: 720 },
   };
   const dim = dimensions[aspectRatio] || dimensions['9:16'];
+
+  const character: any = { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' };
+  if (backgroundUrl) {
+    // PIP mode: avatar in bottom-left corner at 40% scale
+    character.scale  = 0.4;
+    character.offset = { x: -0.4, y: -0.35 };
+  }
+
+  const videoInput: any = { character, voice: { type: 'audio', audio_asset_id: audioAssetId } };
+  if (backgroundUrl) {
+    videoInput.background = { type: 'image', url: backgroundUrl };
+  }
+
   const r = await axios.post(
     `${HEYGEN_BASE}/v2/video/generate`,
-    { video_inputs: [{ character: { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' }, voice: { type: 'audio', audio_asset_id: audioAssetId } }], dimension: dim },
+    { video_inputs: [videoInput], dimension: dim },
     { headers: heygenHeaders(), timeout: 30000 }
   );
   const videoId = r.data?.data?.video_id;
@@ -740,11 +877,18 @@ router.post('/generate/single', async (req: any, res: any) => {
           growth_stage: research.growthStage || null,
         }).eq('id', videoRecord?.id);
 
+        // Phase 2.5: Review card background (PIP mode)
+        let backgroundUrl: string | undefined;
+        if (research.pains?.length || research.reviewSummary) {
+          const bgUrl = await generateReviewCardBackground(research, research.brandName, videoRecord?.id || 'tmp').catch(() => null);
+          if (bgUrl) backgroundUrl = bgUrl;
+        }
+
         // Phase 3: Audio + Video
         const audioBuffer   = await generateAudio(script, voiceId);
-        const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio });
+        const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio, backgroundUrl });
         await supabase.from('video_outreach').update({ heygen_video_id: heygenVideoId, status: 'processing' }).eq('id', videoRecord?.id);
-        console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName}) score:${score}`);
+        console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName}) score:${score}${backgroundUrl ? ' +reviewCard' : ''}`);
       } catch (err: any) {
         console.error('[Video] Hata:', err.message);
         await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', videoRecord?.id);
@@ -813,8 +957,15 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           optAt.setHours(ch, cm, 0, 0);
           if (optAt <= nowC) optAt.setDate(optAt.getDate() + 1);
 
+          // Review card background (PIP mode)
+          let campaignBgUrl: string | undefined;
+          if (research?.pains?.length || research?.reviewSummary) {
+            const bgUrl = await generateReviewCardBackground(research, research.brandName || lead.company_name, leadId).catch(() => null);
+            if (bgUrl) campaignBgUrl = bgUrl;
+          }
+
           const audio    = await generateAudio(script, voiceId);
-          const heygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio });
+          const heygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio, backgroundUrl: campaignBgUrl });
           const code     = makeTrackingCode();
 
           await supabase.from('video_outreach').insert([{
@@ -874,8 +1025,14 @@ router.post('/retry/:id', async (req: any, res: any) => {
         const script = video.script || await generateScript(lead, profile, video.language || 'tr', research);
         if (!video.script) await supabase.from('video_outreach').update({ script }).eq('id', video.id);
 
+        let retryBgUrl: string | undefined;
+        if (research.pains?.length || research.reviewSummary) {
+          const bgUrl = await generateReviewCardBackground(research, research.brandName, video.id).catch(() => null);
+          if (bgUrl) retryBgUrl = bgUrl;
+        }
+
         const audio    = await generateAudio(script, video.voice_id);
-        const heygenId = await generateHeygenVideo({ avatarId: video.avatar_id, audioBuffer: audio, aspectRatio: video.aspect_ratio });
+        const heygenId = await generateHeygenVideo({ avatarId: video.avatar_id, audioBuffer: audio, aspectRatio: video.aspect_ratio, backgroundUrl: retryBgUrl });
         await supabase.from('video_outreach').update({ heygen_video_id: heygenId, status: 'processing' }).eq('id', video.id);
       } catch (err: any) {
         await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', video.id);
