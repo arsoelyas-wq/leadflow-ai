@@ -455,11 +455,24 @@ function StepScript({ leads, avatar, voice, language, scripts, onScriptsChange }
           body: JSON.stringify({ leadId: lead.id, language, avatarName: avatar.name }),
         })
         const d = await r.json()
-        results.push({ leadId: lead.id, leadName: lead.company_name, script: d.script || '', edited: false })
+        const script = d.script || ''
+        if (!script && d.error) {
+          console.error('[Script preview] API error:', d.error)
+        }
+        results.push({
+          leadId: lead.id,
+          leadName: lead.company_name,
+          script,
+          edited: false,
+          quality: d.quality,
+          researchError: d.researchError,
+        })
       }
       onScriptsChange(results)
       setGenerated(true)
-    } catch {}
+    } catch (err: any) {
+      console.error('[Script preview] Network error:', err.message)
+    }
     setLoading(false)
   }
 
@@ -539,8 +552,13 @@ function StepScript({ leads, avatar, voice, language, scripts, onScriptsChange }
                 ) : (
                   <p className="px-4 py-3 text-slate-300 text-sm leading-relaxed">{s.script}</p>
                 )}
-                <div className="px-4 py-2 border-t border-slate-800 flex items-center gap-3">
-                  <span className="text-xs text-slate-600">{s.script?.split(' ').length || 0} kelime · ~{Math.round((s.script?.split(' ').length || 0) / 2.5)} saniye</span>
+                <div className="px-4 py-2 border-t border-slate-800 flex items-center gap-3 flex-wrap">
+                  <span className="text-xs text-slate-600">{s.script?.split(' ').filter(Boolean).length || 0} kelime · ~{Math.round((s.script?.split(' ').filter(Boolean).length || 0) / 2.5)} saniye</span>
+                  {s.quality === 'web_search' && <span className="text-xs text-emerald-500">🌐 Web araştırması</span>}
+                  {s.quality === 'website'    && <span className="text-xs text-blue-400">🔗 Web sitesi</span>}
+                  {s.quality === 'sector'     && <span className="text-xs text-amber-400">📊 Sektör bazlı</span>}
+                  {s.quality === 'fallback'   && <span className="text-xs text-orange-400">⚠️ Araştırma yapılamadı</span>}
+                  {s.researchError            && <span className="text-xs text-red-400" title={s.researchError}>⚠️ Araştırma hatası</span>}
                 </div>
               </div>
             ))

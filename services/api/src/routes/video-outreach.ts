@@ -1249,13 +1249,19 @@ router.get('/stats', async (req: any, res: any) => {
 
 // POST /api/video-outreach/preview-script
 router.post('/preview-script', async (req: any, res: any) => {
-  try {
-    const { leadId, language } = req.body;
-    const { data: lead }    = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
-    const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
+  const { leadId, language } = req.body || {};
+  if (!leadId) return res.status(400).json({ error: 'leadId required' });
 
-    // Check if this lead already has fresh research cached in a recent video record
+  const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
+  if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
+
+  const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single().catch(() => ({ data: null }));
+
+  // Always return a script — never 500
+  let research: any = null;
+  let researchError = '';
+
+  try {
     const { data: cached } = await supabase
       .from('video_outreach')
       .select('research_data')
@@ -1267,16 +1273,33 @@ router.post('/preview-script', async (req: any, res: any) => {
       .single()
       .catch(() => ({ data: null }));
 
-    const research = (cached as any)?.research_data || await researchLead(lead, profile);
-    const script   = await generateScript(lead, profile, language || 'tr', research);
-    res.json({
-      ok: true, script,
-      leadId, leadName: lead.company_name,
-      brandName: research.brandName,
-      pains: research.pains,
-      quality: research.quality,
-    });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    research = (cached as any)?.research_data || await researchLead(lead, profile);
+  } catch (re: any) {
+    researchError = re.message?.slice(0, 80) || 'research_failed';
+    console.error('[PreviewScript] Research error:', researchError);
+  }
+
+  let script = '';
+  try {
+    script = await generateScript(lead, profile, language || 'tr', research);
+  } catch (se: any) {
+    console.error('[PreviewScript] Script generation error:', se.message?.slice(0, 80));
+    // Absolute last resort — guaranteed non-empty
+    const brand = extractBrandName(lead.company_name);
+    const sector = lead.sector || 'sektörünüzde';
+    script = `${brand}, işinizi inceledik. ${sector} alanında ciddi bir fırsat gördük. Size özel 15 dakikalık bir görüşmede nasıl değer katabileceğimizi anlatabilir miyiz?`;
+  }
+
+  res.json({
+    ok: true,
+    script,
+    leadId,
+    leadName: lead.company_name,
+    brandName: research?.brandName || extractBrandName(lead.company_name),
+    pains: research?.pains || [],
+    quality: research?.quality || 'fallback',
+    ...(researchError ? { researchError } : {}),
+  });
 });
 
 // POST /api/video-outreach/heygen-webhook — HeyGen video ready notification
