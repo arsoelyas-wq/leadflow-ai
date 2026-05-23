@@ -24,6 +24,26 @@ function trackingUrl(code: string) { return `${API_BASE}/v/${code}`; }
 
 // ─── BRAND NAME EXTRACTION ───────────────────────────────────────────────────
 
+// ─── TEXT ENCODING FIX ───────────────────────────────────────────────────────
+// Fixes double-encoded UTF-8 (Latin-1 read as UTF-8) and common Latin-1 → UTF-8 artifacts
+function normalizeText(text: string): string {
+  if (!text) return '';
+  return text
+    // Fix double-encoded UTF-8 artifacts (Ã¼ → ü, etc.)
+    .replace(/Ã¼/g, 'ü').replace(/Ã–/g, 'Ö').replace(/Ã¶/g, 'ö')
+    .replace(/Ä±/g, 'ı').replace(/Ä°/g, 'İ').replace(/ÄŸ/g, 'ğ')
+    .replace(/Ã§/g, 'ç').replace(/Ã‡/g, 'Ç').replace(/ÅŸ/g, 'ş')
+    .replace(/Åž/g, 'Ş').replace(/Ãœ/g, 'Ü').replace(/Ã‚/g, '')
+    // Fix Latin-1 single-byte representations (bytes stored as chars)
+    .replace(/�/g, '') // remove replacement chars instead of showing ◆
+    // Common Windows-1254 → Unicode misread patterns
+    .replace(/ü/g, 'ü').replace(/ö/g, 'ö').replace(/ç/g, 'ç')
+    .replace(/ş/g, 'ş').replace(/ğ/g, 'ğ').replace(/ı/g, 'ı')
+    .replace(/Ü/g, 'Ü').replace(/Ö/g, 'Ö').replace(/Ç/g, 'Ç')
+    .replace(/Ş/g, 'Ş').replace(/Ğ/g, 'Ğ').replace(/İ/g, 'İ')
+    .trim();
+}
+
 function extractBrandName(legalName: string): string {
   if (!legalName) return '';
   return legalName
@@ -371,13 +391,13 @@ async function generateScript(lead: any, profile: any, language: string, researc
     ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
   };
 
-  const brandName   = research?.brandName || extractBrandName(lead.company_name);
-  const pains       = research?.pains || [];
-  const hookLine    = research?.hookLine || '';
-  const opportunity = research?.opportunity || '';
-  const reviewNote  = research?.reviewSummary ? `Müşteri yorumlarından tespit: ${research.reviewSummary}` : '';
-  const ourCompany  = profile?.company?.name || 'Biz';
-  const product     = profile?.product?.description || 'çözümümüz';
+  const brandName   = normalizeText(research?.brandName || extractBrandName(lead.company_name));
+  const pains       = (research?.pains || []).map(normalizeText);
+  const hookLine    = normalizeText(research?.hookLine || '');
+  const opportunity = normalizeText(research?.opportunity || '');
+  const reviewNote  = research?.reviewSummary ? `Müşteri yorumlarından tespit: ${normalizeText(research.reviewSummary)}` : '';
+  const ourCompany  = normalizeText(profile?.company?.name || 'Biz');
+  const product     = normalizeText(profile?.product?.description || 'çözümümüz');
   const lang        = langNames[language] || 'Türkçe';
 
   // Build specific pain context — this is the core of personalization
@@ -438,17 +458,35 @@ ${reviewNote}
       }],
     });
     return ((r.content[0] as any)?.text || '').trim();
-  } catch {
-    const fallbackPain = pains[0] || `${lead.sector || 'sektörünüzdeki'} en kritik zorluk`;
-    return `${brandName}! ${ourCompany} olarak işinizi inceledik ve ${fallbackPain} konusunda size özel bir çözüm geliştirdik. ${product} sayesinde bu sorunu kalıcı olarak çözüp operasyonel verimliliğinizi artırabilirsiniz. Benzer sektördeki müşterilerimizde ciddi iyileşmeler gördük. Bu konuyu 15 dakikalık bir görüşmede detaylı anlatmak isterim — uygun bir zaman var mı?`;
+  } catch (primaryErr: any) {
+    console.error('[Script] Primary generation failed, trying fallback:', primaryErr.message?.slice(0, 80));
+    // Fallback: Claude Haiku with minimal prompt — never use raw ${product} template to avoid DB encoding issues
+    try {
+      const fb = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 350,
+        messages: [{
+          role: 'user',
+          content: `${lang} dilinde 85-100 kelimelik video satış scripti yaz.
+Marka: ${brandName}
+Şirketimiz: ${ourCompany}
+${pains[0] ? `Sorun: ${pains[0]}` : `Sektör: ${lead.sector || 'ticaret'}`}
+Yapı: hook (spesifik sorun) → kısa çözüm → 15 dakikalık görüşme CTA
+Doğal konuşma dili. Sadece metni yaz.`,
+        }],
+      });
+      return ((fb.content[0] as any)?.text || '').trim();
+    } catch {
+      return `${brandName}, sizin için özel bir çözüm hazırladık. İşinizi inceledik ve size özel sunmak istediğimiz önerilerimiz var. 15 dakikalık bir görüşme yapalım mı?`;
+    }
   }
 }
 
 // Claude Haiku — hızlı WhatsApp intro (marka adıyla, araştırmaya göre)
 async function generateWhatsAppIntro(lead: any, profile: any, research?: LeadResearch | null): Promise<string> {
-  const brandName  = research?.brandName || extractBrandName(lead.company_name);
-  const opportunity = research?.opportunity || '';
-  const pain       = research?.pains?.[0] || '';
+  const brandName  = normalizeText(research?.brandName || extractBrandName(lead.company_name));
+  const opportunity = normalizeText(research?.opportunity || '');
+  const pain       = normalizeText(research?.pains?.[0] || '');
 
   try {
     const r = await anthropic.messages.create({

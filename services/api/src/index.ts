@@ -24,6 +24,15 @@ const aiLimiter       = rateLimit({ windowMs: 60*1000,    max: 20 });
 app.use(generalLimiter);
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
+// Ensure all JSON responses explicitly declare UTF-8
+app.use((_req: any, res: any, next: any) => {
+  const orig = res.json.bind(res);
+  res.json = function(body: any) {
+    if (!res.headersSent) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return orig(body);
+  };
+  next();
+});
 
 const { authMiddleware } = require('./middleware/auth');
 
