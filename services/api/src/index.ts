@@ -160,6 +160,7 @@ app.use('/api/visual-trends',        authMiddleware, require('./routes/visual-tr
 // HeyGen webhook public (no auth, called by HeyGen servers)
 const videoOutreachRouter = require('./routes/video-outreach');
 app.post('/api/video-outreach/heygen-webhook', (req: any, res: any, next: any) => { req.url = '/heygen-webhook'; videoOutreachRouter(req, res, next); });
+app.get('/api/video-outreach/test-ai', (req: any, res: any, next: any) => { req.url = '/test-ai'; videoOutreachRouter(req, res, next); });
 app.use('/api/video-outreach',       authMiddleware, videoOutreachRouter);
 app.use('/v',                          require('./routes/video-tracking'));
 // Video sequences — multi-touch outreach engine
