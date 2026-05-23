@@ -8,15 +8,17 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export interface VideoEngineParams {
-  engine:       'latentsync' | 'heygen' | 'gaussian';
+  engine:       'latentsync' | 'heygen' | 'gaussian' | 'did';
   audioBuffer:  Buffer;
   avatarVideoUrl?: string;   // base video for LatentSync/Gaussian (replica seed or stock)
   avatarId?:    string;      // HeyGen avatar ID
+  didPresenterId?: string;   // D-ID presenter ID
   backgroundUrl?: string;
   aspectRatio?: string;      // '9:16' | '16:9' | '1:1'
   emotionProfile?: any;
   userId?:      string;
-  voiceId?:     string;      // ElevenLabs voice ID for audio (already applied, buffer provided)
+  voiceId?:     string;
+  language?:    string;
 }
 
 export interface VideoEngineResult {
@@ -38,6 +40,11 @@ export async function generateVideo(params: VideoEngineParams): Promise<VideoEng
   if (params.engine === 'gaussian') {
     const url = await generateWithGaussian(params);
     return { videoUrl: url, engine: 'gaussian', durationMs: Date.now() - t0 };
+  }
+
+  if (params.engine === 'did') {
+    const url = await generateWithDID(params);
+    return { videoUrl: url, engine: 'did', durationMs: Date.now() - t0 };
   }
 
   // Default: HeyGen
@@ -227,6 +234,43 @@ async function pollRunPodJob(id: string, timeoutMs: number): Promise<string> {
     if (status === 'FAILED') throw new Error('RunPod job failed');
   }
   throw new Error('RunPod job timed out');
+}
+
+// ─── D-ID (Stock Avatar Engine) ──────────────────────────────────────────────
+// Uses D-ID's presenter library — professional stock avatars, no personal video needed
+// Cost: ~$0.05-0.15 per video, free tier: 5 min/month
+
+async function generateWithDID(params: VideoEngineParams): Promise<string> {
+  const { audioBuffer, didPresenterId, language = 'tr', userId } = params;
+  if (!didPresenterId) throw new Error('D-ID requires didPresenterId');
+  if (!process.env.DID_API_KEY) throw new Error('DID_API_KEY not set');
+
+  const DID_BASE = 'https://api.d-id.com';
+  const encoded  = Buffer.from(process.env.DID_API_KEY).toString('base64');
+  const headers  = { Authorization: `Basic ${encoded}`, 'Content-Type': 'application/json' };
+
+  // Upload audio to Supabase, get public URL for D-ID
+  const audioUrl = await uploadTempBuffer(audioBuffer, `did_audio_${Date.now()}.mp3`, 'audio/mpeg', userId);
+
+  const talkRes = await axios.post(`${DID_BASE}/talks`, {
+    source_url: `https://create-images-results.d-id.com/DefaultPresenters/${didPresenterId}/image.jpeg`,
+    script: { type: 'audio', audio_url: audioUrl },
+    config: { fluent: true, pad_audio: 0.5, stitch: true },
+  }, { headers, timeout: 30000 });
+
+  const talkId = talkRes.data?.id;
+  if (!talkId) throw new Error('D-ID talk creation failed');
+
+  // Poll for completion (max 3 min)
+  const deadline = Date.now() + 180_000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 5000));
+    const statusRes = await axios.get(`${DID_BASE}/talks/${talkId}`, { headers });
+    const { status, result_url, error } = statusRes.data;
+    if (status === 'done' && result_url) return result_url;
+    if (status === 'error') throw new Error(`D-ID error: ${error?.description || 'unknown'}`);
+  }
+  throw new Error('D-ID generation timed out');
 }
 
 // ─── TRAINING HELPERS ─────────────────────────────────────────────────────────

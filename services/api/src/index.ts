@@ -191,6 +191,7 @@ app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-r
 app.use('/api/ads-automation',           authMiddleware, require('./routes/ads-automation'));
 app.use('/api/lead-finder',              authMiddleware, scrapeLimiter, require('./routes/lead-finder'));
 app.use('/api/replica',                  authMiddleware, require('./routes/replica'));
+app.use('/api/avatar-library',           authMiddleware, require('./routes/avatar-library'));
 
 // Activity tracking (pixel is public, rest protected)
 const { router: activityRouter } = require('./routes/activity');
