@@ -444,40 +444,53 @@ async function generateScript(lead: any, profile: any, language: string, researc
 
   const prompt = lines.filter(l => l !== '').join('\n');
 
+  // Attempt 1 — Sonnet (full structured prompt)
   try {
-    const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 600,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    const r = await anthropic.messages.create(
+      { model: 'claude-sonnet-4-6', max_tokens: 600, messages: [{ role: 'user', content: prompt }] },
+      { timeout: 28000 }
+    );
     const text = ((r.content[0] as any)?.text || '').trim();
-    if (text.length > 80) return text;
-    console.error('[Script] Sonnet returned too short:', text.length, 'chars');
-    throw new Error('too_short');
+    if (text) return text; // return anything non-empty
+    throw new Error('empty_response');
   } catch (e1: any) {
-    console.error('[Script] Sonnet error:', e1.message?.slice(0, 120));
-    // Haiku fallback — minimal prompt, no special chars
-    try {
-      const fp = [
-        lang + ' dilinde 85-100 kelimelik video satis scripti.',
-        'Marka: ' + brandName + (ourCompany ? '. Sirket: ' + ourCompany : '') + '.',
-        pains[0] ? 'Sorun: ' + pains[0] + '.' : 'Sektor: ' + (lead.sector || 'ticaret') + '.',
-        'Hook ile ac, sorunu soy, cozumu anlat, 15 dk gorusme iste. Dogal dil. Sadece metin.',
-      ].join(' ');
-      const fb = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: fp }],
-      });
-      const ft = ((fb.content[0] as any)?.text || '').trim();
-      if (ft.length > 60) return ft;
-      throw new Error('haiku_too_short');
-    } catch (e2: any) {
-      console.error('[Script] Haiku error:', e2.message?.slice(0, 80));
-      const p0 = pains[0] || (lead.sector ? lead.sector + ' sektörü' : 'işletmeniz');
-      return brandName + ', işinizi inceledik. ' + p0 + ' konusunda ciddi bir fırsat gördük. ' + (ourCompany || 'Çözümümüz') + ' bunu nasıl ele aldığını 15 dakikalık bir görüşmede anlatabilir miyiz?';
-    }
+    console.error('[Script] Sonnet failed:', e1.message?.slice(0, 150));
   }
+
+  // Attempt 2 — Haiku (simple single-line prompt)
+  try {
+    const fp = lang + ' dilinde 80-100 kelimelik video satis scripti. '
+      + 'Marka: ' + brandName + '. '
+      + (ourCompany ? 'Gonderen sirket: ' + ourCompany + '. ' : '')
+      + (pains[0] ? 'Sorun: ' + pains[0] + '. ' : 'Sektor: ' + (lead.sector || 'ticaret') + '. ')
+      + 'Hook ile ac, sorunu belirt, cozumu anlat, 15 dk gorusme iste. Dogal konusma dili. Sadece metin.';
+    const fb = await anthropic.messages.create(
+      { model: 'claude-haiku-4-5-20251001', max_tokens: 350, messages: [{ role: 'user', content: fp }] },
+      { timeout: 18000 }
+    );
+    const ft = ((fb.content[0] as any)?.text || '').trim();
+    if (ft) return ft;
+    throw new Error('empty_response');
+  } catch (e2: any) {
+    console.error('[Script] Haiku failed:', e2.message?.slice(0, 150));
+  }
+
+  // Attempt 3 — Haiku with absolute minimum prompt
+  try {
+    const mp = brandName + ' icin ' + (lead.sector || 'ticaret') + ' sektorunde ' + lang + ' satis scripti yaz. 80 kelime.';
+    const mr = await anthropic.messages.create(
+      { model: 'claude-haiku-4-5-20251001', max_tokens: 250, messages: [{ role: 'user', content: mp }] },
+      { timeout: 15000 }
+    );
+    const mt = ((mr.content[0] as any)?.text || '').trim();
+    if (mt) return mt;
+  } catch (e3: any) {
+    console.error('[Script] All Claude attempts failed:', e3.message?.slice(0, 100));
+  }
+
+  // Static fallback — only if all Claude calls fail
+  const p0 = pains[0] || (lead.sector ? lead.sector + ' sektörü' : 'işletmeniz');
+  return brandName + ', işinizi inceledik. ' + p0 + ' konusunda ciddi bir fırsat gördük. ' + (ourCompany || 'Çözümümüz') + ' bunu nasıl ele aldığını 15 dakikalık bir görüşmede anlatabilir miyiz?';
 }
 
 // Claude Haiku — hızlı WhatsApp intro (marka adıyla, araştırmaya göre)
@@ -1109,10 +1122,27 @@ router.post('/preview-script', async (req: any, res: any) => {
     if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
 
-    // Lightweight research for preview (fallback only — don't use full web search for previews)
-    const research = await researchFromWebsite(lead, profile);
+    // Check if this lead already has fresh research cached in a recent video record
+    const { data: cached } = await supabase
+      .from('video_outreach')
+      .select('research_data')
+      .eq('lead_id', leadId)
+      .eq('user_id', req.userId)
+      .not('research_data', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+      .catch(() => ({ data: null }));
+
+    const research = (cached as any)?.research_data || await researchLead(lead, profile);
     const script   = await generateScript(lead, profile, language || 'tr', research);
-    res.json({ ok: true, script, leadId, leadName: lead.company_name, brandName: research.brandName, pains: research.pains });
+    res.json({
+      ok: true, script,
+      leadId, leadName: lead.company_name,
+      brandName: research.brandName,
+      pains: research.pains,
+      quality: research.quality,
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1153,6 +1183,34 @@ router.post('/heygen-webhook', async (req: any, res: any) => {
       await supabase.from('video_outreach').update({ status: 'failed', error_message: event_data.error || 'HeyGen hatası' }).eq('id', video.id);
     }
   } catch (e: any) { console.error('[HeyGen Webhook]', e.message); }
+});
+
+// GET /api/video-outreach/test-ai — diagnose Anthropic connectivity
+router.get('/test-ai', async (req: any, res: any) => {
+  const results: any = { env_key_set: !!process.env.ANTHROPIC_API_KEY };
+  try {
+    const r = await anthropic.messages.create(
+      { model: 'claude-haiku-4-5-20251001', max_tokens: 20, messages: [{ role: 'user', content: 'Say OK' }] },
+      { timeout: 10000 }
+    );
+    results.haiku_ok = true;
+    results.haiku_response = (r.content[0] as any)?.text || '';
+  } catch (e: any) {
+    results.haiku_ok = false;
+    results.haiku_error = e.message;
+  }
+  try {
+    const r2 = await anthropic.messages.create(
+      { model: 'claude-sonnet-4-6', max_tokens: 20, messages: [{ role: 'user', content: 'Say OK' }] },
+      { timeout: 15000 }
+    );
+    results.sonnet_ok = true;
+    results.sonnet_response = (r2.content[0] as any)?.text || '';
+  } catch (e: any) {
+    results.sonnet_ok = false;
+    results.sonnet_error = e.message;
+  }
+  res.json(results);
 });
 
 // GET /api/video-outreach/analytics — performance matrix by sector + hook type
