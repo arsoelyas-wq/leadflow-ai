@@ -190,6 +190,7 @@ app.use('/api/sales-intelligence',   authMiddleware, require('./routes/sales-int
 app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-reports'));
 app.use('/api/ads-automation',           authMiddleware, require('./routes/ads-automation'));
 app.use('/api/lead-finder',              authMiddleware, scrapeLimiter, require('./routes/lead-finder'));
+app.use('/api/replica',                  authMiddleware, require('./routes/replica'));
 
 // Activity tracking (pixel is public, rest protected)
 const { router: activityRouter } = require('./routes/activity');

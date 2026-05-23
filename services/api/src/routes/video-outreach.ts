@@ -646,15 +646,35 @@ async function generateReviewCardBackground(research: LeadResearch, brandName: s
   }
 }
 
+// ─── EMOTION + VIDEO ENGINE INTEGRATION ──────────────────────────────────────
+
+const { analyzeEmotion, buildElevenLabsVoiceSettings, enrichScriptWithPauses, serializeProfile } = require('../services/emotion-engine');
+const { generateVideo: generateVideoEngine } = require('../services/video-engine');
+
 // ─── HEYGEN / ELEVENLABS PIPELINE ────────────────────────────────────────────
 
-async function generateAudio(text: string, voiceId: string): Promise<Buffer> {
+async function generateAudio(text: string, voiceId: string, emotionProfile?: any): Promise<Buffer> {
+  const voiceSettings = emotionProfile
+    ? buildElevenLabsVoiceSettings(emotionProfile)
+    : { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true };
+
   const r = await axios.post(
     `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
-    { text, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true } },
+    { text, model_id: 'eleven_turbo_v2_5', voice_settings: voiceSettings },
     { headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }, responseType: 'arraybuffer', timeout: 30000 }
   );
   return Buffer.from(r.data);
+}
+
+// Resolve replica for user — returns null if no replica found (falls back to HeyGen)
+async function getUserReplica(userId: string, replicaId?: string): Promise<any | null> {
+  try {
+    const query = supabase.from('user_replicas').select('*').eq('user_id', userId).eq('status', 'ready');
+    if (replicaId) query.eq('id', replicaId);
+    else query.eq('is_default', true);
+    const { data } = await query.single();
+    return data || null;
+  } catch { return null; }
 }
 
 async function uploadAudioToHeygen(audioBuffer: Buffer): Promise<string> {
@@ -890,18 +910,64 @@ router.post('/generate/single', async (req: any, res: any) => {
           growth_stage: research.growthStage || null,
         }).eq('id', videoRecord?.id);
 
-        // Phase 2.5: Review card background (PIP mode)
+        // Phase 2.5: Emotion analysis + Review card background (PIP mode)
+        const emotionProfile = await analyzeEmotion(script, { sector: lead.sector, pain: research.pains?.[0], brandName: research.brandName }).catch(() => null);
+        const serializedEmotion = emotionProfile ? serializeProfile(emotionProfile) : null;
+        const enrichedScript = emotionProfile ? enrichScriptWithPauses(script, emotionProfile) : script;
+
         let backgroundUrl: string | undefined;
         if (research.pains?.length || research.reviewSummary) {
           const bgUrl = await generateReviewCardBackground(research, research.brandName, videoRecord?.id || 'tmp').catch(() => null);
           if (bgUrl) backgroundUrl = bgUrl;
         }
 
-        // Phase 3: Audio + Video
-        const audioBuffer   = await generateAudio(script, voiceId);
-        const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio, backgroundUrl });
-        await supabase.from('video_outreach').update({ heygen_video_id: heygenVideoId, status: 'processing' }).eq('id', videoRecord?.id);
-        console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName}) score:${score}${backgroundUrl ? ' +reviewCard' : ''}`);
+        // Phase 3: Audio + Video (with emotion + replica support)
+        const replica = await getUserReplica(userId, req.body.replicaId);
+        const audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile);
+
+        let finalVideoUrl: string | undefined;
+        let usedEngine = 'heygen';
+
+        if (replica) {
+          // Use VideoEngine with replica (LatentSync or Gaussian)
+          try {
+            const result = await generateVideoEngine({
+              engine:         replica.engine,
+              audioBuffer,
+              avatarVideoUrl: replica.gaussian_model_url || replica.seed_video_url,
+              backgroundUrl,
+              aspectRatio,
+              userId,
+            });
+            finalVideoUrl = result.videoUrl;
+            usedEngine    = result.engine;
+          } catch (engineErr: any) {
+            console.warn(`[Video] ${replica.engine} failed, falling back to HeyGen:`, engineErr.message);
+          }
+        }
+
+        if (!finalVideoUrl) {
+          // Fallback: HeyGen
+          const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio, backgroundUrl });
+          await supabase.from('video_outreach').update({
+            heygen_video_id: heygenVideoId, status: 'processing',
+            engine: 'heygen',
+            emotion_profile: serializedEmotion,
+            replica_id: replica?.id || null,
+          }).eq('id', videoRecord?.id);
+          console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName}) score:${score}${backgroundUrl ? ' +reviewCard' : ''}`);
+        } else {
+          // Direct video URL from VideoEngine
+          await supabase.from('video_outreach').update({
+            video_url: finalVideoUrl,
+            status: 'completed',
+            engine: usedEngine,
+            emotion_profile: serializedEmotion,
+            replica_id: replica?.id || null,
+            completed_at: new Date().toISOString(),
+          }).eq('id', videoRecord?.id);
+          console.log(`[Video] ${usedEngine} complete (${research.brandName}) score:${score} emotion:${emotionProfile?.primary}`);
+        }
       } catch (err: any) {
         console.error('[Video] Hata:', err.message);
         await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', videoRecord?.id);
@@ -970,23 +1036,56 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           optAt.setHours(ch, cm, 0, 0);
           if (optAt <= nowC) optAt.setDate(optAt.getDate() + 1);
 
-          // Review card background (PIP mode)
+          // Emotion analysis + Review card background (PIP mode)
+          const campEmotion = await analyzeEmotion(script, { sector: lead.sector, pain: research.pains?.[0], brandName: research.brandName }).catch(() => null);
+          const campEnrichedScript = campEmotion ? enrichScriptWithPauses(script, campEmotion) : script;
+
           let campaignBgUrl: string | undefined;
           if (research?.pains?.length || research?.reviewSummary) {
             const bgUrl = await generateReviewCardBackground(research, research.brandName || lead.company_name, leadId).catch(() => null);
             if (bgUrl) campaignBgUrl = bgUrl;
           }
 
-          const audio    = await generateAudio(script, voiceId);
-          const heygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio, backgroundUrl: campaignBgUrl });
-          const code     = makeTrackingCode();
+          const campReplica = await getUserReplica(userId);
+          const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id || voiceId, campEmotion);
+          const code  = makeTrackingCode();
+
+          let campFinalUrl: string | undefined;
+          let campEngine = 'heygen';
+          let campHeygenId: string | undefined;
+
+          if (campReplica) {
+            try {
+              const result = await generateVideoEngine({
+                engine:         campReplica.engine,
+                audioBuffer:    audio,
+                avatarVideoUrl: campReplica.gaussian_model_url || campReplica.seed_video_url,
+                backgroundUrl:  campaignBgUrl,
+                aspectRatio,
+                userId,
+              });
+              campFinalUrl = result.videoUrl;
+              campEngine   = result.engine;
+            } catch { /* fall through to HeyGen */ }
+          }
+
+          if (!campFinalUrl) {
+            campHeygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio, backgroundUrl: campaignBgUrl });
+            campEngine   = 'heygen';
+          }
 
           await supabase.from('video_outreach').insert([{
             user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
             avatar_id: avatarId, voice_id: voiceId,
-            heygen_video_id: heygenId, script,
+            heygen_video_id: campHeygenId,
+            video_url: campFinalUrl,
+            status: campFinalUrl ? 'completed' : 'processing',
+            engine: campEngine,
+            emotion_profile: campEmotion ? serializeProfile(campEmotion) : null,
+            replica_id: campReplica?.id || null,
+            script,
             aspect_ratio: aspectRatio, language: callLang,
-            auto_send: autoSend, status: 'processing',
+            auto_send: autoSend,
             tracking_code: code,
             research_data: research || null,
             research_quality: research?.quality || null,
@@ -1038,15 +1137,49 @@ router.post('/retry/:id', async (req: any, res: any) => {
         const script = video.script || await generateScript(lead, profile, video.language || 'tr', research);
         if (!video.script) await supabase.from('video_outreach').update({ script }).eq('id', video.id);
 
+        const retryEmotion = await analyzeEmotion(script, { sector: lead.sector, pain: research.pains?.[0], brandName: research.brandName }).catch(() => null);
+        const retryScript  = retryEmotion ? enrichScriptWithPauses(script, retryEmotion) : script;
+
         let retryBgUrl: string | undefined;
         if (research.pains?.length || research.reviewSummary) {
           const bgUrl = await generateReviewCardBackground(research, research.brandName, video.id).catch(() => null);
           if (bgUrl) retryBgUrl = bgUrl;
         }
 
-        const audio    = await generateAudio(script, video.voice_id);
-        const heygenId = await generateHeygenVideo({ avatarId: video.avatar_id, audioBuffer: audio, aspectRatio: video.aspect_ratio, backgroundUrl: retryBgUrl });
-        await supabase.from('video_outreach').update({ heygen_video_id: heygenId, status: 'processing' }).eq('id', video.id);
+        const retryReplica = await getUserReplica(req.userId, video.replica_id);
+        const audio = await generateAudio(retryScript, retryReplica?.elevenlabs_voice_id || video.voice_id, retryEmotion);
+
+        let retryFinalUrl: string | undefined;
+        let retryEngine = 'heygen';
+
+        if (retryReplica) {
+          try {
+            const result = await generateVideoEngine({
+              engine:         retryReplica.engine,
+              audioBuffer:    audio,
+              avatarVideoUrl: retryReplica.gaussian_model_url || retryReplica.seed_video_url,
+              backgroundUrl:  retryBgUrl,
+              aspectRatio:    video.aspect_ratio,
+              userId:         req.userId,
+            });
+            retryFinalUrl = result.videoUrl;
+            retryEngine   = result.engine;
+          } catch { /* fall through */ }
+        }
+
+        if (!retryFinalUrl) {
+          const heygenId = await generateHeygenVideo({ avatarId: video.avatar_id, audioBuffer: audio, aspectRatio: video.aspect_ratio, backgroundUrl: retryBgUrl });
+          await supabase.from('video_outreach').update({
+            heygen_video_id: heygenId, status: 'processing', engine: 'heygen',
+            emotion_profile: retryEmotion ? serializeProfile(retryEmotion) : null,
+          }).eq('id', video.id);
+        } else {
+          await supabase.from('video_outreach').update({
+            video_url: retryFinalUrl, status: 'completed', engine: retryEngine,
+            emotion_profile: retryEmotion ? serializeProfile(retryEmotion) : null,
+            completed_at: new Date().toISOString(),
+          }).eq('id', video.id);
+        }
       } catch (err: any) {
         await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', video.id);
       }
