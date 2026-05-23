@@ -5,12 +5,15 @@
 
 FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel
 
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
 WORKDIR /app
 
 # ── System dependencies ────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y \
     git wget curl ffmpeg libsm6 libxext6 libglib2.0-0 \
-    libgl1-mesa-glx build-essential \
+    libgl1-mesa-glx build-essential tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python base deps ───────────────────────────────────────────────────────────
