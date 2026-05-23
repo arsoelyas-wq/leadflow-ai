@@ -643,7 +643,7 @@ function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, aut
 const STATUS_MESSAGES: Record<string, { label: string; desc: string; color: string }> = {
   researching: { label: 'Araştırılıyor', desc: 'Web sitesi, sosyal medya ve müşteri yorumları analiz ediliyor...', color: 'text-amber-400' },
   generating:  { label: 'Script Yazılıyor', desc: 'Claude PAS çerçevesinde kişisel script yazıyor...', color: 'text-blue-400' },
-  processing:  { label: 'Video Oluşturuluyor', desc: 'HeyGen avatarla video render ediliyor...', color: 'text-purple-400' },
+  processing:  { label: 'Video Oluşturuluyor', desc: 'AI video motoru render ediyor...', color: 'text-purple-400' },
 }
 
 // ADIM 6: Sonuç — single video
@@ -651,16 +651,24 @@ function StepResultSingle({ videoId, onReset }: { videoId: string; onReset: () =
   const [status, setStatus] = useState('researching')
   const [videoUrl, setVideoUrl] = useState('')
   const [research, setResearch] = useState<any>(null)
+  const [errorMsg, setErrorMsg] = useState('')
   const [checking, setChecking] = useState(false)
+  const [retrying, setRetrying] = useState(false)
 
   useEffect(() => {
     checkStatus()
-    const interval = setInterval(checkStatus, 8000)
+    const interval = setInterval(() => {
+      setStatus(s => {
+        if (s === 'completed' || s === 'failed') return s
+        checkStatus()
+        return s
+      })
+    }, 8000)
     return () => clearInterval(interval)
   }, [videoId])
 
   async function checkStatus() {
-    if (!videoId || status === 'completed' || status === 'failed') return
+    if (!videoId) return
     setChecking(true)
     try {
       const r = await fetch(`${API}/api/video-outreach/status/${videoId}`, { headers: authH() })
@@ -668,8 +676,19 @@ function StepResultSingle({ videoId, onReset }: { videoId: string; onReset: () =
       if (d.status) setStatus(d.status)
       if (d.video_url) setVideoUrl(d.video_url)
       if (d.research_data) setResearch(d.research_data)
+      if (d.error_message) setErrorMsg(d.error_message)
     } catch {}
     setChecking(false)
+  }
+
+  async function retryVideo() {
+    setRetrying(true)
+    try {
+      const r = await fetch(`${API}/api/video-outreach/retry/${videoId}`, { method: 'POST', headers: authH() })
+      const d = await r.json()
+      if (d.ok) { setStatus('researching'); setErrorMsg('') }
+    } catch {}
+    setRetrying(false)
   }
 
   const statusInfo = STATUS_MESSAGES[status]
@@ -750,7 +769,26 @@ function StepResultSingle({ videoId, onReset }: { videoId: string; onReset: () =
           <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="w-8 h-8 text-red-400"/>
           </div>
-          <p className="text-red-400">Video oluşturulamadı. HeyGen kredisi gerekiyor.</p>
+          <p className="text-red-400 font-medium">Video oluşturulamadı</p>
+          {errorMsg && (
+            <div className="max-w-sm mx-auto px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
+              <p className="text-red-300 text-xs">{errorMsg}</p>
+            </div>
+          )}
+          {(errorMsg?.toLowerCase().includes('heygen') || errorMsg?.toLowerCase().includes('kredi') || errorMsg?.toLowerCase().includes('credit')) && (
+            <div className="max-w-sm mx-auto p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-left space-y-2">
+              <p className="text-amber-300 text-sm font-semibold">HeyGen kredisi bitti</p>
+              <p className="text-amber-400/80 text-xs">Kendi AI replikasını oluşturarak HeyGen'e gerek kalmadan video üretebilirsin.</p>
+              <a href="/replica" className="inline-flex items-center gap-1.5 mt-1 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 rounded-lg text-white text-xs font-medium transition-colors">
+                AI Replika Oluştur →
+              </a>
+            </div>
+          )}
+          <button onClick={retryVideo} disabled={retrying}
+            className="flex items-center gap-2 mx-auto px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+            <RefreshCw className={`w-3.5 h-3.5 ${retrying ? 'animate-spin' : ''}`}/>
+            {retrying ? 'Yeniden deneniyor...' : 'Yeniden Dene'}
+          </button>
         </div>
       ) : null}
 
