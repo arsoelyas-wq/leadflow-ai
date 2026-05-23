@@ -6,14 +6,6 @@ const { createClient } = require('@supabase/supabase-js');
 const router   = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-const DID_BASE = 'https://api.d-id.com';
-
-function didHeaders() {
-  const key = process.env.DID_API_KEY || '';
-  const encoded = Buffer.from(key).toString('base64');
-  return { Authorization: `Basic ${encoded}`, 'Content-Type': 'application/json' };
-}
-
 // ─── GET /api/avatar-library — list all stock avatars ────────────────────────
 
 router.get('/', async (req: any, res: any) => {
@@ -25,12 +17,12 @@ router.get('/', async (req: any, res: any) => {
       .select('*')
       .eq('is_active', true)
       .order('is_featured', { ascending: false })
-      .order('sort_order', { ascending: true });
+      .order('sort_order',  { ascending: true });
 
-    if (gender)   query = query.eq('gender', gender);
-    if (style)    query = query.eq('style', style);
+    if (gender)              query = query.eq('gender', gender);
+    if (style)               query = query.eq('style', style);
     if (featured === 'true') query = query.eq('is_featured', true);
-    if (language) query = query.contains('languages', [language]);
+    if (language)            query = query.contains('languages', [language]);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -54,74 +46,36 @@ router.get('/:id', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── POST /api/avatar-library/:id/preview — generate 5-sec D-ID preview ─────
+// ─── GET /api/avatar-library/:id/preview-url ─────────────────────────────────
+// Returns seed video URL directly — no generation needed, just show the person
 
-router.post('/:id/preview', async (req: any, res: any) => {
+router.get('/:id/preview-url', async (req: any, res: any) => {
   try {
-    const { text = 'Merhaba! Ben sizin için buradayım. Nasıl yardımcı olabilirim?' } = req.body || {};
-
     const { data: avatar } = await supabase
       .from('stock_avatars')
-      .select('*')
+      .select('id, latentsync_video_url, preview_video_url, thumbnail_url')
       .eq('id', req.params.id)
       .single();
 
     if (!avatar) return res.status(404).json({ error: 'Avatar bulunamadı' });
 
-    if (avatar.preview_video_url) {
-      return res.json({ videoUrl: avatar.preview_video_url, cached: true });
-    }
-
-    if (!avatar.did_presenter_id) {
-      return res.status(400).json({ error: 'Bu avatar için önizleme mevcut değil' });
-    }
-
-    if (!process.env.DID_API_KEY) {
-      return res.status(400).json({ error: 'DID_API_KEY yapılandırılmamış' });
-    }
-
-    // Generate via D-ID
-    const talkRes = await axios.post(`${DID_BASE}/talks`, {
-      source_url: `https://create-images-results.d-id.com/DefaultPresenters/${avatar.did_presenter_id}/image.jpeg`,
-      script: {
-        type: 'text',
-        input: text.slice(0, 200),
-        provider: {
-          type: 'microsoft',
-          voice_id: 'tr-TR-EmelNeural',
-        },
-      },
-      config: { fluent: true, pad_audio: 0.0 },
-    }, { headers: didHeaders(), timeout: 30000 });
-
-    const talkId = talkRes.data?.id;
-    if (!talkId) return res.status(500).json({ error: 'D-ID talk oluşturulamadı' });
-
-    // Poll for result (max 90s)
-    let videoUrl = '';
-    for (let i = 0; i < 18; i++) {
-      await new Promise(r => setTimeout(r, 5000));
-      const statusRes = await axios.get(`${DID_BASE}/talks/${talkId}`, { headers: didHeaders() });
-      const { status, result_url } = statusRes.data;
-      if (status === 'done' && result_url) { videoUrl = result_url; break; }
-      if (status === 'error') return res.status(500).json({ error: 'D-ID önizleme hatası' });
-    }
-
-    if (!videoUrl) return res.status(504).json({ error: 'D-ID önizleme zaman aşımı' });
-
-    // Cache preview URL
-    await supabase.from('stock_avatars').update({ preview_video_url: videoUrl }).eq('id', avatar.id);
-
-    res.json({ videoUrl });
+    res.json({
+      previewVideoUrl: avatar.preview_video_url || avatar.latentsync_video_url || null,
+      thumbnailUrl:   avatar.thumbnail_url || null,
+      hasSeedVideo:   !!avatar.latentsync_video_url,
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── POST /api/avatar-library/generate — generate full video with stock avatar
+// ─── POST /api/avatar-library/generate ───────────────────────────────────────
+// Start LatentSync job for a stock avatar + audio URL
+// Returns predictionId — poll /replicate/status/:id for completion
 
 router.post('/generate', async (req: any, res: any) => {
   try {
-    const { avatarId, audioUrl, language = 'tr', voiceId } = req.body || {};
-    if (!avatarId) return res.status(400).json({ error: 'avatarId required' });
+    const { avatarId, audioUrl } = req.body || {};
+    if (!avatarId)  return res.status(400).json({ error: 'avatarId gerekli' });
+    if (!audioUrl)  return res.status(400).json({ error: 'audioUrl gerekli' });
 
     const { data: avatar } = await supabase
       .from('stock_avatars')
@@ -129,99 +83,147 @@ router.post('/generate', async (req: any, res: any) => {
       .eq('id', avatarId)
       .single();
 
-    if (!avatar) return res.status(404).json({ error: 'Avatar bulunamadı' });
+    if (!avatar)                      return res.status(404).json({ error: 'Avatar bulunamadı' });
+    if (!avatar.latentsync_video_url) return res.status(400).json({ error: 'Bu avatar için seed video henüz yüklenmedi. Admin panelinden yükleyin.' });
+    if (!process.env.REPLICATE_API_TOKEN) return res.status(400).json({ error: 'REPLICATE_API_TOKEN yapılandırılmamış' });
 
-    if (!process.env.DID_API_KEY) {
-      return res.status(400).json({ error: 'DID_API_KEY yapılandırılmamış' });
-    }
+    const replicateRes = await axios.post(
+      'https://api.replicate.com/v1/predictions',
+      {
+        version: 'a84b0568a4ef50a63d0e9e1d2e7b47daed1b17e35fed7e8fbe4b70bce3a2bea5',
+        input: {
+          video:     avatar.latentsync_video_url,
+          audio:     audioUrl,
+          sync_conf: 0.85,
+          fps:       25,
+        },
+      },
+      {
+        headers: {
+          Authorization:  `Token ${process.env.REPLICATE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
 
-    if (!avatar.did_presenter_id) {
-      return res.status(400).json({ error: 'Bu avatar D-ID ile desteklenmiyor' });
-    }
+    const predictionId = replicateRes.data?.id;
+    if (!predictionId) return res.status(500).json({ error: 'Replicate job başlatılamadı' });
 
-    const voiceMap: Record<string, string> = {
-      tr: 'tr-TR-EmelNeural',
-      en: 'en-US-JennyNeural',
-      de: 'de-DE-KatjaNeural',
-      ar: 'ar-SA-ZariyahNeural',
-      fr: 'fr-FR-DeniseNeural',
-      ru: 'ru-RU-SvetlanaNeural',
-      es: 'es-ES-ElviraNeural',
-    };
+    res.json({ predictionId, provider: 'replicate-latentsync', avatarName: avatar.display_name });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── GET /api/avatar-library/replicate/status/:id — poll Replicate ───────────
+
+router.get('/replicate/status/:predId', async (req: any, res: any) => {
+  try {
+    if (!process.env.REPLICATE_API_TOKEN) return res.status(400).json({ error: 'REPLICATE_API_TOKEN eksik' });
+
+    const r = await axios.get(
+      `https://api.replicate.com/v1/predictions/${req.params.predId}`,
+      { headers: { Authorization: `Token ${process.env.REPLICATE_API_TOKEN}` }, timeout: 10000 }
+    );
+
+    const { status, output, error } = r.data;
+    const videoUrl = status === 'succeeded' && output
+      ? (Array.isArray(output) ? output[0] : output)
+      : null;
+
+    res.json({ status, videoUrl, error: error || null });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Admin: POST /api/avatar-library/admin/upload-url ────────────────────────
+// Get a signed Supabase upload URL for a seed video
+
+router.post('/admin/upload-url', async (req: any, res: any) => {
+  try {
+    const { filename, contentType = 'video/mp4' } = req.body || {};
+    if (!filename) return res.status(400).json({ error: 'filename gerekli' });
+
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path     = `avatar-seeds/${Date.now()}_${safeName}`;
+
+    const { data, error } = await supabase.storage
+      .from('video-assets')
+      .createSignedUploadUrl(path, { upsert: true });
+
+    if (error) throw error;
+
+    const { data: pubData } = supabase.storage.from('video-assets').getPublicUrl(path);
+
+    res.json({ uploadUrl: data.signedUrl, publicUrl: pubData.publicUrl, path });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Admin: POST /api/avatar-library/admin/upsert ────────────────────────────
+// Create or update a stock avatar record
+
+router.post('/admin/upsert', async (req: any, res: any) => {
+  try {
+    const {
+      id, name, display_name, gender = 'neutral', age_group = 'adult',
+      style = 'professional', languages = ['tr', 'en'],
+      thumbnail_url, latentsync_video_url, preview_video_url,
+      tags = [], is_featured = false, sort_order = 99, is_active = true,
+    } = req.body || {};
+
+    if (!name)         return res.status(400).json({ error: 'name gerekli' });
+    if (!display_name) return res.status(400).json({ error: 'display_name gerekli' });
 
     const payload: any = {
-      source_url: `https://create-images-results.d-id.com/DefaultPresenters/${avatar.did_presenter_id}/image.jpeg`,
-      config: { fluent: true, pad_audio: 0.5, stitch: true },
+      name, display_name, gender, age_group, style, languages,
+      thumbnail_url, latentsync_video_url, preview_video_url,
+      tags, is_featured, sort_order, is_active,
     };
 
-    if (audioUrl) {
-      payload.script = { type: 'audio', audio_url: audioUrl };
+    let result;
+    if (id) {
+      const { data, error } = await supabase
+        .from('stock_avatars')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
     } else {
-      payload.script = {
-        type: 'text',
-        input: 'Bu bir test mesajıdır.',
-        provider: { type: 'microsoft', voice_id: voiceMap[language] || 'tr-TR-EmelNeural' },
-      };
+      const { data, error } = await supabase
+        .from('stock_avatars')
+        .upsert([payload], { onConflict: 'name' })
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
     }
 
-    const talkRes = await axios.post(`${DID_BASE}/talks`, payload, {
-      headers: didHeaders(), timeout: 30000,
-    });
-
-    res.json({ talkId: talkRes.data?.id, provider: 'd-id' });
+    res.json({ ok: true, avatar: result });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── GET /api/avatar-library/did/status/:talkId — poll D-ID job ──────────────
+// ─── Admin: POST /api/avatar-library/admin/test-latentsync ───────────────────
+// Quick test: run LatentSync on an avatar with a sample audio to verify quality
 
-router.get('/did/status/:talkId', async (req: any, res: any) => {
+router.post('/admin/test-latentsync', async (req: any, res: any) => {
   try {
-    if (!process.env.DID_API_KEY) return res.status(400).json({ error: 'DID_API_KEY eksik' });
+    const { avatarId, testAudioUrl } = req.body || {};
+    if (!avatarId || !testAudioUrl) return res.status(400).json({ error: 'avatarId ve testAudioUrl gerekli' });
+    if (!process.env.REPLICATE_API_TOKEN) return res.status(400).json({ error: 'REPLICATE_API_TOKEN eksik' });
 
-    const r = await axios.get(`${DID_BASE}/talks/${req.params.talkId}`, {
-      headers: didHeaders(), timeout: 15000,
-    });
-    res.json({
-      status:    r.data.status,
-      videoUrl:  r.data.result_url || null,
-      error:     r.data.error?.description || null,
-    });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
+    const { data: avatar } = await supabase.from('stock_avatars').select('*').eq('id', avatarId).single();
+    if (!avatar?.latentsync_video_url) return res.status(400).json({ error: 'Avatar seed video yok' });
 
-// ─── Admin: POST /api/avatar-library/admin/sync-did ──────────────────────────
-// Fetch D-ID's full presenter list and upsert into our table
+    const r = await axios.post(
+      'https://api.replicate.com/v1/predictions',
+      {
+        version: 'a84b0568a4ef50a63d0e9e1d2e7b47daed1b17e35fed7e8fbe4b70bce3a2bea5',
+        input: { video: avatar.latentsync_video_url, audio: testAudioUrl, sync_conf: 0.85, fps: 25 },
+      },
+      { headers: { Authorization: `Token ${process.env.REPLICATE_API_TOKEN}`, 'Content-Type': 'application/json' } }
+    );
 
-router.post('/admin/sync-did', async (req: any, res: any) => {
-  try {
-    if (!process.env.DID_API_KEY) return res.status(400).json({ error: 'DID_API_KEY eksik' });
-
-    const r = await axios.get(`${DID_BASE}/presenters`, {
-      headers: didHeaders(),
-      params: { limit: 100 },
-      timeout: 20000,
-    });
-
-    const presenters = r.data?.presenters || [];
-    let upserted = 0;
-
-    for (const p of presenters) {
-      const gender = p.gender === 'male' ? 'male' : p.gender === 'female' ? 'female' : 'neutral';
-      await supabase.from('stock_avatars').upsert([{
-        name:            `did_${p.presenter_id}`,
-        display_name:    p.name || p.presenter_id,
-        gender,
-        age_group:       'adult',
-        style:           'professional',
-        languages:       ['en', 'tr'],
-        thumbnail_url:   p.thumbnail_url || null,
-        did_presenter_id: p.presenter_id,
-        is_active:       true,
-      }], { onConflict: 'name' });
-      upserted++;
-    }
-
-    res.json({ ok: true, synced: upserted });
+    res.json({ predictionId: r.data?.id, message: `Test başlatıldı — /api/avatar-library/replicate/status/${r.data?.id} ile takip edin` });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

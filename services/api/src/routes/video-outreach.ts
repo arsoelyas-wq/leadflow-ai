@@ -677,6 +677,19 @@ async function getUserReplica(userId: string, replicaId?: string): Promise<any |
   } catch { return null; }
 }
 
+// Resolve stock avatar seed video URL
+async function getStockAvatarVideoUrl(stockAvatarId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('stock_avatars')
+      .select('latentsync_video_url, display_name')
+      .eq('id', stockAvatarId)
+      .eq('is_active', true)
+      .single();
+    return data?.latentsync_video_url || null;
+  } catch { return null; }
+}
+
 async function uploadAudioToHeygen(audioBuffer: Buffer): Promise<string> {
   const r = await axios.post(
     'https://upload.heygen.com/v1/asset',
@@ -921,15 +934,34 @@ router.post('/generate/single', async (req: any, res: any) => {
           if (bgUrl) backgroundUrl = bgUrl;
         }
 
-        // Phase 3: Audio + Video (with emotion + replica support)
-        const replica = await getUserReplica(userId, req.body.replicaId);
-        const audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile);
+        // Phase 3: Audio + Video (with emotion + replica + stock avatar support)
+        const replica        = await getUserReplica(userId, req.body.replicaId);
+        const stockAvatarId  = req.body.stockAvatarId as string | undefined;
+        const stockSeedUrl   = stockAvatarId ? await getStockAvatarVideoUrl(stockAvatarId) : null;
+        const audioBuffer    = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile);
 
         let finalVideoUrl: string | undefined;
         let usedEngine = 'heygen';
 
-        if (replica) {
-          // Use VideoEngine with replica (LatentSync or Gaussian)
+        // Priority: stock avatar > personal replica > HeyGen
+        if (stockSeedUrl) {
+          // Stock avatar: always LatentSync
+          try {
+            const result = await generateVideoEngine({
+              engine:         'latentsync',
+              audioBuffer,
+              avatarVideoUrl: stockSeedUrl,
+              backgroundUrl,
+              aspectRatio,
+              userId,
+            });
+            finalVideoUrl = result.videoUrl;
+            usedEngine    = 'latentsync';
+          } catch (engineErr: any) {
+            console.warn('[Video] LatentSync (stock avatar) failed:', engineErr.message);
+          }
+        } else if (replica) {
+          // Personal replica: LatentSync or Gaussian
           try {
             const result = await generateVideoEngine({
               engine:         replica.engine,
@@ -1046,7 +1078,9 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             if (bgUrl) campaignBgUrl = bgUrl;
           }
 
-          const campReplica = await getUserReplica(userId);
+          const campReplica       = await getUserReplica(userId);
+          const campStockAvatarId = req.body.stockAvatarId as string | undefined;
+          const campStockSeedUrl  = campStockAvatarId ? await getStockAvatarVideoUrl(campStockAvatarId) : null;
           const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id || voiceId, campEmotion);
           const code  = makeTrackingCode();
 
@@ -1054,7 +1088,20 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           let campEngine = 'heygen';
           let campHeygenId: string | undefined;
 
-          if (campReplica) {
+          if (campStockSeedUrl) {
+            try {
+              const result = await generateVideoEngine({
+                engine:         'latentsync',
+                audioBuffer:    audio,
+                avatarVideoUrl: campStockSeedUrl,
+                backgroundUrl:  campaignBgUrl,
+                aspectRatio,
+                userId,
+              });
+              campFinalUrl = result.videoUrl;
+              campEngine   = 'latentsync';
+            } catch (e: any) { console.warn('[Campaign] LatentSync (stock) failed:', e.message); }
+          } else if (campReplica) {
             try {
               const result = await generateVideoEngine({
                 engine:         campReplica.engine,

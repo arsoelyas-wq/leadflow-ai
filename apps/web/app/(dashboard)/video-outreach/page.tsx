@@ -1112,13 +1112,18 @@ export default function VideoOutreachPage() {
   async function generate() {
     setGenerating(true)
     try {
+      const isStockAvatar  = selectedAvatar?._source === 'stock'
+      const avatarPayload  = isStockAvatar
+        ? { stockAvatarId: selectedAvatar.id }
+        : { avatarId: selectedAvatar?.avatar_id }
+
       if (selectedLead.length === 1) {
         const leadScript = scripts.find((s: any) => s.leadId === selectedLead[0].id)
         const r = await fetch(`${API}/api/video-outreach/generate/single`, {
           method: 'POST', headers: authH(),
           body: JSON.stringify({
             leadId: selectedLead[0].id,
-            avatarId: selectedAvatar.avatar_id,
+            ...avatarPayload,
             voiceId: selectedVoice.voice_id,
             aspectRatio, language, autoSend,
             customScript: leadScript?.script || null,
@@ -1132,7 +1137,7 @@ export default function VideoOutreachPage() {
           method: 'POST', headers: authH(),
           body: JSON.stringify({
             leadIds: selectedLead.map((l: any) => l.id),
-            avatarId: selectedAvatar.avatar_id,
+            ...avatarPayload,
             voiceId: selectedVoice.voice_id,
             aspectRatio, language: language || undefined, autoSend,
             campaignName: `Video — ${new Date().toLocaleDateString('tr-TR')}`,
