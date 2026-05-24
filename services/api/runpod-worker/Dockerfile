@@ -50,32 +50,34 @@ RUN pip install --no-cache-dir basicsr facexlib
 RUN pip install --no-cache-dir "numpy<2.0"
 
 # ── Download MuseTalk model weights into the image ────────────────────────────
-# Models are baked in so workers start instantly with no first-run download
+# TMElyralab/MuseTalk HuggingFace repo contains ALL required models:
+# dwpose, musetalk, sd-vae-ft-mse, face-parse-bisent
 WORKDIR /app/MuseTalk
-RUN mkdir -p models/dwpose models/musetalk models/sd-vae-ft-mse models/whisper models/face-parse-bisent
+RUN python - <<'PYEOF'
+from huggingface_hub import snapshot_download
+import shutil, os, sys
 
-# DWPose (pose estimation) — ~350 MB
-RUN wget -q -O models/dwpose/dw-ll_ucoco_384.pth \
-    "https://huggingface.co/yzd-v/DWPose/resolve/main/dw-ll_ucoco_384.pth" && \
-    wget -q -O models/dwpose/dw-mm_ucoco.onnx \
-    "https://huggingface.co/yzd-v/DWPose/resolve/main/dw-mm_ucoco.onnx"
+print("Downloading MuseTalk models from HuggingFace (~1.5 GB)...")
+tmp = "/tmp/musetalk_hf"
+snapshot_download(
+    "TMElyralab/MuseTalk",
+    local_dir=tmp,
+    local_dir_use_symlinks=False,
+    ignore_patterns=["*.md", "*.txt", "assets/*", "*.py"],
+)
+src = os.path.join(tmp, "models")
+dst = "/app/MuseTalk/models"
+if not os.path.isdir(src):
+    print("ERROR: models dir not found in HuggingFace repo"); sys.exit(1)
+if os.path.exists(dst):
+    shutil.rmtree(dst)
+shutil.copytree(src, dst)
+shutil.rmtree(tmp)
+print("Done. Models at:", os.listdir(dst))
+PYEOF
 
-# MuseTalk checkpoint — ~500 MB
-RUN wget -q -O models/musetalk/musetalk.pth \
-    "https://huggingface.co/TMElyralab/MuseTalk/resolve/main/models/musetalk/musetalk.pth"
-
-# Whisper tiny (lip-sync timing) — ~70 MB
-RUN wget -q -O models/whisper/tiny.pt \
-    "https://openaipublic.azureedge.net/main/whisper/models/65147644a518d12f04e32d6f3b26facc3f8dd46e5390956a9424a650c0ce22b9/tiny.pt"
-
-# SD VAE (image decoding) — ~320 MB
-RUN python -c "\
-from huggingface_hub import snapshot_download; \
-snapshot_download('stabilityai/sd-vae-ft-mse', local_dir='models/sd-vae-ft-mse', local_dir_use_symlinks=False)"
-
-# Face-parse-bisent — ~50 MB
-RUN wget -q -O models/face-parse-bisent/79999_iter.pth \
-    "https://huggingface.co/TMElyralab/MuseTalk/resolve/main/models/face-parse-bisent/79999_iter.pth" || true
+# Pre-cache Whisper tiny (70 MB) — downloaded at /root/.cache/whisper/
+RUN python -c "import whisper; whisper.load_model('tiny'); print('Whisper cached')"
 
 # ── Handler ────────────────────────────────────────────────────────────────────
 COPY handler.py /app/handler.py
