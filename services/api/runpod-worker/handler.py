@@ -69,41 +69,55 @@ def run_cmd(cmd: list, cwd: str = None, timeout: int = 300) -> str:
 
 # ── model initialization (runs once per worker, cached in /app/weights volume) ─
 
+def _link_models():
+    """Symlink WEIGHTS_DIR/MuseTalk/models → /app/MuseTalk/models so scripts find them."""
+    src = os.path.join(WEIGHTS_DIR, "MuseTalk", "models")
+    dst = "/app/MuseTalk/models"
+    if os.path.islink(dst) or os.path.exists(dst):
+        return
+    if os.path.isdir(src):
+        os.symlink(src, dst)
+        log(f"Symlinked {dst} → {src}")
+    else:
+        log(f"WARNING: {src} not found, models may be missing")
+
+
 def ensure_models():
     """Download model weights if not already present in the mounted volume."""
     marker = Path(WEIGHTS_DIR) / ".ready"
     if marker.exists():
         log("Models already cached — skipping download")
+        _link_models()
         return
 
     log("First run — downloading model weights (takes ~5-10 min)...")
-    os.makedirs(WEIGHTS_DIR, exist_ok=True)
+    musetalk_weights = os.path.join(WEIGHTS_DIR, "MuseTalk")
+    os.makedirs(musetalk_weights, exist_ok=True)
 
-    # MuseTalk weights via HuggingFace Hub
+    # MuseTalk weights via HuggingFace Hub → WEIGHTS_DIR/MuseTalk/
     run_cmd([
         "python", "-c",
-        """
+        f"""
 from huggingface_hub import snapshot_download
-import os
 snapshot_download(
     'TMElyralab/MuseTalk',
-    local_dir='/app/weights/MuseTalk',
+    local_dir='{musetalk_weights}',
     local_dir_use_symlinks=False,
 )
 print('MuseTalk weights downloaded')
 """,
     ], timeout=600)
 
-    # CodeFormer weights
+    # CodeFormer weights → WEIGHTS_DIR/CodeFormer/
+    codeformer_weights = os.path.join(WEIGHTS_DIR, "CodeFormer")
+    os.makedirs(codeformer_weights, exist_ok=True)
     run_cmd([
         "python", "-c",
-        """
+        f"""
 from basicsr.utils.download_util import load_file_from_url
-import os
-os.makedirs('/app/weights/CodeFormer', exist_ok=True)
 load_file_from_url(
     'https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth',
-    model_dir='/app/weights/CodeFormer',
+    model_dir='{codeformer_weights}',
     progress=True,
     file_name='codeformer.pth',
 )
@@ -111,6 +125,7 @@ load_file_from_url(
     ], timeout=300)
 
     marker.touch()
+    _link_models()
     log("All weights ready")
 
 # ── stage 1: MuseTalk talking head generation ──────────────────────────────────
