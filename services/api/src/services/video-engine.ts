@@ -73,8 +73,14 @@ async function generateWithMuseTalk(params: VideoEngineParams): Promise<Omit<Vid
 
   const audioUrl = await uploadTempBuffer(audioBuffer, `audio_${Date.now()}.mp3`, 'audio/mpeg', userId);
 
+  const runpodUrl = `https://api.runpod.io/v2/${process.env.RUNPOD_ENDPOINT_ID}/run`;
+  console.log(`[MuseTalk] audioUrl=${audioUrl}`);
+  console.log(`[MuseTalk] runpodUrl=${runpodUrl}`);
+  console.log(`[MuseTalk] RUNPOD_ENDPOINT_ID=${process.env.RUNPOD_ENDPOINT_ID}`);
+  console.log(`[MuseTalk] RUNPOD_API_KEY set=${!!process.env.RUNPOD_API_KEY}`);
+
   const runRes = await axios.post(
-    `https://api.runpod.io/v2/${process.env.RUNPOD_ENDPOINT_ID}/run`,
+    runpodUrl,
     {
       input: {
         seed_video_url: avatarVideoUrl,
