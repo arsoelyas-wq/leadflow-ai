@@ -132,21 +132,46 @@ load_file_from_url(
 
 def run_museTalk(video_path: str, audio_path: str, output_path: str):
     """
-    MuseTalk: takes a seed video + audio → generates a talking head video
-    with natural lip sync, eye blinks, and facial micro-expressions.
-    Quality: ⭐⭐⭐⭐⭐ — significantly better than LatentSync
+    MuseTalk v1.5: seed video + audio → talking head video via OmegaConf config.
+    CLI takes --inference_config YAML, not --video_path / --audio_path directly.
     """
-    log("Stage 1: MuseTalk inference")
-    run_cmd([
-        sys.executable, "-m", "scripts.inference",
-        "--video_path",  video_path,
-        "--audio_path",  audio_path,
-        "--output_path", output_path,
-        "--use_float16",
-        "--fps", "25",
-    ], cwd=MUSETALK_DIR, timeout=300)
+    log("Stage 1: MuseTalk v1.5 inference")
+    import shutil as _shutil
+
+    with tempfile.TemporaryDirectory() as infer_tmp:
+        # Write OmegaConf-compatible YAML config
+        config_path = os.path.join(infer_tmp, "infer.yaml")
+        with open(config_path, "w") as f:
+            f.write(f'task_0:\n  video_path: "{video_path}"\n  audio_path: "{audio_path}"\n')
+
+        result_dir = os.path.join(infer_tmp, "results")
+        os.makedirs(result_dir, exist_ok=True)
+
+        run_cmd([
+            sys.executable, "-m", "scripts.inference",
+            "--inference_config", config_path,
+            "--result_dir",       result_dir,
+            "--unet_model_path",  "models/musetalkV15/unet.pth",
+            "--whisper_dir",      "models/whisper",
+            "--use_float16",
+            "--fps",              "25",
+            "--version",          "v15",
+        ], cwd=MUSETALK_DIR, timeout=300)
+
+        # Output: {result_dir}/v15/{video_stem}_{audio_stem}.mp4
+        video_stem = Path(video_path).stem
+        audio_stem = Path(audio_path).stem
+        expected = Path(result_dir) / "v15" / f"{video_stem}_{audio_stem}.mp4"
+        if not expected.exists():
+            candidates = list(Path(result_dir).rglob("*.mp4"))
+            if not candidates:
+                raise RuntimeError(f"MuseTalk produced no output (expected {expected})")
+            expected = candidates[0]
+
+        _shutil.copy(str(expected), output_path)
+
     if not Path(output_path).exists():
-        raise RuntimeError("MuseTalk produced no output")
+        raise RuntimeError("MuseTalk produced no output after copy")
     log(f"MuseTalk done → {Path(output_path).stat().st_size // 1024} KB")
 
 # ── stage 2: CodeFormer face restoration ──────────────────────────────────────
