@@ -73,7 +73,7 @@ async function generateWithMuseTalk(params: VideoEngineParams): Promise<Omit<Vid
 
   const audioUrl = await uploadTempBuffer(audioBuffer, `audio_${Date.now()}.mp3`, 'audio/mpeg', userId);
 
-  const runpodUrl = `https://api.runpod.io/v2/${process.env.RUNPOD_ENDPOINT_ID}/run`;
+  const runpodUrl = `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/run`;
   console.log(`[MuseTalk] audioUrl=${audioUrl}`);
   console.log(`[MuseTalk] runpodUrl=${runpodUrl}`);
   console.log(`[MuseTalk] RUNPOD_ENDPOINT_ID=${process.env.RUNPOD_ENDPOINT_ID}`);
@@ -240,7 +240,7 @@ async function pollRunPodJob(id: string, timeoutMs: number): Promise<any> {
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 8000));
     const res = await axios.get(
-      `https://api.runpod.io/v2/${process.env.RUNPOD_ENDPOINT_ID}/status/${id}`,
+      `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/status/${id}`,
       { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}` } }
     );
     const { status, output } = res.data;
