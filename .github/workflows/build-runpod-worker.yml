@@ -105,16 +105,16 @@ jobs:
           )
           print(f"  resnet18 OK ({os.path.getsize(resnet_dst) // (1024*1024)} MB)")
 
-          # 79999_iter.pth via gdown (Google Drive)
+          # 79999_iter.pth via gdown (Google Drive) — positional url_or_id syntax
           bisent_dst = os.path.join(fp_dir, "79999_iter.pth")
-          r = subprocess.run(
-              [sys.executable, "-m", "gdown",
-               "--id", "154JgKpzCPW82qINcVieuPH3fZ2e0P812",
-               "--output", bisent_dst, "--fuzzy"],
-              capture_output=True, text=True,
+          import gdown
+          gdown.download(
+              "https://drive.google.com/uc?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812",
+              bisent_dst,
+              quiet=False,
           )
-          if r.returncode != 0 or not os.path.exists(bisent_dst):
-              print(f"  gdown error: {r.stderr}")
+          if not os.path.exists(bisent_dst) or os.path.getsize(bisent_dst) < 1000:
+              print("  gdown failed — file missing or too small")
               sys.exit(1)
           print(f"  79999_iter.pth OK ({os.path.getsize(bisent_dst) // (1024*1024)} MB)")
 
