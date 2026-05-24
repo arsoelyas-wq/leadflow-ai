@@ -938,7 +938,15 @@ router.post('/generate/single', async (req: any, res: any) => {
         const replica        = await getUserReplica(userId, req.body.replicaId);
         const stockAvatarId  = req.body.stockAvatarId as string | undefined;
         const stockSeedUrl   = stockAvatarId ? await getStockAvatarVideoUrl(stockAvatarId) : null;
-        const audioBuffer    = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile);
+        // testAudioUrl: bypass ElevenLabs for testing
+        const testAudioUrl   = req.body.testAudioUrl as string | undefined;
+        let audioBuffer: Buffer;
+        if (testAudioUrl) {
+          const audioRes = await axios.get(testAudioUrl, { responseType: 'arraybuffer' });
+          audioBuffer = Buffer.from(audioRes.data);
+        } else {
+          audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile);
+        }
 
         let finalVideoUrl: string | undefined;
         let usedEngine = 'heygen';
