@@ -19,48 +19,134 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/api/runpod-worker/musetalk_models
-          key: musetalk-models-tmely-v1
+          key: musetalk-models-v3
 
       - name: Download MuseTalk models
         if: steps.cache-models.outputs.cache-hit != 'true'
         run: |
-          pip install "huggingface_hub>=0.20.0"
+          pip install "huggingface_hub>=0.20.0" gdown requests
           python << 'PYEOF'
-          from huggingface_hub import snapshot_download
-          import os, shutil, sys
+          import os, sys, shutil, urllib.request, subprocess
+          from huggingface_hub import snapshot_download, hf_hub_download
 
-          dest = "services/api/runpod-worker/musetalk_models"
-          os.makedirs(dest, exist_ok=True)
+          base = "services/api/runpod-worker/musetalk_models"
 
-          print("Downloading TMElyralab/MuseTalk (~1.5 GB)...")
+          def mkd(*parts):
+              p = os.path.join(base, *parts)
+              os.makedirs(p, exist_ok=True)
+              return p
+
+          # ── 1. TMElyralab/MuseTalk → musetalk/ + musetalkV15/ ──────────────
+          print("=== 1/6: MuseTalk checkpoints ===")
+          tmp = "/tmp/musetalk_hf"
           snapshot_download(
               "TMElyralab/MuseTalk",
-              local_dir=dest,
+              local_dir=tmp,
               local_dir_use_symlinks=False,
-              ignore_patterns=["*.md", "*.txt", "*.py", "assets/*"],
+              ignore_patterns=["*.md", "*.gitattributes"],
           )
+          for sub in ["musetalk", "musetalkV15"]:
+              src = os.path.join(tmp, sub)
+              dst = mkd(sub)
+              if os.path.isdir(src):
+                  for f in os.listdir(src):
+                      fp = os.path.join(src, f)
+                      if os.path.isfile(fp):
+                          shutil.copy2(fp, os.path.join(dst, f))
+                          sz = os.path.getsize(os.path.join(dst, f)) // (1024*1024)
+                          print(f"  {sub}/{f} ({sz} MB)")
+              else:
+                  print(f"  WARNING: {sub}/ not found")
+          shutil.rmtree(tmp)
 
-          models_dir = os.path.join(dest, "models")
-          if not os.path.isdir(models_dir):
-              print("ERROR: models/ dir not found in TMElyralab/MuseTalk repo")
+          # ── 2. DWPose ──────────────────────────────────────────────────────
+          print("\n=== 2/6: DWPose ===")
+          dw = mkd("dwpose")
+          hf_hub_download("yzd-v/DWPose", "dw-ll_ucoco_384.pth",
+                          local_dir=dw, local_dir_use_symlinks=False)
+          print(f"  dw-ll_ucoco_384.pth OK")
+
+          # ── 3. SD VAE (dir must be named sd-vae per MuseTalk config) ───────
+          print("\n=== 3/6: SD VAE ft mse ===")
+          snapshot_download(
+              "stabilityai/sd-vae-ft-mse",
+              local_dir=mkd("sd-vae"),
+              local_dir_use_symlinks=False,
+              ignore_patterns=["*.md", "*.txt", "*.py", "*.gitattributes"],
+          )
+          print("  sd-vae/ OK")
+
+          # ── 4. Whisper tiny ────────────────────────────────────────────────
+          print("\n=== 4/6: Whisper tiny ===")
+          snapshot_download(
+              "openai/whisper-tiny",
+              local_dir=mkd("whisper"),
+              local_dir_use_symlinks=False,
+              ignore_patterns=["*.md", "*.txt", "*.gitattributes"],
+          )
+          print("  whisper/ OK")
+
+          # ── 5. SyncNet ─────────────────────────────────────────────────────
+          print("\n=== 5/6: SyncNet ===")
+          hf_hub_download("ByteDance/LatentSync", "latentsync_syncnet.pt",
+                          local_dir=mkd("syncnet"), local_dir_use_symlinks=False)
+          print("  latentsync_syncnet.pt OK")
+
+          # ── 6. face-parse-bisent ───────────────────────────────────────────
+          print("\n=== 6/6: face-parse-bisent ===")
+          fp_dir = mkd("face-parse-bisent")
+
+          # resnet18 backbone from PyTorch CDN
+          resnet_dst = os.path.join(fp_dir, "resnet18-5c106cde.pth")
+          urllib.request.urlretrieve(
+              "https://download.pytorch.org/models/resnet18-5c106cde.pth",
+              resnet_dst,
+          )
+          print(f"  resnet18 OK ({os.path.getsize(resnet_dst) // (1024*1024)} MB)")
+
+          # 79999_iter.pth via gdown (Google Drive)
+          bisent_dst = os.path.join(fp_dir, "79999_iter.pth")
+          r = subprocess.run(
+              [sys.executable, "-m", "gdown",
+               "--id", "154JgKpzCPW82qINcVieuPH3fZ2e0P812",
+               "--output", bisent_dst, "--fuzzy"],
+              capture_output=True, text=True,
+          )
+          if r.returncode != 0 or not os.path.exists(bisent_dst):
+              print(f"  gdown error: {r.stderr}")
               sys.exit(1)
+          print(f"  79999_iter.pth OK ({os.path.getsize(bisent_dst) // (1024*1024)} MB)")
 
-          print("Models downloaded:")
-          for name in sorted(os.listdir(models_dir)):
-              print(f"  {name}")
+          # ── Summary ────────────────────────────────────────────────────────
+          print("\n=== Download complete ===")
+          for d in sorted(os.listdir(base)):
+              p = os.path.join(base, d)
+              if os.path.isdir(p):
+                  files = [f for f in os.listdir(p) if not f.startswith(".")]
+                  mb = sum(os.path.getsize(os.path.join(p, f))
+                           for f in os.listdir(p)
+                           if os.path.isfile(os.path.join(p, f))) // (1024*1024)
+                  print(f"  {d}/: {files} ({mb} MB)")
           PYEOF
 
-      - name: Verify model files
+      - name: Verify required model files
         run: |
-          echo "Checking required model directories..."
-          ls services/api/runpod-worker/musetalk_models/models/
-          for d in dwpose musetalk sd-vae-ft-mse face-parse-bisent; do
-            if [ -d "services/api/runpod-worker/musetalk_models/models/$d" ]; then
-              echo "  OK: $d"
+          OK=true
+          for f in \
+            "musetalk/musetalk.json" \
+            "musetalk/pytorch_model.bin" \
+            "dwpose/dw-ll_ucoco_384.pth" \
+            "face-parse-bisent/79999_iter.pth" \
+            "face-parse-bisent/resnet18-5c106cde.pth"; do
+            path="services/api/runpod-worker/musetalk_models/$f"
+            if [ -f "$path" ]; then
+              echo "  OK: $f"
             else
-              echo "  MISSING: $d"
+              echo "  MISSING: $f"
+              OK=false
             fi
           done
+          [ "$OK" = "true" ] || exit 1
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
