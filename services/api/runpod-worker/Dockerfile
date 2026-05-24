@@ -55,9 +55,6 @@ RUN pip install --no-cache-dir "numpy<2.0"
 WORKDIR /app/MuseTalk
 COPY musetalk_models/ /app/MuseTalk/models/
 
-# Pre-cache Whisper tiny (70 MB) from OpenAI CDN — fast and reliable
-RUN python -c "import whisper; whisper.load_model('tiny'); print('Whisper cached')"
-
 # ── Handler ────────────────────────────────────────────────────────────────────
 COPY handler.py /app/handler.py
 
