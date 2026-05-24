@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'services/api/runpod-worker/**'
+      - '.github/workflows/build-runpod-worker.yml'
     branches: [master, main]
   workflow_dispatch:
 

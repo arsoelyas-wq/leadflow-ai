@@ -1,6 +1,7 @@
 # ─── LeadFlow AI — MuseTalk RunPod Worker ────────────────────────────────────
 # GPU: RTX 4090 (24GB) recommended | A100 40GB for max quality
 # Build: docker build -t YOUR_DOCKERHUB/leadflow-musetalk:latest .
+# Models: pre-downloaded by GHA, COPYed in — no network calls inside Docker
 # Push:  docker push YOUR_DOCKERHUB/leadflow-musetalk:latest
 
 FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel
