@@ -14,6 +14,54 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache MuseTalk models
+        id: cache-models
+        uses: actions/cache@v4
+        with:
+          path: services/api/runpod-worker/musetalk_models
+          key: musetalk-models-tmely-v1
+
+      - name: Download MuseTalk models
+        if: steps.cache-models.outputs.cache-hit != 'true'
+        run: |
+          pip install "huggingface_hub>=0.20.0"
+          python << 'PYEOF'
+          from huggingface_hub import snapshot_download
+          import os, shutil, sys
+
+          dest = "services/api/runpod-worker/musetalk_models"
+          os.makedirs(dest, exist_ok=True)
+
+          print("Downloading TMElyralab/MuseTalk (~1.5 GB)...")
+          snapshot_download(
+              "TMElyralab/MuseTalk",
+              local_dir=dest,
+              local_dir_use_symlinks=False,
+              ignore_patterns=["*.md", "*.txt", "*.py", "assets/*"],
+          )
+
+          models_dir = os.path.join(dest, "models")
+          if not os.path.isdir(models_dir):
+              print("ERROR: models/ dir not found in TMElyralab/MuseTalk repo")
+              sys.exit(1)
+
+          print("Models downloaded:")
+          for name in sorted(os.listdir(models_dir)):
+              print(f"  {name}")
+          PYEOF
+
+      - name: Verify model files
+        run: |
+          echo "Checking required model directories..."
+          ls services/api/runpod-worker/musetalk_models/models/
+          for d in dwpose musetalk sd-vae-ft-mse face-parse-bisent; do
+            if [ -d "services/api/runpod-worker/musetalk_models/models/$d" ]; then
+              echo "  OK: $d"
+            else
+              echo "  MISSING: $d"
+            fi
+          done
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:

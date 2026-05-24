@@ -49,34 +49,12 @@ RUN pip install --no-cache-dir basicsr facexlib
 # ── Pin numpy <2.0 (numpy 2.x breaks OpenCV ABI) ─────────────────────────────
 RUN pip install --no-cache-dir "numpy<2.0"
 
-# ── Download MuseTalk model weights into the image ────────────────────────────
-# TMElyralab/MuseTalk HuggingFace repo contains ALL required models:
-# dwpose, musetalk, sd-vae-ft-mse, face-parse-bisent
+# ── Model weights — pre-downloaded by GitHub Actions, COPYed from build context
+# musetalk_models/models/ is downloaded once, cached in GHA, never re-fetched in Docker
 WORKDIR /app/MuseTalk
-RUN python - <<'PYEOF'
-from huggingface_hub import snapshot_download
-import shutil, os, sys
+COPY musetalk_models/models/ /app/MuseTalk/models/
 
-print("Downloading MuseTalk models from HuggingFace (~1.5 GB)...")
-tmp = "/tmp/musetalk_hf"
-snapshot_download(
-    "TMElyralab/MuseTalk",
-    local_dir=tmp,
-    local_dir_use_symlinks=False,
-    ignore_patterns=["*.md", "*.txt", "assets/*", "*.py"],
-)
-src = os.path.join(tmp, "models")
-dst = "/app/MuseTalk/models"
-if not os.path.isdir(src):
-    print("ERROR: models dir not found in HuggingFace repo"); sys.exit(1)
-if os.path.exists(dst):
-    shutil.rmtree(dst)
-shutil.copytree(src, dst)
-shutil.rmtree(tmp)
-print("Done. Models at:", os.listdir(dst))
-PYEOF
-
-# Pre-cache Whisper tiny (70 MB) — downloaded at /root/.cache/whisper/
+# Pre-cache Whisper tiny (70 MB) from OpenAI CDN — fast and reliable
 RUN python -c "import whisper; whisper.load_model('tiny'); print('Whisper cached')"
 
 # ── Handler ────────────────────────────────────────────────────────────────────
