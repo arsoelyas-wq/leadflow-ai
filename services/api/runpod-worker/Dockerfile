@@ -49,13 +49,39 @@ RUN pip install --no-cache-dir basicsr facexlib
 # ── Pin numpy <2.0 (numpy 2.x breaks OpenCV ABI) ─────────────────────────────
 RUN pip install --no-cache-dir "numpy<2.0"
 
+# ── Download MuseTalk model weights into the image ────────────────────────────
+# Models are baked in so workers start instantly with no first-run download
+WORKDIR /app/MuseTalk
+RUN mkdir -p models/dwpose models/musetalk models/sd-vae-ft-mse models/whisper models/face-parse-bisent
+
+# DWPose (pose estimation) — ~350 MB
+RUN wget -q -O models/dwpose/dw-ll_ucoco_384.pth \
+    "https://huggingface.co/yzd-v/DWPose/resolve/main/dw-ll_ucoco_384.pth" && \
+    wget -q -O models/dwpose/dw-mm_ucoco.onnx \
+    "https://huggingface.co/yzd-v/DWPose/resolve/main/dw-mm_ucoco.onnx"
+
+# MuseTalk checkpoint — ~500 MB
+RUN wget -q -O models/musetalk/musetalk.pth \
+    "https://huggingface.co/TMElyralab/MuseTalk/resolve/main/models/musetalk/musetalk.pth"
+
+# Whisper tiny (lip-sync timing) — ~70 MB
+RUN wget -q -O models/whisper/tiny.pt \
+    "https://openaipublic.azureedge.net/main/whisper/models/65147644a518d12f04e32d6f3b26facc3f8dd46e5390956a9424a650c0ce22b9/tiny.pt"
+
+# SD VAE (image decoding) — ~320 MB
+RUN python -c "\
+from huggingface_hub import snapshot_download; \
+snapshot_download('stabilityai/sd-vae-ft-mse', local_dir='models/sd-vae-ft-mse', local_dir_use_symlinks=False)"
+
+# Face-parse-bisent — ~50 MB
+RUN wget -q -O models/face-parse-bisent/79999_iter.pth \
+    "https://huggingface.co/TMElyralab/MuseTalk/resolve/main/models/face-parse-bisent/79999_iter.pth" || true
+
 # ── Handler ────────────────────────────────────────────────────────────────────
 COPY handler.py /app/handler.py
 
 WORKDIR /app
 
-# Weights will be downloaded to /app/weights on first run
-# Mount a RunPod Network Volume at /app/weights to cache across runs
 ENV WEIGHTS_DIR=/runpod-volume/weights
 ENV MUSETALK_DIR=/app/MuseTalk
 ENV CODEFORMER_DIR=/app/CodeFormer
