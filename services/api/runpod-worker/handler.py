@@ -21,7 +21,7 @@ import runpod
 MUSETALK_DIR   = "/app/MuseTalk"
 CODEFORMER_DIR = "/app/CodeFormer"
 REALESRGAN_DIR = "/app/Real-ESRGAN"
-WEIGHTS_DIR    = "/app/weights"
+WEIGHTS_DIR    = "/runpod-volume/weights"
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")

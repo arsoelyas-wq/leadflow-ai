@@ -53,7 +53,7 @@ WORKDIR /app
 
 # Weights will be downloaded to /app/weights on first run
 # Mount a RunPod Network Volume at /app/weights to cache across runs
-ENV WEIGHTS_DIR=/app/weights
+ENV WEIGHTS_DIR=/runpod-volume/weights
 ENV MUSETALK_DIR=/app/MuseTalk
 ENV CODEFORMER_DIR=/app/CodeFormer
 ENV REALESRGAN_DIR=/app/Real-ESRGAN
