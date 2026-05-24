@@ -20,7 +20,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/api/runpod-worker/musetalk_models
-          key: musetalk-models-v3
+          key: musetalk-models-v4
 
       - name: Download MuseTalk models
         if: steps.cache-models.outputs.cache-hit != 'true'

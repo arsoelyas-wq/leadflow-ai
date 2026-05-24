@@ -51,9 +51,9 @@ RUN pip install --no-cache-dir basicsr facexlib
 RUN pip install --no-cache-dir "numpy<2.0"
 
 # ── Model weights — pre-downloaded by GitHub Actions, COPYed from build context
-# musetalk_models/models/ is downloaded once, cached in GHA, never re-fetched in Docker
+# musetalk_models/ contains: musetalk/ dwpose/ sd-vae/ whisper/ syncnet/ face-parse-bisent/
 WORKDIR /app/MuseTalk
-COPY musetalk_models/models/ /app/MuseTalk/models/
+COPY musetalk_models/ /app/MuseTalk/models/
 
 # Pre-cache Whisper tiny (70 MB) from OpenAI CDN — fast and reliable
 RUN python -c "import whisper; whisper.load_model('tiny'); print('Whisper cached')"
