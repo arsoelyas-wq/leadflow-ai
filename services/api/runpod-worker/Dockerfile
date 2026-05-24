@@ -54,8 +54,6 @@ RUN pip install --no-cache-dir "numpy<2.0"
 # musetalk_models/ contains: musetalk/ dwpose/ sd-vae/ whisper/ syncnet/ face-parse-bisent/
 WORKDIR /app/MuseTalk
 COPY musetalk_models/ /app/MuseTalk/models/
-# HuggingFace repo ships musetalk.json; inference code expects config.json
-RUN cp /app/MuseTalk/models/musetalk/musetalk.json /app/MuseTalk/models/musetalk/config.json
 
 # ── Handler ────────────────────────────────────────────────────────────────────
 COPY handler.py /app/handler.py

@@ -20,7 +20,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/api/runpod-worker/musetalk_models
-          key: musetalk-models-v4
+          key: musetalk-models-v5
 
       - name: Download MuseTalk models
         if: steps.cache-models.outputs.cache-hit != 'true'
@@ -59,6 +59,14 @@ jobs:
               else:
                   print(f"  WARNING: {sub}/ not found")
           shutil.rmtree(tmp)
+
+          # inference code expects config.json; HF repo ships musetalk.json
+          for sub in ["musetalk", "musetalkV15"]:
+              src = os.path.join(base, sub, "musetalk.json")
+              dst = os.path.join(base, sub, "config.json")
+              if os.path.exists(src) and not os.path.exists(dst):
+                  shutil.copy2(src, dst)
+                  print(f"  Created {sub}/config.json")
 
           # ── 2. DWPose ──────────────────────────────────────────────────────
           print("\n=== 2/6: DWPose ===")
