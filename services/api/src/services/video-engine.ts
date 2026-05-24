@@ -79,26 +79,35 @@ async function generateWithMuseTalk(params: VideoEngineParams): Promise<Omit<Vid
   console.log(`[MuseTalk] RUNPOD_ENDPOINT_ID=${process.env.RUNPOD_ENDPOINT_ID}`);
   console.log(`[MuseTalk] RUNPOD_API_KEY set=${!!process.env.RUNPOD_API_KEY}`);
 
-  const runRes = await axios.post(
-    runpodUrl,
-    {
-      input: {
-        seed_video_url: avatarVideoUrl,
-        audio_url:      audioUrl,
-        user_id:        userId || 'anon',
-        skip_enhance:   skipEnhance ?? false,
-        fidelity:       0.7,   // CodeFormer: 0=max enhance, 1=max identity preserve
-        upscale:        2,     // Real-ESRGAN: 2x (balanced) or 4 (max quality)
+  let runRes: any;
+  try {
+    runRes = await axios.post(
+      runpodUrl,
+      {
+        input: {
+          seed_video_url: avatarVideoUrl,
+          audio_url:      audioUrl,
+          user_id:        userId || 'anon',
+          skip_enhance:   skipEnhance ?? false,
+          fidelity:       0.7,
+          upscale:        2,
+        },
       },
-    },
-    {
-      headers: {
-        Authorization:  `Bearer ${process.env.RUNPOD_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 30000,
-    }
-  );
+      {
+        headers: {
+          Authorization:  `Bearer ${process.env.RUNPOD_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+  } catch (err: any) {
+    const status = err?.response?.status;
+    const body   = JSON.stringify(err?.response?.data ?? err?.message);
+    console.error(`[MuseTalk] RunPod HTTP ${status} — body: ${body}`);
+    console.error(`[MuseTalk] key prefix: ${(process.env.RUNPOD_API_KEY || '').slice(0, 12)}`);
+    throw err;
+  }
 
   const jobId = runRes.data?.id;
   if (!jobId) throw new Error('RunPod job failed to start');
