@@ -46,6 +46,9 @@ WORKDIR /app/Real-ESRGAN
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir basicsr facexlib
 
+# ── Pin numpy <2.0 (numpy 2.x breaks OpenCV ABI) ─────────────────────────────
+RUN pip install --no-cache-dir "numpy<2.0"
+
 # ── Handler ────────────────────────────────────────────────────────────────────
 COPY handler.py /app/handler.py
 
