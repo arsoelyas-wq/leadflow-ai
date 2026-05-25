@@ -20,7 +20,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: services/api/runpod-worker/musetalk_models
-          key: musetalk-models-v5
+          key: musetalk-models-v6
 
       - name: Download MuseTalk models
         if: steps.cache-models.outputs.cache-hit != 'true'
@@ -36,6 +36,8 @@ jobs:
               p = os.path.join(base, *parts)
               os.makedirs(p, exist_ok=True)
               return p
+
+
 
           # ── 1. TMElyralab/MuseTalk → musetalk/ + musetalkV15/ ──────────────
           print("=== 1/6: MuseTalk checkpoints ===")
@@ -126,6 +128,41 @@ jobs:
               sys.exit(1)
           print(f"  79999_iter.pth OK ({os.path.getsize(bisent_dst) // (1024*1024)} MB)")
 
+          # ── 7. CodeFormer weights ──────────────────────────────────────────
+          print("\n=== 7/9: CodeFormer weights ===")
+          cf_dir = mkd("codeformer")
+          cf_dst = os.path.join(cf_dir, "codeformer.pth")
+          urllib.request.urlretrieve(
+              "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth",
+              cf_dst,
+          )
+          print(f"  codeformer.pth OK ({os.path.getsize(cf_dst) // (1024*1024)} MB)")
+
+          # ── 8. Real-ESRGAN weights ─────────────────────────────────────────
+          print("\n=== 8/9: Real-ESRGAN weights ===")
+          esrgan_dir = mkd("realesrgan")
+          esrgan_dst = os.path.join(esrgan_dir, "RealESRGAN_x4plus.pth")
+          urllib.request.urlretrieve(
+              "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus.pth",
+              esrgan_dst,
+          )
+          print(f"  RealESRGAN_x4plus.pth OK ({os.path.getsize(esrgan_dst) // (1024*1024)} MB)")
+
+          # ── 9. facexlib detection + parsing models (used by CodeFormer) ────
+          print("\n=== 9/9: facexlib models ===")
+          det_dir = mkd("facelib", "detection")
+          parse_dir = mkd("facelib", "parsing")
+          facelib_files = [
+              (det_dir,   "detection_Resnet50_Final.pth",
+               "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"),
+              (parse_dir, "parsing_parsenet.pth",
+               "https://github.com/xinntao/facexlib/releases/download/v0.1.0/parsing_parsenet.pth"),
+          ]
+          for dst_dir, fname, url in facelib_files:
+              dst = os.path.join(dst_dir, fname)
+              urllib.request.urlretrieve(url, dst)
+              print(f"  {fname} OK ({os.path.getsize(dst) // (1024*1024)} MB)")
+
           # ── Summary ────────────────────────────────────────────────────────
           print("\n=== Download complete ===")
           for d in sorted(os.listdir(base)):
@@ -146,7 +183,11 @@ jobs:
             "musetalk/pytorch_model.bin" \
             "dwpose/dw-ll_ucoco_384.pth" \
             "face-parse-bisent/79999_iter.pth" \
-            "face-parse-bisent/resnet18-5c106cde.pth"; do
+            "face-parse-bisent/resnet18-5c106cde.pth" \
+            "codeformer/codeformer.pth" \
+            "realesrgan/RealESRGAN_x4plus.pth" \
+            "facelib/detection/detection_Resnet50_Final.pth" \
+            "facelib/parsing/parsing_parsenet.pth"; do
             path="services/api/runpod-worker/musetalk_models/$f"
             if [ -f "$path" ]; then
               echo "  OK: $f"

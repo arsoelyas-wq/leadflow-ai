@@ -61,6 +61,18 @@ RUN wget -q "https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pt
 WORKDIR /app/MuseTalk
 COPY musetalk_models/ /app/MuseTalk/models/
 
+# ── CodeFormer weights (baked in — no runtime download needed) ─────────────────
+COPY musetalk_models/codeformer/codeformer.pth /app/CodeFormer/weights/codeformer.pth
+
+# ── Real-ESRGAN weights (used by handler ESRGAN stage) ────────────────────────
+RUN mkdir -p /app/Real-ESRGAN/weights
+COPY musetalk_models/realesrgan/RealESRGAN_x4plus.pth /app/Real-ESRGAN/weights/RealESRGAN_x4plus.pth
+
+# ── facexlib face detection + parsing models (used by CodeFormer) ─────────────
+# facexlib looks in ~/.cache/facexlib/{detection,parsing}/ by default (container runs as root)
+COPY musetalk_models/facelib/detection/ /root/.cache/facexlib/detection/
+COPY musetalk_models/facelib/parsing/   /root/.cache/facexlib/parsing/
+
 # ── Handler ────────────────────────────────────────────────────────────────────
 COPY handler.py /app/handler.py
 

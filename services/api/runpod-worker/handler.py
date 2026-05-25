@@ -18,10 +18,14 @@ import requests
 import runpod
 
 # ── paths ──────────────────────────────────────────────────────────────────────
-MUSETALK_DIR   = "/app/MuseTalk"
-CODEFORMER_DIR = "/app/CodeFormer"
-REALESRGAN_DIR = "/app/Real-ESRGAN"
-WEIGHTS_DIR    = "/runpod-volume/weights"
+MUSETALK_DIR       = "/app/MuseTalk"
+CODEFORMER_DIR     = "/app/CodeFormer"
+REALESRGAN_DIR     = "/app/Real-ESRGAN"
+WEIGHTS_DIR        = "/runpod-volume/weights"
+
+# Baked-in enhancement model paths (COPYed into image by Dockerfile)
+CODEFORMER_MODEL   = "/app/CodeFormer/weights/codeformer.pth"
+ESRGAN_MODEL       = "/app/Real-ESRGAN/weights/RealESRGAN_x4plus.pth"
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
@@ -59,10 +63,10 @@ def upload_to_supabase(local_path: str, remote_name: str) -> str:
         raise RuntimeError(f"Supabase upload failed {res.status_code}: {res.text}")
     return f"{SUPABASE_URL}/storage/v1/object/public/video-assets/{remote_path}"
 
-def run_cmd(cmd: list, cwd: str = None, timeout: int = 300) -> str:
+def run_cmd(cmd: list, cwd: str = None, timeout: int = 300, env: dict = None) -> str:
     """Run a shell command and return stdout. Raises on non-zero exit."""
     result = subprocess.run(
-        cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout
+        cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env
     )
     if result.returncode != 0:
         raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{result.stderr[-2000:]}")
@@ -201,28 +205,26 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
 def run_codeformer(video_path: str, output_path: str, fidelity: float = 0.7):
     """
     CodeFormer: per-frame face restoration
-    - Removes compression artifacts
-    - Sharpens facial details (skin, eyes, teeth)
     - fidelity: 0 = max enhance, 1 = max identity preserve. 0.7 is balanced.
-    Quality boost: ⭐⭐⭐⭐⭐ — eliminates uncanny valley effect
+    Uses baked-in weights at CODEFORMER_MODEL; facexlib cache baked to /root/.cache/facexlib/
     """
     log("Stage 2: CodeFormer face restoration")
     with tempfile.TemporaryDirectory() as frames_dir:
         restored_dir = Path(frames_dir) / "restored"
         restored_dir.mkdir()
 
+        # Pass facexlib cache dir so it finds the baked-in detection/parsing models
+        env = {**os.environ, "FACEXLIB_CACHE_PATH": "/root/.cache/facexlib"}
+
         run_cmd([
             sys.executable, "inference_codeformer.py",
-            "--input_path",     video_path,
-            "--output_path",    str(restored_dir),
+            "--input_path",      video_path,
+            "--output_path",     str(restored_dir),
             "--fidelity_weight", str(fidelity),
-            "--face_upsample",
-            "--bg_upsampler",   "realesrgan",
             "--detection_model", "retinaface_resnet50",
-            "--model_path",     f"{WEIGHTS_DIR}/CodeFormer/codeformer.pth",
-        ], cwd=CODEFORMER_DIR, timeout=600)
+            "--model_path",      CODEFORMER_MODEL,
+        ], cwd=CODEFORMER_DIR, timeout=600, env=env)
 
-        # CodeFormer outputs to restored_dir/{input_filename}/
         result_candidates = list(restored_dir.rglob("*.mp4"))
         if not result_candidates:
             raise RuntimeError("CodeFormer produced no output")
@@ -236,10 +238,8 @@ def run_codeformer(video_path: str, output_path: str, fidelity: float = 0.7):
 def run_esrgan(video_path: str, output_path: str, scale: int = 2):
     """
     Real-ESRGAN: neural network upscaling
-    - 720p → 1440p (2x) or 720p → 2880p (4x)
-    - Adds texture detail that generation models lose
-    - scale=2 recommended for speed/quality balance
-    Quality boost: ultra-sharp edges, natural skin texture
+    - scale=2 recommended for speed/quality balance (720p → 1440p)
+    Uses baked-in weights at ESRGAN_MODEL; no runtime download needed.
     """
     log(f"Stage 3: Real-ESRGAN {scale}x upscale")
     run_cmd([
@@ -247,11 +247,11 @@ def run_esrgan(video_path: str, output_path: str, scale: int = 2):
         "--input",      video_path,
         "--output",     output_path,
         "--outscale",   str(scale),
-        "--model_name", "RealESRGAN_x4plus",
+        "--model_path", ESRGAN_MODEL,
         "--fp32",
     ], cwd=REALESRGAN_DIR, timeout=600)
     if not Path(output_path).exists():
-        log("ESRGAN skipped or failed — using CodeFormer output")
+        log("ESRGAN skipped or failed — using prior stage output")
         import shutil
         shutil.copy(video_path, output_path)
     else:
