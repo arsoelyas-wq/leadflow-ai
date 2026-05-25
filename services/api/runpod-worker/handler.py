@@ -86,18 +86,24 @@ def _link_models():
 
 
 def ensure_models():
-    """Download model weights if not already present in the mounted volume."""
+    """Verify model weights are present (baked into Docker image at /app/MuseTalk/models/)."""
+    baked_marker = Path("/app/MuseTalk/models/musetalkV15/unet.pth")
+    if baked_marker.exists():
+        log(f"Baked-in models found at /app/MuseTalk/models/ — skipping download")
+        return
+
+    # Fallback: try volume-based cache (legacy path)
     marker = Path(WEIGHTS_DIR) / ".ready"
     if marker.exists():
-        log("Models already cached — skipping download")
+        log("Models found in volume cache — skipping download")
         _link_models()
         return
 
-    log("First run — downloading model weights (takes ~5-10 min)...")
+    log("WARNING: Models not found at /app/MuseTalk/models/ — this should not happen with the baked-in image")
+    log("Attempting fallback download (this will be slow)...")
     musetalk_weights = os.path.join(WEIGHTS_DIR, "MuseTalk")
     os.makedirs(musetalk_weights, exist_ok=True)
 
-    # MuseTalk weights via HuggingFace Hub → WEIGHTS_DIR/MuseTalk/
     run_cmd([
         "python", "-c",
         f"""
@@ -109,23 +115,7 @@ snapshot_download(
 )
 print('MuseTalk weights downloaded')
 """,
-    ], timeout=600)
-
-    # CodeFormer weights → WEIGHTS_DIR/CodeFormer/
-    codeformer_weights = os.path.join(WEIGHTS_DIR, "CodeFormer")
-    os.makedirs(codeformer_weights, exist_ok=True)
-    run_cmd([
-        "python", "-c",
-        f"""
-from basicsr.utils.download_util import load_file_from_url
-load_file_from_url(
-    'https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth',
-    model_dir='{codeformer_weights}',
-    progress=True,
-    file_name='codeformer.pth',
-)
-""",
-    ], timeout=300)
+    ], timeout=900)
 
     marker.touch()
     _link_models()
@@ -159,7 +149,7 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
             "--use_float16",
             "--fps",              "25",
             "--version",          "v15",
-        ], cwd=MUSETALK_DIR, timeout=600)
+        ], cwd=MUSETALK_DIR, timeout=900)
         log(f"MuseTalk stdout tail: {stdout[-500:] if stdout else '(empty)'}")
 
         # Log result dir contents for debugging
