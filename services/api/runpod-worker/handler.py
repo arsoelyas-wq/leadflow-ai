@@ -147,7 +147,7 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
         result_dir = os.path.join(infer_tmp, "results")
         os.makedirs(result_dir, exist_ok=True)
 
-        run_cmd([
+        stdout = run_cmd([
             sys.executable, "-m", "scripts.inference",
             "--inference_config", config_path,
             "--result_dir",       result_dir,
@@ -157,6 +157,15 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
             "--fps",              "25",
             "--version",          "v15",
         ], cwd=MUSETALK_DIR, timeout=300)
+        log(f"MuseTalk stdout tail: {stdout[-500:] if stdout else '(empty)'}")
+
+        # Log result dir contents for debugging
+        all_files = []
+        for root, dirs, files in os.walk(result_dir):
+            for f in files:
+                fp = os.path.join(root, f)
+                all_files.append(f"{fp} ({os.path.getsize(fp)} bytes)")
+        log(f"result_dir contents: {all_files or '(empty)'}")
 
         # Output: {result_dir}/v15/{video_stem}_{audio_stem}.mp4
         video_stem = Path(video_path).stem
@@ -165,7 +174,7 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
         if not expected.exists():
             candidates = list(Path(result_dir).rglob("*.mp4"))
             if not candidates:
-                raise RuntimeError(f"MuseTalk produced no output (expected {expected})")
+                raise RuntimeError(f"MuseTalk produced no output (expected {expected}). result_dir had: {all_files}")
             expected = candidates[0]
 
         _shutil.copy(str(expected), output_path)
