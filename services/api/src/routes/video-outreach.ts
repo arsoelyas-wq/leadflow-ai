@@ -658,12 +658,18 @@ async function generateAudio(text: string, voiceId: string, emotionProfile?: any
     ? buildElevenLabsVoiceSettings(emotionProfile)
     : { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true };
 
-  const r = await axios.post(
-    `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
-    { text, model_id: 'eleven_turbo_v2_5', voice_settings: voiceSettings },
-    { headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }, responseType: 'arraybuffer', timeout: 30000 }
-  );
-  return Buffer.from(r.data);
+  try {
+    const r = await axios.post(
+      `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
+      { text, model_id: 'eleven_turbo_v2_5', voice_settings: voiceSettings },
+      { headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }, responseType: 'arraybuffer', timeout: 30000 }
+    );
+    return Buffer.from(r.data);
+  } catch (err: any) {
+    if (err?.response?.status === 402) throw new Error('ElevenLabs ses kotası doldu — hesabınızda yeterli karakter kredisi yok. ElevenLabs planınızı yükseltin.');
+    if (err?.response?.status === 401) throw new Error('ElevenLabs API anahtarı geçersiz veya eksik.');
+    throw err;
+  }
 }
 
 // Resolve replica for user — returns null if no replica found (falls back to HeyGen)
@@ -1306,13 +1312,14 @@ router.get('/stats', async (req: any, res: any) => {
 
 // POST /api/video-outreach/preview-script
 router.post('/preview-script', async (req: any, res: any) => {
+  try {
   const { leadId, language } = req.body || {};
   if (!leadId) return res.status(400).json({ error: 'leadId required' });
 
   const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
   if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
 
-  const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single().catch(() => ({ data: null }));
+  const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).maybeSingle();
 
   // Always return a script — never 500
   let research: any = null;
@@ -1327,8 +1334,7 @@ router.post('/preview-script', async (req: any, res: any) => {
       .not('research_data', 'is', null)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
-      .catch(() => ({ data: null }));
+      .maybeSingle();
 
     research = (cached as any)?.research_data || await researchLead(lead, profile);
   } catch (re: any) {
@@ -1357,6 +1363,10 @@ router.post('/preview-script', async (req: any, res: any) => {
     quality: research?.quality || 'fallback',
     ...(researchError ? { researchError } : {}),
   });
+  } catch (e: any) {
+    console.error('[PreviewScript] Unhandled error:', e.message);
+    res.status(500).json({ error: 'Script oluşturulamadı', details: e.message?.slice(0, 100) });
+  }
 });
 
 // POST /api/video-outreach/heygen-webhook — HeyGen video ready notification
