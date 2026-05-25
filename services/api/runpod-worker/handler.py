@@ -149,6 +149,7 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
             "--use_float16",
             "--fps",              "25",
             "--version",          "v15",
+            "--batch_size",       "8",
         ], cwd=MUSETALK_DIR, timeout=900)
         log(f"MuseTalk stdout tail: {stdout[-500:] if stdout else '(empty)'}")
 
