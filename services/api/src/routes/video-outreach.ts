@@ -993,8 +993,13 @@ router.post('/generate/single', async (req: any, res: any) => {
           }
         }
 
+        if (!finalVideoUrl && stockSeedUrl) {
+          // Stock avatar with no successful engine — can't fall back to HeyGen (needs avatarId)
+          throw new Error('Video motoru başlatılamadı. RunPod env vars (RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID) kontrol edin.');
+        }
+
         if (!finalVideoUrl) {
-          // Fallback: HeyGen
+          // Fallback: HeyGen (only for personal replicas / standard flow)
           const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio, backgroundUrl });
           await supabase.from('video_outreach').update({
             heygen_video_id: heygenVideoId, status: 'processing',
@@ -1132,6 +1137,9 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             } catch { /* fall through to HeyGen */ }
           }
 
+          if (!campFinalUrl && campStockSeedUrl) {
+            throw new Error('Video motoru başlatılamadı. RunPod env vars (RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID) kontrol edin.');
+          }
           if (!campFinalUrl) {
             campHeygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio, backgroundUrl: campaignBgUrl });
             campEngine   = 'heygen';
