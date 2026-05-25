@@ -306,13 +306,16 @@ def handler(event: dict) -> dict:
         try:
             ts = int(time.time() * 1000)
             video_in     = f"{tmp}/seed.mp4"
-            audio_in     = f"{tmp}/audio.mp3"
+            audio_raw    = f"{tmp}/audio_raw"
+            audio_in     = f"{tmp}/audio.wav"
             musetalk_out = f"{tmp}/stage1_musetalk.mp4"
             cf_out       = f"{tmp}/stage2_codeformer.mp4"
             final_out    = f"{tmp}/stage3_final.mp4"
 
             download(seed_video_url, video_in)
-            download(audio_url, audio_in)
+            download(audio_url, audio_raw)
+            # Normalize audio to WAV so ffmpeg and MuseTalk always get a clean format
+            run_cmd(["/usr/bin/ffmpeg", "-y", "-i", audio_raw, audio_in], timeout=60)
 
             # Stage 1: MuseTalk
             run_museTalk(video_in, audio_in, musetalk_out)
