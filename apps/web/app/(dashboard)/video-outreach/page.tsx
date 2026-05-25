@@ -64,25 +64,11 @@ const LANG_FLAGS_VO: Record<string, string> = {
 
 // ADIM 1: Avatar Seç
 function StepAvatar({ selected, onSelect }: any) {
-  const [tab, setTab] = useState<'library' | 'heygen'>('library')
-
-  // Stock library state
   const [stockAvatars, setStockAvatars] = useState<any[]>([])
   const [stockLoading, setStockLoading] = useState(false)
   const [stockFilter, setStockFilter] = useState('')
 
-  // HeyGen state
-  const [avatars, setAvatars] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [filterGender, setFilterGender] = useState('')
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [total, setTotal] = useState(0)
-  const [previewVideo, setPreviewVideo] = useState<string | null>(null)
-
-  useEffect(() => { if (tab === 'library') loadStock(); else load() }, [tab])
-  useEffect(() => { if (tab === 'heygen') load() }, [page, filterGender])
+  useEffect(() => { loadStock() }, [])
 
   async function loadStock() {
     setStockLoading(true)
@@ -92,20 +78,6 @@ function StepAvatar({ selected, onSelect }: any) {
       setStockAvatars(d.avatars || [])
     } catch {}
     setStockLoading(false)
-  }
-
-  async function load() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({ page: String(page), gender: filterGender })
-      if (search) params.set('search', search)
-      const r = await fetch(`${API}/api/video-outreach/avatars?${params}`, { headers: authH() })
-      const d = await r.json()
-      setAvatars(d.avatars || [])
-      setTotalPages(d.pages || 1)
-      setTotal(d.total || 0)
-    } catch {}
-    setLoading(false)
   }
 
   const filteredStock = stockAvatars.filter(a =>
@@ -124,170 +96,73 @@ function StepAvatar({ selected, onSelect }: any) {
         <div className="flex items-center gap-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
           <CheckCircle className="w-4 h-4 text-purple-400 shrink-0"/>
           <span className="text-purple-300 text-sm font-medium">Seçili: {selected.display_name || selected.name}</span>
-          {selected._source === 'stock' && <span className="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">Hazır Avatar</span>}
+          <span className="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">MuseTalk AI</span>
           <button onClick={() => onSelect(null)} className="ml-auto text-xs text-slate-500 hover:text-slate-300">Değiştir</button>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-slate-900 rounded-xl w-fit">
-        <button
-          onClick={() => setTab('library')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${tab === 'library' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-white'}`}
-        >
-          ✨ Hazır Kütüphane
-          <span className="text-[10px] bg-violet-500/30 text-violet-300 px-1.5 py-0.5 rounded-full font-bold">YENİ</span>
-        </button>
-        <button
-          onClick={() => setTab('heygen')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'heygen' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}
-        >
-          HeyGen ({total || '1281'}+)
-        </button>
+      <div className="flex items-center gap-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
+        <span className="text-violet-400 text-sm">⚡</span>
+        <p className="text-violet-300 text-xs">Kendi AI altyapımız — <strong>MuseTalk motoru</strong> ile dudak senkronizasyonu ve yüz restorasyonu</p>
       </div>
 
-      {/* ── STOCK LIBRARY TAB ── */}
-      {tab === 'library' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <span className="text-emerald-400 text-sm">✓</span>
-            <p className="text-emerald-300 text-xs">Hazır avatarlar <strong>HeyGen kredisi gerektirmez</strong> — D-ID motoru ile çalışır (~₺2/video)</p>
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
-            <input
-              value={stockFilter}
-              onChange={e => setStockFilter(e.target.value)}
-              placeholder="Avatar ara..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"
-            />
-          </div>
-
-          {stockLoading ? (
-            <div className="flex justify-center py-12"><RefreshCw className="w-6 h-6 animate-spin text-violet-400"/></div>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-              {filteredStock.map((avatar: any) => {
-                const isSelected = selected?._source === 'stock' && selected?.id === avatar.id
-                return (
-                  <div
-                    key={avatar.id}
-                    onClick={() => onSelect({ ...avatar, _source: 'stock' })}
-                    className={`relative rounded-2xl overflow-hidden cursor-pointer border-2 transition-all group ${isSelected ? 'border-violet-500 ring-2 ring-violet-500/30' : 'border-transparent hover:border-slate-600'}`}
-                  >
-                    {avatar.thumbnail_url ? (
-                      <img src={avatar.thumbnail_url} alt={avatar.display_name} className="w-full aspect-[3/4] object-cover object-top group-hover:scale-105 transition-transform duration-300"/>
-                    ) : (
-                      <div className="w-full aspect-[3/4] bg-slate-800 flex items-center justify-center text-4xl">
-                        {avatar.gender === 'female' ? '👩‍💼' : avatar.gender === 'male' ? '👨‍💼' : '🧑‍💼'}
-                      </div>
-                    )}
-                    {avatar.is_featured && (
-                      <div className="absolute top-2 left-2 bg-violet-600/90 rounded-full px-1.5 py-0.5 text-[9px] text-white font-bold">★ ÖNERILEN</div>
-                    )}
-                    {isSelected && (
-                      <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1">
-                        <CheckCircle className="w-3 h-3 text-white"/>
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2">
-                      <p className="text-white text-xs font-medium truncate">{avatar.display_name}</p>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-slate-400 text-[10px]">{STYLE_LABELS[avatar.style]}</span>
-                        <span className="text-slate-600 text-[10px]">·</span>
-                        <span className="text-[10px]">{avatar.languages?.slice(0, 3).map((l: string) => LANG_FLAGS_VO[l] || l).join(' ')}</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          {filteredStock.length === 0 && !stockLoading && (
-            <p className="text-center text-slate-500 text-sm py-8">Avatar bulunamadı</p>
-          )}
-        </div>
-      )}
-
-      {/* ── HEYGEN TAB ── */}
-      {tab === 'heygen' && (
-      <div className="space-y-4">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && load()}
-            placeholder="Avatar ara... (Enter ile ara)"
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-purple-500"/>
-        </div>
-        <select value={filterGender} onChange={e => { setFilterGender(e.target.value); setPage(1) }}
-          className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-          <option value="">Tümü</option>
-          <option value="male">Erkek</option>
-          <option value="female">Kadın</option>
-        </select>
-        <button onClick={() => { setPage(1); load() }} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-medium">Ara</button>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
+        <input
+          value={stockFilter}
+          onChange={e => setStockFilter(e.target.value)}
+          placeholder="Avatar ara..."
+          className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"
+        />
       </div>
 
-      {previewVideo && (
-        <div className="relative rounded-2xl overflow-hidden bg-black max-h-48 flex items-center justify-center">
-          <video src={previewVideo} autoPlay loop muted className="max-h-48 rounded-2xl"/>
-          <button onClick={() => setPreviewVideo(null)} className="absolute top-2 right-2 bg-black/60 text-white rounded-lg px-2 py-1 text-xs">Kapat</button>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center py-12"><RefreshCw className="w-6 h-6 animate-spin text-purple-400"/></div>
+      {stockLoading ? (
+        <div className="flex justify-center py-12"><RefreshCw className="w-6 h-6 animate-spin text-violet-400"/></div>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-          {avatars.map((avatar: any) => (
-            <div key={avatar.avatar_id}
-              onClick={() => onSelect({ ...avatar, _source: 'heygen' })}
-              className={`relative rounded-2xl overflow-hidden cursor-pointer border-2 transition-all group ${selected?.avatar_id === avatar.avatar_id ? 'border-purple-500 ring-2 ring-purple-500/30' : 'border-transparent hover:border-slate-600'}`}>
-              {avatar.preview_image ? (
-                <img src={avatar.preview_image} alt={avatar.name} className="w-full aspect-[3/4] object-cover"/>
-              ) : (
-                <div className="w-full aspect-[3/4] bg-slate-700 flex items-center justify-center text-5xl">
-                  {avatar.gender === 'female' ? '👩' : '👨'}
+          {filteredStock.map((avatar: any) => {
+            const isSelected = selected?.id === avatar.id
+            return (
+              <div
+                key={avatar.id}
+                onClick={() => onSelect({ ...avatar, _source: 'stock' })}
+                className={`relative rounded-2xl overflow-hidden cursor-pointer border-2 transition-all group ${isSelected ? 'border-violet-500 ring-2 ring-violet-500/30' : 'border-transparent hover:border-slate-600'}`}
+              >
+                {avatar.thumbnail_url ? (
+                  <img src={avatar.thumbnail_url} alt={avatar.display_name} className="w-full aspect-[3/4] object-cover object-top group-hover:scale-105 transition-transform duration-300"/>
+                ) : (
+                  <div className="w-full aspect-[3/4] bg-slate-800 flex items-center justify-center text-4xl">
+                    {avatar.gender === 'female' ? '👩‍💼' : avatar.gender === 'male' ? '👨‍💼' : '🧑‍💼'}
+                  </div>
+                )}
+                {avatar.is_featured && (
+                  <div className="absolute top-2 left-2 bg-violet-600/90 rounded-full px-1.5 py-0.5 text-[9px] text-white font-bold">★ ÖNERILEN</div>
+                )}
+                {isSelected && (
+                  <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1">
+                    <CheckCircle className="w-3 h-3 text-white"/>
+                  </div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2">
+                  <p className="text-white text-xs font-medium truncate">{avatar.display_name}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-slate-400 text-[10px]">{STYLE_LABELS[avatar.style]}</span>
+                    <span className="text-slate-600 text-[10px]">·</span>
+                    <span className="text-[10px]">{avatar.languages?.slice(0, 3).map((l: string) => LANG_FLAGS_VO[l] || l).join(' ')}</span>
+                  </div>
                 </div>
-              )}
-              {selected?.avatar_id === avatar.avatar_id && (
-                <div className="absolute top-2 right-2 bg-purple-500 rounded-full p-1">
-                  <CheckCircle className="w-3 h-3 text-white"/>
-                </div>
-              )}
-              {avatar.preview_video && (
-                <button onClick={e => { e.stopPropagation(); setPreviewVideo(avatar.preview_video) }}
-                  className="absolute bottom-2 left-2 bg-black/70 rounded-lg px-2 py-1 text-white text-xs opacity-0 group-hover:opacity-100 transition flex items-center gap-1">
-                  <Play className="w-3 h-3"/> İzle
-                </button>
-              )}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2">
-                <p className="text-white text-xs font-medium truncate leading-tight">{avatar.name}</p>
-                {avatar.gender && <p className="text-slate-400 text-xs">{avatar.gender === 'female' ? 'Kadın' : 'Erkek'}</p>}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
-
-      <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl text-sm text-white disabled:opacity-30">
-          <ChevronLeft className="w-4 h-4"/> Önceki
-        </button>
-        <span className="text-slate-500 text-sm">Sayfa {page} / {totalPages} · {total} avatar</span>
-        <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}
-          className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 rounded-xl text-sm text-white disabled:opacity-30">
-          Sonraki <ChevronRight className="w-4 h-4"/>
-        </button>
-      </div>
-      </div>
+      {filteredStock.length === 0 && !stockLoading && (
+        <p className="text-center text-slate-500 text-sm py-8">Avatar bulunamadı</p>
       )}
     </div>
   )
 }
+
 
 // ADIM 2: Ses Seç
 function StepVoice({ selected, onSelect }: any) {
@@ -461,7 +336,7 @@ function StepLead({ selected, onSelect, leads, language, onLanguageChange, aspec
       {selected.length > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl">
           <CreditCard className="w-4 h-4 text-slate-400"/>
-          <span className="text-slate-400 text-xs">Tahmini kullanım: <span className="text-white font-medium">{Math.min(selected.length, MAX_CAMPAIGN)} HeyGen kredisi</span></span>
+          <span className="text-slate-400 text-xs">Tahmini video sayısı: <span className="text-white font-medium">{Math.min(selected.length, MAX_CAMPAIGN)} video</span></span>
         </div>
       )}
 
@@ -702,21 +577,21 @@ function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, aut
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Avatar önizleme */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
-          {avatar?.preview_image ? (
-            <img src={avatar.preview_image} alt={avatar.name} className="w-full aspect-video object-cover"/>
+          {(avatar?.thumbnail_url || avatar?.preview_image) ? (
+            <img src={avatar.thumbnail_url || avatar.preview_image} alt={avatar.display_name || avatar.name} className="w-full aspect-video object-cover object-top"/>
           ) : (
             <div className="w-full aspect-video bg-slate-900 flex items-center justify-center text-6xl">🎭</div>
           )}
           <div className="p-3">
-            <p className="text-white text-sm font-medium">{avatar?.name || 'Avatar seçilmedi'}</p>
-            <p className="text-slate-500 text-xs">{avatar?.gender === 'female' ? 'Kadın' : 'Erkek'} avatar</p>
+            <p className="text-white text-sm font-medium">{avatar?.display_name || avatar?.name || 'Avatar seçilmedi'}</p>
+            <p className="text-slate-500 text-xs">{avatar?.gender === 'female' ? 'Kadın' : 'Erkek'} · MuseTalk AI</p>
           </div>
         </div>
 
         {/* Özet */}
         <div className="space-y-3">
           {[
-            { label: 'Avatar', value: avatar?.name, icon: '🎭', ok: !!avatar },
+            { label: 'Avatar', value: avatar?.display_name || avatar?.name, icon: '🎭', ok: !!avatar },
             { label: 'Ses', value: voice?.name, icon: '🎤', ok: !!voice },
             { label: leads?.length === 1 ? 'Lead' : 'Leadler', value: leads?.length === 1 ? leads[0]?.company_name : `${leads?.length} lead seçildi${leads?.length > MAX_CAMPAIGN ? ` (${MAX_CAMPAIGN} kullanılacak)` : ''}`, icon: '👤', ok: leads?.length > 0 },
             { label: 'Script', value: scripts?.length > 0 ? `${scripts.length} script hazır (${scripts.filter((s:any)=>s.edited).length} düzenlendi)` : 'Otomatik yazılacak', icon: '✍️', ok: true },
@@ -740,8 +615,8 @@ function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, aut
       <div className="flex items-center gap-3 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
         <CreditCard className="w-5 h-5 text-purple-400 shrink-0"/>
         <div>
-          <p className="text-purple-300 text-sm font-medium">{effectiveCount} × ~1 HeyGen kredisi = ~{effectiveCount} kredi</p>
-          <p className="text-purple-400/60 text-xs">ElevenLabs karakter sayısı da kullanılacak</p>
+          <p className="text-purple-300 text-sm font-medium">{effectiveCount} video oluşturulacak — MuseTalk AI motoru</p>
+          <p className="text-purple-400/60 text-xs">ElevenLabs seslendirme + MuseTalk dudak senkronizasyonu</p>
         </div>
       </div>
 
@@ -750,7 +625,7 @@ function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, aut
         <div className="space-y-1 text-xs text-amber-400/70">
           <p>1. Claude sizin için kişisel script yazacak</p>
           <p>2. ElevenLabs seçtiğiniz sesle seslendirme yapacak</p>
-          <p>3. HeyGen seçtiğiniz avatarla video oluşturacak</p>
+          <p>3. MuseTalk AI motoru seçtiğiniz avatarla dudak senkronizasyonlu video oluşturacak</p>
           <p>4. {autoSend ? 'Video hazır olunca otomatik WhatsApp mesajı gönderilecek' : 'Video hazır olunca Videolar sekmesinden gönderebilirsiniz'}</p>
         </div>
       </div>
@@ -891,15 +766,6 @@ function StepResultSingle({ videoId, onReset }: { videoId: string; onReset: () =
           {errorMsg && (
             <div className="max-w-sm mx-auto px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl">
               <p className="text-red-300 text-xs">{errorMsg}</p>
-            </div>
-          )}
-          {(errorMsg?.toLowerCase().includes('heygen') || errorMsg?.toLowerCase().includes('kredi') || errorMsg?.toLowerCase().includes('credit')) && (
-            <div className="max-w-sm mx-auto p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-left space-y-2">
-              <p className="text-amber-300 text-sm font-semibold">HeyGen kredisi bitti</p>
-              <p className="text-amber-400/80 text-xs">Kendi AI replikasını oluşturarak HeyGen'e gerek kalmadan video üretebilirsin.</p>
-              <a href="/replica" className="inline-flex items-center gap-1.5 mt-1 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 rounded-lg text-white text-xs font-medium transition-colors">
-                AI Replika Oluştur →
-              </a>
             </div>
           )}
           <button onClick={retryVideo} disabled={retrying}
@@ -1195,7 +1061,7 @@ export default function VideoOutreachPage() {
             </div>
             AI Video Outreach
           </h1>
-          <p className="text-slate-400 text-sm mt-1">HeyGen + ElevenLabs · 1281 avatar · Kişisel video mesajları</p>
+          <p className="text-slate-400 text-sm mt-1">MuseTalk + ElevenLabs · AI Avatar Kütüphanesi · Kişisel video mesajları</p>
         </div>
         <div className="flex items-center gap-3">
           {stats && (
