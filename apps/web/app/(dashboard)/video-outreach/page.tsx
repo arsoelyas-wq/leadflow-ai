@@ -436,16 +436,19 @@ function StepScript({ leads, avatar, voice, language, scripts, onScriptsChange }
   const [loading, setLoading] = useState(false)
   const [generated, setGenerated] = useState(false)
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
+  const [scriptError, setScriptError] = useState('')
 
   async function generateScripts() {
     if (!leads?.length || !avatar || !voice) return
     setLoading(true)
+    setScriptError('')
     try {
       const results: any[] = []
+      const avatarName = avatar.display_name || avatar.name || ''
       for (const lead of leads.slice(0, 5)) {
         const r = await fetch(`${API}/api/video-outreach/preview-script`, {
           method: 'POST', headers: authH(),
-          body: JSON.stringify({ leadId: lead.id, language, avatarName: avatar.name }),
+          body: JSON.stringify({ leadId: lead.id, language, avatarName }),
         })
         const d = await r.json()
         const script = d.script || ''
@@ -465,6 +468,7 @@ function StepScript({ leads, avatar, voice, language, scripts, onScriptsChange }
       setGenerated(true)
     } catch (err: any) {
       console.error('[Script preview] Network error:', err.message)
+      setScriptError('Script oluşturulurken hata oluştu. Tekrar deneyin veya "Atla" ile devam edin.')
     }
     setLoading(false)
   }
@@ -517,6 +521,12 @@ function StepScript({ leads, avatar, voice, language, scripts, onScriptsChange }
               Atla →
             </button>
           </div>
+          {scriptError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5"/>
+              <span>{scriptError}</span>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
