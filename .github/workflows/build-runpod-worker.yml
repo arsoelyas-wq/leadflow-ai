@@ -143,7 +143,7 @@ jobs:
           esrgan_dir = mkd("realesrgan")
           esrgan_dst = os.path.join(esrgan_dir, "RealESRGAN_x4plus.pth")
           urllib.request.urlretrieve(
-              "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus.pth",
+              "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
               esrgan_dst,
           )
           print(f"  RealESRGAN_x4plus.pth OK ({os.path.getsize(esrgan_dst) // (1024*1024)} MB)")
@@ -156,7 +156,7 @@ jobs:
               (det_dir,   "detection_Resnet50_Final.pth",
                "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"),
               (parse_dir, "parsing_parsenet.pth",
-               "https://github.com/xinntao/facexlib/releases/download/v0.1.0/parsing_parsenet.pth"),
+               "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"),
           ]
           for dst_dir, fname, url in facelib_files:
               dst = os.path.join(dst_dir, fname)
