@@ -64,7 +64,9 @@ def run_cmd(cmd: list, cwd: str = None, timeout: int = 300) -> str:
         cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout
     )
     if result.returncode != 0:
-        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{result.stderr[-1000:]}")
+        raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{result.stderr[-2000:]}")
+    if result.stderr:
+        log(f"[stderr] {result.stderr[-1000:]}")
     return result.stdout
 
 # ── model initialization (runs once per worker, cached in /app/weights volume) ─
