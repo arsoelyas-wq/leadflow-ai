@@ -864,7 +864,8 @@ router.post('/generate/single', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { leadId, avatarId, voiceId, aspectRatio = '9:16', language = 'tr', autoSend = false, customScript = null } = req.body;
-    if (!leadId || !avatarId || !voiceId) return res.status(400).json({ error: 'leadId, avatarId, voiceId zorunlu' });
+    const stockAvatarId = req.body.stockAvatarId as string | undefined;
+    if (!leadId || (!avatarId && !stockAvatarId) || !voiceId) return res.status(400).json({ error: 'leadId, avatarId, voiceId zorunlu' });
 
     const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
     if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
@@ -964,9 +965,9 @@ router.post('/generate/single', async (req: any, res: any) => {
               userId,
             });
             finalVideoUrl = result.videoUrl;
-            usedEngine    = 'latentsync';
+            usedEngine    = result.engine;
           } catch (engineErr: any) {
-            console.warn('[Video] LatentSync (stock avatar) failed:', engineErr.message);
+            console.warn('[Video] MuseTalk (stock avatar) failed:', engineErr.message);
           }
         } else if (replica) {
           // Personal replica: MuseTalk (zero-shot, RunPod) or LatentSync fallback
@@ -1021,7 +1022,8 @@ router.post('/generate/campaign', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     let { leadIds, avatarId, voiceId, aspectRatio = '9:16', language, autoSend = false, campaignName } = req.body;
-    if (!leadIds?.length || !avatarId || !voiceId) return res.status(400).json({ error: 'Parametreler eksik' });
+    const campStockAvatarId = req.body.stockAvatarId as string | undefined;
+    if (!leadIds?.length || (!avatarId && !campStockAvatarId) || !voiceId) return res.status(400).json({ error: 'Parametreler eksik' });
 
     if (leadIds.length > MAX_CAMPAIGN_LEADS) leadIds = leadIds.slice(0, MAX_CAMPAIGN_LEADS);
 
