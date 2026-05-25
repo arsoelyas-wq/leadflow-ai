@@ -167,12 +167,31 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
             for f in files:
                 fp = os.path.join(root, f)
                 all_files.append(f"{fp} ({os.path.getsize(fp)} bytes)")
-        log(f"result_dir contents: {all_files or '(empty)'}")
+        log(f"result_dir contents ({len(all_files)} files)")
 
         # Output: {result_dir}/v15/{video_stem}_{audio_stem}.mp4
         video_stem = Path(video_path).stem
         audio_stem = Path(audio_path).stem
         expected = Path(result_dir) / "v15" / f"{video_stem}_{audio_stem}.mp4"
+
+        if not expected.exists():
+            # MuseTalk generates frames but sometimes fails to assemble the MP4.
+            # Fall back: assemble frames ourselves with ffmpeg.
+            frames_dir = Path(result_dir) / "v15" / video_stem
+            if frames_dir.is_dir():
+                frame_files = sorted(frames_dir.glob("*.png"))
+                log(f"MuseTalk left {len(frame_files)} frames; assembling MP4 with ffmpeg")
+                run_cmd([
+                    "ffmpeg", "-y",
+                    "-framerate", "25",
+                    "-i", str(frames_dir / "%08d.png"),
+                    "-i", audio_path,
+                    "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+                    "-c:a", "aac", "-shortest",
+                    str(expected),
+                ], timeout=120)
+                log(f"ffmpeg assembly done → {expected}")
+
         if not expected.exists():
             candidates = list(Path(result_dir).rglob("*.mp4"))
             if not candidates:
