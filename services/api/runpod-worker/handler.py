@@ -47,6 +47,7 @@ def upload_to_supabase(local_path: str, remote_name: str) -> str:
         res = requests.put(
             f"{SUPABASE_URL}/storage/v1/object/video-assets/{remote_path}",
             headers={
+                "apikey": SUPABASE_KEY,
                 "Authorization": f"Bearer {SUPABASE_KEY}",
                 "Content-Type": "video/mp4",
                 "x-upsert": "true",
