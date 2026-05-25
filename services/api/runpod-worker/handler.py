@@ -182,7 +182,7 @@ def run_museTalk(video_path: str, audio_path: str, output_path: str):
                 frame_files = sorted(frames_dir.glob("*.png"))
                 log(f"MuseTalk left {len(frame_files)} frames; assembling MP4 with ffmpeg")
                 run_cmd([
-                    "ffmpeg", "-y",
+                    "/usr/bin/ffmpeg", "-y",
                     "-framerate", "25",
                     "-i", str(frames_dir / "%08d.png"),
                     "-i", audio_path,
