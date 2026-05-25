@@ -52,6 +52,12 @@ RUN pip install --no-cache-dir "numpy<2.0"
 
 # ── Model weights — pre-downloaded by GitHub Actions, COPYed from build context
 # musetalk_models/ contains: musetalk/ dwpose/ sd-vae/ whisper/ syncnet/ face-parse-bisent/
+# ── Pre-download face detection model so it is never downloaded at runtime ─────
+# s3fd.pth is loaded from the path next to the detector code (not from cache)
+# If missing at runtime, the download silently fails inside try-except → 0 frames
+RUN wget -q "https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth" \
+    -O /app/MuseTalk/musetalk/utils/face_detection/detection/sfd/s3fd.pth
+
 WORKDIR /app/MuseTalk
 COPY musetalk_models/ /app/MuseTalk/models/
 
