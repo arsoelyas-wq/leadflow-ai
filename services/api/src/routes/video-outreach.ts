@@ -858,14 +858,36 @@ async function generateFreeAudio(text: string, language = 'tr'): Promise<Buffer>
   return Buffer.concat(buffers);
 }
 
-// ─── HEYGEN / ELEVENLABS PIPELINE ────────────────────────────────────────────
+// ─── AUDIO PIPELINE — Azure Neural TTS → ElevenLabs (cloned voices) → Google ──
+
+const { synthesize: ttsSynthesize } = require('../services/tts-engine');
 
 async function generateAudio(text: string, voiceId: string, emotionProfile?: any, language = 'tr'): Promise<Buffer> {
-  // Free TTS path — no ElevenLabs subscription needed
+  // Free TTS path (Google Translate)
   if (voiceId === 'free_tts') {
     return generateFreeAudio(text, language);
   }
 
+  // Azure Neural TTS path (voice IDs contain dashes and locale, e.g. tr-TR-AhmetNeural)
+  if (voiceId.includes('Neural') || voiceId.startsWith('az-') || voiceId.startsWith('tr-') ||
+      voiceId.startsWith('en-') || voiceId.startsWith('de-') || voiceId.startsWith('fr-') ||
+      voiceId.startsWith('ar-') || voiceId.startsWith('ru-') || voiceId.startsWith('es-') ||
+      voiceId.startsWith('it-') || voiceId.startsWith('nl-') || voiceId.startsWith('zh-') ||
+      voiceId.startsWith('ja-') || voiceId.startsWith('ko-') || voiceId.startsWith('pl-') ||
+      voiceId.startsWith('pt-') || voiceId.startsWith('hi-')) {
+    const emotion = emotionProfile?.dominant_emotion === 'joy'         ? 'cheerful'
+                  : emotionProfile?.dominant_emotion === 'sadness'     ? 'empathetic'
+                  : emotionProfile?.dominant_emotion === 'anticipation' ? 'excited'
+                  : 'professional';
+    return ttsSynthesize({ text, language, voiceId, emotion, provider: 'azure' });
+  }
+
+  // Cartesia voice path (UUIDs: 8-4-4-4-12 hex format)
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(voiceId)) {
+    return ttsSynthesize({ text, language, voiceId, provider: 'cartesia' });
+  }
+
+  // ElevenLabs path (kept for cloned voices — alphanumeric IDs)
   const voiceSettings = emotionProfile
     ? buildElevenLabsVoiceSettings(emotionProfile)
     : { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true };
@@ -878,9 +900,11 @@ async function generateAudio(text: string, voiceId: string, emotionProfile?: any
     );
     return Buffer.from(r.data);
   } catch (err: any) {
-    if (err?.response?.status === 402) throw new Error('ElevenLabs ses kotası doldu — hesabınızda yeterli karakter kredisi yok. ElevenLabs planınızı yükseltin.');
+    if (err?.response?.status === 402) throw new Error('ElevenLabs ses kotası doldu — hesabınızda yeterli karakter kredisi yok.');
     if (err?.response?.status === 401) throw new Error('ElevenLabs API anahtarı geçersiz veya eksik.');
-    throw err;
+    // Fallback to Azure if ElevenLabs fails
+    console.warn('[Audio] ElevenLabs failed, falling back to Azure TTS');
+    return ttsSynthesize({ text, language, provider: 'azure' });
   }
 }
 

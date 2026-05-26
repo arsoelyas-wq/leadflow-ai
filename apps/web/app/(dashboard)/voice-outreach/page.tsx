@@ -4,7 +4,7 @@ import { api } from '@/lib/api'
 import {
   Phone, PhoneCall, Mic, Upload, Play, Square,
   CheckCircle, AlertTriangle, RefreshCw, Zap, Volume2,
-  Globe2, Search, Settings, Sparkles
+  Globe2, Search, Settings, Sparkles, Shield, Star
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -12,62 +12,102 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
 const LANG_MAP: Record<string, { name: string; flag: string }> = {
-  tr: { name: 'Turkce', flag: '🇹🇷' },
-  en: { name: 'Ingilizce', flag: '🇬🇧' },
+  tr: { name: 'Türkçe', flag: '🇹🇷' },
+  en: { name: 'İngilizce', flag: '🇬🇧' },
   de: { name: 'Almanca', flag: '🇩🇪' },
-  fr: { name: 'Fransizca', flag: '🇫🇷' },
-  ar: { name: 'Arapca', flag: '🇸🇦' },
-  ru: { name: 'Rusca', flag: '🇷🇺' },
+  fr: { name: 'Fransızca', flag: '🇫🇷' },
+  ar: { name: 'Arapça', flag: '🇸🇦' },
+  ru: { name: 'Rusça', flag: '🇷🇺' },
   az: { name: 'Azerbaycanca', flag: '🇦🇿' },
-  it: { name: 'Italyanca', flag: '🇮🇹' },
-  es: { name: 'Ispanyolca', flag: '🇪🇸' },
+  it: { name: 'İtalyanca', flag: '🇮🇹' },
+  es: { name: 'İspanyolca', flag: '🇪🇸' },
   nl: { name: 'Hollandaca', flag: '🇳🇱' },
-  zh: { name: 'Cince', flag: '🇨🇳' },
+  zh: { name: 'Çince', flag: '🇨🇳' },
   ja: { name: 'Japonca', flag: '🇯🇵' },
   ko: { name: 'Korece', flag: '🇰🇷' },
-  hi: { name: 'Hintce', flag: '🇮🇳' },
+  hi: { name: 'Hintçe', flag: '🇮🇳' },
   pt: { name: 'Portekizce', flag: '🇵🇹' },
-  pl: { name: 'Lehce', flag: '🇵🇱' },
+  pl: { name: 'Lehçe', flag: '🇵🇱' },
 }
 
 const VOICE_LANGS = Object.entries(LANG_MAP).map(([code, v]) => ({ code, ...v }))
 
+const PROVIDER_LABELS: Record<string, { label: string; color: string }> = {
+  azure:    { label: 'Azure Neural', color: 'bg-blue-500/20 text-blue-300' },
+  cartesia: { label: 'Cartesia Sonic', color: 'bg-purple-500/20 text-purple-300' },
+  elevenlabs: { label: 'ElevenLabs', color: 'bg-amber-500/20 text-amber-300' },
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  professional: '💼 Profesyonel',
+  warm:         '😊 Sıcak',
+  energetic:    '⚡ Enerjik',
+  news:         '📰 Haber',
+  general:      '🎙️ Genel',
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    completed: { label: 'Tamamlandi', cls: 'bg-emerald-500/15 text-emerald-400' },
-    calling: { label: 'Ariyor', cls: 'bg-blue-500/15 text-blue-400 animate-pulse' },
-    initiating: { label: 'Baslatiliyor', cls: 'bg-amber-500/15 text-amber-400' },
-    'no-answer': { label: 'Cevap Yok', cls: 'bg-slate-500/15 text-slate-400' },
-    failed: { label: 'Basarisiz', cls: 'bg-red-500/15 text-red-400' },
+    completed:  { label: 'Tamamlandı', cls: 'bg-emerald-500/15 text-emerald-400' },
+    calling:    { label: 'Arıyor', cls: 'bg-blue-500/15 text-blue-400 animate-pulse' },
+    initiating: { label: 'Başlatılıyor', cls: 'bg-amber-500/15 text-amber-400' },
+    'no-answer':{ label: 'Cevap Yok', cls: 'bg-slate-500/15 text-slate-400' },
+    failed:     { label: 'Başarısız', cls: 'bg-red-500/15 text-red-400' },
   }
   const s = map[status] || { label: status, cls: 'bg-slate-500/15 text-slate-400' }
   return <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
 }
 
-// Global audio instance - tek ses çalar
 let globalAudio: HTMLAudioElement | null = null
 
 function VoiceCard({ voice, selected, onSelect, playing, onPlay }: any) {
   const isPlaying = playing === voice.voice_id
-  const emoji = voice.category === 'cloned' ? '🎤' : voice.gender === 'female' ? '👩' : '👨'
+  const providerInfo = PROVIDER_LABELS[voice.provider] || { label: voice.provider, color: 'bg-slate-500/20 text-slate-300' }
+  const emoji = voice.gender === 'female' ? '👩' : voice.gender === 'male' ? '👨' : '🎙️'
+
+  async function handlePlay(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (playing === voice.voice_id) {
+      if (globalAudio) { globalAudio.pause(); globalAudio = null }
+      onPlay(null)
+      return
+    }
+    if (globalAudio) { globalAudio.pause(); globalAudio = null }
+    onPlay(voice.voice_id)
+
+    try {
+      const previewUrl = `${API}/api/voice-library/preview?voiceId=${encodeURIComponent(voice.voice_id)}&lang=${voice.language}&provider=${voice.provider}`
+      const audio = new Audio(previewUrl)
+      // Need auth header — fetch blob first
+      const resp = await fetch(previewUrl, { headers: { Authorization: `Bearer ${getToken()}` } })
+      const blob = await resp.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const a = new Audio(blobUrl)
+      globalAudio = a
+      a.onended = () => { onPlay(null); globalAudio = null; URL.revokeObjectURL(blobUrl) }
+      a.onerror = () => { onPlay(null); globalAudio = null }
+      a.play().catch(() => { onPlay(null); globalAudio = null })
+    } catch { onPlay(null) }
+  }
+
   return (
-    <div onClick={() => onSelect(voice.voice_id, voice.name, voice.preview_url)}
+    <div onClick={() => onSelect(voice.voice_id, voice.name, voice.provider)}
       className={`group flex items-center gap-3 p-3.5 rounded-2xl border cursor-pointer transition-all ${selected ? 'bg-teal-600/20 border-teal-500/50' : 'bg-slate-800/60 border-slate-700/50 hover:border-slate-600 hover:bg-slate-800'}`}>
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${selected ? 'bg-teal-500/20' : 'bg-slate-700/50'}`}>
         {emoji}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-white text-sm font-medium truncate">{voice.name}</span>
           {selected && <CheckCircle className="w-3.5 h-3.5 text-teal-400 shrink-0"/>}
         </div>
-        <div className="text-xs text-slate-500 mt-0.5 flex gap-1.5">
-          {voice.gender && <span>{voice.gender === 'female' ? 'Kadin' : 'Erkek'}</span>}
-          {voice.accent && <span>· {voice.accent}</span>}
-          {voice.use_case && <span>· {voice.use_case}</span>}
+        <div className="text-xs text-slate-500 mt-0.5 flex gap-1.5 flex-wrap">
+          {voice.gender && <span>{voice.gender === 'female' ? 'Kadın' : voice.gender === 'male' ? 'Erkek' : 'Nötr'}</span>}
+          {voice.category && <span>· {CATEGORY_LABELS[voice.category] || voice.category}</span>}
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${providerInfo.color}`}>{providerInfo.label}</span>
         </div>
       </div>
-      <button onClick={e => { e.stopPropagation(); onPlay(voice.voice_id, voice.preview_url) }}
+      <button onClick={handlePlay}
         className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 ${isPlaying ? 'bg-red-500 opacity-100' : 'bg-slate-700 hover:bg-teal-600 opacity-0 group-hover:opacity-100'}`}>
         {isPlaying ? <Square className="w-3.5 h-3.5 text-white"/> : <Play className="w-3.5 h-3.5 text-slate-300"/>}
       </button>
@@ -76,53 +116,52 @@ function VoiceCard({ voice, selected, onSelect, playing, onPlay }: any) {
 }
 
 function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
-  const [allVoices, setAllVoices] = useState<any[]>([])
-  const [myVoices, setMyVoices] = useState<any[]>([])
+  const [voices, setVoices] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [playing, setPlaying] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filterGender, setFilterGender] = useState('')
+  const [filterProvider, setFilterProvider] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
   const [voiceLang, setVoiceLang] = useState('tr')
+  const [providerStats, setProviderStats] = useState<any>(null)
 
   useEffect(() => { loadVoices(voiceLang) }, [voiceLang])
 
   async function loadVoices(lang: string) {
     setLoading(true)
-    setAllVoices([])
+    setVoices([])
     try {
-      const r = await fetch(`${API}/api/voice/eleven-voices?language=${lang}`, { headers: authH() })
+      const r = await fetch(`${API}/api/voice-library/voices/${lang}`, { headers: authH() })
       const d = await r.json()
-      const cats = d.categories || {}
-      // turkish veya language hangisi doluysa onu al
-      const list = (cats.turkish?.length > 0 ? cats.turkish : cats.language) || []
-      setAllVoices(list)
-      setMyVoices(cats.my || [])
+      setVoices(d.voices || [])
+      if (d.providers) setProviderStats(d.providers)
     } catch {}
     setLoading(false)
   }
 
-  function playVoice(voiceId: string, previewUrl?: string) {
-    // Durdur
-    if (playing === voiceId) {
-      if (globalAudio) { globalAudio.pause(); globalAudio = null }
-      setPlaying(null)
-      return
-    }
-    // Önceki sesi durdur
-    if (globalAudio) { globalAudio.pause(); globalAudio = null }
-    if (!previewUrl) { setPlaying(null); return }
-
-    setPlaying(voiceId)
-    const audio = new Audio(previewUrl)
-    globalAudio = audio
-    audio.onended = () => { setPlaying(null); globalAudio = null }
-    audio.onerror = () => { setPlaying(null); globalAudio = null }
-    audio.play().catch(() => { setPlaying(null); globalAudio = null })
+  async function loadAllVoices() {
+    setLoading(true)
+    setVoices([])
+    try {
+      const params = new URLSearchParams({ limit: '300' })
+      if (filterGender) params.set('gender', filterGender)
+      if (filterProvider) params.set('provider', filterProvider)
+      if (filterCategory) params.set('category', filterCategory)
+      if (search) params.set('search', search)
+      const r = await fetch(`${API}/api/voice-library/voices?${params}`, { headers: authH() })
+      const d = await r.json()
+      setVoices(d.voices || [])
+      if (d.providers) setProviderStats(d.providers)
+    } catch {}
+    setLoading(false)
   }
 
-  const filtered = allVoices.filter(v => {
+  const filtered = voices.filter(v => {
     if (search && !v.name?.toLowerCase().includes(search.toLowerCase())) return false
     if (filterGender && v.gender !== filterGender) return false
+    if (filterProvider && v.provider !== filterProvider) return false
+    if (filterCategory && v.category !== filterCategory) return false
     return true
   })
 
@@ -131,29 +170,25 @@ function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
       {selectedName && (
         <div className="flex items-center gap-3 p-3 bg-teal-500/10 border border-teal-500/20 rounded-xl">
           <CheckCircle className="w-4 h-4 text-teal-400 shrink-0"/>
-          <span className="text-teal-300 text-sm font-medium">Secili: {selectedName}</span>
+          <span className="text-teal-300 text-sm font-medium">Seçili: {selectedName}</span>
           <span className="ml-auto text-xs text-teal-500">Aktif</span>
         </div>
       )}
 
-      {/* Seslerim - hızlı erişim */}
-      {myVoices.length > 0 && (
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs text-slate-500 shrink-0">Seslerim:</span>
-          {myVoices.slice(0, 6).map((voice: any) => (
-            <button key={voice.voice_id} onClick={() => onSelect(voice.voice_id, voice.name)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all ${selectedId === voice.voice_id ? 'bg-teal-600/20 border-teal-500/50 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
-              {voice.category === 'cloned' ? '🎤' : voice.gender === 'female' ? '👩' : '👨'}
-              <span className="truncate max-w-[80px]">{voice.name.split(' ')[0]}</span>
-              {selectedId === voice.voice_id && <span className="text-teal-400">✓</span>}
-            </button>
-          ))}
+      {providerStats && (
+        <div className="flex gap-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-300">
+            <Shield className="w-3 h-3"/> Azure Neural: {providerStats.azure}+
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-xs text-purple-300">
+            <Star className="w-3 h-3"/> Cartesia: {providerStats.cartesia}
+          </div>
         </div>
       )}
 
-      {/* Dil secimi */}
+      {/* Dil seçimi */}
       <div>
-        <p className="text-xs text-slate-500 mb-2">Dile gore ses ara:</p>
+        <p className="text-xs text-slate-500 mb-2">Dile göre ses ara:</p>
         <div className="flex gap-1.5 flex-wrap">
           {VOICE_LANGS.map(lang => (
             <button key={lang.code} onClick={() => setVoiceLang(lang.code)}
@@ -165,18 +200,34 @@ function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
         </div>
       </div>
 
-      {/* Arama ve filtre */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
+      {/* Arama ve filtreler */}
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ses ara..."
             className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500"/>
         </div>
         <select value={filterGender} onChange={e => setFilterGender(e.target.value)}
           className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-          <option value="">Tum</option>
+          <option value="">Tüm Cinsiyet</option>
           <option value="male">Erkek</option>
-          <option value="female">Kadin</option>
+          <option value="female">Kadın</option>
+          <option value="neutral">Nötr</option>
+        </select>
+        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          <option value="">Tüm Kategori</option>
+          <option value="professional">💼 Profesyonel</option>
+          <option value="warm">😊 Sıcak</option>
+          <option value="energetic">⚡ Enerjik</option>
+          <option value="news">📰 Haber</option>
+          <option value="general">🎙️ Genel</option>
+        </select>
+        <select value={filterProvider} onChange={e => setFilterProvider(e.target.value)}
+          className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+          <option value="">Tüm Provider</option>
+          <option value="azure">Azure Neural</option>
+          <option value="cartesia">Cartesia Sonic</option>
         </select>
       </div>
 
@@ -188,19 +239,19 @@ function VoiceLibrary({ selectedId, selectedName, onSelect }: any) {
         {loading ? (
           <div className="flex flex-col items-center py-12 gap-3">
             <RefreshCw className="w-6 h-6 animate-spin text-teal-400"/>
-            <p className="text-slate-500 text-sm">Sesler yukleniyor...</p>
+            <p className="text-slate-500 text-sm">Sesler yükleniyor...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-slate-600">
             <Volume2 className="w-10 h-10 mx-auto mb-2 opacity-30"/>
-            <p className="text-sm">Ses bulunamadi</p>
+            <p className="text-sm">Ses bulunamadı</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-2 max-h-[450px] overflow-y-auto pr-1">
             {filtered.map((voice: any) => (
               <VoiceCard key={voice.voice_id} voice={voice}
                 selected={selectedId === voice.voice_id}
-                onSelect={onSelect} playing={playing} onPlay={playVoice}/>
+                onSelect={onSelect} playing={playing} onPlay={setPlaying}/>
             ))}
           </div>
         )}
@@ -221,15 +272,13 @@ export default function VoicePage() {
   const [calling, setCalling] = useState(false)
   const [campaignRunning, setCampaignRunning] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [cloning, setCloning] = useState(false)
-  const [cloningName, setCloningName] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
   const [selectedLead, setSelectedLead] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [campaignName, setCampaignName] = useState('')
   const [delayMinutes, setDelayMinutes] = useState(5)
   const [selectedLanguage, setSelectedLanguage] = useState('tr')
   const [filterCountry, setFilterCountry] = useState('')
+  const [providerStatus, setProviderStatus] = useState<any>(null)
 
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 5000)
@@ -239,12 +288,13 @@ export default function VoicePage() {
 
   async function loadAll() {
     try {
-      const [l, c, ca, s, st] = await Promise.allSettled([
+      const [l, c, ca, s, st, ps] = await Promise.allSettled([
         api.get('/api/leads?limit=200'),
         fetch(`${API}/api/voice/calls?limit=30`, { headers: authH() }),
         fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
         fetch(`${API}/api/voice/settings`, { headers: authH() }),
         fetch(`${API}/api/voice/stats`, { headers: authH() }),
+        fetch(`${API}/api/voice/provider-status`, { headers: authH() }),
       ])
       if (l.status === 'fulfilled') setLeads((l.value as any).leads || [])
       if (c.status === 'fulfilled') { const d = await (c.value as any).json(); setCalls(d.calls || []) }
@@ -256,6 +306,7 @@ export default function VoicePage() {
         setSelectedVoiceName(d.settings?.voice_name || '')
       }
       if (st.status === 'fulfilled') { const d = await (st.value as any).json(); setStats(d) }
+      if (ps.status === 'fulfilled') { const d = await (ps.value as any).json(); setProviderStatus(d) }
     } catch {}
   }
 
@@ -265,28 +316,11 @@ export default function VoicePage() {
       method: 'POST', headers: authH(),
       body: JSON.stringify({ voiceId, voiceName }),
     })
-    showMsg('success', `${voiceName} sesi secildi`)
-  }
-
-  async function cloneVoice() {
-    if (!fileRef.current?.files?.[0]) return showMsg('error', 'Ses dosyasi secin')
-    setCloning(true)
-    try {
-      const form = new FormData()
-      form.append('audio', fileRef.current.files[0])
-      form.append('name', cloningName || 'Sesim')
-      const r = await fetch(`${API}/api/voice/clone`, {
-        method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: form,
-      })
-      const d = await r.json()
-      if (d.ok) { showMsg('success', 'Sesiniz klonlandi!'); loadAll() }
-      else showMsg('error', d.error)
-    } catch (e: any) { showMsg('error', e.message) }
-    setCloning(false)
+    showMsg('success', `${voiceName} sesi seçildi`)
   }
 
   async function makeSingleCall() {
-    if (!selectedLead) return showMsg('error', 'Lead secin')
+    if (!selectedLead) return showMsg('error', 'Lead seçin')
     setCalling(true)
     try {
       const r = await fetch(`${API}/api/voice/call/single`, {
@@ -294,14 +328,14 @@ export default function VoicePage() {
         body: JSON.stringify({ leadId: selectedLead, language: selectedLanguage }),
       })
       const d = await r.json()
-      if (d.ok) { showMsg('success', 'Arama basladi!'); setTimeout(loadAll, 3000) }
+      if (d.ok) { showMsg('success', 'Arama başladı!'); setTimeout(loadAll, 3000) }
       else showMsg('error', d.error)
     } catch (e: any) { showMsg('error', e.message) }
     setCalling(false)
   }
 
   async function startCampaign() {
-    if (!selectedLeads.length) return showMsg('error', 'En az 1 lead secin')
+    if (!selectedLeads.length) return showMsg('error', 'En az 1 lead seçin')
     setCampaignRunning(true)
     try {
       const r = await fetch(`${API}/api/voice/call/campaign`, {
@@ -337,19 +371,38 @@ export default function VoicePage() {
             </div>
             AI Sesli Arama
           </h1>
-          <p className="text-slate-400 text-sm mt-1">ElevenLabs + Claude Sonnet · %100 insan sesi · 16 dil · 1600+ ses</p>
+          <p className="text-slate-400 text-sm mt-1">
+            Azure Neural TTS · Cartesia Sonic · Vapi.ai · %100 insan sesi · 16 dil · 400+ ses
+          </p>
         </div>
-        {selectedVoiceName ? (
-          <div className="flex items-center gap-2 px-3 py-2 bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer" onClick={() => setTab('voice')}>
-            <Volume2 className="w-4 h-4 text-teal-400"/>
-            <span className="text-teal-400 text-sm font-medium">{selectedVoiceName}</span>
-            <span className="text-teal-600 text-xs ml-1">degistir</span>
-          </div>
-        ) : (
-          <button onClick={() => setTab('voice')} className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-sm">
-            <AlertTriangle className="w-4 h-4"/> Ses Sec
-          </button>
-        )}
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {providerStatus && (
+            <div className="flex gap-2">
+              {providerStatus.vapi && (
+                <span className="px-2 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs rounded-lg flex items-center gap-1">
+                  <Shield className="w-3 h-3"/> Vapi
+                </span>
+              )}
+              {providerStatus.azure && (
+                <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs rounded-lg flex items-center gap-1">
+                  <Shield className="w-3 h-3"/> Azure Neural
+                </span>
+              )}
+            </div>
+          )}
+          {selectedVoiceName ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-teal-500/10 border border-teal-500/20 rounded-xl cursor-pointer" onClick={() => setTab('voice')}>
+              <Volume2 className="w-4 h-4 text-teal-400"/>
+              <span className="text-teal-400 text-sm font-medium">{selectedVoiceName}</span>
+              <span className="text-teal-600 text-xs ml-1">değiştir</span>
+            </div>
+          ) : (
+            <button onClick={() => setTab('voice')} className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-sm">
+              <AlertTriangle className="w-4 h-4"/> Ses Seç
+            </button>
+          )}
+        </div>
       </div>
 
       {msg && (
@@ -386,33 +439,27 @@ export default function VoicePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700 rounded-2xl p-5">
             <h3 className="font-semibold text-white flex items-center gap-2 mb-4">
-              <Volume2 className="w-4 h-4 text-teal-400"/> Ses Kutuphanesi (1600+ ses)
+              <Volume2 className="w-4 h-4 text-teal-400"/> Ses Kütüphanesi (400+ Azure Neural · 8 Cartesia Sonic)
             </h3>
             <VoiceLibrary selectedId={selectedVoiceId} selectedName={selectedVoiceName} onSelect={selectVoice}/>
           </div>
           <div className="space-y-4">
             <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 space-y-4">
               <h3 className="font-semibold text-white flex items-center gap-2">
-                <Mic className="w-4 h-4 text-purple-400"/> Kendi Sesini Klonla
+                <Sparkles className="w-4 h-4 text-blue-400"/> Provider Karşılaştırma
               </h3>
-              <p className="text-slate-400 text-sm">30 saniye - 3 dakika ses kaydi yukleyin.</p>
-              <div>
-                <label className="text-xs text-slate-400 mb-1.5 block">Ses Ismi</label>
-                <input value={cloningName} onChange={e => setCloningName(e.target.value)}
-                  placeholder="Ahmetin Sesi"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"/>
-              </div>
-              <div className="border-2 border-dashed border-slate-700 hover:border-purple-500/50 rounded-xl p-6 text-center transition cursor-pointer"
-                onClick={() => fileRef.current?.click()}>
-                <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2"/>
-                <p className="text-slate-400 text-sm">Ses dosyasi secin</p>
-                <p className="text-slate-600 text-xs mt-1">MP3, WAV, M4A max 10MB</p>
-                <input ref={fileRef} type="file" accept="audio/*" className="hidden"/>
-              </div>
-              <button onClick={cloneVoice} disabled={cloning}
-                className="w-full py-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-medium flex items-center justify-center gap-2">
-                {cloning ? <><RefreshCw className="w-4 h-4 animate-spin"/> Klonlaniyor...</> : <><Mic className="w-4 h-4"/> Sesimi Klonla</>}
-              </button>
+              {[
+                { name: 'Azure Neural', desc: 'Video & kampanya için — 400+ ses, 140 dil, ElevenLabs kalitesi', color: 'border-blue-500/30 bg-blue-500/5', badge: '💼 Video' },
+                { name: 'Cartesia Sonic', desc: 'Gerçek zamanlı aramalar için — 90ms gecikme, Vapi entegrasyonu', color: 'border-purple-500/30 bg-purple-500/5', badge: '📞 Canlı' },
+              ].map(p => (
+                <div key={p.name} className={`p-3 rounded-xl border ${p.color}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-white text-sm font-medium">{p.name}</span>
+                    <span className="text-xs px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full">{p.badge}</span>
+                  </div>
+                  <p className="text-xs text-slate-400">{p.desc}</p>
+                </div>
+              ))}
             </div>
             <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
               <h4 className="text-white text-sm font-semibold mb-3 flex items-center gap-2">
@@ -451,10 +498,10 @@ export default function VoicePage() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-1.5 block">Lead Sec</label>
+              <label className="text-xs text-slate-400 mb-1.5 block">Lead Seç</label>
               <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500">
-                <option value="">Lead secin (telefonu olanlar)</option>
+                <option value="">Lead seçin (telefonu olanlar)</option>
                 {leadsWithPhone.map(l => (
                   <option key={l.id} value={l.id}>{l.company_name} {l.country ? `(${l.country})` : ''} — {l.phone}</option>
                 ))}
@@ -462,20 +509,20 @@ export default function VoicePage() {
             </div>
             <button onClick={makeSingleCall} disabled={calling || !selectedLead}
               className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
-              {calling ? <><RefreshCw className="w-4 h-4 animate-spin"/> Araniyor...</> : <><Phone className="w-4 h-4"/> Simdi Ara</>}
+              {calling ? <><RefreshCw className="w-4 h-4 animate-spin"/> Arınıyor...</> : <><Phone className="w-4 h-4"/> Şimdi Ara</>}
             </button>
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5">
             <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400"/> Nasil Calisir?
+              <Sparkles className="w-4 h-4 text-purple-400"/> Nasıl Çalışır?
             </h3>
             <div className="space-y-4">
               {[
-                { step: '1', title: 'Ses Sec', desc: 'Kutuphaneden ses sec veya kendi sesini klonla', color: 'bg-teal-500/20 text-teal-400' },
-                { step: '2', title: 'Lead ve Dil', desc: 'Aranacak leadi ve konusma dilini sec', color: 'bg-blue-500/20 text-blue-400' },
-                { step: '3', title: 'ElevenLabs Arar', desc: 'Secilen sesle musteri aranir', color: 'bg-purple-500/20 text-purple-400' },
-                { step: '4', title: 'Claude Yonetir', desc: 'Claude Sonnet konusmayı yonetir', color: 'bg-amber-500/20 text-amber-400' },
-                { step: '5', title: 'Analiz Gelir', desc: 'Transcript ve analiz otomatik kaydedilir', color: 'bg-emerald-500/20 text-emerald-400' },
+                { step: '1', title: 'Araştırma', desc: 'Claude şirketi Perplexity ile araştırır', color: 'bg-blue-500/20 text-blue-400' },
+                { step: '2', title: 'Kişiselleştirilmiş Açılış', desc: 'Claude Haiku lead\'e özel açılış cümlesi üretir', color: 'bg-teal-500/20 text-teal-400' },
+                { step: '3', title: 'Vapi Arar', desc: 'Cartesia Sonic (90ms) ile gerçekçi ses', color: 'bg-purple-500/20 text-purple-400' },
+                { step: '4', title: 'Claude Yönetir', desc: 'Doğal konuşma akışı, backchanneling', color: 'bg-amber-500/20 text-amber-400' },
+                { step: '5', title: 'AI Analiz', desc: 'Transcript, ilgi skoru ve CRM notu otomatik', color: 'bg-emerald-500/20 text-emerald-400' },
               ].map(s => (
                 <div key={s.step} className="flex items-start gap-3">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${s.color}`}>{s.step}</div>
@@ -494,13 +541,13 @@ export default function VoicePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700 rounded-2xl p-5 space-y-4">
             <h3 className="font-semibold text-white flex items-center gap-2">
-              <Zap className="w-4 h-4 text-amber-400"/> Toplu Arama Kampanyasi
+              <Zap className="w-4 h-4 text-amber-400"/> Toplu Arama Kampanyası
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-slate-400 mb-1.5 block">Kampanya Adi</label>
+                <label className="text-xs text-slate-400 mb-1.5 block">Kampanya Adı</label>
                 <input value={campaignName} onChange={e => setCampaignName(e.target.value)}
-                  placeholder="Nisan 2026 Ihracat"
+                  placeholder="Nisan 2026 İhracat"
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none"/>
               </div>
               <div>
@@ -516,7 +563,7 @@ export default function VoicePage() {
               <div className="flex gap-1.5 flex-wrap">
                 <button onClick={() => setSelectedLanguage('')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${!selectedLanguage ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                  Otomatik (ulkeye gore)
+                  Otomatik (ülkeye göre)
                 </button>
                 {VOICE_LANGS.map(lang => (
                   <button key={lang.code} onClick={() => setSelectedLanguage(lang.code)}
@@ -527,18 +574,18 @@ export default function VoicePage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <label className="text-xs text-slate-400 shrink-0">Ulke filtresi:</label>
+              <label className="text-xs text-slate-400 shrink-0">Ülke filtresi:</label>
               <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
                 className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                <option value="">Tum Ulkeler</option>
+                <option value="">Tüm Ülkeler</option>
                 {countries.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs text-slate-400">{selectedLeads.length} / {filteredLeads.length} secili</label>
+                <label className="text-xs text-slate-400">{selectedLeads.length} / {filteredLeads.length} seçili</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setSelectedLeads(filteredLeads.map(l => l.id))} className="text-xs text-teal-400">Tumunu Sec</button>
+                  <button onClick={() => setSelectedLeads(filteredLeads.map(l => l.id))} className="text-xs text-teal-400">Tümünü Seç</button>
                   <button onClick={() => setSelectedLeads([])} className="text-xs text-slate-500">Temizle</button>
                 </div>
               </div>
@@ -554,16 +601,16 @@ export default function VoicePage() {
                     </div>
                   </label>
                 ))}
-                {filteredLeads.length === 0 && <p className="text-slate-600 text-xs text-center py-4">Telefon numarasi olan lead yok</p>}
+                {filteredLeads.length === 0 && <p className="text-slate-600 text-xs text-center py-4">Telefon numarası olan lead yok</p>}
               </div>
             </div>
             <button onClick={startCampaign} disabled={campaignRunning || !selectedLeads.length}
               className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
-              {campaignRunning ? <><RefreshCw className="w-4 h-4 animate-spin"/> Calisiyor...</> : <><Zap className="w-4 h-4"/> {selectedLeads.length} Leadi Ara</>}
+              {campaignRunning ? <><RefreshCw className="w-4 h-4 animate-spin"/> Çalışıyor...</> : <><Zap className="w-4 h-4"/> {selectedLeads.length} Leadi Ara</>}
             </button>
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
-            <h3 className="font-semibold text-white text-sm mb-3">Gecmis Kampanyalar</h3>
+            <h3 className="font-semibold text-white text-sm mb-3">Geçmiş Kampanyalar</h3>
             <div className="space-y-2">
               {campaigns.map(c => (
                 <div key={c.id} className="p-3 bg-slate-900 rounded-xl">
@@ -588,7 +635,7 @@ export default function VoicePage() {
       {tab === 'calls' && (
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-700 flex items-center justify-between">
-            <h3 className="font-semibold text-white">Arama Gecmisi</h3>
+            <h3 className="font-semibold text-white">Arama Geçmişi</h3>
             <button onClick={loadAll} className="p-1.5 text-slate-400 hover:text-white"><RefreshCw className="w-4 h-4"/></button>
           </div>
           <div className="overflow-x-auto">
@@ -599,7 +646,7 @@ export default function VoicePage() {
                   <th className="text-left px-4 py-3">Numara</th>
                   <th className="text-center px-4 py-3">Dil</th>
                   <th className="text-center px-4 py-3">Durum</th>
-                  <th className="text-center px-4 py-3">Sonuc</th>
+                  <th className="text-center px-4 py-3">Sonuç</th>
                   <th className="text-right px-4 py-3">Tarih</th>
                 </tr>
               </thead>
@@ -628,7 +675,7 @@ export default function VoicePage() {
             {calls.length === 0 && (
               <div className="text-center py-12 text-slate-600">
                 <Phone className="w-10 h-10 mx-auto mb-2 opacity-30"/>
-                <p className="text-sm">Henuz arama yapilmamis</p>
+                <p className="text-sm">Henüz arama yapılmamış</p>
               </div>
             )}
           </div>
@@ -641,10 +688,10 @@ export default function VoicePage() {
             <Settings className="w-4 h-4 text-blue-400"/> Temsilci Profili
           </h3>
           {[
-            { key: 'agent_name', label: 'Temsilci Adi', ph: 'Ahmet' },
-            { key: 'company_name', label: 'Sirket Adi', ph: 'Sirketiniz' },
-            { key: 'product_description', label: 'Urun/Hizmet', ph: 'Ne sattiginizi kisaca aciklayin' },
-            { key: 'transfer_number', label: 'Transfer Numarasi', ph: 'Insan temsilciye baglanti' },
+            { key: 'agent_name', label: 'Temsilci Adı', ph: 'Ahmet' },
+            { key: 'company_name', label: 'Şirket Adı', ph: 'Şirketiniz' },
+            { key: 'product_description', label: 'Ürün/Hizmet', ph: 'Ne sattığınızı kısaca açıklayın' },
+            { key: 'transfer_number', label: 'Transfer Numarası', ph: 'İnsan temsilciye bağlantı' },
           ].map(({ key, label, ph }) => (
             <div key={key}>
               <label className="text-xs text-slate-400 mb-1.5 block">{label}</label>

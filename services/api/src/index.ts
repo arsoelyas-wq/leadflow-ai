@@ -178,7 +178,9 @@ app.use('/api/developer',            authMiddleware, require('./routes/developer
 app.use('/api/whitelabel',           authMiddleware, require('./routes/whitelabel'));
 const voiceRouter = require('./routes/voice-outreach');
 app.post('/api/voice/webhook/elevenlabs', (req: any, res: any, next: any) => { req.url = '/webhook/elevenlabs'; voiceRouter(req, res, next); });
+app.post('/api/voice/webhook/vapi', (req: any, res: any, next: any) => { req.url = '/webhook/vapi'; voiceRouter(req, res, next); });
 app.use('/api/voice',                authMiddleware, voiceRouter);
+app.use('/api/voice-library',        authMiddleware, require('./routes/voice-library'));
 app.use('/api/push',                 authMiddleware, require('./routes/push'));
 app.use('/api/cultural',             authMiddleware, require('./routes/cultural'));
 app.use('/api/meta',                 authMiddleware, require('./routes/meta-intent'));
