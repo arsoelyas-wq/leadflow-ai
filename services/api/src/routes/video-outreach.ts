@@ -158,6 +158,112 @@ JSON formatında yanıt ver (başka hiçbir şey yazma, sadece JSON):
   return { ...parsed, quality: 'web_search' as const };
 }
 
+// ─── PERPLEXITY RESEARCH (primary — fast, cheap, real-time web) ──────────────
+
+function companyCacheKey(companyName: string, country: string): string {
+  return `${(companyName || '').toLowerCase().replace(/\s+/g, '_').slice(0, 120)}|${(country || 'TR').toLowerCase()}`;
+}
+
+async function getGlobalResearchCache(companyName: string, country: string): Promise<LeadResearch | null> {
+  try {
+    const { data } = await supabase
+      .from('company_research_cache')
+      .select('research_data')
+      .eq('company_key', companyCacheKey(companyName, country))
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+    return (data?.research_data as LeadResearch) || null;
+  } catch { return null; }
+}
+
+async function setGlobalResearchCache(companyName: string, country: string, research: LeadResearch): Promise<void> {
+  try {
+    await supabase.from('company_research_cache').upsert({
+      company_key: companyCacheKey(companyName, country),
+      research_data: research,
+      cached_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    }, { onConflict: 'company_key' });
+  } catch {}
+}
+
+async function researchWithPerplexity(lead: any, profile: any): Promise<LeadResearch> {
+  const companyName = lead.company_name;
+  const country     = lead.country || 'Türkiye';
+  const ourCompany  = profile?.company?.name || 'şirketimiz';
+  const product     = (profile?.product?.description || 'hizmetimiz').slice(0, 200);
+
+  const prompt = `"${companyName}" şirketini (${country}) araştır. Gerçek müşteri şikayetleri ve sorunlarını bul.
+
+Şunları araştır:
+1. Google Yorumlar, şikayetvar.com, Trustpilot, ekşi sözlük'teki gerçek müşteri şikayetleri
+2. Şirketin sosyal medya ve web varlığı
+3. Aktif iş ilanları (büyüme sinyali)
+4. Kullandıkları teknolojiler veya yazılımlar
+5. Şirketin büyüme aşaması
+
+"${ourCompany}" firması "${product}" sunuyor — bu şirketin hangi sorununu çözebilir?
+
+Sadece JSON yanıtla, başka hiçbir şey yazma:
+{
+  "brandName": "kısa marka adı (hukuki değil)",
+  "website": "URL veya null",
+  "instagram": "URL veya null",
+  "facebook": "URL veya null",
+  "linkedin": "URL veya null",
+  "pains": ["bu şirkete özgü gerçek sorun 1", "sorun 2", "sorun 3"],
+  "positives": ["güçlü yön 1"],
+  "opportunity": "ürünümüzün bu şirkete sağladığı spesifik fayda — 1 cümle",
+  "hookLine": "dikkat çekici, onların sorununa değinen video açılış cümlesi",
+  "reviewSummary": "bulunan müşteri yorumlarının özeti",
+  "jobSignals": ["aktif iş ilanı varsa açık pozisyon adı"],
+  "techStack": ["kullandıkları yazılım/teknoloji"],
+  "growthStage": "startup | growing | established | declining"
+}`;
+
+  const response = await axios.post(
+    'https://api.perplexity.ai/chat/completions',
+    {
+      model: 'sonar-pro',
+      messages: [
+        { role: 'system', content: 'Sen bir iş araştırma uzmanısın. Sadece geçerli JSON döndür, başka hiçbir şey yazma.' },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 1200,
+      temperature: 0.1,
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000,
+    }
+  );
+
+  const text: string = response.data.choices[0]?.message?.content || '';
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Perplexity JSON parse failed');
+
+  const p = JSON.parse(match[0]);
+  return {
+    brandName:     normalizeText(p.brandName || extractBrandName(companyName)),
+    website:       p.website || null,
+    instagram:     p.instagram || null,
+    facebook:      p.facebook || null,
+    linkedin:      p.linkedin || null,
+    pains:         Array.isArray(p.pains)      ? p.pains.map(normalizeText).filter(Boolean)      : [],
+    positives:     Array.isArray(p.positives)  ? p.positives.map(normalizeText).filter(Boolean)  : [],
+    opportunity:   normalizeText(p.opportunity || ''),
+    hookLine:      normalizeText(p.hookLine || ''),
+    reviewSummary: normalizeText(p.reviewSummary || ''),
+    jobSignals:    Array.isArray(p.jobSignals) ? p.jobSignals.filter(Boolean) : [],
+    techStack:     Array.isArray(p.techStack)  ? p.techStack.filter(Boolean)  : [],
+    growthStage:   p.growthStage || '',
+    quality:       'web_search' as const,
+  };
+}
+
 // Fallback: fetch website HTML + Claude sector knowledge
 async function researchFromWebsite(lead: any, profile: any): Promise<LeadResearch> {
   const fallbackBrand = extractBrandName(lead.company_name);
@@ -375,10 +481,34 @@ Sadece sayı (1-10):`,
 }
 
 async function researchLead(lead: any, profile: any): Promise<LeadResearch> {
+  const country = lead.country || 'TR';
+
+  // 1. Cross-user global cache (free, 14-day TTL)
+  const cached = await getGlobalResearchCache(lead.company_name, country);
+  if (cached) {
+    console.log(`[Research] Global cache hit: ${lead.company_name}`);
+    return cached;
+  }
+
+  // 2. Perplexity sonar-pro — single API call, specialised web search
+  if (process.env.PERPLEXITY_API_KEY) {
+    try {
+      console.log(`[Research] Perplexity: ${lead.company_name}`);
+      const research = await researchWithPerplexity(lead, profile);
+      await setGlobalResearchCache(lead.company_name, country, research);
+      return research;
+    } catch (e: any) {
+      console.warn(`[Research] Perplexity failed for "${lead.company_name}", falling back:`, e.message?.slice(0, 80));
+    }
+  }
+
+  // 3. Claude web search (original, more expensive fallback)
   try {
-    return await researchWithWebSearch(lead, profile);
+    const research = await researchWithWebSearch(lead, profile);
+    await setGlobalResearchCache(lead.company_name, country, research);
+    return research;
   } catch (e: any) {
-    console.log(`[Research] Web search failed for "${lead.company_name}", using fallback:`, e.message?.slice(0, 100));
+    console.log(`[Research] Web search failed for "${lead.company_name}", using website fallback:`, e.message?.slice(0, 80));
     return await researchFromWebsite(lead, profile);
   }
 }
