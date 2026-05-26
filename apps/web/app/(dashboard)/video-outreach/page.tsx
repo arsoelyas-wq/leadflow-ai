@@ -164,6 +164,8 @@ function StepAvatar({ selected, onSelect }: any) {
 }
 
 
+const FREE_TTS_VOICE = { voice_id: 'free_tts', name: 'Ücretsiz TTS (Google)', gender: 'neutral' }
+
 // ADIM 2: Ses Seç
 function StepVoice({ selected, onSelect }: any) {
   const [voices, setVoices] = useState<any[]>([])
@@ -172,8 +174,9 @@ function StepVoice({ selected, onSelect }: any) {
   const [playing, setPlaying] = useState<string | null>(null)
   const [voiceLang, setVoiceLang] = useState('tr')
   const [search, setSearch] = useState('')
+  const [showEleven, setShowEleven] = useState(false)
 
-  useEffect(() => { load(voiceLang) }, [voiceLang])
+  useEffect(() => { if (showEleven) load(voiceLang) }, [voiceLang, showEleven])
 
   async function load(lang: string) {
     setLoading(true)
@@ -199,75 +202,111 @@ function StepVoice({ selected, onSelect }: any) {
   }
 
   const filtered = voices.filter(v => !search || v.name?.toLowerCase().includes(search.toLowerCase()))
+  const isFreeTTS = selected?.voice_id === 'free_tts'
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-bold text-white mb-1">ElevenLabs Sesi Seç</h2>
-        <p className="text-slate-400 text-sm">Videonuzda kullanılacak sesi seçin. Her ses dinlenebilir.</p>
+        <h2 className="text-xl font-bold text-white mb-1">Ses Seç</h2>
+        <p className="text-slate-400 text-sm">Ücretsiz TTS ile hemen başlayın veya ElevenLabs ile premium ses kullanın.</p>
       </div>
 
       {selected && (
-        <div className="flex items-center gap-3 p-3 bg-teal-500/10 border border-teal-500/20 rounded-xl">
-          <CheckCircle className="w-4 h-4 text-teal-400 shrink-0"/>
-          <span className="text-teal-300 text-sm font-medium">Seçili: {selected.name}</span>
+        <div className={`flex items-center gap-3 p-3 border rounded-xl ${isFreeTTS ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-teal-500/10 border-teal-500/20'}`}>
+          <CheckCircle className={`w-4 h-4 shrink-0 ${isFreeTTS ? 'text-emerald-400' : 'text-teal-400'}`}/>
+          <span className={`text-sm font-medium ${isFreeTTS ? 'text-emerald-300' : 'text-teal-300'}`}>
+            Seçili: {selected.name}
+            {isFreeTTS && <span className="ml-2 text-xs text-emerald-500/70">• ElevenLabs gerektirmez</span>}
+          </span>
           <button onClick={() => onSelect(null)} className="ml-auto text-xs text-slate-500 hover:text-slate-300">Değiştir</button>
         </div>
       )}
 
-      {myVoices.length > 0 && (
-        <div>
-          <p className="text-xs text-slate-500 mb-2 font-medium">SESLERİM</p>
-          <div className="flex gap-2 flex-wrap">
-            {myVoices.slice(0, 6).map((v: any) => (
-              <button key={v.voice_id} onClick={() => onSelect(v)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition ${selected?.voice_id === v.voice_id ? 'bg-teal-600/20 border-teal-500/50 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
-                🎤 {v.name}
-              </button>
-            ))}
-          </div>
+      {/* Free TTS card */}
+      <div
+        onClick={() => onSelect(FREE_TTS_VOICE)}
+        className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition ${isFreeTTS ? 'bg-emerald-600/20 border-emerald-500/50' : 'bg-slate-800/60 border-slate-700 hover:border-emerald-500/30'}`}
+      >
+        <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">🆓</div>
+        <div className="flex-1">
+          <p className="text-white font-medium">Ücretsiz TTS (Google)</p>
+          <p className="text-slate-400 text-xs mt-0.5">ElevenLabs aboneliği gerekmez · Google Translate sesi · Hemen kullanıma hazır</p>
         </div>
-      )}
-
-      <div>
-        <p className="text-xs text-slate-500 mb-2 font-medium">DİLE GÖRE SES ARA</p>
-        <div className="flex gap-1.5 flex-wrap">
-          {Object.entries(LANG_MAP).map(([code, lang]) => (
-            <button key={code} onClick={() => setVoiceLang(code)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${voiceLang === code ? 'bg-teal-600/20 border-teal-500/50 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
-              {lang.flag} {lang.name}
-            </button>
-          ))}
-        </div>
+        {isFreeTTS
+          ? <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0"/>
+          : <span className="text-xs px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg shrink-0">Ücretsiz</span>}
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ses ara..."
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500"/>
-      </div>
+      {/* ElevenLabs toggle */}
+      <button
+        onClick={() => setShowEleven(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-300 hover:border-teal-500/40 transition"
+      >
+        <span className="flex items-center gap-2">
+          <Mic className="w-4 h-4 text-teal-400"/>
+          ElevenLabs Premium Sesler
+          <span className="text-xs text-slate-500">(abonelik gerekli)</span>
+        </span>
+        <ChevronRight className={`w-4 h-4 text-slate-500 transition-transform ${showEleven ? 'rotate-90' : ''}`}/>
+      </button>
 
-      {loading ? (
-        <div className="flex justify-center py-8"><RefreshCw className="w-6 h-6 animate-spin text-teal-400"/></div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-1">
-          {filtered.map((voice: any) => (
-            <div key={voice.voice_id} onClick={() => onSelect(voice)}
-              className={`group flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${selected?.voice_id === voice.voice_id ? 'bg-teal-600/20 border-teal-500/50' : 'bg-slate-800/60 border-slate-700 hover:border-slate-600'}`}>
-              <div className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
-                {voice.gender === 'female' ? '👩' : '👨'}
+      {showEleven && (
+        <div className="space-y-3">
+          {myVoices.length > 0 && (
+            <div>
+              <p className="text-xs text-slate-500 mb-2 font-medium">SESLERİM</p>
+              <div className="flex gap-2 flex-wrap">
+                {myVoices.slice(0, 6).map((v: any) => (
+                  <button key={v.voice_id} onClick={() => onSelect(v)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm transition ${selected?.voice_id === v.voice_id ? 'bg-teal-600/20 border-teal-500/50 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                    🎤 {v.name}
+                  </button>
+                ))}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">{voice.name}</p>
-                <p className="text-slate-500 text-xs">{voice.gender === 'female' ? 'Kadın' : 'Erkek'} {voice.accent && `· ${voice.accent}`}</p>
-              </div>
-              {selected?.voice_id === voice.voice_id && <CheckCircle className="w-4 h-4 text-teal-400 shrink-0"/>}
-              <button onClick={e => { e.stopPropagation(); play(voice.voice_id, voice.preview_url) }}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center transition shrink-0 ${playing === voice.voice_id ? 'bg-red-500 opacity-100' : 'bg-slate-700 hover:bg-teal-600 opacity-0 group-hover:opacity-100'}`}>
-                {playing === voice.voice_id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3 text-slate-300"/>}
-              </button>
             </div>
-          ))}
+          )}
+
+          <div>
+            <p className="text-xs text-slate-500 mb-2 font-medium">DİLE GÖRE SES ARA</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {Object.entries(LANG_MAP).map(([code, lang]) => (
+                <button key={code} onClick={() => setVoiceLang(code)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${voiceLang === code ? 'bg-teal-600/20 border-teal-500/50 text-teal-300' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}>
+                  {lang.flag} {lang.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ses ara..."
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500"/>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-8"><RefreshCw className="w-6 h-6 animate-spin text-teal-400"/></div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
+              {filtered.map((voice: any) => (
+                <div key={voice.voice_id} onClick={() => onSelect(voice)}
+                  className={`group flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${selected?.voice_id === voice.voice_id ? 'bg-teal-600/20 border-teal-500/50' : 'bg-slate-800/60 border-slate-700 hover:border-slate-600'}`}>
+                  <div className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center text-xl flex-shrink-0">
+                    {voice.gender === 'female' ? '👩' : '👨'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-medium truncate">{voice.name}</p>
+                    <p className="text-slate-500 text-xs">{voice.gender === 'female' ? 'Kadın' : 'Erkek'} {voice.accent && `· ${voice.accent}`}</p>
+                  </div>
+                  {selected?.voice_id === voice.voice_id && <CheckCircle className="w-4 h-4 text-teal-400 shrink-0"/>}
+                  <button onClick={e => { e.stopPropagation(); play(voice.voice_id, voice.preview_url) }}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition shrink-0 ${playing === voice.voice_id ? 'bg-red-500 opacity-100' : 'bg-slate-700 hover:bg-teal-600 opacity-0 group-hover:opacity-100'}`}>
+                    {playing === voice.voice_id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3 text-slate-300"/>}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -626,15 +665,17 @@ function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, aut
         <CreditCard className="w-5 h-5 text-purple-400 shrink-0"/>
         <div>
           <p className="text-purple-300 text-sm font-medium">{effectiveCount} video oluşturulacak — MuseTalk AI motoru</p>
-          <p className="text-purple-400/60 text-xs">ElevenLabs seslendirme + MuseTalk dudak senkronizasyonu</p>
+          <p className="text-purple-400/60 text-xs">
+            {voice?.voice_id === 'free_tts' ? 'Ücretsiz Google TTS seslendirme' : 'ElevenLabs seslendirme'} + MuseTalk dudak senkronizasyonu
+          </p>
         </div>
       </div>
 
       <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
         <p className="text-amber-300 text-sm font-medium mb-1">Video Oluşturma Süreci</p>
         <div className="space-y-1 text-xs text-amber-400/70">
-          <p>1. Claude sizin için kişisel script yazacak</p>
-          <p>2. ElevenLabs seçtiğiniz sesle seslendirme yapacak</p>
+          <p>1. Claude sizin için derinlemesine araştırma yapıp kişisel script yazacak (150-180 kelime)</p>
+          <p>2. {voice?.voice_id === 'free_tts' ? 'Google TTS ücretsiz seslendirme yapacak' : `ElevenLabs "${voice?.name}" sesiyle seslendirme yapacak`}</p>
           <p>3. MuseTalk AI motoru seçtiğiniz avatarla dudak senkronizasyonlu video oluşturacak</p>
           <p>4. {autoSend ? 'Video hazır olunca otomatik WhatsApp mesajı gönderilecek' : 'Video hazır olunca Videolar sekmesinden gönderebilirsiniz'}</p>
         </div>

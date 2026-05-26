@@ -391,82 +391,101 @@ async function generateScript(lead: any, profile: any, language: string, researc
     ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca', nl: 'Hollandaca',
   };
 
-  const brandName  = normalizeText(research?.brandName || extractBrandName(lead.company_name));
-  const pains      = (research?.pains || []).map(normalizeText).filter(Boolean);
-  const hookLine   = normalizeText(research?.hookLine || '');
+  const brandName   = normalizeText(research?.brandName || extractBrandName(lead.company_name));
+  const pains       = (research?.pains || []).map(normalizeText).filter(Boolean);
+  const hookLine    = normalizeText(research?.hookLine || '');
   const opportunity = normalizeText(research?.opportunity || '');
-  const reviewNote = research?.reviewSummary ? normalizeText(research.reviewSummary) : '';
-  const ourCompany = normalizeText(profile?.company?.name || '');
-  const product    = normalizeText((profile?.product?.description || '').slice(0, 100));
-  const lang       = langNames[language] || 'Türkçe';
+  const reviewNote  = research?.reviewSummary ? normalizeText(research.reviewSummary) : '';
+  const ourCompany  = normalizeText(profile?.company?.name || '');
+  const product     = normalizeText((profile?.product?.description || '').slice(0, 150));
+  const lang        = langNames[language] || 'Türkçe';
+  const growthStage = research?.growthStage || '';
+  const techStack   = (research?.techStack || []).join(', ');
+  const jobSignals  = (research?.jobSignals || []).join(', ');
 
-  // Build prompt as string array to avoid nested template literal issues
   const lines: string[] = [
-    lang + ' dilinde, 35-40 saniyelik (85-100 kelime) video satis scripti yaz.',
+    lang + ' dilinde, 55-65 saniyelik (150-180 kelime) kisisellestirilmis video satis scripti yaz.',
+    'Bu script gercek arastirmaya dayali olmali — her cumle bu sirkete OZGU bilgi icermeli.',
     '',
-    'HEDEF SIRKET:',
+    '=== HEDEF SIRKET ===',
     'Marka adi: ' + brandName,
     'Sektor: ' + (lead.sector || 'ticaret'),
     'Ulke: ' + (lead.country || 'Turkiye'),
+    growthStage ? 'Buyume asamasi: ' + growthStage : '',
+    techStack ? 'Kullandiklari teknolojiler: ' + techStack : '',
+    jobSignals ? 'Is ilani sinyalleri (buyume gostergesi): ' + jobSignals : '',
     '',
-    'BIZIM KIMLIGIMIZ:',
+    '=== BIZIM KIMLIGIMIZ ===',
     ourCompany ? 'Sirketimiz: ' + ourCompany : '',
-    product ? 'Urun/Hizmet: ' + product : '',
-    opportunity ? 'Bu sirkete fayda: ' + opportunity : '',
+    product ? 'Ne yapiyoruz: ' + product : '',
+    opportunity ? 'Bu sirkete ozgu fayda: ' + opportunity : '',
     '',
-    'ARASTIRMA VERILERI:',
+    '=== ARASTIRMA BULGULARI ===',
   ];
 
   if (pains.length >= 2) {
-    lines.push('Bu sirket icin tespit edilen GERCEK SORUNLAR (bunlari scriptte acikca adlandir):');
+    lines.push('Bu sirketin GERCEK, SPESIFIK SORUNLARI (web arastirmasina dayali):');
     pains.slice(0, 3).forEach((p, i) => lines.push((i + 1) + '. ' + p));
-    lines.push('UYARI: "sektorunuzdeki sorunlar" gibi genel ifade kulllanma — yukardaki sorunlari ISMIYLE soy.');
+    lines.push('');
+    lines.push('KRITIK KURAL: Bu sorunlari scriptte "sektorde", "birok sirket" gibi genel ifadelerle degil, DOGRUDAN "' + brandName + '" icin adlandirarak kullan.');
+    lines.push('Ornek DOGRU: "' + brandName + ', musterilerinizin X konusunda sikayet ettigini gorduk"');
+    lines.push('Ornek YANLIS: "Bu sektorde bircok sirket X sorunu yasiyor"');
   } else if (pains.length === 1) {
     lines.push('Tespit edilen kritik sorun: ' + pains[0]);
-    lines.push('Bu sorunu scriptte acikca adlandir, genel ifade kullanma.');
+    lines.push('Bu sorunu ' + brandName + ' icin birinci sahis gibi "sizin" sorunun olarak sunum et.');
   } else {
-    lines.push('Sektor: ' + (lead.sector || 'ticaret'));
-    lines.push('Bu sektore ozgu 2 spesifik, somut sorunu scriptte adlandir — "sektorunuzdeki sorun" ifadesi YASAK.');
+    lines.push(lead.sector + ' sektorunde faaliyet gosteren ' + brandName + ' icin 2 somut, spesifik sorun yakistir.');
+    lines.push('Genel "dijitallesme" "rekabet" gibi klise ifadeler yasak — rakamla, ornegle destekle.');
   }
 
-  if (hookLine) lines.push('Dikkat cekici acilis onerisi: ' + hookLine);
-  if (reviewNote) lines.push('Musteri yorumlarindan tespit: ' + reviewNote);
+  if (hookLine) lines.push('Arastirmadan cikan guclendirici acilis: ' + hookLine);
+  if (reviewNote) lines.push('Musteri yorumu / sikayet bilgisi: ' + reviewNote);
 
   lines.push('');
-  lines.push('SCRIPT YAPISI (bu siraya kesinlikle uy):');
-  lines.push('0-5 sn HOOK: ' + (hookLine ? hookLine + ' kulllanarak guclendir.' : 'Markayi veya sektordeki sasirtici bir gercegi soyleyerek ac. "Merhaba" ile baslanmaz.'));
-  lines.push('5-12 sn SORUN: Tespit ettigimiz sorunu somut olarak soy — "musterilerinizin X% si soyle sikayet ediyor" tarzi.');
-  lines.push('12-20 sn COZUM: Urunumuz bu sorunu nasil coziyor — 1-2 somut mekanizma.');
-  lines.push('20-28 sn KANIT: Benzer bir sektordeki musteri sonucunu ima et.');
-  lines.push('28-38 sn CTA: 15 dakikalik gorusme talep et. Nazik, basincsiz.');
+  lines.push('=== SCRIPT YAPISI (bu 6 bolumu bu sirada yaz) ===');
+  lines.push('1. HOOK (0-6sn, ~15 kelime): ' + (hookLine ? '"' + hookLine + '" ifadesini guclendir.' : '"' + brandName + '" ile baslayan, sikirici istatistik veya goz aci bir soru. "Merhaba" ile KESINLIKLE baslanmaz.'));
+  lines.push('2. SORUN TESPITI (6-18sn, ~35 kelime): Arastirmadan gelen sorunlari somut sekilde adlandir. "Musterilerinizin yuzde kaci...", "Gecen yil kac kisi...", "Rakipleriniz bu konuda..." tarzi spesifik ifadeler kullan.');
+  lines.push('3. COZUM MEKANIZMASI (18-32sn, ~35 kelime): Urunumuz bu sorunu nasil coziyor — 2 somut adim veya ozellik. Teknik terim degil, sonuc odakli anlat.');
+  lines.push('4. KANIT / REFERANS (32-44sn, ~30 kelime): Benzer bir marka veya sektorden somut bir sonuc. "X sektorunde bir musteri 3 ayda Y sonuc aldi" tarzi. Uydurma istatistik yazma, somut ima yap.');
+  lines.push('5. SIRKETE OZEL FAYDA (44-55sn, ~25 kelime): ' + (opportunity ? opportunity : '"' + brandName + '" icin ozellestir — rakipler ne yapiy veya ne kaybediyorlar?'));
+  lines.push('6. CTA (55-65sn, ~20 kelime): 15 dakikalik bir keşif gorusmesi talep et. Nazik, basınçsız, spesifik: "Hafta ici 15 dakikanız var mi?"');
   lines.push('');
-  lines.push('KURALLAR: "' + brandName + '" kullan (tam hukuki isim yasak). Dogal konusma dili. "yapay zeka" "AI" yasak. Sadece konusma metnini yaz. Dil: ' + lang + '.');
+  lines.push('=== KURALAR ===');
+  lines.push('- Her cumle "' + brandName + '" adresine konusuyor gibi yaz.');
+  lines.push('- "yapay zeka", "AI", "algoritmalarimiz" gibi tekno-jargon YASAK.');
+  lines.push('- "cok sayida sirket", "bircok isletme" gibi genelleme YASAK — ozellestir.');
+  lines.push('- Tam hukuki sirket ismi yerine "' + brandName + '" kullan.');
+  lines.push('- Sadece konusma metnini yaz, baslik veya bolum etiketi ekleme.');
+  lines.push('- Dil: ' + lang + '. Dogal, samimi, satis yapiyormus gibi degil.');
+  lines.push('- Hedef: 150-180 kelime, 55-65 saniye.');
 
   const prompt = lines.filter(l => l !== '').join('\n');
 
   // Attempt 1 — Sonnet (full structured prompt)
   try {
     const r = await anthropic.messages.create(
-      { model: 'claude-sonnet-4-6', max_tokens: 600, messages: [{ role: 'user', content: prompt }] },
-      { timeout: 28000 }
+      { model: 'claude-sonnet-4-6', max_tokens: 900, messages: [{ role: 'user', content: prompt }] },
+      { timeout: 35000 }
     );
     const text = ((r.content[0] as any)?.text || '').trim();
-    if (text) return text; // return anything non-empty
+    if (text) return text;
     throw new Error('empty_response');
   } catch (e1: any) {
     console.error('[Script] Sonnet failed:', e1.message?.slice(0, 150));
   }
 
-  // Attempt 2 — Haiku (simple single-line prompt)
+  // Attempt 2 — Haiku (simplified prompt)
   try {
-    const fp = lang + ' dilinde 80-100 kelimelik video satis scripti. '
-      + 'Marka: ' + brandName + '. '
+    const fp = lang + ' dilinde 150-170 kelimelik, 60 saniyelik kisisellestirilmis video satis scripti. '
+      + 'Marka: ' + brandName + '. Sektor: ' + (lead.sector || 'ticaret') + '. '
       + (ourCompany ? 'Gonderen sirket: ' + ourCompany + '. ' : '')
-      + (pains[0] ? 'Sorun: ' + pains[0] + '. ' : 'Sektor: ' + (lead.sector || 'ticaret') + '. ')
-      + 'Hook ile ac, sorunu belirt, cozumu anlat, 15 dk gorusme iste. Dogal konusma dili. Sadece metin.';
+      + (pains[0] ? 'Spesifik sorun: ' + pains[0] + '. ' : '')
+      + (pains[1] ? 'Ikinci sorun: ' + pains[1] + '. ' : '')
+      + (opportunity ? 'Fayda: ' + opportunity + '. ' : '')
+      + 'Hook ile ac (Merhaba deme), sorunu adlandir, cozum anlat, kanit ver, 15 dk gorusme iste. Her bolum ' + brandName + ' icin ozel. Sadece metin.';
     const fb = await anthropic.messages.create(
-      { model: 'claude-haiku-4-5-20251001', max_tokens: 350, messages: [{ role: 'user', content: fp }] },
-      { timeout: 18000 }
+      { model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: fp }] },
+      { timeout: 22000 }
     );
     const ft = ((fb.content[0] as any)?.text || '').trim();
     if (ft) return ft;
@@ -475,12 +494,12 @@ async function generateScript(lead: any, profile: any, language: string, researc
     console.error('[Script] Haiku failed:', e2.message?.slice(0, 150));
   }
 
-  // Attempt 3 — Haiku with absolute minimum prompt
+  // Attempt 3 — minimal fallback
   try {
-    const mp = brandName + ' icin ' + (lead.sector || 'ticaret') + ' sektorunde ' + lang + ' satis scripti yaz. 80 kelime.';
+    const mp = brandName + ' icin ' + (lead.sector || 'ticaret') + ' sektorunde ' + lang + ' satis scripti yaz. 150 kelime. Sorun: ' + (pains[0] || 'musteri kaybi') + '. Hook ile ac, sorunu belirt, cozum sun, gorusme iste.';
     const mr = await anthropic.messages.create(
-      { model: 'claude-haiku-4-5-20251001', max_tokens: 250, messages: [{ role: 'user', content: mp }] },
-      { timeout: 15000 }
+      { model: 'claude-haiku-4-5-20251001', max_tokens: 500, messages: [{ role: 'user', content: mp }] },
+      { timeout: 18000 }
     );
     const mt = ((mr.content[0] as any)?.text || '').trim();
     if (mt) return mt;
@@ -489,8 +508,9 @@ async function generateScript(lead: any, profile: any, language: string, researc
   }
 
   // Static fallback — only if all Claude calls fail
-  const p0 = pains[0] || (lead.sector ? lead.sector + ' sektörü' : 'işletmeniz');
-  return brandName + ', işinizi inceledik. ' + p0 + ' konusunda ciddi bir fırsat gördük. ' + (ourCompany || 'Çözümümüz') + ' bunu nasıl ele aldığını 15 dakikalık bir görüşmede anlatabilir miyiz?';
+  const p0 = pains[0] || (lead.sector ? lead.sector + ' sektöründe müşteri kaybı' : 'işletmenizde büyüme fırsatı');
+  const p1 = pains[1] ? ' ve ' + pains[1] : '';
+  return `${brandName}, geçen ay işinizi inceledik ve dikkatimizi çeken önemli bir şey gördük. ${p0}${p1} — bu, rakiplerinizin önünüze geçmesi için açık bir kapı bırakıyor. ${ourCompany || 'Biz'}, ${product || 'çözümümüz'} ile tam olarak bu sorunu ortadan kaldırıyoruz. Benzer sektörden müşterilerimiz bu sorunu çözdükten sonra ciddi bir dönüşüm yaşadı. ${brandName} için de aynı sonucu alabilmeniz için sizi tanımak istiyoruz. Bu hafta 15 dakikanız var mı?`;
 }
 
 // Claude Haiku — hızlı WhatsApp intro (marka adıyla, araştırmaya göre)
@@ -651,9 +671,71 @@ async function generateReviewCardBackground(research: LeadResearch, brandName: s
 const { analyzeEmotion, buildElevenLabsVoiceSettings, enrichScriptWithPauses, serializeProfile } = require('../services/emotion-engine');
 const { generateVideo: generateVideoEngine } = require('../services/video-engine');
 
+// ─── FREE TTS (Google Translate, no API key needed) ──────────────────────────
+
+function splitIntoTtsChunks(text: string, maxLen = 190): string[] {
+  if (text.length <= maxLen) return [text];
+  const chunks: string[] = [];
+  // Split on sentence boundaries first
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  let current = '';
+  for (const sentence of sentences) {
+    if ((current + (current ? ' ' : '') + sentence).length > maxLen) {
+      if (current) { chunks.push(current.trim()); current = ''; }
+      if (sentence.length > maxLen) {
+        // Split long sentence by words
+        const words = sentence.split(' ');
+        for (const word of words) {
+          if ((current + (current ? ' ' : '') + word).length > maxLen) {
+            if (current) chunks.push(current.trim());
+            current = word;
+          } else {
+            current += (current ? ' ' : '') + word;
+          }
+        }
+      } else {
+        current = sentence;
+      }
+    } else {
+      current += (current ? ' ' : '') + sentence;
+    }
+  }
+  if (current) chunks.push(current.trim());
+  return chunks.filter(Boolean);
+}
+
+const GTTS_LANG_MAP: Record<string, string> = {
+  tr: 'tr', en: 'en', de: 'de', fr: 'fr', ar: 'ar', ru: 'ru', es: 'es', it: 'it', nl: 'nl',
+};
+
+async function generateFreeAudio(text: string, language = 'tr'): Promise<Buffer> {
+  const lang = GTTS_LANG_MAP[language] || 'tr';
+  const chunks = splitIntoTtsChunks(text);
+  const buffers: Buffer[] = [];
+
+  for (const chunk of chunks) {
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(chunk)}`;
+    const r = await axios.get(url, {
+      responseType: 'arraybuffer',
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      timeout: 15000,
+    });
+    buffers.push(Buffer.from(r.data));
+    // Small delay between chunks to avoid rate limiting
+    if (chunks.length > 1) await new Promise(r => setTimeout(r, 300));
+  }
+
+  return Buffer.concat(buffers);
+}
+
 // ─── HEYGEN / ELEVENLABS PIPELINE ────────────────────────────────────────────
 
-async function generateAudio(text: string, voiceId: string, emotionProfile?: any): Promise<Buffer> {
+async function generateAudio(text: string, voiceId: string, emotionProfile?: any, language = 'tr'): Promise<Buffer> {
+  // Free TTS path — no ElevenLabs subscription needed
+  if (voiceId === 'free_tts') {
+    return generateFreeAudio(text, language);
+  }
+
   const voiceSettings = emotionProfile
     ? buildElevenLabsVoiceSettings(emotionProfile)
     : { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true };
@@ -952,7 +1034,7 @@ router.post('/generate/single', async (req: any, res: any) => {
           const audioRes = await axios.get(testAudioUrl, { responseType: 'arraybuffer' });
           audioBuffer = Buffer.from(audioRes.data);
         } else {
-          audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile);
+          audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile, language);
         }
 
         let finalVideoUrl: string | undefined;
@@ -1102,7 +1184,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           const campReplica       = await getUserReplica(userId);
           const campStockAvatarId = req.body.stockAvatarId as string | undefined;
           const campStockSeedUrl  = campStockAvatarId ? await getStockAvatarVideoUrl(campStockAvatarId) : null;
-          const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id || voiceId, campEmotion);
+          const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id || voiceId, campEmotion, callLang);
           const code  = makeTrackingCode();
 
           let campFinalUrl: string | undefined;
@@ -1218,7 +1300,7 @@ router.post('/retry/:id', async (req: any, res: any) => {
         }
 
         const retryReplica = await getUserReplica(req.userId, video.replica_id);
-        const audio = await generateAudio(retryScript, retryReplica?.elevenlabs_voice_id || video.voice_id, retryEmotion);
+        const audio = await generateAudio(retryScript, retryReplica?.elevenlabs_voice_id || video.voice_id, retryEmotion, video.language || 'tr');
 
         let retryFinalUrl: string | undefined;
         let retryEngine = 'heygen';
