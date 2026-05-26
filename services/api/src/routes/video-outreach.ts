@@ -112,7 +112,7 @@ JSON formatında yanıt ver (başka hiçbir şey yazma, sadece JSON):
   const messages: any[] = [{ role: 'user', content: prompt }];
   let finalText = '';
 
-  for (let turn = 0; turn < 12; turn++) {
+  for (let turn = 0; turn < 6; turn++) {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2500,
@@ -973,15 +973,28 @@ router.post('/generate/single', async (req: any, res: any) => {
 
     (async () => {
       try {
-        // Phase 1: Deep research
+        // Phase 1: Deep research — check cache first (< 7 days)
         console.log(`[Video] Araştırılıyor: ${lead.company_name}`);
-        const research = await researchLead(lead, profile);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: cachedResearch } = await supabase
+          .from('video_outreach')
+          .select('research_data')
+          .eq('lead_id', leadId)
+          .eq('user_id', userId)
+          .neq('id', videoRecord?.id)
+          .not('research_data', 'is', null)
+          .gte('created_at', sevenDaysAgo)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const research = cachedResearch?.research_data || await researchLead(lead, profile);
+        const wasCached = !!cachedResearch?.research_data;
         await supabase.from('video_outreach').update({
           research_data: research,
           research_quality: research.quality,
           status: 'generating',
         }).eq('id', videoRecord?.id);
-        console.log(`[Video] Araştırma tamamlandı: ${research.brandName} (${research.quality}) — sorunlar: ${research.pains.slice(0,2).join(', ')}`);
+        console.log(`[Video] Araştırma ${wasCached ? '(önbellekten)' : 'tamamlandı'}: ${research.brandName} (${research.quality}) — sorunlar: ${research.pains.slice(0,2).join(', ')}`);
 
         // Phase 2: Script + hooks + scoring in parallel
         const script = customScript || await generateScript(lead, profile, language, research);
@@ -1147,8 +1160,20 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single();
           if (!lead) return;
           leadDataMap[leadId] = lead;
-          researchMap[leadId] = await researchLead(lead, profile);
-          console.log(`[Campaign] Araştırıldı: ${researchMap[leadId].brandName} — ${researchMap[leadId].pains.slice(0,2).join(', ')}`);
+          // Reuse cached research if < 7 days old
+          const sevenDaysAgo7 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          const { data: cachedR } = await supabase
+            .from('video_outreach')
+            .select('research_data')
+            .eq('lead_id', leadId)
+            .eq('user_id', userId)
+            .not('research_data', 'is', null)
+            .gte('created_at', sevenDaysAgo7)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          researchMap[leadId] = cachedR?.research_data || await researchLead(lead, profile);
+          console.log(`[Campaign] Araştırıldı${cachedR ? ' (önbellekten)' : ''}: ${researchMap[leadId].brandName} — ${researchMap[leadId].pains.slice(0,2).join(', ')}`);
         }));
         await sleep(1500); // Rate limit buffer between batches
       }
