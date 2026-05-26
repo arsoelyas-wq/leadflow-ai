@@ -1041,6 +1041,7 @@ router.post('/generate/single', async (req: any, res: any) => {
         let usedEngine = 'heygen';
 
         // Priority: stock avatar > personal replica > HeyGen
+        let lastEngineError = '';
         if (stockSeedUrl) {
           // Stock avatar: MuseTalk if RunPod ready, else LatentSync fallback
           try {
@@ -1055,6 +1056,7 @@ router.post('/generate/single', async (req: any, res: any) => {
             finalVideoUrl = result.videoUrl;
             usedEngine    = result.engine;
           } catch (engineErr: any) {
+            lastEngineError = engineErr.message;
             console.warn('[Video] MuseTalk (stock avatar) failed:', engineErr.message);
           }
         } else if (replica) {
@@ -1076,8 +1078,11 @@ router.post('/generate/single', async (req: any, res: any) => {
         }
 
         if (!finalVideoUrl && stockSeedUrl) {
-          // Stock avatar with no successful engine — can't fall back to HeyGen (needs avatarId)
-          throw new Error('Video motoru başlatılamadı. RunPod env vars (RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID) kontrol edin.');
+          const isTimeout = lastEngineError.includes('timed out') || lastEngineError.includes('timeout') || lastEngineError.includes('IN_QUEUE');
+          if (isTimeout) {
+            throw new Error('RunPod GPU kuyruğu dolu — şu an işlenebilecek GPU kapasitesi yok. Birkaç dakika sonra tekrar deneyin.');
+          }
+          throw new Error(lastEngineError || 'Video motoru başlatılamadı. RunPod env vars (RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID) kontrol edin.');
         }
 
         if (!finalVideoUrl) {
@@ -1191,6 +1196,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           let campEngine = 'heygen';
           let campHeygenId: string | undefined;
 
+          let campLastEngineErr = '';
           if (campStockSeedUrl) {
             try {
               const result = await generateVideoEngine({
@@ -1202,8 +1208,8 @@ router.post('/generate/campaign', async (req: any, res: any) => {
                 userId,
               });
               campFinalUrl = result.videoUrl;
-              campEngine   = 'latentsync';
-            } catch (e: any) { console.warn('[Campaign] LatentSync (stock) failed:', e.message); }
+              campEngine   = 'museTalk';
+            } catch (e: any) { campLastEngineErr = e.message; console.warn('[Campaign] MuseTalk (stock) failed:', e.message); }
           } else if (campReplica) {
             try {
               const result = await generateVideoEngine({
@@ -1220,7 +1226,8 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           }
 
           if (!campFinalUrl && campStockSeedUrl) {
-            throw new Error('Video motoru başlatılamadı. RunPod env vars (RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID) kontrol edin.');
+            const isTmo = campLastEngineErr.includes('timed out') || campLastEngineErr.includes('timeout') || campLastEngineErr.includes('IN_QUEUE');
+            throw new Error(isTmo ? 'RunPod GPU kuyruğu dolu — şu an işlenebilecek GPU kapasitesi yok. Birkaç dakika sonra tekrar deneyin.' : (campLastEngineErr || 'Video motoru başlatılamadı.'));
           }
           if (!campFinalUrl) {
             campHeygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio, backgroundUrl: campaignBgUrl });
