@@ -40,7 +40,7 @@ let globalAudio: HTMLAudioElement | null = null
 // ─── WAVEFORM CANVAS ──────────────────────────────────────────────────────────
 function WaveformCanvas({ isRecording, analyser }: { isRecording: boolean; analyser: AnalyserNode | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const rafRef = useRef<number>()
+  const rafRef = useRef<number>(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
