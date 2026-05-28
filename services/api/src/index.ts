@@ -133,6 +133,8 @@ app.use('/api/coaching',             authMiddleware, require('./routes/coaching'
 app.use('/api/inbox',                authMiddleware, require('./routes/inbox'));
 app.use('/api/pipeline',             authMiddleware, require('./routes/pipeline'));
 app.use('/api/crisis',               authMiddleware, require('./routes/crisis'));
+// Public microsite view (no auth — customer-facing catalog link)
+app.use('/api/microsite/view',                      require('./routes/microsite').publicRouter);
 app.use('/api/microsite',            authMiddleware, require('./routes/microsite'));
 app.use('/api/referral',             authMiddleware, require('./routes/referral'));
 app.use('/api/debt',                 authMiddleware, require('./routes/debt'));

@@ -202,4 +202,48 @@ router.patch('/:id/toggle', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Public router (no auth) — only view/:slug ─────────────────────────────────
+const publicRouter = express.Router();
+
+publicRouter.get('/:slug', async (req: any, res: any) => {
+  try {
+    let ms: any = null;
+    const { data: d1, error: e1 } = await supabase.from('microsites')
+      .select('*, leads(company_name, contact_name, phone, sector, city)')
+      .eq('slug', req.params.slug)
+      .maybeSingle();
+    if (!e1 && d1) {
+      ms = d1;
+    } else {
+      const { data: d2 } = await supabase.from('microsites')
+        .select('*, leads(company_name, contact_name)')
+        .eq('slug', req.params.slug)
+        .maybeSingle();
+      ms = d2;
+    }
+
+    if (!ms) return res.status(404).json({ error: 'Sayfa bulunamadı' });
+    if (ms.active === false) return res.status(404).json({ error: 'Sayfa aktif değil' });
+
+    // View artır
+    await supabase.from('microsites').update({ views: (ms.views || 0) + 1 }).eq('id', ms.id);
+
+    // Satışçıya bildirim
+    const newViews = (ms.views || 0) + 1;
+    if (newViews === 1 || newViews % 5 === 0) {
+      try {
+        const { data: us } = await supabase.from('user_settings').select('phone').eq('user_id', ms.user_id).single();
+        if (us?.phone) {
+          const { sendWhatsAppMessage } = require('./settings');
+          const msg = `${newViews === 1 ? '🔥' : '📊'} *Katalog Görüntülendi!*\n\n*${ms.leads?.company_name}* kataloğunuzu inceliyor.\nGörüntüleme: ${newViews}. kez\n${APP_URL}/catalog/${ms.slug}`;
+          sendWhatsAppMessage(ms.user_id, us.phone, msg).catch(() => {});
+        }
+      } catch {}
+    }
+
+    res.json({ microsite: ms, appUrl: APP_URL });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
+module.exports.publicRouter = publicRouter;
