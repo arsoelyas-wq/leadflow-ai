@@ -237,7 +237,8 @@ export default function QRPage() {
     if (!input) return
     setCreating(true)
     try {
-      await api.post('/api/qr/generate', { url: finalUrl, label: label || input, type, color })
+      const res = await api.post('/api/qr/generate', { url: finalUrl, label: label || input, type, color })
+      if (!res?.qr) throw new Error(res?.error || 'QR kaydedilemedi')
       showMsg('success', 'QR kod oluşturuldu!')
       setInput(''); setLabel(''); setExtra('')
       load()
