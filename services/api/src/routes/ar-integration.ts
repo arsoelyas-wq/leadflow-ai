@@ -303,4 +303,133 @@ router.get('/stats', async (req: any, res: any) => {
   }
 });
 
+// ── TRIPO3D HELPERS ───────────────────────────────────────────────────────────
+const TRIPO_BASE = 'https://api.tripo3d.ai/v2/openapi';
+
+async function tripoUploadImage(buffer: Buffer, mimetype: string): Promise<string> {
+  const form = new FormData();
+  form.append('file', new Blob([buffer as unknown as ArrayBuffer], { type: mimetype }), 'image.jpg');
+  const res = await fetch(`${TRIPO_BASE}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.TRIPO3D_API_KEY}` },
+    body: form as any,
+  });
+  const data = await res.json() as any;
+  if (data.code !== 0) throw new Error(data.message || 'Tripo3D yükleme hatası');
+  return data.data.image_token;
+}
+
+async function tripoCreateTask(tokens: string[], types: string[]): Promise<string> {
+  const body = tokens.length === 1
+    ? { type: 'image_to_model', file: { type: types[0], file_token: tokens[0] } }
+    : { type: 'multiview_to_model', files: tokens.map((t, i) => ({ type: types[i], file_token: t })) };
+  const res = await fetch(`${TRIPO_BASE}/task`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.TRIPO3D_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json() as any;
+  if (data.code !== 0) throw new Error(data.message || 'Tripo3D görev oluşturma hatası');
+  return data.data.task_id;
+}
+
+// ── POST /api/ar/generate-3d ──────────────────────────────────────────────────
+router.post('/generate-3d', upload.fields([
+  { name: 'image_0', maxCount: 1 }, { name: 'image_1', maxCount: 1 },
+  { name: 'image_2', maxCount: 1 }, { name: 'image_3', maxCount: 1 },
+  { name: 'image_4', maxCount: 1 }, { name: 'image_5', maxCount: 1 },
+]), async (req: any, res: any) => {
+  try {
+    if (!process.env.TRIPO3D_API_KEY) {
+      return res.status(503).json({ error: 'TRIPO3D_API_KEY sunucuda tanımlı değil' });
+    }
+    const files = req.files as Record<string, Express.Multer.File[]>;
+    const imageFiles = ([0, 1, 2, 3, 4, 5] as const)
+      .map(i => files?.[`image_${i}`]?.[0])
+      .filter((f): f is Express.Multer.File => !!f);
+
+    if (!imageFiles.length) return res.status(400).json({ error: 'En az 1 fotoğraf gerekli' });
+
+    const tokens: string[] = [];
+    const types: string[] = [];
+    for (const file of imageFiles) {
+      const ext = file.mimetype.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+      const token = await tripoUploadImage(file.buffer, file.mimetype);
+      tokens.push(token);
+      types.push(ext);
+    }
+
+    const taskId = await tripoCreateTask(tokens, types);
+    res.json({ taskId });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── GET /api/ar/generate-3d/status/:taskId ────────────────────────────────────
+router.get('/generate-3d/status/:taskId', async (req: any, res: any) => {
+  try {
+    if (!process.env.TRIPO3D_API_KEY) {
+      return res.status(503).json({ error: 'TRIPO3D_API_KEY sunucuda tanımlı değil' });
+    }
+    const tripoRes = await fetch(`${TRIPO_BASE}/task/${req.params.taskId}`, {
+      headers: { Authorization: `Bearer ${process.env.TRIPO3D_API_KEY}` },
+    });
+    const data = await tripoRes.json() as any;
+    if (data.code !== 0) throw new Error(data.message || 'Görev sorgulama hatası');
+    const task = data.data;
+    res.json({
+      status: task.status,
+      progress: task.progress || 0,
+      modelUrl: task.status === 'success' ? (task.result?.model?.url ?? null) : null,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── POST /api/ar/save-generated ───────────────────────────────────────────────
+router.post('/save-generated', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { tripoModelUrl, productName, category, description } = req.body;
+    if (!tripoModelUrl) return res.status(400).json({ error: 'Model URL gerekli' });
+
+    const modelResponse = await fetch(tripoModelUrl);
+    if (!modelResponse.ok) throw new Error("Tripo3D'den model indirilemedi");
+    const modelBuffer = await modelResponse.arrayBuffer();
+
+    const filename = `${userId}/${Date.now()}_ai.glb`;
+    const { error: uploadError } = await supabase.storage
+      .from('ar-models')
+      .upload(filename, Buffer.from(modelBuffer), { contentType: 'model/gltf-binary', upsert: false });
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: urlData } = supabase.storage.from('ar-models').getPublicUrl(filename);
+    const publicUrl = urlData.publicUrl;
+
+    const { data: record, error: insertError } = await supabase.from('ar_models').insert([{
+      user_id: userId,
+      product_name: productName || 'AI Oluşturuldu',
+      description: description || 'Fotoğraftan AI ile oluşturuldu',
+      category: category || 'product',
+      model_url: publicUrl,
+      ar_viewer_url: '',
+      qr_url: '',
+      file_size: modelBuffer.byteLength,
+      file_type: 'glb',
+      view_count: 0, ar_session_count: 0, send_count: 0, total_view_seconds: 0,
+    }]).select().single();
+    if (insertError || !record) throw new Error(insertError?.message || 'Kayıt oluşturulamadı');
+
+    const arViewerUrl = `${APP_URL}/ar-viewer?model=${encodeURIComponent(publicUrl)}&name=${encodeURIComponent(productName || '')}&id=${record.id}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=10&data=${encodeURIComponent(arViewerUrl)}&color=1e293b&bgcolor=f8fafc`;
+    await supabase.from('ar_models').update({ ar_viewer_url: arViewerUrl, qr_url: qrUrl }).eq('id', record.id);
+
+    res.json({ modelId: record.id, arViewerUrl, qrUrl, message: '3D model kaydedildi! AR linki hazır. ✅' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
