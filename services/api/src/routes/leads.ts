@@ -44,6 +44,23 @@ router.get('/', authMiddleware, async (req: any, res: any) => {
   }
 });
 
+// GET /api/leads/with-phone — All leads that have a phone number (no limit, for voice outreach)
+router.get('/with-phone', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('id, company_name, phone, country')
+      .eq('user_id', req.userId)
+      .not('phone', 'is', null)
+      .neq('phone', '')
+      .order('company_name', { ascending: true });
+    if (error) throw error;
+    res.json({ leads: data || [], total: (data || []).length });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/leads/sectors — Distinct sector list for filter dropdown
 router.get('/sectors', authMiddleware, async (req: any, res: any) => {
   try {

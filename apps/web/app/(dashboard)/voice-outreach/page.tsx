@@ -809,13 +809,13 @@ export default function VoicePage() {
   async function loadAll() {
     try {
       const [l, c, ca, s, st] = await Promise.allSettled([
-        api.get('/api/leads?limit=5000'),
+        fetch(`${API}/api/leads/with-phone`, { headers: authH() }),
         fetch(`${API}/api/voice/calls?limit=30`, { headers: authH() }),
         fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
         fetch(`${API}/api/voice/settings`, { headers: authH() }),
         fetch(`${API}/api/voice/stats`, { headers: authH() }),
       ])
-      if (l.status === 'fulfilled') setLeads((l.value as any).leads || [])
+      if (l.status === 'fulfilled') { const d = await (l.value as any).json(); setLeads(d.leads || []) }
       if (c.status === 'fulfilled') { const d = await (c.value as any).json(); setCalls(d.calls || []) }
       if (ca.status === 'fulfilled') { const d = await (ca.value as any).json(); setCampaigns(d.campaigns || []) }
       if (s.status === 'fulfilled') {
