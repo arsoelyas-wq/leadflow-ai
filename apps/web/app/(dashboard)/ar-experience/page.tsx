@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import {
   Upload, Send, RefreshCw, QrCode, Trash2, Eye, BarChart3,
-  Users, ExternalLink, Sparkles, Zap, Globe, ChevronRight,
+  Users, Sparkles, Zap, Globe, ChevronRight,
 } from 'lucide-react'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -474,14 +474,17 @@ export default function ARPage() {
                 </div>
                 <div onDragOver={e => { e.preventDefault(); setIsDragging(true) }} onDragLeave={() => setIsDragging(false)}
                   onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f) uploadModel(f) }}
-                  onClick={() => !uploading && productName && fileRef.current?.click()}
-                  style={{ border: `2px dashed ${isDragging ? '#ec4899' : 'rgba(236,72,153,0.35)'}`, borderRadius: 14, padding: '28px 20px', textAlign: 'center', cursor: uploading || !productName ? 'not-allowed' : 'pointer', background: isDragging ? 'rgba(236,72,153,0.08)' : 'rgba(236,72,153,0.03)', opacity: !productName ? 0.5 : 1 }}>
-                  <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
-                    {uploading ? <RefreshCw size={32} style={{ color: '#ec4899', animation: 'spin 1s linear infinite' }} /> : <div className="upload-float"><FloatCube size={40} color="#ec4899" /></div>}
+                  style={{ border: `2px dashed ${isDragging ? '#ec4899' : 'rgba(236,72,153,0.35)'}`, borderRadius: 14, padding: '24px 20px', textAlign: 'center', background: isDragging ? 'rgba(236,72,153,0.08)' : 'rgba(236,72,153,0.03)', opacity: !productName ? 0.5 : 1 }}>
+                  <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}>
+                    {uploading ? <RefreshCw size={32} style={{ color: '#ec4899', animation: 'spin 1s linear infinite' }} /> : <div className="upload-float"><FloatCube size={36} color="#ec4899" /></div>}
                   </div>
-                  <p style={{ color: '#fff', fontWeight: 600, fontSize: 14, margin: '0 0 4px' }}>{uploading ? 'Yükleniyor...' : isDragging ? 'Bırakın!' : '.glb veya .usdz dosyasını sürükleyin'}</p>
-                  <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>veya tıklayın — maksimum 50MB</p>
+                  <p style={{ color: '#fff', fontWeight: 600, fontSize: 14, margin: '0 0 4px' }}>{uploading ? 'Yükleniyor...' : isDragging ? 'Bırakın!' : '.glb veya .usdz dosyasını buraya sürükleyin'}</p>
+                  <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Maksimum 50MB</p>
                 </div>
+                <button onClick={() => !uploading && productName && fileRef.current?.click()} disabled={uploading || !productName}
+                  style={{ width: '100%', marginTop: 10, padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(236,72,153,0.25)', cursor: uploading || !productName ? 'not-allowed' : 'pointer', background: 'rgba(236,72,153,0.07)', color: uploading || !productName ? '#334155' : '#f472b6', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: !productName ? 0.4 : 1, transition: 'background 0.2s' }}>
+                  <Upload size={14} /> Bilgisayardan Seç
+                </button>
                 <input ref={fileRef} type="file" accept=".glb,.usdz" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && uploadModel(e.target.files[0])} />
               </div>
 
@@ -497,15 +500,6 @@ export default function ARPage() {
                   <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '10px 12px' }}>
                     <p style={{ color: '#fbbf24', fontSize: 12, margin: 0 }}>⚠️ .gltf desteklenmiyor — lütfen .glb formatını kullanın</p>
                   </div>
-                </div>
-                <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.95),rgba(15,15,30,0.9))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: 20 }}>
-                  <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}><Zap size={14} style={{ color: '#f59e0b' }} /> Ücretsiz 3D Model Kaynakları</h3>
-                  {[{ name: 'Sketchfab', url: 'sketchfab.com', desc: 'En büyük 3D kütüphane' }, { name: 'Poly Pizza', url: 'poly.pizza', desc: 'Basit low-poly modeller' }, { name: 'TurboSquid', url: 'turbosquid.com', desc: 'Profesyonel modeller' }].map(({ name, url, desc }) => (
-                    <a key={name} href={`https://${url}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 10, marginBottom: 8, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div><p style={{ color: '#fff', fontSize: 13, margin: 0 }}>{name}</p><p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{desc}</p></div>
-                      <ExternalLink size={13} style={{ color: '#475569' }} />
-                    </a>
-                  ))}
                 </div>
               </div>
             </div>
