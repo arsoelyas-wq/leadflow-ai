@@ -149,8 +149,8 @@ router.post('/bulk-excel', upload.single('file'), async (req: any, res: any) => 
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ── GET /api/products/excel-template — Sabit Excel şablonu indir ──────────────
-router.get('/excel-template', (_req: any, res: any) => {
+// ── GET /api/products/excel-template — Sabit Excel şablonu indir (public) ─────
+const excelTemplateHandler = (_req: any, res: any) => {
   try {
     const wb = XLSX.utils.book_new();
     const header = [['Ürün Adı', 'Fiyat', 'Açıklama', 'Kategori', 'Özellikler']];
@@ -172,7 +172,7 @@ router.get('/excel-template', (_req: any, res: any) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buf);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
+};
 
 // ── GET /api/products/ai-context ──────────────────────────────────────────────
 router.get('/ai-context', async (req: any, res: any) => {
@@ -183,5 +183,9 @@ router.get('/ai-context', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// Also register on the router for authenticated access
+router.get('/excel-template', excelTemplateHandler);
+
 module.exports = router;
 module.exports.getProductContext = getProductContext;
+module.exports.excelTemplateHandler = excelTemplateHandler;
