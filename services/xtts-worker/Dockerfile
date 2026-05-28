@@ -22,7 +22,7 @@ RUN pip install --upgrade pip && \
         --index-url https://download.pytorch.org/whl/cu121
 
 # ─── Coqui TTS + RunPod SDK ─────────────────────────────────────────────────
-RUN pip install TTS==0.22.0 runpod==1.7.3 requests==2.31.0 numpy==1.26.4
+RUN pip install TTS==0.22.0 runpod==1.7.3 requests==2.31.0
 
 # ─── Pre-download XTTS-v2 model weights (baked into image) ──────────────────
 # Avoids cold-start weight downloads on every new worker container
