@@ -89,7 +89,6 @@ const groups: NavGroup[] = [
     label: 'AI Araçlar',
     icon: Sparkles,
     items: [
-      { href: '/vision',         label: 'Vision AI',        icon: Eye,    plan: 'pro',    badge: 'AI' },
       { href: '/ar-experience',  label: 'AR Deneyimi',      icon: Box,    plan: 'enterprise', badge: 'BETA' },
       { href: '/microsites',     label: 'Dijital Katalog',  icon: Globe },
       { href: '/qr-codes',       label: 'QR Kod Üretici',   icon: QrCode },
