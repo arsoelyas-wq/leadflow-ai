@@ -971,7 +971,7 @@ export default function VoicePage() {
           {/* Step title */}
           <div className="text-center mb-6">
             <h2 className="text-lg font-bold text-white">{
-              step===1?'Arama sesini seç':'step'===''?'':
+              step===1?'Arama sesini seç':
               step===2?'Kimi arayacaksın?':
               step===3?'Aramayı hazırla':
               'Aramayı başlat'
