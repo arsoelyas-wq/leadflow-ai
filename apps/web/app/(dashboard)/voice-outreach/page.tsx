@@ -434,9 +434,16 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg }: any) {
               <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Ses ara..."
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none transition-all glass-card"/>
             </div>
-            <select value={libGender} onChange={e => setLibGender(e.target.value)} className="glass-card rounded-xl px-3 text-sm text-white focus:outline-none">
-              <option value="">Tümü</option><option value="male">Erkek</option><option value="female">Kadın</option>
-            </select>
+            <div className="relative">
+              <select value={libGender} onChange={e => setLibGender(e.target.value)}
+                className="px-3 pr-8 py-2.5 rounded-xl text-sm text-white focus:outline-none"
+                style={{ background: '#0a0a14', border: '1px solid rgba(255,255,255,0.1)', appearance: 'none', WebkitAppearance: 'none' }}>
+                <option value="" style={{ background: '#0a0a14' }}>Tümü</option>
+                <option value="male" style={{ background: '#0a0a14' }}>Erkek</option>
+                <option value="female" style={{ background: '#0a0a14' }}>Kadın</option>
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 text-xs">▾</div>
+            </div>
           </div>
           <p className="text-xs text-slate-600">{LANG_MAP[libLang]?.flag} {LANG_MAP[libLang]?.name} — {filteredLib.length} ses</p>
           {libLoading ? (
@@ -446,7 +453,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg }: any) {
           ) : (
             <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1 custom-scroll">
               {filteredLib.map((v: any) => {
-                const active = selectedId === v.id && 'library' === 'library'
+                const active = selectedId === v.id && selectedType === 'library'
                 return (
                   <div key={v.id} onClick={() => onSelect(v.id, v.name, 'library')}
                     className="group flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all duration-200 voice-card"
@@ -525,10 +532,15 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
           </div>
           <div>
             <label className="text-xs text-slate-500 mb-1.5 block font-semibold uppercase tracking-wider">Ülke Filtresi</label>
-            <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} className="w-full glass-card px-4 py-3 rounded-2xl text-sm text-white focus:outline-none">
-              <option value="">Tüm Ülkeler</option>
-              {countries.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="relative">
+              <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
+                className="w-full px-4 py-3 pr-10 rounded-2xl text-sm text-white focus:outline-none"
+                style={{ background: '#0a0a14', border: '1px solid rgba(255,255,255,0.1)', appearance: 'none', WebkitAppearance: 'none' }}>
+                <option value="" style={{ background: '#0a0a14' }}>Tüm Ülkeler ({leadsWithPhone.length})</option>
+                {countries.map(c => <option key={c} value={c} style={{ background: '#0a0a14' }}>{c}</option>)}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">▾</div>
+            </div>
           </div>
         </div>
       )}
@@ -549,15 +561,19 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
         </div>
 
         {callMode === 'single' ? (
-          <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
-            className="w-full glass-card px-4 py-3.5 rounded-2xl text-white text-sm focus:outline-none transition-all"
-            onFocus={e => (e.target.style.borderColor='rgba(20,184,166,0.5)')}
-            onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.07)')}>
-            <option value="">Lead seçin ({leadsWithPhone.length} telefon numaralı)</option>
-            {leadsWithPhone.map((l: any) => (
-              <option key={l.id} value={l.id}>{l.company_name}{l.country?` (${l.country})`:''} — {l.phone}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
+              className="w-full px-4 py-3.5 pr-10 rounded-2xl text-white text-sm focus:outline-none transition-all"
+              style={{ background: '#0a0a14', border: '1px solid rgba(255,255,255,0.1)', appearance: 'none', WebkitAppearance: 'none' }}
+              onFocus={e => (e.target.style.borderColor='rgba(20,184,166,0.5)')}
+              onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.1)')}>
+              <option value="" style={{ background: '#0a0a14' }}>Lead seçin ({leadsWithPhone.length} telefon numaralı)</option>
+              {leadsWithPhone.map((l: any) => (
+                <option key={l.id} value={l.id} style={{ background: '#0a0a14' }}>{l.company_name}{l.country?` (${l.country})`:''} — {l.phone}</option>
+              ))}
+            </select>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">▾</div>
+          </div>
         ) : (
           <div className="max-h-60 overflow-y-auto rounded-2xl custom-scroll space-y-0.5 p-1" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {filtered.map((l: any) => {
@@ -793,7 +809,7 @@ export default function VoicePage() {
   async function loadAll() {
     try {
       const [l, c, ca, s, st] = await Promise.allSettled([
-        api.get('/api/leads?limit=200'),
+        api.get('/api/leads?limit=5000'),
         fetch(`${API}/api/voice/calls?limit=30`, { headers: authH() }),
         fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
         fetch(`${API}/api/voice/settings`, { headers: authH() }),
@@ -890,6 +906,9 @@ export default function VoicePage() {
         .custom-scroll::-webkit-scrollbar{width:3px}
         .custom-scroll::-webkit-scrollbar-track{background:transparent}
         .custom-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+        select{background-color:#0a0a14!important;color:#fff!important;border-color:rgba(255,255,255,0.07)!important;-webkit-appearance:none;appearance:none}
+        select option{background-color:#0a0a14;color:#fff}
+        select:focus{outline:none}
       `}</style>
 
       {/* ── HEADER ────────────────────────────────────────────────────────────── */}
