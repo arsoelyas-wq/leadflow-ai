@@ -136,6 +136,7 @@ app.use('/api/crisis',               authMiddleware, require('./routes/crisis'))
 // Public microsite view (no auth — customer-facing catalog link)
 app.use('/api/microsite/view',                      require('./routes/microsite').publicRouter);
 app.use('/api/microsite',            authMiddleware, require('./routes/microsite'));
+app.use('/api/products',             authMiddleware, require('./routes/products'));
 app.use('/api/referral',             authMiddleware, require('./routes/referral'));
 app.use('/api/debt',                 authMiddleware, require('./routes/debt'));
 app.use('/api/emotional',            authMiddleware, require('./routes/emotional'));

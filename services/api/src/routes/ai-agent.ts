@@ -232,16 +232,23 @@ async function generateAIReply(params: {
     .map((m: any) => `${m.direction === 'out' ? 'Satış AI' : lead.company_name}: ${m.content}`)
     .join('\n');
 
+  // Ürün kataloğunu çek
+  let productContext = '';
+  try {
+    const { getProductContext } = require('./products');
+    productContext = await getProductContext(profile.user_id || '');
+  } catch {}
+
   const system = `Sen bir B2B satış uzmanısın. Şirketin sattığı ürün: ${profile.product_description}.
 Hedef müşteri: ${profile.target_customer}. Çözdüğün sorun: ${profile.pain_solved}.
 Fiyat aralığı: ${profile.price_range_min}–${profile.price_range_max} ${profile.price_currency}.
-${(profile.value_props || []).length ? `Değer önerileri: ${profile.value_props.join(', ')}.` : ''}
+${(profile.value_props || []).length ? `Değer önerileri: ${profile.value_props.join(', ')}.` : ''}${productContext}
 
 KURALLAR:
 - Türkçe, samimi, profesyonel yaz
 - Maksimum 160 karakter (kısa WhatsApp mesajı gibi)
-- Fiyat sorusunda: "Projenize özel fiyat çıkaralım" de, net fiyat verme
-- İtirazda: somut fayda veya referans sun
+- Fiyat sorusunda katalogdan ilgili ürünü öner, pazarlık için "Projenize özel fiyat çıkaralım" de
+- İtirazda: somut fayda veya katalogdan ilgili ürün/fiyat bilgisi sun
 - Güven kur, agresif satış yapma
 - Emoji kullan ama aşırıya kaçma`;
 
