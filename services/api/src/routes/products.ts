@@ -127,7 +127,7 @@ router.post('/bulk-excel', upload.single('file'), async (req: any, res: any) => 
     const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
     if (rows.length === 0) return res.status(400).json({ error: 'Excel boş' });
-    if (rows.length > 200) return res.status(400).json({ error: 'Maksimum 200 ürün' });
+    if (rows.length > 500) return res.status(400).json({ error: 'Maksimum 500 ürün' });
 
     const products = rows.map(row => ({
       user_id: req.userId,
@@ -146,6 +146,31 @@ router.post('/bulk-excel', upload.single('file'), async (req: any, res: any) => 
     if (error) throw error;
 
     res.json({ message: `${data?.length || 0} ürün eklendi!`, count: data?.length || 0 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/products/excel-template — Sabit Excel şablonu indir ──────────────
+router.get('/excel-template', (_req: any, res: any) => {
+  try {
+    const wb = XLSX.utils.book_new();
+    const header = [['Ürün Adı', 'Fiyat', 'Açıklama', 'Kategori', 'Özellikler']];
+    const examples = [
+      ['Modern LED Masa Lambası', '₺450', 'Dokunmatik kontrollü, 3 renk sıcaklığı', 'Aydınlatma', '40W, 220V, IP20, 3000-6500K'],
+      ['Ergonomik Ofis Koltuğu', '₺2.800', 'Bel desteği, yükseklik ayarlı, mesh kumaş', 'Ofis', 'Yük kapasitesi: 130kg, Yükseklik: 45-55cm'],
+      ['',  '', '', '', ''],
+      ['← Örnek satırları silebilirsiniz. Maksimum 500 ürün.', '', '', '', ''],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([...header, ...examples]);
+
+    // Kolon genişlikleri
+    ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 50 }, { wch: 18 }, { wch: 40 }];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Ürünler');
+    const buf: Buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="leadflow-urun-sablonu.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buf);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
   Settings, CreditCard, LogOut, Zap, Activity, Target,
-  Bot, FlaskConical, Webhook, Smartphone, Eye,
+  Bot, FlaskConical, Webhook, Smartphone, Eye, Package,
   TrendingUp, Sparkles, Video, FileText,
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
   Workflow, MapPin, ScrollText, Gift, TrendingDown,
@@ -55,6 +55,7 @@ const groups: NavGroup[] = [
     icon: Kanban,
     defaultOpen: true,
     items: [
+      { href: '/products',  label: 'Ürün Kataloğu',        icon: Package,  badge: 'AI' },
       { href: '/pipeline',  label: 'Pipeline & Kanban',    icon: Kanban },
       { href: '/proposals', label: 'Teklifler',            icon: FileText },
       { href: '/workflow',  label: 'Workflow Engine',       icon: Zap,      plan: 'growth', badge: 'V2' },
@@ -89,7 +90,6 @@ const groups: NavGroup[] = [
     label: 'AI Araçlar',
     icon: Sparkles,
     items: [
-      { href: '/products',       label: 'Ürün Kataloğu',    icon: FlaskConical, badge: 'AI' },
       { href: '/ar-experience',  label: 'AR Deneyimi',      icon: Box,    plan: 'enterprise', badge: 'BETA' },
       { href: '/microsites',     label: 'Dijital Katalog',  icon: Globe },
       { href: '/qr-codes',       label: 'QR Kod Üretici',   icon: QrCode },

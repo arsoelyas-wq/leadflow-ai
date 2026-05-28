@@ -277,6 +277,10 @@ export default function ProductsPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+            <a href={`${API_URL}/api/products/excel-template`} download
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: '1px solid rgba(16,185,129,0.25)', cursor: 'pointer', background: 'rgba(16,185,129,0.07)', color: '#34d399', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
+              <Upload size={15} style={{ transform: 'rotate(180deg)' }} /> Şablon İndir
+            </a>
             <button onClick={() => excelRef.current?.click()}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', background: 'rgba(99,102,241,0.08)', color: '#a5b4fc', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
               <FileSpreadsheet size={15} /> Excel İçe Aktar
@@ -331,9 +335,9 @@ export default function ProductsPage() {
       </div>
 
       {/* ── EXCEL TEMPLATE INFO ───────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20, padding: '12px 18px', background: 'rgba(79,70,229,0.05)', border: '1px solid rgba(79,70,229,0.15)', borderRadius: 12, fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <FileSpreadsheet size={14} style={{ color: '#a5b4fc', flexShrink: 0 }} />
-        <span>Excel formatı: <strong style={{ color: '#a5b4fc' }}>Ürün Adı | Fiyat | Açıklama | Kategori | Özellikler</strong> — sütun başlıklarını bu şekilde yazın, maksimum 200 satır</span>
+      <div style={{ marginBottom: 20, padding: '12px 18px', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <FileSpreadsheet size={14} style={{ color: '#34d399', flexShrink: 0 }} />
+        <span>Toplu yükleme için önce <a href={`${API_URL}/api/products/excel-template`} download style={{ color: '#34d399', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>Excel şablonunu indirin</a>, doldurun ve "Excel İçe Aktar" ile yükleyin. Maksimum 500 ürün.</span>
       </div>
 
       {/* ── SEARCH + FILTER ───────────────────────────────────────────────── */}
