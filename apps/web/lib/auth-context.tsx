@@ -26,6 +26,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 
 const PUBLIC_PATHS = ['/login', '/register', '/onboarding']
+const PUBLIC_PREFIXES = ['/catalog/', '/ar-viewer', '/portal', '/privacy', '/terms']
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -39,8 +40,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api.get('/api/auth/me')
         .then(data => {
           setUser(data.user)
-          // Onboarding tamamlanmamışsa yönlendir
-          if (!data.user?.onboardingDone && !PUBLIC_PATHS.includes(pathname || '')) {
+          // Onboarding tamamlanmamışsa yönlendir (public sayfalarda redirect yok)
+          const path = pathname || ''
+          const isPublic = PUBLIC_PATHS.includes(path) || PUBLIC_PREFIXES.some(p => path.startsWith(p))
+          if (!data.user?.onboardingDone && !isPublic) {
             router.push('/onboarding')
           }
         })

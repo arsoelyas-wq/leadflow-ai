@@ -126,10 +126,21 @@ router.get('/list', async (req: any, res: any) => {
 // ── GET /api/microsite/view/:slug — Public (auth yok) ─────────────────────────
 router.get('/view/:slug', async (req: any, res: any) => {
   try {
-    const { data: ms } = await supabase.from('microsites')
+    // Try with full join first; fall back to minimal select if it fails
+    let ms: any = null;
+    const { data: d1, error: e1 } = await supabase.from('microsites')
       .select('*, leads(company_name, contact_name, phone, sector, city)')
       .eq('slug', req.params.slug)
-      .single();
+      .maybeSingle();
+    if (!e1 && d1) {
+      ms = d1;
+    } else {
+      const { data: d2 } = await supabase.from('microsites')
+        .select('*, leads(company_name, contact_name)')
+        .eq('slug', req.params.slug)
+        .maybeSingle();
+      ms = d2;
+    }
 
     if (!ms || !ms.active) return res.status(404).json({ error: 'Sayfa bulunamadı' });
 

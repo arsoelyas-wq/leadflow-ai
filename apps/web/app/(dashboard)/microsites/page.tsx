@@ -8,40 +8,34 @@ const APP_URL = process.env.NEXT_PUBLIC_API_URL
   : 'https://leadflow-ai-web-kappa.vercel.app'
 const CATALOG_BASE = `${APP_URL}/catalog/`
 
-// ── 3D CSS Cube (same system as AR page) ────────────────────────────────────
-function Cube3D({ size = 64 }: { size?: number }) {
-  const h = size / 2
+// ── Quantum Orbital Sphere (same as catalog page) ────────────────────────────
+function QuantumOrb({ size = 64 }: { size?: number }) {
+  const s = size
+  const ring = (extra: number) => s + extra * 2
   return (
-    <div style={{ perspective: `${size * 5}px`, width: size, height: size }}>
-      <div className="ms-cube-spin" style={{ width: size, height: size, position: 'relative', transformStyle: 'preserve-3d' }}>
-        {[
-          { transform: `translateZ(${h}px)`,                  bg: 'rgba(6,182,212,0.12)',  border: 'rgba(6,182,212,0.45)' },
-          { transform: `translateZ(-${h}px) rotateY(180deg)`, bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.4)' },
-          { transform: `translateX(-${h}px) rotateY(-90deg)`, bg: 'rgba(20,184,166,0.12)', border: 'rgba(20,184,166,0.4)' },
-          { transform: `translateX(${h}px) rotateY(90deg)`,   bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.4)' },
-          { transform: `translateY(-${h}px) rotateX(90deg)`,  bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.4)' },
-          { transform: `translateY(${h}px) rotateX(-90deg)`,  bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.4)'  },
-        ].map((f, i) => (
-          <div key={i} style={{ position: 'absolute', width: size, height: size, transform: f.transform, background: f.bg, border: `1px solid ${f.border}` }} />
-        ))}
+    <div style={{ width: s * 2.2, height: s * 2.2, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ position: 'absolute', width: s * 2.2, height: s * 2.2, borderRadius: '50%', background: 'radial-gradient(circle,rgba(6,182,212,0.12) 0%,transparent 70%)', animation: 'msOrbGlow 3s ease-in-out infinite' }} />
+      <div style={{ position: 'absolute', width: ring(s * 0.55), height: ring(s * 0.55), borderRadius: '50%', border: '1.5px solid rgba(6,182,212,0.55)', animation: 'msRing1 4s linear infinite', transformStyle: 'preserve-3d' }}>
+        <div style={{ position: 'absolute', top: -3, left: '50%', transform: 'translateX(-50%)', width: 6, height: 6, borderRadius: '50%', background: '#06b6d4', boxShadow: '0 0 8px #06b6d4' }} />
+      </div>
+      <div style={{ position: 'absolute', width: ring(s * 0.4), height: ring(s * 0.4), borderRadius: '50%', border: '1.5px solid rgba(139,92,246,0.5)', animation: 'msRing2 6s linear infinite', transformStyle: 'preserve-3d' }}>
+        <div style={{ position: 'absolute', top: -3, left: '50%', transform: 'translateX(-50%)', width: 5, height: 5, borderRadius: '50%', background: '#8b5cf6', boxShadow: '0 0 8px #8b5cf6' }} />
+      </div>
+      <div style={{ position: 'absolute', width: ring(s * 0.28), height: ring(s * 0.28), borderRadius: '50%', border: '1px solid rgba(20,184,166,0.45)', animation: 'msRing3 9s linear infinite', transformStyle: 'preserve-3d' }}>
+        <div style={{ position: 'absolute', top: -2.5, left: '50%', transform: 'translateX(-50%)', width: 5, height: 5, borderRadius: '50%', background: '#14b8a6', boxShadow: '0 0 8px #14b8a6' }} />
+      </div>
+      <div style={{ width: s, height: s, borderRadius: '50%', position: 'relative', zIndex: 2, background: `radial-gradient(circle at 38% 32%, #a5f3fc, #0891b2 40%, #0c1a3a 75%)`, boxShadow: `0 0 ${s * 0.4}px rgba(6,182,212,0.6), 0 0 ${s * 0.8}px rgba(6,182,212,0.2)`, animation: 'msCoreBreath 4s ease-in-out infinite' }}>
+        <div style={{ position: 'absolute', top: '18%', left: '22%', width: '28%', height: '18%', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', filter: 'blur(3px)', transform: 'rotate(-30deg)' }} />
       </div>
     </div>
   )
 }
 
-function FloatCube({ size = 20, delay = '0s', color = '#06b6d4' }: { size?: number; delay?: string; color?: string }) {
-  const h = size / 2
+function FloatOrb({ size = 20, delay = '0s', color = '#06b6d4' }: { size?: number; delay?: string; color?: string }) {
   return (
-    <div className="ms-float-cube" style={{ animationDelay: delay, width: size, height: size }}>
-      <div className="ms-cube-spin" style={{ width: size, height: size, position: 'relative', transformStyle: 'preserve-3d', perspective: `${size * 8}px` }}>
-        {[
-          `translateZ(${h}px)`, `translateZ(-${h}px) rotateY(180deg)`,
-          `translateX(-${h}px) rotateY(-90deg)`, `translateX(${h}px) rotateY(90deg)`,
-          `translateY(-${h}px) rotateX(90deg)`, `translateY(${h}px) rotateX(-90deg)`,
-        ].map((t, i) => (
-          <div key={i} style={{ position: 'absolute', width: size, height: size, transform: t, background: `${color}18`, border: `1px solid ${color}55` }} />
-        ))}
-      </div>
+    <div className="ms-float-orb" style={{ animationDelay: delay, width: size * 1.8, height: size * 1.8, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', width: size * 1.8, height: size * 1.8, borderRadius: '50%', border: `1px solid ${color}50`, animation: `msRing1 ${3 + size / 10}s linear infinite` }} />
+      <div style={{ width: size, height: size, borderRadius: '50%', background: `radial-gradient(circle at 35% 30%, ${color}cc, ${color}44)`, boxShadow: `0 0 ${size * 0.5}px ${color}66` }} />
     </div>
   )
 }
@@ -84,7 +78,7 @@ function MicrositeCard({ ms, onCopy, onDelete, onToggle, onSend, copied }: any) 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
           {/* Icon */}
           <div style={{ width: 52, height: 52, borderRadius: 14, flexShrink: 0, background: 'linear-gradient(135deg,rgba(6,182,212,0.12),rgba(139,92,246,0.12))', border: '1px solid rgba(6,182,212,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: hovered ? '0 0 20px rgba(6,182,212,0.25)' : 'none', transition: 'box-shadow 0.3s' }}>
-            {hovered ? <Cube3D size={32} /> : <span style={{ fontSize: 22 }}>🌐</span>}
+            {hovered ? <QuantumOrb size={32} /> : <span style={{ fontSize: 22 }}>🌐</span>}
           </div>
 
           {/* Content */}
@@ -262,13 +256,13 @@ export default function MicrositePage() {
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(0,10,30,0.98),rgba(5,5,20,0.98))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(6,182,212,0.15)' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.04) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div style={{ position: 'absolute', top: -60, right: -40, width: 220, height: 220, background: 'radial-gradient(circle,rgba(6,182,212,0.1) 0%,transparent 70%)', zIndex: 0 }} />
-        <div style={{ position: 'absolute', top: 20, right: 100, zIndex: 1, opacity: 0.6 }}><FloatCube size={18} delay="0s" color="#06b6d4" /></div>
-        <div style={{ position: 'absolute', top: 50, right: 160, zIndex: 1, opacity: 0.5 }}><FloatCube size={12} delay="1s" color="#8b5cf6" /></div>
-        <div style={{ position: 'absolute', bottom: 20, right: 70, zIndex: 1, opacity: 0.5 }}><FloatCube size={14} delay="2s" color="#14b8a6" /></div>
+        <div style={{ position: 'absolute', top: 20, right: 100, zIndex: 1, opacity: 0.6 }}><FloatOrb size={18} delay="0s" color="#06b6d4" /></div>
+        <div style={{ position: 'absolute', top: 50, right: 160, zIndex: 1, opacity: 0.5 }}><FloatOrb size={12} delay="1s" color="#8b5cf6" /></div>
+        <div style={{ position: 'absolute', bottom: 20, right: 70, zIndex: 1, opacity: 0.5 }}><FloatOrb size={14} delay="2s" color="#14b8a6" /></div>
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-            <Cube3D size={64} />
+            <QuantumOrb size={64} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                 <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Kişisel Katalog Sayfaları</h1>
@@ -327,7 +321,7 @@ export default function MicrositePage() {
           {creating ? (
             /* Creating animation */
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}><Cube3D size={72} /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}><QuantumOrb size={72} /></div>
               <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 700, margin: '0 0 6px' }}>AI Katalog Oluşturuyor{'.'.repeat(dotCount)}</h2>
               <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 32px' }}>Müşteriye özel içerik hazırlanıyor</p>
               <div style={{ maxWidth: 400, margin: '0 auto' }}>
@@ -398,7 +392,7 @@ export default function MicrositePage() {
         </div>
       ) : microsites.length === 0 ? (
         <div style={{ background: 'linear-gradient(135deg,rgba(5,10,25,0.97),rgba(8,8,20,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Cube3D size={56} /></div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><QuantumOrb size={56} /></div>
           <p style={{ color: '#475569', fontSize: 15, margin: '0 0 20px' }}>Henüz katalog sayfası yok</p>
           <button onClick={() => setShowCreate(true)}
             style={{ padding: '11px 28px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 20px rgba(8,145,178,0.3)' }}>
@@ -414,17 +408,31 @@ export default function MicrositePage() {
       )}
 
       <style>{`
-        @keyframes msCubeSpin {
-          0%   { transform: rotateX(15deg) rotateY(0deg); }
-          100% { transform: rotateX(15deg) rotateY(360deg); }
+        @keyframes msRing1 {
+          from { transform: rotateX(75deg) rotateY(0deg) rotateZ(0deg); }
+          to   { transform: rotateX(75deg) rotateY(0deg) rotateZ(360deg); }
         }
-        .ms-cube-spin { animation: msCubeSpin 10s linear infinite; }
-
-        @keyframes msFloat {
-          0%, 100% { transform: translateY(0px) rotateX(15deg) rotateY(0deg); }
-          50%       { transform: translateY(-10px) rotateX(15deg) rotateY(180deg); }
+        @keyframes msRing2 {
+          from { transform: rotateX(30deg) rotateY(60deg) rotateZ(0deg); }
+          to   { transform: rotateX(30deg) rotateY(60deg) rotateZ(360deg); }
         }
-        .ms-float-cube { animation: msFloat 4s ease-in-out infinite; }
+        @keyframes msRing3 {
+          from { transform: rotateX(-50deg) rotateY(20deg) rotateZ(0deg); }
+          to   { transform: rotateX(-50deg) rotateY(20deg) rotateZ(360deg); }
+        }
+        @keyframes msCoreBreath {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 32px rgba(6,182,212,0.6), 0 0 64px rgba(6,182,212,0.2); }
+          50%       { transform: scale(1.07); box-shadow: 0 0 48px rgba(6,182,212,0.85), 0 0 96px rgba(6,182,212,0.3); }
+        }
+        @keyframes msOrbGlow {
+          0%, 100% { opacity: 0.8; transform: scale(1); }
+          50%       { opacity: 1; transform: scale(1.05); }
+        }
+        .ms-float-orb { animation: msFloatAnim 4s ease-in-out infinite; }
+        @keyframes msFloatAnim {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-10px); }
+        }
 
         @keyframes msBorder {
           0%   { background-position: 0% 50%; }
