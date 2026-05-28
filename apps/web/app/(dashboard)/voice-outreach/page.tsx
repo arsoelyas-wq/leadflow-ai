@@ -53,9 +53,19 @@ function MyVoicesTab({ selectedId, selectedType, onSelect, onMsg }: any) {
   const [cloning, setCloning] = useState(false)
   const [voiceName, setVoiceName] = useState('')
   const [playing, setPlaying] = useState<string | null>(null)
+  const [inputMode, setInputMode] = useState<'upload' | 'record'>('upload')
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<any>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
   useEffect(() => { loadVoices() }, [])
+  useEffect(() => { return () => { stopRecording(true) } }, [])
 
   async function loadVoices() {
     setLoading(true)
@@ -67,12 +77,65 @@ function MyVoicesTab({ selectedId, selectedType, onSelect, onMsg }: any) {
     setLoading(false)
   }
 
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      chunksRef.current = []
+      const mr = new MediaRecorder(stream)
+      mediaRecorderRef.current = mr
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        setRecordedBlob(blob)
+        setRecordedUrl(URL.createObjectURL(blob))
+        streamRef.current?.getTracks().forEach(t => t.stop())
+      }
+      mr.start(250)
+      setIsRecording(true)
+      setRecordingTime(0)
+      setRecordedBlob(null)
+      setRecordedUrl(null)
+      timerRef.current = setInterval(() => {
+        setRecordingTime(t => {
+          if (t >= 179) { stopRecording(false); return 180 }
+          return t + 1
+        })
+      }, 1000)
+    } catch {
+      onMsg('error', 'Mikrofon erişimi reddedildi')
+    }
+  }
+
+  function stopRecording(silent = false) {
+    clearInterval(timerRef.current)
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    streamRef.current?.getTracks().forEach(t => t.stop())
+    setIsRecording(false)
+  }
+
+  function clearRecording() {
+    setRecordedBlob(null)
+    setRecordedUrl(null)
+    setRecordingTime(0)
+  }
+
+  function fmtTime(s: number) {
+    const m = Math.floor(s / 60)
+    return `${m}:${String(s % 60).padStart(2, '0')}`
+  }
+
   async function cloneVoice() {
-    if (!fileRef.current?.files?.[0]) return onMsg('error', 'Ses dosyası seçin')
+    const file = inputMode === 'upload' ? fileRef.current?.files?.[0] : null
+    const blob = inputMode === 'record' ? recordedBlob : null
+    if (!file && !blob) return onMsg('error', inputMode === 'upload' ? 'Ses dosyası seçin' : 'Önce ses kaydedin')
     setCloning(true)
     try {
       const form = new FormData()
-      form.append('audio', fileRef.current.files[0])
+      if (file) form.append('audio', file)
+      else if (blob) form.append('audio', blob, 'recording.webm')
       form.append('name', voiceName || 'Sesim')
       const r = await fetch(`${API}/api/voice/clone`, {
         method: 'POST',
@@ -84,8 +147,8 @@ function MyVoicesTab({ selectedId, selectedType, onSelect, onMsg }: any) {
         onMsg('success', 'Sesiniz kaydedildi!')
         setVoiceName('')
         if (fileRef.current) fileRef.current.value = ''
+        clearRecording()
         await loadVoices()
-        // Yeni sesi otomatik seç
         onSelect(d.voiceId, d.voiceName, 'cloned')
       } else {
         onMsg('error', d.error || 'Kaydetme başarısız')
@@ -124,26 +187,85 @@ function MyVoicesTab({ selectedId, selectedType, onSelect, onMsg }: any) {
         <h4 className="text-white font-medium flex items-center gap-2">
           <Mic className="w-4 h-4 text-teal-400"/> Yeni Ses Ekle
         </h4>
-        <p className="text-slate-400 text-sm">30 saniye – 3 dakika ses kaydı yükleyin. Sesiniz sisteminizde saklanır.</p>
+
+        {/* Toggle */}
+        <div className="flex bg-slate-900 rounded-xl p-1 gap-1">
+          <button onClick={() => { setInputMode('upload'); clearRecording() }}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${inputMode === 'upload' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+            <Upload className="w-3.5 h-3.5"/> Dosya Yükle
+          </button>
+          <button onClick={() => setInputMode('record')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${inputMode === 'record' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+            <Mic className="w-3.5 h-3.5"/> Canlı Kayıt
+          </button>
+        </div>
+
         <div>
           <label className="text-xs text-slate-400 mb-1.5 block">Ses İsmi</label>
           <input value={voiceName} onChange={e => setVoiceName(e.target.value)}
             placeholder="Ahmet'in Sesi"
             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-500"/>
         </div>
-        <div
-          onClick={() => fileRef.current?.click()}
-          className="border-2 border-dashed border-slate-700 hover:border-teal-500/50 rounded-xl p-6 text-center cursor-pointer transition">
-          <Upload className="w-7 h-7 text-slate-500 mx-auto mb-2"/>
-          <p className="text-slate-400 text-sm">
-            {fileRef.current?.files?.[0]?.name || 'Ses dosyası seçin'}
-          </p>
-          <p className="text-slate-600 text-xs mt-1">MP3, WAV, M4A — maks 25MB</p>
-          <input ref={fileRef} type="file" accept="audio/*" className="hidden"
-            onChange={() => { /* trigger re-render */ setVoiceName(v => v) }}/>
-        </div>
-        <button onClick={cloneVoice} disabled={cloning}
-          className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl font-medium flex items-center justify-center gap-2">
+
+        {inputMode === 'upload' ? (
+          <>
+            <div onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-slate-700 hover:border-teal-500/50 rounded-xl p-6 text-center cursor-pointer transition">
+              <Upload className="w-7 h-7 text-slate-500 mx-auto mb-2"/>
+              <p className="text-slate-400 text-sm">
+                {fileRef.current?.files?.[0]?.name || 'Ses dosyası seçin'}
+              </p>
+              <p className="text-slate-600 text-xs mt-1">MP3, WAV, M4A — maks 25MB</p>
+              <input ref={fileRef} type="file" accept="audio/*" className="hidden"
+                onChange={() => setVoiceName(v => v)}/>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-slate-400 text-sm">30 saniye – 3 dakika arası kayıt yapın.</p>
+
+            {/* Kayıt butonu */}
+            <div className="flex flex-col items-center gap-3 py-4">
+              <button
+                onClick={isRecording ? () => stopRecording(false) : startRecording}
+                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg ${
+                  isRecording
+                    ? 'bg-red-600 hover:bg-red-500 animate-pulse scale-110'
+                    : 'bg-teal-600 hover:bg-teal-500'
+                }`}>
+                {isRecording
+                  ? <Square className="w-7 h-7 text-white"/>
+                  : <Mic className="w-7 h-7 text-white"/>}
+              </button>
+              {isRecording && (
+                <div className="flex items-center gap-2 text-red-400 font-mono text-lg font-bold">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+                  {fmtTime(recordingTime)}
+                  <span className="text-xs text-slate-500 font-normal">/ 3:00</span>
+                </div>
+              )}
+              {!isRecording && recordingTime === 0 && (
+                <p className="text-slate-500 text-sm">Kayıt başlatmak için tıklayın</p>
+              )}
+            </div>
+
+            {/* Kaydedilen önizleme */}
+            {recordedUrl && !isRecording && (
+              <div className="bg-slate-900 rounded-xl p-3 flex items-center gap-3">
+                <div className="text-teal-400 text-sm font-medium">
+                  ✓ {fmtTime(recordingTime)} kayıt hazır
+                </div>
+                <audio controls src={recordedUrl} className="flex-1 h-8" style={{ colorScheme: 'dark' }}/>
+                <button onClick={clearRecording} className="text-slate-500 hover:text-red-400 transition">
+                  <Trash2 className="w-4 h-4"/>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <button onClick={cloneVoice} disabled={cloning || (inputMode === 'record' && !recordedBlob && !isRecording)}
+          className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition">
           {cloning
             ? <><RefreshCw className="w-4 h-4 animate-spin"/> Kaydediliyor...</>
             : <><Mic className="w-4 h-4"/> Sesi Kaydet</>}
