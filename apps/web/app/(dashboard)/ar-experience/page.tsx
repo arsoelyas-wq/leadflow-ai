@@ -341,10 +341,22 @@ export default function ARPage() {
   }
 
   const CATEGORIES = [
-    { value: 'furniture', label: '🛋️ Mobilya' },
-    { value: 'decoration', label: '🏺 Dekorasyon' },
-    { value: 'product', label: '📦 Ürün' },
-    { value: 'industrial', label: '🏭 Endüstriyel' },
+    { value: 'furniture',    label: '🛋️ Mobilya' },
+    { value: 'decoration',   label: '🏺 Dekorasyon' },
+    { value: 'lighting',     label: '💡 Aydınlatma' },
+    { value: 'electronics',  label: '📱 Elektronik' },
+    { value: 'kitchen',      label: '🍳 Mutfak & Ev Aletleri' },
+    { value: 'garden',       label: '🌿 Bahçe & Dış Mekan' },
+    { value: 'office',       label: '🖥️ Ofis & İş' },
+    { value: 'sports',       label: '⚽ Spor & Outdoor' },
+    { value: 'automotive',   label: '🚗 Otomotiv' },
+    { value: 'health',       label: '💊 Sağlık & Güzellik' },
+    { value: 'art',          label: '🎨 Sanat & Koleksiyon' },
+    { value: 'construction', label: '🏗️ Yapı & İnşaat' },
+    { value: 'toy',          label: '🧸 Oyun & Hobi' },
+    { value: 'clothing',     label: '👗 Giyim & Aksesuar' },
+    { value: 'product',      label: '📦 Genel Ürün' },
+    { value: 'industrial',   label: '🏭 Endüstriyel' },
   ]
 
   const STAT_CONFIG = [
@@ -461,10 +473,12 @@ export default function ARPage() {
                 </div>
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>Kategori</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {CATEGORIES.map(c => (
-                      <button key={c.value} onClick={() => setCategory(c.value)} style={{ padding: '9px 8px', borderRadius: 10, border: `1px solid ${category === c.value ? 'rgba(236,72,153,0.5)' : 'rgba(255,255,255,0.08)'}`, background: category === c.value ? 'rgba(236,72,153,0.15)' : 'rgba(0,0,0,0.3)', color: category === c.value ? '#f472b6' : '#64748b', fontSize: 12, cursor: 'pointer' }}>{c.label}</button>
-                    ))}
+                  <div style={{ position: 'relative' }}>
+                    <select value={category} onChange={e => setCategory(e.target.value)}
+                      style={{ width: '100%', background: '#0a0a14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer', boxSizing: 'border-box' }}>
+                      {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}>▾</span>
                   </div>
                 </div>
                 <div style={{ marginBottom: 20 }}>
