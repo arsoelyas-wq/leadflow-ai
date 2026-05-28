@@ -1,10 +1,10 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import {
-  Phone, PhoneCall, Mic, Upload, Play, Square,
-  CheckCircle, AlertTriangle, RefreshCw, Zap, Volume2,
-  Globe2, Search, Settings, Sparkles, Trash2, User, StopCircle
+  Phone, PhoneCall, Mic, Upload, Play, Square, ArrowRight, ArrowLeft,
+  CheckCircle, AlertTriangle, RefreshCw, Zap, Volume2, Users,
+  Globe2, Search, Settings, Sparkles, Trash2, User, StopCircle, ChevronRight
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -12,24 +12,28 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
 const LANG_MAP: Record<string, { name: string; flag: string }> = {
-  tr: { name: 'Türkçe', flag: '🇹🇷' }, en: { name: 'İngilizce', flag: '🇬🇧' },
-  de: { name: 'Almanca', flag: '🇩🇪' }, fr: { name: 'Fransızca', flag: '🇫🇷' },
-  ar: { name: 'Arapça', flag: '🇸🇦' }, ru: { name: 'Rusça', flag: '🇷🇺' },
-  az: { name: 'Azerbaycanca', flag: '🇦🇿' }, it: { name: 'İtalyanca', flag: '🇮🇹' },
-  es: { name: 'İspanyolca', flag: '🇪🇸' }, nl: { name: 'Hollandaca', flag: '🇳🇱' },
-  zh: { name: 'Çince', flag: '🇨🇳' }, ja: { name: 'Japonca', flag: '🇯🇵' },
-  ko: { name: 'Korece', flag: '🇰🇷' }, hi: { name: 'Hintçe', flag: '🇮🇳' },
-  pt: { name: 'Portekizce', flag: '🇵🇹' }, pl: { name: 'Lehçe', flag: '🇵🇱' },
+  tr:{name:'Türkçe',flag:'🇹🇷'},en:{name:'İngilizce',flag:'🇬🇧'},de:{name:'Almanca',flag:'🇩🇪'},
+  fr:{name:'Fransızca',flag:'🇫🇷'},ar:{name:'Arapça',flag:'🇸🇦'},ru:{name:'Rusça',flag:'🇷🇺'},
+  az:{name:'Azerbaycanca',flag:'🇦🇿'},it:{name:'İtalyanca',flag:'🇮🇹'},es:{name:'İspanyolca',flag:'🇪🇸'},
+  nl:{name:'Hollandaca',flag:'🇳🇱'},zh:{name:'Çince',flag:'🇨🇳'},ja:{name:'Japonca',flag:'🇯🇵'},
+  ko:{name:'Korece',flag:'🇰🇷'},hi:{name:'Hintçe',flag:'🇮🇳'},pt:{name:'Portekizce',flag:'🇵🇹'},pl:{name:'Lehçe',flag:'🇵🇱'},
 }
 const VOICE_LANGS = Object.entries(LANG_MAP).map(([code, v]) => ({ code, ...v }))
 
+const WIZARD_STEPS = [
+  { id: 1, label: 'Ses Seç',   icon: '🎙️', color: '#14b8a6', glow: 'rgba(20,184,166,0.4)'  },
+  { id: 2, label: 'Lead Seç',  icon: '👤',  color: '#8b5cf6', glow: 'rgba(139,92,246,0.4)' },
+  { id: 3, label: 'Hazırla',   icon: '⚙️',  color: '#f59e0b', glow: 'rgba(251,191,36,0.4)' },
+  { id: 4, label: 'Ara',       icon: '🚀',  color: '#3b82f6', glow: 'rgba(59,130,246,0.4)' },
+]
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    completed:   { label: 'Tamamlandı', cls: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' },
-    calling:     { label: 'Arıyor', cls: 'bg-blue-500/15 text-blue-400 border border-blue-500/20 animate-pulse' },
-    initiating:  { label: 'Başlatılıyor', cls: 'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
-    'no-answer': { label: 'Cevap Yok', cls: 'bg-slate-500/15 text-slate-400 border border-slate-500/20' },
-    failed:      { label: 'Başarısız', cls: 'bg-red-500/15 text-red-400 border border-red-500/20' },
+    completed:  { label:'Tamamlandı', cls:'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' },
+    calling:    { label:'Arıyor',     cls:'bg-blue-500/15 text-blue-400 border border-blue-500/20 animate-pulse' },
+    initiating: { label:'Başlatılıyor', cls:'bg-amber-500/15 text-amber-400 border border-amber-500/20' },
+    'no-answer':{ label:'Cevap Yok',  cls:'bg-slate-500/15 text-slate-400 border border-slate-500/20' },
+    failed:     { label:'Başarısız',  cls:'bg-red-500/15 text-red-400 border border-red-500/20' },
   }
   const s = map[status] || { label: status, cls: 'bg-slate-500/15 text-slate-400' }
   return <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${s.cls}`}>{s.label}</span>
@@ -37,50 +41,37 @@ function StatusBadge({ status }: { status: string }) {
 
 let globalAudio: HTMLAudioElement | null = null
 
-// ─── WAVEFORM CANVAS ──────────────────────────────────────────────────────────
+// ─── WAVEFORM ─────────────────────────────────────────────────────────────────
 function WaveformCanvas({ isRecording, analyser }: { isRecording: boolean; analyser: AnalyserNode | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
-
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const canvas = canvasRef.current; if (!canvas) return
     const ctx = canvas.getContext('2d')!
-    const W = canvas.width, H = canvas.height
-    const bars = 48
-
+    const W = canvas.width, H = canvas.height, bars = 52
     function draw() {
       ctx.clearRect(0, 0, W, H)
       if (isRecording && analyser) {
         const data = new Uint8Array(analyser.frequencyBinCount)
         analyser.getByteFrequencyData(data)
         for (let i = 0; i < bars; i++) {
-          const idx = Math.floor((i / bars) * data.length)
-          const v = data[idx] / 255
-          const barH = Math.max(3, v * H * 0.9)
-          const x = (i / bars) * W + (W / bars) * 0.15
-          const bw = (W / bars) * 0.7
-          const y = (H - barH) / 2
-          const alpha = 0.4 + v * 0.6
-          ctx.fillStyle = `rgba(20,184,166,${alpha})`
-          const r = bw / 2
-          ctx.beginPath()
-          ctx.roundRect(x, y, bw, barH, r)
-          ctx.fill()
+          const v = data[Math.floor((i / bars) * data.length)] / 255
+          const barH = Math.max(4, v * H * 0.88)
+          const x = (i / bars) * W + (W / bars) * 0.1, bw = (W / bars) * 0.8
+          const grd = ctx.createLinearGradient(0, (H - barH) / 2, 0, (H + barH) / 2)
+          grd.addColorStop(0, `rgba(20,184,166,${0.3 + v * 0.7})`)
+          grd.addColorStop(1, `rgba(139,92,246,${0.2 + v * 0.5})`)
+          ctx.fillStyle = grd; ctx.beginPath()
+          ctx.roundRect(x, (H - barH) / 2, bw, barH, bw / 2); ctx.fill()
         }
       } else {
         const t = Date.now() / 1000
         for (let i = 0; i < bars; i++) {
-          const v = (Math.sin(t * 1.5 + i * 0.4) * 0.3 + 0.35) * (isRecording ? 1 : 0.35)
+          const v = (Math.sin(t * 1.2 + i * 0.35) * 0.5 + 0.5) * 0.22
           const barH = Math.max(3, v * H)
-          const x = (i / bars) * W + (W / bars) * 0.15
-          const bw = (W / bars) * 0.7
-          const y = (H - barH) / 2
-          ctx.fillStyle = `rgba(71,85,105,0.6)`
-          const r = bw / 2
-          ctx.beginPath()
-          ctx.roundRect(x, y, bw, barH, r)
-          ctx.fill()
+          const x = (i / bars) * W + (W / bars) * 0.1, bw = (W / bars) * 0.8
+          ctx.fillStyle = 'rgba(71,85,105,0.5)'; ctx.beginPath()
+          ctx.roundRect(x, (H - barH) / 2, bw, barH, bw / 2); ctx.fill()
         }
       }
       rafRef.current = requestAnimationFrame(draw)
@@ -88,96 +79,115 @@ function WaveformCanvas({ isRecording, analyser }: { isRecording: boolean; analy
     draw()
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [isRecording, analyser])
-
-  return <canvas ref={canvasRef} width={480} height={80} className="w-full h-20 rounded-xl"/>
+  return <canvas ref={canvasRef} width={520} height={72} className="w-full rounded-2xl"/>
 }
 
-// ─── 3D ORB ───────────────────────────────────────────────────────────────────
+// ─── LUXURY ORB ───────────────────────────────────────────────────────────────
 function AudioOrb({ isRecording, onClick }: { isRecording: boolean; onClick: () => void }) {
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 160, height: 160 }}>
-      <style>{`
-        @keyframes orbRing1 { from { transform: rotateX(70deg) rotateZ(0deg); } to { transform: rotateX(70deg) rotateZ(360deg); } }
-        @keyframes orbRing2 { from { transform: rotateX(70deg) rotateZ(120deg); } to { transform: rotateX(70deg) rotateZ(480deg); } }
-        @keyframes orbRing3 { from { transform: rotateX(70deg) rotateZ(240deg); } to { transform: rotateX(70deg) rotateZ(600deg); } }
-        @keyframes orbPulse { 0%,100% { transform: scale(1); opacity:0.6; } 50% { transform: scale(1.15); opacity:1; } }
-        @keyframes ripple { 0% { transform:scale(1); opacity:0.6; } 100% { transform:scale(2.2); opacity:0; } }
-        @keyframes gradFlow { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
-        @keyframes scanLine { 0% { transform: translateY(-100%); } 100% { transform: translateY(100%); } }
-        @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
-        @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
-        @keyframes statGlow { 0%,100% { box-shadow:0 0 0 0 rgba(20,184,166,0); } 50% { box-shadow:0 0 20px 2px rgba(20,184,166,0.15); } }
-        .orb-ring { position:absolute; inset:0; border-radius:50%; border:1.5px solid; animation-timing-function:linear; animation-iteration-count:infinite; }
-        .tilt-card { transition: transform 0.2s ease; transform-style: preserve-3d; }
-        .tilt-card:hover { transform: perspective(600px) rotateX(2deg) rotateY(4deg) scale(1.02); }
-        .glass-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.07); }
-        .grad-border { position:relative; }
-        .grad-border::before { content:''; position:absolute; inset:-1px; border-radius:inherit; padding:1px; background:linear-gradient(135deg,rgba(20,184,166,0.4),rgba(139,92,246,0.4),rgba(59,130,246,0.3)); -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; }
-        .active-grad-border::before { background:linear-gradient(135deg,rgba(20,184,166,0.8),rgba(139,92,246,0.8)); animation: gradFlow 3s ease infinite; background-size:200% 200%; }
-        .record-btn { background: conic-gradient(from 0deg, #14b8a6, #8b5cf6, #3b82f6, #14b8a6); animation: orbRing1 4s linear infinite; }
-        .record-btn-active { background: conic-gradient(from 0deg, #ef4444, #f97316, #ef4444); animation: orbRing1 1s linear infinite; }
-        .fade-in-up { animation: fadeInUp 0.4s ease forwards; }
-      `}</style>
-
-      {/* Ripple rings — recording durumunda */}
-      {isRecording && [1,2,3].map(i => (
-        <div key={i} className="absolute inset-0 rounded-full border border-red-500/30"
-          style={{ animation: `ripple ${1.5 + i * 0.5}s ease-out ${i * 0.4}s infinite` }}/>
+    <div className="relative flex items-center justify-center" style={{ width: 200, height: 200 }}>
+      {/* Outer glow */}
+      <div className="absolute inset-0 rounded-full pointer-events-none" style={{
+        background: isRecording
+          ? 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)'
+          : 'radial-gradient(circle, rgba(20,184,166,0.12) 0%, transparent 70%)',
+        animation: 'bgGlow 3s ease infinite',
+      }}/>
+      {/* Ripple rings when recording */}
+      {isRecording && [1,2,3,4].map(i => (
+        <div key={i} className="absolute inset-0 rounded-full border border-red-500/25" style={{ animation: `ripple ${1.2 + i * 0.5}s ease-out ${i * 0.35}s infinite` }}/>
       ))}
-
       {/* Orbiting rings */}
-      <div className="orb-ring" style={{
-        borderColor: isRecording ? 'rgba(239,68,68,0.5)' : 'rgba(20,184,166,0.4)',
-        animation: `orbRing1 ${isRecording ? '1.5s' : '4s'} linear infinite`,
-      }}/>
-      <div className="orb-ring" style={{
-        borderColor: isRecording ? 'rgba(249,115,22,0.4)' : 'rgba(139,92,246,0.3)',
-        animation: `orbRing2 ${isRecording ? '2s' : '6s'} linear infinite`,
-      }}/>
-      <div className="orb-ring" style={{
-        borderColor: isRecording ? 'rgba(239,68,68,0.3)' : 'rgba(59,130,246,0.25)',
-        animation: `orbRing3 ${isRecording ? '2.5s' : '8s'} linear infinite`,
-      }}/>
-
+      {[
+        { color: isRecording ? 'rgba(239,68,68,0.55)' : 'rgba(20,184,166,0.5)',   dur: isRecording ? '1.2s':'3.5s', anim:'orbRing1' },
+        { color: isRecording ? 'rgba(249,115,22,0.45)' : 'rgba(139,92,246,0.4)',  dur: isRecording ? '1.8s':'5s',   anim:'orbRing2' },
+        { color: isRecording ? 'rgba(239,68,68,0.35)' : 'rgba(59,130,246,0.3)',   dur: isRecording ? '2.4s':'7s',   anim:'orbRing3' },
+        { color: isRecording ? 'rgba(251,191,36,0.3)' : 'rgba(251,191,36,0.2)',   dur: isRecording ? '3s':  '9s',   anim:'orbRing4' },
+      ].map((ring, i) => (
+        <div key={i} className="absolute rounded-full border-[1.5px] pointer-events-none" style={{
+          inset: `${i * 6}px`, borderColor: ring.color,
+          animation: `${ring.anim} ${ring.dur} linear infinite`,
+        }}/>
+      ))}
       {/* Core button */}
-      <button onClick={onClick}
-        className="relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl"
+      <button onClick={onClick} className="relative z-10 w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300"
         style={{
           background: isRecording
-            ? 'radial-gradient(circle at 35% 35%, #f97316, #ef4444)'
-            : 'radial-gradient(circle at 35% 35%, #2dd4bf, #14b8a6, #0d9488)',
+            ? 'radial-gradient(circle at 35% 30%, #fb923c, #ef4444 60%, #b91c1c)'
+            : 'radial-gradient(circle at 35% 30%, #5eead4, #14b8a6 50%, #0d9488)',
           boxShadow: isRecording
-            ? '0 0 40px rgba(239,68,68,0.5), inset 0 1px 0 rgba(255,255,255,0.2)'
-            : '0 0 40px rgba(20,184,166,0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
-          animation: isRecording ? 'orbPulse 1s ease-in-out infinite' : 'float 3s ease-in-out infinite',
+            ? '0 0 60px rgba(239,68,68,0.6), 0 0 120px rgba(239,68,68,0.2), inset 0 2px 0 rgba(255,255,255,0.25)'
+            : '0 0 60px rgba(20,184,166,0.5), 0 0 120px rgba(20,184,166,0.15), inset 0 2px 0 rgba(255,255,255,0.25)',
+          animation: isRecording ? 'orbPulse 0.9s ease-in-out infinite' : 'float 3s ease-in-out infinite',
         }}>
-        {/* Shine */}
-        <div className="absolute inset-0 rounded-full" style={{
-          background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), transparent 60%)'
-        }}/>
+        <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 28% 28%, rgba(255,255,255,0.3), transparent 55%)' }}/>
         {isRecording
-          ? <StopCircle className="w-8 h-8 text-white relative z-10 drop-shadow"/>
-          : <Mic className="w-8 h-8 text-white relative z-10 drop-shadow"/>}
+          ? <StopCircle className="w-9 h-9 text-white relative z-10 drop-shadow-lg"/>
+          : <Mic className="w-9 h-9 text-white relative z-10 drop-shadow-lg"/>}
       </button>
     </div>
   )
 }
 
-// ─── KENDİ SESİM TAB ──────────────────────────────────────────────────────────
-function MyVoicesTab({ selectedId, selectedType, onSelect, onMsg }: any) {
+// ─── STEP INDICATOR ───────────────────────────────────────────────────────────
+function StepIndicator({ current }: { current: number }) {
+  return (
+    <div className="flex items-center justify-center gap-0 mb-2">
+      {WIZARD_STEPS.map((step, idx) => {
+        const done = current > step.id, active = current === step.id
+        return (
+          <div key={step.id} className="flex items-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-500" style={{
+                background: done ? `linear-gradient(135deg, ${step.color}, ${step.color}cc)` : active ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+                border: active ? `1.5px solid ${step.color}` : done ? 'none' : '1.5px solid rgba(255,255,255,0.1)',
+                boxShadow: active ? `0 0 20px ${step.glow}, 0 0 40px ${step.glow.replace('0.4','0.15')}` : done ? `0 0 12px ${step.glow}` : 'none',
+              }}>
+                {done
+                  ? <CheckCircle className="w-5 h-5 text-white"/>
+                  : <span className="text-base leading-none" style={{ filter: active ? 'none' : 'grayscale(0.7) opacity(0.5)' }}>{step.icon}</span>}
+                {active && <div className="absolute inset-0 rounded-full animate-ping" style={{ background: step.color, opacity: 0.12 }}/>}
+              </div>
+              <span className="text-[10px] font-semibold tracking-wider" style={{ color: done ? step.color : active ? '#ffffff' : 'rgba(148,163,184,0.6)', transition: 'color 0.3s' }}>
+                {step.label}
+              </span>
+            </div>
+            {idx < WIZARD_STEPS.length - 1 && (
+              <div className="w-16 h-px mb-5 mx-1 relative overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700" style={{
+                  width: current > step.id ? '100%' : '0%',
+                  background: `linear-gradient(90deg, ${step.color}, ${WIZARD_STEPS[idx+1].color})`,
+                  boxShadow: current > step.id ? `0 0 6px ${step.glow}` : 'none',
+                }}/>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── STEP 1: SES SEÇ ─────────────────────────────────────────────────────────
+function StepVoice({ selectedId, selectedType, onSelect, onMsg }: any) {
+  const [voiceSubTab, setVoiceSubTab] = useState<'mine' | 'library'>('mine')
   const [voices, setVoices] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [cloning, setCloning] = useState(false)
   const [voiceName, setVoiceName] = useState('')
   const [playing, setPlaying] = useState<string | null>(null)
-  const [inputMode, setInputMode] = useState<'upload' | 'record'>('record')
+  const [inputMode, setInputMode] = useState<'record' | 'upload'>('record')
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
   const [fileName, setFileName] = useState('')
+  const [libVoices, setLibVoices] = useState<any[]>([])
+  const [libLoading, setLibLoading] = useState(false)
+  const [libSearch, setLibSearch] = useState('')
+  const [libGender, setLibGender] = useState('')
+  const [libLang, setLibLang] = useState('tr')
   const fileRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -186,65 +196,46 @@ function MyVoicesTab({ selectedId, selectedType, onSelect, onMsg }: any) {
   const audioCtxRef = useRef<AudioContext | null>(null)
 
   useEffect(() => { loadVoices() }, [])
-  useEffect(() => { return () => { stopRecording(true) } }, [])
+  useEffect(() => { if (voiceSubTab === 'library') loadLib(libLang) }, [voiceSubTab, libLang])
+  useEffect(() => () => stopRec(true), [])
 
   async function loadVoices() {
     setLoading(true)
-    try {
-      const r = await fetch(`${API}/api/voice/my-voices`, { headers: authH() })
-      const d = await r.json()
-      setVoices(d.voices || [])
-    } catch {}
-    setLoading(false)
+    try { const r = await fetch(`${API}/api/voice/my-voices`, { headers: authH() }); const d = await r.json(); setVoices(d.voices || []) }
+    catch {} setLoading(false)
   }
-
-  async function startRecording() {
+  async function loadLib(l: string) {
+    setLibLoading(true); setLibVoices([])
+    try { const r = await fetch(`${API}/api/voice/library-voices?language=${l}&limit=80`, { headers: authH() }); const d = await r.json(); setLibVoices(d.voices || []) }
+    catch {} setLibLoading(false)
+  }
+  async function startRec() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-      const actx = new AudioContext()
-      audioCtxRef.current = actx
+      const actx = new AudioContext(); audioCtxRef.current = actx
       const src = actx.createMediaStreamSource(stream)
-      const an = actx.createAnalyser()
-      an.fftSize = 256
-      src.connect(an)
-      setAnalyser(an)
+      const an = actx.createAnalyser(); an.fftSize = 256
+      src.connect(an); setAnalyser(an)
       chunksRef.current = []
-      const mr = new MediaRecorder(stream)
-      mediaRecorderRef.current = mr
+      const mr = new MediaRecorder(stream); mediaRecorderRef.current = mr
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        setRecordedBlob(blob)
-        setRecordedUrl(URL.createObjectURL(blob))
-        streamRef.current?.getTracks().forEach(t => t.stop())
-        audioCtxRef.current?.close()
-        setAnalyser(null)
+        setRecordedBlob(blob); setRecordedUrl(URL.createObjectURL(blob))
+        streamRef.current?.getTracks().forEach(t => t.stop()); audioCtxRef.current?.close(); setAnalyser(null)
       }
-      mr.start(250)
-      setIsRecording(true)
-      setRecordingTime(0)
-      setRecordedBlob(null)
-      setRecordedUrl(null)
-      timerRef.current = setInterval(() => {
-        setRecordingTime(t => {
-          if (t >= 179) { stopRecording(false); return 180 }
-          return t + 1
-        })
-      }, 1000)
+      mr.start(250); setIsRecording(true); setRecordingTime(0); setRecordedBlob(null); setRecordedUrl(null)
+      timerRef.current = setInterval(() => setRecordingTime(t => { if (t >= 179) { stopRec(false); return 180 } return t + 1 }), 1000)
     } catch { onMsg('error', 'Mikrofon erişimi reddedildi') }
   }
-
-  function stopRecording(silent = false) {
+  function stopRec(silent = false) {
     clearInterval(timerRef.current)
     if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop()
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    setIsRecording(false)
+    streamRef.current?.getTracks().forEach(t => t.stop()); setIsRecording(false)
   }
-
-  function clearRecording() { setRecordedBlob(null); setRecordedUrl(null); setRecordingTime(0) }
-
-  function fmtTime(s: number) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+  function clearRec() { setRecordedBlob(null); setRecordedUrl(null); setRecordingTime(0) }
+  function fmt(s: number) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
 
   async function cloneVoice() {
     const file = inputMode === 'upload' ? fileRef.current?.files?.[0] : null
@@ -256,222 +247,15 @@ function MyVoicesTab({ selectedId, selectedType, onSelect, onMsg }: any) {
       if (file) form.append('audio', file)
       else if (blob) form.append('audio', blob, 'recording.webm')
       form.append('name', voiceName || 'Sesim')
-      const r = await fetch(`${API}/api/voice/clone`, {
-        method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: form,
-      })
+      const r = await fetch(`${API}/api/voice/clone`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: form })
       const d = await r.json()
-      if (d.ok) {
-        onMsg('success', 'Sesiniz sisteme kaydedildi!')
-        setVoiceName(''); setFileName('')
-        if (fileRef.current) fileRef.current.value = ''
-        clearRecording(); await loadVoices()
-        onSelect(d.voiceId, d.voiceName, 'cloned')
-      } else onMsg('error', d.error || 'Kaydetme başarısız')
+      if (d.ok) { onMsg('success', 'Sesiniz kaydedildi!'); setVoiceName(''); setFileName(''); clearRec(); await loadVoices(); onSelect(d.voiceId, d.voiceName, 'cloned') }
+      else onMsg('error', d.error || 'Kaydetme başarısız')
     } catch (e: any) { onMsg('error', e.message) }
     setCloning(false)
   }
 
-  function handleTilt(e: React.MouseEvent<HTMLDivElement>, el: HTMLDivElement) {
-    const r = el.getBoundingClientRect()
-    const x = (e.clientX - r.left) / r.width - 0.5
-    const y = (e.clientY - r.top) / r.height - 0.5
-    el.style.transform = `perspective(600px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.02)`
-  }
-  function resetTilt(el: HTMLDivElement) { el.style.transform = '' }
-
-  return (
-    <div className="space-y-5">
-      {/* Mode toggle */}
-      <div className="flex bg-black/30 rounded-2xl p-1 gap-1 border border-white/5">
-        {[
-          { id: 'record', icon: <Mic className="w-4 h-4"/>, label: 'Canlı Kayıt' },
-          { id: 'upload', icon: <Upload className="w-4 h-4"/>, label: 'Dosya Yükle' },
-        ].map(m => (
-          <button key={m.id} onClick={() => { setInputMode(m.id as any); clearRecording() }}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-300 ${
-              inputMode === m.id
-                ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg shadow-teal-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}>
-            {m.icon}{m.label}
-          </button>
-        ))}
-      </div>
-
-      {/* İsim input */}
-      <div className="relative">
-        <input value={voiceName} onChange={e => setVoiceName(e.target.value)}
-          placeholder="Ses ismi (örn: Ahmet'in Sesi)"
-          className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/50 transition-all placeholder-slate-600"/>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600">
-          <Mic className="w-4 h-4"/>
-        </div>
-      </div>
-
-      {inputMode === 'record' ? (
-        <div className="space-y-4">
-          {/* Orb + Waveform */}
-          <div className="glass-card rounded-3xl p-6 flex flex-col items-center gap-5"
-            style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(20,184,166,0.05), transparent 60%)' }}>
-            <AudioOrb isRecording={isRecording} onClick={isRecording ? () => stopRecording(false) : startRecording}/>
-            <WaveformCanvas isRecording={isRecording} analyser={analyser}/>
-            {isRecording ? (
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-red-500" style={{ animation: 'orbPulse 1s ease infinite' }}/>
-                <span className="font-mono text-2xl font-bold text-white tracking-wider">{fmtTime(recordingTime)}</span>
-                <span className="text-xs text-slate-500">/ 3:00</span>
-              </div>
-            ) : (
-              <p className="text-slate-500 text-sm text-center">
-                {recordedUrl ? '✓ Kayıt hazır — kaydetmek için aşağıdaki butona basın' : 'Kayıt başlatmak için orb\'a tıklayın'}
-              </p>
-            )}
-          </div>
-
-          {/* Kayıt önizleme */}
-          {recordedUrl && !isRecording && (
-            <div className="fade-in-up glass-card rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-emerald-400"/>
-              <span className="text-emerald-400 text-sm font-medium">{fmtTime(recordingTime)} kayıt</span>
-              <audio controls src={recordedUrl} className="flex-1 h-8" style={{ colorScheme: 'dark' }}/>
-              <button onClick={clearRecording} className="text-slate-600 hover:text-red-400 transition p-1">
-                <Trash2 className="w-4 h-4"/>
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div
-          onClick={() => fileRef.current?.click()}
-          className="glass-card rounded-3xl p-10 text-center cursor-pointer border-2 border-dashed border-white/10 hover:border-teal-500/40 transition-all duration-300 group"
-          style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(20,184,166,0.04), transparent 60%)' }}>
-          <div className="w-16 h-16 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-            <Upload className="w-7 h-7 text-teal-400"/>
-          </div>
-          <p className="text-white font-medium mb-1">{fileName || 'Ses dosyası seçin'}</p>
-          <p className="text-slate-500 text-xs">MP3, WAV, M4A — maks 25MB</p>
-          <input ref={fileRef} type="file" accept="audio/*" className="hidden"
-            onChange={e => setFileName(e.target.files?.[0]?.name || '')}/>
-        </div>
-      )}
-
-      {/* Kaydet butonu */}
-      <button onClick={cloneVoice}
-        disabled={cloning || (inputMode === 'record' && !recordedBlob) || (inputMode === 'upload' && !fileName)}
-        className="relative w-full py-3.5 rounded-2xl font-semibold text-white overflow-hidden group transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{ background: 'linear-gradient(135deg, #14b8a6, #8b5cf6)' }}>
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: 'linear-gradient(135deg, #0d9488, #7c3aed)' }}/>
-        <div className="absolute inset-0" style={{
-          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)',
-          backgroundSize: '200% 100%',
-          animation: cloning ? 'none' : 'shimmer 3s ease-in-out infinite',
-        }}/>
-        <span className="relative flex items-center justify-center gap-2">
-          {cloning ? <><RefreshCw className="w-4 h-4 animate-spin"/>Sisteme Kaydediliyor...</> : <><Mic className="w-4 h-4"/>Sesi Sisteme Kaydet</>}
-        </span>
-      </button>
-
-      {/* Kayıtlı sesler */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-white text-sm font-semibold flex items-center gap-2">
-            <User className="w-4 h-4 text-slate-400"/> Kayıtlı Seslerim
-            <span className="px-2 py-0.5 rounded-full bg-white/5 text-slate-400 text-xs">{voices.length}</span>
-          </h4>
-          <button onClick={loadVoices} className="text-slate-500 hover:text-white transition p-1">
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`}/>
-          </button>
-        </div>
-        {loading ? (
-          <div className="text-center py-8 text-slate-600 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin"/>Yükleniyor...
-          </div>
-        ) : voices.length === 0 ? (
-          <div className="text-center py-10 glass-card rounded-2xl">
-            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-3">
-              <Mic className="w-6 h-6 text-slate-600"/>
-            </div>
-            <p className="text-slate-500 text-sm">Henüz ses eklenmedi</p>
-            <p className="text-slate-700 text-xs mt-1">Kendi sesinizle kişiselleştirilmiş aramalar yapın</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {voices.map((v: any) => (
-              <div key={v.id}
-                onMouseMove={e => handleTilt(e, e.currentTarget)}
-                onMouseLeave={e => resetTilt(e.currentTarget)}
-                onClick={() => onSelect(v.id, v.name, 'cloned')}
-                style={{ transition: 'transform 0.2s ease', transformStyle: 'preserve-3d' }}
-                className={`group relative flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer overflow-hidden ${
-                  selectedId === v.id && selectedType === 'cloned'
-                    ? 'grad-border active-grad-border'
-                    : 'glass-card hover:border-white/15'
-                }`}>
-                {selectedId === v.id && selectedType === 'cloned' && (
-                  <div className="absolute inset-0 rounded-2xl" style={{ background: 'radial-gradient(ellipse at 0% 50%, rgba(20,184,166,0.1), transparent 60%)' }}/>
-                )}
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 relative ${
-                  selectedId === v.id && selectedType === 'cloned' ? 'bg-teal-500/20' : 'bg-white/5'
-                }`}>🎙️</div>
-                <div className="flex-1 min-w-0 relative">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white text-sm font-medium truncate">{v.name}</span>
-                    {selectedId === v.id && selectedType === 'cloned' && (
-                      <CheckCircle className="w-3.5 h-3.5 text-teal-400 shrink-0"/>
-                    )}
-                  </div>
-                  <span className="text-xs text-slate-500">{new Date(v.created_at).toLocaleDateString('tr-TR')}</span>
-                </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition relative">
-                  <button onClick={e => {
-                    e.stopPropagation()
-                    if (playing === v.id) { globalAudio?.pause(); globalAudio = null; setPlaying(null); return }
-                    globalAudio?.pause(); globalAudio = null; setPlaying(v.id)
-                    const a = new Audio(v.sample_url); globalAudio = a
-                    a.onended = () => { setPlaying(null); globalAudio = null }
-                    a.play().catch(() => setPlaying(null))
-                  }} className={`w-8 h-8 rounded-xl flex items-center justify-center transition ${playing === v.id ? 'bg-red-500' : 'bg-white/10 hover:bg-teal-500/30'}`}>
-                    {playing === v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3 text-slate-300"/>}
-                  </button>
-                  <button onClick={async e => {
-                    e.stopPropagation()
-                    await fetch(`${API}/api/voice/my-voices/${v.id}`, { method: 'DELETE', headers: authH() })
-                    await loadVoices()
-                    if (selectedId === v.id) onSelect('', '', 'library')
-                  }} className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/10 hover:bg-red-500/30 transition">
-                    <Trash2 className="w-3 h-3 text-slate-400"/>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── SES KÜTÜPHANESİ TAB ─────────────────────────────────────────────────────
-function LibraryTab({ selectedId, selectedType, onSelect }: any) {
-  const [voices, setVoices] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [playing, setPlaying] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [filterGender, setFilterGender] = useState('')
-  const [lang, setLang] = useState('tr')
-
-  useEffect(() => { loadVoices(lang) }, [lang])
-
-  async function loadVoices(l: string) {
-    setLoading(true); setVoices([])
-    try {
-      const r = await fetch(`${API}/api/voice/library-voices?language=${l}&limit=80`, { headers: authH() })
-      const d = await r.json(); setVoices(d.voices || [])
-    } catch {} setLoading(false)
-  }
-
-  async function playPreview(voice: any) {
+  async function playLib(voice: any) {
     if (playing === voice.id) { globalAudio?.pause(); globalAudio = null; setPlaying(null); return }
     globalAudio?.pause(); globalAudio = null
     if (!voice.previewUrl) return
@@ -482,104 +266,505 @@ function LibraryTab({ selectedId, selectedType, onSelect }: any) {
     a.play().catch(() => setPlaying(null))
   }
 
-  const filtered = voices.filter(v => {
-    if (search && !v.name?.toLowerCase().includes(search.toLowerCase())) return false
-    if (filterGender && v.gender !== filterGender) return false
+  const filteredLib = libVoices.filter(v => {
+    if (libSearch && !v.name?.toLowerCase().includes(libSearch.toLowerCase())) return false
+    if (libGender && v.gender !== libGender) return false
     return true
   })
 
   return (
-    <div className="space-y-4">
-      {/* Dil seçimi */}
-      <div className="flex gap-1.5 flex-wrap">
-        {VOICE_LANGS.map(l => (
-          <button key={l.code} onClick={() => setLang(l.code)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              lang === l.code
-                ? 'bg-gradient-to-r from-teal-600/80 to-cyan-600/80 text-white shadow-md shadow-teal-500/20 border border-teal-500/40'
-                : 'glass-card text-slate-400 hover:text-white'
+    <div className="step-slide">
+      {/* Sub-tab toggle */}
+      <div className="flex gap-1.5 mb-6 p-1.5 rounded-2xl" style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        {[
+          { id: 'mine',    label: 'Kendi Sesim',    icon: '🎙️', color: 'from-violet-600 to-purple-700' },
+          { id: 'library', label: 'Ses Kütüphanesi', icon: '🎵', color: 'from-teal-600 to-cyan-700' },
+        ].map(s => (
+          <button key={s.id} onClick={() => setVoiceSubTab(s.id as any)}
+            className={`flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
+              voiceSubTab === s.id ? `bg-gradient-to-r ${s.color} text-white shadow-lg` : 'text-slate-400 hover:text-white hover:bg-white/5'
             }`}>
-            <span>{l.flag}</span><span>{l.name}</span>
+            <span className="text-base">{s.icon}</span>{s.label}
           </button>
         ))}
       </div>
 
-      {/* Filtreler */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ses ara..."
-            className="w-full bg-black/30 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500/50 placeholder-slate-600 transition-all"/>
-        </div>
-        <select value={filterGender} onChange={e => setFilterGender(e.target.value)}
-          className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-          <option value="">Tümü</option>
-          <option value="male">Erkek</option>
-          <option value="female">Kadın</option>
-        </select>
-      </div>
+      {voiceSubTab === 'mine' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+          {/* Left: recorder */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Input mode */}
+            <div className="flex gap-2">
+              {[{id:'record',icon:<Mic className="w-3.5 h-3.5"/>,label:'Canlı Kayıt'},{id:'upload',icon:<Upload className="w-3.5 h-3.5"/>,label:'Dosya Yükle'}].map(m => (
+                <button key={m.id} onClick={() => { setInputMode(m.id as any); clearRec() }}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${inputMode===m.id ? 'bg-violet-600 text-white shadow-md shadow-violet-500/20' : 'text-slate-500 hover:text-white glass-card'}`}>
+                  {m.icon}{m.label}
+                </button>
+              ))}
+            </div>
+            {/* Name input */}
+            <input value={voiceName} onChange={e => setVoiceName(e.target.value)} placeholder="Ses ismi (örn: Ahmet'in Sesi)"
+              className="w-full px-4 py-3 rounded-2xl text-sm text-white placeholder-slate-600 focus:outline-none transition-all"
+              style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)', '--tw-ring-color': 'rgba(139,92,246,0.4)' } as any}
+              onFocus={e => (e.target.style.borderColor='rgba(139,92,246,0.5)')}
+              onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.08)')}/>
 
-      <p className="text-xs text-slate-600">{LANG_MAP[lang]?.flag} {LANG_MAP[lang]?.name} — {filtered.length} ses</p>
+            {inputMode === 'record' ? (
+              <div className="rounded-3xl p-6 flex flex-col items-center gap-4" style={{
+                background: 'radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.08), rgba(0,0,0,0.4) 70%)',
+                border: '1px solid rgba(255,255,255,0.07)',
+              }}>
+                <AudioOrb isRecording={isRecording} onClick={isRecording ? () => stopRec(false) : startRec}/>
+                <WaveformCanvas isRecording={isRecording} analyser={analyser}/>
+                {isRecording
+                  ? <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-red-500" style={{ animation: 'orbPulse 0.8s ease infinite' }}/>
+                      <span className="font-mono text-3xl font-bold text-white tracking-widest">{fmt(recordingTime)}</span>
+                      <span className="text-xs text-slate-600">/ 3:00</span>
+                    </div>
+                  : <p className="text-slate-500 text-sm text-center">{recordedUrl ? '✓ Kayıt hazır' : 'Orb\'a tıklayarak kayda başlayın'}</p>}
+              </div>
+            ) : (
+              <div onClick={() => fileRef.current?.click()}
+                className="rounded-3xl p-10 text-center cursor-pointer border-2 border-dashed group transition-all duration-300 hover:scale-[1.01]"
+                style={{ background: 'rgba(0,0,0,0.3)', borderColor: 'rgba(255,255,255,0.1)' }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor='rgba(139,92,246,0.4)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor='rgba(255,255,255,0.1)')}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-transform group-hover:scale-110"
+                  style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                  <Upload className="w-7 h-7 text-violet-400"/>
+                </div>
+                <p className="text-white font-medium mb-1">{fileName || 'Ses dosyası seçin'}</p>
+                <p className="text-slate-500 text-xs">MP3, WAV, M4A — maks 25 MB</p>
+                <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={e => setFileName(e.target.files?.[0]?.name || '')}/>
+              </div>
+            )}
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12 gap-3 text-slate-500">
-          <div className="w-6 h-6 rounded-full border-2 border-teal-500 border-t-transparent animate-spin"/>
-          Yükleniyor...
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-10 glass-card rounded-2xl">
-          <Volume2 className="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-50"/>
-          <p className="text-slate-500 text-sm">Ses bulunamadı</p>
+            {recordedUrl && !isRecording && (
+              <div className="flex items-center gap-3 p-4 rounded-2xl fade-in-up" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"/>
+                <span className="text-emerald-400 text-xs font-semibold">{fmt(recordingTime)} kayıt</span>
+                <audio controls src={recordedUrl} className="flex-1 h-8" style={{ colorScheme: 'dark' }}/>
+                <button onClick={clearRec} className="text-slate-600 hover:text-red-400 transition p-1"><Trash2 className="w-4 h-4"/></button>
+              </div>
+            )}
+
+            <button onClick={cloneVoice}
+              disabled={cloning || (inputMode === 'record' && !recordedBlob) || (inputMode === 'upload' && !fileName)}
+              className="lux-btn w-full py-4 rounded-2xl font-bold text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed relative overflow-hidden">
+              <span className="relative flex items-center justify-center gap-2">
+                {cloning ? <><RefreshCw className="w-4 h-4 animate-spin"/>Kaydediliyor...</> : <><Mic className="w-4 h-4"/>Sesi Sisteme Kaydet</>}
+              </span>
+            </button>
+          </div>
+
+          {/* Right: saved voices */}
+          <div className="lg:col-span-2 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <User className="w-4 h-4 text-violet-400"/>Kayıtlı Seslerim
+                <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>{voices.length}</span>
+              </h4>
+              <button onClick={loadVoices} className="text-slate-500 hover:text-white transition p-1.5 rounded-lg hover:bg-white/5">
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`}/>
+              </button>
+            </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-10 gap-2 text-slate-500 text-sm">
+                <div className="w-5 h-5 rounded-full border-2 border-violet-500 border-t-transparent animate-spin"/>Yükleniyor
+              </div>
+            ) : voices.length === 0 ? (
+              <div className="text-center py-10 rounded-2xl" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <Mic className="w-10 h-10 mx-auto mb-2 text-slate-700"/>
+                <p className="text-slate-500 text-sm">Henüz ses eklenmedi</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[480px] overflow-y-auto pr-0.5 custom-scroll">
+                {voices.map((v: any) => {
+                  const active = selectedId === v.id
+                  return (
+                    <div key={v.id} onClick={() => onSelect(v.id, v.name, 'cloned')}
+                      className={`group relative flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all duration-200 overflow-hidden voice-card ${active ? 'active' : ''}`}
+                      style={{
+                        background: active ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.025)',
+                        border: active ? '1px solid rgba(139,92,246,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                        boxShadow: active ? '0 0 20px rgba(139,92,246,0.15)' : 'none',
+                      }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: active ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)' }}>🎙️</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white text-sm font-medium truncate">{v.name}</span>
+                          {active && <CheckCircle className="w-3.5 h-3.5 text-violet-400 shrink-0"/>}
+                        </div>
+                        <span className="text-xs text-slate-500">{new Date(v.created_at).toLocaleDateString('tr-TR')}</span>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <button onClick={e => { e.stopPropagation(); if (playing===v.id){globalAudio?.pause();globalAudio=null;setPlaying(null);return} globalAudio?.pause();globalAudio=null;setPlaying(v.id);const a=new Audio(v.sample_url);globalAudio=a;a.onended=()=>{setPlaying(null);globalAudio=null};a.play().catch(()=>setPlaying(null)) }}
+                          className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:scale-110"
+                          style={{ background: playing===v.id ? '#ef4444' : 'rgba(255,255,255,0.08)' }}>
+                          {playing === v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3 text-slate-300"/>}
+                        </button>
+                        <button onClick={async e => { e.stopPropagation(); await fetch(`${API}/api/voice/my-voices/${v.id}`, { method:'DELETE', headers:authH() }); await loadVoices(); if (selectedId===v.id) onSelect('','','library') }}
+                          className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-500/20 transition hover:scale-110" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                          <Trash2 className="w-3 h-3 text-slate-400"/>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2 max-h-[420px] overflow-y-auto pr-1 custom-scroll">
-          {filtered.map((v: any) => (
-            <div key={v.id}
-              onClick={() => onSelect(v.id, v.name, 'library')}
-              className={`group flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all duration-200 ${
-                selectedId === v.id && selectedType === 'library'
-                  ? 'grad-border active-grad-border'
-                  : 'glass-card hover:border-white/15'
-              }`}>
-              {selectedId === v.id && selectedType === 'library' && (
-                <div className="absolute inset-0 rounded-2xl" style={{ background: 'radial-gradient(ellipse at 0% 50%, rgba(20,184,166,0.08), transparent 60%)' }}/>
-              )}
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${
-                selectedId === v.id && selectedType === 'library' ? 'bg-teal-500/20' : 'bg-white/5'
-              }`}>
-                {v.gender === 'female' ? '👩' : '👨'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-white text-sm font-medium truncate">{v.name}</span>
-                  {selectedId === v.id && selectedType === 'library' && (
-                    <CheckCircle className="w-3.5 h-3.5 text-teal-400 shrink-0"/>
-                  )}
-                </div>
-                <span className="text-xs text-slate-500">
-                  {v.gender === 'female' ? 'Kadın' : 'Erkek'}{v.accent ? ` · ${v.accent}` : ''}
-                </span>
-              </div>
-              {v.previewUrl && (
-                <button onClick={e => { e.stopPropagation(); playPreview(v) }}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center transition shrink-0 ${
-                    playing === v.id ? 'bg-red-500 opacity-100' : 'bg-white/10 hover:bg-teal-500/30 opacity-0 group-hover:opacity-100'
-                  }`}>
-                  {playing === v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3 text-slate-300"/>}
-                </button>
-              )}
+        /* Library */
+        <div className="space-y-4">
+          <div className="flex gap-1.5 flex-wrap">
+            {VOICE_LANGS.map(l => (
+              <button key={l.code} onClick={() => setLibLang(l.code)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${libLang===l.code ? 'text-white shadow-md' : 'text-slate-400 hover:text-white glass-card'}`}
+                style={libLang===l.code ? { background: 'linear-gradient(135deg, rgba(20,184,166,0.8), rgba(6,182,212,0.8))', border: '1px solid rgba(20,184,166,0.4)' } : {}}>
+                <span>{l.flag}</span><span>{l.name}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
+              <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Ses ara..."
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none transition-all glass-card"/>
             </div>
-          ))}
+            <select value={libGender} onChange={e => setLibGender(e.target.value)} className="glass-card rounded-xl px-3 text-sm text-white focus:outline-none">
+              <option value="">Tümü</option><option value="male">Erkek</option><option value="female">Kadın</option>
+            </select>
+          </div>
+          <p className="text-xs text-slate-600">{LANG_MAP[libLang]?.flag} {LANG_MAP[libLang]?.name} — {filteredLib.length} ses</p>
+          {libLoading ? (
+            <div className="flex items-center justify-center py-12 gap-3 text-slate-500">
+              <div className="w-5 h-5 rounded-full border-2 border-teal-500 border-t-transparent animate-spin"/>Yükleniyor...
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1 custom-scroll">
+              {filteredLib.map((v: any) => {
+                const active = selectedId === v.id && 'library' === 'library'
+                return (
+                  <div key={v.id} onClick={() => onSelect(v.id, v.name, 'library')}
+                    className="group flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all duration-200 voice-card"
+                    style={{ background: active ? 'rgba(20,184,166,0.08)' : 'rgba(255,255,255,0.025)', border: active ? '1px solid rgba(20,184,166,0.35)' : '1px solid rgba(255,255,255,0.06)', boxShadow: active ? '0 0 16px rgba(20,184,166,0.12)' : 'none' }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: active ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                      {v.gender === 'female' ? '👩' : '👨'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white text-sm font-medium truncate">{v.name}</span>
+                        {active && <CheckCircle className="w-3.5 h-3.5 text-teal-400 shrink-0"/>}
+                      </div>
+                      <span className="text-xs text-slate-500">{v.gender==='female'?'Kadın':'Erkek'}{v.accent?` · ${v.accent}`:''}</span>
+                    </div>
+                    {v.previewUrl && (
+                      <button onClick={e => { e.stopPropagation(); playLib(v) }}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center transition opacity-0 group-hover:opacity-100 hover:scale-110"
+                        style={{ background: playing===v.id ? '#ef4444' : 'rgba(255,255,255,0.08)' }}>
+                        {playing===v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3 text-slate-300"/>}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// ─── ANA SAYFA ────────────────────────────────────────────────────────────────
+// ─── STEP 2: LEAD SEÇ ────────────────────────────────────────────────────────
+function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead, selectedLeads, setSelectedLeads, campaignName, setCampaignName, filterCountry, setFilterCountry }: any) {
+  const leadsWithPhone = leads.filter((l: any) => l.phone)
+  const countries = [...new Set(leadsWithPhone.map((l: any) => l.country).filter(Boolean))] as string[]
+  const filtered = filterCountry ? leadsWithPhone.filter((l: any) => l.country === filterCountry) : leadsWithPhone
+
+  return (
+    <div className="step-slide space-y-5">
+      {/* Mode toggle */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { id: 'single',   icon: <PhoneCall className="w-5 h-5"/>,  label: 'Tek Arama',  desc: '1 kişiyi ara',     color: '#14b8a6', glow: 'rgba(20,184,166,0.3)'  },
+          { id: 'campaign', icon: <Users className="w-5 h-5"/>,       label: 'Kampanya',   desc: 'Toplu arama yap', color: '#f59e0b', glow: 'rgba(251,191,36,0.3)' },
+        ].map(m => {
+          const active = callMode === m.id
+          return (
+            <button key={m.id} onClick={() => setCallMode(m.id)}
+              className="relative p-5 rounded-2xl text-left transition-all duration-300 overflow-hidden group"
+              style={{ background: active ? `rgba(${m.id==='single'?'20,184,166':'251,191,36'},0.1)` : 'rgba(0,0,0,0.3)', border: `1.5px solid ${active ? m.color+'60' : 'rgba(255,255,255,0.07)'}`, boxShadow: active ? `0 0 24px ${m.glow}` : 'none' }}>
+              {active && <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 0% 0%, ${m.glow}, transparent 60%)` }}/>}
+              <div className="relative flex items-center gap-3 mb-1">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${m.color}20`, color: m.color }}>
+                  {m.icon}
+                </div>
+                <div>
+                  <div className="text-white font-bold text-sm">{m.label}</div>
+                  <div className="text-slate-500 text-xs">{m.desc}</div>
+                </div>
+                {active && <CheckCircle className="w-4 h-4 ml-auto" style={{ color: m.color }}/>}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {callMode === 'campaign' && (
+        <div className="grid grid-cols-2 gap-3 fade-in-up">
+          <div>
+            <label className="text-xs text-slate-500 mb-1.5 block font-semibold uppercase tracking-wider">Kampanya Adı</label>
+            <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Mayıs 2026 Kampanyası"
+              className="w-full px-4 py-3 rounded-2xl text-sm text-white placeholder-slate-600 glass-card focus:outline-none transition-all"
+              onFocus={e => (e.target.style.borderColor='rgba(251,191,36,0.5)')}
+              onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.07)')}/>
+          </div>
+          <div>
+            <label className="text-xs text-slate-500 mb-1.5 block font-semibold uppercase tracking-wider">Ülke Filtresi</label>
+            <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} className="w-full glass-card px-4 py-3 rounded-2xl text-sm text-white focus:outline-none">
+              <option value="">Tüm Ülkeler</option>
+              {countries.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
+            {callMode==='campaign' ? (
+              <><span className="text-white font-bold">{selectedLeads.length}</span> / {filtered.length} lead seçili</>
+            ) : 'Lead Seç'}
+          </label>
+          {callMode==='campaign' && (
+            <div className="flex gap-3">
+              <button onClick={() => setSelectedLeads(filtered.map((l: any) => l.id))} className="text-xs font-semibold transition" style={{ color: '#f59e0b' }}>Tümünü Seç</button>
+              <button onClick={() => setSelectedLeads([])} className="text-xs text-slate-500 hover:text-white transition">Temizle</button>
+            </div>
+          )}
+        </div>
+
+        {callMode === 'single' ? (
+          <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
+            className="w-full glass-card px-4 py-3.5 rounded-2xl text-white text-sm focus:outline-none transition-all"
+            onFocus={e => (e.target.style.borderColor='rgba(20,184,166,0.5)')}
+            onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.07)')}>
+            <option value="">Lead seçin ({leadsWithPhone.length} telefon numaralı)</option>
+            {leadsWithPhone.map((l: any) => (
+              <option key={l.id} value={l.id}>{l.company_name}{l.country?` (${l.country})`:''} — {l.phone}</option>
+            ))}
+          </select>
+        ) : (
+          <div className="max-h-60 overflow-y-auto rounded-2xl custom-scroll space-y-0.5 p-1" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            {filtered.map((l: any) => {
+              const checked = selectedLeads.includes(l.id)
+              return (
+                <label key={l.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors group"
+                  style={{ background: checked ? 'rgba(251,191,36,0.06)' : 'transparent' }}
+                  onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)' }}
+                  onMouseLeave={e => { if (!checked) (e.currentTarget as HTMLElement).style.background='transparent' }}>
+                  <div className="relative w-4 h-4 flex-shrink-0">
+                    <input type="checkbox" checked={checked}
+                      onChange={ev => setSelectedLeads((prev: string[]) => ev.target.checked ? [...prev, l.id] : prev.filter((id: string) => id !== l.id))}
+                      className="sr-only"/>
+                    <div className="w-4 h-4 rounded-[4px] flex items-center justify-center transition-all" style={{ background: checked ? '#f59e0b' : 'rgba(255,255,255,0.08)', border: checked ? 'none' : '1px solid rgba(255,255,255,0.2)' }}>
+                      {checked && <CheckCircle className="w-3 h-3 text-white"/>}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-xs font-medium truncate">{l.company_name}</div>
+                    <div className="text-slate-500 text-xs">{l.phone}{l.country?` · ${l.country}`:''}</div>
+                  </div>
+                </label>
+              )
+            })}
+            {filtered.length === 0 && <p className="text-slate-600 text-xs text-center py-6">Telefon numarası olan lead yok</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── STEP 3: HAZIRLA ─────────────────────────────────────────────────────────
+function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinutes, setDelayMinutes, settings, setSettings }: any) {
+  return (
+    <div className="step-slide space-y-6">
+      <div>
+        <label className="text-xs text-slate-500 mb-3 block font-bold uppercase tracking-widest">Arama Dili</label>
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+          {VOICE_LANGS.map(l => {
+            const active = selectedLanguage === l.code
+            return (
+              <button key={l.code} onClick={() => setSelectedLanguage(l.code)}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-2xl text-xs transition-all duration-200 hover:scale-105"
+                style={{ background: active ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.03)', border: active ? '1.5px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.07)', boxShadow: active ? '0 0 16px rgba(251,191,36,0.2)' : 'none' }}>
+                <span className="text-2xl">{l.flag}</span>
+                <span className="text-[10px] font-semibold" style={{ color: active ? '#fbbf24' : '#94a3b8' }}>{l.name.split(' ')[0]}</span>
+              </button>
+            )
+          })}
+          <button onClick={() => setSelectedLanguage('')}
+            className="flex flex-col items-center gap-1.5 p-3 rounded-2xl text-xs transition-all duration-200 hover:scale-105"
+            style={{ background: !selectedLanguage ? 'rgba(20,184,166,0.12)' : 'rgba(255,255,255,0.03)', border: !selectedLanguage ? '1.5px solid rgba(20,184,166,0.5)' : '1px solid rgba(255,255,255,0.07)' }}>
+            <span className="text-2xl">🌍</span>
+            <span className="text-[10px] font-semibold" style={{ color: !selectedLanguage ? '#14b8a6' : '#94a3b8' }}>Otomatik</span>
+          </button>
+        </div>
+      </div>
+
+      {callMode === 'campaign' && (
+        <div className="fade-in-up">
+          <label className="text-xs text-slate-500 mb-3 block font-bold uppercase tracking-widest">Aramalar Arası Bekleme</label>
+          <div className="flex gap-2 flex-wrap">
+            {[2,5,10,15,30].map(m => (
+              <button key={m} onClick={() => setDelayMinutes(m)}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105"
+                style={{ background: delayMinutes===m ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.04)', border: delayMinutes===m ? '1.5px solid rgba(251,191,36,0.5)' : '1px solid rgba(255,255,255,0.07)', color: delayMinutes===m ? '#fbbf24' : '#94a3b8' }}>
+                {m} dk
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className="text-xs text-slate-500 mb-3 block font-bold uppercase tracking-widest">Temsilci Profili</label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            { key:'agent_name',          label:'Temsilci Adı',  ph:'Ahmet'               },
+            { key:'company_name',         label:'Şirket Adı',    ph:'Şirketiniz'          },
+            { key:'product_description',  label:'Ürün / Hizmet', ph:'Ne sattığınızı açıklayın' },
+            { key:'transfer_number',      label:'Transfer No',   ph:'İnsan temsilci'      },
+          ].map(({ key, label, ph }) => (
+            <div key={key}>
+              <label className="text-[11px] text-slate-600 mb-1.5 block font-semibold uppercase tracking-wider">{label}</label>
+              <input value={settings[key]||''} onChange={e => setSettings((s: any) => ({ ...s, [key]: e.target.value }))} placeholder={ph}
+                className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-600 glass-card focus:outline-none transition-all"
+                onFocus={ev => (ev.target.style.borderColor='rgba(59,130,246,0.5)')}
+                onBlur={ev => (ev.target.style.borderColor='rgba(255,255,255,0.07)')}/>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── STEP 4: BAŞLAT ───────────────────────────────────────────────────────────
+function StepLaunch({ selectedVoiceName, selectedVoiceType, callMode, selectedLead, selectedLeads, selectedLanguage, leads, calling, campaignRunning, onCall, onCampaign }: any) {
+  const [launched, setLaunched] = useState(false)
+  const [pipeStep, setPipeStep] = useState(0)
+  const lead = leads.find((l: any) => l.id === selectedLead)
+  const isRunning = calling || campaignRunning
+
+  const PIPE = [
+    { label: 'AI Araştırması',   desc: 'Şirket bilgileri taranıyor…',       color: '#3b82f6', dur: 1200 },
+    { label: 'Script Üretimi',   desc: 'Kişiselleştirilmiş açılış hazırlanıyor…', color: '#8b5cf6', dur: 900  },
+    { label: 'Ses Klonlama',     desc: 'Sesiniz sentezleniyor…',             color: '#14b8a6', dur: 800  },
+    { label: 'Bağlantı',         desc: 'Telefon açılıyor…',                  color: '#10b981', dur: 600  },
+  ]
+
+  async function handleLaunch() {
+    setLaunched(true); setPipeStep(0)
+    let delay = 0
+    for (let i = 0; i < PIPE.length; i++) {
+      delay += PIPE[i].dur
+      setTimeout(() => setPipeStep(i + 1), delay)
+    }
+    if (callMode === 'single') await onCall()
+    else await onCampaign()
+  }
+
+  return (
+    <div className="step-slide">
+      {!launched ? (
+        <div className="flex flex-col items-center gap-8 py-4">
+          {/* Summary card */}
+          <div className="w-full max-w-md rounded-3xl p-6 space-y-3" style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {[
+              { icon: '🎙️', label: 'Ses',    value: selectedVoiceName || '—', color: selectedVoiceType==='cloned' ? '#8b5cf6' : '#14b8a6' },
+              { icon: '👤',  label: 'Hedef',  value: callMode==='single' ? (lead?.company_name || '—') : `${selectedLeads.length} lead`, color: '#f59e0b' },
+              { icon: '🌍',  label: 'Dil',    value: selectedLanguage ? LANG_MAP[selectedLanguage]?.name || selectedLanguage : 'Otomatik', color: '#3b82f6' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <span className="text-xl w-8 text-center">{row.icon}</span>
+                <span className="text-slate-500 text-xs w-12">{row.label}</span>
+                <span className="font-semibold text-sm" style={{ color: row.color }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Giant launch button */}
+          <div className="relative flex items-center justify-center" style={{ width: 220, height: 220 }}>
+            <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%)', animation: 'bgGlow 3s ease infinite' }}/>
+            {[1,2,3].map(i => (
+              <div key={i} className="absolute rounded-full border" style={{ inset: `${(i-1)*18}px`, borderColor: `rgba(59,130,246,${0.12-i*0.03})`, animation: `orbRing${i} ${6+i*2}s linear infinite` }}/>
+            ))}
+            <button onClick={handleLaunch} disabled={isRunning || (!selectedVoiceName) || (callMode==='single' && !selectedLead) || (callMode==='campaign' && !selectedLeads.length)}
+              className="relative z-10 w-28 h-28 rounded-full flex flex-col items-center justify-center gap-1 transition-all duration-300 disabled:opacity-40 active:scale-95"
+              style={{
+                background: 'radial-gradient(circle at 35% 30%, #93c5fd, #3b82f6 50%, #1d4ed8)',
+                boxShadow: '0 0 80px rgba(59,130,246,0.5), 0 0 160px rgba(59,130,246,0.15), inset 0 2px 0 rgba(255,255,255,0.3)',
+                animation: 'float 3s ease-in-out infinite',
+              }}>
+              <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle at 30% 28%, rgba(255,255,255,0.3), transparent 55%)' }}/>
+              <Phone className="w-8 h-8 text-white relative z-10 drop-shadow-lg"/>
+              <span className="text-white text-xs font-bold relative z-10 tracking-wide">
+                {callMode === 'single' ? 'ARA' : `${selectedLeads.length} ARA`}
+              </span>
+            </button>
+          </div>
+          <p className="text-slate-500 text-sm text-center">AI araştırma → Kişisel script → Ses klonlama → Arama</p>
+        </div>
+      ) : (
+        /* Pipeline progress */
+        <div className="flex flex-col items-center gap-6 py-8 fade-in-up">
+          <div className="relative flex items-center justify-center" style={{ width: 100, height: 100 }}>
+            <div className="absolute inset-0 rounded-full" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)', animation: 'bgGlow 2s ease infinite' }}/>
+            <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(20,184,166,0.2))', border: '1.5px solid rgba(16,185,129,0.4)' }}>
+              {pipeStep >= PIPE.length
+                ? <CheckCircle className="w-9 h-9 text-emerald-400"/>
+                : <div className="w-7 h-7 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"/>}
+            </div>
+          </div>
+          <div className="w-full max-w-md space-y-3">
+            {PIPE.map((p, i) => {
+              const done = pipeStep > i, active = pipeStep === i
+              return (
+                <div key={p.label} className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-500"
+                  style={{ background: done ? `rgba(${p.color==='#10b981'?'16,185,129':p.color==='#14b8a6'?'20,184,166':p.color==='#8b5cf6'?'139,92,246':'59,130,246'},0.08)` : active ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.2)', border: done ? `1px solid ${p.color}30` : active ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.04)' }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: done || active ? `${p.color}20` : 'rgba(255,255,255,0.04)' }}>
+                    {done ? <CheckCircle className="w-4 h-4" style={{ color: p.color }}/> : active ? <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: p.color, borderTopColor: 'transparent' }}/> : <div className="w-2 h-2 rounded-full" style={{ background: 'rgba(148,163,184,0.3)' }}/>}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold" style={{ color: done ? p.color : active ? '#ffffff' : 'rgba(148,163,184,0.5)' }}>{p.label}</div>
+                    {(active || done) && <div className="text-xs mt-0.5" style={{ color: done ? 'rgba(148,163,184,0.6)' : 'rgba(148,163,184,0.8)' }}>{p.desc}</div>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {pipeStep >= PIPE.length && (
+            <div className="text-center fade-in-up">
+              <p className="text-emerald-400 font-bold text-lg">Arama Başlatıldı!</p>
+              <p className="text-slate-500 text-sm mt-1">Aramalar sekmesinden takip edebilirsiniz</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function VoicePage() {
-  const [tab, setTab] = useState<'voice' | 'dial' | 'campaign' | 'calls' | 'settings'>('voice')
-  const [voiceSubTab, setVoiceSubTab] = useState<'mine' | 'library'>('mine')
+  const [step, setStep] = useState(1)
+  const [callMode, setCallMode] = useState<'single' | 'campaign'>('single')
   const [leads, setLeads] = useState<any[]>([])
   const [calls, setCalls] = useState<any[]>([])
   const [campaigns, setCampaigns] = useState<any[]>([])
@@ -597,11 +782,12 @@ export default function VoicePage() {
   const [delayMinutes, setDelayMinutes] = useState(5)
   const [selectedLanguage, setSelectedLanguage] = useState('tr')
   const [filterCountry, setFilterCountry] = useState('')
+  const [showCalls, setShowCalls] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 5000)
   }
-
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
@@ -619,8 +805,7 @@ export default function VoicePage() {
       if (s.status === 'fulfilled') {
         const d = await (s.value as any).json(); const sv = d.settings || {}
         setSettings(sv); setSelectedVoiceId(sv.elevenlabs_voice_id || '')
-        setSelectedVoiceName(sv.voice_name || '')
-        setSelectedVoiceType(sv.voice_provider === 'cloned' ? 'cloned' : 'library')
+        setSelectedVoiceName(sv.voice_name || ''); setSelectedVoiceType(sv.voice_provider === 'cloned' ? 'cloned' : 'library')
       }
       if (st.status === 'fulfilled') { const d = await (st.value as any).json(); setStats(d) }
     } catch {}
@@ -638,7 +823,7 @@ export default function VoicePage() {
     if (!selectedLead) return showMsg('error', 'Lead seçin')
     setCalling(true)
     try {
-      const r = await fetch(`${API}/api/voice/call/single`, { method: 'POST', headers: authH(), body: JSON.stringify({ leadId: selectedLead, language: selectedLanguage }) })
+      const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage }) })
       const d = await r.json()
       if (d.ok) { showMsg('success', 'Arama başladı!'); setTimeout(loadAll, 3000) }
       else showMsg('error', d.error)
@@ -650,7 +835,7 @@ export default function VoicePage() {
     if (!selectedLeads.length) return showMsg('error', 'En az 1 lead seçin')
     setCampaignRunning(true)
     try {
-      const r = await fetch(`${API}/api/voice/call/campaign`, { method: 'POST', headers: authH(), body: JSON.stringify({ leadIds: selectedLeads, campaignName, delayMinutes, language: selectedLanguage || undefined }) })
+      const r = await fetch(`${API}/api/voice/call/campaign`, { method:'POST', headers:authH(), body:JSON.stringify({ leadIds:selectedLeads, campaignName, delayMinutes, language:selectedLanguage||undefined }) })
       const d = await r.json()
       if (d.ok) { showMsg('success', d.message); loadAll(); setSelectedLeads([]) }
       else showMsg('error', d.error)
@@ -659,527 +844,276 @@ export default function VoicePage() {
   }
 
   async function saveSettings() {
-    try {
-      await fetch(`${API}/api/voice/settings`, { method: 'PATCH', headers: authH(), body: JSON.stringify(settings) })
-      showMsg('success', 'Ayarlar kaydedildi')
-    } catch (e: any) { showMsg('error', e.message) }
+    try { await fetch(`${API}/api/voice/settings`, { method:'PATCH', headers:authH(), body:JSON.stringify(settings) }); showMsg('success', 'Kaydedildi') }
+    catch (e: any) { showMsg('error', e.message) }
   }
 
-  const leadsWithPhone = leads.filter(l => l.phone)
-  const countries = [...new Set(leadsWithPhone.map(l => l.country).filter(Boolean))]
-  const filteredLeads = filterCountry ? leadsWithPhone.filter(l => l.country === filterCountry) : leadsWithPhone
+  const canNext: Record<number, boolean> = {
+    1: !!selectedVoiceId,
+    2: callMode==='single' ? !!selectedLead : selectedLeads.length > 0,
+    3: true,
+    4: false,
+  }
 
-  const TABS = [['voice','🎙️','Sesler'],['dial','📞','Tek Arama'],['campaign','⚡','Kampanya'],['calls','📋','Aramalar'],['settings','⚙️','Ayarlar']]
   const STATS_DATA = stats ? [
-    { label: 'Toplam', value: stats.total, color: '#ffffff', glow: 'rgba(255,255,255,0.1)' },
-    { label: 'Tamamlandı', value: stats.completed, color: '#34d399', glow: 'rgba(52,211,153,0.15)' },
-    { label: 'Olumlu', value: stats.positive, color: '#2dd4bf', glow: 'rgba(45,212,191,0.15)' },
-    { label: 'Cevap Yok', value: stats.no_answer, color: '#94a3b8', glow: 'rgba(148,163,184,0.1)' },
-    { label: 'Dakika', value: stats.totalMinutes, color: '#fbbf24', glow: 'rgba(251,191,36,0.15)' },
-    { label: 'Dil', value: Object.keys(stats.byLanguage || {}).length, color: '#c084fc', glow: 'rgba(192,132,252,0.15)' },
+    { label:'Toplam',    value:stats.total,       color:'#ffffff',  glow:'rgba(255,255,255,0.1)'  },
+    { label:'Bitti',     value:stats.completed,   color:'#34d399',  glow:'rgba(52,211,153,0.15)'  },
+    { label:'Olumlu',    value:stats.positive,    color:'#2dd4bf',  glow:'rgba(45,212,191,0.15)'  },
+    { label:'Cevap Yok', value:stats.no_answer,   color:'#94a3b8',  glow:'rgba(148,163,184,0.1)'  },
+    { label:'Dakika',    value:stats.totalMinutes,color:'#fbbf24',  glow:'rgba(251,191,36,0.15)'  },
+    { label:'Dil',       value:Object.keys(stats.byLanguage||{}).length,color:'#c084fc',glow:'rgba(192,132,252,0.15)'},
   ] : []
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-5 pb-12">
       <style>{`
-        @keyframes orbPulse { 0%,100% { transform:scale(1); opacity:0.6; } 50% { transform:scale(1.15); opacity:1; } }
-        @keyframes ripple { 0% { transform:scale(1); opacity:0.6; } 100% { transform:scale(2.2); opacity:0; } }
-        @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
-        @keyframes fadeInUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
-        @keyframes gradFlow { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
-        @keyframes orbRing1 { from{transform:rotateX(70deg) rotateZ(0deg)}to{transform:rotateX(70deg) rotateZ(360deg)} }
-        @keyframes orbRing2 { from{transform:rotateX(70deg) rotateZ(120deg)}to{transform:rotateX(70deg) rotateZ(480deg)} }
-        @keyframes orbRing3 { from{transform:rotateX(70deg) rotateZ(240deg)}to{transform:rotateX(70deg) rotateZ(600deg)} }
-        @keyframes bgGlow { 0%,100%{opacity:0.4}50%{opacity:0.7} }
-        @keyframes tabIn { from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)} }
-        .glass-card { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.07); }
-        .grad-border { position:relative; }
-        .grad-border::before { content:''; position:absolute; inset:-1px; border-radius:inherit; padding:1px; background:linear-gradient(135deg,rgba(20,184,166,0.5),rgba(139,92,246,0.5)); -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
-        .active-grad-border::before { animation: gradFlow 3s ease infinite; background-size:200% 200%; }
-        .orb-ring { position:absolute; inset:0; border-radius:50%; border:1.5px solid; animation-timing-function:linear; animation-iteration-count:infinite; }
-        .fade-in-up { animation: fadeInUp 0.4s ease forwards; }
-        .tab-content { animation: tabIn 0.3s ease forwards; }
-        .custom-scroll::-webkit-scrollbar { width:4px; }
-        .custom-scroll::-webkit-scrollbar-track { background:transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+        @keyframes orbPulse { 0%,100%{transform:scale(1);opacity:0.7}50%{transform:scale(1.14);opacity:1} }
+        @keyframes ripple { 0%{transform:scale(1);opacity:0.5}100%{transform:scale(2.6);opacity:0} }
+        @keyframes float { 0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)} }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
+        @keyframes bgGlow { 0%,100%{opacity:0.4}50%{opacity:0.8} }
+        @keyframes shimmer { 0%{background-position:-200% 0}100%{background-position:200% 0} }
+        @keyframes gradFlow { 0%,100%{background-position:0% 50%}50%{background-position:100% 50%} }
+        @keyframes orbRing1 { from{transform:rotateX(68deg) rotateZ(0deg)}to{transform:rotateX(68deg) rotateZ(360deg)} }
+        @keyframes orbRing2 { from{transform:rotateX(68deg) rotateZ(120deg)}to{transform:rotateX(68deg) rotateZ(480deg)} }
+        @keyframes orbRing3 { from{transform:rotateX(68deg) rotateZ(240deg)}to{transform:rotateX(68deg) rotateZ(600deg)} }
+        @keyframes orbRing4 { from{transform:rotateX(45deg) rotateZ(60deg)}to{transform:rotateX(45deg) rotateZ(420deg)} }
+        @keyframes stepSlide { from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)} }
+        @keyframes scanLine { 0%{transform:translateY(-100%)}100%{transform:translateY(300%)} }
+        .step-slide { animation: stepSlide 0.35s cubic-bezier(0.22,1,0.36,1) forwards; }
+        .fade-in-up { animation: fadeInUp 0.35s ease forwards; }
+        .glass-card { background:rgba(255,255,255,0.03);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.07); }
+        .lux-btn { background:linear-gradient(135deg,#8b5cf6,#7c3aed,#6d28d9);box-shadow:0 4px 24px rgba(139,92,246,0.3),inset 0 1px 0 rgba(255,255,255,0.15);transition:all 0.2s; }
+        .lux-btn:not(:disabled):hover { transform:translateY(-1px);box-shadow:0 8px 32px rgba(139,92,246,0.4),inset 0 1px 0 rgba(255,255,255,0.2); }
+        .lux-btn::before { content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.08) 50%,transparent 60%);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite; }
+        .voice-card:hover { transform:translateY(-1px) scale(1.005); }
+        .custom-scroll::-webkit-scrollbar{width:3px}
+        .custom-scroll::-webkit-scrollbar-track{background:transparent}
+        .custom-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
       `}</style>
 
-      {/* ── HEADER ─────────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl glass-card p-6 md:p-8"
-        style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.08), rgba(139,92,246,0.05), rgba(0,0,0,0))' }}>
-        {/* Ambient background blobs */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.12), transparent 70%)', animation: 'bgGlow 4s ease infinite' }}/>
-        <div className="absolute -bottom-10 left-10 w-48 h-48 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08), transparent 70%)', animation: 'bgGlow 5s ease 1s infinite' }}/>
-
+      {/* ── HEADER ────────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-3xl p-6 md:p-8" style={{
+        background: 'linear-gradient(135deg, rgba(20,184,166,0.07), rgba(139,92,246,0.05), rgba(0,0,0,0))',
+        border: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(24px)',
+      }}>
+        <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.1), transparent 70%)', animation: 'bgGlow 4s ease infinite' }}/>
+        <div className="absolute -bottom-12 left-8 w-56 h-56 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.07), transparent 70%)', animation: 'bgGlow 5s ease 1.5s infinite' }}/>
         <div className="relative flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div className="relative w-14 h-14 flex-shrink-0">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #14b8a6, #8b5cf6)', boxShadow: '0 8px 32px rgba(20,184,166,0.3)' }}>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #14b8a6, #8b5cf6)', boxShadow: '0 8px 32px rgba(20,184,166,0.3)' }}>
                 <Phone className="w-6 h-6 text-white"/>
               </div>
-              <div className="absolute -inset-0.5 rounded-2xl -z-10" style={{ background: 'linear-gradient(135deg, #14b8a6, #8b5cf6)', filter: 'blur(8px)', opacity: 0.4 }}/>
+              <div className="absolute -inset-0.5 rounded-2xl -z-10" style={{ background: 'linear-gradient(135deg, #14b8a6, #8b5cf6)', filter: 'blur(10px)', opacity: 0.4 }}/>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">AI Sesli Arama</h1>
               <p className="text-slate-400 text-sm mt-0.5">Kendi sesiniz · 16 dil · Kişiselleştirilmiş AI açılış</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            {selectedVoiceName && (
+              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl" style={{ background: selectedVoiceType==='cloned'?'rgba(139,92,246,0.12)':'rgba(20,184,166,0.12)', border: `1px solid ${selectedVoiceType==='cloned'?'rgba(139,92,246,0.35)':'rgba(20,184,166,0.35)'}` }}>
+                <div className="w-2 h-2 rounded-full" style={{ background: selectedVoiceType==='cloned'?'#c084fc':'#2dd4bf', boxShadow: selectedVoiceType==='cloned'?'0 0 8px rgba(192,132,252,0.8)':'0 0 8px rgba(45,212,191,0.8)', animation: 'orbPulse 2s ease infinite' }}/>
+                <span className="text-sm font-bold" style={{ color: selectedVoiceType==='cloned'?'#c084fc':'#2dd4bf' }}>{selectedVoiceName}</span>
+              </div>
+            )}
+            <button onClick={() => setShowCalls(v=>!v)} className={`p-2.5 rounded-xl transition-all ${showCalls?'text-white':'text-slate-500 hover:text-white'} hover:bg-white/5`}>
+              <Phone className="w-4 h-4"/>
+            </button>
+            <button onClick={() => setShowSettings(v=>!v)} className={`p-2.5 rounded-xl transition-all ${showSettings?'text-white':'text-slate-500 hover:text-white'} hover:bg-white/5`}>
+              <Settings className="w-4 h-4"/>
+            </button>
+          </div>
+        </div>
+      </div>
 
-          {selectedVoiceName ? (
-            <button onClick={() => setTab('voice')}
-              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border transition-all hover:scale-105 ${
-                selectedVoiceType === 'cloned' ? 'bg-purple-500/10 border-purple-500/30' : 'bg-teal-500/10 border-teal-500/30'
-              }`}
-              style={{ backdropFilter: 'blur(12px)' }}>
-              <div className={`w-2 h-2 rounded-full ${selectedVoiceType === 'cloned' ? 'bg-purple-400' : 'bg-teal-400'}`}
-                style={{ boxShadow: selectedVoiceType === 'cloned' ? '0 0 8px rgba(192,132,252,0.8)' : '0 0 8px rgba(20,184,166,0.8)' }}/>
-              <span className={`text-sm font-semibold ${selectedVoiceType === 'cloned' ? 'text-purple-300' : 'text-teal-300'}`}>
-                {selectedVoiceName}
-              </span>
-              <span className="text-xs text-slate-500">
-                {selectedVoiceType === 'cloned' ? '🎙️ Kendi sesim' : '🎵 Hazır ses'}
-              </span>
-            </button>
-          ) : (
-            <button onClick={() => setTab('voice')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-2xl text-sm hover:bg-amber-500/15 transition-all">
-              <AlertTriangle className="w-4 h-4"/> Ses Seç
-            </button>
+      {/* ── MESAJ ─────────────────────────────────────────────────────────────── */}
+      {msg && (
+        <div className={`fade-in-up px-5 py-3.5 rounded-2xl border text-sm flex items-center gap-3 ${msg.type==='success'?'bg-emerald-500/10 border-emerald-500/20 text-emerald-300':'bg-red-500/10 border-red-500/20 text-red-300'}`}>
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${msg.type==='success'?'bg-emerald-400':'bg-red-400'}`}/>{msg.text}
+        </div>
+      )}
+
+      {/* ── STATS ─────────────────────────────────────────────────────────────── */}
+      {stats && (
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
+          {STATS_DATA.map(({ label, value, color, glow }) => (
+            <div key={label} className="glass-card rounded-2xl p-4 text-center relative overflow-hidden group hover:scale-[1.04] transition-transform duration-200 cursor-default">
+              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: `radial-gradient(ellipse at 50% 120%, ${glow}, transparent 65%)` }}/>
+              <div className="text-2xl font-bold relative" style={{ color }}>{value}</div>
+              <div className="text-xs text-slate-600 mt-0.5 relative">{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── WIZARD CARD ───────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-3xl p-6 md:p-8" style={{
+        background: 'rgba(4,4,12,0.7)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(32px)',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.4)',
+      }}>
+        {/* Ambient glow that changes per step */}
+        <div className="absolute inset-0 pointer-events-none transition-all duration-1000" style={{
+          background: step===1 ? 'radial-gradient(ellipse at 80% 0%, rgba(139,92,246,0.06), transparent 60%)' :
+                      step===2 ? 'radial-gradient(ellipse at 80% 0%, rgba(251,191,36,0.06), transparent 60%)' :
+                      step===3 ? 'radial-gradient(ellipse at 80% 0%, rgba(251,191,36,0.05), transparent 60%)' :
+                                 'radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.08), transparent 60%)',
+        }}/>
+
+        <div className="relative">
+          <StepIndicator current={step}/>
+
+          {/* Step title */}
+          <div className="text-center mb-6">
+            <h2 className="text-lg font-bold text-white">{
+              step===1?'Arama sesini seç':'step'===''?'':
+              step===2?'Kimi arayacaksın?':
+              step===3?'Aramayı hazırla':
+              'Aramayı başlat'
+            }</h2>
+            <p className="text-slate-500 text-sm mt-0.5">{
+              step===1?'Kendi sesinle veya hazır sesten birini seç':
+              step===2?'Tek kişi ya da toplu kampanya seç':
+              step===3?'Dil ve temsilci profilini ayarla':
+              'Her şey hazır — başla!'
+            }</p>
+          </div>
+
+          {/* Step content */}
+          <div key={step}>
+            {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg}/>}
+            {step===2 && <StepLead leads={leads} callMode={callMode} setCallMode={setCallMode} selectedLead={selectedLead} setSelectedLead={setSelectedLead} selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads} campaignName={campaignName} setCampaignName={setCampaignName} filterCountry={filterCountry} setFilterCountry={setFilterCountry}/>}
+            {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings}/>}
+            {step===4 && <StepLaunch selectedVoiceName={selectedVoiceName} selectedVoiceType={selectedVoiceType} callMode={callMode} selectedLead={selectedLead} selectedLeads={selectedLeads} selectedLanguage={selectedLanguage} leads={leads} calling={calling} campaignRunning={campaignRunning} onCall={makeSingleCall} onCampaign={startCampaign}/>}
+          </div>
+
+          {/* Navigation */}
+          {step < 4 && (
+            <div className="flex items-center justify-between mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step===1}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/5 text-slate-400 hover:text-white">
+                <ArrowLeft className="w-4 h-4"/> Geri
+              </button>
+
+              <div className="flex items-center gap-2">
+                {WIZARD_STEPS.map(s => (
+                  <div key={s.id} className="w-1.5 h-1.5 rounded-full transition-all duration-300" style={{ background: step===s.id ? s.color : step>s.id ? s.color+'80' : 'rgba(255,255,255,0.15)', transform: step===s.id ? 'scale(1.4)' : 'scale(1)' }}/>
+                ))}
+              </div>
+
+              <button onClick={() => { if (step === 3) { saveSettings() }; setStep(s => Math.min(4, s + 1)) }} disabled={!canNext[step]}
+                className="relative flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-bold text-white overflow-hidden disabled:opacity-35 disabled:cursor-not-allowed transition-all hover:scale-[1.03] active:scale-100"
+                style={{
+                  background: canNext[step] ? `linear-gradient(135deg, ${WIZARD_STEPS[step-1].color}, ${WIZARD_STEPS[step].color})` : 'rgba(255,255,255,0.05)',
+                  boxShadow: canNext[step] ? `0 4px 20px ${WIZARD_STEPS[step-1].glow}` : 'none',
+                }}>
+                <span className="relative">Devam Et</span>
+                <ArrowRight className="w-4 h-4 relative"/>
+                {canNext[step] && <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)', backgroundSize: '200% 100%', animation: 'shimmer 2.5s ease-in-out infinite' }}/>}
+              </button>
+            </div>
+          )}
+          {step === 4 && (
+            <div className="flex justify-start mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <button onClick={() => setStep(3)} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                <ArrowLeft className="w-4 h-4"/> Geri
+              </button>
+            </div>
           )}
         </div>
       </div>
 
-      {/* ── MESAJ ──────────────────────────────────────────────────────────────── */}
-      {msg && (
-        <div className={`fade-in-up px-5 py-3.5 rounded-2xl border text-sm flex items-center gap-3 ${
-          msg.type === 'success'
-            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-            : 'bg-red-500/10 border-red-500/20 text-red-300'
-        }`}>
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${msg.type === 'success' ? 'bg-emerald-400' : 'bg-red-400'}`}/>
-          {msg.text}
-        </div>
-      )}
-
-      {/* ── İSTATİSTİKLER ──────────────────────────────────────────────────────── */}
-      {stats && (
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {STATS_DATA.map(({ label, value, color, glow }) => (
-            <div key={label}
-              className="glass-card rounded-2xl p-4 text-center relative overflow-hidden group hover:scale-105 transition-transform duration-200">
-              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ background: `radial-gradient(ellipse at 50% 100%, ${glow}, transparent 70%)` }}/>
-              <div className="text-2xl font-bold relative" style={{ color }}>{value}</div>
-              <div className="text-xs text-slate-500 mt-0.5 relative">{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── TAB BAR ────────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 glass-card rounded-2xl p-1 w-fit flex-wrap">
-        {TABS.map(([t, icon, l]) => (
-          <button key={t} onClick={() => setTab(t as any)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
-              tab === t
-                ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-lg shadow-teal-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}>
-            <span>{icon}</span>{l}
-          </button>
-        ))}
-      </div>
-
-      {/* ── SESLER ─────────────────────────────────────────────────────────────── */}
-      {tab === 'voice' && (
-        <div className="tab-content grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 glass-card rounded-3xl p-6">
-            {/* Sub-tab */}
-            <div className="flex gap-1.5 mb-6 bg-black/30 rounded-2xl p-1">
-              {[
-                { id: 'mine', icon: '🎙️', label: 'Kendi Sesim', color: 'from-violet-600 to-purple-600', glow: 'shadow-violet-500/20' },
-                { id: 'library', icon: '🎵', label: 'Ses Kütüphanesi', color: 'from-teal-600 to-cyan-600', glow: 'shadow-teal-500/20' },
-              ].map(s => (
-                <button key={s.id} onClick={() => setVoiceSubTab(s.id as any)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
-                    voiceSubTab === s.id
-                      ? `bg-gradient-to-r ${s.color} text-white shadow-lg ${s.glow}`
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}>
-                  <span>{s.icon}</span>{s.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="tab-content" key={voiceSubTab}>
-              {voiceSubTab === 'mine'
-                ? <MyVoicesTab selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg}/>
-                : <LibraryTab selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice}/>}
-            </div>
-          </div>
-
-          {/* Sağ panel */}
-          <div className="space-y-4">
-            {selectedVoiceName && (
-              <div className="fade-in-up grad-border active-grad-border rounded-3xl p-5 relative overflow-hidden"
-                style={{ background: selectedVoiceType === 'cloned' ? 'radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.12), rgba(0,0,0,0) 60%)' : 'radial-gradient(ellipse at 50% 0%, rgba(20,184,166,0.12), rgba(0,0,0,0) 60%)' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-2 h-2 rounded-full ${selectedVoiceType === 'cloned' ? 'bg-purple-400' : 'bg-teal-400'}`}
-                    style={{ boxShadow: selectedVoiceType === 'cloned' ? '0 0 8px rgba(192,132,252,1)' : '0 0 8px rgba(20,184,166,1)', animation: 'orbPulse 2s ease infinite' }}/>
-                  <span className={`text-xs font-semibold tracking-wider uppercase ${selectedVoiceType === 'cloned' ? 'text-purple-400' : 'text-teal-400'}`}>
-                    Aktif Ses
-                  </span>
-                </div>
-                <p className="text-white font-semibold text-lg">{selectedVoiceName}</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {selectedVoiceType === 'cloned' ? '🎙️ Kendi sesinizle arama yapılacak' : '🎵 Hazır ses ile arama yapılacak'}
-                </p>
-              </div>
-            )}
-
-            <div className="glass-card rounded-3xl p-5 space-y-3">
-              <h4 className="text-white text-sm font-semibold flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400"/> İki Arama Yolu
-              </h4>
-              {[
-                { icon: '🎙️', title: 'Kendi Sesim', desc: 'Sesinizi yükleyin veya kaydedin. Aramalar kendi sesinizle yapılır.', color: 'rgba(139,92,246,0.1)' },
-                { icon: '🎵', title: 'Ses Kütüphanesi', desc: 'Hazır profesyonel seslerden seçin. Anında kullanıma hazır.', color: 'rgba(20,184,166,0.1)' },
-              ].map(p => (
-                <div key={p.title} className="p-3.5 rounded-2xl transition-all hover:scale-[1.02]"
-                  style={{ background: p.color, border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{p.icon}</span>
-                    <span className="text-white text-sm font-medium">{p.title}</span>
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">{p.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="glass-card rounded-3xl p-5">
-              <h4 className="text-white text-sm font-semibold mb-4 flex items-center gap-2">
-                <Globe2 className="w-4 h-4 text-emerald-400"/> Desteklenen Diller
-              </h4>
-              <div className="grid grid-cols-2 gap-y-2 gap-x-3">
-                {VOICE_LANGS.map(l => (
-                  <div key={l.code} className="flex items-center gap-2 text-xs">
-                    <span>{l.flag}</span>
-                    <span className="text-slate-400">{l.name}</span>
-                    <CheckCircle className="w-3 h-3 text-emerald-400 ml-auto flex-shrink-0"/>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── TEK ARAMA ──────────────────────────────────────────────────────────── */}
-      {tab === 'dial' && (
-        <div className="tab-content grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="glass-card rounded-3xl p-6 space-y-5">
-            <h3 className="font-semibold text-white flex items-center gap-2.5 text-lg">
-              <div className="w-8 h-8 rounded-xl bg-teal-500/20 flex items-center justify-center">
-                <PhoneCall className="w-4 h-4 text-teal-400"/>
-              </div>
-              Tek Lead Ara
-            </h3>
-
-            {selectedVoiceName ? (
-              <div className={`flex items-center gap-3 p-3.5 rounded-2xl ${selectedVoiceType === 'cloned' ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-teal-500/10 border border-teal-500/20'}`}>
-                <div className={`w-2 h-2 rounded-full ${selectedVoiceType === 'cloned' ? 'bg-purple-400' : 'bg-teal-400'}`}
-                  style={{ animation: 'orbPulse 2s ease infinite', boxShadow: selectedVoiceType === 'cloned' ? '0 0 6px rgba(192,132,252,0.8)' : '0 0 6px rgba(20,184,166,0.8)' }}/>
-                <span className={`text-sm font-medium ${selectedVoiceType === 'cloned' ? 'text-purple-300' : 'text-teal-300'}`}>{selectedVoiceName}</span>
-                <span className="text-slate-500 text-xs ml-auto">{selectedVoiceType === 'cloned' ? 'Kendi sesim' : 'Hazır ses'}</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 p-3.5 rounded-2xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs">
-                <AlertTriangle className="w-4 h-4"/> Önce "Sesler" sekmesinden ses seçin
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs text-slate-500 mb-2 block font-medium tracking-wide uppercase">Arama Dili</label>
-              <div className="grid grid-cols-4 gap-1.5">
-                {VOICE_LANGS.slice(0, 12).map(l => (
-                  <button key={l.code} onClick={() => setSelectedLanguage(l.code)}
-                    className={`p-2.5 rounded-xl border text-xs transition-all ${
-                      selectedLanguage === l.code
-                        ? 'bg-teal-500/20 border-teal-500/40 text-teal-300 shadow-md shadow-teal-500/10'
-                        : 'glass-card text-slate-400 hover:text-white'
-                    }`}>
-                    <div className="text-xl mb-1">{l.flag}</div>
-                    <div className="truncate text-[10px]">{l.name.split(' ')[0]}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-2 block font-medium tracking-wide uppercase">Lead Seç</label>
-              <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
-                className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/40 transition-all">
-                <option value="">Lead seçin ({leadsWithPhone.length} telefon numaralı)</option>
-                {leadsWithPhone.map(l => (
-                  <option key={l.id} value={l.id}>{l.company_name} {l.country ? `(${l.country})` : ''} — {l.phone}</option>
-                ))}
-              </select>
-            </div>
-
-            <button onClick={makeSingleCall} disabled={calling || !selectedLead || !selectedVoiceName}
-              className="relative w-full py-4 rounded-2xl font-semibold text-white overflow-hidden disabled:opacity-40 group transition-all hover:scale-[1.02]"
-              style={{ background: 'linear-gradient(135deg, #14b8a6, #0891b2)' }}>
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #0d9488, #0e7490)' }}/>
-              <span className="relative flex items-center justify-center gap-2.5 text-base">
-                {calling ? <><RefreshCw className="w-5 h-5 animate-spin"/>Aranıyor...</> : <><Phone className="w-5 h-5"/>Şimdi Ara</>}
-              </span>
+      {/* ── ARAMALAR (collapsible) ─────────────────────────────────────────────── */}
+      <div className="glass-card rounded-3xl overflow-hidden">
+        <button onClick={() => setShowCalls(v => !v)} className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/3 transition-colors">
+          <h3 className="font-bold text-white flex items-center gap-2.5 text-sm">
+            <div className="w-7 h-7 rounded-xl bg-blue-500/15 flex items-center justify-center"><Phone className="w-3.5 h-3.5 text-blue-400"/></div>
+            Arama Geçmişi
+            <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>{calls.length}</span>
+          </h3>
+          <div className="flex items-center gap-2">
+            <button onClick={e => { e.stopPropagation(); loadAll() }} className="p-1.5 text-slate-500 hover:text-white transition rounded-lg hover:bg-white/5">
+              <RefreshCw className="w-3.5 h-3.5"/>
             </button>
+            <ChevronRight className={`w-4 h-4 text-slate-500 transition-transform duration-300 ${showCalls ? 'rotate-90' : ''}`}/>
           </div>
-
-          <div className="glass-card rounded-3xl p-6">
-            <h3 className="font-semibold text-white mb-6 flex items-center gap-2.5 text-lg">
-              <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-purple-400"/>
-              </div>
-              Nasıl Çalışır?
-            </h3>
-            <div className="space-y-4">
-              {[
-                { n:'1', t:'Ses Seç', d:'Kendi sesiniz veya hazır ses kütüphanesinden seçin', c:'#14b8a6' },
-                { n:'2', t:'AI Araştırması', d:'Yapay zeka şirketi araştırır, ilgi alanlarını tespit eder', c:'#3b82f6' },
-                { n:'3', t:'Kişisel Açılış', d:'Her lead için özel, doğal açılış cümlesi üretilir', c:'#8b5cf6' },
-                { n:'4', t:'Arama Yapılır', d:'Seçtiğiniz sesle gerçekçi, doğal konuşma', c:'#f59e0b' },
-                { n:'5', t:'Analiz & CRM', d:'Transkript, ilgi skoru ve not otomatik kaydedilir', c:'#10b981' },
-              ].map((s, i) => (
-                <div key={s.n} className="flex items-start gap-4 group" style={{ animation: `fadeInUp 0.4s ease ${i * 0.08}s both` }}>
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 transition-transform group-hover:scale-110"
-                    style={{ background: `${s.c}20`, color: s.c, border: `1px solid ${s.c}30` }}>
-                    {s.n}
-                  </div>
-                  <div>
-                    <div className="text-white text-sm font-semibold">{s.t}</div>
-                    <div className="text-slate-500 text-xs mt-0.5 leading-relaxed">{s.d}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── KAMPANYA ───────────────────────────────────────────────────────────── */}
-      {tab === 'campaign' && (
-        <div className="tab-content grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 glass-card rounded-3xl p-6 space-y-5">
-            <h3 className="font-semibold text-white flex items-center gap-2.5 text-lg">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                <Zap className="w-4 h-4 text-amber-400"/>
-              </div>
-              Toplu Arama Kampanyası
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-slate-500 mb-2 block font-medium uppercase tracking-wide">Kampanya Adı</label>
-                <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Mayıs 2026 Kampanyası"
-                  className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500/40 transition-all placeholder-slate-600"/>
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 mb-2 block font-medium uppercase tracking-wide">Aramalar Arası Bekleme</label>
-                <select value={delayMinutes} onChange={e => setDelayMinutes(Number(e.target.value))}
-                  className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none">
-                  {[2,5,10,15,30].map(m => <option key={m} value={m}>{m} dakika</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-2 block font-medium uppercase tracking-wide">Dil</label>
-              <div className="flex gap-1.5 flex-wrap">
-                <button onClick={() => setSelectedLanguage('')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${!selectedLanguage ? 'bg-teal-600 text-white' : 'glass-card text-slate-400 hover:text-white'}`}>
-                  Otomatik
-                </button>
-                {VOICE_LANGS.map(l => (
-                  <button key={l.code} onClick={() => setSelectedLanguage(l.code)}
-                    className={`px-2.5 py-1.5 rounded-xl text-xs font-medium transition ${selectedLanguage === l.code ? 'bg-teal-600 text-white' : 'glass-card text-slate-400 hover:text-white'}`}>
-                    {l.flag} {l.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="text-xs text-slate-500 shrink-0">Ülke:</label>
-              <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
-                className="bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
-                <option value="">Tüm Ülkeler</option>
-                {countries.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs text-slate-500">
-                  <span className="text-white font-semibold">{selectedLeads.length}</span> / {filteredLeads.length} lead seçili
-                </label>
-                <div className="flex gap-3">
-                  <button onClick={() => setSelectedLeads(filteredLeads.map(l => l.id))} className="text-xs text-teal-400 hover:text-teal-300 transition">Tümünü Seç</button>
-                  <button onClick={() => setSelectedLeads([])} className="text-xs text-slate-500 hover:text-white transition">Temizle</button>
-                </div>
-              </div>
-              <div className="max-h-52 overflow-y-auto bg-black/30 rounded-2xl p-2 space-y-1 custom-scroll border border-white/5">
-                {filteredLeads.map(l => (
-                  <label key={l.id} className="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-xl cursor-pointer transition-colors">
-                    <input type="checkbox" checked={selectedLeads.includes(l.id)}
-                      onChange={e => setSelectedLeads(prev => e.target.checked ? [...prev, l.id] : prev.filter(id => id !== l.id))}
-                      className="accent-teal-500 w-4 h-4"/>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white text-xs font-medium truncate">{l.company_name}</div>
-                      <div className="text-slate-500 text-xs">{l.phone}{l.country ? ` · ${l.country}` : ''}</div>
-                    </div>
-                  </label>
-                ))}
-                {filteredLeads.length === 0 && <p className="text-slate-600 text-xs text-center py-4">Telefon numarası olan lead yok</p>}
-              </div>
-            </div>
-
-            <button onClick={startCampaign} disabled={campaignRunning || !selectedLeads.length || !selectedVoiceName}
-              className="relative w-full py-4 rounded-2xl font-semibold text-white overflow-hidden disabled:opacity-40 group transition-all hover:scale-[1.02]"
-              style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)' }}>
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #b45309, #d97706)' }}/>
-              <span className="relative flex items-center justify-center gap-2.5 text-base">
-                {campaignRunning ? <><RefreshCw className="w-5 h-5 animate-spin"/>Çalışıyor...</> : <><Zap className="w-5 h-5"/>{selectedLeads.length} Lead'i Ara</>}
-              </span>
-            </button>
-          </div>
-
-          <div className="glass-card rounded-3xl p-5">
-            <h3 className="font-semibold text-white text-sm mb-4">Geçmiş Kampanyalar</h3>
-            <div className="space-y-2">
-              {campaigns.map(c => (
-                <div key={c.id} className="p-4 glass-card rounded-2xl hover:border-white/15 transition-all">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-white text-xs font-medium truncate pr-2">{c.name}</span>
-                    <span className={`text-xs px-2.5 py-1 rounded-full flex-shrink-0 ${c.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
-                      {c.status === 'completed' ? 'Bitti' : 'Devam'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-500 mb-2">{c.calls_made}/{c.total_leads} arama</div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{
-                      width: `${c.total_leads ? (c.calls_made/c.total_leads)*100 : 0}%`,
-                      background: 'linear-gradient(90deg, #14b8a6, #8b5cf6)'
-                    }}/>
-                  </div>
-                </div>
-              ))}
-              {campaigns.length === 0 && (
-                <div className="text-center py-8 text-slate-600">
-                  <Zap className="w-8 h-8 mx-auto mb-2 opacity-30"/>
-                  <p className="text-xs">Kampanya yok</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ARAMALAR ───────────────────────────────────────────────────────────── */}
-      {tab === 'calls' && (
-        <div className="tab-content glass-card rounded-3xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <Phone className="w-4 h-4 text-slate-400"/> Arama Geçmişi
-              <span className="px-2 py-0.5 rounded-full bg-white/5 text-slate-400 text-xs">{calls.length}</span>
-            </h3>
-            <button onClick={loadAll} className="p-2 text-slate-500 hover:text-white transition rounded-xl hover:bg-white/5">
-              <RefreshCw className="w-4 h-4"/>
-            </button>
-          </div>
-          <div className="overflow-x-auto">
+        </button>
+        {showCalls && (
+          <div className="overflow-x-auto fade-in-up" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 text-slate-500 text-xs">
-                  <th className="text-left px-5 py-3 font-medium">Lead</th>
-                  <th className="text-left px-5 py-3 font-medium">Numara</th>
-                  <th className="text-center px-5 py-3 font-medium">Dil</th>
-                  <th className="text-center px-5 py-3 font-medium">Durum</th>
-                  <th className="text-center px-5 py-3 font-medium">Sonuç</th>
-                  <th className="text-right px-5 py-3 font-medium">Tarih</th>
+                <tr className="text-slate-500 text-xs" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  {['Lead','Numara','Dil','Durum','Sonuç','Tarih'].map(h => (
+                    <th key={h} className={`px-5 py-3 font-semibold ${h==='Lead'||h==='Numara'?'text-left':'text-center'} last:text-right`}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {calls.map(c => (
-                  <tr key={c.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                  <tr key={c.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <td className="px-5 py-3.5">
-                      <div className="text-white text-xs font-medium">{c.leads?.company_name || '—'}</div>
-                      <div className="text-slate-500 text-xs">{c.leads?.country || ''}</div>
+                      <div className="text-white text-xs font-semibold">{c.leads?.company_name||'—'}</div>
+                      <div className="text-slate-600 text-xs">{c.leads?.country||''}</div>
                     </td>
                     <td className="px-5 py-3.5 font-mono text-xs text-slate-400">{c.callee_number}</td>
-                    <td className="px-5 py-3.5 text-center text-xl">{LANG_MAP[c.language]?.flag || '🌍'}</td>
+                    <td className="px-5 py-3.5 text-center text-lg">{LANG_MAP[c.language]?.flag||'🌍'}</td>
                     <td className="px-5 py-3.5 text-center"><StatusBadge status={c.status}/></td>
                     <td className="px-5 py-3.5 text-center">
-                      {c.outcome === 'positive' ? <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">Olumlu</span>
-                        : c.outcome === 'negative' ? <span className="text-xs px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">Olumsuz</span>
-                        : <span className="text-slate-600 text-xs">—</span>}
+                      {c.outcome==='positive'?<span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">Olumlu</span>:c.outcome==='negative'?<span className="text-xs px-2.5 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">Olumsuz</span>:<span className="text-slate-700 text-xs">—</span>}
                     </td>
-                    <td className="px-5 py-3.5 text-right text-xs text-slate-500">
-                      {new Date(c.created_at).toLocaleDateString('tr-TR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
-                    </td>
+                    <td className="px-5 py-3.5 text-right text-xs text-slate-500">{new Date(c.created_at).toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {calls.length === 0 && (
-              <div className="text-center py-16 text-slate-600">
-                <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-                  <Phone className="w-7 h-7 opacity-30"/>
-                </div>
+            {calls.length===0 && (
+              <div className="text-center py-14 text-slate-600">
+                <div className="w-14 h-14 rounded-2xl bg-white/4 flex items-center justify-center mx-auto mb-3"><Phone className="w-6 h-6 opacity-30"/></div>
                 <p className="text-sm font-medium">Henüz arama yapılmamış</p>
-                <p className="text-xs mt-1">İlk aramayı başlatmak için Tek Arama veya Kampanya sekmesine gidin</p>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* ── AYARLAR ────────────────────────────────────────────────────────────── */}
-      {tab === 'settings' && (
-        <div className="tab-content glass-card rounded-3xl p-6 space-y-5 max-w-lg">
-          <h3 className="font-semibold text-white flex items-center gap-2.5 text-lg">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <Settings className="w-4 h-4 text-blue-400"/>
-            </div>
-            Temsilci Profili
+      {/* ── AYARLAR (collapsible) ─────────────────────────────────────────────── */}
+      <div className="glass-card rounded-3xl overflow-hidden">
+        <button onClick={() => setShowSettings(v => !v)} className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/3 transition-colors">
+          <h3 className="font-bold text-white flex items-center gap-2.5 text-sm">
+            <div className="w-7 h-7 rounded-xl bg-blue-500/15 flex items-center justify-center"><Settings className="w-3.5 h-3.5 text-blue-400"/></div>
+            Temsilci Ayarları
           </h3>
-          {[
-            { key: 'agent_name', label: 'Temsilci Adı', ph: 'Ahmet' },
-            { key: 'company_name', label: 'Şirket Adı', ph: 'Şirketiniz' },
-            { key: 'product_description', label: 'Ürün / Hizmet', ph: 'Ne sattığınızı kısaca açıklayın' },
-            { key: 'transfer_number', label: 'Transfer Numarası', ph: 'İnsan temsilciye bağlantı' },
-          ].map(({ key, label, ph }) => (
-            <div key={key}>
-              <label className="text-xs text-slate-500 mb-2 block font-medium tracking-wide uppercase">{label}</label>
-              <input value={settings[key] || ''} onChange={e => setSettings((s: any) => ({ ...s, [key]: e.target.value }))}
-                placeholder={ph}
-                className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500/40 transition-all placeholder-slate-600"/>
+          <ChevronRight className={`w-4 h-4 text-slate-500 transition-transform duration-300 ${showSettings ? 'rotate-90' : ''}`}/>
+        </button>
+        {showSettings && (
+          <div className="px-6 pb-6 pt-2 fade-in-up" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              {[
+                { key:'agent_name',label:'Temsilci Adı',ph:'Ahmet' },
+                { key:'company_name',label:'Şirket Adı',ph:'Şirketiniz' },
+                { key:'product_description',label:'Ürün / Hizmet',ph:'Ne sattığınızı açıklayın' },
+                { key:'transfer_number',label:'Transfer Numarası',ph:'İnsan temsilci no' },
+              ].map(({ key, label, ph }) => (
+                <div key={key}>
+                  <label className="text-xs text-slate-500 mb-1.5 block font-semibold uppercase tracking-wider">{label}</label>
+                  <input value={settings[key]||''} onChange={e => setSettings((s: any) => ({ ...s, [key]: e.target.value }))} placeholder={ph}
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-600 glass-card focus:outline-none transition-all"
+                    onFocus={ev => (ev.target.style.borderColor='rgba(59,130,246,0.5)')}
+                    onBlur={ev => (ev.target.style.borderColor='rgba(255,255,255,0.07)')}/>
+                </div>
+              ))}
             </div>
-          ))}
-          <button onClick={saveSettings}
-            className="relative w-full py-3.5 rounded-2xl font-semibold text-white overflow-hidden group hover:scale-[1.02] transition-all"
-            style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}>
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}/>
-            <span className="relative">Kaydet</span>
-          </button>
-        </div>
-      )}
+            <button onClick={saveSettings} className="lux-btn relative px-8 py-3 rounded-2xl font-bold text-white text-sm overflow-hidden" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}>
+              <span className="relative">Kaydet</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
