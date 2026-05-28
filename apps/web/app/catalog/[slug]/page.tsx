@@ -184,6 +184,42 @@ export default function CatalogPage() {
         </div>
       )}
 
+      {/* ── PRODUCT CATALOG ─────────────────────────────────────────────── */}
+      {ms.catalog_items && ms.catalog_items.length > 0 && (
+        <div style={{ position: 'relative', zIndex: 5, maxWidth: 940, margin: '0 auto 52px', padding: '0 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg,transparent,rgba(6,182,212,0.3))' }} />
+            <span style={{ color: '#67e8f9', fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>Ürün Kataloğu</span>
+            <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg,rgba(6,182,212,0.3),transparent)' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 16 }}>
+            {ms.catalog_items.map((item: any, i: number) => {
+              const clrs = ['#06b6d4','#8b5cf6','#10b981','#f59e0b','#ef4444','#ec4899','#3b82f6','#14b8a6']
+              const c = clrs[i % clrs.length]
+              return (
+                <div key={i} style={{ position: 'relative', borderRadius: 16, overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', inset: -1.5, borderRadius: 17.5, background: `linear-gradient(135deg,${c}55,${c}20,${c}55)`, backgroundSize: '200% 200%', animation: 'catBorderMove 4s linear infinite', zIndex: 0 }} />
+                  <div style={{ position: 'relative', zIndex: 1, background: 'linear-gradient(135deg,rgba(2,8,22,0.98),rgba(5,8,20,0.99))', borderRadius: 15, padding: '20px 18px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 12, flexShrink: 0, background: `${c}15`, border: `1px solid ${c}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                        {item.emoji || '📦'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ color: '#fff', fontWeight: 700, fontSize: 15, margin: '0 0 5px' }}>{item.name}</p>
+                        {item.desc && <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 9px', lineHeight: 1.45 }}>{item.desc}</p>}
+                        {item.price && (
+                          <span style={{ color: c, fontWeight: 700, fontSize: 14, background: `${c}12`, padding: '3px 10px', borderRadius: 20, border: `1px solid ${c}25` }}>{item.price}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── FEATURE CARDS ───────────────────────────────────────────────── */}
       <div style={{ position: 'relative', zIndex: 5, maxWidth: 940, margin: '0 auto 52px', padding: '0 32px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 16 }}>

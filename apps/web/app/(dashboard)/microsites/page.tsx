@@ -146,6 +146,8 @@ export default function MicrositePage() {
   const [showCreate, setShowCreate] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
   const [form, setForm] = useState({ leadId: '', customMessage: '' })
+  const [catalogItems, setCatalogItems] = useState<{ emoji: string; name: string; price: string; desc: string }[]>([])
+  const EMOJIS = ['📦','🛋️','💡','📱','🍳','🌿','🖥️','⚽','🚗','💊','🎨','🏗️','🧸','👗','💎','🔧','🪟','🛏️']
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [dotCount, setDotCount] = useState(0)
   const [creatingStage, setCreatingStage] = useState(0)
@@ -193,10 +195,11 @@ export default function MicrositePage() {
     if (!form.leadId) return
     setCreating(true)
     try {
-      const data = await api.post('/api/microsite/create', form)
+      const data = await api.post('/api/microsite/create', { ...form, catalogItems })
       showMsg('success', `✅ Katalog oluşturuldu! Link: ${data.url}`)
       setShowCreate(false)
       setForm({ leadId: '', customMessage: '' })
+      setCatalogItems([])
       load()
     } catch (e: any) { showMsg('error', e.message) }
     finally { setCreating(false) }
@@ -367,9 +370,62 @@ export default function MicrositePage() {
                     style={{ width: '100%', background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              <div style={{ padding: '12px 14px', background: 'rgba(6,182,212,0.05)', border: '1px solid rgba(6,182,212,0.15)', borderRadius: 10, marginBottom: 16, fontSize: 12, color: '#64748b' }}>
+              <div style={{ padding: '12px 14px', background: 'rgba(6,182,212,0.05)', border: '1px solid rgba(6,182,212,0.15)', borderRadius: 10, marginBottom: 20, fontSize: 12, color: '#64748b' }}>
                 💡 AI müşterinin sektörüne ve şehrine göre otomatik kişisel başlık, alt başlık ve içerik oluşturur
               </div>
+
+              {/* ── ÜRÜN KATALOĞU ── */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <label style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    📦 Ürün Kataloğu <span style={{ color: '#475569', fontWeight: 400, fontSize: 11 }}>({catalogItems.length}/8 ürün)</span>
+                  </label>
+                  {catalogItems.length < 8 && (
+                    <button onClick={() => setCatalogItems(p => [...p, { emoji: '📦', name: '', price: '', desc: '' }])}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.08)', color: '#67e8f9', fontSize: 12, cursor: 'pointer' }}>
+                      <Plus size={12} /> Ürün Ekle
+                    </button>
+                  )}
+                </div>
+                {catalogItems.length === 0 && (
+                  <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 12, textAlign: 'center' }}>
+                    <p style={{ color: '#334155', fontSize: 13, margin: '0 0 10px' }}>Ürün kataloğu opsiyonel — eklemezseniz AI içerik oluşturur</p>
+                    <button onClick={() => setCatalogItems([{ emoji: '📦', name: '', price: '', desc: '' }])}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 16px', borderRadius: 8, border: '1px solid rgba(6,182,212,0.25)', background: 'rgba(6,182,212,0.06)', color: '#67e8f9', fontSize: 12, cursor: 'pointer' }}>
+                      <Plus size={12} /> İlk Ürünü Ekle
+                    </button>
+                  </div>
+                )}
+                {catalogItems.map((item, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '44px 1fr 120px 1fr 32px', gap: 8, marginBottom: 10, alignItems: 'flex-start' }}>
+                    {/* Emoji picker */}
+                    <div style={{ position: 'relative' }}>
+                      <select value={item.emoji} onChange={e => setCatalogItems(p => p.map((x, j) => j === i ? { ...x, emoji: e.target.value } : x))}
+                        style={{ width: 44, height: 38, background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 18, textAlign: 'center', outline: 'none', cursor: 'pointer', appearance: 'none', padding: '0 4px' }}>
+                        {EMOJIS.map(e => <option key={e} value={e}>{e}</option>)}
+                      </select>
+                    </div>
+                    {/* Name */}
+                    <input value={item.name} onChange={e => setCatalogItems(p => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                      placeholder="Ürün adı *"
+                      style={{ background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', height: 38, boxSizing: 'border-box' as const }} />
+                    {/* Price */}
+                    <input value={item.price} onChange={e => setCatalogItems(p => p.map((x, j) => j === i ? { ...x, price: e.target.value } : x))}
+                      placeholder="₺ Fiyat"
+                      style={{ background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', height: 38, boxSizing: 'border-box' as const }} />
+                    {/* Description */}
+                    <input value={item.desc} onChange={e => setCatalogItems(p => p.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))}
+                      placeholder="Kısa açıklama"
+                      style={{ background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', height: 38, boxSizing: 'border-box' as const }} />
+                    {/* Remove */}
+                    <button onClick={() => setCatalogItems(p => p.filter((_, j) => j !== i))}
+                      style={{ width: 32, height: 38, borderRadius: 8, border: 'none', background: 'rgba(127,29,29,0.3)', color: '#fca5a5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={create} disabled={!form.leadId}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 12, border: 'none', cursor: !form.leadId ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 700, opacity: !form.leadId ? 0.4 : 1, boxShadow: form.leadId ? '0 6px 20px rgba(8,145,178,0.3)' : 'none' }}>

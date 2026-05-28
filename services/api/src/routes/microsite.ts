@@ -71,7 +71,7 @@ JSON formatında döndür (başka hiçbir şey yazma):
 router.post('/create', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { leadId, productIds, customMessage } = req.body;
+    const { leadId, productIds, customMessage, catalogItems } = req.body;
     if (!leadId) return res.status(400).json({ error: 'leadId zorunlu' });
 
     const { data: lead } = await supabase.from('leads').select('*')
@@ -103,6 +103,7 @@ router.post('/create', async (req: any, res: any) => {
       features: content.features,
       custom_message: customMessage || null,
       product_ids: productIds || [],
+      catalog_items: catalogItems || [],
       views: 0,
       active: true,
     }]).select().single();
