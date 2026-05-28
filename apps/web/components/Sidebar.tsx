@@ -70,6 +70,8 @@ const groups: NavGroup[] = [
       { href: '/campaigns',       label: 'WA Kampanya',      icon: Megaphone },
       { href: '/email-campaigns', label: 'Email Kampanya',   icon: Mail },
       { href: '/sms-campaigns',   label: 'SMS Kampanya',     icon: Smartphone },
+      { href: '/voice-outreach',  label: 'AI Sesli Arama',   icon: Phone,  plan: 'pro',    badge: 'AI' },
+      { href: '/video-outreach',  label: 'AI Video Mesaj',   icon: Video,  plan: 'growth', badge: 'AI' },
     ],
   },
   {
@@ -87,8 +89,6 @@ const groups: NavGroup[] = [
     label: 'AI Araçlar',
     icon: Sparkles,
     items: [
-      { href: '/video-outreach', label: 'AI Video Satış',   icon: Video,  plan: 'growth', badge: 'AI' },
-      { href: '/voice-outreach', label: 'AI Sesli Arama',   icon: Phone,  plan: 'pro',    badge: 'AI' },
       { href: '/vision',         label: 'Vision AI',        icon: Eye,    plan: 'pro',    badge: 'AI' },
       { href: '/ar-experience',  label: 'AR Deneyimi',      icon: Box,    plan: 'enterprise', badge: 'BETA' },
       { href: '/microsites',     label: 'Dijital Katalog',  icon: Globe },
