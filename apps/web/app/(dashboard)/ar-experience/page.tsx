@@ -474,15 +474,15 @@ export default function ARPage() {
                 </div>
                 <div onDragOver={e => { e.preventDefault(); setIsDragging(true) }} onDragLeave={() => setIsDragging(false)}
                   onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f) uploadModel(f) }}
-                  style={{ border: `2px dashed ${isDragging ? '#ec4899' : 'rgba(236,72,153,0.35)'}`, borderRadius: 14, padding: '24px 20px', textAlign: 'center', background: isDragging ? 'rgba(236,72,153,0.08)' : 'rgba(236,72,153,0.03)', opacity: !productName ? 0.5 : 1 }}>
+                  style={{ border: `2px dashed ${isDragging ? '#ec4899' : 'rgba(236,72,153,0.35)'}`, borderRadius: 14, padding: '24px 20px', textAlign: 'center', background: isDragging ? 'rgba(236,72,153,0.08)' : 'rgba(236,72,153,0.03)' }}>
                   <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}>
                     {uploading ? <RefreshCw size={32} style={{ color: '#ec4899', animation: 'spin 1s linear infinite' }} /> : <div className="upload-float"><FloatCube size={36} color="#ec4899" /></div>}
                   </div>
                   <p style={{ color: '#fff', fontWeight: 600, fontSize: 14, margin: '0 0 4px' }}>{uploading ? 'Yükleniyor...' : isDragging ? 'Bırakın!' : '.glb veya .usdz dosyasını buraya sürükleyin'}</p>
                   <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Maksimum 50MB</p>
                 </div>
-                <button onClick={() => !uploading && productName && fileRef.current?.click()} disabled={uploading || !productName}
-                  style={{ width: '100%', marginTop: 10, padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(236,72,153,0.25)', cursor: uploading || !productName ? 'not-allowed' : 'pointer', background: 'rgba(236,72,153,0.07)', color: uploading || !productName ? '#334155' : '#f472b6', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: !productName ? 0.4 : 1, transition: 'background 0.2s' }}>
+                <button onClick={() => !uploading && fileRef.current?.click()} disabled={uploading}
+                  style={{ width: '100%', marginTop: 10, padding: '11px 16px', borderRadius: 10, border: '1px solid rgba(236,72,153,0.35)', cursor: uploading ? 'not-allowed' : 'pointer', background: 'rgba(236,72,153,0.1)', color: '#f472b6', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 0.2s' }}>
                   <Upload size={14} /> Bilgisayardan Seç
                 </button>
                 <input ref={fileRef} type="file" accept=".glb,.usdz" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && uploadModel(e.target.files[0])} />
