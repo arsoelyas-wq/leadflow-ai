@@ -7,7 +7,7 @@ import {
   Star, Edit2, Save, X, MessageSquare, Send, RefreshCw, Link2,
   Crosshair, TrendingUp, Zap, ChevronDown, ChevronUp, Copy, CheckCircle,
   Target, AlertTriangle, BarChart3, Lightbulb, DollarSign, ShieldAlert,
-  Flame, Clock, Swords, Users, Activity, Building2, Network,
+  Flame, Clock, Swords, Users, Activity, Building2, Network, Eye, Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -41,7 +41,9 @@ interface Lead {
   ai_summary?:        string
   company_size?:      string
   revenue_estimate?:  string
-  enrichment_status?: string
+  enrichment_status?:  string
+  vision_analysis?:    string
+  vision_analyzed_at?: string
 }
 
 interface Activity {
@@ -180,6 +182,12 @@ export default function LeadDetailPage() {
   // Community benchmarks
   const [community, setCommunity]               = useState<any>(null)
 
+  // Vision AI
+  const [visionData, setVisionData]             = useState<any>(null)
+  const [visionLoading, setVisionLoading]       = useState(false)
+  const [visionExpanded, setVisionExpanded]     = useState(false)
+  const [visionCopied, setVisionCopied]         = useState(false)
+
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
     setTimeout(() => setMsg(null), 5000)
@@ -197,6 +205,10 @@ export default function LeadDetailPage() {
         setLead(data.lead)
         setNotes(data.lead.notes || '')
         if (!data.lead.ai_grade) triggerAIAnalysis(data.lead.id)
+        // Parse existing vision analysis if available
+        if (data.lead.vision_analysis) {
+          try { setVisionData(JSON.parse(data.lead.vision_analysis)) } catch {}
+        }
         // Load supporting data in parallel
         loadActivity(data.lead.id)
         loadTiming(data.lead.id)
@@ -234,6 +246,19 @@ export default function LeadDetailPage() {
       const data = await api.get(`/api/battlecard/community/${encodeURIComponent(sector)}`)
       if (data.stats) setCommunity(data.stats)
     } catch {}
+  }
+
+  const analyzeVision = async (reanalyze = false) => {
+    if (!lead?.website) return showMsg('error', 'Bu lead için website bilgisi yok')
+    setVisionLoading(true)
+    setVisionExpanded(true)
+    try {
+      const endpoint = reanalyze ? '/api/vision/reanalyze-lead' : '/api/vision/analyze-lead'
+      const data = await api.post(endpoint, { leadId: lead.id })
+      setVisionData(data.analysis)
+      setLead(prev => prev ? { ...prev, vision_analyzed_at: new Date().toISOString() } : prev)
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setVisionLoading(false) }
   }
 
   const generateBattleCard = async () => {
@@ -783,6 +808,129 @@ export default function LeadDetailPage() {
                   className="text-xs text-slate-500 hover:text-white transition flex items-center gap-1">
                   <RefreshCw size={10} /> Yenile
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Vision AI ── */}
+          <div className={`rounded-xl border transition-all ${visionExpanded && visionData ? 'bg-indigo-950/30 border-indigo-500/30' : 'bg-slate-800/50 border-slate-700'}`}>
+            <div className="flex items-center justify-between p-4 cursor-pointer select-none"
+              onClick={() => { if (!visionExpanded && !visionData && lead?.website) analyzeVision(); else setVisionExpanded(v => !v) }}>
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${visionData ? 'bg-indigo-500/20' : 'bg-slate-700'}`}>
+                  <Eye size={14} className={visionData ? 'text-indigo-400' : 'text-slate-500'}/>
+                </div>
+                <div>
+                  <span className="text-white font-semibold text-sm">Vision AI Analiz</span>
+                  {lead?.vision_analyzed_at && (
+                    <span className="ml-2 text-[10px] text-slate-500">
+                      {new Date(lead.vision_analyzed_at).toLocaleDateString('tr-TR')}
+                    </span>
+                  )}
+                </div>
+                {visionData && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/20">✓ Analiz Edildi</span>}
+                {!lead?.website && <span className="ml-2 text-[10px] text-slate-600">(website yok)</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                {visionLoading && <RefreshCw size={13} className="animate-spin text-indigo-400"/>}
+                {!visionData && lead?.website && !visionLoading && (
+                  <span className="text-[11px] text-indigo-400 font-semibold">Analiz Et →</span>
+                )}
+                {visionData && (
+                  <>
+                    <button onClick={e => { e.stopPropagation(); analyzeVision(true) }}
+                      className="p-1 text-slate-500 hover:text-indigo-400 transition rounded"
+                      title="Yeniden Analiz Et">
+                      <RefreshCw size={12}/>
+                    </button>
+                    {visionExpanded ? <ChevronUp size={15} className="text-slate-400"/> : <ChevronDown size={15} className="text-slate-400"/>}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {visionLoading && !visionData && (
+              <div className="px-4 pb-5 text-center">
+                <div className="flex items-center justify-center gap-3 py-6">
+                  <div className="w-6 h-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"/>
+                  <div>
+                    <p className="text-indigo-300 text-sm font-medium">Website analiz ediliyor…</p>
+                    <p className="text-slate-500 text-xs mt-0.5">Screenshot → Claude Vision → Kişisel mesaj</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {visionExpanded && visionData && (
+              <div className="px-4 pb-5 space-y-4 border-t border-indigo-500/15">
+                {/* Site summary row */}
+                <div className="flex flex-wrap gap-2 pt-4">
+                  {[
+                    { label: visionData.businessType, color: 'bg-blue-500/15 text-blue-300 border-blue-500/20' },
+                    { label: visionData.style,         color: 'bg-purple-500/15 text-purple-300 border-purple-500/20' },
+                    { label: visionData.quality,       color: visionData.quality==='premium'?'bg-amber-500/15 text-amber-300 border-amber-500/20':'bg-slate-500/15 text-slate-300 border-slate-500/20' },
+                  ].filter(t => t.label).map((t, i) => (
+                    <span key={i} className={`text-xs px-2.5 py-1 rounded-full border font-medium ${t.color}`}>{t.label}</span>
+                  ))}
+                  {visionData.primaryColors?.map((c: string, i: number) => (
+                    <span key={i} className="text-xs px-2.5 py-1 rounded-full border border-white/10 bg-white/5 text-slate-300">{c}</span>
+                  ))}
+                </div>
+
+                {/* Target & product */}
+                <div className="grid grid-cols-2 gap-3">
+                  {visionData.targetAudience && (
+                    <div className="bg-slate-800/60 rounded-xl p-3">
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Hedef Kitle</p>
+                      <p className="text-slate-200 text-xs leading-relaxed">{visionData.targetAudience}</p>
+                    </div>
+                  )}
+                  {visionData.productService && (
+                    <div className="bg-slate-800/60 rounded-xl p-3">
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Ürün/Hizmet</p>
+                      <p className="text-slate-200 text-xs leading-relaxed">{visionData.productService}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pain points */}
+                {visionData.painPoints?.length > 0 && (
+                  <div className="bg-red-500/5 border border-red-500/15 rounded-xl p-3">
+                    <p className="text-[10px] text-red-400 font-semibold uppercase tracking-wider mb-2">Olası Sorunlar</p>
+                    {visionData.painPoints.map((p: string, i: number) => (
+                      <p key={i} className="text-slate-300 text-xs mb-1">• {p}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* Icebreaker */}
+                {visionData.icebreaker && (
+                  <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-3">
+                    <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider mb-1.5">Buz Kırıcı</p>
+                    <p className="text-slate-200 text-xs italic leading-relaxed">"{visionData.icebreaker}"</p>
+                  </div>
+                )}
+
+                {/* Personalized message */}
+                {visionData.personalizedMessage && (
+                  <div className="bg-indigo-500/8 border border-indigo-500/25 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                        <Sparkles size={10}/> Kişiselleştirilmiş Mesaj
+                      </p>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(visionData.personalizedMessage)
+                          setVisionCopied(true)
+                          setTimeout(() => setVisionCopied(false), 2000)
+                        }}
+                        className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg transition bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400">
+                        {visionCopied ? <><CheckCircle size={10}/> Kopyalandı</> : <><Copy size={10}/> Kopyala</>}
+                      </button>
+                    </div>
+                    <p className="text-slate-200 text-xs leading-relaxed">{visionData.personalizedMessage}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
