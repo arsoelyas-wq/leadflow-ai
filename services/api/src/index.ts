@@ -179,6 +179,8 @@ app.use('/api/whitelabel',           authMiddleware, require('./routes/whitelabe
 const voiceRouter = require('./routes/voice-outreach');
 app.post('/api/voice/webhook/elevenlabs', (req: any, res: any, next: any) => { req.url = '/webhook/elevenlabs'; voiceRouter(req, res, next); });
 app.post('/api/voice/webhook/vapi', (req: any, res: any, next: any) => { req.url = '/webhook/vapi'; voiceRouter(req, res, next); });
+// XTTS custom TTS endpoint — Vapi canlı arama sırasında bu URL'i çağırır (public, auth yok)
+app.post('/api/voice/tts-xtts/:voiceId', (req: any, res: any, next: any) => { req.url = `/tts-xtts/${req.params.voiceId}`; voiceRouter(req, res, next); });
 app.use('/api/voice',                authMiddleware, voiceRouter);
 app.use('/api/voice-library',        authMiddleware, require('./routes/voice-library'));
 app.use('/api/push',                 authMiddleware, require('./routes/push'));

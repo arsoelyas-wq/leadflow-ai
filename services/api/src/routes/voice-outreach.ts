@@ -2,19 +2,18 @@ export {};
 /**
  * LeadFlow Voice Engine
  *
- * Call stack priority:
- *   1. Vapi.ai  (Claude Haiku LLM + Cartesia Sonic TTS — lowest latency, most human)
- *   2. ElevenLabs Conversational AI (fallback when no Vapi key)
+ * İki arama yolu:
+ *   1. Klonlanmış ses  → XTTS-v2 (RunPod) TTS + Vapi çağrı altyapısı
+ *   2. Ses kütüphanesi → ElevenLabs sesleri + ElevenLabs çağrı altyapısı
  *
- * Opening line: generated per-lead using Perplexity research + Claude Haiku
- * Voice library: served from tts-engine (Azure Neural + Cartesia)
+ * Klonlar Supabase Storage'da saklanır (bizde kayıtlı).
  */
 
-const express = require('express');
+const express  = require('express');
 const { createClient } = require('@supabase/supabase-js');
-const axios = require('axios');
-const multer = require('multer');
-const fs = require('fs');
+const axios    = require('axios');
+const multer   = require('multer');
+const fs       = require('fs');
 const FormData = require('form-data');
 const Anthropic = require('@anthropic-ai/sdk');
 
@@ -23,15 +22,17 @@ const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SE
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const upload    = multer({ dest: '/tmp/voice/' });
 
-const ELEVEN_KEY       = process.env.ELEVENLABS_API_KEY;
-const ELEVEN_BASE      = 'https://api.elevenlabs.io/v1';
-const ELEVEN_AGENT_ID  = process.env.ELEVENLABS_AGENT_ID   || '';
-const ELEVEN_PHONE_ID  = process.env.ELEVENLABS_PHONE_NUMBER_ID || '';
+const ELEVEN_KEY      = process.env.ELEVENLABS_API_KEY;
+const ELEVEN_BASE     = 'https://api.elevenlabs.io/v1';
+const ELEVEN_AGENT_ID = process.env.ELEVENLABS_AGENT_ID   || '';
+const ELEVEN_PHONE_ID = process.env.ELEVENLABS_PHONE_NUMBER_ID || '';
 
-const VAPI_KEY         = process.env.VAPI_API_KEY || '';
-const VAPI_PHONE_ID    = process.env.VAPI_PHONE_NUMBER_ID || '';
+const VAPI_KEY    = process.env.VAPI_API_KEY || '';
+const VAPI_PHONE_ID = process.env.VAPI_PHONE_NUMBER_ID || '';
 
-// Default Cartesia voices per language for calls
+const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app';
+
+// Cartesia ses ID'leri dil bazında (kütüphane aramalar için)
 const CALL_VOICES: Record<string, string> = {
   tr: 'b7d50908-b17c-442d-ad8d-810c63997ed9',
   en: '79a125e8-cd45-4c13-8a67-188112f4dd22',
@@ -56,53 +57,79 @@ function getLanguageByCountry(code: string): string {
   return m[code?.toUpperCase()] || 'en';
 }
 
-// ─── PERSONALIZED OPENING GENERATOR ──────────────────────────────────────────
-// Uses Perplexity research data (if available) or lead data to build a human-
-// sounding, company-specific opening — NOT a template, NOT "I'm calling from X"
+// ─── XTTS-v2 SENTEZİ (kendi sistemimiz) ─────────────────────────────────────
+// RunPod XTTS-v2 serverless endpoint — ses örneği + metin → audio buffer
+// RUNPOD_XTTS_ENDPOINT_ID env gerekli
+
+async function synthesizeXtts(text: string, sampleUrl: string, language = 'tr'): Promise<Buffer> {
+  const endpointId = process.env.RUNPOD_XTTS_ENDPOINT_ID;
+  if (!endpointId) throw new Error('Ses klonlama motoru yapılandırılmamış (RUNPOD_XTTS_ENDPOINT_ID)');
+
+  const runRes = await axios.post(
+    `https://api.runpod.ai/v2/${endpointId}/run`,
+    { input: { text, speaker_wav_url: sampleUrl, language } },
+    { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 30000 }
+  );
+
+  const jobId = runRes.data?.id;
+  if (!jobId) throw new Error('Ses motoru başlatılamadı');
+
+  const deadline = Date.now() + 60000; // 60s max
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 2500));
+    const statusRes = await axios.get(
+      `https://api.runpod.ai/v2/${endpointId}/status/${jobId}`,
+      { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}` } }
+    );
+    const { status, output } = statusRes.data;
+    if (status === 'COMPLETED') {
+      if (output?.audio_url) {
+        const audioRes = await axios.get(output.audio_url, { responseType: 'arraybuffer' });
+        return Buffer.from(audioRes.data);
+      }
+      if (output?.audio_base64) return Buffer.from(output.audio_base64, 'base64');
+      throw new Error('Ses oluşturuldu ama audio çıktısı yok');
+    }
+    if (status === 'FAILED') throw new Error('Ses sentezi başarısız');
+  }
+  throw new Error('Ses sentezi zaman aşımına uğradı');
+}
+
+// ─── KİŞİSELLEŞTİRİLMİŞ AÇILIŞ SATIRI ───────────────────────────────────────
 
 async function generatePersonalizedOpening(params: {
-  lead: any;
-  agentName: string;
-  companyName: string;
-  productDesc: string;
-  language: string;
-  researchData?: any;
+  lead: any; agentName: string; companyName: string;
+  productDesc: string; language: string; researchData?: any;
 }): Promise<string> {
   const { lead, agentName, companyName, productDesc, language, researchData } = params;
-
   const firstName = (lead.contact_name || lead.company_name || '').split(' ')[0];
   const brandName = researchData?.brandName || lead.company_name || '';
   const pain      = researchData?.pains?.[0] || '';
   const signal    = researchData?.jobSignals?.[0] || '';
-  const growth    = researchData?.growthStage || '';
 
   const langInstructions: Record<string, string> = {
     tr: 'Türkçe yaz. Samimi, doğal, satışçı gibi değil — gerçekten araştırmış biri gibi.',
-    en: 'Write in English. Warm, natural, NOT a sales pitch — like someone who genuinely noticed something.',
-    de: 'Schreib auf Deutsch. Warmherzig, natürlich, kein Verkaufsgespräch.',
-    fr: 'Écris en français. Chaleureux, naturel, pas un argumentaire de vente.',
-    ar: 'اكتب بالعربية. دافئ، طبيعي، ليس عرضًا تجاريًا.',
+    en: 'Write in English. Warm, natural, NOT a sales pitch.',
+    de: 'Schreib auf Deutsch. Warmherzig, natürlich.',
+    fr: 'Écris en français. Chaleureux, naturel.',
+    ar: 'اكتب بالعربية. دافئ، طبيعي.',
   };
 
   const prompt = `${langInstructions[language] || langInstructions['tr']}
 
 Bilgiler:
 - Arayan: ${agentName} (${companyName} adına)
-- Aranan kişi adı: ${firstName}
+- Aranan kişi: ${firstName}
 - Şirket: ${brandName}
 ${pain ? `- Tespit edilen sorun: ${pain}` : ''}
 ${signal ? `- Büyüme sinyali: ${signal}` : ''}
-${growth ? `- Büyüme aşaması: ${growth}` : ''}
-- Sunulan ürün/hizmet: ${productDesc}
+- Sunulan: ${productDesc}
 
 Kural:
-1. "Ben X, Y adına arıyorum" ile BAŞLAMA — bu klasik robot açılışı
-2. Kişinin adıyla başla veya şirketle ilgili gözlemle başla
-3. Telefon araması açılışı (1-2 cümle maksimum) — çok kısa olmalı
-4. Yapay zeka olmadığını hissettir: bir hesaplama değil, gerçek bir gözlem
-5. Soru ile bitir — karşı tarafı konuşturmak için
-
-Sadece açılış cümlesini yaz, başka hiçbir şey ekleme.`;
+1. "Ben X, Y adına arıyorum" ile BAŞLAMA
+2. Kişinin adı veya şirketle ilgili gözlemle başla
+3. 1-2 cümle maksimum, soru ile bitir
+4. Sadece açılış cümlesini yaz, başka hiçbir şey ekleme.`;
 
   try {
     const r = await anthropic.messages.create({
@@ -112,29 +139,20 @@ Sadece açılış cümlesini yaz, başka hiçbir şey ekleme.`;
     });
     return ((r.content[0] as any)?.text || '').trim();
   } catch {
-    // Fallback — still better than the old template
     const fallbacks: Record<string, string> = {
-      tr: `${firstName}, merhaba — ${pain ? `"${pain.slice(0, 60)}" konusunu araştırırken` : 'web sitenize bakarken'} aklıma sizi aramak geldi. Bir dakikanız var mı?`,
-      en: `${firstName}, hi — I came across ${brandName} and had a thought I wanted to share. Do you have a moment?`,
-      de: `${firstName}, guten Tag — ich habe gerade über ${brandName} nachgedacht. Haben Sie kurz Zeit?`,
+      tr: `${firstName}, merhaba — ${pain ? `"${pain.slice(0, 60)}" konusunda` : 'şirketinizi araştırırken'} aklıma geldi. Bir dakikanız var mı?`,
+      en: `${firstName}, hi — I came across ${brandName} and had a thought. Do you have a moment?`,
     };
     return fallbacks[language] || fallbacks['tr'];
   }
 }
 
-// ─── VAPI SYSTEM PROMPT BUILDER ───────────────────────────────────────────────
+// ─── VAPI SİSTEM PROMPT ───────────────────────────────────────────────────────
 
 function buildVapiSystemPrompt(params: {
-  agentName: string;
-  companyName: string;
-  productDesc: string;
-  leadName: string;
-  leadCompany: string;
-  language: string;
-  pain1?: string;
-  pain2?: string;
-  signal?: string;
-  avoidWords?: string;
+  agentName: string; companyName: string; productDesc: string;
+  leadName: string; leadCompany: string; language: string;
+  pain1?: string; pain2?: string; signal?: string; avoidWords?: string;
 }): string {
   const { agentName, companyName, productDesc, leadName, leadCompany, language, pain1, pain2, signal, avoidWords } = params;
 
@@ -146,7 +164,6 @@ KİŞİLİK VE KONUŞMA STİLİ:
 - "Şey...", "Yani...", "Anlıyorum", "Tabii ki", "Hmm" gibi doğal Türkçe dolgu kelimeleri kullan
 - Karşı taraf konuşurken "evet", "anlıyorum", "tabii" diyerek aktif dinlediğini göster
 - Karşı taraf sözünü keserse hemen dur ve dinle — asla üstüne konuşma
-- Konuşma hızını karşı tarafa göre ayarla
 
 ARAŞTIRMA BİLGİSİ:
 - Aranan kişi: ${leadName}
@@ -156,61 +173,56 @@ ${pain2 ? `- Tespit edilen 2. sorun: ${pain2}` : ''}
 ${signal ? `- Büyüme sinyali: ${signal}` : ''}
 
 KURAL:
-- Pitch yapma, soru sor — insanlar kendi ihtiyaçlarını kendileri söylesin
-- "Satmak" yerine "göstermek", "paylaşmak", "öneride bulunmak" gibi kelimeler kullan
+- Pitch yapma, soru sor
 - "Yapay zeka", "AI", "bot", "sistem" kelimelerini asla kullanma
 - Müsait değilse: "Anlıyorum, ne zaman daha uygun olur?" de
-- İlgilenmiyorum derse: "Tamam, peki ${pain1 ? `"${pain1.slice(0, 40)}"` : 'bu konular'} nasıl gidiyor şirketinizde?" diye merak et
 ${avoidWords ? `- Şu kelimeleri kullanma: ${avoidWords}` : ''}
 
-HEDEF: Karşı tarafın sorununu keşfet ve görüşme teklif et. Direkt satış yapma.`,
+HEDEF: Karşı tarafın sorununu keşfet ve görüşme teklif et.`,
 
     en: `You are ${agentName}, a real sales professional calling on behalf of ${companyName}. You offer: ${productDesc}.
 
 PERSONALITY:
 - Act like a real human on a phone call — never admit being an AI or bot
 - Use natural filler words: "well...", "you know", "I see", "right", "hmm"
-- Show active listening: "yes", "I understand", "of course"
-- If interrupted, stop immediately and listen
-- Match the caller's pace and energy
+- Show active listening. If interrupted, stop and listen.
 
 RESEARCH:
 - Person: ${leadName} at ${leadCompany}
 ${pain1 ? `- Known challenge: ${pain1}` : ''}
-${pain2 ? `- Secondary challenge: ${pain2}` : ''}
 ${signal ? `- Growth signal: ${signal}` : ''}
 
 RULES:
-- Ask questions, don't pitch — let them articulate their own needs
-- Say "show" or "share" not "sell"
-- Never say "AI", "bot", "system", "algorithm"
-- If busy: "I understand, when would be a better time?"
-- Goal: Discover their problem, offer a meeting. Don't sell directly.`,
+- Ask questions, don't pitch
+- Never say "AI", "bot", "system"
+- Goal: Discover their problem, offer a meeting.`,
   };
 
   return persona[language] || persona['en'];
 }
 
-// ─── VAPI OUTBOUND CALL ───────────────────────────────────────────────────────
+// ─── VAPI ÇAĞRISI ─────────────────────────────────────────────────────────────
 
 async function makeVapiCall(params: {
-  toNumber: string;
-  agentName: string;
-  companyName: string;
-  productDesc: string;
-  leadName: string;
-  leadCompany: string;
-  language: string;
-  openingLine: string;
-  systemPrompt: string;
-  researchData?: any;
+  toNumber: string; agentName: string; companyName: string;
+  productDesc: string; leadName: string; leadCompany: string;
+  language: string; openingLine: string; systemPrompt: string;
+  voiceConfig?: any;
 }): Promise<{ conversationId: string; callSid: string }> {
-  const { toNumber, language, openingLine, systemPrompt } = params;
-  const voiceId = CALL_VOICES[language] || CALL_VOICES.default;
+  const { toNumber, language, openingLine, systemPrompt, voiceConfig } = params;
 
   const deepgramLang: Record<string, string> = {
     tr: 'tr', en: 'en-US', de: 'de', fr: 'fr', ar: 'ar',
     ru: 'ru', es: 'es', it: 'it', nl: 'nl',
+  };
+
+  const defaultVoice = {
+    provider: 'cartesia',
+    voiceId: CALL_VOICES[language] || CALL_VOICES.default,
+    model: 'sonic-multilingual',
+    language,
+    speed: 1.0,
+    emotion: ['positivity:high', 'curiosity'],
   };
 
   const body: any = {
@@ -230,25 +242,15 @@ async function makeVapiCall(params: {
         temperature: 0.7,
         maxTokens: 200,
       },
-      voice: {
-        provider: 'cartesia',
-        voiceId,
-        model: 'sonic-multilingual',
-        language,
-        speed: 1.0,
-        emotion: ['positivity:high', 'curiosity'],
-      },
+      voice: voiceConfig || defaultVoice,
       firstMessage: openingLine,
       firstMessageMode: 'assistant-speaks-first',
-      endCallMessage: language === 'tr'
-        ? 'Teşekkürler, iyi günler! Görüşürüz.'
-        : 'Thank you, have a great day! Goodbye.',
+      endCallMessage: language === 'tr' ? 'Teşekkürler, iyi günler!' : 'Thank you, have a great day!',
       endCallPhrases: ['görüşürüz', 'hoşça kalın', 'bye', 'goodbye', 'auf wiedersehen'],
       backgroundDenoisingEnabled: true,
       messagePlan: {
         idleMessages: [
           language === 'tr' ? 'Orada mısınız?' : 'Are you there?',
-          language === 'tr' ? 'Duyuyor musunuz?' : 'Can you hear me?',
         ],
         idleTimeoutSeconds: 8,
       },
@@ -258,10 +260,7 @@ async function makeVapiCall(params: {
   };
 
   const r = await axios.post('https://api.vapi.ai/call/phone', body, {
-    headers: {
-      'Authorization': `Bearer ${VAPI_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Authorization': `Bearer ${VAPI_KEY}`, 'Content-Type': 'application/json' },
     timeout: 30000,
   });
 
@@ -271,97 +270,272 @@ async function makeVapiCall(params: {
   };
 }
 
-// ─── ELEVENLABS FALLBACK CALL ─────────────────────────────────────────────────
+// ─── ELEVENLABs ÇAĞRISI (ses kütüphanesi yolu) ───────────────────────────────
 
 async function makeElevenLabsCall(params: any) {
-  const { toNumber, agentName, companyName, productDescription, leadName, leadCompany, language, openingLine } = params;
-  const r = await axios.post(
-    `${ELEVEN_BASE}/convai/twilio/outbound-call`,
-    {
-      agent_id: ELEVEN_AGENT_ID,
-      agent_phone_number_id: ELEVEN_PHONE_ID,
-      to_number: toNumber,
-      conversation_initiation_client_data: {
-        dynamic_variables: {
-          agent_name: agentName, company_name: companyName,
-          product_description: productDescription, lead_name: leadName,
-          lead_company: leadCompany, language, opening_line: openingLine,
-        },
+  const { toNumber, agentName, companyName, productDescription, leadName, leadCompany, language, openingLine, voiceId } = params;
+  const body: any = {
+    agent_id: ELEVEN_AGENT_ID,
+    agent_phone_number_id: ELEVEN_PHONE_ID,
+    to_number: toNumber,
+    conversation_initiation_client_data: {
+      dynamic_variables: {
+        agent_name: agentName, company_name: companyName,
+        product_description: productDescription, lead_name: leadName,
+        lead_company: leadCompany, language, opening_line: openingLine,
       },
     },
+  };
+  if (voiceId) body.voice_id = voiceId;
+
+  const r = await axios.post(
+    `${ELEVEN_BASE}/convai/twilio/outbound-call`,
+    body,
     { headers: elevenHeaders(), timeout: 30000 }
   );
   return { conversationId: r.data.conversation_id || '', callSid: r.data.callSid || '' };
 }
 
-// ─── UNIFIED CALL DISPATCHER ──────────────────────────────────────────────────
+// ─── ÇAĞRI YÖNLENDIRICI ───────────────────────────────────────────────────────
 
 async function dispatchCall(params: {
   toNumber: string; agentName: string; companyName: string;
   productDesc: string; leadName: string; leadCompany: string;
   language: string; lead: any; researchData?: any; avoidWords?: string;
+  voiceType?: 'cloned' | 'library';
+  clonedVoiceId?: string;
+  libraryVoiceId?: string;
 }): Promise<{ conversationId: string; callSid: string; provider: string }> {
-  const { language, lead, researchData, avoidWords } = params;
+  const { language, lead, researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId } = params;
 
   const openingLine = await generatePersonalizedOpening({
     lead, agentName: params.agentName, companyName: params.companyName,
     productDesc: params.productDesc, language, researchData,
   });
 
+  // ── Yol 1: Kendi klonlanan ses ──────────────────────────────────────────────
+  if (voiceType === 'cloned' && clonedVoiceId) {
+    if (VAPI_KEY && VAPI_PHONE_ID) {
+      const systemPrompt = buildVapiSystemPrompt({
+        agentName: params.agentName, companyName: params.companyName,
+        productDesc: params.productDesc, leadName: params.leadName,
+        leadCompany: params.leadCompany, language,
+        pain1: researchData?.pains?.[0],
+        pain2: researchData?.pains?.[1],
+        signal: researchData?.jobSignals?.[0],
+        avoidWords,
+      });
+
+      // XTTS mevcut ise klonlanmış ses, değilse Cartesia fallback
+      let voiceConfig: any;
+      if (process.env.RUNPOD_XTTS_ENDPOINT_ID) {
+        voiceConfig = {
+          provider: 'custom-voice',
+          server: { url: `${API_BASE}/api/voice/tts-xtts/${clonedVoiceId}` },
+        };
+      } else {
+        // XTTS yoksa Cartesia ile devam et
+        voiceConfig = {
+          provider: 'cartesia',
+          voiceId: CALL_VOICES[language] || CALL_VOICES.default,
+          model: 'sonic-multilingual',
+          language,
+        };
+      }
+
+      const result = await makeVapiCall({ ...params, openingLine, systemPrompt, voiceConfig });
+      return { ...result, provider: 'vapi-cloned' };
+    }
+  }
+
+  // ── Yol 2: Ses kütüphanesi ───────────────────────────────────────────────────
   if (VAPI_KEY && VAPI_PHONE_ID) {
     const systemPrompt = buildVapiSystemPrompt({
-      agentName:   params.agentName,
-      companyName: params.companyName,
-      productDesc: params.productDesc,
-      leadName:    params.leadName,
-      leadCompany: params.leadCompany,
-      language,
-      pain1:       researchData?.pains?.[0],
-      pain2:       researchData?.pains?.[1],
-      signal:      researchData?.jobSignals?.[0],
+      agentName: params.agentName, companyName: params.companyName,
+      productDesc: params.productDesc, leadName: params.leadName,
+      leadCompany: params.leadCompany, language,
+      pain1: researchData?.pains?.[0],
+      pain2: researchData?.pains?.[1],
+      signal: researchData?.jobSignals?.[0],
       avoidWords,
     });
     const result = await makeVapiCall({ ...params, openingLine, systemPrompt });
     return { ...result, provider: 'vapi' };
   }
 
-  // Fallback to ElevenLabs
+  // Fallback: ElevenLabs
   const result = await makeElevenLabsCall({
     toNumber: params.toNumber, agentName: params.agentName,
     companyName: params.companyName, productDescription: params.productDesc,
     leadName: params.leadName, leadCompany: params.leadCompany,
-    language, openingLine,
+    language, openingLine, voiceId: libraryVoiceId,
   });
   return { ...result, provider: 'elevenlabs' };
 }
 
-// ─── ROUTES ───────────────────────────────────────────────────────────────────
+// ─── ROTALAR ─────────────────────────────────────────────────────────────────
 
-// GET /api/voice/eleven-voices — kept for backward compat
+// POST /api/voice/tts-xtts/:voiceId — public, Vapi bu endpoint'i çağırır
+router.post('/tts-xtts/:voiceId', async (req: any, res: any) => {
+  try {
+    const { voiceId } = req.params;
+    // Vapi formatı: { message: { type: 'speech-update', text: '...' } }
+    const text = req.body?.message?.text || req.body?.text || '';
+    if (!text) return res.status(400).send('text required');
+
+    const { data: voice } = await supabase
+      .from('cloned_voices')
+      .select('sample_url')
+      .eq('id', voiceId)
+      .single();
+    if (!voice) return res.status(404).send('voice not found');
+
+    const language = req.body?.message?.language || 'tr';
+    const audioBuffer = await synthesizeXtts(text, voice.sample_url, language);
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.send(audioBuffer);
+  } catch (e: any) {
+    console.error('[XTTS]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/voice/my-voices — kullanıcının klonladığı sesler
+router.get('/my-voices', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase
+      .from('cloned_voices')
+      .select('*')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false });
+    res.json({ voices: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/voice/library-voices — hazır ses kütüphanesi (platform ismi olmadan)
+router.get('/library-voices', async (req: any, res: any) => {
+  try {
+    const { language = 'tr', limit = 80 } = req.query;
+    if (!ELEVEN_KEY) return res.json({ voices: [], total: 0 });
+
+    const [r1, r2] = await Promise.allSettled([
+      axios.get(`${ELEVEN_BASE}/voices`, { headers: elevenHeaders() }),
+      axios.get(`${ELEVEN_BASE}/shared-voices?page_size=${limit}&language=${language}`, { headers: elevenHeaders() }),
+    ]);
+
+    const norm = (v: any) => ({
+      id:         v.voice_id,
+      name:       v.name,
+      gender:     v.gender || v.labels?.gender || null,
+      accent:     v.labels?.accent || null,
+      category:   v.category || 'genel',
+      previewUrl: v.preview_url || null,
+    });
+
+    const myVoices     = r1.status === 'fulfilled' ? r1.value.data.voices.map(norm) : [];
+    const sharedVoices = r2.status === 'fulfilled' ? r2.value.data.voices.map(norm) : [];
+
+    res.json({
+      myVoices,
+      voices: sharedVoices,
+      total: sharedVoices.length,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/voice/eleven-voices — geriye dönük uyumluluk
 router.get('/eleven-voices', async (req: any, res: any) => {
   try {
     const { language = 'tr' } = req.query;
-    const { data: settings } = await supabase.from('voice_settings')
-      .select('elevenlabs_voice_id, voice_name').eq('user_id', req.userId).single();
-
-    const norm = (v: any, src: string) => ({
-      voice_id: v.voice_id, name: v.name, category: v.category || src,
-      preview_url: v.preview_url || null,
-      gender: v.labels?.gender || v.gender || null,
-      accent: v.labels?.accent || v.accent || null,
-      use_case: v.labels?.use_case || v.use_case || null,
-      language: v.labels?.language || v.language || null,
-      source: src,
-    });
+    if (!ELEVEN_KEY) return res.json({ categories: { my: [], language: [], all: [] }, total: 0 });
 
     const [r1, r2] = await Promise.allSettled([
       axios.get(`${ELEVEN_BASE}/voices`, { headers: elevenHeaders() }),
       axios.get(`${ELEVEN_BASE}/shared-voices?page_size=100&language=${language}`, { headers: elevenHeaders() }),
     ]);
+    const norm = (v: any, src: string) => ({
+      voice_id: v.voice_id, name: v.name, category: v.category || src,
+      preview_url: v.preview_url || null,
+      gender: v.labels?.gender || v.gender || null,
+    });
     const myV   = r1.status === 'fulfilled' ? r1.value.data.voices.map((v: any) => norm(v, 'my')) : [];
     const langV = r2.status === 'fulfilled' ? r2.value.data.voices.map((v: any) => norm(v, 'shared')) : [];
+    res.json({ categories: { my: myV, language: langV, all: [...myV, ...langV] }, total: langV.length });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 
-    res.json({ categories: { my: myV, language: langV, all: [...myV, ...langV] }, userVoiceId: settings?.elevenlabs_voice_id || null, total: langV.length });
+// POST /api/voice/clone — ses yükle, Supabase'e kaydet
+router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
+  try {
+    const { name } = req.body;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Ses dosyası zorunlu' });
+
+    const fileBuffer = fs.readFileSync(file.path);
+    const ext = (file.originalname || 'audio').split('.').pop() || 'mp3';
+    const fileName = `voices/${req.userId}/${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('voice-samples')
+      .upload(fileName, fileBuffer, {
+        contentType: file.mimetype || 'audio/mpeg',
+        upsert: false,
+      });
+
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('voice-samples')
+      .getPublicUrl(fileName);
+
+    const { data: voice, error: dbError } = await supabase
+      .from('cloned_voices')
+      .insert([{ user_id: req.userId, name: name || 'Sesim', sample_url: publicUrl, file_name: file.originalname }])
+      .select()
+      .single();
+
+    if (dbError) throw new Error(dbError.message);
+
+    try { fs.unlinkSync(file.path); } catch {}
+
+    res.json({ ok: true, voiceId: voice.id, voiceName: voice.name, message: 'Ses kaydedildi!' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// DELETE /api/voice/my-voices/:id
+router.delete('/my-voices/:id', async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { data: voice } = await supabase
+      .from('cloned_voices')
+      .select('sample_url')
+      .eq('id', id)
+      .eq('user_id', req.userId)
+      .single();
+
+    if (voice?.sample_url) {
+      const path = voice.sample_url.split('/voice-samples/')[1];
+      if (path) await supabase.storage.from('voice-samples').remove([path]);
+    }
+
+    await supabase.from('cloned_voices').delete().eq('id', id).eq('user_id', req.userId);
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/voice/set-voice
+router.post('/set-voice', async (req: any, res: any) => {
+  try {
+    const { voiceId, voiceName, voiceType = 'library' } = req.body;
+    // voiceType: 'cloned' | 'library'
+    await supabase.from('voice_settings').upsert([{
+      user_id: req.userId,
+      elevenlabs_voice_id: voiceId,
+      voice_name: voiceName,
+      voice_provider: voiceType,
+    }]);
+    res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -372,49 +546,12 @@ router.post('/preview-voice', async (req: any, res: any) => {
     const defaults: Record<string, string> = {
       tr: 'Merhaba, nasılsınız? Size kısa bir bilgi vermek istiyorum.',
       en: 'Hello, how are you? I would like to share some information with you.',
-      de: 'Guten Tag! Ich möchte Ihnen kurz etwas mitteilen.',
     };
     const sampleText = text || defaults[language] || defaults['tr'];
-
     const { synthesize } = require('../services/tts-engine');
     const audio = await synthesize({ text: sampleText, language, voiceId, provider });
-
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(audio);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /api/voice/set-voice
-router.post('/set-voice', async (req: any, res: any) => {
-  try {
-    const { voiceId, voiceName, provider = 'azure' } = req.body;
-    await supabase.from('voice_settings').upsert([{
-      user_id: req.userId, elevenlabs_voice_id: voiceId, voice_name: voiceName, voice_provider: provider,
-    }]);
-    res.json({ ok: true });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /api/voice/clone
-router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
-  try {
-    const { name } = req.body;
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: 'Ses dosyası zorunlu' });
-    const form = new FormData();
-    form.append('name', name || `LeadFlow-${req.userId.slice(0, 8)}`);
-    form.append('description', 'LeadFlow AI satış sesi');
-    form.append('files', fs.createReadStream(file.path), { filename: 'voice.mp3', contentType: 'audio/mpeg' });
-    const r = await axios.post(`${ELEVEN_BASE}/voices/add`, form, {
-      headers: { ...form.getHeaders(), 'xi-api-key': ELEVEN_KEY }, timeout: 60000,
-    });
-    const voiceId = r.data.voice_id;
-    await supabase.from('voice_settings').upsert([{
-      user_id: req.userId, elevenlabs_voice_id: voiceId,
-      voice_name: name || 'Klonlanmış Sesim', voice_provider: 'elevenlabs',
-    }]);
-    try { fs.unlinkSync(file.path); } catch {}
-    res.json({ ok: true, voiceId, message: 'Ses klonlandı!' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -432,21 +569,23 @@ router.post('/call/single', async (req: any, res: any) => {
       supabase.from('users').select('name, company').eq('id', userId).single(),
     ]);
 
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
+    if (!lead)       return res.status(404).json({ error: 'Lead bulunamadı' });
     if (!lead.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
 
-    const agentName   = settings?.agent_name || userRow?.name || 'Satış Temsilcisi';
-    const companyName = profile?.company?.name || userRow?.company || 'Şirketimiz';
+    const agentName   = settings?.agent_name    || userRow?.name    || 'Satış Temsilcisi';
+    const companyName = profile?.company?.name  || userRow?.company || 'Şirketimiz';
     const productDesc = profile?.product?.description || settings?.product_description || '';
     const avoidWords  = profile?.sales_style?.avoid_words || '';
     const callLang    = language || getLanguageByCountry(lead.country_code || '') || 'tr';
 
-    // Fetch cached research if available
+    const voiceType       = (settings?.voice_provider === 'cloned' ? 'cloned' : 'library') as 'cloned' | 'library';
+    const clonedVoiceId   = voiceType === 'cloned' ? settings?.elevenlabs_voice_id : undefined;
+    const libraryVoiceId  = voiceType === 'library' ? settings?.elevenlabs_voice_id : undefined;
+
     const { data: latestVideo } = await supabase
       .from('video_outreach')
       .select('research_data')
       .eq('lead_id', leadId)
-      .eq('user_id', userId)
       .not('research_data', 'is', null)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -454,7 +593,8 @@ router.post('/call/single', async (req: any, res: any) => {
 
     const { data: callRecord } = await supabase.from('voice_calls').insert([{
       user_id: userId, lead_id: leadId,
-      callee_number: lead.phone, caller_number: process.env.VAPI_PHONE_NUMBER || process.env.ELEVENLABS_CALLER_NUMBER || '',
+      callee_number: lead.phone,
+      caller_number: process.env.VAPI_PHONE_NUMBER || process.env.ELEVENLABS_CALLER_NUMBER || '',
       status: 'initiating', language: callLang,
     }]).select().single();
 
@@ -463,16 +603,11 @@ router.post('/call/single', async (req: any, res: any) => {
     (async () => {
       try {
         const result = await dispatchCall({
-          toNumber:    lead.phone,
-          agentName,
-          companyName,
-          productDesc,
-          leadName:    lead.contact_name || lead.company_name,
-          leadCompany: lead.company_name,
-          language:    callLang,
-          lead,
+          toNumber: lead.phone, agentName, companyName, productDesc,
+          leadName: lead.contact_name || lead.company_name,
+          leadCompany: lead.company_name, language: callLang, lead,
           researchData: latestVideo?.research_data || null,
-          avoidWords,
+          avoidWords, voiceType, clonedVoiceId, libraryVoiceId,
         });
         await supabase.from('voice_calls').update({
           eleven_conversation_id: result.conversationId,
@@ -480,7 +615,9 @@ router.post('/call/single', async (req: any, res: any) => {
           status: 'calling',
           notes: `Provider: ${result.provider}`,
         }).eq('id', callRecord?.id);
-        await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date().toISOString() }).eq('id', leadId);
+        await supabase.from('leads').update({
+          status: 'contacted', last_contacted_at: new Date().toISOString(),
+        }).eq('id', leadId);
       } catch (err: any) {
         await supabase.from('voice_calls').update({ status: 'failed', notes: err.message }).eq('id', callRecord?.id);
       }
@@ -501,10 +638,14 @@ router.post('/call/campaign', async (req: any, res: any) => {
       supabase.from('users').select('name, company').eq('id', userId).single(),
     ]);
 
-    const agentName   = settings?.agent_name || userRow?.name || 'Satış Temsilcisi';
-    const companyName = profile?.company?.name || userRow?.company || 'Şirketimiz';
+    const agentName   = settings?.agent_name    || userRow?.name    || 'Satış Temsilcisi';
+    const companyName = profile?.company?.name  || userRow?.company || 'Şirketimiz';
     const productDesc = profile?.product?.description || settings?.product_description || '';
     const avoidWords  = profile?.sales_style?.avoid_words || '';
+
+    const voiceType      = (settings?.voice_provider === 'cloned' ? 'cloned' : 'library') as 'cloned' | 'library';
+    const clonedVoiceId  = voiceType === 'cloned' ? settings?.elevenlabs_voice_id : undefined;
+    const libraryVoiceId = voiceType === 'library' ? settings?.elevenlabs_voice_id : undefined;
 
     const { data: campaign } = await supabase.from('voice_campaigns').insert([{
       user_id: userId,
@@ -525,7 +666,6 @@ router.post('/call/campaign', async (req: any, res: any) => {
 
           const callLang = language || getLanguageByCountry(lead.country_code || '') || 'tr';
 
-          // Use cached research if available
           const { data: latestVideo } = await supabase
             .from('video_outreach')
             .select('research_data')
@@ -547,7 +687,8 @@ router.post('/call/campaign', async (req: any, res: any) => {
             toNumber: lead.phone, agentName, companyName, productDesc,
             leadName: lead.contact_name || lead.company_name,
             leadCompany: lead.company_name, language: callLang, lead,
-            researchData: latestVideo?.research_data || null, avoidWords,
+            researchData: latestVideo?.research_data || null,
+            avoidWords, voiceType, clonedVoiceId, libraryVoiceId,
           });
 
           await supabase.from('voice_calls').update({
@@ -556,11 +697,12 @@ router.post('/call/campaign', async (req: any, res: any) => {
             status: 'calling',
             notes: `Provider: ${result.provider}`,
           }).eq('id', callRecord?.id);
+
           await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date().toISOString() }).eq('id', leadId);
           await supabase.from('voice_campaigns').update({ calls_made: called + 1 }).eq('id', campaign?.id);
           called++;
 
-          const jitter = (Math.random() * 2 - 1) * 60 * 1000; // ±1 min
+          const jitter = (Math.random() * 2 - 1) * 60 * 1000;
           await new Promise(r => setTimeout(r, delayMinutes * 60 * 1000 + jitter));
         } catch (err: any) { console.error('[Campaign] Call error:', err.message); called++; }
       }
@@ -569,12 +711,11 @@ router.post('/call/campaign', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/webhook/elevenlabs + Vapi
+// POST /api/voice/webhook/elevenlabs + vapi
 router.post('/webhook/elevenlabs', async (req: any, res: any) => {
   try {
     const { conversation_id, transcript, analysis, call_id } = req.body;
     res.sendStatus(200);
-
     const convId = conversation_id || call_id;
     if (!convId) return;
 
@@ -585,7 +726,6 @@ router.post('/webhook/elevenlabs', async (req: any, res: any) => {
     const updates: any = { status: 'completed', ended_at: new Date().toISOString() };
     if (transcript) updates.transcript = typeof transcript === 'string' ? transcript : JSON.stringify(transcript);
 
-    // Post-call AI analysis
     if (transcript) {
       try {
         const transcriptText = typeof transcript === 'string'
@@ -607,7 +747,6 @@ JSON:
   "interest_score": 1-10,
   "sentiment": "positive|neutral|negative",
   "objections": ["itiraz 1"],
-  "key_phrases": ["önemli ifade"],
   "next_action": "callback|email|whatsapp|no_action",
   "outcome": "positive|neutral|negative",
   "crm_note": "CRM'e girilecek kısa not"
@@ -621,7 +760,6 @@ JSON:
           const parsed = JSON.parse(match[0]);
           updates.analysis = parsed;
           updates.outcome = parsed.outcome === 'positive' ? 'positive' : 'negative';
-          // Store CRM note
           if (parsed.crm_note && call.lead_id) {
             await supabase.from('leads').update({
               notes: parsed.crm_note,
@@ -638,29 +776,18 @@ JSON:
     }
 
     await supabase.from('voice_calls').update(updates).eq('eleven_conversation_id', convId);
-
-    if (call.lead_id && call.user_id && updates.outcome === 'positive') {
-      try {
-        const { fireCapiEvent } = require('../services/meta-capi');
-        const { data: lead } = await supabase.from('leads').select('*').eq('id', call.lead_id).single();
-        if (lead) await fireCapiEvent(supabase, call.user_id, lead, 'CompleteRegistration', { value: 25 });
-      } catch {}
-    }
   } catch (e: any) { console.error('Webhook error:', e.message); }
 });
 
-// Vapi webhook (same endpoint, different payload shape)
 router.post('/webhook/vapi', async (req: any, res: any) => {
   try {
     const { message } = req.body;
     res.sendStatus(200);
     if (!message || message.type !== 'end-of-call-report') return;
-
     const callId = message.call?.id;
     if (!callId) return;
     const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('eleven_conversation_id', callId).single();
     if (!call) return;
-
     const transcript = message.transcript || message.artifact?.transcript || '';
     await supabase.from('voice_calls').update({
       status: 'completed', ended_at: new Date().toISOString(),
@@ -673,7 +800,8 @@ router.post('/webhook/vapi', async (req: any, res: any) => {
 router.get('/calls', async (req: any, res: any) => {
   try {
     const { limit = 50, campaignId } = req.query;
-    let q = supabase.from('voice_calls').select('*, leads(company_name, phone, contact_name, country)')
+    let q = supabase.from('voice_calls')
+      .select('*, leads(company_name, phone, contact_name, country)')
       .eq('user_id', req.userId).order('created_at', { ascending: false }).limit(Number(limit));
     if (campaignId) q = q.eq('campaign_id', campaignId);
     const { data } = await q;
@@ -723,22 +851,12 @@ router.patch('/settings', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/numbers
-router.get('/numbers', async (req: any, res: any) => {
-  try {
-    const { data } = await supabase.from('voice_numbers').select('*').eq('user_id', req.userId).eq('is_active', true);
-    res.json({ numbers: data || [] });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
 // GET /api/voice/provider-status
 router.get('/provider-status', (_req: any, res: any) => {
   res.json({
-    callProvider:    VAPI_KEY ? 'vapi' : 'elevenlabs',
-    ttsProvider:     process.env.AZURE_SPEECH_KEY ? 'azure' : process.env.CARTESIA_API_KEY ? 'cartesia' : 'google',
-    vapiConfigured:  !!VAPI_KEY && !!VAPI_PHONE_ID,
-    azureConfigured: !!process.env.AZURE_SPEECH_KEY,
-    cartesiaConfigured: !!process.env.CARTESIA_API_KEY,
+    xttsConfigured:       !!process.env.RUNPOD_XTTS_ENDPOINT_ID,
+    vapiConfigured:       !!VAPI_KEY && !!VAPI_PHONE_ID,
+    libraryConfigured:    !!ELEVEN_KEY,
     perplexityConfigured: !!process.env.PERPLEXITY_API_KEY,
   });
 });
