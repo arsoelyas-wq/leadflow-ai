@@ -53,7 +53,9 @@ router.get('/with-phone', authMiddleware, async (req: any, res: any) => {
       .eq('user_id', req.userId)
       .not('phone', 'is', null)
       .neq('phone', '')
-      .order('company_name', { ascending: true });
+      .not('phone', 'ilike', '%@%')
+      .order('company_name', { ascending: true })
+      .limit(20000);
     if (error) throw error;
     res.json({ leads: data || [], total: (data || []).length });
   } catch (e: any) {
