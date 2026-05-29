@@ -12,10 +12,10 @@ const EXA_API_KEY     = process.env.EXA_API_KEY;      // exa.ai — 1B+ LinkedIn
 const BRAVE_API_KEY   = process.env.BRAVE_API_KEY;    // brave.com/search/api — 1000/mo free
 const SERPER_API_KEY  = process.env.SERPER_API_KEY;   // serper.dev — $1/1000, best price for Google
 const TAVILY_API_KEY  = process.env.TAVILY_API_KEY;   // tavily.com — 1000/mo free
-// Meta Graph API (resmi Facebook + Instagram API — ücretsiz)
-// Kurulum: developers.facebook.com → App oluştur → App Access Token al
-// App Token formatı: APP_ID|APP_SECRET
-const META_APP_TOKEN  = process.env.META_GRAPH_TOKEN || process.env.META_WA_TOKEN;
+// Meta Graph API token — META_GRAPH_TOKEN (User/Page Token) kullan
+// App Access Token için: graph.facebook.com/oauth/access_token?grant_type=client_credentials
+// Mevcut META_GRAPH_TOKEN (EAAM... formatı) sayfa araması için çalışır
+const META_APP_TOKEN = process.env.META_GRAPH_TOKEN || process.env.META_WA_TOKEN;
 
 // DuckDuckGo locale codes per country (kl parameter)
 const DDG_KL: Record<string, string> = {
@@ -476,33 +476,46 @@ async function scrapeLinkedIn(query: string, langCode: string, googleDomain: str
 // Token: developers.facebook.com → App → Settings → Basic → App ID + Secret
 // App Token = APP_ID|APP_SECRET (client credentials grant)
 async function scrapeFacebook(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
-  // 1. Meta Graph API — resmi, engelsiz, ücretsiz
+  // 1. Meta Graph API — /search?type=place (işletme lokasyonları, daha az kısıtlı)
   if (META_APP_TOKEN) {
     try {
-      const url = `https://graph.facebook.com/v19.0/search`;
-      const res = await axios.get(url, {
+      // type=place: Google Maps benzeri işletme araması, daha serbest
+      const res = await axios.get('https://graph.facebook.com/v19.0/search', {
         params: {
-          type: 'page',
+          type: 'place',
           q: query,
-          fields: 'name,link,website,phone,location,category,fan_count',
+          fields: 'name,link,website,phone,location,category',
           access_token: META_APP_TOKEN,
           limit: 10,
         },
         timeout: 12000,
       });
-      const pages = (res.data?.data || []).filter((p: any) => p.name);
-      if (pages.length > 0) {
-        return pages.map((p: any) => ({
+      const places = (res.data?.data || []).filter((p: any) => p.name);
+      if (places.length > 0) {
+        return places.map((p: any) => ({
           name: p.name,
-          website: p.website || p.link || `https://facebook.com/${p.id}`,
+          website: p.website || p.link || '',
           phone: cleanPhone(p.phone || ''),
-          address: p.location?.city || '',
+          address: `${p.location?.city || ''} ${p.location?.country || ''}`.trim(),
           notes: p.category || '',
-          source_channel: 'Facebook Sayfaları',
+          source_channel: 'Facebook İşletmeler',
           type: 'business',
         }));
       }
-    } catch (e: any) { console.error('Meta Graph Facebook:', e.message?.slice(0, 80)); }
+
+      // type=place sonuç vermezse type=page dene
+      const resPage = await axios.get('https://graph.facebook.com/v19.0/search', {
+        params: { type: 'page', q: query, fields: 'name,link,website,phone,location', access_token: META_APP_TOKEN, limit: 10 },
+        timeout: 10000,
+      });
+      const pages = (resPage.data?.data || []).filter((p: any) => p.name);
+      if (pages.length > 0) {
+        return pages.map((p: any) => ({
+          name: p.name, website: p.website || p.link || '',
+          phone: cleanPhone(p.phone || ''), notes: '', source_channel: 'Facebook Sayfaları', type: 'business',
+        }));
+      }
+    } catch (e: any) { console.error('Meta Graph Facebook:', e.response?.data?.error?.message || e.message?.slice(0, 80)); }
   }
 
   // 2. Fallback: Exa/Brave/Serper ile Facebook araması
