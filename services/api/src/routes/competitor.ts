@@ -7,9 +7,11 @@ const { getCountryByCode } = require('../config/countries');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
-const EXA_API_KEY   = process.env.EXA_API_KEY;    // exa.ai — 1B+ LinkedIn profiles, 1000/mo free
-const BRAVE_API_KEY = process.env.BRAVE_API_KEY;  // brave.com/search/api — 1000/mo free
+const GOOGLE_API_KEY  = process.env.GOOGLE_PLACES_API_KEY;
+const EXA_API_KEY     = process.env.EXA_API_KEY;     // exa.ai — 1B+ LinkedIn, 1000/mo free → dashboard.exa.ai
+const BRAVE_API_KEY   = process.env.BRAVE_API_KEY;   // brave.com/search/api — 1000/mo free
+const SERPER_API_KEY  = process.env.SERPER_API_KEY;  // serper.dev — $1/1000, best price for Google → serper.dev
+const TAVILY_API_KEY  = process.env.TAVILY_API_KEY;  // tavily.com — 1000/mo free, LinkedIn profile search
 
 // DuckDuckGo locale codes per country (kl parameter)
 const DDG_KL: Record<string, string> = {
@@ -278,6 +280,62 @@ async function searchViaExa(query: string, domains: string[], langCode: string, 
   } catch (e: any) { console.error('Exa search:', e.message?.slice(0, 60)); return []; }
 }
 
+// ── SERPER.DEV — En ucuz Google sonuçları ($1/1000, 2500 ücretsiz) ───────────
+// Gerçek Google indexinden sonuçlar. site: filtering çalışıyor.
+async function searchViaSerper(query: string, langCode: string, countryCode: string, domains: string[]): Promise<any[]> {
+  if (!SERPER_API_KEY) return [];
+  try {
+    // Add site: filter if single domain
+    const q = domains.length === 1 ? `site:${domains[0]} ${query}` : query;
+    const body: any = { q, num: 10 };
+    if (countryCode) body.gl = countryCode.toLowerCase().slice(0, 2);
+    if (langCode) body.hl = langCode.slice(0, 2);
+
+    const res = await axios.post('https://google.serper.dev/search', body, {
+      headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
+      timeout: 10000,
+    });
+
+    const organic = res.data?.organic || [];
+    return organic.map((r: any) => ({
+      name: r.title || '',
+      website: r.link || '',
+      notes: r.snippet || '',
+      source_channel: domains.length === 1 ? domains[0].split('.')[0].toUpperCase() : 'Serper',
+      type: 'business',
+    })).filter((r: any) => r.name && r.website).slice(0, 8);
+  } catch (e: any) { console.error('Serper search:', e.message?.slice(0, 60)); return []; }
+}
+
+// ── TAVILY — LinkedIn profil araması + genel web ───────────────────────────────
+// 1000 sorgu/ay ücretsiz. LinkedIn profile search özelliği var.
+async function searchViaTavily(query: string, domains: string[], countryCode: string): Promise<any[]> {
+  if (!TAVILY_API_KEY) return [];
+  try {
+    const body: any = {
+      api_key: TAVILY_API_KEY,
+      query,
+      search_depth: 'basic',
+      max_results: 8,
+    };
+    if (domains.length > 0) body.include_domains = domains.slice(0, 5);
+
+    const res = await axios.post('https://api.tavily.com/search', body, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 15000,
+    });
+
+    const results = res.data?.results || [];
+    return results.map((r: any) => ({
+      name: r.title || '',
+      website: r.url || '',
+      notes: r.content?.slice(0, 200) || '',
+      source_channel: domains.length === 1 ? domains[0].split('.')[0].toUpperCase() : 'Tavily',
+      type: 'business',
+    })).filter((r: any) => r.name && r.website).slice(0, 8);
+  } catch (e: any) { console.error('Tavily search:', e.message?.slice(0, 60)); return []; }
+}
+
 // ── BRAVE SEARCH API (bağımsız index, genel web için) ─────────────────────────
 // Brave'in kendi 30B+ sayfalık indexi — Google/Bing'den bağımsız.
 // 1000 sorgu/ay ÜCRETSİZ. Tüm ülkeler çalışır.
@@ -309,30 +367,46 @@ async function searchViaBrave(query: string, langCode: string, countryCode: stri
   } catch (e: any) { console.error('Brave search:', e.message?.slice(0, 60)); return []; }
 }
 
-// ── MASTER SEARCH: Exa → Brave → DDG → Bing → Google direct ─────────────────
-// Öncelik sırası: ucuz API'ler önce, scraping son çare
-async function scrapeGoogleSearch(query: string, langCode = 'tr', googleDomain = 'google.com', countryCode = 'TR', domains: string[] = []): Promise<any[]> {
-  // 1. Exa.ai (en iyi — LinkedIn 1B+ profil, 1000/ay ücretsiz, IP engeli yok)
+// ── MASTER SEARCH: 5 engine zinciri ──────────────────────────────────────────
+// Öncelik: API tabanlı (bloke yok) → scraping tabanlı (bloke olabilir)
+async function scrapeGoogleSearch(
+  query: string, langCode = 'tr', googleDomain = 'google.com',
+  countryCode = 'TR', domains: string[] = []
+): Promise<any[]> {
+
+  // 1. Exa.ai — LinkedIn için MÜKEMMEL (1B+ profil, 1000/ay ücretsiz)
   if (EXA_API_KEY) {
     const r = await searchViaExa(query, domains, langCode, countryCode);
     if (r.length > 0) return r;
   }
 
-  // 2. Brave Search API (bağımsız index, 1000/ay ücretsiz)
+  // 2. Tavily — LinkedIn profil araması + genel web (1000/ay ücretsiz)
+  if (TAVILY_API_KEY) {
+    const r = await searchViaTavily(query, domains, countryCode);
+    if (r.length > 0) return r;
+  }
+
+  // 3. Serper.dev — En ucuz Google sonuçları ($1/1000, 2500 ücretsiz signup)
+  if (SERPER_API_KEY) {
+    const r = await searchViaSerper(query, langCode, countryCode, domains);
+    if (r.length > 0) return r;
+  }
+
+  // 4. Brave Search API (bağımsız index, ~250/ay ücretsiz)
   if (BRAVE_API_KEY) {
     const r = await searchViaBrave(query, langCode, countryCode, domains);
     if (r.length > 0) return r;
   }
 
-  // 3. DuckDuckGo (ücretsiz, API key yok, datacenter IP'den bloke olabilir)
+  // 5. DuckDuckGo (ücretsiz, datacenter IP'den bloke olabilir)
   const ddg = await searchViaDDG(query, langCode, countryCode);
   if (ddg.length > 0) return ddg;
 
-  // 4. Bing direkt scraping
+  // 6. Bing direkt scraping
   const bing = await searchViaBing(query, langCode, countryCode);
   if (bing.length > 0) return bing;
 
-  // 5. Google direkt (son çare — Railway IP'lerinden bloke olabilir)
+  // 7. Google direkt (son çare)
   try {
     const url = `https://www.${googleDomain}/search?q=${encodeURIComponent(query)}&num=10&hl=${langCode}&pws=0`;
     const res = await axios.get(url, {
@@ -595,10 +669,12 @@ router.get('/diagnose', async (req: any, res: any) => {
 
   const results: Record<string, any> = {
     env: {
-      GOOGLE_PLACES_API_KEY: GOOGLE_API_KEY ? '✅ set' : '❌ missing (Google Maps will not work)',
-      EXA_API_KEY: EXA_API_KEY ? '✅ set' : '⚠️  missing — get free key at exa.ai (1000/mo free)',
-      BRAVE_API_KEY: BRAVE_API_KEY ? '✅ set' : '⚠️  missing — get free key at brave.com/search/api',
-      search_chain: 'Exa.ai → Brave Search → DuckDuckGo → Bing → Google',
+      GOOGLE_PLACES_API_KEY: GOOGLE_API_KEY ? '✅ set' : '❌ missing (Google Maps disabled)',
+      EXA_API_KEY:    EXA_API_KEY    ? '✅ set' : '⚠️  missing → dashboard.exa.ai (1000/mo free, LinkedIn 1B+)',
+      TAVILY_API_KEY: TAVILY_API_KEY ? '✅ set' : '⚠️  missing → tavily.com (1000/mo free, LinkedIn search)',
+      SERPER_API_KEY: SERPER_API_KEY ? '✅ set' : '⚠️  missing → serper.dev ($1/1000, 2500 free signup)',
+      BRAVE_API_KEY:  BRAVE_API_KEY  ? '✅ set' : '⚠️  missing → brave.com/search/api (~250/mo free)',
+      search_chain: 'Exa.ai → Tavily → Serper.dev → Brave → DuckDuckGo → Bing → Google',
     },
   };
 
