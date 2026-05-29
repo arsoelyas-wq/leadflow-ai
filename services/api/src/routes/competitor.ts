@@ -3,73 +3,57 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const cheerio = require('cheerio');
 const axios = require('axios');
+const { getCountryByCode } = require('../config/countries');
 
 const router = express.Router();
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
-
-function cleanPhone(phone: string): string {
-  if (!phone) return '';
-  return phone.replace(/\s/g, '').replace(/[^\d+]/g, '');
-}
-
+function cleanPhone(p: string): string { return (p || '').replace(/\s/g, '').replace(/[^\d+]/g, ''); }
 function calcScore(lead: any): number {
-  let score = 30;
-  if (lead.phone) score += 25;
-  if (lead.website || lead.instagram || lead.linkedin) score += 15;
-  if (lead.email) score += 20;
-  if (lead.city) score += 5;
-  if (lead.name && lead.name.length > 3) score += 5;
-  return Math.min(score, 100);
+  let s = 30;
+  if (lead.phone) s += 25;
+  if (lead.website || lead.instagram || lead.linkedin) s += 15;
+  if (lead.email) s += 20;
+  if (lead.city) s += 5;
+  if (lead.name?.length > 3) s += 5;
+  return Math.min(s, 100);
 }
 
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-};
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36';
 
-// ── DUPLICATE KONTROLÜ ────────────────────────────────────
-async function isAlreadyFound(userId: string, identifier: string): Promise<boolean> {
-  if (!identifier) return false;
-  const { data } = await supabase
-    .from('competitor_leads')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('identifier', identifier)
-    .limit(1);
-  return (data?.length || 0) > 0;
+// ── BATCH DEDUPLICATION (fixes N+1 bug) ──────────────────────────────────────
+async function filterAlreadyFound(userId: string, identifiers: string[]): Promise<Set<string>> {
+  if (!identifiers.length) return new Set();
+  const { data } = await supabase.from('competitor_leads')
+    .select('identifier').eq('user_id', userId).in('identifier', identifiers);
+  return new Set((data || []).map((r: any) => r.identifier));
 }
 
 async function markAsFound(userId: string, competitorId: string, identifiers: string[]) {
-  const records = identifiers
-    .filter(i => i && i.length > 0)
-    .map(identifier => ({ user_id: userId, competitor_id: competitorId, identifier }));
-  if (records.length > 0) {
+  const records = identifiers.filter(Boolean).map(identifier => ({
+    user_id: userId, competitor_id: competitorId, identifier,
+  }));
+  if (records.length) {
     await supabase.from('competitor_leads').upsert(records, { onConflict: 'user_id,identifier', ignoreDuplicates: true });
   }
 }
 
-// ── GOOGLE MAPS ───────────────────────────────────────────
-async function scrapeGoogleMaps(query: string, maxResults: number): Promise<any[]> {
+// ── GOOGLE MAPS (language-aware) ─────────────────────────────────────────────
+async function scrapeGoogleMaps(query: string, maxResults: number, langCode = 'tr'): Promise<any[]> {
   try {
-    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': GOOGLE_API_KEY!,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.businessStatus',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.businessStatus,places.reviews',
       },
-      body: JSON.stringify({ textQuery: query, languageCode: 'tr', maxResultCount: Math.min(20, maxResults) }),
+      body: JSON.stringify({ textQuery: query, languageCode: langCode, maxResultCount: Math.min(20, maxResults) }),
     });
-    if (!response.ok) return [];
-    const data: any = await response.json();
+    if (!res.ok) return [];
+    const data: any = await res.json();
     return (data.places || [])
       .filter((p: any) => p.businessStatus !== 'CLOSED_PERMANENTLY')
       .map((p: any) => ({
@@ -79,226 +63,256 @@ async function scrapeGoogleMaps(query: string, maxResults: number): Promise<any[
         address: p.formattedAddress || null,
         rating: p.rating || null,
         reviewCount: p.userRatingCount || 0,
+        reviews: (p.reviews || []).slice(0, 3).map((r: any) => ({
+          author: r.authorAttribution?.displayName || '',
+          rating: r.rating || 0,
+          text: r.text?.text || '',
+        })),
         type: 'business',
         source_channel: 'Google Maps',
       }));
-  } catch (e: any) {
-    console.error('Google Maps error:', e.message);
-    return [];
-  }
+  } catch (e: any) { console.error('Google Maps:', e.message); return []; }
 }
 
-// ── GOOGLE SEARCH ─────────────────────────────────────────
-async function scrapeGoogleSearch(query: string): Promise<any[]> {
+// ── GOOGLE SEARCH (language-aware) ───────────────────────────────────────────
+async function scrapeGoogleSearch(query: string, langCode = 'tr'): Promise<any[]> {
   try {
-    const response = await axios.get(
-      `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=tr`,
-      { headers: HEADERS, timeout: 10000 }
+    const res = await axios.get(
+      `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10&hl=${langCode}`,
+      { headers: { 'User-Agent': UA, 'Accept-Language': `${langCode},en;q=0.8` }, timeout: 10000 }
     );
-    const $ = cheerio.load(response.data);
+    const $ = cheerio.load(res.data);
     const results: any[] = [];
     $('div.g').each((_: any, el: any) => {
       const title = $(el).find('h3').first().text().trim();
       const url = $(el).find('a').first().attr('href') || '';
       const snippet = $(el).find('.VwiC3b').first().text().trim();
-      if (title && url.startsWith('http') && !url.includes('google.com')) {
+      if (title && url.startsWith('http') && !url.includes('google.com'))
         results.push({ title, url, snippet });
-      }
     });
     return results.slice(0, 8);
-  } catch (e: any) {
-    console.error('Google Search error:', e.message);
-    return [];
-  }
+  } catch (e: any) { console.error('Google Search:', e.message); return []; }
 }
 
-// ── ŞİKAYETVAR ────────────────────────────────────────────
+// ── GOOGLE REVIEWS (from Places API) ─────────────────────────────────────────
+async function scrapeGoogleReviews(competitorName: string, city: string, langCode = 'tr'): Promise<any[]> {
+  try {
+    const places = await scrapeGoogleMaps(`${competitorName} ${city}`, 3, langCode);
+    const reviewLeads: any[] = [];
+    for (const place of places) {
+      for (const rev of (place.reviews || [])) {
+        if (rev.rating <= 2 && rev.text?.length > 10) {
+          reviewLeads.push({
+            name: rev.author || 'Google Yorumcu',
+            notes: `⭐${rev.rating}/5 — "${rev.text.slice(0, 120)}"`,
+            source_channel: 'Google Yorum',
+            type: 'person',
+          });
+        }
+      }
+    }
+    return reviewLeads;
+  } catch { return []; }
+}
+
+// ── SOCIAL REVIEWS — complaints on FB/IG/Twitter ─────────────────────────────
+async function scrapeSocialReviews(competitorName: string, country: any): Promise<any[]> {
+  const { language, queries } = country;
+  const results: any[] = [];
+  try {
+    const [fbComplaints, igComplaints] = await Promise.allSettled([
+      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:facebook.com`, language),
+      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:instagram.com`, language),
+    ]);
+    if (fbComplaints.status === 'fulfilled') {
+      fbComplaints.value.filter((r: any) => !r.url.includes('/posts/')).forEach((r: any) => {
+        results.push({
+          name: r.title.replace('| Facebook', '').replace('- Facebook', '').trim(),
+          website: r.url,
+          notes: r.snippet,
+          source_channel: 'Facebook Yorum',
+          type: 'business',
+        });
+      });
+    }
+    if (igComplaints.status === 'fulfilled') {
+      igComplaints.value.forEach((r: any) => {
+        const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
+        if (username) results.push({
+          name: r.title.replace('• Instagram', '').trim(),
+          instagram: `https://instagram.com/${username}`,
+          website: `https://instagram.com/${username}`,
+          notes: r.snippet,
+          source_channel: 'Instagram Yorum',
+          type: 'person_or_business',
+        });
+      });
+    }
+  } catch {}
+  return results;
+}
+
+// ── LİNKEDİN (language-aware) ────────────────────────────────────────────────
+async function scrapeLinkedIn(query: string, langCode = 'tr'): Promise<any[]> {
+  try {
+    const results = await scrapeGoogleSearch(`${query} site:linkedin.com/in OR site:linkedin.com/company`, langCode);
+    return results.filter(r => r.url.includes('linkedin.com')).map(r => ({
+      name: r.title.replace('| LinkedIn', '').replace('- LinkedIn', '').trim(),
+      website: r.url, notes: r.snippet,
+      type: r.url.includes('/in/') ? 'person' : 'business',
+      source_channel: 'LinkedIn', linkedin: r.url,
+    }));
+  } catch { return []; }
+}
+
+// ── FACEBOOK (language-aware) ─────────────────────────────────────────────────
+async function scrapeFacebook(query: string, langCode = 'tr'): Promise<any[]> {
+  try {
+    const results = await scrapeGoogleSearch(`${query} site:facebook.com`, langCode);
+    return results.filter(r => r.url.includes('facebook.com') && !r.url.includes('/posts/')).map(r => ({
+      name: r.title.replace('| Facebook', '').replace('- Facebook', '').trim(),
+      website: r.url, notes: r.snippet, type: 'business', source_channel: 'Facebook',
+    }));
+  } catch { return []; }
+}
+
+// ── INSTAGRAM (language-aware) ────────────────────────────────────────────────
+async function scrapeInstagram(keyword: string, country: any): Promise<any[]> {
+  const { language, queries } = country;
+  try {
+    const results = await scrapeGoogleSearch(`${keyword} ${queries.business} site:instagram.com`, language);
+    return results.filter(r => r.url.includes('instagram.com')).map(r => {
+      const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
+      return { name: r.title.replace('• Instagram', '').trim(), instagram: `https://instagram.com/${username}`,
+        website: `https://instagram.com/${username}`, notes: r.snippet, type: 'person_or_business', source_channel: 'Instagram' };
+    });
+  } catch { return []; }
+}
+
+// ── LOCAL COMPLAINT SITE (generic Google-filtered scraper) ───────────────────
+async function scrapeComplaintSite(competitorName: string, site: { id: string; name: string; domain: string }, langCode: string): Promise<any[]> {
+  try {
+    const results = await scrapeGoogleSearch(`"${competitorName}" site:${site.domain}`, langCode);
+    return results.filter(r => r.url.includes(site.domain)).map(r => ({
+      name: r.title.split('|')[0].split('-')[0].trim(),
+      website: r.url, notes: r.snippet, type: 'person',
+      source_channel: site.name, isComplaint: true,
+    }));
+  } catch { return []; }
+}
+
+// ── INTERNATIONAL B2B ─────────────────────────────────────────────────────────
+async function scrapeInternational(query: string): Promise<any[]> {
+  const results: any[] = [];
+  const [k, e] = await Promise.allSettled([
+    scrapeGoogleSearch(`${query} site:kompass.com`, 'en'),
+    scrapeGoogleSearch(`${query} site:europages.com`, 'en'),
+  ]);
+  if (k.status === 'fulfilled') results.push(...k.value.filter((r: any) => r.url.includes('kompass.com')).map((r: any) => ({
+    name: r.title, website: r.url, notes: r.snippet, type: 'business', source_channel: 'Kompass B2B',
+  })));
+  if (e.status === 'fulfilled') results.push(...e.value.filter((r: any) => r.url.includes('europages')).map((r: any) => ({
+    name: r.title, website: r.url, notes: r.snippet, type: 'business', source_channel: 'Europages',
+  })));
+  return results;
+}
+
+// ── ŞİKAYETVAR (TR) ──────────────────────────────────────────────────────────
 async function scrapeŞikayetVar(competitorName: string): Promise<any> {
   try {
-    const response = await axios.get(
-      `https://www.sikayetvar.com/search?q=${encodeURIComponent(competitorName)}`,
-      { headers: HEADERS, timeout: 10000 }
-    );
-    const $ = cheerio.load(response.data);
+    const res = await axios.get(`https://www.sikayetvar.com/search?q=${encodeURIComponent(competitorName)}`,
+      { headers: { 'User-Agent': UA }, timeout: 10000 });
+    const $ = cheerio.load(res.data);
     const complaints: string[] = [];
     $('.complaint-title, .sb-card__title, h3.title').each((_: any, el: any) => {
       const text = $(el).text().trim();
-      if (text && text.length > 10) complaints.push(text);
+      if (text?.length > 10) complaints.push(text);
     });
     const countText = $('.complaint-count, .total-complaint').first().text().trim();
     const countMatch = countText.match(/[\d.]+/);
-    return {
-      complaintCount: countMatch ? parseInt(countMatch[0].replace('.', '')) : 0,
-      complaints: complaints.slice(0, 10),
-      source: 'Şikayetvar',
-    };
-  } catch (e: any) {
-    console.error('Şikayetvar error:', e.message);
-    return null;
-  }
+    return { complaintCount: countMatch ? parseInt(countMatch[0].replace('.', '')) : 0, complaints: complaints.slice(0, 10), source: 'Şikayetvar' };
+  } catch { return null; }
 }
 
-// ── TRUSTPILOT ────────────────────────────────────────────
+// ── TRUSTPILOT (EU/Global) ────────────────────────────────────────────────────
 async function scrapeTrustpilot(competitorName: string): Promise<any> {
   try {
-    const response = await axios.get(
-      `https://www.trustpilot.com/search?query=${encodeURIComponent(competitorName)}`,
-      { headers: { ...HEADERS, 'Accept-Language': 'en-US,en;q=0.9' }, timeout: 10000 }
-    );
-    const $ = cheerio.load(response.data);
+    const res = await axios.get(`https://www.trustpilot.com/search?query=${encodeURIComponent(competitorName)}`,
+      { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' }, timeout: 10000 });
+    const $ = cheerio.load(res.data);
     const results: any[] = [];
     $('[data-business-unit-id], .businessUnitCard').each((_: any, el: any) => {
       const name = $(el).find('h3, .title').first().text().trim();
       const ratingLabel = $(el).find('[data-rating-typography], .star-rating').first().attr('aria-label') || '';
       const reviewText = $(el).find('.reviews-count').first().text().trim();
-      if (name) {
-        results.push({
-          name,
-          rating: ratingLabel.match(/[\d.]+/)?.[0] || null,
-          reviewCount: reviewText.match(/[\d,]+/)?.[0] || '0',
-          source: 'Trustpilot',
-        });
-      }
+      if (name) results.push({ name, rating: ratingLabel.match(/[\d.]+/)?.[0] || null, reviewCount: reviewText.match(/[\d,]+/)?.[0] || '0', source: 'Trustpilot' });
     });
     return results[0] || null;
-  } catch (e: any) {
-    console.error('Trustpilot error:', e.message);
-    return null;
-  }
+  } catch { return null; }
 }
 
-// ── LİNKEDİN ─────────────────────────────────────────────
-async function scrapeLinkedIn(query: string): Promise<any[]> {
-  try {
-    const results = await scrapeGoogleSearch(`${query} site:linkedin.com/in OR site:linkedin.com/company`);
-    return results
-      .filter(r => r.url.includes('linkedin.com'))
-      .map(r => ({
-        name: r.title.replace('| LinkedIn', '').replace('- LinkedIn', '').trim(),
-        website: r.url,
-        notes: r.snippet,
-        type: r.url.includes('/in/') ? 'person' : 'business',
-        source_channel: 'LinkedIn',
-        linkedin: r.url,
-      }));
-  } catch (e: any) {
-    console.error('LinkedIn error:', e.message);
-    return [];
-  }
-}
-
-// ── FACEBOOK ──────────────────────────────────────────────
-async function scrapeFacebook(query: string): Promise<any[]> {
-  try {
-    const results = await scrapeGoogleSearch(`${query} site:facebook.com`);
-    return results
-      .filter(r => r.url.includes('facebook.com') && !r.url.includes('/posts/'))
-      .map(r => ({
-        name: r.title.replace('| Facebook', '').replace('- Facebook', '').trim(),
-        website: r.url,
-        notes: r.snippet,
-        type: 'business',
-        source_channel: 'Facebook',
-      }));
-  } catch (e: any) {
-    console.error('Facebook error:', e.message);
-    return [];
-  }
-}
-
-// ── İNSTAGRAM ─────────────────────────────────────────────
-async function scrapeInstagram(keyword: string): Promise<any[]> {
-  try {
-    const results = await scrapeGoogleSearch(`${keyword} firma OR şirket OR işletme site:instagram.com`);
-    return results
-      .filter(r => r.url.includes('instagram.com'))
-      .map(r => {
-        const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
-        return {
-          name: r.title.replace('• Instagram', '').replace('(@', '').replace(')', '').trim(),
-          instagram: `https://instagram.com/${username}`,
-          website: `https://instagram.com/${username}`,
-          notes: r.snippet,
-          type: 'person_or_business',
-          source_channel: 'Instagram',
-        };
-      });
-  } catch (e: any) {
-    console.error('Instagram error:', e.message);
-    return [];
-  }
-}
-
-// ── ULUSLARARASI ──────────────────────────────────────────
-async function scrapeInternational(query: string): Promise<any[]> {
-  const results: any[] = [];
-  try {
-    const [kompass, europages] = await Promise.allSettled([
-      scrapeGoogleSearch(`${query} site:kompass.com`),
-      scrapeGoogleSearch(`${query} site:europages.com`),
-    ]);
-    if (kompass.status === 'fulfilled') {
-      results.push(...kompass.value.filter((r: any) => r.url.includes('kompass.com')).map((r: any) => ({
-        name: r.title, website: r.url, notes: r.snippet, type: 'business', source_channel: 'Kompass B2B',
-      })));
-    }
-    if (europages.status === 'fulfilled') {
-      results.push(...europages.value.filter((r: any) => r.url.includes('europages')).map((r: any) => ({
-        name: r.title, website: r.url, notes: r.snippet, type: 'business', source_channel: 'Europages',
-      })));
-    }
-  } catch (e: any) {
-    console.error('International error:', e.message);
-  }
-  return results;
-}
-
-// ── ANA TARAMA FONKSİYONU ─────────────────────────────────
+// ── ANA TARAMA (country-aware, batch dedup, bug fixes) ───────────────────────
 async function runCompetitorScan(
-  userId: string,
-  competitorId: string,
-  competitorName: string,
-  city: string,
-  sector: string,
-  channels: string[],
-  maxResults: number
+  userId: string, competitorId: string, competitorName: string,
+  city: string, sector: string, channels: string[], maxResults: number,
+  countryCode = 'TR'
 ): Promise<{ saved: number; skipped: number; leads: any[] }> {
 
+  const country = getCountryByCode(countryCode);
+  const { language, queries, name: countryName, localComplaintSites } = country;
   const allRaw: any[] = [];
-  const query = `${sector || competitorName} ${city} müşterileri`;
 
-  // Paralel tarama
+  // Build parallel tasks
   const tasks: Promise<any[]>[] = [];
-  if (channels.includes('google')) tasks.push(scrapeGoogleMaps(`${sector || competitorName} ${city} Türkiye`, Math.ceil(maxResults / 2)));
-  if (channels.includes('linkedin')) tasks.push(scrapeLinkedIn(`${competitorName} ${city} müşteri`));
-  if (channels.includes('facebook')) tasks.push(scrapeFacebook(`${competitorName} ${city}`));
-  if (channels.includes('instagram')) tasks.push(scrapeInstagram(`${sector || competitorName} ${city}`));
-  if (channels.includes('international')) tasks.push(scrapeInternational(`${sector || competitorName}`));
+  const keyword = sector || competitorName;
+
+  if (channels.includes('google'))
+    tasks.push(scrapeGoogleMaps(`${keyword} ${city} ${countryName}`, Math.ceil(maxResults / 2), language));
+  if (channels.includes('google_reviews'))
+    tasks.push(scrapeGoogleReviews(competitorName, city, language));
+  if (channels.includes('linkedin'))
+    tasks.push(scrapeLinkedIn(`${competitorName} ${city} ${queries.customers}`, language));
+  if (channels.includes('facebook'))
+    tasks.push(scrapeFacebook(`${competitorName} ${city}`, language));
+  if (channels.includes('instagram'))
+    tasks.push(scrapeInstagram(`${keyword} ${city}`, country));
+  if (channels.includes('social_reviews'))
+    tasks.push(scrapeSocialReviews(competitorName, country));
+  if (channels.includes('international'))
+    tasks.push(scrapeInternational(keyword));
+
+  // Local complaint sites for this country
+  if (channels.includes('complaints')) {
+    for (const site of localComplaintSites) {
+      tasks.push(scrapeComplaintSite(competitorName, site, language));
+    }
+  }
 
   const results = await Promise.allSettled(tasks);
-  results.forEach(r => {
-    if (r.status === 'fulfilled') allRaw.push(...r.value);
-  });
+  results.forEach(r => { if (r.status === 'fulfilled') allRaw.push(...r.value); });
 
-  // Tekrar önleme — hem DB'de hem bu batch'te
+  // Batch deduplication (single DB query — fixes N+1)
   const batchSeen = new Set<string>();
-  const unique: any[] = [];
+  const candidateIdentifiers: string[] = [];
+  const candidateLeads: any[] = [];
 
   for (const lead of allRaw) {
     const identifier = lead.phone || lead.instagram || lead.linkedin || lead.website || lead.name;
-    if (!identifier) continue;
-    if (batchSeen.has(identifier)) continue;
+    if (!identifier || batchSeen.has(identifier)) continue;
     batchSeen.add(identifier);
-
-    // DB'de var mı?
-    const exists = await isAlreadyFound(userId, identifier);
-    if (!exists) unique.push(lead);
+    candidateIdentifiers.push(identifier);
+    candidateLeads.push(lead);
   }
+
+  const alreadyInDB = await filterAlreadyFound(userId, candidateIdentifiers);
+  const unique = candidateLeads.filter(lead => {
+    const id = lead.phone || lead.instagram || lead.linkedin || lead.website || lead.name;
+    return !alreadyInDB.has(id);
+  });
 
   const limited = unique.slice(0, maxResults);
   if (!limited.length) return { saved: 0, skipped: allRaw.length - unique.length, leads: [] };
 
-  // Leads tablosuna kaydet
   const toInsert = limited.map(lead => ({
     user_id: userId,
     company_name: lead.name || 'Bilinmiyor',
@@ -314,237 +328,165 @@ async function runCompetitorScan(
     contact_name: lead.type === 'person' ? lead.name : null,
   }));
 
-  const { data: saved, error } = await supabase.from('leads').insert(toInsert).select();
+  const { data: savedData, error } = await supabase.from('leads').insert(toInsert).select();
   if (error) throw error;
 
-  // Duplicate kayıt — bir daha çekmeyelim
   const identifiers = limited.map(l => l.phone || l.instagram || l.linkedin || l.website || l.name).filter(Boolean);
   await markAsFound(userId, competitorId, identifiers);
 
-  // Competitor stats güncelle
-  await supabase.from('competitors')
-    .update({
-      last_scanned_at: new Date().toISOString(),
-      total_leads_found: supabase.rpc('increment', { x: saved.length }),
-    })
-    .eq('id', competitorId);
+  // FIX: proper total_leads_found increment (was broken with supabase.rpc)
+  const { data: current } = await supabase.from('competitors').select('total_leads_found').eq('id', competitorId).maybeSingle();
+  await supabase.from('competitors').update({
+    last_scanned_at: new Date().toISOString(),
+    total_leads_found: (current?.total_leads_found || 0) + (savedData?.length || 0),
+  }).eq('id', competitorId);
 
-  return { saved: saved.length, skipped: allRaw.length - unique.length, leads: saved };
+  return { saved: savedData?.length || 0, skipped: allRaw.length - unique.length, leads: savedData || [] };
 }
 
-// ── ROUTES ────────────────────────────────────────────────
+// ── ROUTES ────────────────────────────────────────────────────────────────────
 
-// Rakip listesi getir
 router.get('/list', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { data, error } = await supabase
-      .from('competitors')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('competitors').select('*')
+      .eq('user_id', req.userId).order('created_at', { ascending: false });
     if (error) throw error;
     res.json({ competitors: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Rakip ekle
 router.post('/list', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { name, city, sector, channels, auto_scan } = req.body;
+    const { name, city, sector, channels, auto_scan, country } = req.body;
     if (!name) return res.status(400).json({ error: 'name zorunlu' });
-
-    const { data, error } = await supabase
-      .from('competitors')
-      .insert([{
-        user_id: userId,
-        name,
-        city: city || '',
-        sector: sector || '',
-        channels: channels || ['google', 'linkedin'],
-        auto_scan: auto_scan !== false,
-      }])
-      .select()
-      .single();
+    const { data, error } = await supabase.from('competitors').insert([{
+      user_id: req.userId, name, city: city || '', sector: sector || '',
+      channels: channels || ['google', 'linkedin', 'social_reviews'],
+      auto_scan: auto_scan !== false,
+      country: country || 'TR',
+    }]).select().single();
     if (error) throw error;
     res.json({ competitor: data, message: 'Rakip eklendi!' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Rakip sil
 router.delete('/list/:id', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    await supabase.from('competitors').delete().eq('id', req.params.id).eq('user_id', userId);
+    await supabase.from('competitors').delete().eq('id', req.params.id).eq('user_id', req.userId);
     res.json({ message: 'Rakip silindi' });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Manuel tarama başlat
 router.post('/scan/:id', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { data: competitor } = await supabase
-      .from('competitors')
-      .select('*')
-      .eq('id', req.params.id)
-      .eq('user_id', userId)
-      .single();
-
+    const { data: competitor } = await supabase.from('competitors').select('*')
+      .eq('id', req.params.id).eq('user_id', req.userId).single();
     if (!competitor) return res.status(404).json({ error: 'Rakip bulunamadı' });
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('credits_total, credits_used')
-      .eq('id', userId)
-      .single();
-
+    const { data: userData } = await supabase.from('users').select('credits_total, credits_used').eq('id', req.userId).single();
     const available = (userData?.credits_total || 0) - (userData?.credits_used || 0);
     if (available < 5) return res.status(400).json({ error: 'Yetersiz kredi' });
 
     const maxResults = Math.min(req.body.maxResults || 20, available);
 
-    // Arka planda çalıştır
-    runCompetitorScan(
-      userId, competitor.id, competitor.name,
-      competitor.city, competitor.sector,
-      competitor.channels, maxResults
-    ).then(async result => {
-      // Kredi düş
-      await supabase.from('users')
-        .update({ credits_used: (userData?.credits_used || 0) + result.saved })
-        .eq('id', userId);
-      console.log(`Scan done for ${competitor.name}: ${result.saved} saved, ${result.skipped} skipped`);
-    }).catch(console.error);
+    runCompetitorScan(req.userId, competitor.id, competitor.name, competitor.city, competitor.sector,
+      competitor.channels, maxResults, competitor.country || 'TR')
+      .then(async result => {
+        const { data: fresh } = await supabase.from('users').select('credits_used').eq('id', req.userId).single();
+        await supabase.from('users').update({ credits_used: (fresh?.credits_used || 0) + result.saved }).eq('id', req.userId);
+      }).catch(console.error);
 
     res.json({ message: `${competitor.name} taranıyor...`, competitor });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Tüm rakipleri tara (günlük cron için)
 router.post('/scan-all', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { data: competitors } = await supabase
-      .from('competitors')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('auto_scan', true);
-
+    const { data: competitors } = await supabase.from('competitors').select('*')
+      .eq('user_id', req.userId).eq('auto_scan', true);
     if (!competitors?.length) return res.json({ message: 'Taranacak rakip yok' });
 
     let totalSaved = 0;
     for (const comp of competitors) {
       try {
-        const { data: userData } = await supabase
-          .from('users').select('credits_total, credits_used').eq('id', userId).single();
-        const available = (userData?.credits_total || 0) - (userData?.credits_used || 0);
+        const { data: ud } = await supabase.from('users').select('credits_total, credits_used').eq('id', req.userId).single();
+        const available = (ud?.credits_total || 0) - (ud?.credits_used || 0);
         if (available < 5) break;
-
-        const result = await runCompetitorScan(userId, comp.id, comp.name, comp.city, comp.sector, comp.channels, 10);
+        const result = await runCompetitorScan(req.userId, comp.id, comp.name, comp.city, comp.sector, comp.channels, 10, comp.country || 'TR');
         totalSaved += result.saved;
-
-        await supabase.from('users')
-          .update({ credits_used: (userData?.credits_used || 0) + result.saved })
-          .eq('id', userId);
-
+        await supabase.from('users').update({ credits_used: (ud?.credits_used || 0) + result.saved }).eq('id', req.userId);
         await sleep(2000);
-      } catch (e: any) {
-        console.error(`Scan failed for ${comp.name}:`, e.message);
-      }
+      } catch (e: any) { console.error(`Scan failed for ${comp.name}:`, e.message); }
     }
-
-    res.json({ message: `${competitors.length} rakip tarandı, ${totalSaved} yeni lead bulundu` });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+    res.json({ message: `${competitors.length} rakip tarandı, ${totalSaved} yeni lead` });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Hızlı hijack (rakip listesine eklemeden)
 router.post('/hijack', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { competitorName, city, targetSector, maxResults = 20, channels = ['google', 'linkedin'] } = req.body;
-
+    const { competitorName, city, targetSector, maxResults = 20, channels = ['google', 'linkedin', 'social_reviews'], country = 'TR' } = req.body;
     if (!competitorName || !city) return res.status(400).json({ error: 'competitorName ve city zorunlu' });
 
-    const { data: userData } = await supabase
-      .from('users').select('credits_total, credits_used').eq('id', userId).single();
-    const available = (userData?.credits_total || 0) - (userData?.credits_used || 0);
+    const { data: ud } = await supabase.from('users').select('credits_total, credits_used').eq('id', req.userId).single();
+    const available = (ud?.credits_total || 0) - (ud?.credits_used || 0);
     if (available < 5) return res.status(400).json({ error: `Yetersiz kredi. Mevcut: ${available}` });
 
-    // Geçici competitor ID
-    const tempId = `temp-${userId}-${Date.now()}`;
+    const result = await runCompetitorScan(req.userId, `temp-${req.userId}-${Date.now()}`, competitorName, city, targetSector || '', channels, Math.min(maxResults, available), country);
 
-    const result = await runCompetitorScan(userId, tempId, competitorName, city, targetSector || '', channels, Math.min(maxResults, available));
+    await supabase.from('users').update({ credits_used: (ud?.credits_used || 0) + result.saved }).eq('id', req.userId);
 
-    await supabase.from('users')
-      .update({ credits_used: (userData?.credits_used || 0) + result.saved })
-      .eq('id', userId);
-
-    res.json({
-      message: `${result.saved} yeni lead bulundu! (${result.skipped} tekrar atlandı)`,
-      count: result.saved,
-      skipped: result.skipped,
-      competitor: competitorName,
-      leads: result.leads,
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+    res.json({ message: `${result.saved} yeni lead! (${result.skipped} tekrar atlandı)`, count: result.saved, skipped: result.skipped, competitor: competitorName, leads: result.leads });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Rakip analizi
 router.post('/analyze', async (req: any, res: any) => {
   try {
-    const { competitorName, city } = req.body;
+    const { competitorName, city, country = 'TR' } = req.body;
     if (!competitorName) return res.status(400).json({ error: 'competitorName zorunlu' });
 
-    const [googleResults, sikayetvarData, trustpilotData, linkedinData] = await Promise.allSettled([
-      scrapeGoogleMaps(`${competitorName} ${city || ''}`, 3),
+    const countryConf = getCountryByCode(country);
+    const { language } = countryConf;
+
+    const [googleRes, sikayetvarRes, trustpilotRes, linkedinRes, socialRes] = await Promise.allSettled([
+      scrapeGoogleMaps(`${competitorName} ${city || ''}`, 3, language),
       scrapeŞikayetVar(competitorName),
       scrapeTrustpilot(competitorName),
-      scrapeLinkedIn(`${competitorName} ${city || ''}`),
+      scrapeLinkedIn(`${competitorName} ${city || ''}`, language),
+      scrapeSocialReviews(competitorName, countryConf),
     ]);
 
-    const googlePlace = googleResults.status === 'fulfilled' ? googleResults.value[0] : null;
-    const complaints = sikayetvarData.status === 'fulfilled' ? sikayetvarData.value : null;
-    const trustpilot = trustpilotData.status === 'fulfilled' ? trustpilotData.value : null;
-    const linkedin = linkedinData.status === 'fulfilled' ? linkedinData.value[0] : null;
+    const googlePlace = googleRes.status === 'fulfilled' ? googleRes.value[0] : null;
+    const complaints = sikayetvarRes.status === 'fulfilled' ? sikayetvarRes.value : null;
+    const trustpilot = trustpilotRes.status === 'fulfilled' ? trustpilotRes.value : null;
+    const linkedin = linkedinRes.status === 'fulfilled' ? linkedinRes.value[0] : null;
+    const socialMentions = socialRes.status === 'fulfilled' ? socialRes.value.slice(0, 3) : [];
 
     const Anthropic = require('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const analysis = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
+      max_tokens: 900,
       messages: [{
         role: 'user',
-        content: `"${competitorName}" rakip analizi:
-Google Maps: ${googlePlace ? `${googlePlace.name}, Rating: ${googlePlace.rating}/5, ${googlePlace.reviewCount} yorum` : 'Bulunamadı'}
+        content: `Rakip analizi: "${competitorName}" — ${city || ''} (${countryConf.name})
+Google Maps: ${googlePlace ? `Rating: ${googlePlace.rating}/5, ${googlePlace.reviewCount} yorum` : 'Bulunamadı'}
 Şikayetvar: ${complaints ? `${complaints.complaintCount} şikayet` : 'Veri yok'}
 Trustpilot: ${trustpilot ? `Rating: ${trustpilot.rating}` : 'Veri yok'}
 LinkedIn: ${linkedin ? linkedin.name : 'Veri yok'}
+Sosyal Medya Şikayetleri: ${socialMentions.length} paylaşım bulundu
 
 SADECE JSON döndür:
 {
-  "weaknesses": ["zayıflık 1", "zayıflık 2"],
-  "opportunities": ["fırsat 1", "fırsat 2"],
-  "customerComplaints": ["şikayet 1"],
+  "weaknesses": ["zayıflık 1","zayıflık 2","zayıflık 3"],
+  "opportunities": ["fırsat 1","fırsat 2","fırsat 3"],
+  "customerComplaints": ["şikayet 1","şikayet 2"],
   "targetCustomerProfile": "hedef müşteri profili",
-  "suggestedWhatsApp": "WhatsApp mesaj taslağı (max 200 karakter)",
+  "suggestedWhatsApp": "WhatsApp mesaj taslağı max 200 karakter",
   "suggestedEmail": "email konu satırı",
-  "competitorStrength": "güçlü yönleri"
-}`,
+  "competitorStrength": "güçlü yönleri",
+  "threatLevel": "low|medium|high"
+}`
       }],
     });
 
@@ -555,21 +497,18 @@ SADECE JSON döndür:
       found: !!(googlePlace || complaints),
       competitor: { name: googlePlace?.name || competitorName, ...googlePlace },
       channels: { googleMaps: googlePlace, sikayetvar: complaints, trustpilot, linkedin },
+      socialMentions,
       analysis: jsonMatch ? JSON.parse(jsonMatch[0]) : null,
+      country: countryConf.name,
     });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Rakip kaynaklı leadleri getir
 router.get('/leads', async (req: any, res: any) => {
   try {
-    const userId = req.userId;
-    const { data, error } = await supabase
-      .from('leads').select('*').eq('user_id', userId)
-      .ilike('source', 'Rakip:%')
-      .order('created_at', { ascending: false }).limit(100);
+    const { data, error } = await supabase.from('leads').select('*')
+      .eq('user_id', req.userId).ilike('source', 'Rakip:%')
+      .order('created_at', { ascending: false }).limit(200);
     if (error) throw error;
     const grouped: Record<string, any[]> = {};
     (data || []).forEach((lead: any) => {
@@ -578,56 +517,36 @@ router.get('/leads', async (req: any, res: any) => {
       grouped[competitor].push(lead);
     });
     res.json({ total: data?.length || 0, grouped, leads: data || [] });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ── OTOMATİK GÜNLÜK TARAMA ────────────────────────────────
-async function dailyScanAllUsers() {
-  console.log('Daily competitor scan started...');
-  try {
-    const { data: allCompetitors } = await supabase
-      .from('competitors')
-      .select('*, users!inner(credits_total, credits_used)')
-      .eq('auto_scan', true);
+router.get('/countries', (_req: any, res: any) => {
+  const { getAllCountries, REGION_LABELS } = require('../config/countries');
+  const countries = getAllCountries();
+  res.json({ countries, regionLabels: REGION_LABELS });
+});
 
+// ── DAILY AUTO-SCAN ───────────────────────────────────────────────────────────
+async function dailyScanAllUsers() {
+  try {
+    const { data: allCompetitors } = await supabase.from('competitors')
+      .select('*, users!inner(credits_total, credits_used)').eq('auto_scan', true);
     for (const comp of (allCompetitors || [])) {
       try {
         const available = (comp.users?.credits_total || 0) - (comp.users?.credits_used || 0);
         if (available < 5) continue;
-
-        const result = await runCompetitorScan(
-          comp.user_id, comp.id, comp.name, comp.city, comp.sector, comp.channels, 10
-        );
-
-        await supabase.from('users')
-          .update({ credits_used: (comp.users?.credits_used || 0) + result.saved })
-          .eq('id', comp.user_id);
-
-        console.log(`Daily scan: ${comp.name} → ${result.saved} new leads`);
+        const result = await runCompetitorScan(comp.user_id, comp.id, comp.name, comp.city, comp.sector, comp.channels, 10, comp.country || 'TR');
+        const { data: fresh } = await supabase.from('users').select('credits_used').eq('id', comp.user_id).single();
+        await supabase.from('users').update({ credits_used: (fresh?.credits_used || 0) + result.saved }).eq('id', comp.user_id);
         await sleep(3000);
-      } catch (e: any) {
-        console.error(`Daily scan failed for ${comp.name}:`, e.message);
-      }
+      } catch (e: any) { console.error(`Daily scan failed for ${comp.name}:`, e.message); }
     }
-  } catch (e: any) {
-    console.error('Daily scan error:', e.message);
-  }
+  } catch (e: any) { console.error('Daily scan error:', e.message); }
 }
 
-// Her gece 02:00'de çalıştır
-const now = new Date();
-const nextRun = new Date();
+const now = new Date(), nextRun = new Date();
 nextRun.setHours(2, 0, 0, 0);
 if (nextRun <= now) nextRun.setDate(nextRun.getDate() + 1);
-const msUntilNextRun = nextRun.getTime() - now.getTime();
-
-setTimeout(() => {
-  dailyScanAllUsers();
-  setInterval(dailyScanAllUsers, 24 * 60 * 60 * 1000);
-}, msUntilNextRun);
-
-console.log(`Daily competitor scan scheduled for ${nextRun.toLocaleString('tr-TR')}`);
+setTimeout(() => { dailyScanAllUsers(); setInterval(dailyScanAllUsers, 86400000); }, nextRun.getTime() - now.getTime());
 
 module.exports = router;
