@@ -246,17 +246,106 @@ async function searchViaBing(query: string, langCode: string, countryCode: strin
   }
 }
 
-// ── MASTER SEARCH: DDG → Bing → Google direct (no API keys needed) ────────────
-async function scrapeGoogleSearch(query: string, langCode = 'tr', googleDomain = 'google.com', countryCode = 'TR'): Promise<any[]> {
-  // 1. DuckDuckGo (best: free, stable, no blocking)
+// ── PERPLEXITY SEARCH (primary — API, no IP blocking, LinkedIn/FB/IG indexed) ──
+// Uses Perplexity's PerplexityBot which has already crawled and indexed LinkedIn,
+// Facebook, Instagram and all major platforms. search_domain_filter restricts
+// results to specific domains. Works globally from any IP.
+async function searchViaPerplexity(
+  query: string,
+  domainFilter: string[],
+  langCode: string,
+  countryCode: string
+): Promise<any[]> {
+  const key = process.env.PERPLEXITY_API_KEY;
+  if (!key) return [];
+
+  try {
+    const langHint = `Language: ${langCode}, Country: ${countryCode}.`;
+    const prompt = `${langHint}
+Find businesses, companies or individuals related to this query: "${query}"
+
+Return ONLY a valid JSON array (max 8 items), no other text:
+[{"name":"Company or Person Name","url":"https://exact-url","description":"brief description","phone":"if visible"}]
+
+Requirements:
+- Only include results with a real URL
+- Skip directories, aggregator sites, and ads
+- Focus on actual businesses or people that could be leads`;
+
+    const body: any = {
+      model: 'sonar',
+      messages: [
+        { role: 'system', content: 'You are a lead generation assistant. Return only valid JSON arrays, nothing else.' },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 1200,
+      temperature: 0.1,
+    };
+
+    if (domainFilter.length > 0) {
+      body.search_domain_filter = domainFilter.slice(0, 10); // max 10 domains
+    }
+
+    const res = await axios.post('https://api.perplexity.ai/chat/completions', body, {
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      timeout: 30000,
+    });
+
+    const content: string = res.data.choices?.[0]?.message?.content || '';
+    const citations: string[] = res.data.citations || [];
+
+    // Parse JSON array from response
+    const match = content.match(/\[[\s\S]*\]/);
+    const parsed: any[] = match ? JSON.parse(match[0]) : [];
+
+    const results: any[] = parsed
+      .filter((item: any) => item.name && item.url)
+      .map((item: any) => ({
+        name: String(item.name || '').trim(),
+        website: String(item.url || '').trim(),
+        phone: cleanPhone(String(item.phone || '')),
+        notes: String(item.description || '').slice(0, 200),
+        source_channel: domainFilter.length === 1
+          ? domainFilter[0].replace('.com', '').replace('.', ' ').toUpperCase()
+          : 'Perplexity',
+        type: 'business',
+      }));
+
+    // Supplement with raw citations if response was sparse
+    if (results.length < 3 && citations.length > 0) {
+      citations.slice(0, 6).forEach((url: string) => {
+        if (!results.some(r => r.website === url)) {
+          const nameParts = url.replace(/https?:\/\/(www\.)?/, '').split('/').filter(Boolean);
+          const name = nameParts.slice(1).join(' ').replace(/-/g, ' ') || nameParts[0] || url;
+          results.push({ name: name.slice(0, 60), website: url, notes: '', source_channel: 'Perplexity', type: 'business' });
+        }
+      });
+    }
+
+    return results.slice(0, 8);
+  } catch (e: any) {
+    console.error('Perplexity search:', e.message?.slice(0, 80));
+    return [];
+  }
+}
+
+// ── MASTER SEARCH: Perplexity → DDG → Bing → Google direct ───────────────────
+async function scrapeGoogleSearch(query: string, langCode = 'tr', googleDomain = 'google.com', countryCode = 'TR', domains: string[] = []): Promise<any[]> {
+  // 1. Perplexity (best — official API, LinkedIn indexed, no IP blocking)
+  if (process.env.PERPLEXITY_API_KEY) {
+    const p = await searchViaPerplexity(query, domains, langCode, countryCode);
+    if (p.length > 0) return p;
+  }
+
+  // 2. DuckDuckGo (free, no API key, but may block datacenter IPs)
   const ddg = await searchViaDDG(query, langCode, countryCode);
   if (ddg.length > 0) return ddg;
 
-  // 2. Bing (reliable fallback, less bot detection than Google)
+  // 3. Bing fallback
   const bing = await searchViaBing(query, langCode, countryCode);
   if (bing.length > 0) return bing;
 
-  // 3. Google direct (last resort — may be blocked on Railway IPs)
+  // 4. Google direct (last resort)
   try {
     const url = `https://www.${googleDomain}/search?q=${encodeURIComponent(query)}&num=10&hl=${langCode}&pws=0`;
     const res = await axios.get(url, {
@@ -266,7 +355,6 @@ async function scrapeGoogleSearch(query: string, langCode = 'tr', googleDomain =
     const $ = cheerio.load(res.data);
     const results: any[] = [];
     const seen = new Set<string>();
-    // 2024+ Google: <a> with <h3> inside
     $('a').each((_: any, el: any) => {
       const $el = $(el);
       if (!$el.find('h3').length) return;
@@ -285,8 +373,8 @@ async function scrapeSocialReviews(competitorName: string, country: any): Promis
   const results: any[] = [];
   try {
     const [fb, ig] = await Promise.allSettled([
-      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:facebook.com`, language, googleDomain, code),
-      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:instagram.com`, language, googleDomain, code),
+      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:facebook.com`, language, googleDomain, code, ['facebook.com']),
+      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:instagram.com`, language, googleDomain, code, ['instagram.com']),
     ]);
     if (fb.status === 'fulfilled') fb.value.filter((r: any) => !r.url.includes('/posts/')).forEach((r: any) => results.push({
       name: r.title.replace('| Facebook', '').replace('- Facebook', '').trim(),
@@ -308,7 +396,7 @@ async function scrapeSocialReviews(competitorName: string, country: any): Promis
 // ── LINKEDIN ─────────────────────────────────────────────────────────────────
 async function scrapeLinkedIn(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
   try {
-    const results = await scrapeGoogleSearch(`${query} site:linkedin.com/in OR site:linkedin.com/company`, langCode, googleDomain, countryCode);
+    const results = await scrapeGoogleSearch(`${query} site:linkedin.com/in OR site:linkedin.com/company`, langCode, googleDomain, countryCode, ['linkedin.com']);
     return results.filter((r: any) => r.url.includes('linkedin.com')).map((r: any) => ({
       name: r.title.replace('| LinkedIn', '').replace('- LinkedIn', '').trim(),
       website: r.url, notes: r.snippet,
@@ -321,7 +409,7 @@ async function scrapeLinkedIn(query: string, langCode: string, googleDomain: str
 // ── FACEBOOK ─────────────────────────────────────────────────────────────────
 async function scrapeFacebook(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
   try {
-    const results = await scrapeGoogleSearch(`${query} site:facebook.com`, langCode, googleDomain, countryCode);
+    const results = await scrapeGoogleSearch(`${query} site:facebook.com`, langCode, googleDomain, countryCode, ['facebook.com']);
     return results.filter((r: any) => r.url.includes('facebook.com') && !r.url.includes('/posts/')).map((r: any) => ({
       name: r.title.replace('| Facebook', '').replace('- Facebook', '').trim(),
       website: r.url, notes: r.snippet, type: 'business', source_channel: 'Facebook',
@@ -333,7 +421,7 @@ async function scrapeFacebook(query: string, langCode: string, googleDomain: str
 async function scrapeInstagram(keyword: string, country: any): Promise<any[]> {
   const { language, queries, googleDomain, code } = country;
   try {
-    const results = await scrapeGoogleSearch(`${keyword} ${queries.business} site:instagram.com`, language, googleDomain, code);
+    const results = await scrapeGoogleSearch(`${keyword} ${queries.business} site:instagram.com`, language, googleDomain, code, ['instagram.com']);
     return results.filter((r: any) => r.url.includes('instagram.com')).map((r: any) => {
       const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
       return { name: r.title.replace('• Instagram', '').trim(), instagram: `https://instagram.com/${username}`, website: `https://instagram.com/${username}`, notes: r.snippet, type: 'person_or_business', source_channel: 'Instagram' };
@@ -344,7 +432,7 @@ async function scrapeInstagram(keyword: string, country: any): Promise<any[]> {
 // ── LOCAL COMPLAINT SITE ──────────────────────────────────────────────────────
 async function scrapeComplaintSite(competitorName: string, site: { id: string; name: string; domain: string }, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
   try {
-    const results = await scrapeGoogleSearch(`"${competitorName}" site:${site.domain}`, langCode, googleDomain, countryCode);
+    const results = await scrapeGoogleSearch(`"${competitorName}" site:${site.domain}`, langCode, googleDomain, countryCode, [site.domain]);
     return results.filter((r: any) => r.url.includes(site.domain)).map((r: any) => ({
       name: r.title.split('|')[0].split('-')[0].trim(),
       website: r.url, notes: r.snippet, type: 'person',
@@ -357,8 +445,8 @@ async function scrapeComplaintSite(competitorName: string, site: { id: string; n
 async function scrapeInternational(query: string): Promise<any[]> {
   const results: any[] = [];
   const [k, e] = await Promise.allSettled([
-    scrapeGoogleSearch(`${query} site:kompass.com`, 'en', 'google.com', 'US'),
-    scrapeGoogleSearch(`${query} site:europages.com`, 'en', 'google.com', 'US'),
+    scrapeGoogleSearch(`${query} site:kompass.com`, 'en', 'google.com', 'US', ['kompass.com']),
+    scrapeGoogleSearch(`${query} site:europages.com`, 'en', 'google.com', 'US', ['europages.com']),
   ]);
   if (k.status === 'fulfilled') results.push(...k.value.filter((r: any) => r.url.includes('kompass.com')).map((r: any) => ({
     name: r.title, website: r.url, notes: r.snippet, type: 'business', source_channel: 'Kompass B2B',
