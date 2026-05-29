@@ -8,10 +8,14 @@ const { getCountryByCode } = require('../config/countries');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const GOOGLE_API_KEY  = process.env.GOOGLE_PLACES_API_KEY;
-const EXA_API_KEY     = process.env.EXA_API_KEY;     // exa.ai — 1B+ LinkedIn, 1000/mo free → dashboard.exa.ai
-const BRAVE_API_KEY   = process.env.BRAVE_API_KEY;   // brave.com/search/api — 1000/mo free
-const SERPER_API_KEY  = process.env.SERPER_API_KEY;  // serper.dev — $1/1000, best price for Google → serper.dev
-const TAVILY_API_KEY  = process.env.TAVILY_API_KEY;  // tavily.com — 1000/mo free, LinkedIn profile search
+const EXA_API_KEY     = process.env.EXA_API_KEY;      // exa.ai — 1B+ LinkedIn, 1000/mo free
+const BRAVE_API_KEY   = process.env.BRAVE_API_KEY;    // brave.com/search/api — 1000/mo free
+const SERPER_API_KEY  = process.env.SERPER_API_KEY;   // serper.dev — $1/1000, best price for Google
+const TAVILY_API_KEY  = process.env.TAVILY_API_KEY;   // tavily.com — 1000/mo free
+// Meta Graph API (resmi Facebook + Instagram API — ücretsiz)
+// Kurulum: developers.facebook.com → App oluştur → App Access Token al
+// App Token formatı: APP_ID|APP_SECRET
+const META_APP_TOKEN  = process.env.META_GRAPH_TOKEN || process.env.META_WA_TOKEN;
 
 // DuckDuckGo locale codes per country (kl parameter)
 const DDG_KL: Record<string, string> = {
@@ -467,27 +471,102 @@ async function scrapeLinkedIn(query: string, langCode: string, googleDomain: str
   } catch { return []; }
 }
 
-// ── FACEBOOK ─────────────────────────────────────────────────────────────────
+// ── FACEBOOK — Meta Graph API (resmi, ücretsiz) ───────────────────────────────
+// Graph API sayfa araması: App Access Token gerekli
+// Token: developers.facebook.com → App → Settings → Basic → App ID + Secret
+// App Token = APP_ID|APP_SECRET (client credentials grant)
 async function scrapeFacebook(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
-  try {
-    const results = await scrapeGoogleSearch(`${query} site:facebook.com`, langCode, googleDomain, countryCode, ['facebook.com']);
-    return results.filter((r: any) => r.url.includes('facebook.com') && !r.url.includes('/posts/')).map((r: any) => ({
-      name: r.title.replace('| Facebook', '').replace('- Facebook', '').trim(),
-      website: r.url, notes: r.snippet, type: 'business', source_channel: 'Facebook',
-    }));
-  } catch { return []; }
+  // 1. Meta Graph API — resmi, engelsiz, ücretsiz
+  if (META_APP_TOKEN) {
+    try {
+      const url = `https://graph.facebook.com/v19.0/search`;
+      const res = await axios.get(url, {
+        params: {
+          type: 'page',
+          q: query,
+          fields: 'name,link,website,phone,location,category,fan_count',
+          access_token: META_APP_TOKEN,
+          limit: 10,
+        },
+        timeout: 12000,
+      });
+      const pages = (res.data?.data || []).filter((p: any) => p.name);
+      if (pages.length > 0) {
+        return pages.map((p: any) => ({
+          name: p.name,
+          website: p.website || p.link || `https://facebook.com/${p.id}`,
+          phone: cleanPhone(p.phone || ''),
+          address: p.location?.city || '',
+          notes: p.category || '',
+          source_channel: 'Facebook Sayfaları',
+          type: 'business',
+        }));
+      }
+    } catch (e: any) { console.error('Meta Graph Facebook:', e.message?.slice(0, 80)); }
+  }
+
+  // 2. Fallback: Exa/Brave/Serper ile Facebook araması
+  const results = await scrapeGoogleSearch(`${query} site:facebook.com`, langCode, googleDomain, countryCode, ['facebook.com']);
+  return results.filter((r: any) => r.url.includes('facebook.com') && !r.url.includes('/posts/')).map((r: any) => ({
+    name: r.name || r.title?.replace('| Facebook', '').replace('- Facebook', '').trim() || '',
+    website: r.website || r.url,
+    notes: r.notes || r.snippet || '',
+    type: 'business',
+    source_channel: 'Facebook',
+  }));
 }
 
-// ── INSTAGRAM ────────────────────────────────────────────────────────────────
+// ── INSTAGRAM — Meta Graph API (resmi) + Exa/arama fallback ─────────────────
+// Instagram Graph API: İşletme hesapları için username araması
+// Not: Instagram keyword search için Facebook App Review gerekiyor
+// Exa.ai Instagram profillerini de indexledi — daha pratik
 async function scrapeInstagram(keyword: string, country: any): Promise<any[]> {
   const { language, queries, googleDomain, code } = country;
-  try {
-    const results = await scrapeGoogleSearch(`${keyword} ${queries.business} site:instagram.com`, language, googleDomain, code, ['instagram.com']);
-    return results.filter((r: any) => r.url.includes('instagram.com')).map((r: any) => {
-      const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
-      return { name: r.title.replace('• Instagram', '').trim(), instagram: `https://instagram.com/${username}`, website: `https://instagram.com/${username}`, notes: r.snippet, type: 'person_or_business', source_channel: 'Instagram' };
-    });
-  } catch { return []; }
+
+  // 1. Meta Graph API — Instagram hashtag/işletme araması
+  // Not: IG keyword search için "instagram_basic" izni gerekiyor (App Review)
+  // Şimdilik Exa/arama ile devam ediyoruz, Meta token'ı gelince otomatik aktif olur
+  if (META_APP_TOKEN) {
+    try {
+      // Instagram iş hesabı araması için Facebook Pages üzerinden erişim
+      // "instagram_business_basic" permission gerekiyor — token'ınız varsa çalışır
+      const res = await axios.get('https://graph.facebook.com/v19.0/search', {
+        params: {
+          type: 'page',
+          q: `${keyword} instagram`,
+          fields: 'name,link,instagram_business_account',
+          access_token: META_APP_TOKEN,
+          limit: 10,
+        },
+        timeout: 10000,
+      });
+      const pages = (res.data?.data || []).filter((p: any) => p.instagram_business_account);
+      if (pages.length > 0) {
+        return pages.map((p: any) => ({
+          name: p.name,
+          website: p.link || '',
+          instagram: `https://instagram.com/${p.instagram_business_account?.username || ''}`,
+          notes: 'Instagram işletme hesabı',
+          source_channel: 'Instagram (Meta API)',
+          type: 'business',
+        }));
+      }
+    } catch { /* Instagram Graph requires review — fallback to search */ }
+  }
+
+  // 2. Fallback: Exa/Brave/Serper ile Instagram araması
+  const results = await scrapeGoogleSearch(`${keyword} ${queries.business} site:instagram.com`, language, googleDomain, code, ['instagram.com']);
+  return results.filter((r: any) => r.url.includes('instagram.com')).map((r: any) => {
+    const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
+    return {
+      name: r.name || r.title?.replace('• Instagram', '').trim() || '',
+      instagram: `https://instagram.com/${username}`,
+      website: `https://instagram.com/${username}`,
+      notes: r.notes || r.snippet || '',
+      type: 'person_or_business',
+      source_channel: 'Instagram',
+    };
+  });
 }
 
 // ── LOCAL COMPLAINT SITE ──────────────────────────────────────────────────────
