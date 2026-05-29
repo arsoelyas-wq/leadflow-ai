@@ -374,7 +374,6 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
     console.log(`[DMFinder] Trying website scraping for "${company_name}"`);
     const webDM = await scrapeWebsiteDM(website, company_name);
     if (webDM) {
-      // Enrich email if we have a name
       if (!webDM.email && webDM.firstName && domain) {
         webDM.email = await hunterEmailFinder(webDM.firstName, webDM.lastName, domain)
                    || await guessEmail(webDM.firstName, webDM.lastName, domain);
@@ -382,6 +381,69 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
       if (webDM.fullName || webDM.email) {
         results = [webDM];
         await saveDMToLead(lead, userId, webDM);
+      }
+    }
+  }
+
+  // ── C: Exa.ai LinkedIn Search (1B+ profil) ────────────────────────────────
+  if (results.length === 0) {
+    const EXA_KEY = process.env.EXA_API_KEY;
+    console.log(`[DMFinder] Exa LinkedIn: key=${EXA_KEY ? 'SET' : 'MISSING'}`);
+    if (EXA_KEY) {
+      try {
+        const short = company_name.replace(/\s+(A\.Ş\.|Ltd\.?|Ş\.?T\.?İ\.?|ve Tic\.?|San\.?).*$/i, '').trim().slice(0, 50);
+        const queries = [
+          `${short} CEO kurucu "genel müdür" founder director`,
+          `${short} müdür manager sahib owner`,
+          `${short}`,
+        ];
+        for (const q of queries) {
+          const res = await axios.post('https://api.exa.ai/search', {
+            query: q,
+            numResults: 5,
+            type: 'neural',
+            useAutoprompt: true,
+            includeDomains: ['linkedin.com'],
+          }, {
+            headers: { 'x-api-key': EXA_KEY, 'Content-Type': 'application/json' },
+            timeout: 20000,
+          });
+
+          const hits = (res.data.results || []).filter((r: any) => r.url?.includes('linkedin.com/in/'));
+          console.log(`[DMFinder] Exa "${q.slice(0,50)}": ${hits.length} profil`);
+
+          for (const hit of hits.slice(0, 2)) {
+            // "Ad Soyad - Unvan | LinkedIn" → parse
+            const parts = (hit.title || '').replace(/\s*\|\s*LinkedIn.*$/i, '').split(/\s*[-–]\s*/);
+            const fullName = parts[0]?.trim() || '';
+            const title    = parts[1]?.replace(/\s+at\s+.*/i, '').trim() || null;
+            const nameParts = fullName.split(' ');
+            if (fullName.length > 3) {
+              const dm: DMResult = {
+                firstName:   nameParts[0] || '',
+                lastName:    nameParts.slice(1).join(' ') || '',
+                fullName,
+                title,
+                email:       null,
+                phone:       null,
+                linkedinUrl: hit.url,
+                confidence:  title ? 60 : 40,
+                source:      'Exa LinkedIn',
+              };
+              if (!dm.email && dm.firstName && domain) {
+                dm.email = await hunterEmailFinder(dm.firstName, dm.lastName, domain)
+                        || await guessEmail(dm.firstName, dm.lastName, domain);
+              }
+              results.push(dm);
+              await saveDMToLead(lead, userId, dm);
+              break;
+            }
+          }
+          if (results.length > 0) break;
+          await sleep(300);
+        }
+      } catch (e: any) {
+        console.error('[DMFinder] Exa hata:', e.response?.status, e.message?.slice(0, 60));
       }
     }
   }
