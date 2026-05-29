@@ -378,15 +378,15 @@ async function scrapeGoogleSearch(
   countryCode = 'TR', domains: string[] = []
 ): Promise<any[]> {
 
-  // 1. Exa.ai — LinkedIn için MÜKEMMEL (1B+ profil, 1000/ay ücretsiz)
-  if (EXA_API_KEY) {
-    const r = await searchViaExa(query, domains, langCode, countryCode);
+  // 1. Tavily — Rakip Hijacking için birincil (1000/ay ücretsiz, domain filtresi)
+  if (TAVILY_API_KEY) {
+    const r = await searchViaTavily(query, domains, countryCode);
     if (r.length > 0) return r;
   }
 
-  // 2. Tavily — LinkedIn profil araması + genel web (1000/ay ücretsiz)
-  if (TAVILY_API_KEY) {
-    const r = await searchViaTavily(query, domains, countryCode);
+  // 2. Exa.ai — Tavily yoksa LinkedIn için fallback
+  if (EXA_API_KEY) {
+    const r = await searchViaExa(query, domains, langCode, countryCode);
     if (r.length > 0) return r;
   }
 

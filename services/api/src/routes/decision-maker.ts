@@ -500,61 +500,27 @@ async function findViaLinkedInGoogle(companyName: string): Promise<DecisionMaker
   return findViaGoogleLinkedIn(companyName);
 }
 
-// ── LinkedIn Arama: Exa.ai (birincil) → Serper.dev → Google CSE (yedek) ────────
-// Google CSE suspend edildi. Exa.ai 1B+ LinkedIn profili index'ledi.
-
+// ── LinkedIn Arama: Sadece Exa.ai (1B+ profil, neural search) ────────────────
 async function linkedInSearch(query: string, num = 8): Promise<Array<{ title: string; url: string; snippet: string }>> {
-  // 1. Exa.ai — LinkedIn için en iyi (1B+ profil, neural search)
-  if (EXA_API_KEY) {
-    try {
-      const res = await axios.post('https://api.exa.ai/search', {
-        query,
-        numResults: num,
-        type: 'neural',
-        useAutoprompt: true,
-        includeDomains: ['linkedin.com'],
-      }, {
-        headers: { 'x-api-key': EXA_API_KEY, 'Content-Type': 'application/json' },
-        timeout: 20000,
-      });
-      const items = (res.data.results || [])
-        .filter((r: any) => r.url?.includes('linkedin.com/in/'))
-        .map((r: any) => ({ title: r.title || '', url: r.url || '', snippet: r.text?.slice(0, 200) || '' }));
-      if (items.length > 0) return items;
-    } catch (e: any) { console.error('Exa LinkedIn:', e.message?.slice(0, 60)); }
-  }
-
-  // 2. Serper.dev — Google indexi üzerinden LinkedIn araması
-  if (SERPER_API_KEY) {
-    try {
-      const res = await axios.post('https://google.serper.dev/search', {
-        q: query, num, hl: 'tr', gl: 'tr',
-      }, {
-        headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
-        timeout: 8000,
-      });
-      const items = (res.data?.organic || [])
-        .filter((i: any) => i.link?.includes('linkedin.com'))
-        .map((i: any) => ({ title: i.title || '', url: i.link || '', snippet: i.snippet || '' }));
-      if (items.length > 0) return items;
-    } catch (e: any) { console.error('Serper LinkedIn:', e.message?.slice(0, 60)); }
-  }
-
-  // 3. Google CSE (eski, suspend edilmiş — yedek olarak kalıyor)
-  if (GOOGLE_CSE_KEY && GOOGLE_CSE_ID) {
-    try {
-      const resp = await axios.get('https://www.googleapis.com/customsearch/v1', {
-        params: { key: GOOGLE_CSE_KEY, cx: GOOGLE_CSE_ID, q: query, num: Math.min(num, 10), hl: 'tr', gl: 'tr' },
-        timeout: 8000,
-      });
-      return (resp.data.items || []).map((i: any) => ({ title: i.title || '', url: i.link || '', snippet: i.snippet || '' }));
-    } catch { return []; }
-  }
-
-  return [];
+  if (!EXA_API_KEY) return [];
+  try {
+    const res = await axios.post('https://api.exa.ai/search', {
+      query,
+      numResults: num,
+      type: 'neural',
+      useAutoprompt: true,
+      includeDomains: ['linkedin.com'],
+    }, {
+      headers: { 'x-api-key': EXA_API_KEY, 'Content-Type': 'application/json' },
+      timeout: 20000,
+    });
+    return (res.data.results || [])
+      .filter((r: any) => r.url?.includes('linkedin.com/in/'))
+      .map((r: any) => ({ title: r.title || '', url: r.url || '', snippet: r.text?.slice(0, 200) || '' }));
+  } catch (e: any) { console.error('Exa LinkedIn:', e.message?.slice(0, 60)); return []; }
 }
 
-// Legacy alias — Google CSE suspend sonrası yeni fonksiyonu çağırır
+// Legacy alias
 async function googleCSE(query: string, num = 10): Promise<Array<{ title: string; url: string; snippet: string }>> {
   return linkedInSearch(query, num);
 }
