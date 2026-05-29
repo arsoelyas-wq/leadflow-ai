@@ -7,8 +7,24 @@ const { getCountryByCode } = require('../config/countries');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const GOOGLE_API_KEY  = process.env.GOOGLE_PLACES_API_KEY;
-const APIFY_TOKEN     = process.env.APIFY_TOKEN;
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+
+// DuckDuckGo locale codes per country (kl parameter)
+const DDG_KL: Record<string, string> = {
+  TR:'tr-tr', US:'us-en', GB:'uk-en', DE:'de-de', FR:'fr-fr', ES:'es-es',
+  IT:'it-it', NL:'nl-nl', PL:'pl-pl', SE:'se-sv', NO:'no-no', DK:'dk-da',
+  FI:'fi-fi', CH:'ch-de', AT:'at-de', BE:'be-nl', PT:'pt-pt', GR:'gr-el',
+  RO:'ro-ro', CZ:'cz-cs', HU:'hu-hu', IE:'ie-en', HR:'hr-hr', SK:'sk-sk',
+  BG:'bg-bg', UA:'uk-ua',
+  // Americas
+  BR:'br-pt', MX:'mx-es', AR:'ar-es', CL:'cl-es', CO:'co-es',
+  PE:'pe-es', VE:'ve-es', EC:'ec-es', BO:'bo-es', PY:'py-es', UY:'uy-es',
+  CA:'ca-en',
+  // Arab / MENA → xa-ar covers all Arabic locales
+  SA:'xa-ar', AE:'xa-ar', EG:'xa-ar', QA:'xa-ar', KW:'xa-ar', BH:'xa-ar',
+  OM:'xa-ar', JO:'xa-ar', LB:'xa-ar', IQ:'xa-ar', MA:'xa-ar', DZ:'xa-ar',
+  TN:'xa-ar', LY:'xa-ar', SD:'xa-ar', YE:'xa-ar', SY:'xa-ar', PS:'xa-ar',
+};
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function cleanPhone(p: string): string { return (p || '').replace(/\s/g, '').replace(/[^\d+]/g, ''); }
@@ -116,44 +132,74 @@ async function scrapeGoogleReviews(competitorName: string, city: string, langCod
   } catch { return []; }
 }
 
-// ── GOOGLE SEARCH via Apify (reliable, works globally) ───────────────────────
-async function searchViaApify(query: string, langCode: string, countryCode: string): Promise<any[]> {
-  if (!APIFY_TOKEN) return [];
+// ── DUCKDUCKGO SEARCH (free, no API key, stable HTML, 75 countries) ───────────
+// Confirmed working: curl POST with minimal q+kl params returns .result__a elements
+async function searchViaDDG(query: string, langCode: string, countryCode: string): Promise<any[]> {
+  const kl = DDG_KL[countryCode.toUpperCase()] || 'wt-wt';
   try {
-    const { ApifyClient } = require('apify-client');
-    const client = new ApifyClient({ token: APIFY_TOKEN });
-    const run = await Promise.race([
-      client.actor('apify/google-search-scraper').call({
-        queries: query,
-        languageCode: langCode.toLowerCase().slice(0, 2),
-        countryCode: countryCode.toUpperCase().slice(0, 2),
-        maxPagesPerQuery: 1,
-        resultsPerPage: 10,
-        customDataFunction: 'async ({ input, $, contentType, request, response }) => { return { organicResults: $(".g").map((i,el) => ({ title: $(el).find("h3").text(), url: $(el).find("a").attr("href"), description: $(el).find("[data-sncf],.VwiC3b").text() })).toArray() }; }',
-      }),
-      new Promise<never>((_, r) => setTimeout(() => r(new Error('Apify timeout')), 45_000)),
-    ]) as any;
-    const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: 10 });
-    return (items || []).flatMap((item: any) =>
-      (item.organicResults || []).slice(0, 8)
-        .filter((r: any) => r.url?.startsWith('http') && !r.url?.includes('google.com') && r.title)
-        .map((r: any) => ({ title: r.title || '', url: r.url || '', snippet: r.description || '' }))
+    // CRITICAL: only send q and kl — extra params (o, api, dc) break the HTML response
+    const body = `q=${encodeURIComponent(query)}&kl=${kl}`;
+    const res = await axios.post(
+      'https://html.duckduckgo.com/html/',
+      body,
+      {
+        headers: {
+          'User-Agent': randUA(),
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': `${langCode},en;q=0.7`,
+          'Referer': 'https://duckduckgo.com/',
+          'Origin': 'https://duckduckgo.com',
+        },
+        timeout: 14000,
+      }
     );
-  } catch (e: any) { console.error('Apify Search:', e.message); return []; }
+    const $ = cheerio.load(res.data);
+    const results: any[] = [];
+    const seen = new Set<string>();
+
+    // DDG HTML structure (stable): .result__body > a.result__a[href] + .result__snippet
+    $('.result__body').each((_: any, el: any) => {
+      const $el = $(el);
+      const $a = $el.find('.result__a').first();
+      const href = $a.attr('href') || '';
+      const title = $a.text().trim();
+      const snippet = $el.find('.result__snippet').first().text().trim();
+      if (title && href.startsWith('http') && !href.includes('duckduckgo') && !seen.has(href)) {
+        seen.add(href);
+        results.push({ title, url: href, snippet });
+      }
+    });
+
+    // Fallback: any anchor with result class
+    if (results.length === 0) {
+      $('a.result__a[href^="http"], a[class*="result"][href^="http"]').each((_: any, el: any) => {
+        const href = $(el).attr('href') || '';
+        const title = $(el).text().trim();
+        if (title && !href.includes('duckduckgo') && !seen.has(href)) {
+          seen.add(href);
+          results.push({ title, url: href, snippet: '' });
+        }
+      });
+    }
+
+    return results.slice(0, 8);
+  } catch (e: any) {
+    console.error('DDG search:', e.message?.slice(0, 60));
+    return [];
+  }
 }
 
-// ── GOOGLE SEARCH via direct scraping (improved selectors, fallback) ──────────
-async function searchViaDirect(query: string, langCode: string, googleDomain: string): Promise<any[]> {
+// ── BING SEARCH (free fallback) ───────────────────────────────────────────────
+async function searchViaBing(query: string, langCode: string, countryCode: string): Promise<any[]> {
   try {
-    const url = `https://www.${googleDomain}/search?q=${encodeURIComponent(query)}&num=10&hl=${langCode}&safe=off`;
+    const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=10`;
     const res = await axios.get(url, {
       headers: {
-        'User-Agent': randUA(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': `${langCode},en;q=0.7`,
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': `https://www.${googleDomain}/`,
-        'Connection': 'keep-alive',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.bing.com/',
         'Cache-Control': 'no-cache',
       },
       timeout: 12000,
@@ -162,63 +208,75 @@ async function searchViaDirect(query: string, langCode: string, googleDomain: st
     const results: any[] = [];
     const seen = new Set<string>();
 
-    // Strategy 1: <a> elements that contain <h3> (2024+ Google HTML)
-    $('a').each((_: any, el: any) => {
-      const $el = $(el);
-      if (!$el.find('h3').length) return;
-      const href = $el.attr('href') || '';
-      if (!href.startsWith('http') || href.includes('google.com') || seen.has(href)) return;
-      const title = $el.find('h3').first().text().trim();
-      if (!title || title.length < 3) return;
-      const snippet = $el.closest('div[data-async-type], [jscontroller]').find('[data-sncf], .VwiC3b, span').filter((_: any, s: any) => $(s).text().length > 25).first().text().trim() || '';
-      seen.add(href);
-      results.push({ title, url: href, snippet });
-    });
-
-    // Strategy 2: classic div.g (older Google HTML)
-    if (results.length === 0) {
-      $('div.g, .tF2Cxc, .MjjYud > div').each((_: any, el: any) => {
+    // Multiple Bing selectors (structure varies by response)
+    const containers = ['li.b_algo', '.b_algo', '#b_results li', 'li[class*="algo"]'];
+    for (const sel of containers) {
+      if ($(sel).length === 0) continue;
+      $(sel).each((_: any, el: any) => {
         const $el = $(el);
-        const title = $el.find('h3').first().text().trim();
-        const href = $el.find('a[href^="http"]').first().attr('href') || '';
-        const snippet = $el.find('.VwiC3b, [data-sncf]').first().text().trim();
-        if (title && href && !href.includes('google.com') && !seen.has(href)) {
+        const $a = $el.find('h2 a, h3 a').first();
+        const href = $a.attr('href') || '';
+        const title = $a.text().trim();
+        const snippet = $el.find('p, .b_caption p').first().text().trim();
+        if (title && href.startsWith('http') && !href.includes('bing.com') && !href.includes('microsoft.com') && !seen.has(href)) {
           seen.add(href);
           results.push({ title, url: href, snippet });
         }
       });
+      if (results.length > 0) break;
     }
 
-    // Strategy 3: Extract from cite elements + h3 siblings
+    // Ultimate fallback: all external <a href> with nearby h2/h3
     if (results.length === 0) {
-      $('cite').each((_: any, el: any) => {
-        const $cite = $(el);
-        const $parent = $cite.closest('div');
-        const h3 = $parent.find('h3').first().text().trim();
-        const url = $cite.text().trim();
-        if (h3 && url?.includes('.') && !url.includes('google') && !seen.has(url)) {
-          seen.add(url);
-          results.push({ title: h3, url: `https://${url.replace(/^https?:\/\//, '')}`, snippet: '' });
+      $('a[href^="https://"]').each((_: any, el: any) => {
+        const $el = $(el);
+        const href = $el.attr('href') || '';
+        const title = $el.closest('li, div').find('h2, h3').first().text().trim() || $el.text().trim();
+        if (title && title.length > 5 && !href.includes('bing.com') && !href.includes('microsoft.com') && !seen.has(href)) {
+          seen.add(href);
+          results.push({ title, url: href, snippet: '' });
         }
       });
     }
 
     return results.slice(0, 8);
   } catch (e: any) {
-    console.error(`Direct search (${googleDomain}):`, e.message?.slice(0, 80));
+    console.error('Bing search:', e.message?.slice(0, 60));
     return [];
   }
 }
 
-// ── MASTER GOOGLE SEARCH (Apify primary, direct fallback) ─────────────────────
+// ── MASTER SEARCH: DDG → Bing → Google direct (no API keys needed) ────────────
 async function scrapeGoogleSearch(query: string, langCode = 'tr', googleDomain = 'google.com', countryCode = 'TR'): Promise<any[]> {
-  // Try Apify first (reliable, globally works)
-  if (APIFY_TOKEN) {
-    const r = await searchViaApify(query, langCode, countryCode);
-    if (r.length > 0) return r;
-  }
-  // Fallback: direct scraping with improved selectors
-  return searchViaDirect(query, langCode, googleDomain);
+  // 1. DuckDuckGo (best: free, stable, no blocking)
+  const ddg = await searchViaDDG(query, langCode, countryCode);
+  if (ddg.length > 0) return ddg;
+
+  // 2. Bing (reliable fallback, less bot detection than Google)
+  const bing = await searchViaBing(query, langCode, countryCode);
+  if (bing.length > 0) return bing;
+
+  // 3. Google direct (last resort — may be blocked on Railway IPs)
+  try {
+    const url = `https://www.${googleDomain}/search?q=${encodeURIComponent(query)}&num=10&hl=${langCode}&pws=0`;
+    const res = await axios.get(url, {
+      headers: { 'User-Agent': randUA(), 'Accept-Language': `${langCode},en;q=0.7`, 'Referer': `https://www.${googleDomain}/` },
+      timeout: 10000,
+    });
+    const $ = cheerio.load(res.data);
+    const results: any[] = [];
+    const seen = new Set<string>();
+    // 2024+ Google: <a> with <h3> inside
+    $('a').each((_: any, el: any) => {
+      const $el = $(el);
+      if (!$el.find('h3').length) return;
+      const href = $el.attr('href') || '';
+      if (!href.startsWith('http') || href.includes('google') || seen.has(href)) return;
+      const title = $el.find('h3').first().text().trim();
+      if (title && title.length > 2) { seen.add(href); results.push({ title, url: href, snippet: '' }); }
+    });
+    return results.slice(0, 8);
+  } catch { return []; }
 }
 
 // ── SOCIAL REVIEWS (Facebook & Instagram complaints) ─────────────────────────
@@ -463,7 +521,7 @@ router.get('/diagnose', async (req: any, res: any) => {
   const results: Record<string, any> = {
     env: {
       GOOGLE_PLACES_API_KEY: GOOGLE_API_KEY ? '✅ set' : '❌ missing',
-      APIFY_TOKEN: APIFY_TOKEN ? '✅ set' : '❌ missing',
+      SEARCH_ENGINE: 'DuckDuckGo (primary) → Bing (fallback) → Google (last resort)',
     },
   };
 
