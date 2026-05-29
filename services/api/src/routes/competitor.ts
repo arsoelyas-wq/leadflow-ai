@@ -471,57 +471,28 @@ async function scrapeLinkedIn(query: string, langCode: string, googleDomain: str
   } catch { return []; }
 }
 
-// ── FACEBOOK — /pages/search (deprecated /search?type=page DEĞİL) ─────────────
+// ── FACEBOOK — Tavily/Exa (Graph API App Review gerektiriyor, bu yol çalışıyor)
 async function scrapeFacebook(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
-  // 1. Meta Graph API /pages/search + sayfa detayları (telefon, messenger)
-  if (META_APP_TOKEN) {
-    try {
-      const res = await axios.get('https://graph.facebook.com/v19.0/pages/search', {
-        params: { q: query, fields: 'id,name,link,website,phone,location,category,username', access_token: META_APP_TOKEN, limit: 10 },
-        timeout: 12000,
-      });
-      const pages = (res.data?.data || []).filter((p: any) => p.name);
-      if (pages.length > 0) {
-        // Her sayfa için detay çek (telefon + messenger username)
-        const enriched = await Promise.all(pages.slice(0, 8).map(async (p: any) => {
-          let phone = cleanPhone(p.phone || '');
-          let messengerLink = '';
-          try {
-            if (p.id && !phone) {
-              const detail = await axios.get(`https://graph.facebook.com/v19.0/${p.id}`, {
-                params: { fields: 'phone,username,website', access_token: META_APP_TOKEN },
-                timeout: 6000,
-              });
-              phone = cleanPhone(detail.data?.phone || '');
-              const username = detail.data?.username || p.username || '';
-              if (username) messengerLink = `https://m.me/${username}`;
-            } else if (p.username) {
-              messengerLink = `https://m.me/${p.username}`;
-            }
-          } catch {}
-          return {
-            name: p.name,
-            website: p.website || p.link || '',
-            phone,
-            address: p.location?.city || '',
-            notes: [p.category, messengerLink ? `💬 Messenger: ${messengerLink}` : ''].filter(Boolean).join(' | '),
-            source_channel: 'Facebook',
-            type: 'business',
-          };
-        }));
-        return enriched;
-      }
-    } catch (e: any) {
-      console.error('Facebook pages/search:', e.response?.data?.error?.message || e.message?.slice(0, 80));
-    }
-  }
-  // 2. Tavily/Exa/Serper ile Facebook araması
-  const results = await scrapeGoogleSearch(`${query} site:facebook.com`, langCode, googleDomain, countryCode, ['facebook.com']);
-  return results.filter((r: any) => r.url?.includes('facebook.com') && !r.url.includes('/posts/')).map((r: any) => ({
-    name: r.name || r.title?.replace('| Facebook', '').replace('- Facebook', '').trim() || '',
-    website: r.website || r.url, notes: r.notes || r.snippet || '',
-    type: 'business', source_channel: 'Facebook',
-  }));
+  const q = query + ' site:facebook.com';
+  const results = await scrapeGoogleSearch(q, langCode, googleDomain, countryCode, ['facebook.com']);
+  return results
+    .filter((r: any) => r.url && r.url.includes('facebook.com') && !r.url.includes('/posts/') && !r.url.includes('/events/'))
+    .map((r: any) => {
+      const fbUrl: string = r.website || r.url || '';
+      const usernameMatch = fbUrl.match(/facebook\.com\/([^/?#]+)/);
+      const username: string = usernameMatch ? usernameMatch[1] : '';
+      const skipNames = ['watch', 'groups', 'pages', 'profile', 'share', 'photo'];
+      const messengerLink: string = username && !skipNames.includes(username)
+        ? 'https://m.me/' + username : '';
+      return {
+        name: r.name || (r.title || '').replace('| Facebook', '').replace('- Facebook', '').trim(),
+        website: messengerLink || fbUrl,
+        phone: cleanPhone(r.phone || ''),
+        notes: (r.notes || r.snippet || '') + (messengerLink ? ' | 💬 ' + messengerLink : ''),
+        type: 'business',
+        source_channel: 'Facebook',
+      };
+    });
 }
 
 // ── INSTAGRAM — Hashtag API (META_INSTAGRAM_ACCOUNT_ID ile) + arama fallback ─
