@@ -259,7 +259,8 @@ async function searchViaBing(query: string, langCode: string, countryCode: strin
 // includeDomains ile LinkedIn, Facebook, Instagram doğrudan aranır.
 // NOT: Bing Web Search API Ağustos 2025'te kapandı. Exa onun yerini aldı.
 async function searchViaExa(query: string, domains: string[], langCode: string, countryCode: string): Promise<any[]> {
-  if (!EXA_API_KEY) return [];
+  if (!EXA_API_KEY) { console.log('[Search] Exa: key yok, atlandı'); return []; }
+  console.log(`[Exa] "${query.slice(0,60)}" domains:${domains.join(',') || 'all'}`);
   try {
     const body: any = {
       query,
@@ -314,7 +315,8 @@ async function searchViaSerper(query: string, langCode: string, countryCode: str
 // ── TAVILY — LinkedIn profil araması + genel web ───────────────────────────────
 // 1000 sorgu/ay ücretsiz. LinkedIn profile search özelliği var.
 async function searchViaTavily(query: string, domains: string[], countryCode: string): Promise<any[]> {
-  if (!TAVILY_API_KEY) return [];
+  if (!TAVILY_API_KEY) { console.log('[Search] Tavily: key yok, atlandı'); return []; }
+  console.log(`[Tavily] "${query.slice(0,60)}" domains:${domains.join(',') || 'all'}`);
   try {
     const body: any = {
       api_key: TAVILY_API_KEY,

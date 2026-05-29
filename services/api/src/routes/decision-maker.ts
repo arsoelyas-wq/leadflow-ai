@@ -502,7 +502,11 @@ async function findViaLinkedInGoogle(companyName: string): Promise<DecisionMaker
 
 // ── LinkedIn Arama: Sadece Exa.ai (1B+ profil, neural search) ────────────────
 async function linkedInSearch(query: string, num = 8): Promise<Array<{ title: string; url: string; snippet: string }>> {
-  if (!EXA_API_KEY) return [];
+  console.log(`[Exa] LinkedIn arama: "${query.slice(0, 80)}" | key: ${EXA_API_KEY ? 'SET' : 'MISSING'}`);
+  if (!EXA_API_KEY) {
+    console.log('[Exa] EXA_API_KEY eksik — linkedin araması atlandı');
+    return [];
+  }
   try {
     const res = await axios.post('https://api.exa.ai/search', {
       query,
@@ -514,10 +518,15 @@ async function linkedInSearch(query: string, num = 8): Promise<Array<{ title: st
       headers: { 'x-api-key': EXA_API_KEY, 'Content-Type': 'application/json' },
       timeout: 20000,
     });
-    return (res.data.results || [])
+    const results = (res.data.results || [])
       .filter((r: any) => r.url?.includes('linkedin.com/in/'))
       .map((r: any) => ({ title: r.title || '', url: r.url || '', snippet: r.text?.slice(0, 200) || '' }));
-  } catch (e: any) { console.error('Exa LinkedIn:', e.message?.slice(0, 60)); return []; }
+    console.log(`[Exa] ${results.length} LinkedIn profil bulundu`);
+    return results;
+  } catch (e: any) {
+    console.error('[Exa] LinkedIn hata:', e.response?.status, e.response?.data?.error || e.message?.slice(0, 80));
+    return [];
+  }
 }
 
 // Legacy alias
