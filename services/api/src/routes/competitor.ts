@@ -8,6 +8,8 @@ const { getCountryByCode } = require('../config/countries');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const EXA_API_KEY   = process.env.EXA_API_KEY;    // exa.ai — 1B+ LinkedIn profiles, 1000/mo free
+const BRAVE_API_KEY = process.env.BRAVE_API_KEY;  // brave.com/search/api — 1000/mo free
 
 // DuckDuckGo locale codes per country (kl parameter)
 const DDG_KL: Record<string, string> = {
@@ -246,106 +248,91 @@ async function searchViaBing(query: string, langCode: string, countryCode: strin
   }
 }
 
-// ── PERPLEXITY SEARCH (primary — API, no IP blocking, LinkedIn/FB/IG indexed) ──
-// Uses Perplexity's PerplexityBot which has already crawled and indexed LinkedIn,
-// Facebook, Instagram and all major platforms. search_domain_filter restricts
-// results to specific domains. Works globally from any IP.
-async function searchViaPerplexity(
-  query: string,
-  domainFilter: string[],
-  langCode: string,
-  countryCode: string
-): Promise<any[]> {
-  const key = process.env.PERPLEXITY_API_KEY;
-  if (!key) return [];
-
+// ── EXA.AI SEARCH (Perplexity gibi, ama daha ucuz — LinkedIn 1B+ profil) ──────
+// exa.ai = aynı PerplexityBot teknolojisi. 1000 sorgu/ay ÜCRETSİZ.
+// includeDomains ile LinkedIn, Facebook, Instagram doğrudan aranır.
+// NOT: Bing Web Search API Ağustos 2025'te kapandı. Exa onun yerini aldı.
+async function searchViaExa(query: string, domains: string[], langCode: string, countryCode: string): Promise<any[]> {
+  if (!EXA_API_KEY) return [];
   try {
-    const langHint = `Language: ${langCode}, Country: ${countryCode}.`;
-    const prompt = `${langHint}
-Find businesses, companies or individuals related to this query: "${query}"
-
-Return ONLY a valid JSON array (max 8 items), no other text:
-[{"name":"Company or Person Name","url":"https://exact-url","description":"brief description","phone":"if visible"}]
-
-Requirements:
-- Only include results with a real URL
-- Skip directories, aggregator sites, and ads
-- Focus on actual businesses or people that could be leads`;
-
     const body: any = {
-      model: 'sonar',
-      messages: [
-        { role: 'system', content: 'You are a lead generation assistant. Return only valid JSON arrays, nothing else.' },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 1200,
-      temperature: 0.1,
+      query,
+      numResults: 10,
+      type: 'neural',          // semantic search — better than keyword for company names
+      useAutoprompt: true,     // Exa optimizes query automatically
     };
+    if (domains.length > 0) body.includeDomains = domains.slice(0, 10);
 
-    if (domainFilter.length > 0) {
-      body.search_domain_filter = domainFilter.slice(0, 10); // max 10 domains
-    }
-
-    const res = await axios.post('https://api.perplexity.ai/chat/completions', body, {
-      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-      timeout: 30000,
+    const res = await axios.post('https://api.exa.ai/search', body, {
+      headers: { 'x-api-key': EXA_API_KEY, 'Content-Type': 'application/json' },
+      timeout: 20000,
     });
 
-    const content: string = res.data.choices?.[0]?.message?.content || '';
-    const citations: string[] = res.data.citations || [];
-
-    // Parse JSON array from response
-    const match = content.match(/\[[\s\S]*\]/);
-    const parsed: any[] = match ? JSON.parse(match[0]) : [];
-
-    const results: any[] = parsed
-      .filter((item: any) => item.name && item.url)
-      .map((item: any) => ({
-        name: String(item.name || '').trim(),
-        website: String(item.url || '').trim(),
-        phone: cleanPhone(String(item.phone || '')),
-        notes: String(item.description || '').slice(0, 200),
-        source_channel: domainFilter.length === 1
-          ? domainFilter[0].replace('.com', '').replace('.', ' ').toUpperCase()
-          : 'Perplexity',
-        type: 'business',
-      }));
-
-    // Supplement with raw citations if response was sparse
-    if (results.length < 3 && citations.length > 0) {
-      citations.slice(0, 6).forEach((url: string) => {
-        if (!results.some(r => r.website === url)) {
-          const nameParts = url.replace(/https?:\/\/(www\.)?/, '').split('/').filter(Boolean);
-          const name = nameParts.slice(1).join(' ').replace(/-/g, ' ') || nameParts[0] || url;
-          results.push({ name: name.slice(0, 60), website: url, notes: '', source_channel: 'Perplexity', type: 'business' });
-        }
-      });
-    }
-
-    return results.slice(0, 8);
-  } catch (e: any) {
-    console.error('Perplexity search:', e.message?.slice(0, 80));
-    return [];
-  }
+    return (res.data.results || []).map((r: any) => ({
+      name: r.title || r.author || r.url?.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') || '',
+      website: r.url || '',
+      notes: r.text?.slice(0, 200) || r.snippet?.slice(0, 200) || '',
+      source_channel: domains.length === 1 ? domains[0].split('.')[0].toUpperCase() : 'Exa',
+      type: 'business',
+    })).filter((r: any) => r.name && r.website).slice(0, 8);
+  } catch (e: any) { console.error('Exa search:', e.message?.slice(0, 60)); return []; }
 }
 
-// ── MASTER SEARCH: Perplexity → DDG → Bing → Google direct ───────────────────
+// ── BRAVE SEARCH API (bağımsız index, genel web için) ─────────────────────────
+// Brave'in kendi 30B+ sayfalık indexi — Google/Bing'den bağımsız.
+// 1000 sorgu/ay ÜCRETSİZ. Tüm ülkeler çalışır.
+async function searchViaBrave(query: string, langCode: string, countryCode: string, domains: string[]): Promise<any[]> {
+  if (!BRAVE_API_KEY) return [];
+  try {
+    // Add site: filter if domains specified
+    const q = domains.length === 1 ? `${query} site:${domains[0]}` : query;
+    const cc = countryCode.toUpperCase().slice(0, 2);
+    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=10&country=${cc}&search_lang=${langCode.slice(0, 2)}`;
+
+    const res = await axios.get(url, {
+      headers: {
+        'X-Subscription-Token': BRAVE_API_KEY,
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+      },
+      timeout: 12000,
+    });
+
+    const results = res.data?.web?.results || [];
+    return results.map((r: any) => ({
+      name: r.title || '',
+      website: r.url || '',
+      notes: r.description || '',
+      source_channel: domains.length === 1 ? domains[0].split('.')[0].toUpperCase() : 'Brave',
+      type: 'business',
+    })).filter((r: any) => r.name && r.website).slice(0, 8);
+  } catch (e: any) { console.error('Brave search:', e.message?.slice(0, 60)); return []; }
+}
+
+// ── MASTER SEARCH: Exa → Brave → DDG → Bing → Google direct ─────────────────
+// Öncelik sırası: ucuz API'ler önce, scraping son çare
 async function scrapeGoogleSearch(query: string, langCode = 'tr', googleDomain = 'google.com', countryCode = 'TR', domains: string[] = []): Promise<any[]> {
-  // 1. Perplexity (best — official API, LinkedIn indexed, no IP blocking)
-  if (process.env.PERPLEXITY_API_KEY) {
-    const p = await searchViaPerplexity(query, domains, langCode, countryCode);
-    if (p.length > 0) return p;
+  // 1. Exa.ai (en iyi — LinkedIn 1B+ profil, 1000/ay ücretsiz, IP engeli yok)
+  if (EXA_API_KEY) {
+    const r = await searchViaExa(query, domains, langCode, countryCode);
+    if (r.length > 0) return r;
   }
 
-  // 2. DuckDuckGo (free, no API key, but may block datacenter IPs)
+  // 2. Brave Search API (bağımsız index, 1000/ay ücretsiz)
+  if (BRAVE_API_KEY) {
+    const r = await searchViaBrave(query, langCode, countryCode, domains);
+    if (r.length > 0) return r;
+  }
+
+  // 3. DuckDuckGo (ücretsiz, API key yok, datacenter IP'den bloke olabilir)
   const ddg = await searchViaDDG(query, langCode, countryCode);
   if (ddg.length > 0) return ddg;
 
-  // 3. Bing fallback
+  // 4. Bing direkt scraping
   const bing = await searchViaBing(query, langCode, countryCode);
   if (bing.length > 0) return bing;
 
-  // 4. Google direct (last resort)
+  // 5. Google direkt (son çare — Railway IP'lerinden bloke olabilir)
   try {
     const url = `https://www.${googleDomain}/search?q=${encodeURIComponent(query)}&num=10&hl=${langCode}&pws=0`;
     const res = await axios.get(url, {
@@ -608,8 +595,10 @@ router.get('/diagnose', async (req: any, res: any) => {
 
   const results: Record<string, any> = {
     env: {
-      GOOGLE_PLACES_API_KEY: GOOGLE_API_KEY ? '✅ set' : '❌ missing',
-      SEARCH_ENGINE: 'DuckDuckGo (primary) → Bing (fallback) → Google (last resort)',
+      GOOGLE_PLACES_API_KEY: GOOGLE_API_KEY ? '✅ set' : '❌ missing (Google Maps will not work)',
+      EXA_API_KEY: EXA_API_KEY ? '✅ set' : '⚠️  missing — get free key at exa.ai (1000/mo free)',
+      BRAVE_API_KEY: BRAVE_API_KEY ? '✅ set' : '⚠️  missing — get free key at brave.com/search/api',
+      search_chain: 'Exa.ai → Brave Search → DuckDuckGo → Bing → Google',
     },
   };
 
