@@ -68,73 +68,36 @@ async function markAsFound(userId: string, competitorId: string, identifiers: st
   if (records.length) await supabase.from('competitor_leads').upsert(records, { onConflict: 'user_id,identifier', ignoreDuplicates: true });
 }
 
-// ── GOOGLE MAPS (Places API v1 → Apify fallback) ─────────────────────────────
+// ── GOOGLE MAPS (Places API v1) ───────────────────────────────────────────────
 async function scrapeGoogleMaps(query: string, maxResults: number, langCode = 'tr'): Promise<any[]> {
-  // 1. Google Places API v1 (resmi)
-  if (GOOGLE_API_KEY) {
-    try {
-      const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': GOOGLE_API_KEY,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.businessStatus',
-        },
-        body: JSON.stringify({ textQuery: query, languageCode: langCode, maxResultCount: Math.min(20, maxResults) }),
-      });
-      if (!res.ok) {
-        console.error('Google Maps HTTP', res.status, '— Apify fallback denenecek');
-      } else {
-        const data: any = await res.json();
-        if (!data.error) {
-          return (data.places || [])
-            .filter((p: any) => p.businessStatus !== 'CLOSED_PERMANENTLY')
-            .map((p: any) => ({
-              name: p.displayName?.text || '',
-              phone: cleanPhone(p.nationalPhoneNumber || p.internationalPhoneNumber || ''),
-              website: p.websiteUri || null,
-              address: p.formattedAddress || null,
-              rating: p.rating || null,
-              reviewCount: p.userRatingCount || 0,
-              placeId: p.id || null,
-              type: 'business',
-              source_channel: 'Google Maps',
-            }));
-        }
-        console.error('Google Maps API error:', data.error?.message);
-      }
-    } catch (e: any) { console.error('Google Maps fetch:', e.message); }
-  }
-
-  // 2. Apify Google Maps Scraper (zaten lead-finder'da çalışıyor)
-  const APIFY_TOKEN = process.env.APIFY_TOKEN;
-  if (APIFY_TOKEN) {
-    try {
-      const { ApifyClient } = require('apify-client');
-      const client = new ApifyClient({ token: APIFY_TOKEN });
-      const run = await Promise.race([
-        client.actor('apify/google-maps-scraper').call({
-          searchStringsArray: [query],
-          maxCrawledPlacesPerSearch: Math.min(maxResults, 20),
-          language: langCode,
-        }),
-        new Promise<never>((_, r) => setTimeout(() => r(new Error('Apify Maps timeout')), 60_000)),
-      ]) as any;
-      const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: maxResults });
-      return (items || []).map((p: any) => ({
-        name: p.title || p.name || '',
-        phone: cleanPhone(p.phone || p.phoneUnformatted || ''),
-        website: p.website || null,
-        address: p.address || p.street || null,
-        rating: p.totalScore || p.rating || null,
-        reviewCount: p.reviewsCount || 0,
+  if (!GOOGLE_API_KEY) return [];
+  try {
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_API_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.businessStatus',
+      },
+      body: JSON.stringify({ textQuery: query, languageCode: langCode, maxResultCount: Math.min(20, maxResults) }),
+    });
+    if (!res.ok) { console.error('Google Maps HTTP', res.status, '(Places API billing/key sorunu — ilerleyen adımda çözülecek)'); return []; }
+    const data: any = await res.json();
+    if (data.error) { console.error('Google Maps API error:', data.error?.message); return []; }
+    return (data.places || [])
+      .filter((p: any) => p.businessStatus !== 'CLOSED_PERMANENTLY')
+      .map((p: any) => ({
+        name: p.displayName?.text || '',
+        phone: cleanPhone(p.nationalPhoneNumber || p.internationalPhoneNumber || ''),
+        website: p.websiteUri || null,
+        address: p.formattedAddress || null,
+        rating: p.rating || null,
+        reviewCount: p.userRatingCount || 0,
+        placeId: p.id || null,
         type: 'business',
         source_channel: 'Google Maps',
-      })).filter((p: any) => p.name);
-    } catch (e: any) { console.error('Apify Maps:', e.message?.slice(0, 60)); }
-  }
-
-  return [];
+      }));
+  } catch (e: any) { console.error('Google Maps:', e.message); return []; }
 }
 
 // ── GOOGLE PLACE DETAILS (for reviews) ───────────────────────────────────────
@@ -508,40 +471,76 @@ async function scrapeLinkedIn(query: string, langCode: string, googleDomain: str
   } catch { return []; }
 }
 
-// ── FACEBOOK — Meta Graph API (resmi, ücretsiz) ───────────────────────────────
-// Graph API sayfa araması: App Access Token gerekli
-// Token: developers.facebook.com → App → Settings → Basic → App ID + Secret
-// App Token = APP_ID|APP_SECRET (client credentials grant)
+// ── FACEBOOK — /pages/search (deprecated /search?type=page DEĞİL) ─────────────
 async function scrapeFacebook(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
-  // Meta Graph API place/page search deprecated v8.0 — doğrudan arama kullan
+  // 1. Meta Graph API /pages/search endpoint (farklı, hâlâ aktif)
+  if (META_APP_TOKEN) {
+    try {
+      const res = await axios.get('https://graph.facebook.com/v19.0/pages/search', {
+        params: { q: query, fields: 'name,link,website,phone,location,category', access_token: META_APP_TOKEN, limit: 10 },
+        timeout: 12000,
+      });
+      const pages = (res.data?.data || []).filter((p: any) => p.name);
+      if (pages.length > 0) {
+        return pages.map((p: any) => ({
+          name: p.name, website: p.website || p.link || '',
+          phone: cleanPhone(p.phone || ''), address: p.location?.city || '',
+          notes: p.category || '', source_channel: 'Facebook', type: 'business',
+        }));
+      }
+    } catch (e: any) {
+      console.error('Facebook pages/search:', e.response?.data?.error?.message || e.message?.slice(0, 80));
+    }
+  }
+  // 2. Tavily/Exa/Serper ile Facebook araması
   const results = await scrapeGoogleSearch(`${query} site:facebook.com`, langCode, googleDomain, countryCode, ['facebook.com']);
-  return results.filter((r: any) => r.url.includes('facebook.com') && !r.url.includes('/posts/')).map((r: any) => ({
+  return results.filter((r: any) => r.url?.includes('facebook.com') && !r.url.includes('/posts/')).map((r: any) => ({
     name: r.name || r.title?.replace('| Facebook', '').replace('- Facebook', '').trim() || '',
-    website: r.website || r.url,
-    notes: r.notes || r.snippet || '',
-    type: 'business',
-    source_channel: 'Facebook',
+    website: r.website || r.url, notes: r.notes || r.snippet || '',
+    type: 'business', source_channel: 'Facebook',
   }));
 }
 
-// ── INSTAGRAM — Meta Graph API (resmi) + Exa/arama fallback ─────────────────
-// Instagram Graph API: İşletme hesapları için username araması
-// Not: Instagram keyword search için Facebook App Review gerekiyor
-// Exa.ai Instagram profillerini de indexledi — daha pratik
+// ── INSTAGRAM — Hashtag API (META_INSTAGRAM_ACCOUNT_ID ile) + arama fallback ─
 async function scrapeInstagram(keyword: string, country: any): Promise<any[]> {
   const { language, queries, googleDomain, code } = country;
 
-  // Meta Graph Instagram search App Review gerektiriyor — doğrudan arama kullan
+  // 1. Instagram Hashtag Search (Instagram Business Account gerekli)
+  const igAccountId = process.env.META_INSTAGRAM_ACCOUNT_ID;
+  const igToken = process.env.META_PAGE_TOKEN || META_APP_TOKEN;
+  if (igAccountId && igToken) {
+    try {
+      const hashtagWord = keyword.split(' ')[0].replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ0-9]/g, '');
+      const htRes = await axios.get('https://graph.facebook.com/v19.0/ig_hashtag_search', {
+        params: { user_id: igAccountId, q: hashtagWord, access_token: igToken },
+        timeout: 8000,
+      });
+      const hashtagId = htRes.data?.data?.[0]?.id;
+      if (hashtagId) {
+        const mediaRes = await axios.get(`https://graph.facebook.com/v19.0/${hashtagId}/recent_media`, {
+          params: { user_id: igAccountId, fields: 'username,permalink,caption', access_token: igToken, limit: 10 },
+          timeout: 8000,
+        });
+        const posts = (mediaRes.data?.data || []).filter((p: any) => p.username);
+        if (posts.length > 0) {
+          return posts.map((p: any) => ({
+            name: `@${p.username}`, instagram: `https://instagram.com/${p.username}`,
+            website: `https://instagram.com/${p.username}`,
+            notes: p.caption?.slice(0, 150) || '', source_channel: 'Instagram', type: 'person_or_business',
+          }));
+        }
+      }
+    } catch (e: any) { console.error('Instagram Hashtag:', e.response?.data?.error?.message || e.message?.slice(0, 60)); }
+  }
+
+  // 2. Tavily/Exa/Serper ile Instagram araması
   const results = await scrapeGoogleSearch(`${keyword} ${queries.business} site:instagram.com`, language, googleDomain, code, ['instagram.com']);
-  return results.filter((r: any) => r.url.includes('instagram.com')).map((r: any) => {
+  return results.filter((r: any) => r.url?.includes('instagram.com')).map((r: any) => {
     const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
     return {
       name: r.name || r.title?.replace('• Instagram', '').trim() || '',
-      instagram: `https://instagram.com/${username}`,
-      website: `https://instagram.com/${username}`,
-      notes: r.notes || r.snippet || '',
-      type: 'person_or_business',
-      source_channel: 'Instagram',
+      instagram: `https://instagram.com/${username}`, website: `https://instagram.com/${username}`,
+      notes: r.notes || r.snippet || '', type: 'person_or_business', source_channel: 'Instagram',
     };
   });
 }
