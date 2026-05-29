@@ -473,20 +473,43 @@ async function scrapeLinkedIn(query: string, langCode: string, googleDomain: str
 
 // ── FACEBOOK — /pages/search (deprecated /search?type=page DEĞİL) ─────────────
 async function scrapeFacebook(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
-  // 1. Meta Graph API /pages/search endpoint (farklı, hâlâ aktif)
+  // 1. Meta Graph API /pages/search + sayfa detayları (telefon, messenger)
   if (META_APP_TOKEN) {
     try {
       const res = await axios.get('https://graph.facebook.com/v19.0/pages/search', {
-        params: { q: query, fields: 'name,link,website,phone,location,category', access_token: META_APP_TOKEN, limit: 10 },
+        params: { q: query, fields: 'id,name,link,website,phone,location,category,username', access_token: META_APP_TOKEN, limit: 10 },
         timeout: 12000,
       });
       const pages = (res.data?.data || []).filter((p: any) => p.name);
       if (pages.length > 0) {
-        return pages.map((p: any) => ({
-          name: p.name, website: p.website || p.link || '',
-          phone: cleanPhone(p.phone || ''), address: p.location?.city || '',
-          notes: p.category || '', source_channel: 'Facebook', type: 'business',
+        // Her sayfa için detay çek (telefon + messenger username)
+        const enriched = await Promise.all(pages.slice(0, 8).map(async (p: any) => {
+          let phone = cleanPhone(p.phone || '');
+          let messengerLink = '';
+          try {
+            if (p.id && !phone) {
+              const detail = await axios.get(`https://graph.facebook.com/v19.0/${p.id}`, {
+                params: { fields: 'phone,username,website', access_token: META_APP_TOKEN },
+                timeout: 6000,
+              });
+              phone = cleanPhone(detail.data?.phone || '');
+              const username = detail.data?.username || p.username || '';
+              if (username) messengerLink = `https://m.me/${username}`;
+            } else if (p.username) {
+              messengerLink = `https://m.me/${p.username}`;
+            }
+          } catch {}
+          return {
+            name: p.name,
+            website: p.website || p.link || '',
+            phone,
+            address: p.location?.city || '',
+            notes: [p.category, messengerLink ? `💬 Messenger: ${messengerLink}` : ''].filter(Boolean).join(' | '),
+            source_channel: 'Facebook',
+            type: 'business',
+          };
         }));
+        return enriched;
       }
     } catch (e: any) {
       console.error('Facebook pages/search:', e.response?.data?.error?.message || e.message?.slice(0, 80));
@@ -690,7 +713,9 @@ async function runCompetitorScan(
     company_name: lead.name || 'Bilinmiyor',
     phone: lead.phone || null,
     email: lead.email || null,
-    website: lead.website || lead.instagram || lead.linkedin || null,
+    // Facebook için: website yoksa Messenger linki, Instagram için profil URL
+    website: lead.website || lead.instagram || lead.linkedin
+      || (lead.notes?.match(/https:\/\/m\.me\/[^\s|]+/)?.[0] || null),
     city,
     sector: sector || competitorName,
     source: `Rakip: ${competitorName} (${lead.source_channel})`,
