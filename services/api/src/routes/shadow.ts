@@ -269,8 +269,15 @@ router.post('/scan/:id', async (req: any, res: any) => {
     const changes = detectChanges(oldData, newData);
     const threatScore = calcThreatScore(newData, changes);
     const aiInsight = await generateAIInsight(comp.name, newData, changes);
+    // Store aiInsight inside shadow_data so it persists across page loads
+    if (aiInsight) newData.aiInsight = aiInsight;
 
-    const prevHistory: any[] = comp.shadow_price_history || [];
+    const prevHistory: any[] = (() => {
+      const h = comp.shadow_price_history;
+      if (!h) return [];
+      if (typeof h === 'string') { try { return JSON.parse(h); } catch { return []; } }
+      return Array.isArray(h) ? h : [];
+    })();
     const newHistory = [...prevHistory.slice(-29), {
       date: new Date().toISOString().split('T')[0],
       prices: newData.pricing.slice(0, 3),
