@@ -3,134 +3,195 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Plus, ExternalLink, Trash2, Target, TrendingDown, TrendingUp, Bell, CheckCircle, X } from 'lucide-react'
 
-// ── PRICE SPHERE — Financial market 3D animation ──────────────────────────────
-// Theme: stock market / price monitoring — emerald green drops, red rises
+// ── PRICE SPHERE — Luxury Gold Financial Orb (Bloomberg/Wall Street aesthetic) ─
+// Gold metallic sphere + 3 orbital rings + candlestick elements + holographic glow
 function PriceSphere({ size = 100, direction = 'flat' }: { size?: number; direction?: 'up' | 'down' | 'flat' }) {
   const [mounted, setMounted] = useState(false)
-  const [tick, setTick] = useState(0)
-  const [chartPoints, setChartPoints] = useState<number[]>([50, 52, 48, 55, 51, 47, 53, 49, 56, 52, 45, 50])
+  const [angle, setAngle] = useState(0)
+  const [candleData, setCandleData] = useState([
+    { o: 55, c: 62, h: 66, l: 52 }, { o: 62, c: 58, h: 64, l: 55 },
+    { o: 58, c: 70, h: 73, l: 56 }, { o: 70, c: 65, h: 72, l: 62 },
+    { o: 65, c: 75, h: 78, l: 63 },
+  ])
 
   useEffect(() => { setMounted(true) }, [])
-
   useEffect(() => {
     if (!mounted) return
     const t = setInterval(() => {
-      setTick(p => p + 1)
-      setChartPoints(prev => {
-        const last = prev[prev.length - 1]
-        const delta = (Math.random() - 0.48) * 6
-        const next = Math.max(10, Math.min(90, last + delta))
-        return [...prev.slice(-11), next]
-      })
-    }, 1200)
+      setAngle(a => (a + 0.4) % 360)
+      if (Math.random() < 0.1) {
+        setCandleData(prev => {
+          const last = prev[prev.length - 1]
+          const o = last.c, c = o + (Math.random() - 0.48) * 12
+          const h = Math.max(o, c) + Math.random() * 5, l = Math.min(o, c) - Math.random() * 5
+          return [...prev.slice(-4), { o, c: Math.round(c), h: Math.round(h), l: Math.round(l) }]
+        })
+      }
+    }, 30)
     return () => clearInterval(t)
   }, [mounted])
 
-  const cx = size, s = size
-  const color = direction === 'down' ? '#10b981' : direction === 'up' ? '#ef4444' : '#f59e0b'
-  const glowColor = direction === 'down' ? 'rgba(16,185,129,' : direction === 'up' ? 'rgba(239,68,68,' : 'rgba(245,158,11,'
+  if (!mounted) return <div style={{ width: size * 2.2, height: size * 2.2, flexShrink: 0 }} />
 
-  // Build chart path from points
-  const chartW = s * 0.7, chartH = s * 0.35
-  const chartX = cx - chartW / 2, chartY = cx + s * 0.05
-  const pts = chartPoints.map((y, i) => ({
-    x: chartX + (i / (chartPoints.length - 1)) * chartW,
-    y: chartY + chartH - (y / 100) * chartH,
-  }))
-  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-  const areaD = pathD + ` L ${pts[pts.length - 1].x.toFixed(1)} ${(chartY + chartH).toFixed(1)} L ${pts[0].x.toFixed(1)} ${(chartY + chartH).toFixed(1)} Z`
-
-  if (!mounted) return <div style={{ width: s * 2, height: s * 2, flexShrink: 0 }} />
+  const cx = size * 1.1, s = size
+  // Accent color: emerald for drops, crimson for rises, gold for flat
+  const accent = direction === 'down' ? '#10b981' : direction === 'up' ? '#ef4444' : '#d97706'
+  const gold = '#d97706'
+  const goldLight = '#fbbf24'
 
   return (
-    <div style={{ width: s * 2, height: s * 2, position: 'relative', flexShrink: 0 }}>
-      <svg width={s * 2} height={s * 2} style={{ position: 'absolute', inset: 0 }}>
+    <div style={{ width: s * 2.2, height: s * 2.2, position: 'relative', flexShrink: 0 }}>
+      <svg width={s * 2.2} height={s * 2.2} style={{ position: 'absolute', inset: 0 }}>
         <defs>
-          <radialGradient id={`pg${size}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={`${glowColor}0)`} />
-            <stop offset="60%" stopColor={`${glowColor}0.07)`} />
-            <stop offset="100%" stopColor={`${glowColor}0.18)`} />
+          {/* Deep luxury glow */}
+          <radialGradient id={`luxGlow${s}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(0,0,0,0)" />
+            <stop offset="50%" stopColor={`${accent}0a`} />
+            <stop offset="80%" stopColor={`${gold}12`} />
+            <stop offset="100%" stopColor={`${gold}20`} />
           </radialGradient>
-          <radialGradient id={`ps${size}`} cx="38%" cy="32%" r="60%">
-            <stop offset="0%" stopColor={direction === 'down' ? '#6ee7b7' : direction === 'up' ? '#fca5a5' : '#fde68a'} />
-            <stop offset="40%" stopColor={color} />
-            <stop offset="100%" stopColor={direction === 'down' ? '#064e3b' : direction === 'up' ? '#7f1d1d' : '#78350f'} />
+          {/* Metallic gold sphere gradient */}
+          <radialGradient id={`luxSphere${s}`} cx="35%" cy="28%" r="65%">
+            <stop offset="0%" stopColor="#fff8e1" />
+            <stop offset="15%" stopColor="#fde68a" />
+            <stop offset="40%" stopColor={goldLight} />
+            <stop offset="65%" stopColor={gold} />
+            <stop offset="85%" stopColor="#92400e" />
+            <stop offset="100%" stopColor="#1c0a00" />
           </radialGradient>
-          <linearGradient id={`pa${size}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
+          {/* Ring gradient */}
+          <linearGradient id={`luxRing${s}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={gold} stopOpacity={0} />
+            <stop offset="30%" stopColor={gold} stopOpacity={0.6} />
+            <stop offset="70%" stopColor={accent} stopOpacity={0.8} />
+            <stop offset="100%" stopColor={accent} stopOpacity={0} />
+          </linearGradient>
+          {/* Candle up/down */}
+          <linearGradient id={`luxUp${s}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#6ee7b7" /><stop offset="100%" stopColor="#10b981" />
+          </linearGradient>
+          <linearGradient id={`luxDn${s}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#fca5a5" /><stop offset="100%" stopColor="#ef4444" />
           </linearGradient>
         </defs>
 
-        {/* Ambient glow */}
-        <circle cx={cx} cy={cx} r={cx} fill={`url(#pg${size})`} />
+        {/* ── DEEP AMBIENT GLOW ── */}
+        <circle cx={cx} cy={cx} r={s * 1.05} fill={`url(#luxGlow${s})`} />
 
-        {/* Grid lines */}
-        {[0.3, 0.55, 0.78, 0.96].map(r => (
-          <ellipse key={r} cx={cx} cy={cx * 0.75} rx={s * r} ry={s * r * 0.4}
-            fill="none" stroke={`${color}18`} strokeWidth={0.7} strokeDasharray="3 5" />
-        ))}
-        <line x1={0} y1={cx} x2={s * 2} y2={cx} stroke={`${color}10`} strokeWidth={0.6} />
-        <line x1={cx} y1={0} x2={cx} y2={s * 2} stroke={`${color}10`} strokeWidth={0.6} />
+        {/* ── HOLOGRAPHIC FLOOR PROJECTION ── */}
+        <ellipse cx={cx} cy={cx + s * 0.62} rx={s * 0.72} ry={s * 0.14}
+          fill="none" stroke={`${gold}25`} strokeWidth={1}
+          style={{ filter: `drop-shadow(0 0 8px ${gold}40)` }} />
+        <ellipse cx={cx} cy={cx + s * 0.62} rx={s * 0.48} ry={s * 0.09}
+          fill="none" stroke={`${accent}30`} strokeWidth={0.7} />
 
-        {/* Core sphere */}
-        <circle cx={cx} cy={cx * 0.72} r={s * 0.36}
-          fill={`url(#ps${size})`}
-          style={{ filter: `drop-shadow(0 0 ${s * 0.22}px ${color}cc) drop-shadow(0 0 ${s * 0.45}px ${color}44)` }} />
-        <ellipse cx={cx - s * 0.07} cy={cx * 0.6} rx={s * 0.08} ry={s * 0.05}
-          fill="rgba(255,255,255,0.22)" style={{ filter: 'blur(2px)' }} />
+        {/* ── ORBITAL RING 1 — equatorial (gold) ── */}
+        <ellipse cx={cx} cy={cx - s * 0.04} rx={s * 0.88} ry={s * 0.22}
+          fill="none" stroke={`url(#luxRing${s})`} strokeWidth={1.8}
+          style={{ animation: 'pt-ring1 8s linear infinite', transformOrigin: `${cx}px ${cx}px` }} />
+        {/* Particle on ring 1 */}
+        <circle cx={cx + Math.cos(angle * Math.PI / 180) * s * 0.88}
+          cy={cx - s * 0.04 + Math.sin(angle * Math.PI / 180) * s * 0.22}
+          r={3.5} fill={goldLight} style={{ filter: `drop-shadow(0 0 6px ${goldLight})` }} />
 
-        {/* Price arrow on sphere */}
+        {/* ── ORBITAL RING 2 — tilted 60° (accent) ── */}
+        <ellipse cx={cx} cy={cx} rx={s * 0.72} ry={s * 0.36}
+          fill="none" stroke={`${accent}50`} strokeWidth={1.2}
+          style={{ animation: 'pt-ring2 12s linear infinite', transformOrigin: `${cx}px ${cx}px` }} />
+        <circle cx={cx + Math.cos((angle * 1.3 + 120) * Math.PI / 180) * s * 0.72}
+          cy={cx + Math.sin((angle * 1.3 + 120) * Math.PI / 180) * s * 0.36}
+          r={2.5} fill={accent} style={{ filter: `drop-shadow(0 0 5px ${accent})` }} />
+
+        {/* ── ORBITAL RING 3 — vertical (gold thin) ── */}
+        <ellipse cx={cx} cy={cx} rx={s * 0.18} ry={s * 0.82}
+          fill="none" stroke={`${gold}30`} strokeWidth={0.8}
+          style={{ animation: 'pt-ring3 16s linear infinite', transformOrigin: `${cx}px ${cx}px` }} />
+
+        {/* ── CORE GOLD SPHERE ── */}
+        <circle cx={cx} cy={cx - s * 0.04} r={s * 0.42}
+          fill={`url(#luxSphere${s})`}
+          style={{ filter: `drop-shadow(0 0 ${s * 0.3}px ${gold}bb) drop-shadow(0 0 ${s * 0.55}px ${gold}44) drop-shadow(0 0 ${s * 0.1}px rgba(255,255,200,0.8))` }} />
+
+        {/* Specular highlight — large soft */}
+        <ellipse cx={cx - s * 0.1} cy={cx - s * 0.16}
+          rx={s * 0.14} ry={s * 0.09}
+          fill="rgba(255,255,255,0.35)" style={{ filter: 'blur(4px)' }} />
+        {/* Specular — small sharp */}
+        <ellipse cx={cx - s * 0.15} cy={cx - s * 0.2}
+          rx={s * 0.04} ry={s * 0.025}
+          fill="rgba(255,255,255,0.8)" style={{ filter: 'blur(1px)' }} />
+
+        {/* Direction arrow overlay on sphere */}
         {direction !== 'flat' && (
-          <g transform={`translate(${cx}, ${cx * 0.72}) ${direction === 'up' ? 'rotate(0)' : 'rotate(180)'}`}
-            style={{ animation: 'pt-pulse 1.5s ease-in-out infinite' }}>
-            <polygon points={`0,-${s * 0.12} ${s * 0.07},${s * 0.06} -${s * 0.07},${s * 0.06}`}
-              fill={color} opacity={0.9} />
+          <g transform={`translate(${cx},${cx - s * 0.04})`}
+            style={{ animation: 'pt-pulse 2s ease-in-out infinite' }}>
+            <polygon
+              points={direction === 'down'
+                ? `0,${s*0.14} ${s*0.09},-${s*0.06} -${s*0.09},-${s*0.06}`
+                : `0,-${s*0.14} ${s*0.09},${s*0.06} -${s*0.09},${s*0.06}`}
+              fill={accent} opacity={0.85}
+              style={{ filter: `drop-shadow(0 0 6px ${accent})` }} />
           </g>
         )}
 
-        {/* Live chart area fill */}
-        <path d={areaD} fill={`url(#pa${size})`} />
+        {/* ── CANDLESTICK CHART (bottom section) ── */}
+        {candleData.map((c, i) => {
+          const barW = s * 0.07, gap = s * 0.1
+          const chartBaseX = cx - (candleData.length * (barW + gap)) / 2 + barW / 2
+          const x = chartBaseX + i * (barW + gap)
+          const chartTop = cx + s * 0.38, chartH = s * 0.38
+          const scale = (v: number) => chartTop + chartH - (v / 100) * chartH
+          const isUp = c.c >= c.o
+          const bodyY = scale(Math.max(c.o, c.c)), bodyH = Math.max(2, Math.abs(scale(c.o) - scale(c.c)))
+          const wickColor = isUp ? '#10b981' : '#ef4444'
+          return (
+            <g key={i}>
+              {/* Wick */}
+              <line x1={x} y1={scale(c.h)} x2={x} y2={scale(c.l)} stroke={wickColor} strokeWidth={1} opacity={0.7} />
+              {/* Body */}
+              <rect x={x - barW / 2} y={bodyY} width={barW} height={bodyH}
+                fill={isUp ? `url(#luxUp${s})` : `url(#luxDn${s})`} rx={1.5}
+                style={{ filter: `drop-shadow(0 0 3px ${wickColor}80)` }} />
+            </g>
+          )
+        })}
 
-        {/* Live chart line */}
-        <path d={pathD} fill="none" stroke={color} strokeWidth={1.5}
-          style={{ filter: `drop-shadow(0 0 3px ${color})` }} />
-
-        {/* Chart data point (latest) */}
-        {pts.length > 0 && (
-          <>
-            <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r={3}
-              fill={color} style={{ filter: `drop-shadow(0 0 5px ${color})` }} />
-            <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r={6}
-              fill="none" stroke={color} strokeWidth={1} opacity={0.5}
-              style={{ animation: 'pt-ping 1.5s ease-in-out infinite' }} />
-          </>
-        )}
-
-        {/* Horizontal chart grid lines */}
-        {[0, 0.33, 0.66, 1].map(r => (
-          <line key={r} x1={chartX} y1={chartY + r * chartH} x2={chartX + chartW} y2={chartY + r * chartH}
-            stroke={`${color}15`} strokeWidth={0.5} strokeDasharray="2 4" />
+        {/* ── PRICE GRID LINES (below chart) ── */}
+        {[0, 0.33, 0.67, 1].map((r, i) => (
+          <line key={i}
+            x1={cx - s * 0.58} y1={cx + s * 0.38 + r * s * 0.38}
+            x2={cx + s * 0.58} y2={cx + s * 0.38 + r * s * 0.38}
+            stroke={`${gold}12`} strokeWidth={0.6} strokeDasharray="3 5" />
         ))}
 
-        {/* Corner brackets */}
-        {([[4, 4, 1, 1], [s * 2 - 4, 4, -1, 1], [4, s * 2 - 4, 1, -1], [s * 2 - 4, s * 2 - 4, -1, -1]] as number[][])
+        {/* ── LUXURY CORNER BRACKETS ── */}
+        {([[6, 6, 1, 1], [s * 2.2 - 6, 6, -1, 1], [6, s * 2.2 - 6, 1, -1], [s * 2.2 - 6, s * 2.2 - 6, -1, -1]] as number[][])
           .map(([x, y, dx, dy], i) => {
-            const len = s * 0.1
+            const len = s * 0.12
             return <g key={i}>
-              <line x1={x} y1={y} x2={x + dx * len} y2={y} stroke={color} strokeWidth={1.5} opacity={0.5} />
-              <line x1={x} y1={y} x2={x} y2={y + dy * len} stroke={color} strokeWidth={1.5} opacity={0.5} />
+              <line x1={x} y1={y} x2={x + dx * len} y2={y} stroke={gold} strokeWidth={2} opacity={0.5} />
+              <line x1={x} y1={y} x2={x} y2={y + dy * len} stroke={gold} strokeWidth={2} opacity={0.5} />
+              <circle cx={x} cy={y} r={2} fill={gold} opacity={0.6} />
             </g>
           })}
 
-        {/* Outer ring */}
-        <circle cx={cx} cy={cx} r={cx - 1.5} fill="none" stroke={`${color}28`} strokeWidth={1.5} />
+        {/* ── OUTER LUXURY RING ── */}
+        <circle cx={cx} cy={cx} r={s * 1.03} fill="none" stroke={`${gold}20`} strokeWidth={1.5} strokeDasharray="6 4" />
+        <circle cx={cx} cy={cx} r={s * 1.03}
+          fill="none" stroke={`${accent}15`} strokeWidth={3}
+          style={{ animation: 'pt-ping 3s ease-in-out infinite' }} />
 
-        {/* Tick indicators */}
-        {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => {
-          const r2 = cx - 8, a = deg * Math.PI / 180
-          return <circle key={deg} cx={cx + Math.cos(a) * r2} cy={cx + Math.sin(a) * r2}
-            r={1.5} fill={color} opacity={0.3 + (tick % 8 === deg / 45 ? 0.6 : 0)} />
+        {/* ── FLOATING PRICE LABELS ── */}
+        {[
+          { deg: 30, label: direction === 'down' ? '↓' : direction === 'up' ? '↑' : '→', r: s * 0.92 },
+          { deg: 150, label: '₺', r: s * 0.88 },
+          { deg: 270, label: '$', r: s * 0.9 },
+        ].map(({ deg, label, r: radius }) => {
+          const a = deg * Math.PI / 180
+          return <text key={deg}
+            x={cx + Math.cos(a) * radius} y={cx + Math.sin(a) * radius}
+            fill={gold} fontSize={s * 0.1} fontWeight="700" textAnchor="middle" dominantBaseline="middle"
+            opacity={0.5} style={{ fontFamily: 'monospace' }}>{label}</text>
         })}
       </svg>
     </div>
@@ -568,8 +629,11 @@ export default function PriceTrackerPage() {
       <style>{`
         @keyframes pt-border { 0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%} }
         @keyframes pt-spin { to { transform: rotate(360deg); } }
-        @keyframes pt-pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
-        @keyframes pt-ping { 0%{transform:scale(1);opacity:0.8}100%{transform:scale(2.5);opacity:0} }
+        @keyframes pt-pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.92)} }
+        @keyframes pt-ping { 0%{transform:scale(1);opacity:0.6}100%{transform:scale(2.2);opacity:0} }
+        @keyframes pt-ring1 { from{transform:rotateX(78deg) rotateZ(0deg)} to{transform:rotateX(78deg) rotateZ(360deg)} }
+        @keyframes pt-ring2 { from{transform:rotateX(30deg) rotateY(60deg) rotateZ(0deg)} to{transform:rotateX(30deg) rotateY(60deg) rotateZ(360deg)} }
+        @keyframes pt-ring3 { from{transform:rotateY(0deg) rotateZ(0deg)} to{transform:rotateY(360deg) rotateZ(0deg)} }
         .pt-float { animation: pt-float-anim 3s ease-in-out infinite; }
         @keyframes pt-float-anim { 0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-6px);opacity:.8} }
       `}</style>
