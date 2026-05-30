@@ -224,11 +224,22 @@ async function sendChangeAlert(userId: string, name: string, changes: any[]): Pr
 
 router.get('/list', async (req: any, res: any) => {
   try {
+    // Select only guaranteed columns first, then try extended columns
     const { data, error } = await supabase.from('competitors')
-      .select('id,name,website,city,sector,country,shadow_data,shadow_changes,shadow_price_history,last_scanned_at,threat_score')
+      .select('id,name,website,city,sector,country,last_scanned_at,shadow_data,shadow_changes,shadow_price_history,threat_score')
       .eq('user_id', req.userId)
-      .order('threat_score', { ascending: false });
-    if (error) throw error;
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      // Fallback: columns like threat_score may not exist yet — select base columns only
+      const { data: fallback, error: e2 } = await supabase.from('competitors')
+        .select('id,name,website,city,sector,country,last_scanned_at')
+        .eq('user_id', req.userId)
+        .order('created_at', { ascending: false });
+      if (e2) throw e2;
+      res.json({ competitors: fallback || [], migrationNeeded: true });
+      return;
+    }
     res.json({ competitors: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

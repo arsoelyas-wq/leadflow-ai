@@ -296,9 +296,33 @@ export default function ShadowPage() {
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ type: 'success'|'error'; text: string }|null>(null)
+  const [migrationNeeded, setMigrationNeeded] = useState(false)
+  const [addForm, setAddForm] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newCity, setNewCity] = useState('')
+  const [adding, setAdding] = useState(false)
 
   const showMsg = (type: 'success'|'error', text: string) => { setMsg({ type, text }); setTimeout(()=>setMsg(null),6000) }
-  const load = async () => { setLoading(true); try { const d = await api.get('/api/shadow/list'); setCompetitors(d.competitors||[]) } catch {} finally { setLoading(false) } }
+  const load = async () => {
+    setLoading(true)
+    try {
+      const d = await api.get('/api/shadow/list')
+      setCompetitors(d.competitors || [])
+      if (d.migrationNeeded) setMigrationNeeded(true)
+    } catch {} finally { setLoading(false) }
+  }
+
+  const addCompetitor = async () => {
+    if (!newName) return
+    setAdding(true)
+    try {
+      await api.post('/api/competitor/list', { name: newName, city: newCity, channels: ['google','linkedin'] })
+      setNewName(''); setNewCity(''); setAddForm(false)
+      showMsg('success', `${newName} eklendi!`)
+      load()
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setAdding(false) }
+  }
   useEffect(() => { load() }, [])
 
   const scan = async (id: string) => {
@@ -346,11 +370,17 @@ export default function ShadowPage() {
               </div>
             </div>
           </div>
-          <button onClick={scanAll} disabled={scanning==='all'||!competitors.length}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: '1px solid rgba(124,58,237,0.35)', cursor: scanning==='all'||!competitors.length?'not-allowed':'pointer', background: 'rgba(124,58,237,0.1)', color: '#a78bfa', fontSize: 13, fontWeight: 700, opacity: !competitors.length?0.4:1, flexShrink: 0 }}>
-            {scanning==='all' ? <RefreshCw size={14} style={{ animation: 'sh-spin 1s linear infinite' }} /> : <Eye size={14} />}
-            Tümünü Tara
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+            <button onClick={() => setAddForm(!addForm)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(124,58,237,0.4)', cursor: 'pointer', background: 'linear-gradient(135deg,rgba(124,58,237,0.2),rgba(79,70,229,0.15))', color: '#c4b5fd', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 16px rgba(124,58,237,0.2)' }}>
+              + Rakip Ekle
+            </button>
+            <button onClick={scanAll} disabled={scanning==='all'||!competitors.length}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(124,58,237,0.25)', cursor: scanning==='all'||!competitors.length?'not-allowed':'pointer', background: 'rgba(124,58,237,0.08)', color: '#a78bfa', fontSize: 13, fontWeight: 600, opacity: !competitors.length?0.4:1 }}>
+              {scanning==='all' ? <RefreshCw size={13} style={{ animation: 'sh-spin 1s linear infinite' }} /> : <Eye size={13} />}
+              Tümünü Tara
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -378,6 +408,43 @@ export default function ShadowPage() {
         </div>
       )}
 
+      {/* ── ADD FORM ──────────────────────────────────────────────────────── */}
+      {addForm && (
+        <div style={{ marginBottom: 20, background: 'linear-gradient(135deg,rgba(5,0,20,0.98),rgba(8,2,25,0.99))', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 16, padding: 22 }}>
+          <p style={{ color: '#a78bfa', fontWeight: 700, fontSize: 14, margin: '0 0 16px' }}>+ Yeni Rakip Ekle</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Rakip Firma Adı *</label>
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="örn: Dekonil"
+                style={{ width: '100%', background: '#07091c', border: `1px solid ${newName ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 9, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Şehir (opsiyonel)</label>
+              <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="İstanbul"
+                style={{ width: '100%', background: '#07091c', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={addCompetitor} disabled={adding || !newName}
+              style={{ padding: '9px 22px', borderRadius: 10, border: 'none', cursor: adding||!newName?'not-allowed':'pointer', background: newName ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, fontWeight: 700, opacity: !newName?0.4:1, display: 'flex', alignItems: 'center', gap: 7 }}>
+              {adding ? <RefreshCw size={13} style={{ animation: 'sh-spin 1s linear infinite' }} /> : null}
+              {adding ? 'Ekleniyor...' : 'Ekle ve İzlemeye Başla'}
+            </button>
+            <button onClick={() => setAddForm(false)} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>İptal</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MIGRATION WARNING ─────────────────────────────────────────────── */}
+      {migrationNeeded && (
+        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' }}>
+          ⚠️ <strong>Supabase migration gerekli</strong> — Tehdit skoru ve fiyat geçmişi için SQL Editor'de şunu çalıştır:<br />
+          <code style={{ fontSize: 11, background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: 6, marginTop: 6, display: 'inline-block' }}>
+            ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_data JSONB; ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_changes JSONB; ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_price_history JSONB DEFAULT {'[]'}; ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;
+          </code>
+        </div>
+      )}
+
       {/* ── COMPETITOR LIST ───────────────────────────────────────────────── */}
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 120 }}>
@@ -386,8 +453,11 @@ export default function ShadowPage() {
       ) : competitors.length === 0 ? (
         <div style={{ background: 'linear-gradient(135deg,rgba(5,0,20,0.98),rgba(8,2,25,0.99))', border: '1px solid rgba(124,58,237,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><ShadowOrb size={60} /></div>
-          <p style={{ color: '#475569', fontSize: 14, margin: '0 0 8px' }}>Henüz izlenen rakip yok</p>
-          <p style={{ color: '#334155', fontSize: 12, margin: 0 }}>Rakip Hijacking'de rakip eklediğinizde burada otomatik görünür</p>
+          <p style={{ color: '#475569', fontSize: 14, margin: '0 0 12px' }}>Henüz izlenen rakip yok</p>
+          <button onClick={() => setAddForm(true)}
+            style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 20px rgba(124,58,237,0.35)' }}>
+            + İlk Rakibi Ekle
+          </button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
