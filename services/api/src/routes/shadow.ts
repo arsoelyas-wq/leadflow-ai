@@ -240,7 +240,21 @@ router.get('/list', async (req: any, res: any) => {
       res.json({ competitors: fallback || [], migrationNeeded: true });
       return;
     }
-    res.json({ competitors: data || [] });
+
+    // Old code stored shadow_data/changes as JSON.stringify (string in JSONB)
+    // New code stores as objects — parse strings to ensure consistent format
+    const safe = (v: any, fb: any) => {
+      if (!v) return fb;
+      if (typeof v === 'string') { try { return JSON.parse(v); } catch { return fb; } }
+      return v;
+    };
+    const normalized = (data || []).map((c: any) => ({
+      ...c,
+      shadow_data: safe(c.shadow_data, null),
+      shadow_changes: safe(c.shadow_changes, []),
+      shadow_price_history: safe(c.shadow_price_history, []),
+    }));
+    res.json({ competitors: normalized });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

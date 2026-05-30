@@ -143,9 +143,15 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
   const [copied, setCopied] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
-  const shadowData = comp.shadow_data || {}
-  const changes: any[] = comp.shadow_changes || []
-  const priceHistory: any[] = comp.shadow_price_history || []
+  // Old code stored as JSON.stringify (string), new code stores as object — handle both
+  const parseSafe = (v: any, fallback: any) => {
+    if (!v) return fallback
+    if (typeof v === 'string') { try { return JSON.parse(v) } catch { return fallback } }
+    return v
+  }
+  const shadowData = parseSafe(comp.shadow_data, {})
+  const changes: any[] = parseSafe(comp.shadow_changes, [])
+  const priceHistory: any[] = parseSafe(comp.shadow_price_history, [])
   const threatScore = comp.threat_score || 0
   const isScanning = scanning === comp.id
   const aiInsight = shadowData.aiInsight || null
