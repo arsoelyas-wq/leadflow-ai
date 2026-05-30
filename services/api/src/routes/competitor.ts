@@ -43,6 +43,8 @@ function calcScore(lead: any): number {
   if (lead.email) s += 20;
   if (lead.city) s += 5;
   if (lead.name?.length > 3) s += 5;
+  // Şikayet eden = rakipten memnun değil = daha değerli lead
+  if (lead.score_boost) s += lead.score_boost;
   return Math.min(s, 100);
 }
 
@@ -434,30 +436,72 @@ async function scrapeGoogleSearch(
   } catch { return []; }
 }
 
-// ── SOCIAL REVIEWS (Facebook & Instagram complaints) ─────────────────────────
+// ── SOCIAL REVIEWS — Rakibin şikayetçilerini bul (en değerli leadler) ────────
+// Şikayet eden = rakipten memnun olmayan = bizim potansiyel müşterimiz
 async function scrapeSocialReviews(competitorName: string, country: any): Promise<any[]> {
-  const { language, queries, googleDomain, code } = country;
+  const { language, queries, googleDomain, code, localComplaintSites } = country;
   const results: any[] = [];
-  try {
-    const [fb, ig] = await Promise.allSettled([
-      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:facebook.com`, language, googleDomain, code, ['facebook.com']),
-      scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:instagram.com`, language, googleDomain, code, ['instagram.com']),
-    ]);
-    if (fb.status === 'fulfilled') fb.value.filter((r: any) => !r.url.includes('/posts/')).forEach((r: any) => results.push({
-      name: r.title.replace('| Facebook', '').replace('- Facebook', '').trim(),
-      website: r.url, notes: r.snippet, source_channel: 'Facebook Yorum', type: 'business',
-    }));
-    if (ig.status === 'fulfilled') ig.value.forEach((r: any) => {
-      const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
-      if (username) results.push({
-        name: r.title.replace('• Instagram', '').trim(),
-        instagram: `https://instagram.com/${username}`,
-        website: `https://instagram.com/${username}`,
-        notes: r.snippet, source_channel: 'Instagram Yorum', type: 'person_or_business',
+
+  // 1. Rakibin şikayetlerini şikayet sitelerinde ara (Şikayetvar, Trustpilot vb.)
+  const complaintTasks = (localComplaintSites || []).slice(0, 3).map((site: any) =>
+    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:${site.domain}`, language, googleDomain, code, [site.domain])
+  );
+
+  // 2. Trustpilot global (çoğu ülkede çalışır)
+  complaintTasks.push(
+    scrapeGoogleSearch(`"${competitorName}" ${queries.review} site:trustpilot.com`, 'en', 'google.com', code, ['trustpilot.com'])
+  );
+
+  // 3. Facebook'ta rakip hakkında şikayet paylaşımları (Tavily ile index'lenen)
+  complaintTasks.push(
+    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:facebook.com`, language, googleDomain, code, ['facebook.com'])
+  );
+
+  // 4. Instagram'da rakip hakkında olumsuz paylaşımlar
+  complaintTasks.push(
+    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:instagram.com`, language, googleDomain, code, ['instagram.com'])
+  );
+
+  // 5. Genel web'de rakip şikayetleri (forum, blog, haber)
+  complaintTasks.push(
+    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} ${queries.review}`, language, googleDomain, code, [])
+  );
+
+  const settled = await Promise.allSettled(complaintTasks);
+
+  settled.forEach((r, idx) => {
+    if (r.status !== 'fulfilled') return;
+    r.value.forEach((item: any) => {
+      const url: string = item.website || item.url || '';
+      const isFacebook = url.includes('facebook.com');
+      const isInstagram = url.includes('instagram.com');
+      const isTrustpilot = url.includes('trustpilot.com');
+      const isComplaintSite = !isFacebook && !isInstagram && !isTrustpilot;
+
+      if (isFacebook && url.includes('/posts/')) return; // posts sayfasını atla
+
+      let channelLabel = 'Sosyal Şikayet';
+      if (isFacebook) channelLabel = 'Facebook Yorum';
+      else if (isInstagram) channelLabel = 'Instagram Yorum';
+      else if (isTrustpilot) channelLabel = 'Trustpilot';
+      else if (isComplaintSite) channelLabel = 'Şikayet Sitesi';
+
+      const username = isInstagram ? url.match(/instagram\.com\/([^/?]+)/)?.[1] || '' : '';
+
+      results.push({
+        name: item.name || item.title?.replace('| Facebook', '').replace('- Facebook', '').replace('• Instagram', '').trim() || 'Şikayetçi',
+        website: username ? `https://instagram.com/${username}` : url,
+        instagram: username ? `https://instagram.com/${username}` : undefined,
+        notes: item.notes || item.snippet || '',
+        source_channel: channelLabel,
+        type: 'person',
+        score_boost: 20, // şikayet eden = daha sıcak lead
       });
     });
-  } catch {}
-  return results;
+  });
+
+  console.log(`[SocialReviews] ${results.length} şikayetçi bulundu`);
+  return results.slice(0, 15);
 }
 
 // ── LINKEDIN ─────────────────────────────────────────────────────────────────
