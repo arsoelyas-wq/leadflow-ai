@@ -368,6 +368,45 @@ export default function AdsPage() {
           </button>
         </div>
 
+        {/* ── META CAPI & HEDEFLEME ── */}
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                <Target className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <span className="text-sm font-semibold text-white">Meta CAPI & Hedefleme</span>
+                <p className="text-xs text-slate-500">Conversion API ile leadleri hedef kitleye dönüştür</p>
+              </div>
+            </div>
+            <a href="/meta-intent"
+              className="flex items-center gap-1 text-blue-400 text-xs font-medium hover:text-blue-300 transition">
+              Tam Ekran <ChevronRight className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <a href="/meta-intent"
+              className="bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl p-3 transition group block">
+              <div className="text-lg mb-1">📡</div>
+              <p className="text-white text-xs font-semibold">Event Gönder</p>
+              <p className="text-slate-500 text-xs">Leadleri CAPI ile bildir</p>
+            </a>
+            <a href="/meta-intent"
+              className="bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 rounded-xl p-3 transition group block">
+              <div className="text-lg mb-1">🎯</div>
+              <p className="text-white text-xs font-semibold">Custom Audience</p>
+              <p className="text-slate-500 text-xs">Lead listenden kitle oluştur</p>
+            </a>
+            <a href="/meta-intent"
+              className="bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 rounded-xl p-3 transition group block">
+              <div className="text-lg mb-1">{'<>'}</div>
+              <p className="text-white text-xs font-semibold">Pixel Kodu</p>
+              <p className="text-slate-500 text-xs">Site takip kodunu al</p>
+            </a>
+          </div>
+        </div>
+
         {/* Activity Feed */}
         {activities.length > 0 && (
           <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">

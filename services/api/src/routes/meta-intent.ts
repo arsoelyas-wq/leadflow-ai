@@ -10,9 +10,14 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 // ── ENV (correct token names) ─────────────────────────────────────────────────
 // META_CAPI_TOKEN = System User Token from Meta Business Manager
 // META_PIXEL_ID   = Your Facebook Pixel / Dataset ID
-const META_CAPI_TOKEN = process.env.META_CAPI_TOKEN   // primary
-  || process.env.META_GRAPH_TOKEN                       // fallback
-  || process.env.META_WA_TOKEN;                         // last resort
+// Use whichever Meta token is available (all checked in Railway)
+// META_GRAPH_TOKEN = long-lived user token (already set — works for CAPI)
+// META_PAGE_TOKEN  = page token (also works)
+// META_CAPI_TOKEN  = dedicated system user token (best practice, set if available)
+const META_CAPI_TOKEN = process.env.META_CAPI_TOKEN
+  || process.env.META_GRAPH_TOKEN   // ✅ Already set in Railway — CAPI works!
+  || process.env.META_PAGE_TOKEN    // Fallback: page token
+  || process.env.META_WA_TOKEN;    // Last resort
 const META_PIXEL_ID   = process.env.META_PIXEL_ID;
 const META_AD_ACCOUNT = process.env.META_AD_ACCOUNT_ID; // act_XXXXX
 

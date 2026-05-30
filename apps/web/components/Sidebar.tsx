@@ -81,6 +81,7 @@ const groups: NavGroup[] = [
     icon: Target,
     items: [
       { href: '/ads',          label: 'Meta Ads',           icon: Megaphone },
+      { href: '/meta-intent',  label: 'Meta CAPI & Kitle',  icon: Target,   plan: 'pro', badge: 'AI' },
       { href: '/google-ads',   label: 'Google Ads',         icon: BarChart2 },
       { href: '/ads-advanced', label: 'Gelişmiş Reklam AI', icon: Brain, plan: 'pro', badge: 'AI' },
     ],
@@ -105,7 +106,6 @@ const groups: NavGroup[] = [
       { href: '/price-tracker',  label: 'Fiyat Takibi',     icon: TrendingDown },
       { href: '/visual-trends',  label: 'Trend Catcher',    icon: Sparkles, plan: 'growth' },
       { href: '/cultural',       label: 'Kültürel Uyum',    icon: Globe,    plan: 'pro' },
-      { href: '/meta-intent',    label: 'Meta Intent',      icon: Target,   plan: 'pro' },
     ],
   },
   {
