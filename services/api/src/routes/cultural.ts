@@ -194,6 +194,21 @@ SADECE JSON döndür:
   try { return JSON.parse(match[0]); } catch { return null; }
 }
 
+// ── AI MEMORY: Save adaptation to Supabase ────────────────────────────────────
+async function saveAdaptation(userId: string, leadId: string, countryCode: string, original: string, adapted: any) {
+  try {
+    await supabase.from('cultural_adaptations').upsert([{
+      user_id: userId,
+      lead_id: leadId,
+      country_code: countryCode,
+      original_message: original,
+      adapted_message: adapted?.adaptedMessage || '',
+      profile_snapshot: await getDynamicProfile(countryCode),
+      created_at: new Date().toISOString(),
+    }], { onConflict: 'user_id,lead_id,country_code', ignoreDuplicates: false });
+  } catch { /* table may not exist yet */ }
+}
+
 // ── ROUTES ────────────────────────────────────────────────────────────────────
 
 // GET /profiles — Return all supported countries
@@ -226,6 +241,9 @@ router.post('/adapt', async (req: any, res: any) => {
 
     const profile = await getDynamicProfile(targetCountry);
     const adapted = await generateCulturalMessage(lead, targetCountry, message, profile);
+
+    // AI Memory: save adaptation
+    saveAdaptation(req.userId, leadId, targetCountry, message, adapted).catch(() => {});
 
     res.json({ adapted, profile, country: targetCountry });
   } catch (e: any) {
@@ -289,6 +307,53 @@ SADECE JSON döndür: {"language":"${profile.language}","message":"çeviri","gre
     console.error('Translate campaign:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// POST /adapt-batch — Adapt message for multiple leads at once
+router.post('/adapt-batch', async (req: any, res: any) => {
+  try {
+    const { leadIds, targetCountry, message } = req.body;
+    if (!leadIds?.length || !targetCountry || !message) {
+      return res.status(400).json({ error: 'leadIds, targetCountry, message zorunlu' });
+    }
+    if (message.length > 2000) return res.status(400).json({ error: 'Mesaj çok uzun' });
+    if (leadIds.length > 20) return res.status(400).json({ error: 'Maksimum 20 lead' });
+
+    const profile = await getDynamicProfile(targetCountry);
+    const results: any[] = [];
+
+    for (const leadId of leadIds) {
+      try {
+        const { data: lead } = await supabase.from('leads').select('*')
+          .eq('id', leadId).eq('user_id', req.userId).single();
+        if (!lead) continue;
+
+        const adapted = await generateCulturalMessage(lead, targetCountry, message, profile);
+        saveAdaptation(req.userId, leadId, targetCountry, message, adapted).catch(() => {});
+        results.push({ leadId, leadName: lead.company_name, adapted, success: true });
+      } catch (e: any) {
+        results.push({ leadId, success: false, error: e.message });
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    res.json({ results, profile, country: targetCountry, totalProcessed: results.length });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /history/:leadId — Get past adaptations for a lead (AI Memory)
+router.get('/history/:leadId', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('cultural_adaptations')
+      .select('country_code,adapted_message,original_message,created_at')
+      .eq('user_id', req.userId)
+      .eq('lead_id', req.params.leadId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    res.json({ history: data || [] });
+  } catch { res.json({ history: [] }); }
 });
 
 // GET /lead-profile/:leadId — Get cultural profile for a lead's country

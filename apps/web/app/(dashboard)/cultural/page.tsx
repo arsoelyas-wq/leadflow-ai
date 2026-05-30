@@ -342,12 +342,16 @@ function CulturalCard({ profile, countryCode }: { profile: any; countryCode: str
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function CulturalPage() {
   const [leads, setLeads] = useState<any[]>([])
-  const [selectedLead, setSelectedLead] = useState('')
+  const [leadSearch, setLeadSearch] = useState('')
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]) // multi-select
   const [selectedCountry, setSelectedCountry] = useState('DE')
   const [message, setMessage] = useState('')
   const [adapting, setAdapting] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<any>(null)       // single result
+  const [batchResults, setBatchResults] = useState<any[]>([]) // batch results
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [leadListOpen, setLeadListOpen] = useState(false)
+  const leadListRef = useRef<HTMLDivElement>(null)
 
   // Campaign translation
   const [campaignMsg, setCampaignMsg] = useState('')
@@ -363,8 +367,25 @@ export default function CulturalPage() {
 
   const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 6000) }
 
+  // Load ALL leads (no limit)
   useEffect(() => {
-    api.get('/api/leads?limit=100').then(d => setLeads(d.leads || [])).catch(() => {})
+    api.get('/api/leads?limit=2000').then(d => setLeads(d.leads || [])).catch(() => {})
+  }, [])
+
+  // Close lead list on outside click
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (leadListRef.current && !leadListRef.current.contains(e.target as Node)) setLeadListOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  // Check URL params for pre-selected lead (from lead detail page)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const preLeadId = params.get('leadId')
+    const preCountry = params.get('country')
+    if (preLeadId) setSelectedLeads([preLeadId])
+    if (preCountry) setSelectedCountry(preCountry)
   }, [])
 
   // Auto-load profile when country changes
@@ -379,13 +400,22 @@ export default function CulturalPage() {
   }, [selectedCountry])
 
   const adapt = async () => {
-    if (!selectedLead || !selectedCountry || !message) return
-    setAdapting(true); setResult(null)
+    if (selectedLeads.length === 0 || !selectedCountry || !message) return
+    setAdapting(true); setResult(null); setBatchResults([])
     try {
-      const data = await api.post('/api/cultural/adapt', { leadId: selectedLead, targetCountry: selectedCountry, message })
-      setResult(data)
-      setPreviewProfile(data.profile)
-      showMsg('success', 'Mesaj kültüre uyarlandı!')
+      if (selectedLeads.length === 1) {
+        // Single lead
+        const data = await api.post('/api/cultural/adapt', { leadId: selectedLeads[0], targetCountry: selectedCountry, message })
+        setResult(data)
+        setPreviewProfile(data.profile)
+        showMsg('success', 'Mesaj kültüre uyarlandı!')
+      } else {
+        // Batch: multiple leads
+        const data = await api.post('/api/cultural/adapt-batch', { leadIds: selectedLeads, targetCountry: selectedCountry, message })
+        setBatchResults(data.results || [])
+        setPreviewProfile(data.profile)
+        showMsg('success', `${data.totalProcessed} lead için mesaj uyarlandı!`)
+      }
     } catch (e: any) { showMsg('error', e.message) }
     finally { setAdapting(false) }
   }
@@ -453,17 +483,77 @@ export default function CulturalPage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {/* Lead selector */}
-            <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Lead Seç *</label>
-              <div style={{ position: 'relative' }}>
-                <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
-                  style={{ ...inp, appearance: 'none', cursor: 'pointer', paddingRight: 32 }}>
-                  <option value="">Lead seçin ({leads.length} kişi)</option>
-                  {leads.map(l => <option key={l.id} value={l.id}>{l.company_name}{l.city ? ` — ${l.city}` : ''}</option>)}
-                </select>
-                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}>▾</span>
-              </div>
+            {/* Multi-lead selector with search */}
+            <div ref={leadListRef}>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>
+                Lead Seç * ({leads.length} toplam)
+                {selectedLeads.length > 1 && <span style={{ color: '#06b6d4', marginLeft: 8, fontWeight: 700 }}>{selectedLeads.length} lead seçili — toplu işlem</span>}
+              </label>
+              <button onClick={() => setLeadListOpen(!leadListOpen)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: '#060a1c', border: `1px solid ${selectedLeads.length > 0 ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 11, color: selectedLeads.length > 0 ? '#fff' : '#64748b', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+                <span>{selectedLeads.length === 0 ? 'Lead seçin' : selectedLeads.length === 1 ? (leads.find(l => l.id === selectedLeads[0])?.company_name || '1 lead seçili') : `${selectedLeads.length} lead seçili`}</span>
+                <ChevronDown size={14} style={{ color: '#475569', transform: leadListOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+              </button>
+              {leadListOpen && (
+                <div style={{ position: 'relative', zIndex: 50, background: '#070a1c', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', maxHeight: 320, display: 'flex', flexDirection: 'column' }}>
+                  {/* Search */}
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
+                        placeholder={`${leads.length} lead içinde ara...`}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '6px 10px 6px 30px', color: '#fff', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+                      <Search size={12} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                    </div>
+                    {selectedLeads.length > 0 && (
+                      <button onClick={() => setSelectedLeads([])}
+                        style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#f87171', fontSize: 11, cursor: 'pointer' }}>
+                        Temizle
+                      </button>
+                    )}
+                  </div>
+                  {/* Lead list */}
+                  <div style={{ overflowY: 'auto', flex: 1 }}>
+                    {leads.filter(l => !leadSearch || l.company_name?.toLowerCase().includes(leadSearch.toLowerCase()) || l.city?.toLowerCase().includes(leadSearch.toLowerCase())).slice(0, 100).map(l => {
+                      const isSelected = selectedLeads.includes(l.id)
+                      return (
+                        <div key={l.id} onClick={() => setSelectedLeads(prev => isSelected ? prev.filter(x => x !== l.id) : [...prev, l.id])}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: isSelected ? 'rgba(6,182,212,0.1)' : 'transparent' }}
+                          onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? 'rgba(6,182,212,0.1)' : 'transparent' }}>
+                          <div style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${isSelected ? '#06b6d4' : 'rgba(255,255,255,0.2)'}`, background: isSelected ? '#06b6d4' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {isSelected && <span style={{ color: '#000', fontSize: 9, fontWeight: 900 }}>✓</span>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ color: isSelected ? '#67e8f9' : '#e2e8f0', fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.company_name}</p>
+                            {(l.city || l.sector) && <p style={{ color: '#475569', fontSize: 10, margin: 0 }}>{l.city}{l.sector ? ` · ${l.sector}` : ''}</p>}
+                          </div>
+                          {l.country && <span style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace', flexShrink: 0 }}>{l.country}</span>}
+                        </div>
+                      )
+                    })}
+                    {leads.filter(l => !leadSearch || l.company_name?.toLowerCase().includes(leadSearch.toLowerCase())).length > 100 && (
+                      <p style={{ color: '#334155', fontSize: 11, textAlign: 'center', padding: 10 }}>
+                        {leads.filter(l => !leadSearch || l.company_name?.toLowerCase().includes(leadSearch.toLowerCase())).length - 100} daha var — aramayı daralt
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Selected lead chips */}
+              {selectedLeads.length > 0 && (
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+                  {selectedLeads.slice(0, 5).map(id => {
+                    const l = leads.find(x => x.id === id)
+                    return l ? (
+                      <span key={id} onClick={() => setSelectedLeads(prev => prev.filter(x => x !== id))}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: '#67e8f9', fontSize: 10, padding: '2px 8px', borderRadius: 20, cursor: 'pointer' }}>
+                        {l.company_name.slice(0, 20)} ✕
+                      </span>
+                    ) : null
+                  })}
+                  {selectedLeads.length > 5 && <span style={{ color: '#475569', fontSize: 10, padding: '2px 6px' }}>+{selectedLeads.length - 5} daha</span>}
+                </div>
+              )}
             </div>
 
             {/* Country selector */}
@@ -481,10 +571,10 @@ export default function CulturalPage() {
               <p style={{ color: '#334155', fontSize: 10, margin: '4px 0 0', textAlign: 'right' }}>{message.length}/2000</p>
             </div>
 
-            <button onClick={adapt} disabled={adapting || !selectedLead || !selectedCountry || !message}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 12, border: 'none', cursor: adapting || !selectedLead || !message ? 'not-allowed' : 'pointer', background: selectedLead && message ? 'linear-gradient(135deg,#0891b2,#7c3aed)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, opacity: !selectedLead || !message ? 0.4 : 1, boxShadow: selectedLead && message ? '0 6px 20px rgba(8,145,178,0.35)' : 'none' }}>
+            <button onClick={adapt} disabled={adapting || selectedLeads.length === 0 || !selectedCountry || !message}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 12, border: 'none', cursor: adapting || selectedLeads.length === 0 || !message ? 'not-allowed' : 'pointer', background: selectedLeads.length > 0 && message ? 'linear-gradient(135deg,#0891b2,#7c3aed)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, opacity: selectedLeads.length === 0 || !message ? 0.4 : 1, boxShadow: selectedLeads.length > 0 && message ? '0 6px 20px rgba(8,145,178,0.35)' : 'none' }}>
               {adapting ? <RefreshCw size={15} style={{ animation: 'cg-spin 1s linear infinite' }} /> : <Zap size={15} />}
-              {adapting ? 'Kültüre Uyarlanıyor...' : 'Kültüre Uyarla'}
+              {adapting ? (selectedLeads.length > 1 ? `${selectedLeads.length} Lead Uyarlanıyor...` : 'Kültüre Uyarlanıyor...') : selectedLeads.length > 1 ? `${selectedLeads.length} Lead İçin Uyarla` : 'Kültüre Uyarla'}
             </button>
           </div>
 
@@ -532,6 +622,33 @@ export default function CulturalPage() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Batch results */}
+          {batchResults.length > 0 && (
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(6,182,212,0.1)' }}>
+              <p style={{ color: '#67e8f9', fontSize: 12, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>✅ Toplu Uyarlama Sonuçları ({batchResults.length} lead)</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 400, overflowY: 'auto' }}>
+                {batchResults.map((r: any, i: number) => (
+                  <div key={i} style={{ background: r.success ? 'rgba(6,182,212,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${r.success ? 'rgba(6,182,212,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ color: r.success ? '#67e8f9' : '#f87171', fontWeight: 700, fontSize: 12 }}>{r.leadName}</span>
+                      {r.success && (
+                        <button onClick={() => copy(r.adapted?.adaptedMessage || '', `batch_${i}`)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(6,182,212,0.3)', background: 'transparent', color: '#67e8f9', fontSize: 10, cursor: 'pointer' }}>
+                          {copiedField === `batch_${i}` ? <CheckCircle size={10} /> : <Copy size={10} />} Kopyala
+                        </button>
+                      )}
+                    </div>
+                    {r.success ? (
+                      <p style={{ color: '#e2e8f0', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{r.adapted?.adaptedMessage}</p>
+                    ) : (
+                      <p style={{ color: '#f87171', fontSize: 11, margin: 0 }}>Hata: {r.error}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

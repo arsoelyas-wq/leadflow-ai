@@ -39,6 +39,7 @@ interface Lead {
   scoringData?:       ScoringData
   hot_score?:         number
   ai_summary?:        string
+  country?:           string
   company_size?:      string
   revenue_estimate?:  string
   enrichment_status?:  string
@@ -1131,10 +1132,18 @@ export default function LeadDetailPage() {
             <h3 className="text-slate-400 text-xs mb-3">Hızlı Aksiyon</h3>
             <div className="space-y-2">
               {lead.phone && (
-                <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
-                  className="flex items-center gap-2 w-full px-3 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 text-sm rounded-lg transition">
-                  <MessageSquare size={14} /> WhatsApp Gönder
-                </a>
+                <>
+                  <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-2 w-full px-3 py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 text-sm rounded-lg transition">
+                    <MessageSquare size={14} /> WhatsApp Gönder
+                  </a>
+                  {lead.country && lead.country !== 'TR' && (
+                    <Link href={`/cultural?leadId=${lead.id}&country=${lead.country}`}
+                      className="flex items-center gap-2 w-full px-3 py-2 bg-teal-600/20 hover:bg-teal-600/30 text-teal-400 text-sm rounded-lg transition">
+                      <Globe size={14} /> WA — Kültürel Mesaj Oluştur
+                    </Link>
+                  )}
+                </>
               )}
               {lead.email && (
                 <a href={`mailto:${lead.email}`}
@@ -1147,6 +1156,10 @@ export default function LeadDetailPage() {
                 {findingDM ? <RefreshCw size={14} className="animate-spin" /> : <Crosshair size={14} />}
                 {findingDM ? 'Aranıyor...' : dmResult?.found > 0 ? 'KV Yenile' : 'Karar Verici Bul'}
               </button>
+              <Link href={`/cultural?leadId=${lead.id}${lead.country ? `&country=${lead.country}` : ''}`}
+                className="flex items-center gap-2 w-full px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 text-sm rounded-lg transition">
+                <Globe size={14} /> Kültüre Uyarla
+              </Link>
               <Link href="/campaigns"
                 className="flex items-center gap-2 w-full px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-sm rounded-lg transition">
                 <Star size={14} /> Kampanyaya Ekle
