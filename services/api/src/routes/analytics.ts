@@ -43,8 +43,10 @@ router.get('/overview', async (req: any, res: any) => {
     });
 
     const activeCampaigns = allCampaigns.filter((c: any) => c.status === 'active').length;
-    const totalSent = allCampaigns.reduce((s: number, c: any) => s + (c.total_sent || 0), 0);
-    const totalReplied = allCampaigns.reduce((s: number, c: any) => s + (c.total_replied || 0), 0);
+    // Reply rate — sadece son 30 günün kampanyalarına bak (tüm tarih yerine)
+    const recentCampaigns = allCampaigns.filter((c: any) => c.created_at >= weekAgo || c.status === 'active');
+    const totalSent = recentCampaigns.reduce((s: number, c: any) => s + (c.total_sent || 0), 0);
+    const totalReplied = recentCampaigns.reduce((s: number, c: any) => s + (c.total_replied || 0), 0);
     const replyRate = totalSent > 0 ? Math.round((totalReplied / totalSent) * 100) : 0;
 
     const topCampaigns = allCampaigns
@@ -138,13 +140,18 @@ router.get('/revenue', async (req: any, res: any) => {
     // Reply rate
     const replyRate30 = last30Messages > 0 ? Math.round((last30Replies / last30Messages) * 100) : 0;
 
-    // Gelir tahmini (kullanıcı plan tipine göre ortalama müşteri değeri)
-    const planMultiplier: Record<string, number> = {
-      starter: 500,
-      professional: 1500,
-      enterprise: 5000,
-    };
-    const avgDealValue = planMultiplier[user?.plan_type || 'starter'] || 500;
+    // Gelir tahmini — gerçek fatura verisi kullan (hardcoded plan değerleri kaldırıldı)
+    const { data: invoices } = await supabase.from('invoices')
+      .select('amount, status').eq('user_id', userId)
+      .eq('status', 'paid').gte('created_at', ninetyDaysAgo);
+    const totalRevenue = (invoices || []).reduce((s: number, i: any) => s + parseFloat(i.amount || 0), 0);
+    const wonLeads90 = leads.filter((l: any) => l.status === 'won').length;
+    // Gerçek ortalama deal değeri; veri yoksa kullanıcı ayarından veya varsayılan 1000 TL
+    const { data: userSettings } = await supabase.from('user_settings')
+      .select('avg_deal_value').eq('user_id', userId).maybeSingle();
+    const avgDealValue = wonLeads90 > 0 && totalRevenue > 0
+      ? Math.round(totalRevenue / wonLeads90)
+      : (userSettings?.avg_deal_value || 1000);
 
     // Aylık potansiyel gelir = lead * win_rate * avg_deal_value
     const monthlyPotential = Math.round(last30Leads * (winRate / 100) * avgDealValue);
@@ -314,7 +321,7 @@ router.get('/financial', async (req: any, res: any) => {
         won: stats.won,
         avgScore: Math.round(stats.score / stats.total),
         conversionRate: Math.round((stats.won / stats.total) * 100),
-        roi: stats.won > 0 ? 'Yüksek' : stats.total > 10 ? 'Orta' : 'Düşük',
+        roi: `${Math.round((stats.won / stats.total) * 100)}%`,  // Gerçek dönüşüm oranı
       }))
       .sort((a, b) => b.conversionRate - a.conversionRate)
       .slice(0, 8);
