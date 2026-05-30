@@ -664,16 +664,37 @@ async function scrapeInstagram(keyword: string, country: any): Promise<any[]> {
     } catch (e: any) { console.error('Instagram Hashtag:', e.response?.data?.error?.message || e.message?.slice(0, 60)); }
   }
 
-  // 2. Tavily/Exa/Serper ile Instagram araması
+  // 2. Exa/Serper/DDG ile Instagram profil araması (Tavily IG'yi crawl edemez)
   const results = await scrapeGoogleSearch(`${keyword} ${queries.business} site:instagram.com`, language, googleDomain, code, ['instagram.com']);
-  return results.filter((r: any) => r.url?.includes('instagram.com')).map((r: any) => {
-    const username = r.url.match(/instagram\.com\/([^/?]+)/)?.[1] || '';
-    return {
-      name: r.name || r.title?.replace('• Instagram', '').trim() || '',
-      instagram: `https://instagram.com/${username}`, website: `https://instagram.com/${username}`,
-      notes: r.notes || r.snippet || '', type: 'person_or_business', source_channel: 'Instagram',
-    };
-  });
+  return results
+    .filter((r: any) => r.url?.includes('instagram.com'))
+    .map((r: any) => {
+      // instagram.com/username → username çıkar (post URL'leri atla: /p/, /reel/)
+      const urlPath = r.url.replace(/https?:\/\/(www\.)?instagram\.com/, '').replace(/\/$/, '');
+      const isPost = urlPath.startsWith('/p/') || urlPath.startsWith('/reel/') || urlPath.startsWith('/tv/');
+      if (isPost) return null;
+
+      const username = urlPath.split('/').filter(Boolean)[0] || '';
+      if (!username || username.length < 2) return null;
+
+      const profileUrl = `https://instagram.com/${username}`;
+      const cleanName = (r.title || r.name || '')
+        .replace('• Instagram photos and videos', '')
+        .replace('• Instagram', '')
+        .replace(/\(@[^)]+\)/, '')
+        .trim() || `@${username}`;
+
+      return {
+        name: cleanName || `@${username}`,
+        instagram: profileUrl,
+        website: profileUrl,
+        phone: '',
+        notes: `📸 Instagram DM: ${profileUrl} | ${(r.snippet || '').slice(0, 120)}`,
+        type: 'person_or_business',
+        source_channel: 'Instagram',
+      };
+    })
+    .filter(Boolean);
 }
 
 // ── LOCAL COMPLAINT SITE ──────────────────────────────────────────────────────
