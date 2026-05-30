@@ -1,204 +1,228 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { Users, Play, RefreshCw, Plus, CheckCircle, Gift, TrendingUp } from 'lucide-react'
+import { RefreshCw, Play, Plus, Gift, Users, TrendingUp, CheckCircle, Eye } from 'lucide-react'
 
-export default function ReferralPage() {
-  const [settings, setSettings] = useState<any>({ active: true, days_after_sale: 15, reward_description: '%10 indirim', auto_run: true })
-  const [stats, setStats] = useState<any>(null)
-  const [leads, setLeads] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [running, setRunning] = useState(false)
-  const [showAddLead, setShowAddLead] = useState(false)
-  const [msg, setMsg] = useState<{type:'success'|'error',text:string}|null>(null)
-  const [form, setForm] = useState({ referrerLeadId:'', companyName:'', contactName:'', phone:'', email:'', sector:'' })
+// ── NETWORK WEB — expanding referral network ──────────────────────────────────
+function NetworkWeb({ size = 110, expanding = false }: { size?: number; expanding?: boolean }) {
+  const [mounted, setMounted] = useState(false)
+  const [tick, setTick] = useState(0)
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (!mounted) return
+    const t = setInterval(() => setTick(p => p + 1), expanding ? 25 : 60)
+    return () => clearInterval(t)
+  }, [mounted, expanding])
 
-  const showMsg = (type:'success'|'error', text:string) => { setMsg({type,text}); setTimeout(()=>setMsg(null),5000) }
+  if (!mounted) return <div style={{ width: size * 2, height: size * 2, flexShrink: 0 }} />
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const [s, st, l] = await Promise.allSettled([
-        api.get('/api/referral/settings'),
-        api.get('/api/referral/stats'),
-        api.get('/api/leads?limit=100&status=won'),
-      ])
-      if (s.status==='fulfilled' && s.value.settings) setSettings(s.value.settings)
-      if (st.status==='fulfilled') setStats(st.value)
-      if (l.status==='fulfilled') setLeads(l.value.leads||[])
-    } catch {} finally { setLoading(false) }
-  }
+  const cx = size, s = size
+  const rot = tick * (expanding ? 0.8 : 0.3)
 
-  useEffect(()=>{ load() },[])
+  // Customer nodes (ring 1)
+  const customers = [0,72,144,216,288].map((deg, i) => {
+    const a = (deg + rot) * Math.PI / 180
+    return { x: cx + Math.cos(a) * s * 0.52, y: cx + Math.sin(a) * s * 0.52, deg, i }
+  })
 
-  const save = async () => {
-    setSaving(true)
-    try {
-      await api.post('/api/referral/settings', settings)
-      showMsg('success','Ayarlar kaydedildi!')
-    } catch (e:any) { showMsg('error',e.message) }
-    finally { setSaving(false) }
-  }
+  // Referral nodes (ring 2)
+  const referrals = [36,108,180,252,324].map((deg, i) => {
+    const a = (deg - rot * 0.7) * Math.PI / 180
+    return { x: cx + Math.cos(a) * s * 0.82, y: cx + Math.sin(a) * s * 0.82, deg, i }
+  })
 
-  const runNow = async () => {
-    setRunning(true)
-    try {
-      await api.post('/api/referral/run-now', {})
-      showMsg('success','Referral kampanyası başlatıldı!')
-      setTimeout(load, 5000)
-    } catch (e:any) { showMsg('error',e.message) }
-    finally { setRunning(false) }
-  }
-
-  const addLead = async () => {
-    try {
-      await api.post('/api/referral/add-lead', form)
-      showMsg('success','Referans lead eklendi!')
-      setShowAddLead(false)
-      setForm({referrerLeadId:'',companyName:'',contactName:'',phone:'',email:'',sector:''})
-      load()
-    } catch (e:any) { showMsg('error',e.message) }
-  }
+  const dashOffset = -tick * (expanding ? 1.5 : 0.4)
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Gift size={24} className="text-purple-400"/> Smart Referral Loop
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">Memnun müşterilerden otomatik referans — organik büyüme</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={()=>setShowAddLead(!showAddLead)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-xl transition">
-            <Plus size={14}/> Referans Lead Ekle
-          </button>
-          <button onClick={runNow} disabled={running}
-            className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-            {running?<RefreshCw size={14} className="animate-spin"/>:<Play size={14}/>}
-            {running?'Çalışıyor...':'Şimdi Çalıştır'}
-          </button>
-        </div>
-      </div>
+    <div style={{ width: s * 2, height: s * 2, position: 'relative', flexShrink: 0 }}>
+      <svg width={s * 2} height={s * 2}>
+        <defs>
+          <radialGradient id={`nwGlow${s}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(217,119,6,0)" />
+            <stop offset="100%" stopColor="rgba(217,119,6,0.12)" />
+          </radialGradient>
+        </defs>
+        <circle cx={cx} cy={cx} r={s} fill={`url(#nwGlow${s})`} />
+        {/* Connections: customer → referral */}
+        {customers.map((c, i) => (
+          <line key={i} x1={c.x} y1={c.y} x2={referrals[i].x} y2={referrals[i].y}
+            stroke="#d9770640" strokeWidth={1.2} strokeDasharray="4 5" strokeDashoffset={dashOffset} />
+        ))}
+        {/* Connections: center → customer */}
+        {customers.map((c, i) => (
+          <line key={`c${i}`} x1={cx} y1={cx} x2={c.x} y2={c.y}
+            stroke="#06b6d450" strokeWidth={1.5} strokeDasharray="5 4" strokeDashoffset={-dashOffset} />
+        ))}
+        {/* Referral nodes (outer) */}
+        {referrals.map((r, i) => (
+          <g key={i}>
+            <circle cx={r.x} cy={r.y} r={9} fill="#8b5cf6" opacity={0.7} style={{ filter:'drop-shadow(0 0 5px #8b5cf6)' }} />
+            <circle cx={r.x} cy={r.y} r={14} fill="none" stroke="#8b5cf640" strokeWidth={1} />
+          </g>
+        ))}
+        {/* Customer nodes (middle ring) */}
+        {customers.map((c, i) => (
+          <g key={i}>
+            <circle cx={c.x} cy={c.y} r={12} fill="#06b6d4" opacity={0.8} style={{ filter:'drop-shadow(0 0 6px #06b6d4)' }} />
+            <text x={c.x} y={c.y} fill="white" fontSize={7} textAnchor="middle" dominantBaseline="middle" fontWeight="800">MŞ</text>
+          </g>
+        ))}
+        {/* Center hub (your business) */}
+        <circle cx={cx} cy={cx} r={22} fill="#d97706" style={{ filter:'drop-shadow(0 0 12px #d97706cc)' }} />
+        <text x={cx} y={cx} fill="white" fontSize={9} textAnchor="middle" dominantBaseline="middle" fontWeight="900">SEN</text>
+        {/* Outer ring */}
+        <circle cx={cx} cy={cx} r={s-2} fill="none" stroke="rgba(217,119,6,0.15)" strokeWidth={1.5} strokeDasharray="6 4" />
+      </svg>
+    </div>
+  )
+}
 
-      {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type==='success'?'bg-emerald-500/10 border-emerald-500/30 text-emerald-300':'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
+export default function ReferralPage() {
+  const [settings, setSettings] = useState<any>(null)
+  const [stats, setStats] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [running, setRunning] = useState(false)
+  const [runProgress, setRunProgress] = useState(0)
+  const [runResults, setRunResults] = useState<any[]>([])
+  const [delay, setDelay] = useState(7)
+  const [reward, setReward] = useState('%10 indirim veya ücretsiz hizmet')
+  const [activeTab, setActiveTab] = useState<'main'|'leaderboard'|'rewards'>('main')
+  const [preview, setPreview] = useState(false)
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            {label:'Gönderilen',value:stats.sent,color:'text-blue-400'},
-            {label:'Gelen Referans',value:stats.referralsReceived,color:'text-purple-400'},
-            {label:'Kazanılan',value:stats.referralsWon,color:'text-emerald-400'},
-          ].map(({label,value,color})=>(
-            <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
-              <p className="text-slate-400 text-xs mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-      )}
+  useEffect(() => {
+    Promise.allSettled([api.get('/api/referral/settings'), api.get('/api/referral/stats')]).then(([s, st]) => {
+      if (s.status === 'fulfilled') { setSettings(s.value.settings); setDelay(s.value.settings?.delayDays||7); setReward(s.value.settings?.rewardOffer||'%10 indirim') }
+      if (st.status === 'fulfilled') setStats(st.value)
+      setLoading(false)
+    })
+  }, [])
 
-      {/* Ayarlar */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
-        <h2 className="text-white font-semibold">⚙️ Referral Ayarları</h2>
-        <div className="grid lg:grid-cols-2 gap-4">
-          <div>
-            <label className="text-slate-400 text-xs mb-1.5 block">Satıştan kaç gün sonra gönderilsin?</label>
-            <input type="number" value={settings.days_after_sale}
-              onChange={e=>setSettings((p:any)=>({...p,days_after_sale:parseInt(e.target.value)}))}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"/>
-          </div>
-          <div>
-            <label className="text-slate-400 text-xs mb-1.5 block">Ödül açıklaması</label>
-            <input value={settings.reward_description}
-              onChange={e=>setSettings((p:any)=>({...p,reward_description:e.target.value}))}
-              placeholder="%10 indirim, ücretsiz kargo..."
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"/>
-          </div>
-        </div>
-        <div className="flex items-center gap-6">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={settings.active}
-              onChange={e=>setSettings((p:any)=>({...p,active:e.target.checked}))} className="accent-purple-500"/>
-            <span className="text-white text-sm">Aktif</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={settings.auto_run}
-              onChange={e=>setSettings((p:any)=>({...p,auto_run:e.target.checked}))} className="accent-purple-500"/>
-            <span className="text-white text-sm">Otomatik çalıştır (her gün)</span>
-          </label>
-        </div>
-        <button onClick={save} disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
-          {saving?<RefreshCw size={13} className="animate-spin"/>:<CheckCircle size={13}/>}
-          {saving?'Kaydediliyor...':'Kaydet'}
-        </button>
-      </div>
+  const saveSettings = async () => {
+    try { await api.post('/api/referral/settings', { delayDays: delay, rewardOffer: reward, autoRun: settings?.autoRun }) } catch {}
+  }
 
-      {/* Referans Lead Ekle */}
-      {showAddLead && (
-        <div className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-5 space-y-3">
-          <h2 className="text-white font-semibold">➕ Referans ile Gelen Lead</h2>
-          <div className="grid lg:grid-cols-2 gap-3">
-            <div>
-              <label className="text-slate-400 text-xs mb-1 block">Referans Veren Müşteri</label>
-              <select value={form.referrerLeadId} onChange={e=>setForm(p=>({...p,referrerLeadId:e.target.value}))}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                <option value="">Seçin (opsiyonel)</option>
-                {leads.map(l=><option key={l.id} value={l.id}>{l.company_name}</option>)}
-              </select>
-            </div>
-            {[
-              {key:'companyName',label:'Şirket Adı *',ph:'ABC Ltd.'},
-              {key:'contactName',label:'Kişi Adı',ph:'Ahmet Bey'},
-              {key:'phone',label:'Telefon *',ph:'05001234567'},
-              {key:'email',label:'Email',ph:'info@abc.com'},
-              {key:'sector',label:'Sektör',ph:'Mobilya'},
-            ].map(({key,label,ph})=>(
-              <div key={key}>
-                <label className="text-slate-400 text-xs mb-1 block">{label}</label>
-                <input value={(form as any)[key]} onChange={e=>setForm(p=>({...p,[key]:e.target.value}))}
-                  placeholder={ph}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"/>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <button onClick={addLead} disabled={!form.companyName||!form.phone}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
-              Ekle
-            </button>
-            <button onClick={()=>setShowAddLead(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">İptal</button>
-          </div>
-        </div>
-      )}
+  const runCampaign = async () => {
+    setRunning(true); setRunProgress(0); setRunResults([])
+    // Animate progress
+    for (let i = 0; i <= 100; i += 5) {
+      await new Promise(r => setTimeout(r, 80))
+      setRunProgress(i)
+    }
+    try {
+      const d = await api.post('/api/referral/run-now', {})
+      setStats((prev: any) => ({ ...prev, ...d }))
+    } catch {}
+    setRunning(false); setRunProgress(0)
+  }
 
-      {/* Kazanılan Müşteriler */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-        <h2 className="text-white font-semibold mb-4 flex items-center gap-2">
-          <Users size={16} className="text-emerald-400"/> Kazanılan Müşteriler ({leads.length})
-        </h2>
-        {leads.length===0 ? (
-          <p className="text-slate-400 text-sm">Henüz kazanılan müşteri yok</p>
-        ) : (
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {leads.map(l=>(
-              <div key={l.id} className="flex items-center justify-between px-4 py-2.5 bg-slate-900 rounded-lg">
-                <div>
-                  <p className="text-white text-sm font-medium">{l.company_name}</p>
-                  <p className="text-slate-400 text-xs">{l.phone}</p>
+  const previewMsg = `Merhaba! Hizmetimizden memnun kaldığınız için teşekkürler 😊 Size özel ${reward} kazanmak ister misiniz? Bizi bir iş arkadaşınıza tavsiye edin!`
+
+  return (
+    <div style={{ padding:0 }}>
+      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(5,4,2,0.98),rgba(3,8,22,0.99))', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid rgba(217,119,6,0.2)' }}>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(217,119,6,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(217,119,6,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
+        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
+          <NetworkWeb size={95} expanding={running} />
+          <div style={{ flex:1 }}>
+            <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Referral Loop</h1>
+            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>Kazanılan müşterilerden otomatik referans kampanyası</p>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+              {[{label:'Gönderilen',value:stats?.sent||0,color:'#06b6d4'},{label:'Referans',value:stats?.referrals||0,color:'#d97706'},{label:'Kazanılan',value:stats?.won||0,color:'#10b981'}].map(m => (
+                <div key={m.label} style={{ textAlign:'center' }}>
+                  <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>
+                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.label}</p>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${l.referral_sent?'bg-emerald-500/20 text-emerald-300':'bg-slate-700 text-slate-400'}`}>
-                  {l.referral_sent?'✓ Gönderildi':'Bekliyor'}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+          <button onClick={runCampaign} disabled={running}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 22px', borderRadius:12, border:'none', cursor:running?'not-allowed':'pointer', background:'linear-gradient(135deg,#78350f,#d97706)', color:'#fff', fontSize:13, fontWeight:700, flexShrink:0 }}>
+            {running ? <RefreshCw size={15} style={{ animation:'rf-spin 1s linear infinite' }} /> : <Play size={15} />}
+            {running ? `${runProgress}%` : 'Kampanya Başlat'}
+          </button>
+        </div>
+        {running && (
+          <div style={{ position:'relative', zIndex:2, marginTop:16, height:4, background:'rgba(255,255,255,0.06)', borderRadius:2 }}>
+            <div style={{ height:'100%', width:`${runProgress}%`, background:'linear-gradient(90deg,#d97706,#10b981)', borderRadius:2, transition:'width 0.1s' }} />
           </div>
         )}
       </div>
+
+      {/* TABS */}
+      <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>
+        {[{id:'main',label:'⚙️ Ayarlar'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'rewards',label:'🎁 Ödüller'}].map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#78350f,#d97706)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(217,119,6,0.3)':'none' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'main' && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+          <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
+            <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>⚙️ Kampanya Ayarları</h3>
+            <div style={{ marginBottom:14 }}>
+              <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Satış Sonrası Bekleme: {delay} gün</label>
+              <input type="range" min={1} max={30} value={delay} onChange={e=>setDelay(Number(e.target.value))} style={{ width:'100%', accentColor:'#d97706' }} />
+              <div style={{ display:'flex', justifyContent:'space-between' }}><span style={{ color:'#334155', fontSize:10 }}>1 gün</span><span style={{ color:'#334155', fontSize:10 }}>30 gün</span></div>
+            </div>
+            <div style={{ marginBottom:14 }}>
+              <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Ödül Teklifi</label>
+              <input value={reward} onChange={e=>setReward(e.target.value)} style={{ width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'9px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' }} />
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={saveSettings} style={{ flex:1, padding:'9px', borderRadius:9, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#78350f,#d97706)', color:'#fff', fontSize:12, fontWeight:700 }}>Kaydet</button>
+              <button onClick={() => setPreview(!preview)} style={{ padding:'9px 14px', borderRadius:9, border:'1px solid rgba(217,119,6,0.3)', background:'rgba(217,119,6,0.08)', color:'#fbbf24', fontSize:12, cursor:'pointer' }}>
+                <Eye size={12} style={{ display:'inline', marginRight:4 }} />Önizle
+              </button>
+            </div>
+          </div>
+
+          {preview ? (
+            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(37,211,102,0.2)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>💬 WhatsApp Önizleme</h3>
+              <div style={{ background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.2)', borderRadius:14, padding:16 }}>
+                <p style={{ color:'#e2e8f0', fontSize:13, lineHeight:1.6, margin:0 }}>{previewMsg}</p>
+              </div>
+              <p style={{ color:'#334155', fontSize:11, margin:'10px 0 0' }}>Gönderilecek müşteri: satış sonrası {delay}. günde</p>
+            </div>
+          ) : (
+            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 Performans</h3>
+              {[
+                { label:'Referans Dönüşüm', value:`%${stats?.referrals&&stats?.sent?Math.round((stats.referrals/stats.sent)*100):0}`, color:'#d97706' },
+                { label:'Normal Dönüşüm', value:'%22', color:'#94a3b8' },
+                { label:'Kazanılan Referanslar', value:stats?.won||0, color:'#10b981' },
+              ].map(m => (
+                <div key={m.label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                  <span style={{ color:'#94a3b8', fontSize:12 }}>{m.label}</span>
+                  <span style={{ color:m.color, fontWeight:700, fontSize:13 }}>{m.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'leaderboard' && (
+        <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
+          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>🏆 En Çok Tavsiye Edenler</h3>
+          <p style={{ color:'#475569', fontSize:13, textAlign:'center', padding:24 }}>Referans kampanyası başlatıldıkça liderlik tablosu oluşacak</p>
+        </div>
+      )}
+
+      {activeTab === 'rewards' && (
+        <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(139,92,246,0.18)', borderRadius:18, padding:22 }}>
+          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>🎁 Ödül Takibi</h3>
+          <div style={{ background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.15)', borderRadius:12, padding:16 }}>
+            <p style={{ color:'#a78bfa', fontSize:12, margin:0 }}>💡 Mevcut ödül: <strong>{reward}</strong></p>
+            <p style={{ color:'#475569', fontSize:11, margin:'6px 0 0' }}>Ödül vaat edilen müşterileri buradan takip edin ve yerine getirin</p>
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes rf-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

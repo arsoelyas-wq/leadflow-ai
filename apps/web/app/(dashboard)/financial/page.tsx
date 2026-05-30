@@ -1,238 +1,248 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { TrendingUp, TrendingDown, DollarSign, Target, AlertTriangle, Zap, BarChart3, MapPin, ArrowUp, ArrowDown } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Zap, TrendingUp, TrendingDown, Brain } from 'lucide-react'
+
+// ── NEURAL CONSTELLATION — connected nodes representing business metrics ───────
+function NeuralConstellation({ size = 110, analyzing = false, metrics = {} as Record<string,number> }: { size?: number; analyzing?: boolean; metrics?: Record<string,number> }) {
+  const [mounted, setMounted] = useState(false)
+  const [tick, setTick] = useState(0)
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (!mounted) return
+    const t = setInterval(() => setTick(p => p + 1), analyzing ? 30 : 80)
+    return () => clearInterval(t)
+  }, [mounted, analyzing])
+
+  if (!mounted) return <div style={{ width: size * 2.2, height: size * 2.2, flexShrink: 0 }} />
+
+  const cx = size * 1.1, s = size
+  const time = tick * (analyzing ? 0.04 : 0.008)
+
+  const NODES = [
+    { label: 'LEAD', key: 'leads', color: '#10b981', baseAngle: 0, dist: 0.7 },
+    { label: 'WIN', key: 'won', color: '#d97706', baseAngle: 51.4, dist: 0.65 },
+    { label: 'MSG', key: 'messages', color: '#06b6d4', baseAngle: 102.8, dist: 0.72 },
+    { label: 'CHURN', key: 'churn', color: '#ef4444', baseAngle: 154.3, dist: 0.68 },
+    { label: 'ROI', key: 'roi', color: '#8b5cf6', baseAngle: 205.7, dist: 0.65 },
+    { label: 'CITY', key: 'city', color: '#f59e0b', baseAngle: 257.1, dist: 0.7 },
+    { label: 'COST', key: 'cost', color: '#ec4899', baseAngle: 308.5, dist: 0.68 },
+    { label: 'GRW', key: 'growth', color: '#34d399', baseAngle: 0.5, dist: 0.75 },
+  ]
+
+  const nodePos = NODES.map(n => {
+    const a = (n.baseAngle + time * 3) * Math.PI / 180
+    return { x: cx + Math.cos(a) * s * n.dist, y: cx + Math.sin(a) * s * n.dist, ...n }
+  })
+
+  const EDGES = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],[0,4],[1,5],[2,6]]
+  const dashOffset = -tick * (analyzing ? 2 : 0.5)
+
+  return (
+    <div style={{ width: s * 2.2, height: s * 2.2, position: 'relative', flexShrink: 0 }}>
+      <svg width={s * 2.2} height={s * 2.2}>
+        <defs>
+          <radialGradient id={`ncGlow${s}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(139,92,246,0)" />
+            <stop offset="100%" stopColor="rgba(139,92,246,0.12)" />
+          </radialGradient>
+        </defs>
+        <circle cx={cx} cy={cx} r={s * 1.05} fill={`url(#ncGlow${s})`} />
+
+        {/* Edges */}
+        {EDGES.map(([a, b], i) => {
+          const n1 = nodePos[a], n2 = nodePos[b]
+          return (
+            <line key={i} x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y}
+              stroke={`${n1.color}40`} strokeWidth={1.2}
+              strokeDasharray="6 4" strokeDashoffset={dashOffset}
+              style={{ filter: analyzing ? `drop-shadow(0 0 3px ${n1.color}60)` : 'none' }} />
+          )
+        })}
+
+        {/* Center hub */}
+        <circle cx={cx} cy={cx} r={s * 0.15} fill="#1e1b4b" stroke="rgba(139,92,246,0.5)" strokeWidth={2}
+          style={{ filter: 'drop-shadow(0 0 10px rgba(139,92,246,0.6))' }} />
+        <text x={cx} y={cx} fill="#a78bfa" fontSize={s * 0.08} textAnchor="middle" dominantBaseline="middle" fontWeight="800">AI</text>
+
+        {/* Nodes */}
+        {nodePos.map((n, i) => {
+          const pulse = analyzing ? 1 + Math.sin(tick * 0.2 + i) * 0.3 : 1
+          const r = 14 * pulse
+          return (
+            <g key={i}>
+              <circle cx={n.x} cy={n.y} r={r + 4} fill={n.color} opacity={0.12} />
+              <circle cx={n.x} cy={n.y} r={r} fill={n.color} opacity={0.85}
+                style={{ filter: `drop-shadow(0 0 ${analyzing?8:4}px ${n.color})` }} />
+              <text x={n.x} y={n.y - r - 6} fill={n.color} fontSize={8} textAnchor="middle" fontWeight="700" opacity={0.8}>{n.label}</text>
+              {/* Connection to center */}
+              <line x1={n.x} y1={n.y} x2={cx} y2={cx} stroke={`${n.color}25`} strokeWidth={0.8} strokeDasharray="3 6" />
+            </g>
+          )
+        })}
+
+        <circle cx={cx} cy={cx} r={s * 1.0} fill="none" stroke="rgba(139,92,246,0.12)" strokeWidth={1.5} strokeDasharray="8 6" />
+      </svg>
+    </div>
+  )
+}
 
 export default function FinancialPage() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [monthlyTarget, setMonthlyTarget] = useState<number>(50)
+
+  const load = async () => {
+    setLoading(true); setAnalyzing(true)
+    try { const d = await api.get('/api/analytics/financial'); setData(d) } catch {}
+    setLoading(false); setTimeout(() => setAnalyzing(false), 2000)
+  }
 
   useEffect(() => {
-    api.get('/api/analytics/financial')
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    const saved = localStorage.getItem('lf_monthly_target'); if (saved) setMonthlyTarget(Number(saved))
+    load()
   }, [])
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-  if (!data) return null
+  const saveTarget = () => localStorage.setItem('lf_monthly_target', String(monthlyTarget))
 
-  const maxLeads = Math.max(...(data.monthlyTrend?.map((m: any) => m.leads) || [1]), 1)
-  const maxMessages = Math.max(...(data.monthlyTrend?.map((m: any) => m.messages) || [1]), 1)
+  const churn = data?.churnRisk || {}
+  const growth = data?.growthRate || 0
+  const sourcePerf = data?.sourcePerformance || []
+  const cities = data?.topCities || []
+  const aiAdvice = data?.aiRecommendations || []
+
+  const metrics: Record<string,number> = {
+    leads: data?.summary?.last30Leads || 0,
+    won: data?.creditEfficiency || 0,
+    messages: data?.summary?.last30Messages || 0,
+    churn: churn.total || 0,
+    roi: Number((sourcePerf[0]?.conversionRate || '0').replace('%','')),
+    growth: Math.abs(growth),
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <TrendingUp size={24} className="text-emerald-400" />
-          Finansal Büyüme Zekası
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm">Büyüme trendleri, kaynak verimliliği ve akıllı tahminler</p>
-      </div>
-
-      {/* KPI'lar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            label: 'Büyüme Hızı',
-            value: `${data.growth.rate > 0 ? '+' : ''}${data.growth.rate}%`,
-            sub: `${data.growth.lastMonth} → ${data.growth.thisMonth} lead`,
-            color: data.growth.rate > 0 ? 'text-emerald-400' : data.growth.rate < 0 ? 'text-red-400' : 'text-slate-300',
-            icon: data.growth.rate > 0 ? TrendingUp : TrendingDown,
-            iconColor: data.growth.rate > 0 ? 'text-emerald-400' : 'text-red-400',
-          },
-          {
-            label: 'Aylık Hedef',
-            value: `%${data.target.progress}`,
-            sub: `${data.target.current}/${data.target.monthly} lead`,
-            color: data.target.progress >= 100 ? 'text-emerald-400' : data.target.progress >= 50 ? 'text-yellow-400' : 'text-red-400',
-            icon: Target,
-            iconColor: 'text-blue-400',
-          },
-          {
-            label: 'Lead Başına Maliyet',
-            value: `${data.creditEfficiency.costPerLead} kredi`,
-            sub: `${data.creditEfficiency.used} kredi kullanıldı`,
-            color: 'text-slate-300',
-            icon: DollarSign,
-            iconColor: 'text-yellow-400',
-          },
-          {
-            label: 'Churn Riski',
-            value: data.churnRisk.total,
-            sub: `${data.churnRisk.staleLeads} takılı, ${data.churnRisk.coldLeads} soğuk`,
-            color: data.churnRisk.total > 10 ? 'text-red-400' : 'text-yellow-400',
-            icon: AlertTriangle,
-            iconColor: 'text-red-400',
-          },
-        ].map(({ label, value, sub, color, icon: Icon, iconColor }) => (
-          <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <Icon size={18} className={`${iconColor} mb-3`} />
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            <p className="text-slate-400 text-sm mt-1">{label}</p>
-            <p className="text-slate-500 text-xs mt-0.5">{sub}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Aylık Trend */}
-        <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-5">6 Aylık Lead & Mesaj Trendi</h2>
-          <div className="flex items-end gap-2 h-32">
-            {data.monthlyTrend?.map((month: any) => (
-              <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full flex items-end gap-0.5" style={{ height: '90px' }}>
-                  <div className="flex-1 bg-blue-500/70 hover:bg-blue-500 rounded-t transition-all"
-                    style={{ height: `${Math.max((month.leads / maxLeads) * 100, month.leads > 0 ? 5 : 1)}%` }} />
-                  <div className="flex-1 bg-green-500/70 hover:bg-green-500 rounded-t transition-all"
-                    style={{ height: `${Math.max((month.messages / maxMessages) * 100, month.messages > 0 ? 5 : 1)}%` }} />
+    <div style={{ padding: 0 }}>
+      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(5,3,22,0.98),rgba(8,5,22,0.99))', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid rgba(139,92,246,0.2)' }}>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(139,92,246,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,70,229,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
+        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', justifyContent:'space-between', gap:24 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:24 }}>
+            <NeuralConstellation size={95} analyzing={analyzing} metrics={metrics} />
+            <div>
+              <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Büyüme Zekası</h1>
+              <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>6 aylık trend, churn tespiti, AI büyüme önerileri</p>
+              <div style={{ display:'flex', gap:8 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:6, background:growth>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border:`1px solid ${growth>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:20, padding:'4px 12px' }}>
+                  {growth >= 0 ? <TrendingUp size={13} style={{ color:'#34d399' }} /> : <TrendingDown size={13} style={{ color:'#f87171' }} />}
+                  <span style={{ color:growth>=0?'#34d399':'#f87171', fontSize:12, fontWeight:700 }}>{growth>=0?'+':''}{growth.toFixed(1)}% büyüme</span>
                 </div>
-                <span className="text-slate-500 text-xs">{month.month}</span>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-4 mt-3">
-            <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-blue-500/70 rounded-sm" /><span className="text-slate-400 text-xs">Lead</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-500/70 rounded-sm" /><span className="text-slate-400 text-xs">Mesaj</span></div>
-          </div>
-        </div>
-
-        {/* Hedef */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-5">Bu Ay Hedef</h2>
-          <div className="flex items-center justify-center mb-4">
-            <div className="relative w-32 h-32">
-              <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="50" fill="none" stroke="#1e293b" strokeWidth="12" />
-                <circle cx="60" cy="60" r="50" fill="none"
-                  stroke={data.target.progress >= 100 ? '#10b981' : data.target.progress >= 50 ? '#f59e0b' : '#3b82f6'}
-                  strokeWidth="12"
-                  strokeDasharray={`${2 * Math.PI * 50}`}
-                  strokeDashoffset={`${2 * Math.PI * 50 * (1 - data.target.progress / 100)}`}
-                  strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-white text-2xl font-bold">%{data.target.progress}</span>
-                <span className="text-slate-400 text-xs">tamamlandı</span>
+                {churn.total > 0 && (
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:20, padding:'4px 12px' }}>
+                    <AlertTriangle size={13} style={{ color:'#fbbf24' }} />
+                    <span style={{ color:'#fbbf24', fontSize:12, fontWeight:700 }}>{churn.total} churn riski</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-slate-400">Hedef</span><span className="text-white font-bold">{data.target.monthly} lead</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Mevcut</span><span className="text-blue-400 font-bold">{data.target.current} lead</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Kalan</span><span className="text-slate-300">{Math.max(0, data.target.monthly - data.target.current)} lead</span></div>
-          </div>
+          <button onClick={load} disabled={loading} style={{ display:'flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:11, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:700 }}>
+            <Brain size={14} style={{ animation:analyzing?'fn-spin 1s linear infinite':'none' }} />
+            {analyzing?'AI Analiz Ediyor...':'AI Yenile'}
+          </button>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Kaynak Performansı */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 size={16} className="text-blue-400" /> Kaynak ROI Analizi
-          </h2>
-          <div className="space-y-3">
-            {data.sourcePerformance?.slice(0, 6).map((src: any) => (
-              <div key={src.source}>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-300 text-xs truncate max-w-40">{src.source}</span>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-slate-500">{src.total} lead</span>
-                    <span className={`font-bold ${src.conversionRate > 10 ? 'text-emerald-400' : src.conversionRate > 0 ? 'text-yellow-400' : 'text-slate-500'}`}>
-                      %{src.conversionRate}
-                    </span>
-                  </div>
-                </div>
-                <div className="w-full bg-slate-700 rounded-full h-1.5">
-                  <div className={`h-1.5 rounded-full ${src.conversionRate > 10 ? 'bg-emerald-500' : src.conversionRate > 0 ? 'bg-yellow-500' : 'bg-slate-600'}`}
-                    style={{ width: `${Math.max(src.conversionRate * 3, 2)}%` }} />
-                </div>
+      {loading ? (
+        <div style={{ display:'flex', justifyContent:'center', height:100, alignItems:'center' }}><RefreshCw size={22} style={{ color:'#475569', animation:'fn-spin 1s linear infinite' }} /></div>
+      ) : (
+        <>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
+            {[
+              { label:'30 Gün Lead', value:data?.summary?.last30Leads||0, color:'#10b981', icon:'👥' },
+              { label:'Churn Riski', value:churn.total||0, color:'#ef4444', icon:'⚠️' },
+              { label:'Kredi Verimi', value:`%${data?.creditEfficiency||0}`, color:'#8b5cf6', icon:'⚡' },
+              { label:'Deal Maliyeti', value:`${data?.costPerDeal||0} kr`, color:'#f59e0b', icon:'💰' },
+            ].map(m => (
+              <div key={m.label} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>
+                <div style={{ fontSize:22, marginBottom:8 }}>{m.icon}</div>
+                <p style={{ color:m.color, fontSize:22, fontWeight:800, margin:'0 0 4px' }}>{m.value}</p>
+                <p style={{ color:'#64748b', fontSize:12, margin:0 }}>{m.label}</p>
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Şehir Analizi + Churn */}
-        <div className="space-y-4">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
-              <MapPin size={15} className="text-purple-400" /> Şehir Performansı
-            </h2>
-            <div className="space-y-2">
-              {data.topCities?.map((city: any) => (
-                <div key={city.city} className="flex items-center justify-between">
-                  <span className="text-slate-300 text-sm">{city.city}</span>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-slate-500">{city.total}</span>
-                    <span className={city.rate > 0 ? 'text-emerald-400' : 'text-slate-500'}>%{city.rate}</span>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
+            {/* Source ROI — real % */}
+            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 Kaynak ROI (Gerçek %)</h3>
+              {sourcePerf.slice(0,5).map((s: any, i: number) => {
+                const colors = ['#10b981','#06b6d4','#8b5cf6','#f59e0b','#ec4899']
+                return (
+                  <div key={s.source} style={{ marginBottom:10 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                      <span style={{ color:'#94a3b8', fontSize:12 }}>{s.source}</span>
+                      <div style={{ display:'flex', gap:8 }}>
+                        <span style={{ color:colors[i], fontSize:12, fontWeight:700 }}>{s.roi}</span>
+                        <span style={{ color:'#334155', fontSize:11 }}>{s.total} lead</span>
+                      </div>
+                    </div>
+                    <div style={{ height:5, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
+                      <div style={{ height:'100%', width:`${parseInt(s.roi||'0')}%`, background:colors[i], borderRadius:3, maxWidth:'100%' }} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
+            </div>
+
+            {/* Monthly target */}
+            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>🎯 Aylık Lead Hedefi</h3>
+              {(() => {
+                const current = data?.summary?.last30Leads||0
+                const pct = Math.min(100, Math.round((current/monthlyTarget)*100))
+                return (
+                  <>
+                    <div style={{ position:'relative', width:120, height:120, margin:'0 auto 16px' }}>
+                      <svg width={120} height={120}>
+                        <circle cx={60} cy={60} r={50} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={8} />
+                        <circle cx={60} cy={60} r={50} fill="none" stroke={pct>=100?'#10b981':'#d97706'} strokeWidth={8}
+                          strokeDasharray={2*Math.PI*50} strokeDashoffset={2*Math.PI*50*(1-pct/100)}
+                          strokeLinecap="round" transform="rotate(-90 60 60)"
+                          style={{ filter:`drop-shadow(0 0 6px ${pct>=100?'#10b981':'#d97706'}66)`, transition:'stroke-dashoffset 1s' }} />
+                      </svg>
+                      <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+                        <span style={{ color:pct>=100?'#34d399':'#fbbf24', fontWeight:800, fontSize:22 }}>{pct}%</span>
+                        <span style={{ color:'#475569', fontSize:11 }}>{current}/{monthlyTarget}</span>
+                      </div>
+                    </div>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <input type="number" value={monthlyTarget} onChange={e=>setMonthlyTarget(Number(e.target.value))} min={1}
+                        style={{ flex:1, background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'8px 12px', color:'#fff', fontSize:13, outline:'none' }} />
+                      <button onClick={saveTarget} style={{ padding:'8px 14px', borderRadius:9, border:'none', cursor:'pointer', background:'rgba(217,119,6,0.2)', color:'#fbbf24', fontSize:12 }}>Kaydet</button>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           </div>
 
-          {/* Churn Risk */}
-          {data.churnRisk.total > 0 && (
-            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-5">
-              <h2 className="text-red-300 font-semibold mb-3 flex items-center gap-2">
-                <AlertTriangle size={15} /> Aksiyon Gereken Leadler
-              </h2>
-              <div className="space-y-2 text-sm">
-                {data.churnRisk.staleLeads > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">30+ gün takılı</span>
-                    <span className="text-red-400 font-bold">{data.churnRisk.staleLeads}</span>
+          {/* AI Recommendations */}
+          {aiAdvice.length > 0 && (
+            <div style={{ background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.06))', border:'1px solid rgba(124,58,237,0.2)', borderRadius:16, padding:20 }}>
+              <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 12px', textTransform:'uppercase', letterSpacing:1 }}>🤖 AI Önerileri</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {aiAdvice.slice(0,3).map((rec: string, i: number) => (
+                  <div key={i} style={{ display:'flex', gap:8, padding:'10px 12px', background:'rgba(0,0,0,0.2)', borderRadius:10 }}>
+                    <span style={{ color:'#7c3aed', fontSize:13, flexShrink:0 }}>{i+1}.</span>
+                    <p style={{ color:'#cbd5e1', fontSize:13, margin:0, lineHeight:1.5 }}>{rec}</p>
                   </div>
-                )}
-                {data.churnRisk.coldLeads > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">60+ gün soğuk</span>
-                    <span className="text-yellow-400 font-bold">{data.churnRisk.coldLeads}</span>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* AI Finansal Tavsiye */}
-      {data.financialAdvice && (
-        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-4 flex items-center gap-2">
-            <Zap size={16} className="text-emerald-400" /> AI Finansal Büyüme Tavsiyesi
-          </h2>
-          <div className="grid lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-2">
-              {data.financialAdvice.advice?.map((a: string, i: number) => (
-                <div key={i} className="flex items-start gap-2">
-                  <span className="text-emerald-400 font-bold text-sm shrink-0">{i + 1}.</span>
-                  <p className="text-slate-300 text-sm">{a}</p>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-3">
-              {data.financialAdvice.priority && (
-                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                  <p className="text-yellow-400 text-xs font-medium mb-1">🎯 Öncelik</p>
-                  <p className="text-slate-300 text-xs">{data.financialAdvice.priority}</p>
-                </div>
-              )}
-              {data.financialAdvice.forecast && (
-                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-blue-400 text-xs font-medium mb-1">📈 Tahmin</p>
-                  <p className="text-slate-300 text-xs">{data.financialAdvice.forecast}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        </>
       )}
+      <style>{`@keyframes fn-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

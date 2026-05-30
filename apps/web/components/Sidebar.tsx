@@ -117,7 +117,7 @@ const groups: NavGroup[] = [
       { href: '/reports',        label: 'Raporlar',         icon: FileBarChart },
       { href: '/revenue',        label: 'Gelir Tahmini',    icon: DollarSign, plan: 'growth' },
       { href: '/financial',      label: 'Büyüme Zekası',    icon: TrendingUp, plan: 'pro', badge: 'AI' },
-      { href: '/loyalty',        label: 'Sadakat Puanı',    icon: Trophy },
+      { href: '/loyalty',        label: 'Müşteri Sağlığı',  icon: Trophy },
       { href: '/referral',       label: 'Referral Loop',    icon: Gift },
       { href: '/debt-collector', label: 'Tahsilat',         icon: TrendingDown },
     ],

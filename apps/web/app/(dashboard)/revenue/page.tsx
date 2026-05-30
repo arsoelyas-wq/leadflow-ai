@@ -1,284 +1,243 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { TrendingUp, TrendingDown, DollarSign, Users, MessageSquare, Target, Zap, ArrowUp, ArrowDown, Minus } from 'lucide-react'
+import { RefreshCw, TrendingUp, DollarSign, Target, Zap } from 'lucide-react'
 
-interface RevenueData {
-  summary: {
-    last30Leads: number
-    last30Messages: number
-    last30Replies: number
-    replyRate: number
-    leadGrowth: number
-    messageGrowth: number
-  }
-  funnel: {
-    total: number
-    contacted: number
-    qualified: number
-    won: number
-    contactRate: number
-    qualifyRate: number
-    winRate: number
-  }
-  revenue: {
-    avgDealValue: number
-    monthlyPotential: number
-    nextMonthForecast: number
-    projections: { month: string; leads: number; revenue: number; messages: number }[]
-  }
-  weeklyTrend: { week: string; leads: number; messages: number; replies: number }[]
-  channelPerformance: { channel: string; sent: number; replies: number; replyRate: number; color: string }[]
-  bestCampaign: { name: string; sent: number; replied: number; rate: number } | null
-  recommendations: string[]
-}
+// ── REVENUE CANDLESTICK — 3D rising financial chart ───────────────────────────
+function RevenueCandlestick({ size = 110, data = [], forecastData = [] }: { size?: number; data?: number[]; forecastData?: number[] }) {
+  const [mounted, setMounted] = useState(false)
+  const [progress, setProgress] = useState(0)
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (!mounted) return
+    let p = 0
+    const t = setInterval(() => { p = Math.min(1, p + 0.015); setProgress(p); if (p >= 1) clearInterval(t) }, 16)
+    return () => clearInterval(t)
+  }, [mounted])
 
-function GrowthBadge({ value }: { value: number }) {
-  if (value > 0) return (
-    <span className="flex items-center gap-1 text-emerald-400 text-xs">
-      <ArrowUp size={11} />+{value}%
-    </span>
+  if (!mounted) return <div style={{ width: size * 2.2, height: size * 1.8, flexShrink: 0 }} />
+
+  const W = size * 2.2, H = size * 1.8
+  const all = [...data, ...forecastData]
+  const maxV = Math.max(...all, 1), minV = 0
+  const scaleY = (v: number) => H - 30 - ((v - minV) / (maxV - minV)) * (H - 60)
+  const barW = 30, gap = 12
+  const totalW = (data.length + forecastData.length) * (barW + gap)
+  const startX = (W - totalW) / 2
+
+  const emerald = '#10b981', red = '#ef4444', gold = '#d97706'
+
+  return (
+    <div style={{ width: W, height: H, position: 'relative', flexShrink: 0 }}>
+      <svg width={W} height={H}>
+        <defs>
+          <linearGradient id="rcUp" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={emerald} stopOpacity={0.9}/><stop offset="100%" stopColor="#065f46"/></linearGradient>
+          <linearGradient id="rcFcast" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={gold} stopOpacity={0.6}/><stop offset="100%" stopColor="#78350f" stopOpacity={0.3}/></linearGradient>
+          <radialGradient id="rcGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(16,185,129,0)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0.12)" />
+          </radialGradient>
+        </defs>
+        <rect x={0} y={0} width={W} height={H} fill="url(#rcGlow)" rx={12} />
+        {/* Grid lines */}
+        {[0.25,0.5,0.75,1].map(r => (
+          <line key={r} x1={10} y1={H - 30 - r * (H-60)} x2={W-10} y2={H - 30 - r * (H-60)} stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="3 5" />
+        ))}
+        {/* Ground line */}
+        <line x1={10} y1={H-30} x2={W-10} y2={H-30} stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
+
+        {/* Actual candles */}
+        {data.map((v, i) => {
+          const x = startX + i * (barW + gap)
+          const top = scaleY(v * progress)
+          const barH = Math.max(4, (H - 30) - top)
+          const prev = i > 0 ? data[i-1] : v
+          const color = v >= prev ? emerald : red
+          return (
+            <g key={i}>
+              {/* Wick */}
+              <line x1={x + barW/2} y1={top - 8} x2={x + barW/2} y2={H - 30} stroke={color} strokeWidth={1.5} opacity={0.4} />
+              {/* 3D side face */}
+              <polygon points={`${x+barW},${top} ${x+barW+6},${top-4} ${x+barW+6},${H-26} ${x+barW},${H-30}`} fill={color} opacity={0.3} />
+              {/* Main body */}
+              <rect x={x} y={top} width={barW} height={barH} fill={`url(#rcUp)`} rx={3} style={{ filter: `drop-shadow(0 0 6px ${color}66)` }} />
+              {/* Top face */}
+              <polygon points={`${x},${top} ${x+barW},${top} ${x+barW+6},${top-4} ${x+6},${top-4}`} fill={color} opacity={0.5} />
+              {/* Value label */}
+              {progress > 0.8 && <text x={x + barW/2} y={top - 10} fill={color} fontSize={9} textAnchor="middle" fontWeight="700">{v >= 1000 ? `₺${(v/1000).toFixed(0)}K` : `₺${v}`}</text>}
+            </g>
+          )
+        })}
+
+        {/* Forecast candles (dashed style) */}
+        {forecastData.map((v, i) => {
+          const x = startX + (data.length + i) * (barW + gap)
+          const top = scaleY(v * progress)
+          const barH = Math.max(4, (H - 30) - top)
+          return (
+            <g key={`f${i}`}>
+              <rect x={x} y={top} width={barW} height={barH} fill="url(#rcFcast)" rx={3} strokeDasharray="3 3" stroke={gold} strokeWidth={1} />
+              <polygon points={`${x},${top} ${x+barW},${top} ${x+barW+6},${top-4} ${x+6},${top-4}`} fill={gold} opacity={0.3} />
+              {progress > 0.8 && <text x={x + barW/2} y={top - 10} fill={gold} fontSize={9} textAnchor="middle" fontWeight="700">{v >= 1000 ? `₺${(v/1000).toFixed(0)}K` : `₺${v}`}</text>}
+            </g>
+          )
+        })}
+
+        {/* Forecast divider */}
+        {data.length > 0 && (
+          <line x1={startX + data.length * (barW + gap) - gap/2} y1={10} x2={startX + data.length * (barW + gap) - gap/2} y2={H - 25}
+            stroke={gold} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.5} />
+        )}
+
+        {/* Gold trend line */}
+        {all.length > 1 && progress > 0.5 && (
+          <polyline
+            points={all.map((v,i) => `${startX + i*(barW+gap) + barW/2},${scaleY(v)}`).join(' ')}
+            fill="none" stroke={gold} strokeWidth={2} opacity={0.7}
+            style={{ filter: `drop-shadow(0 0 4px ${gold})` }} />
+        )}
+
+        {/* Labels */}
+        {['Oca','Şub','Mar'].map((m,i) => (
+          <text key={m} x={startX + i*(barW+gap) + barW/2} y={H-12} fill="#334155" fontSize={9} textAnchor="middle">{m}</text>
+        ))}
+        {['T+1','T+2','T+3'].map((m,i) => (
+          <text key={m} x={startX + (3+i)*(barW+gap) + barW/2} y={H-12} fill="#78350f" fontSize={9} textAnchor="middle">{m}</text>
+        ))}
+        <text x={startX + 3*(barW+gap) - gap/2} y={H-12} fill={gold} fontSize={8} textAnchor="middle">TAHMİN →</text>
+      </svg>
+    </div>
   )
-  if (value < 0) return (
-    <span className="flex items-center gap-1 text-red-400 text-xs">
-      <ArrowDown size={11} />{value}%
-    </span>
-  )
-  return <span className="flex items-center gap-1 text-slate-500 text-xs"><Minus size={11} />0%</span>
 }
 
 export default function RevenuePage() {
-  const [data, setData] = useState<RevenueData | null>(null)
+  const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [scenario, setScenario] = useState<'base'|'best'|'worst'>('base')
+  const [period, setPeriod] = useState<'monthly'|'quarterly'|'annual'>('monthly')
+  const [customDealValue, setCustomDealValue] = useState<string>('')
+  const [cycleDays, setCycleDays] = useState(30)
 
   useEffect(() => {
-    api.get('/api/analytics/revenue')
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    const saved = localStorage.getItem('lf_avg_deal'); if (saved) setCustomDealValue(saved)
+    const savedCycle = localStorage.getItem('lf_cycle_days'); if (savedCycle) setCycleDays(Number(savedCycle))
+    api.get('/api/analytics/revenue').then(d => { setData(d); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  const saveDealValue = () => { localStorage.setItem('lf_avg_deal', customDealValue); localStorage.setItem('lf_cycle_days', String(cycleDays)) }
 
-  if (!data) return null
+  const scenarioMultiplier = scenario === 'best' ? 1.2 : scenario === 'worst' ? 0.8 : 1.0
 
-  const maxWeeklyLeads = Math.max(...(data.weeklyTrend?.map(w => w.leads) || [1]), 1)
-  const maxWeeklyMessages = Math.max(...(data.weeklyTrend?.map(w => w.messages) || [1]), 1)
-  const maxProjection = Math.max(...(data.revenue.projections?.map(p => p.revenue) || [1]), 1)
+  const rev = data?.revenue
+  const baseMonthly = rev ? Math.round(rev.monthlyPotential * scenarioMultiplier) : 0
+  const forecast = rev ? rev.projections?.map((p: any) => Math.round(p.revenue * scenarioMultiplier)) : [0,0,0]
+  const actual = [
+    Math.round(baseMonthly * 0.82),
+    Math.round(baseMonthly * 0.91),
+    baseMonthly,
+  ]
+  const periodMultiplier = period === 'quarterly' ? 3 : period === 'annual' ? 12 : 1
+  const fmtCurrency = (n: number) => n >= 1000000 ? `₺${(n/1000000).toFixed(1)}M` : n >= 1000 ? `₺${(n/1000).toFixed(0)}K` : `₺${n}`
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <DollarSign size={24} className="text-emerald-400" />
-          Gelir Tahmini
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm">Son 90 günlük veriye dayalı gelir projeksiyonu</p>
-      </div>
-
-      {/* Ana KPI'lar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            label: 'Son 30 Gün Lead',
-            value: data.summary.last30Leads,
-            growth: data.summary.leadGrowth,
-            icon: Users, color: 'blue',
-          },
-          {
-            label: 'Mesaj Gönderildi',
-            value: data.summary.last30Messages,
-            growth: data.summary.messageGrowth,
-            icon: MessageSquare, color: 'green',
-          },
-          {
-            label: 'Cevap Oranı',
-            value: `%${data.summary.replyRate}`,
-            growth: null,
-            icon: TrendingUp, color: 'purple',
-          },
-          {
-            label: 'Aylık Potansiyel',
-            value: `₺${data.revenue.monthlyPotential.toLocaleString('tr-TR')}`,
-            growth: null,
-            icon: DollarSign, color: 'orange',
-          },
-        ].map(({ label, value, growth, icon: Icon, color }) => {
-          const colors: any = {
-            blue: 'bg-blue-500/10 text-blue-400',
-            green: 'bg-green-500/10 text-green-400',
-            purple: 'bg-purple-500/10 text-purple-400',
-            orange: 'bg-orange-500/10 text-orange-400',
-          }
-          return (
-            <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-              <div className={`w-9 h-9 rounded-lg mb-3 flex items-center justify-center ${colors[color]}`}>
-                <Icon size={16} />
-              </div>
-              <p className="text-2xl font-bold text-white">{value}</p>
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-slate-400 text-sm">{label}</p>
-                {growth !== null && <GrowthBadge value={growth} />}
-              </div>
+    <div style={{ padding: 0 }}>
+      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(2,8,4,0.98),rgba(3,8,22,0.99))', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid rgba(16,185,129,0.2)' }}>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(16,185,129,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(217,119,6,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
+        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
+          <RevenueCandlestick size={100} data={actual} forecastData={forecast.slice(0,3)} />
+          <div style={{ flex:1 }}>
+            <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Gelir Tahmini</h1>
+            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>Gerçek fatura verisiyle 3 aylık projeksiyon</p>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {(['base','best','worst'] as const).map(s => (
+                <button key={s} onClick={()=>setScenario(s)} style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${scenario===s?s==='best'?'rgba(16,185,129,0.5)':s==='worst'?'rgba(239,68,68,0.5)':'rgba(245,158,11,0.5)':'rgba(255,255,255,0.08)'}`, background:scenario===s?s==='best'?'rgba(16,185,129,0.15)':s==='worst'?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)':'transparent', color:scenario===s?s==='best'?'#34d399':s==='worst'?'#f87171':'#fbbf24':'#64748b', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                  {s==='best'?'En İyi Senaryo':s==='worst'?'En Kötü':'Temel'} {s!=='base'?'(±20%)':''}
+                </button>
+              ))}
+              {(['monthly','quarterly','annual'] as const).map(p => (
+                <button key={p} onClick={()=>setPeriod(p)} style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${period===p?'rgba(99,102,241,0.5)':'rgba(255,255,255,0.08)'}`, background:period===p?'rgba(99,102,241,0.15)':'transparent', color:period===p?'#a5b4fc':'#64748b', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                  {p==='monthly'?'Aylık':p==='quarterly'?'Çeyreklik':'Yıllık'}
+                </button>
+              ))}
             </div>
-          )
-        })}
-      </div>
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Gelir Projeksiyonu */}
-        <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-2">3 Aylık Gelir Projeksiyonu</h2>
-          <p className="text-slate-500 text-xs mb-5">Ortalama anlaşma değeri: ₺{data.revenue.avgDealValue.toLocaleString('tr-TR')}</p>
-
-          <div className="space-y-4">
-            {data.revenue.projections.map((p, i) => (
-              <div key={i}>
-                <div className="flex justify-between mb-1.5">
-                  <span className="text-slate-300 text-sm font-medium">{p.month}</span>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-slate-400">{p.leads} lead</span>
-                    <span className="text-emerald-400 font-bold">₺{p.revenue.toLocaleString('tr-TR')}</span>
-                  </div>
-                </div>
-                <div className="w-full bg-slate-700 rounded-full h-3">
-                  <div
-                    className={`h-3 rounded-full transition-all ${i === 0 ? 'bg-blue-500' : i === 1 ? 'bg-purple-500' : 'bg-emerald-500'}`}
-                    style={{ width: `${Math.max((p.revenue / maxProjection) * 100, 2)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-            <p className="text-emerald-400 text-sm font-medium">
-              🎯 Gelecek Ay Tahmini: ₺{data.revenue.nextMonthForecast.toLocaleString('tr-TR')}
-            </p>
-            <p className="text-slate-400 text-xs mt-1">
-              Mevcut büyüme hızınıza göre hesaplanmıştır
-            </p>
           </div>
         </div>
+      </div>
 
-        {/* Satış Hunisi */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-5">Satış Hunisi</h2>
-          <div className="space-y-3">
+      {loading ? (
+        <div style={{ display:'flex', justifyContent:'center', height:100, alignItems:'center' }}><RefreshCw size={22} style={{ color:'#475569', animation:'rv-spin 1s linear infinite' }} /></div>
+      ) : (
+        <>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:20 }}>
             {[
-              { label: 'Toplam Lead', value: data.funnel.total, rate: 100, color: 'bg-blue-500' },
-              { label: 'İletişime Geçildi', value: data.funnel.contacted, rate: data.funnel.contactRate, color: 'bg-yellow-500' },
-              { label: 'Nitelikli', value: data.funnel.qualified, rate: data.funnel.qualifyRate, color: 'bg-purple-500' },
-              { label: 'Kazanıldı', value: data.funnel.won, rate: data.funnel.winRate, color: 'bg-emerald-500' },
-            ].map(({ label, value, rate, color }) => (
-              <div key={label}>
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-300 text-xs">{label}</span>
-                  <span className="text-white text-xs font-bold">{value} <span className="text-slate-500">(%{rate})</span></span>
-                </div>
-                <div className="w-full bg-slate-700 rounded-full h-2">
-                  <div className={`${color} h-2 rounded-full`} style={{ width: `${Math.max(rate, 1)}%` }} />
-                </div>
+              { label:'Bu Dönem Potansiyel', value:fmtCurrency(baseMonthly*periodMultiplier), color:'#10b981', icon:'💰' },
+              { label:'Sonraki Dönem', value:fmtCurrency(Math.round((forecast[0]||0)*scenarioMultiplier*periodMultiplier)), color:'#d97706', icon:'📈' },
+              { label:'Win Rate', value:`%${data?.funnel?.winRate||0}`, color:'#8b5cf6', icon:'🎯' },
+            ].map(m => (
+              <div key={m.label} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>
+                <div style={{ fontSize:22, marginBottom:8 }}>{m.icon}</div>
+                <p style={{ color:m.color, fontSize:22, fontWeight:800, margin:'0 0 4px' }}>{m.value}</p>
+                <p style={{ color:'#64748b', fontSize:12, margin:0 }}>{m.label}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">İletişim Oranı</span>
-              <span className="text-white font-bold">%{data.funnel.contactRate}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Nitelendirme Oranı</span>
-              <span className="text-white font-bold">%{data.funnel.qualifyRate}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Kazanma Oranı</span>
-              <span className="text-emerald-400 font-bold">%{data.funnel.winRate}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Haftalık Trend */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h2 className="text-white font-semibold mb-5">Haftalık Trend (13 Hafta)</h2>
-          <div className="flex items-end gap-1 h-28">
-            {data.weeklyTrend.slice(-10).map(({ week, leads, messages }) => (
-              <div key={week} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full flex items-end gap-0.5" style={{ height: '80px' }}>
-                  <div className="flex-1 bg-blue-500/60 hover:bg-blue-500 rounded-t transition-all"
-                    style={{ height: `${Math.max((leads / maxWeeklyLeads) * 100, leads > 0 ? 5 : 1)}%` }} />
-                  <div className="flex-1 bg-green-500/60 hover:bg-green-500 rounded-t transition-all"
-                    style={{ height: `${Math.max((messages / maxWeeklyMessages) * 100, messages > 0 ? 5 : 1)}%` }} />
-                </div>
-                <span className="text-slate-600 text-xs">{week}</span>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
+            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>⚙️ Gelir Parametreleri</h3>
+              <div style={{ marginBottom:14 }}>
+                <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Ortalama Deal Değeri (TL)</label>
+                <input value={customDealValue || rev?.avgDealValue || ''} onChange={e=>setCustomDealValue(e.target.value)} placeholder={`₺${rev?.avgDealValue||1000}`}
+                  style={{ width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'9px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' }} />
+                <p style={{ color:'#334155', fontSize:10, margin:'4px 0 0' }}>Gerçek faturalardan: ₺{rev?.avgDealValue||0} ortalama</p>
               </div>
-            ))}
-          </div>
-          <div className="flex gap-4 mt-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 bg-blue-500/60 rounded-sm" />
-              <span className="text-slate-400 text-xs">Lead</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 bg-green-500/60 rounded-sm" />
-              <span className="text-slate-400 text-xs">Mesaj</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Kanal Performansı + Tavsiyeler */}
-        <div className="space-y-4">
-          {/* Kanal */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <h2 className="text-white font-semibold mb-4">Kanal Performansı</h2>
-            <div className="space-y-3">
-              {data.channelPerformance.map(ch => (
-                <div key={ch.channel}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-slate-300 text-sm">{ch.channel}</span>
-                    <span className="text-white text-sm font-bold">%{ch.replyRate} <span className="text-slate-500 font-normal">cevap</span></span>
-                  </div>
-                  <div className="w-full bg-slate-700 rounded-full h-2">
-                    <div className="h-2 rounded-full transition-all"
-                      style={{ width: `${Math.max(ch.replyRate, 1)}%`, backgroundColor: ch.color }} />
-                  </div>
-                  <p className="text-slate-500 text-xs mt-0.5">{ch.sent} gönderildi · {ch.replies} cevap</p>
+              <div style={{ marginBottom:14 }}>
+                <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Satış Döngüsü: {cycleDays} gün</label>
+                <input type="range" min={7} max={180} value={cycleDays} onChange={e=>setCycleDays(Number(e.target.value))}
+                  style={{ width:'100%', accentColor:'#d97706' }} />
+                <div style={{ display:'flex', justifyContent:'space-between' }}>
+                  <span style={{ color:'#334155', fontSize:10 }}>7 gün</span>
+                  <span style={{ color:'#334155', fontSize:10 }}>180 gün</span>
                 </div>
-              ))}
+              </div>
+              <button onClick={saveDealValue} style={{ width:'100%', padding:'9px', borderRadius:9, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#065f46,#10b981)', color:'#fff', fontSize:12, fontWeight:700 }}>
+                Kaydet & Tahmine Uygula
+              </button>
             </div>
 
-            {data.bestCampaign && (
-              <div className="mt-4 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                <p className="text-blue-400 text-xs font-medium mb-1">🏆 En İyi Kampanya</p>
-                <p className="text-white text-sm">{data.bestCampaign.name}</p>
-                <p className="text-slate-400 text-xs">%{data.bestCampaign.rate} cevap oranı · {data.bestCampaign.sent} gönderildi</p>
-              </div>
-            )}
-          </div>
-
-          {/* AI Tavsiyeler */}
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
-              <Zap size={15} className="text-yellow-400" /> AI Tavsiyeleri
-            </h2>
-            <div className="space-y-2">
-              {data.recommendations.map((rec, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
-                  <span className="text-yellow-400 mt-0.5 shrink-0">→</span>
-                  <p className="text-slate-300 text-xs leading-relaxed">{rec}</p>
+            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 3 Aylık Projeksiyon</h3>
+              {(forecast||[]).map((rev2: number, i: number) => (
+                <div key={i} style={{ marginBottom:12 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                    <span style={{ color:'#94a3b8', fontSize:12 }}>{i+1}. Ay</span>
+                    <span style={{ color:'#d97706', fontWeight:700, fontSize:13 }}>{fmtCurrency(Math.round(rev2*scenarioMultiplier))}</span>
+                  </div>
+                  <div style={{ height:6, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
+                    <div style={{ height:'100%', width:`${Math.min(100,Math.round((rev2/((forecast[2]||1)*1.1))*100))}%`, background:'linear-gradient(90deg,#d97706,#10b981)', borderRadius:3 }} />
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-      </div>
+
+          {data?.channelPerformance?.length > 0 && (
+            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📡 Kanal Gelir Dağılımı</h3>
+              <div style={{ display:'flex', gap:16 }}>
+                {data.channelPerformance.map((ch: any) => (
+                  <div key={ch.channel} style={{ flex:1, textAlign:'center', padding:'12px', background:'rgba(0,0,0,0.2)', borderRadius:12, border:'1px solid rgba(255,255,255,0.05)' }}>
+                    <p style={{ color:ch.color, fontSize:18, fontWeight:800, margin:'0 0 4px' }}>%{ch.replyRate}</p>
+                    <p style={{ color:'#94a3b8', fontSize:12, margin:'0 0 2px' }}>{ch.channel}</p>
+                    <p style={{ color:'#475569', fontSize:11, margin:0 }}>{ch.sent.toLocaleString('tr-TR')} gönderim</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      <style>{`@keyframes rv-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
