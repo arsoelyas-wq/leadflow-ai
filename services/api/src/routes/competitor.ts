@@ -314,10 +314,17 @@ async function searchViaSerper(query: string, langCode: string, countryCode: str
   } catch (e: any) { console.error('Serper search:', e.message?.slice(0, 60)); return []; }
 }
 
-// ── TAVILY — LinkedIn profil araması + genel web ───────────────────────────────
-// 1000 sorgu/ay ücretsiz. LinkedIn profile search özelliği var.
+// ── TAVILY — LinkedIn, Şikayet siteleri, B2B için (FB/IG'yi crawl edemiyor) ───
+// UYARI: Facebook/Instagram botları engelliyor → include_domains=['facebook.com'] = 0 sonuç
+// Tavily şunlar için çalışır: linkedin.com, sikayetvar.com, trustpilot.com, kompass.com, europages.com
+const TAVILY_BLOCKED_DOMAINS = new Set(['facebook.com', 'instagram.com', 'twitter.com', 'tiktok.com']);
+
 async function searchViaTavily(query: string, domains: string[], countryCode: string): Promise<any[]> {
-  if (!TAVILY_API_KEY) { console.log('[Search] Tavily: key yok, atlandı'); return []; }
+  if (!TAVILY_API_KEY) { return []; }
+  // FB/IG için Tavily kullanma — kredi boşa harcanır, sonuç 0
+  if (domains.length > 0 && domains.every(d => TAVILY_BLOCKED_DOMAINS.has(d))) {
+    return [];
+  }
   console.log(`[Tavily] "${query.slice(0,60)}" domains:${domains.join(',') || 'all'}`);
   try {
     const body: any = {
@@ -326,7 +333,9 @@ async function searchViaTavily(query: string, domains: string[], countryCode: st
       search_depth: 'basic',
       max_results: 8,
     };
-    if (domains.length > 0) body.include_domains = domains.slice(0, 5);
+    // Sadece crawl edebileceği domainler için filtre uygula
+    const allowedDomains = domains.filter(d => !TAVILY_BLOCKED_DOMAINS.has(d));
+    if (allowedDomains.length > 0) body.include_domains = allowedDomains.slice(0, 5);
 
     const res = await axios.post('https://api.tavily.com/search', body, {
       headers: { 'Content-Type': 'application/json' },
@@ -376,19 +385,20 @@ async function searchViaBrave(query: string, langCode: string, countryCode: stri
 }
 
 // ── MASTER SEARCH: 5 engine zinciri ──────────────────────────────────────────
-// Öncelik: API tabanlı (bloke yok) → scraping tabanlı (bloke olabilir)
 async function scrapeGoogleSearch(
   query: string, langCode = 'tr', googleDomain = 'google.com',
   countryCode = 'TR', domains: string[] = []
 ): Promise<any[]> {
 
-  // 1. Tavily — Rakip Hijacking için birincil (1000/ay ücretsiz, domain filtresi)
-  if (TAVILY_API_KEY) {
+  const isSocialDomain = domains.length > 0 && domains.every(d => TAVILY_BLOCKED_DOMAINS.has(d));
+
+  // 1. Tavily — LinkedIn, şikayet siteleri, B2B için (FB/IG'yi atlıyor)
+  if (TAVILY_API_KEY && !isSocialDomain) {
     const r = await searchViaTavily(query, domains, countryCode);
     if (r.length > 0) return r;
   }
 
-  // 2. Exa.ai — Tavily yoksa LinkedIn için fallback
+  // 2. Exa.ai — LinkedIn için mükemmel
   if (EXA_API_KEY) {
     const r = await searchViaExa(query, domains, langCode, countryCode);
     if (r.length > 0) return r;
