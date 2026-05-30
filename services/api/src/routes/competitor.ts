@@ -473,39 +473,68 @@ async function scrapeLinkedIn(query: string, langCode: string, googleDomain: str
   } catch { return []; }
 }
 
-// ── FACEBOOK — Meta Graph /pages/search (pages_read_engagement izni ile) ──────
+// ── FACEBOOK — Ad Library API (public, no App Review) + page lookup ────────────
 async function scrapeFacebook(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
-  // 1. Meta Graph API /pages/search — pages_read_engagement izni gerekli
+  // 1. Facebook Ad Library API — reklam veren şirketler (public endpoint, no App Review)
   if (META_APP_TOKEN) {
     try {
-      const res = await axios.get('https://graph.facebook.com/v19.0/pages/search', {
+      const country = countryCode.toUpperCase().slice(0, 2);
+      const res = await axios.get('https://graph.facebook.com/v19.0/ads_archive', {
         params: {
-          q: query,
-          fields: 'id,name,link,website,phone,location,category,username',
+          search_terms: query,
+          ad_reached_countries: `["${country}"]`,
+          fields: 'page_name,page_id,ad_snapshot_url',
           access_token: META_APP_TOKEN,
-          limit: 10,
+          limit: 20,
         },
         timeout: 12000,
       });
-      const pages = (res.data?.data || []).filter((p: any) => p.name);
+      const ads = res.data?.data || [];
+      // Deduplicate by page_id
+      const seen = new Set<string>();
+      const pages: any[] = [];
+      for (const ad of ads) {
+        if (ad.page_id && !seen.has(ad.page_id)) {
+          seen.add(ad.page_id);
+          pages.push(ad);
+        }
+      }
       if (pages.length > 0) {
-        console.log(`[Facebook] pages/search: ${pages.length} sayfa bulundu`);
-        return pages.map((p: any) => {
-          const username = p.username || p.link?.match(/facebook\.com\/([^/?#]+)/)?.[1] || '';
-          const messengerLink = username ? 'https://m.me/' + username : '';
-          return {
-            name: p.name,
-            website: p.website || messengerLink || p.link || '',
-            phone: cleanPhone(p.phone || ''),
-            address: p.location?.city || '',
-            notes: [p.category, messengerLink ? '💬 ' + messengerLink : ''].filter(Boolean).join(' | '),
-            source_channel: 'Facebook',
-            type: 'business',
-          };
-        });
+        console.log(`[Facebook] Ad Library: ${pages.length} şirket bulundu`);
+        // Get page details for each
+        const enriched = await Promise.all(pages.slice(0, 8).map(async (p: any) => {
+          try {
+            const detail = await axios.get(`https://graph.facebook.com/v19.0/${p.page_id}`, {
+              params: { fields: 'name,website,phone,username,location', access_token: META_APP_TOKEN },
+              timeout: 6000,
+            });
+            const d = detail.data;
+            const username = d.username || '';
+            const messengerLink = username ? 'https://m.me/' + username : '';
+            return {
+              name: d.name || p.page_name || '',
+              website: d.website || messengerLink || `https://facebook.com/${p.page_id}`,
+              phone: cleanPhone(d.phone || ''),
+              address: d.location?.city || '',
+              notes: messengerLink ? '💬 ' + messengerLink : '',
+              source_channel: 'Facebook',
+              type: 'business',
+            };
+          } catch {
+            return {
+              name: p.page_name || '',
+              website: `https://facebook.com/${p.page_id}`,
+              phone: '',
+              notes: '',
+              source_channel: 'Facebook',
+              type: 'business',
+            };
+          }
+        }));
+        return enriched.filter((p: any) => p.name);
       }
     } catch (e: any) {
-      console.error('[Facebook] pages/search:', e.response?.data?.error?.message || e.message?.slice(0, 80));
+      console.error('[Facebook] Ad Library:', e.response?.data?.error?.message || e.message?.slice(0, 80));
     }
   }
 
