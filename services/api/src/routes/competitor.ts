@@ -436,72 +436,92 @@ async function scrapeGoogleSearch(
   } catch { return []; }
 }
 
-// ── SOCIAL REVIEWS — Rakibin şikayetçilerini bul (en değerli leadler) ────────
-// Şikayet eden = rakipten memnun olmayan = bizim potansiyel müşterimiz
+// ── SOCIAL REVIEWS — Rakibin şikayetçileri (direkt + sosyal) ─────────────────
 async function scrapeSocialReviews(competitorName: string, country: any): Promise<any[]> {
   const { language, queries, googleDomain, code, localComplaintSites } = country;
   const results: any[] = [];
+  // Tırnak içinde aramak şart — aksi halde farklı firmalar gelir
+  const exactName = `"${competitorName}"`;
 
-  // 1. Rakibin şikayetlerini şikayet sitelerinde ara (Şikayetvar, Trustpilot vb.)
-  const complaintTasks = (localComplaintSites || []).slice(0, 3).map((site: any) =>
-    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:${site.domain}`, language, googleDomain, code, [site.domain])
-  );
+  const tasks: Promise<any[]>[] = [];
 
-  // 2. Trustpilot global (çoğu ülkede çalışır)
-  complaintTasks.push(
-    scrapeGoogleSearch(`"${competitorName}" ${queries.review} site:trustpilot.com`, 'en', 'google.com', code, ['trustpilot.com'])
-  );
+  // 1. TR: Şikayetvar DOĞRUDAN scraping (Tavily değil)
+  if (code === 'TR') {
+    tasks.push(
+      scrapeŞikayetVar(competitorName).then((data: any) => {
+        if (!data?.complaints?.length) return [];
+        return data.complaints.map((text: string) => ({
+          name: text.slice(0, 80),
+          website: `https://www.sikayetvar.com/search?q=${encodeURIComponent(competitorName)}`,
+          notes: text,
+          source_channel: 'Şikayetvar',
+          type: 'person',
+          score_boost: 25,
+        }));
+      }).catch(() => [])
+    );
+  }
 
-  // 3. Facebook'ta rakip hakkında şikayet paylaşımları (Tavily ile index'lenen)
-  complaintTasks.push(
-    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:facebook.com`, language, googleDomain, code, ['facebook.com'])
-  );
+  // 2. Diğer ülkelerin yerel şikayet siteleri — direkt Google araması (tırnaklı)
+  for (const site of (localComplaintSites || []).slice(0, 2)) {
+    if (site.domain === 'sikayetvar.com') continue; // zaten üstte
+    tasks.push(scrapeGoogleSearch(`${exactName} site:${site.domain}`, language, googleDomain, code, [site.domain]));
+  }
 
-  // 4. Instagram'da rakip hakkında olumsuz paylaşımlar
-  complaintTasks.push(
-    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} site:instagram.com`, language, googleDomain, code, ['instagram.com'])
-  );
+  // 3. Trustpilot — tırnaklı, global
+  tasks.push(scrapeGoogleSearch(`${exactName} site:trustpilot.com`, 'en', 'google.com', 'US', ['trustpilot.com']));
 
-  // 5. Genel web'de rakip şikayetleri (forum, blog, haber)
-  complaintTasks.push(
-    scrapeGoogleSearch(`"${competitorName}" ${queries.complaint} ${queries.review}`, language, googleDomain, code, [])
-  );
+  // 4. Facebook şikayetleri — tırnaklı, yalnızca bu rakip
+  tasks.push(scrapeGoogleSearch(`${exactName} ${queries.complaint} site:facebook.com`, language, googleDomain, code, ['facebook.com']));
 
-  const settled = await Promise.allSettled(complaintTasks);
+  // 5. Instagram şikayetleri — tırnaklı
+  tasks.push(scrapeGoogleSearch(`${exactName} ${queries.complaint} site:instagram.com`, language, googleDomain, code, ['instagram.com']));
 
-  settled.forEach((r, idx) => {
+  const settled = await Promise.allSettled(tasks);
+
+  settled.forEach((r) => {
     if (r.status !== 'fulfilled') return;
     r.value.forEach((item: any) => {
       const url: string = item.website || item.url || '';
-      const isFacebook = url.includes('facebook.com');
-      const isInstagram = url.includes('instagram.com');
-      const isTrustpilot = url.includes('trustpilot.com');
-      const isComplaintSite = !isFacebook && !isInstagram && !isTrustpilot;
+      if (!url) return;
 
-      if (isFacebook && url.includes('/posts/')) return; // posts sayfasını atla
+      // Sadece bu rakibi içeren sonuçları al
+      const nameCheck = competitorName.toLowerCase();
+      const contentCheck = (item.name + ' ' + item.notes).toLowerCase();
+      if (!contentCheck.includes(nameCheck.split(' ')[0]?.toLowerCase() || '')) return;
 
-      let channelLabel = 'Sosyal Şikayet';
-      if (isFacebook) channelLabel = 'Facebook Yorum';
-      else if (isInstagram) channelLabel = 'Instagram Yorum';
-      else if (isTrustpilot) channelLabel = 'Trustpilot';
-      else if (isComplaintSite) channelLabel = 'Şikayet Sitesi';
+      const isFB = url.includes('facebook.com');
+      const isIG = url.includes('instagram.com');
+      const isTP = url.includes('trustpilot.com');
+      const isSV = url.includes('sikayetvar.com');
 
-      const username = isInstagram ? url.match(/instagram\.com\/([^/?]+)/)?.[1] || '' : '';
+      if (isFB && url.includes('/posts/')) return;
+
+      const channel = isSV ? 'Şikayetvar' : isTP ? 'Trustpilot' : isFB ? 'Facebook Yorum' : isIG ? 'Instagram Yorum' : 'Şikayet Sitesi';
+      const igUser = isIG ? url.match(/instagram\.com\/([^/?]+)/)?.[1] || '' : '';
 
       results.push({
-        name: item.name || item.title?.replace('| Facebook', '').replace('- Facebook', '').replace('• Instagram', '').trim() || 'Şikayetçi',
-        website: username ? `https://instagram.com/${username}` : url,
-        instagram: username ? `https://instagram.com/${username}` : undefined,
-        notes: item.notes || item.snippet || '',
-        source_channel: channelLabel,
+        name: item.name || 'Şikayetçi',
+        website: igUser ? `https://instagram.com/${igUser}` : url,
+        instagram: igUser ? `https://instagram.com/${igUser}` : undefined,
+        notes: `[${channel}] ${item.notes || ''}`.slice(0, 300),
+        source_channel: channel,
         type: 'person',
-        score_boost: 20, // şikayet eden = daha sıcak lead
+        score_boost: isSV ? 25 : 15,
       });
     });
   });
 
-  console.log(`[SocialReviews] ${results.length} şikayetçi bulundu`);
-  return results.slice(0, 15);
+  // Deduplicate by URL
+  const seen = new Set<string>();
+  const unique = results.filter(r => {
+    if (seen.has(r.website)) return false;
+    seen.add(r.website);
+    return true;
+  });
+
+  console.log(`[SocialReviews] ${unique.length} şikayet kaydı (${competitorName})`);
+  return unique.slice(0, 12);
 }
 
 // ── LINKEDIN ─────────────────────────────────────────────────────────────────
