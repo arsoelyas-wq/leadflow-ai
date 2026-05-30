@@ -437,11 +437,14 @@ export default function ShadowPage() {
 
       {/* ── MIGRATION WARNING ─────────────────────────────────────────────── */}
       {migrationNeeded && (
-        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24' }}>
-          ⚠️ <strong>Supabase migration gerekli</strong> — Tehdit skoru ve fiyat geçmişi için SQL Editor'de şunu çalıştır:<br />
-          <code style={{ fontSize: 11, background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: 6, marginTop: 6, display: 'inline-block' }}>
-            ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_data JSONB; ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_changes JSONB; ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_price_history JSONB DEFAULT {'[]'}; ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;
-          </code>
+        <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 12, fontSize: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24', lineHeight: 1.7 }}>
+          ⚠️ <strong>Supabase migration gerekli</strong> — SQL Editor aç ve şunu çalıştır:
+          <div style={{ marginTop: 8, background: 'rgba(0,0,0,0.4)', padding: '10px 14px', borderRadius: 8, fontFamily: 'monospace', fontSize: 11, color: '#94a3b8', whiteSpace: 'pre-wrap' }}>
+{`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_data JSONB;
+ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_changes JSONB;
+ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_price_history JSONB DEFAULT '[]';
+ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;`}
+          </div>
         </div>
       )}
 
