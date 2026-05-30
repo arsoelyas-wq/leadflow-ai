@@ -5,16 +5,20 @@ import { RefreshCw, Eye, Copy, CheckCircle, ChevronDown, ChevronUp } from 'lucid
 
 // ── SHADOW ORB — Covert surveillance 3D animation ─────────────────────────────
 function ShadowOrb({ size = 100, scanning = false }: { size?: number; scanning?: boolean }) {
+  const [mounted, setMounted] = useState(false)
   const [beamAngle, setBeamAngle] = useState(0)
   const [particles, setParticles] = useState<Array<{ x: number; y: number; age: number; id: number }>>([])
 
-  useEffect(() => {
-    const t = setInterval(() => setBeamAngle(a => (a + 1.5) % 360), 16)
-    return () => clearInterval(t)
-  }, [])
+  useEffect(() => { setMounted(true) }, [])
 
   useEffect(() => {
-    if (!scanning) return
+    if (!mounted) return
+    const t = setInterval(() => setBeamAngle(a => (a + 1.5) % 360), 16)
+    return () => clearInterval(t)
+  }, [mounted])
+
+  useEffect(() => {
+    if (!scanning || !mounted) return
     const t = setInterval(() => {
       const angle = Math.random() * Math.PI * 2
       const r = (0.3 + Math.random() * 0.5) * size * 0.5
@@ -22,9 +26,10 @@ function ShadowOrb({ size = 100, scanning = false }: { size?: number; scanning?:
     }, 600)
     const fade = setInterval(() => setParticles(prev => prev.map(p => ({ ...p, age: p.age + 1 })).filter(p => p.age < 6)), 300)
     return () => { clearInterval(t); clearInterval(fade) }
-  }, [scanning, size])
+  }, [scanning, size, mounted])
 
   const cx = size, s = size
+  if (!mounted) return <div style={{ width: s*2, height: s*2, flexShrink: 0 }} />
   const bx = cx + Math.cos(beamAngle * Math.PI / 180) * s * 0.85
   const by = cx + Math.sin(beamAngle * Math.PI / 180) * s * 0.85
   const a1 = (beamAngle - 55) * Math.PI / 180
