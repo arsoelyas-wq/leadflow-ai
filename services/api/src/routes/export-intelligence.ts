@@ -407,23 +407,48 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
 
     await supabase.from('export_search_sessions').update({ step:'saving_results', progress:88 }).eq('id', sessionId);
 
-    // Save to leads
+    // Company scoring (0-100)
+    function calcCompanyScore(e: any): number {
+      let score = 0;
+      if (e.phone) score += 20;
+      if (e.email) score += 20;
+      if (e.website) score += 15;
+      if (e.decision_maker_name) score += 25;
+      if (e.verified_importer) score += 20;
+      return score;
+    }
+
+    // Save to leads — with cross-search deduplication
+    let savedCount = 0;
     if (enriched.length > 0) {
-      const toInsert = enriched.map(e => ({
-        user_id: userId,
-        company_name: e.company_name,
-        phone: e.phone||null, email: e.email||null, website: e.website||null,
-        city: (e.address?.split(',')?.[0]||country.name).substring(0,100),
-        country: country.name, country_code: countryCode, sector,
-        status: 'new', source: 'export_search',
-        notes: `${country.flag} ${country.name} ihracat hedefi${e.verified_importer?' | ✅ Doğrulanmış İthalatçı':''}${e.decision_maker_name?` | 👤 ${e.decision_maker_name} (${e.decision_maker_title||'Yönetici'})`:''}`,
-        hs_codes: hsCodes.length ? JSON.stringify(hsCodes) : null,
-        verified_importer: e.verified_importer||false,
-        decision_maker_name: e.decision_maker_name||null,
-        decision_maker_title: e.decision_maker_title||null,
-        decision_maker_linkedin: e.decision_maker_linkedin||null,
-      }));
-      await supabase.from('leads').insert(toInsert);
+      for (const e of enriched) {
+        // Check if this company already exists for this user+country+sector
+        const { data: existing } = await supabase.from('leads')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('country_code', countryCode)
+          .ilike('company_name', `%${e.company_name.substring(0,25)}%`)
+          .maybeSingle();
+        if (existing) continue; // Skip duplicate
+
+        const score = calcCompanyScore(e);
+        await supabase.from('leads').insert([{
+          user_id: userId,
+          company_name: e.company_name,
+          phone: e.phone||null, email: e.email||null, website: e.website||null,
+          city: (e.address?.split(',')?.[0]||country.name).substring(0,100),
+          country: country.name, country_code: countryCode, sector,
+          status: 'new', source: 'export_search',
+          notes: `${country.name} ihracat hedefi${e.verified_importer?' | ✅ Doğrulanmış':''}${e.decision_maker_name?` | 👤 ${e.decision_maker_name}${e.decision_maker_title?` (${e.decision_maker_title})`:''}`:''}`,
+          hs_codes: hsCodes.length ? JSON.stringify(hsCodes) : null,
+          verified_importer: e.verified_importer||false,
+          decision_maker_name: e.decision_maker_name||null,
+          decision_maker_title: e.decision_maker_title||null,
+          decision_maker_linkedin: e.decision_maker_linkedin||null,
+          company_score: score,
+        }]);
+        savedCount++;
+      }
     }
 
     const intel = marketIntel.status==='fulfilled' ? marketIntel.value : null;
@@ -433,7 +458,7 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
     await supabase.from('export_search_sessions').update({
       status:'completed', progress:100, step:'done',
       result: JSON.stringify({
-        importersFound: enriched.length,
+        importersFound: savedCount,
         sources: { maps: maps.length, web: web.length },
         marketIntel: intel ? { ...intel, hsCodes, hsCodeNames } : null,
         paymentRisk: risk,
@@ -450,36 +475,94 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
 }
 
 // ── AUTO-MIGRATE ──────────────────────────────────────────────────────────────
+async function runSQL(sql: string): Promise<void> {
+  await axios.post(`${process.env.SUPABASE_URL}/rest/v1/sql`, sql, {
+    headers:{ 'Content-Type':'text/plain','apikey':process.env.SUPABASE_SERVICE_KEY,'Authorization':`Bearer ${process.env.SUPABASE_SERVICE_KEY}`,'Prefer':'return=minimal' },
+    timeout:20000,
+  });
+}
+
 async function autoMigrateExport() {
+  // Check and create each table independently
+  const migrations = [
+    {
+      table: 'export_search_sessions',
+      sql: `
+        CREATE TABLE IF NOT EXISTS export_search_sessions (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+          country_code TEXT, sector TEXT, status TEXT DEFAULT 'pending',
+          step TEXT, progress INTEGER DEFAULT 0,
+          result JSONB, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()
+        );
+        ALTER TABLE export_search_sessions ENABLE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS "user_own_export_s" ON export_search_sessions;
+        CREATE POLICY "user_own_export_s" ON export_search_sessions USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id);
+      `,
+    },
+    {
+      table: 'export_messages',
+      sql: `
+        CREATE TABLE IF NOT EXISTS export_messages (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+          lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+          country_code TEXT, channel TEXT DEFAULT 'whatsapp',
+          subject TEXT, body TEXT NOT NULL, language TEXT,
+          status TEXT DEFAULT 'draft', sent_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+        ALTER TABLE export_messages ENABLE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS "user_own_export_m" ON export_messages;
+        CREATE POLICY "user_own_export_m" ON export_messages USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS export_messages_unique_idx ON export_messages(user_id, lead_id, channel);
+      `,
+    },
+    {
+      table: 'export_campaigns',
+      sql: `
+        CREATE TABLE IF NOT EXISTS export_campaigns (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL, country_code TEXT, country_name TEXT,
+          channel TEXT DEFAULT 'whatsapp', campaign_type TEXT DEFAULT 'outreach',
+          lead_count INTEGER DEFAULT 0, sent_count INTEGER DEFAULT 0,
+          lead_ids JSONB DEFAULT '[]', status TEXT DEFAULT 'draft',
+          language TEXT, started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+        ALTER TABLE export_campaigns ENABLE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS "user_own_export_c" ON export_campaigns;
+        CREATE POLICY "user_own_export_c" ON export_campaigns USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id);
+      `,
+    },
+  ];
+
+  // Always run leads column migrations (safe with IF NOT EXISTS)
   try {
-    const { error } = await supabase.from('export_search_sessions').select('id').limit(1);
-    if (!error) return;
-    const sql = `
-      CREATE TABLE IF NOT EXISTS export_search_sessions (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-        country_code TEXT, sector TEXT, status TEXT DEFAULT 'pending',
-        step TEXT, progress INTEGER DEFAULT 0,
-        result JSONB, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()
-      );
-      ALTER TABLE export_search_sessions ENABLE ROW LEVEL SECURITY;
-      DROP POLICY IF EXISTS "user_own_export" ON export_search_sessions;
-      CREATE POLICY "user_own_export" ON export_search_sessions USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+    await runSQL(`
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS hs_codes TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS verified_importer BOOLEAN DEFAULT false;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS country_code TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_name TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_title TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_linkedin TEXT;
-    `;
-    await axios.post(`${process.env.SUPABASE_URL}/rest/v1/sql`, sql, {
-      headers:{ 'Content-Type':'text/plain','apikey':process.env.SUPABASE_SERVICE_KEY,'Authorization':`Bearer ${process.env.SUPABASE_SERVICE_KEY}`,'Prefer':'return=minimal' },
-      timeout:20000,
-    });
-  } catch(e:any) { console.log('[ExportMigrate] skipped:', e.message); }
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS company_score INTEGER DEFAULT 0;
+    `);
+  } catch {}
+
+  for (const m of migrations) {
+    try {
+      const { error } = await supabase.from(m.table).select('id').limit(1);
+      if (!error) continue; // Table exists
+      await runSQL(m.sql);
+      console.log(`[ExportMigrate] ✅ ${m.table} created`);
+    } catch(e:any) { console.log(`[ExportMigrate] ${m.table} skipped:`, e.message); }
+  }
 }
 autoMigrateExport();
-setTimeout(autoMigrateExport, 5000);
+setTimeout(autoMigrateExport, 3000);
+setTimeout(autoMigrateExport, 15000); // Extra retry
 
 // ════════════════════════════════════════════════════════════════════════════════
 // ROUTES
@@ -646,7 +729,7 @@ router.get('/campaigns', async (req: any, res: any) => {
 router.get('/export-leads', async (req: any, res: any) => {
   try {
     const { countryCode, limit=100 } = req.query;
-    let query = supabase.from('leads').select('*').eq('user_id',req.userId).eq('source','export_search').order('created_at',{ ascending:false }).limit(Number(limit));
+    let query = supabase.from('leads').select('*').eq('user_id',req.userId).eq('source','export_search').order('company_score',{ ascending:false }).order('created_at',{ ascending:false }).limit(Number(limit));
     if (countryCode) query = query.eq('country_code', countryCode);
     const { data } = await query;
     res.json({ leads:data||[] });
