@@ -298,47 +298,49 @@ export default function SettingsPage() {
   }
 
   const tabs = [
-    { id: 'profile', label: 'Profil', icon: User },
-    { id: 'channels', label: 'Kanallar', icon: Key },
-    { id: 'notifications', label: 'Bildirimler', icon: Bell },
-    { id: 'security', label: 'Güvenlik', icon: Shield },
-    { id: '2fa', label: '2FA', icon: Lock },
-    { id: 'sheets', label: 'Google Sheets', icon: Globe },
-    { id: 'meta-capi',    label: 'Meta Dönüşüm',   icon: Zap },
-    { id: 'google-capi',  label: 'Google Dönüşüm', icon: TrendingUp },
+    { id: 'profile', label: 'Profil', icon: User, color: '#06b6d4' },
+    { id: 'channels', label: 'Kanallar', icon: Key, color: '#10b981' },
+    { id: 'notifications', label: 'Bildirimler', icon: Bell, color: '#f59e0b' },
+    { id: 'security', label: 'Güvenlik', icon: Shield, color: '#ef4444' },
+    { id: '2fa', label: '2FA', icon: Lock, color: '#8b5cf6' },
+    { id: 'sheets', label: 'Google Sheets', icon: Globe, color: '#34d399' },
+    { id: 'meta-capi', label: 'Meta Dönüşüm', icon: Zap, color: '#3b82f6' },
+    { id: 'google-capi', label: 'Google Dönüşüm', icon: TrendingUp, color: '#f97316' },
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Ayarlar</h1>
-        <p className="text-slate-400 mt-1">Hesap ve uygulama ayarları</p>
+    <div style={{ padding: 0 }}>
+      {/* Hero header */}
+      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(3,5,18,0.98),rgba(5,8,22,0.99))', borderRadius:20, padding:'24px 28px', marginBottom:24, border:'1px solid rgba(59,130,246,0.18)' }}>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(59,130,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.02) 1px,transparent 1px)', backgroundSize:'38px 38px', zIndex:0 }} />
+        <div style={{ position:'relative', zIndex:2 }}>
+          <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>⚙️ Ayarlar</h1>
+          <p style={{ color:'#64748b', fontSize:13, margin:0 }}>Hesap profili, kanal bağlantıları, güvenlik ve entegrasyon ayarları</p>
+        </div>
       </div>
 
       {msg && (
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium ${
-          msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
-        }`}>
-          {msg.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
-          {msg.text}
+        <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10, display:'flex', alignItems:'center', gap:8 }}>
+          {msg.type === 'success' ? <CheckCircle size={14} color="#34d399" /> : <XCircle size={14} color="#f87171" />}
+          <span style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, fontWeight:500 }}>{msg.text}</span>
         </div>
       )}
 
-      <div className="flex gap-6">
-        <div className="w-52 shrink-0">
-          <nav className="space-y-1">
-            {tabs.map(({ id, label, icon: Icon }) => (
+      <div style={{ display:'flex', gap:20 }}>
+        {/* Sidebar nav */}
+        <div style={{ width:200, flexShrink:0 }}>
+          <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:8, display:'flex', flexDirection:'column', gap:3 }}>
+            {tabs.map(({ id, label, icon: Icon, color }) => (
               <button key={id} onClick={() => setTab(id as any)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
-                  tab === id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}>
-                <Icon size={16} />{label}
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', cursor:'pointer', background:tab===id?`${color}15`:'transparent', color:tab===id?color:'#64748b', fontSize:12, fontWeight:tab===id?700:500, textAlign:'left', transition:'all 0.15s', boxShadow:tab===id?`inset 0 0 0 1px ${color}30`:'none', width:'100%' }}>
+                <Icon size={14} />
+                {label}
               </button>
             ))}
-          </nav>
+          </div>
         </div>
 
-        <div className="flex-1 space-y-6">
+        <div style={{ flex:1, display:'flex', flexDirection:'column', gap:16 }}>
 
           {/* PROFIL */}
           {tab === 'profile' && (

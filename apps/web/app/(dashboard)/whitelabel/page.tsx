@@ -1,52 +1,92 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { Building2, Plus, RefreshCw, Settings, BarChart3, Globe, Copy, Eye, EyeOff, Palette, DollarSign } from 'lucide-react'
+import { Building2, Plus, RefreshCw, BarChart3, Globe, Copy, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react'
+
+// ── BRAND GALAXY — orbital brand nodes around central hub ─────────────────────
+function BrandGalaxy({ size = 100, brandCount = 0 }: { size?: number; brandCount?: number }) {
+  const [mounted, setMounted] = useState(false)
+  const [tick, setTick] = useState(0)
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (!mounted) return
+    const t = setInterval(() => setTick(p => p + 1), 40)
+    return () => clearInterval(t)
+  }, [mounted])
+  if (!mounted) return <div style={{ width: size * 2.2, height: size * 2.2, flexShrink: 0 }} />
+
+  const cx = size * 1.1, s = size
+  const rot = tick * 0.45
+  const nodeCount = Math.max(brandCount, 5)
+  const colors = ['#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899']
+
+  const nodes = Array.from({ length: nodeCount }, (_, i) => {
+    const ring = i < 3 ? 0.56 : 0.82
+    const degOffset = i < 3 ? rot : -rot * 0.7
+    const a = (i * (360 / nodeCount) + degOffset) * Math.PI / 180
+    return { x: cx + Math.cos(a) * s * ring, y: cx + Math.sin(a) * s * ring, color: colors[i % colors.length], active: i < brandCount }
+  })
+
+  return (
+    <div style={{ width: s * 2.2, height: s * 2.2, flexShrink: 0 }}>
+      <svg width={s * 2.2} height={s * 2.2}>
+        <defs>
+          <radialGradient id={`bgGlow${s}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(139,92,246,0)" />
+            <stop offset="100%" stopColor="rgba(139,92,246,0.14)" />
+          </radialGradient>
+          <radialGradient id={`bgCore${s}`} cx="35%" cy="28%" r="65%">
+            <stop offset="0%" stopColor="#c4b5fd" />
+            <stop offset="40%" stopColor="#8b5cf6" />
+            <stop offset="100%" stopColor="#3b0764" />
+          </radialGradient>
+        </defs>
+        <circle cx={cx} cy={cx} r={s * 1.05} fill={`url(#bgGlow${s})`} />
+        {[0.52, 0.72, 0.9].map((r, i) => (
+          <circle key={r} cx={cx} cy={cx} r={s * r} fill="none" stroke="rgba(139,92,246,0.1)" strokeWidth={0.8}
+            strokeDasharray="5 7" style={{ animation: `bg-ring ${9+i*3}s linear ${i%2?'reverse':''} infinite`, transformOrigin: `${cx}px ${cx}px` }} />
+        ))}
+        {nodes.map((node, i) => (
+          <g key={i}>
+            <line x1={cx} y1={cx} x2={node.x} y2={node.y} stroke={`${node.color}${node.active?'30':'18'}`} strokeWidth={0.8} strokeDasharray="3 5" />
+            <circle cx={node.x} cy={node.y} r={node.active ? 13 : 9}
+              fill={`${node.color}${node.active?'25':'12'}`} stroke={`${node.color}${node.active?'55':'25'}`} strokeWidth={1.5}
+              style={{ filter: node.active ? `drop-shadow(0 0 5px ${node.color}80)` : 'none' }} />
+            {node.active && <text x={node.x} y={node.y} fill={node.color} fontSize={8} textAnchor="middle" dominantBaseline="middle" fontWeight="800">B</text>}
+          </g>
+        ))}
+        <circle cx={cx} cy={cx} r={s * 0.38} fill={`url(#bgCore${s})`}
+          style={{ filter: 'drop-shadow(0 0 16px #8b5cf6bb)' }} />
+        <text x={cx} y={cx - 4} fill="white" fontSize={s * 0.12} textAnchor="middle" dominantBaseline="middle" fontWeight="900">WL</text>
+        <text x={cx} y={cx + s * 0.14} fill="rgba(255,255,255,0.5)" fontSize={s * 0.065} textAnchor="middle">BAYI</text>
+      </svg>
+      <style>{`@keyframes bg-ring{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+}
 
 export default function WhitelabelPage() {
   const [brands, setBrands] = useState<any[]>([])
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [selectedBrand, setSelectedBrand] = useState<any>(null)
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null)
   const [brandStats, setBrandStats] = useState<any>(null)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  // Form
-  const [form, setForm] = useState({
-    name: '', domain: '', logo_url: '',
-    primary_color: '#3b82f6', secondary_color: '#1e293b',
-    plan_type: 'basic', revenue_share: 20,
-  })
   const [showForm, setShowForm] = useState(false)
   const [newBrandResult, setNewBrandResult] = useState<any>(null)
+  const [form, setForm] = useState({ name: '', domain: '', logo_url: '', primary_color: '#3b82f6', secondary_color: '#1e293b', plan_type: 'pro', revenue_share: 20 })
 
-  const showMsg = (type: 'success' | 'error', text: string) => {
-    setMsg({ type, text }); setTimeout(() => setMsg(null), 5000)
-  }
+  const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 5000) }
 
   const load = async () => {
     setLoading(true)
-    try {
-      const [b, s] = await Promise.allSettled([
-        api.get('/api/whitelabel/brands'),
-        api.get('/api/whitelabel/summary'),
-      ])
-      if (b.status === 'fulfilled') setBrands(b.value.brands || [])
-      if (s.status === 'fulfilled') setSummary(s.value)
-    } catch {}
-    finally { setLoading(false) }
+    const [b, s] = await Promise.allSettled([api.get('/api/whitelabel/brands'), api.get('/api/whitelabel/summary')])
+    if (b.status === 'fulfilled') setBrands((b.value as any).brands || [])
+    if (s.status === 'fulfilled') setSummary(s.value)
+    setLoading(false)
   }
-
   useEffect(() => { load() }, [])
-
-  const loadBrandStats = async (id: string) => {
-    try {
-      const data = await api.get(`/api/whitelabel/brands/${id}/stats`)
-      setBrandStats(data)
-      setSelectedBrand(data.brand)
-    } catch (e: any) { showMsg('error', e.message) }
-  }
 
   const createBrand = async () => {
     if (!form.name) return
@@ -54,209 +94,159 @@ export default function WhitelabelPage() {
     try {
       const data = await api.post('/api/whitelabel/brands', form)
       setNewBrandResult(data)
-      showMsg('success', `${data.brand.name} bayisi oluşturuldu!`)
+      showMsg('success', `${(data as any).brand?.name} bayisi oluşturuldu!`)
       setShowForm(false)
-      setForm({ name: '', domain: '', logo_url: '', primary_color: '#3b82f6', secondary_color: '#1e293b', plan_type: 'basic', revenue_share: 20 })
+      setForm({ name:'', domain:'', logo_url:'', primary_color:'#3b82f6', secondary_color:'#1e293b', plan_type:'pro', revenue_share:20 })
       load()
     } catch (e: any) { showMsg('error', e.message) }
-    finally { setCreating(false) }
+    setCreating(false)
+  }
+
+  const loadBrandStats = async (id: string) => {
+    if (selectedBrand === id) { setSelectedBrand(null); return }
+    setSelectedBrand(id)
+    try { const data = await api.get(`/api/whitelabel/brands/${id}/stats`); setBrandStats(data) } catch {}
   }
 
   const updateStatus = async (id: string, status: string) => {
-    try {
-      await api.patch(`/api/whitelabel/brands/${id}`, { status })
-      showMsg('success', `Bayi ${status === 'active' ? 'aktifleştirildi' : 'durduruldu'}`)
-      load()
-    } catch (e: any) { showMsg('error', e.message) }
+    try { await api.patch(`/api/whitelabel/brands/${id}`, { status }); showMsg('success', 'Güncellendi'); load() } catch (e: any) { showMsg('error', e.message) }
   }
 
-  const planColors: Record<string, string> = {
-    basic: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
-    pro: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    enterprise: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  }
+  const copy = (text: string) => navigator.clipboard?.writeText(text)
+  const inputStyle = { width: '100%', background: '#060a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const planColors: Record<string, string> = { basic:'#64748b', pro:'#06b6d4', enterprise:'#8b5cf6' }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Building2 size={24} className="text-violet-400" />
-            White-Label / Bayi Sistemi
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">Kendi markanızla bayiler oluşturun — her bayi özel domain, logo ve renk</p>
+    <div style={{ padding: 0 }}>
+      {/* Hero */}
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(8,0,20,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(139,92,246,0.2)' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(139,92,246,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
+          <BrandGalaxy size={88} brandCount={brands.length} />
+          <div style={{ flex: 1 }}>
+            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>White-Label / Bayi Sistemi</h1>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Kendi markanızla bayiler oluşturun — özel domain, logo, renk ve gelir paylaşımı</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+              {[{l:'Toplam Bayi',v:summary?.totalBrands||0,c:'#8b5cf6'},{l:'Aktif Bayi',v:summary?.activeBrands||0,c:'#10b981'},{l:'Aylık Gelir',v:`₺${(summary?.estimatedMonthlyRevenue||0).toLocaleString('tr-TR')}`,c:'#f59e0b'}].map(m => (
+                <div key={m.l} style={{ textAlign:'center' }}>
+                  <p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p>
+                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.l}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <button onClick={()=>setShowForm(!showForm)}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#3b0764,#8b5cf6)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+            <Plus size={15} /> Yeni Bayi
+          </button>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition">
-          <Plus size={15} /> Yeni Bayi
-        </button>
       </div>
 
-      {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
+      {/* Enterprise warning */}
+      <div style={{ marginBottom:16, padding:'12px 18px', background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
+        <AlertTriangle size={15} color="#f59e0b" />
+        <p style={{ color:'#fbbf24', fontSize:12, margin:0 }}><strong>Enterprise özelliği:</strong> Her bayinin kendi izole ortamı vardır. Domain DNS kaydını bayiye ait sunucuya yönlendirmeniz gerekir.</p>
+      </div>
 
-      {/* Summary */}
-      {summary && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Toplam Bayi', value: summary.totalBrands, color: 'text-violet-400' },
-            { label: 'Aktif Bayi', value: summary.activeBrands, color: 'text-emerald-400' },
-            { label: 'Tahmini Aylık Gelir', value: `₺${(summary.estimatedMonthlyRevenue || 0).toLocaleString('tr-TR')}`, color: 'text-yellow-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
-              <p className="text-slate-400 text-xs mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
-      {/* Yeni Bayi Formu */}
+      {/* New brand form */}
       {showForm && (
-        <div className="bg-slate-800/50 border border-violet-500/30 rounded-xl p-6 space-y-4">
-          <h2 className="text-white font-semibold">Yeni Bayi Oluştur</h2>
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Marka Adı *</label>
-              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                placeholder="örn: Arsoelyas CRM"
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500" />
-            </div>
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Domain (opsiyonel)</label>
-              <input value={form.domain} onChange={e => setForm({ ...form, domain: e.target.value })}
-                placeholder="crm.sirketime.com"
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500" />
-            </div>
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Logo URL</label>
-              <input value={form.logo_url} onChange={e => setForm({ ...form, logo_url: e.target.value })}
-                placeholder="https://..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500" />
-            </div>
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Plan</label>
-              <select value={form.plan_type} onChange={e => setForm({ ...form, plan_type: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500">
-                <option value="basic">Basic</option>
-                <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
+        <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(139,92,246,0.25)', borderRadius:18, padding:24, marginBottom:20 }}>
+          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 18px' }}>🏢 Yeni Bayi Oluştur</h3>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Marka Adı *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="örn: ABC CRM" style={inputStyle} /></div>
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Domain (opsiyonel)</label><input value={form.domain} onChange={e=>setForm({...form,domain:e.target.value})} placeholder="crm.firmam.com" style={inputStyle} /></div>
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Logo URL</label><input value={form.logo_url} onChange={e=>setForm({...form,logo_url:e.target.value})} placeholder="https://..." style={inputStyle} /></div>
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Plan</label>
+              <select value={form.plan_type} onChange={e=>setForm({...form,plan_type:e.target.value})} style={{ ...inputStyle, height:44 }}>
+                <option value="basic">Basic</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option>
               </select>
             </div>
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Ana Renk</label>
-              <div className="flex gap-2 items-center">
-                <input type="color" value={form.primary_color} onChange={e => setForm({ ...form, primary_color: e.target.value })}
-                  className="w-10 h-10 rounded-lg border border-slate-700 bg-slate-900 cursor-pointer" />
-                <input value={form.primary_color} onChange={e => setForm({ ...form, primary_color: e.target.value })}
-                  className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none" />
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Ana Renk</label>
+              <div style={{ display:'flex', gap:8 }}>
+                <input type="color" value={form.primary_color} onChange={e=>setForm({...form,primary_color:e.target.value})} style={{ width:44, height:44, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', cursor:'pointer' }} />
+                <input value={form.primary_color} onChange={e=>setForm({...form,primary_color:e.target.value})} style={{ ...inputStyle, flex:1 }} />
               </div>
             </div>
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Gelir Paylaşımı (%)</label>
-              <input type="number" min="0" max="50" value={form.revenue_share}
-                onChange={e => setForm({ ...form, revenue_share: parseInt(e.target.value) })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500" />
-            </div>
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Gelir Payı (%)</label><input type="number" min={0} max={50} value={form.revenue_share} onChange={e=>setForm({...form,revenue_share:parseInt(e.target.value)})} style={inputStyle} /></div>
           </div>
-          <div className="flex gap-3">
-            <button onClick={createBrand} disabled={creating || !form.name}
-              className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition">
-              {creating ? <RefreshCw size={14} className="animate-spin" /> : <Building2 size={14} />}
-              {creating ? 'Oluşturuluyor...' : 'Bayi Oluştur'}
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={createBrand} disabled={creating||!form.name}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 22px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#3b0764,#8b5cf6)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              {creating?<RefreshCw size={13} style={{ animation:'bg-spin 1s linear infinite' }} />:<Building2 size={13} />} {creating?'Oluşturuluyor...':'Bayi Oluştur'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">İptal</button>
+            <button onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:11, border:'1px solid rgba(255,255,255,0.08)', background:'transparent', color:'#64748b', fontSize:13, cursor:'pointer' }}>İptal</button>
           </div>
         </div>
       )}
 
-      {/* Yeni Bayi Bilgileri */}
+      {/* New brand credentials */}
       {newBrandResult && (
-        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5 space-y-3">
-          <h3 className="text-emerald-300 font-semibold">✅ Bayi Oluşturuldu!</h3>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="p-3 bg-slate-900 rounded-lg">
-              <p className="text-slate-400 text-xs mb-1">Admin Email</p>
-              <div className="flex items-center gap-2">
-                <p className="text-white font-mono text-xs">{newBrandResult.adminEmail}</p>
-                <button onClick={() => navigator.clipboard.writeText(newBrandResult.adminEmail)}>
-                  <Copy size={12} className="text-slate-400" />
-                </button>
+        <div style={{ marginBottom:16, background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:14, padding:20 }}>
+          <h3 style={{ color:'#34d399', fontWeight:700, fontSize:14, margin:'0 0 12px' }}>✅ Bayi Oluşturuldu!</h3>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            {[{l:'Admin Email',v:newBrandResult.adminEmail},{l:'Geçici Şifre',v:newBrandResult.tempPassword}].map(f => (
+              <div key={f.l} style={{ background:'#060a1c', borderRadius:10, padding:'10px 14px' }}>
+                <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{f.l}</p>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <code style={{ color:'#fff', fontSize:12, fontFamily:'monospace', flex:1 }}>{f.v}</code>
+                  <button onClick={()=>copy(f.v||'')} style={{ background:'none', border:'none', color:'#64748b', cursor:'pointer', padding:2 }}><Copy size={12} /></button>
+                </div>
               </div>
-            </div>
-            <div className="p-3 bg-slate-900 rounded-lg">
-              <p className="text-slate-400 text-xs mb-1">Geçici Şifre</p>
-              <div className="flex items-center gap-2">
-                <p className="text-white font-mono text-xs">{newBrandResult.tempPassword}</p>
-                <button onClick={() => navigator.clipboard.writeText(newBrandResult.tempPassword)}>
-                  <Copy size={12} className="text-slate-400" />
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
-          <p className="text-yellow-400 text-xs">⚠️ Bu bilgileri kaydedin — şifre bir daha gösterilmeyecek!</p>
+          <p style={{ color:'#f59e0b', fontSize:11, margin:'10px 0 0' }}>⚠️ Bu bilgileri kaydedin — şifre bir daha gösterilmeyecek!</p>
         </div>
       )}
 
-      {/* Bayi Listesi */}
+      {/* Brand list */}
       {loading ? (
-        <div className="flex justify-center h-32 items-center"><RefreshCw size={24} className="animate-spin text-slate-400" /></div>
+        <div style={{ display:'flex', justifyContent:'center', height:80, alignItems:'center' }}><RefreshCw size={20} style={{ color:'#475569', animation:'bg-spin 1s linear infinite' }} /></div>
       ) : brands.length === 0 ? (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
-          <Building2 size={40} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">Henüz bayi yok</p>
-          <p className="text-slate-500 text-sm mt-1">Yeni Bayi butonuyla bayinizi oluşturun</p>
+        <div style={{ textAlign:'center', padding:48, color:'#475569' }}>
+          <p style={{ fontSize:36, margin:'0 0 12px' }}>🏢</p>
+          <p style={{ fontSize:14, margin:0 }}>Henüz bayi yok — yeni bayi oluşturarak gelir paylaşımı başlatın</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {brands.map(brand => (
-            <div key={brand.id} className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-              <div className="flex items-center gap-4">
-                {/* Renk göstergesi */}
-                <div className="w-10 h-10 rounded-xl shrink-0 border border-slate-700"
-                  style={{ backgroundColor: brand.primary_color || '#3b82f6' }} />
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-white font-semibold">{brand.name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${planColors[brand.plan_type] || planColors.basic}`}>
-                      {brand.plan_type}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${brand.status === 'active' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300' : 'bg-red-500/20 border-red-500/30 text-red-300'}`}>
-                      {brand.status === 'active' ? 'Aktif' : 'Pasif'}
+            <div key={brand.id} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:'18px 20px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+                <div style={{ width:44, height:44, borderRadius:11, border:'1px solid rgba(255,255,255,0.1)', background:brand.primary_color||'#3b82f6', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  {brand.logo_url ? <img src={brand.logo_url} alt="" style={{ width:36, height:36, borderRadius:8, objectFit:'cover' }} /> : <span style={{ color:'#fff', fontSize:16, fontWeight:800 }}>{brand.name?.[0]}</span>}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+                    <p style={{ color:'#fff', fontWeight:700, fontSize:14, margin:0 }}>{brand.name}</p>
+                    <span style={{ background:`${planColors[brand.plan_type]||'#64748b'}18`, border:`1px solid ${planColors[brand.plan_type]||'#64748b'}30`, color:planColors[brand.plan_type]||'#64748b', fontSize:10, padding:'2px 7px', borderRadius:20, fontWeight:600 }}>{brand.plan_type}</span>
+                    <span style={{ background:brand.status==='active'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)', border:`1px solid ${brand.status==='active'?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.2)'}`, color:brand.status==='active'?'#34d399':'#f87171', fontSize:10, padding:'2px 7px', borderRadius:20 }}>
+                      {brand.status==='active'?'Aktif':'Pasif'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-400">
-                    {brand.domain && <span className="flex items-center gap-1"><Globe size={11} /> {brand.domain}</span>}
-                    <span className="flex items-center gap-1"><DollarSign size={11} /> %{brand.revenue_share} gelir payı</span>
+                  <div style={{ display:'flex', gap:12, fontSize:11, color:'#475569', flexWrap:'wrap' }}>
+                    {brand.domain && <span><Globe size={10} style={{ display:'inline', marginRight:3 }} />{brand.domain}</span>}
+                    <span><DollarSign size={10} style={{ display:'inline', marginRight:2 }} />%{brand.revenue_share} gelir payı</span>
                     <span>{new Date(brand.created_at).toLocaleDateString('tr-TR')}</span>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => loadBrandStats(brand.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition">
+                <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                  <button onClick={()=>loadBrandStats(brand.id)}
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:9, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', color:'#94a3b8', fontSize:11, cursor:'pointer' }}>
                     <BarChart3 size={12} /> İstatistik
                   </button>
-                  <button onClick={() => updateStatus(brand.id, brand.status === 'active' ? 'inactive' : 'active')}
-                    className={`px-3 py-1.5 text-xs rounded-lg border transition ${brand.status === 'active' ? 'bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'}`}>
-                    {brand.status === 'active' ? 'Durdur' : 'Aktifleştir'}
+                  <button onClick={()=>updateStatus(brand.id,brand.status==='active'?'inactive':'active')}
+                    style={{ padding:'6px 12px', borderRadius:9, border:`1px solid ${brand.status==='active'?'rgba(239,68,68,0.2)':'rgba(16,185,129,0.2)'}`, background:brand.status==='active'?'rgba(239,68,68,0.06)':'rgba(16,185,129,0.06)', color:brand.status==='active'?'#f87171':'#34d399', fontSize:11, cursor:'pointer' }}>
+                    {brand.status==='active'?'Durdur':'Aktifleştir'}
                   </button>
                 </div>
               </div>
-
-              {/* Bayi İstatistikleri */}
-              {selectedBrand?.id === brand.id && brandStats && (
-                <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-5 gap-3">
-                  {[
-                    { label: 'Kullanıcı', value: brandStats.stats.totalUsers },
-                    { label: 'Lead', value: brandStats.stats.totalLeads },
-                    { label: 'Mesaj', value: brandStats.stats.totalMessages },
-                    { label: 'Video', value: brandStats.stats.totalVideos },
-                    { label: 'Aylık Gelir', value: `₺${(brandStats.stats.monthlyRevenue || 0).toLocaleString('tr-TR')}` },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="text-center bg-slate-900/50 rounded-lg p-3">
-                      <p className="text-white font-bold">{value}</p>
-                      <p className="text-slate-400 text-xs mt-0.5">{label}</p>
+              {selectedBrand === brand.id && brandStats && (
+                <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid rgba(255,255,255,0.05)', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
+                  {[{l:'Kullanıcı',v:brandStats.stats?.totalUsers},{l:'Lead',v:brandStats.stats?.totalLeads},{l:'Mesaj',v:brandStats.stats?.totalMessages},{l:'Video',v:brandStats.stats?.totalVideos},{l:'Aylık Gelir',v:`₺${(brandStats.stats?.monthlyRevenue||0).toLocaleString('tr-TR')}`}].map(st => (
+                    <div key={st.l} style={{ textAlign:'center', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:9 }}>
+                      <p style={{ color:'#fff', fontWeight:800, fontSize:14, margin:0 }}>{st.v}</p>
+                      <p style={{ color:'#475569', fontSize:10, margin:0 }}>{st.l}</p>
                     </div>
                   ))}
                 </div>
@@ -265,6 +255,7 @@ export default function WhitelabelPage() {
           ))}
         </div>
       )}
+      <style>{`@keyframes bg-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

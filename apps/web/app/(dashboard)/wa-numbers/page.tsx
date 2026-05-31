@@ -1,7 +1,85 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { Plus, Trash2, RefreshCw, Smartphone, Wifi, WifiOff, Star, QrCode, Settings2 } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, Star, QrCode, Wifi, WifiOff, Settings2, ShieldCheck } from 'lucide-react'
+
+// ── PHONE CONSTELLATION — rotating phone nodes in orbit ───────────────────────
+function PhoneConstellation({ size = 100, connected = 0, total = 0 }: { size?: number; connected?: number; total?: number }) {
+  const [mounted, setMounted] = useState(false)
+  const [tick, setTick] = useState(0)
+  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    if (!mounted) return
+    const t = setInterval(() => setTick(p => p + 1), 45)
+    return () => clearInterval(t)
+  }, [mounted])
+  if (!mounted) return <div style={{ width: size * 2.2, height: size * 2.2, flexShrink: 0 }} />
+
+  const cx = size * 1.1, s = size
+  const rot = tick * 0.5
+  const nodes = Math.max(total, 3)
+  const phoneNodes = Array.from({ length: nodes }, (_, i) => {
+    const a = (i * (360 / nodes) + rot) * Math.PI / 180
+    return { x: cx + Math.cos(a) * s * 0.7, y: cx + Math.sin(a) * s * 0.7, connected: i < connected }
+  })
+
+  // Signal rings from connected nodes
+  const signalR = s * 0.12 + Math.sin(tick * 0.15) * s * 0.03
+
+  return (
+    <div style={{ width: s * 2.2, height: s * 2.2, flexShrink: 0 }}>
+      <svg width={s * 2.2} height={s * 2.2}>
+        <defs>
+          <radialGradient id={`pcGlow${s}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(34,197,94,0)" />
+            <stop offset="100%" stopColor="rgba(34,197,94,0.14)" />
+          </radialGradient>
+          <radialGradient id={`pcHub${s}`} cx="35%" cy="28%" r="65%">
+            <stop offset="0%" stopColor="#86efac" />
+            <stop offset="40%" stopColor="#22c55e" />
+            <stop offset="100%" stopColor="#14532d" />
+          </radialGradient>
+        </defs>
+        <circle cx={cx} cy={cx} r={s * 1.05} fill={`url(#pcGlow${s})`} />
+        {[0.52, 0.78, 0.96].map((r, i) => (
+          <circle key={r} cx={cx} cy={cx} r={s * r} fill="none" stroke="rgba(34,197,94,0.1)" strokeWidth={0.8}
+            strokeDasharray="4 7" style={{ animation: `pc-ring ${9+i*3}s linear ${i%2?'reverse':''} infinite`, transformOrigin: `${cx}px ${cx}px` }} />
+        ))}
+        {phoneNodes.map((node, i) => (
+          <g key={i}>
+            <line x1={cx} y1={cx} x2={node.x} y2={node.y} stroke={node.connected ? 'rgba(34,197,94,0.25)' : 'rgba(100,116,139,0.15)'} strokeWidth={1} strokeDasharray="3 5" />
+            {node.connected && (
+              <circle cx={node.x} cy={node.y} r={signalR} fill="none" stroke="rgba(34,197,94,0.3)" strokeWidth={1} />
+            )}
+            <rect x={node.x - 9} y={node.y - 13} width={18} height={26} rx={4}
+              fill={node.connected ? '#22c55e' : '#1e293b'} stroke={node.connected ? 'rgba(34,197,94,0.5)' : 'rgba(100,116,139,0.3)'} strokeWidth={1.5}
+              style={{ filter: node.connected ? 'drop-shadow(0 0 6px #22c55e99)' : 'none' }} />
+            {node.connected && <circle cx={node.x} cy={node.y + 8} r={2} fill="rgba(255,255,255,0.6)" />}
+          </g>
+        ))}
+        <circle cx={cx} cy={cx} r={s * 0.36} fill={`url(#pcHub${s})`} style={{ filter: 'drop-shadow(0 0 14px #22c55e99)' }} />
+        <text x={cx} y={cx - 4} fill="white" fontSize={s * 0.18} textAnchor="middle" dominantBaseline="middle" fontWeight="900">{connected}</text>
+        <text x={cx} y={cx + s * 0.14} fill="rgba(255,255,255,0.6)" fontSize={s * 0.07} textAnchor="middle">BAĞLI</text>
+      </svg>
+      <style>{`@keyframes pc-ring{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+}
+
+// Health score for a number
+function getHealthColor(sentToday: number, limit: number) {
+  const pct = sentToday / limit
+  if (pct > 0.85) return '#ef4444'
+  if (pct > 0.55) return '#f59e0b'
+  return '#10b981'
+}
+
+function getBanRisk(sentToday: number, limit: number) {
+  const pct = sentToday / limit
+  if (pct > 0.85) return { label: 'Yüksek Risk', color: '#ef4444' }
+  if (pct > 0.55) return { label: 'Orta Risk', color: '#f59e0b' }
+  return { label: 'Güvenli', color: '#10b981' }
+}
 
 export default function WANumbersPage() {
   const [stats, setStats] = useState<any>(null)
@@ -9,265 +87,207 @@ export default function WANumbersPage() {
   const [connecting, setConnecting] = useState(false)
   const [qrCode, setQrCode] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
-  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  // Form
+  const [showAdd, setShowAdd] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [dailyLimit, setDailyLimit] = useState(100)
-  const [showAdd, setShowAdd] = useState(false)
-
-  const showMsg = (type: 'success' | 'error', text: string) => {
-    setMsg({ type, text })
-    setTimeout(() => setMsg(null), 5000)
-  }
 
   const load = async () => {
     setLoading(true)
-    try {
-      const data = await api.get('/api/wa-numbers/stats')
-      setStats(data)
-    } catch {}
-    finally { setLoading(false) }
+    try { const data = await api.get('/api/wa-numbers/stats'); setStats(data) } catch {}
+    setLoading(false)
   }
-
   useEffect(() => { load() }, [])
 
   const connectNumber = async () => {
-    setConnecting(true)
-    setQrCode(null)
+    setConnecting(true); setQrCode(null)
     try {
       const data = await api.post('/api/wa-numbers/connect', { displayName, dailyLimit })
-      if (data.qr) {
-        setQrCode(data.qr)
-        showMsg('success', 'QR kodu telefonunuzla okutun')
-      } else {
-        showMsg('success', 'Numara bağlandı!')
-        setShowAdd(false)
-        load()
-      }
-    } catch (e: any) {
-      showMsg('error', e.message)
-    } finally {
-      setConnecting(false)
-    }
+      if (data.qr) setQrCode(data.qr)
+      else { setShowAdd(false); load() }
+    } catch {}
+    setConnecting(false)
   }
 
   const disconnectNumber = async (id: string) => {
-    await api.post(`/api/wa-numbers/${id}/disconnect`, {})
-    showMsg('success', 'Bağlantı kesildi')
-    load()
+    await api.post(`/api/wa-numbers/${id}/disconnect`, {}); load()
   }
 
   const setPrimary = async (id: string) => {
-    await api.patch(`/api/wa-numbers/${id}`, { isPrimary: true })
-    showMsg('success', 'Birincil numara güncellendi')
-    load()
+    await api.patch(`/api/wa-numbers/${id}`, { isPrimary: true }); load()
   }
 
   const deleteNumber = async (id: string) => {
     if (!confirm('Numara silinsin mi?')) return
-    await api.delete(`/api/wa-numbers/${id}`)
-    showMsg('success', 'Silindi')
-    load()
+    await api.delete(`/api/wa-numbers/${id}`); load()
   }
 
   const updateLimit = async (id: string, limit: number) => {
     await api.patch(`/api/wa-numbers/${id}`, { dailyLimit: limit })
-    setEditId(null)
-    load()
+    setEditId(null); load()
   }
 
+  const numbers = stats?.numbers || []
+  const connected = numbers.filter((n: any) => n.status === 'connected').length
+  const inputStyle = { background: '#060a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none' }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Smartphone size={24} className="text-green-400" />
-            WhatsApp Numaralar
-          </h1>
-          <p className="text-slate-400 mt-1 text-sm">Birden fazla numara yönet, yük dağıt, ban riskini azalt</p>
-        </div>
-        <button onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">
-          <Plus size={16} /> Numara Ekle
-        </button>
-      </div>
-
-      {msg && (
-        <div className={`px-4 py-3 rounded-xl border text-sm ${
-          msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
-        }`}>{msg.text}</div>
-      )}
-
-      {/* Özet */}
-      {stats && (
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: 'Toplam Numara', value: stats.total, color: 'text-slate-300' },
-            { label: 'Bağlı', value: stats.connected, color: 'text-green-400' },
-            { label: 'Günlük Kapasite', value: stats.totalCapacity, color: 'text-blue-400' },
-            { label: 'Bugün Gönderilen', value: stats.usedToday, color: 'text-yellow-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
-              <p className="text-slate-400 text-sm mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Numara Ekle Formu */}
-      {showAdd && (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
-          <h2 className="text-white font-semibold">Yeni Numara Bağla</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">İsim (opsiyonel)</label>
-              <input value={displayName} onChange={e => setDisplayName(e.target.value)}
-                placeholder="örn: Satış Hattı, Destek"
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500" />
-            </div>
-            <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Günlük Mesaj Limiti</label>
-              <input type="number" value={dailyLimit} onChange={e => setDailyLimit(Number(e.target.value))}
-                min="10" max="500"
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500" />
+    <div style={{ padding: 0 }}>
+      {/* Hero */}
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(0,14,5,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(34,197,94,0.2)' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(34,197,94,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
+          <PhoneConstellation size={90} connected={connected} total={numbers.length} />
+          <div style={{ flex: 1 }}>
+            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>WhatsApp Numaralar</h1>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Çoklu numara yönetimi — ban riskini dağıt, kapasiteyi artır</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              {[{l:'Toplam',v:numbers.length,c:'#94a3b8'},{l:'Bağlı',v:connected,c:'#22c55e'},{l:'Günlük Kapasite',v:stats?.totalCapacity||0,c:'#06b6d4'},{l:'Bugün Gönderilen',v:stats?.usedToday||0,c:'#f59e0b'}].map(m => (
+                <div key={m.l} style={{ textAlign:'center' }}>
+                  <p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p>
+                  <p style={{ color:'#475569', fontSize:10, margin:0 }}>{m.l}</p>
+                </div>
+              ))}
             </div>
           </div>
+          <button onClick={() => setShowAdd(!showAdd)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#14532d,#22c55e)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+            <Plus size={15} /> Numara Ekle
+          </button>
+        </div>
+      </div>
 
+      {/* Add Form */}
+      {showAdd && (
+        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 18, padding: 22, marginBottom: 20 }}>
+          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>➕ Yeni Numara Bağla</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>İsim (opsiyonel)</label>
+              <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="örn: Satış Hattı 1" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
+            </div>
+            <div>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Günlük Mesaj Limiti</label>
+              <input type="number" value={dailyLimit} onChange={e => setDailyLimit(Number(e.target.value))} min={10} max={500} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
+            </div>
+          </div>
           {qrCode ? (
-            <div className="flex flex-col items-center gap-4 p-6 bg-slate-900/50 border border-slate-700 rounded-xl">
-              <p className="text-white font-medium flex items-center gap-2">
-                <QrCode size={16} className="text-green-400" /> WhatsApp ile QR'ı okutun
-              </p>
-              <img src={qrCode} alt="QR" className="w-52 h-52 rounded-xl border border-slate-600" />
-              <p className="text-slate-500 text-xs flex items-center gap-1">
-                <RefreshCw size={11} className="animate-spin" /> Bağlantı bekleniyor...
-              </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: 14, border: '1px solid rgba(34,197,94,0.15)' }}>
+              <p style={{ color: '#fff', fontWeight: 700, margin: 0 }}>📱 WhatsApp ile QR'ı okutun</p>
+              <img src={qrCode} alt="QR" style={{ width: 200, height: 200, borderRadius: 12 }} />
+              <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Bağlantı bekleniyor...</p>
             </div>
           ) : (
             <button onClick={connectNumber} disabled={connecting}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-300 rounded-xl text-sm font-medium transition disabled:opacity-50">
-              {connecting ? <RefreshCw size={15} className="animate-spin" /> : <QrCode size={15} />}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 11, border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.08)', color: '#4ade80', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {connecting ? <RefreshCw size={14} style={{ animation: 'wa-spin 1s linear infinite' }} /> : <QrCode size={14} />}
               {connecting ? 'QR oluşturuluyor...' : 'QR Oluştur & Bağla'}
             </button>
           )}
         </div>
       )}
 
-      {/* Numara Listesi */}
+      {/* Numbers List */}
       {loading ? (
-        <div className="flex items-center justify-center h-32">
-          <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : !stats?.numbers?.length ? (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
-          <Smartphone size={40} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400 mb-1">Henüz numara yok</p>
-          <p className="text-slate-500 text-sm">Numara ekleyerek ban riskini dağıtın</p>
+        <div style={{ display: 'flex', justifyContent: 'center', height: 100, alignItems: 'center' }}><RefreshCw size={22} style={{ color: '#475569', animation: 'wa-spin 1s linear infinite' }} /></div>
+      ) : numbers.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 48, color: '#475569' }}>
+          <p style={{ fontSize: 40, margin: '0 0 12px' }}>📱</p>
+          <p style={{ fontSize: 14, margin: 0 }}>Henüz numara yok — anti-ban için birden fazla numara ekleyin</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {stats.numbers.map((num: any) => (
-            <div key={num.id} className={`bg-slate-800/50 border rounded-xl p-5 ${num.is_primary ? 'border-green-500/40' : 'border-slate-700'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    num.status === 'connected' ? 'bg-green-500/10' : 'bg-slate-700'
-                  }`}>
-                    <Smartphone size={18} className={num.status === 'connected' ? 'text-green-400' : 'text-slate-500'} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {numbers.map((num: any) => {
+            const banRisk = getBanRisk(num.sent_today || 0, num.daily_limit || 100)
+            const healthColor = getHealthColor(num.sent_today || 0, num.daily_limit || 100)
+            const pct = Math.min(((num.sent_today || 0) / (num.daily_limit || 100)) * 100, 100)
+            return (
+              <div key={num.id} style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: `1px solid ${num.is_primary ? 'rgba(34,197,94,0.35)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 16, padding: '18px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {/* Status indicator */}
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: num.status === 'connected' ? 'rgba(34,197,94,0.12)' : 'rgba(100,116,139,0.12)', border: `1px solid ${num.status === 'connected' ? 'rgba(34,197,94,0.3)' : 'rgba(100,116,139,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {num.status === 'connected' ? <Wifi size={20} color="#22c55e" /> : <WifiOff size={20} color="#64748b" />}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-white font-medium">{num.display_name}</p>
-                      {num.is_primary && (
-                        <span className="flex items-center gap-1 text-yellow-400 text-xs px-1.5 py-0.5 bg-yellow-500/10 border border-yellow-500/30 rounded-full">
-                          <Star size={10} /> Birincil
-                        </span>
-                      )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <p style={{ color: '#fff', fontWeight: 700, fontSize: 14, margin: 0 }}>{num.display_name || 'WhatsApp Hattı'}</p>
+                      {num.is_primary && <span style={{ background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.3)', color: '#fbbf24', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>⭐ Birincil</span>}
+                      <span style={{ background: `${banRisk.color}12`, border: `1px solid ${banRisk.color}30`, color: banRisk.color, fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>
+                        <ShieldCheck size={9} style={{ display: 'inline', marginRight: 3 }} />{banRisk.label}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {num.status === 'connected'
-                        ? <><Wifi size={11} className="text-green-400" /><span className="text-green-400 text-xs">Bağlı</span></>
-                        : <><WifiOff size={11} className="text-slate-500" /><span className="text-slate-500 text-xs">Bağlı Değil</span></>
-                      }
-                      {num.phone_number && <span className="text-slate-400 text-xs">· {num.phone_number}</span>}
+                    <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#475569' }}>
+                      {num.phone_number && <span>{num.phone_number}</span>}
+                      <span style={{ color: num.status === 'connected' ? '#4ade80' : '#64748b' }}>{num.status === 'connected' ? '🟢 Bağlı' : '⚫ Bağlı Değil'}</span>
                     </div>
                   </div>
+                  {/* Usage bar */}
+                  <div style={{ width: 120, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ color: '#475569', fontSize: 10 }}>Bugün</span>
+                      <span style={{ color: healthColor, fontSize: 10, fontWeight: 700 }}>{num.sent_today || 0}/{num.daily_limit || 100}</span>
+                    </div>
+                    <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: healthColor, borderRadius: 3, boxShadow: `0 0 6px ${healthColor}60`, transition: 'width 0.6s' }} />
+                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    {!num.is_primary && num.status === 'connected' && (
+                      <button onClick={() => setPrimary(num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.08)', color: '#fbbf24', cursor: 'pointer' }} title="Birincil Yap">
+                        <Star size={13} />
+                      </button>
+                    )}
+                    <button onClick={() => setEditId(editId === num.id ? null : num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', cursor: 'pointer' }}>
+                      <Settings2 size={13} />
+                    </button>
+                    {num.status === 'connected' ? (
+                      <button onClick={() => disconnectNumber(num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', cursor: 'pointer' }}>
+                        <WifiOff size={13} />
+                      </button>
+                    ) : (
+                      <button onClick={() => deleteNumber(num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', cursor: 'pointer' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  {!num.is_primary && num.status === 'connected' && (
-                    <button onClick={() => setPrimary(num.id)}
-                      className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 rounded-lg transition text-xs" title="Birincil Yap">
-                      <Star size={13} />
+                {/* Edit limit */}
+                {editId === num.id && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ color: '#64748b', fontSize: 12 }}>Günlük limit:</span>
+                    <input type="number" defaultValue={num.daily_limit} id={`lim-${num.id}`} min={10} max={500}
+                      style={{ width: 80, ...inputStyle }} />
+                    <button onClick={() => { const el = document.getElementById(`lim-${num.id}`) as HTMLInputElement; updateLimit(num.id, parseInt(el.value)) }}
+                      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#14532d,#22c55e)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      Kaydet
                     </button>
-                  )}
-                  <button onClick={() => setEditId(editId === num.id ? null : num.id)}
-                    className="p-2 bg-slate-700 hover:bg-slate-600 border border-slate-600 text-slate-300 rounded-lg transition">
-                    <Settings2 size={13} />
-                  </button>
-                  {num.status === 'connected' ? (
-                    <button onClick={() => disconnectNumber(num.id)}
-                      className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg transition text-xs">
-                      <WifiOff size={13} />
-                    </button>
-                  ) : (
-                    <button onClick={() => deleteNumber(num.id)}
-                      className="p-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg transition">
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-
-              {/* Günlük kullanım bar */}
-              <div className="mt-4">
-                <div className="flex justify-between mb-1">
-                  <span className="text-slate-400 text-xs">Bugün</span>
-                  <span className="text-slate-300 text-xs font-medium">{num.sent_today}/{num.daily_limit}</span>
-                </div>
-                <div className="w-full bg-slate-700 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      (num.sent_today / num.daily_limit) > 0.8 ? 'bg-red-500' :
-                      (num.sent_today / num.daily_limit) > 0.5 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.min((num.sent_today / num.daily_limit) * 100, 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Limit Düzenleme */}
-              {editId === num.id && (
-                <div className="mt-4 pt-4 border-t border-slate-700 flex items-center gap-3">
-                  <span className="text-slate-400 text-sm">Günlük limit:</span>
-                  <input type="number" defaultValue={num.daily_limit} id={`limit-${num.id}`}
-                    className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-green-500"
-                    min="10" max="500" />
-                  <button onClick={() => {
-                    const input = document.getElementById(`limit-${num.id}`) as HTMLInputElement
-                    updateLimit(num.id, parseInt(input.value))
-                  }} className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition">
-                    Kaydet
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {/* Rehber */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-        <h2 className="text-white font-semibold mb-3">💡 Anti-Ban Stratejisi</h2>
-        <div className="space-y-2 text-sm text-slate-400">
-          <p>→ Numara başına günde <span className="text-white">max 100-150 mesaj</span> gönderin</p>
-          <p>→ Mesajlar arasında <span className="text-white">10-30 saniye</span> bekleyin</p>
-          <p>→ Kişiselleştirilmiş mesajlar toplu mesajlara göre <span className="text-white">3x daha güvenli</span></p>
-          <p>→ Birden fazla numara kullanarak riski <span className="text-white">dağıtın</span></p>
+      {/* Anti-ban guide */}
+      <div style={{ marginTop: 20, background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(34,197,94,0.12)', borderRadius: 18, padding: 20 }}>
+        <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>🛡️ Anti-Ban Stratejisi</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+          {[
+            { icon: '📊', text: 'Numara başına günde max 100-150 mesaj gönderin', color: '#06b6d4' },
+            { icon: '⏱️', text: 'Mesajlar arasında 10-30 saniye bekleme aktif', color: '#10b981' },
+            { icon: '🔄', text: 'Sistem otomatik round-robin rotasyon yapıyor', color: '#8b5cf6' },
+            { icon: '🎯', text: 'Kişiselleştirilmiş mesajlar toplu mesajdan 3x güvenli', color: '#f59e0b' },
+          ].map(tip => (
+            <div key={tip.text} style={{ display: 'flex', gap: 10, padding: '10px 14px', background: `${tip.color}08`, border: `1px solid ${tip.color}18`, borderRadius: 10 }}>
+              <span style={{ fontSize: 16 }}>{tip.icon}</span>
+              <p style={{ color: '#94a3b8', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{tip.text}</p>
+            </div>
+          ))}
         </div>
       </div>
+
+      <style>{`@keyframes wa-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
