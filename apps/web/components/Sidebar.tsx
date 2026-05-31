@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -47,7 +47,7 @@ const groups: NavGroup[] = [
     id: 'customers',
     label: 'Müşteriler',
     icon: Users,
-    defaultOpen: true,
+    defaultOpen: false,
     items: [
       { href: '/leads',           label: 'Müşterilerim',         icon: Users },
       { href: '/lead-machine',    label: 'Yeni Müşteri Bul',     icon: Target },
@@ -61,7 +61,7 @@ const groups: NavGroup[] = [
     id: 'sales',
     label: 'Satış',
     icon: Kanban,
-    defaultOpen: true,
+    defaultOpen: false,
     items: [
       { href: '/pipeline',   label: 'Satış Akışım',         icon: Kanban },
       { href: '/proposals',  label: 'Tekliflerim',           icon: FileText },
@@ -151,6 +151,18 @@ export default function Sidebar() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
     Object.fromEntries(groups.map(g => [g.id, g.defaultOpen ?? false]))
   )
+  const [ctaDismissed, setCtaDismissed] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCtaDismissed(localStorage.getItem('cta_dismissed') === '1')
+    }
+  }, [])
+
+  const dismissCta = () => {
+    setCtaDismissed(true)
+    if (typeof window !== 'undefined') localStorage.setItem('cta_dismissed', '1')
+  }
 
   const toggle = (id: string) =>
     setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }))
@@ -347,10 +359,20 @@ export default function Sidebar() {
       </nav>
 
       {/* ── UPGRADE CTA ── */}
-      {(!user?.planType || user.planType === 'starter') && (
-        <div style={{ margin: '0 10px 10px', flexShrink: 0 }}>
+      {(!user?.planType || user.planType === 'starter') && !ctaDismissed && (
+        <div style={{ margin: '0 10px 10px', flexShrink: 0, position: 'relative' }}>
+          {/* X butonu */}
+          <button onClick={dismissCta}
+            style={{ position: 'absolute', top: 8, right: 8, zIndex: 1, width: 20, height: 20, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', transition: 'all 0.15s' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.12)'; (e.currentTarget as HTMLElement).style.color = '#94a3b8' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.color = '#475569' }}
+            title="Kapat">
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
           <Link href="/billing" style={{ display: 'block', background: 'linear-gradient(135deg,rgba(124,58,237,0.15),rgba(37,99,235,0.1))', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 14, padding: '12px 14px', textDecoration: 'none', transition: 'border-color 0.2s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6, paddingRight: 16 }}>
               <Crown size={13} color="#a78bfa" />
               <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>Pro'ya Geç</span>
             </div>
