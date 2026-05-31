@@ -5,25 +5,24 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
-  Settings, CreditCard, LogOut, Zap, Activity, Target,
-  Bot, FlaskConical, Smartphone, Eye, Package,
+  Settings, CreditCard, LogOut, Zap, Activity,
+  Bot, Smartphone, Eye, Package,
   TrendingUp, Sparkles, Video, FileText,
-  Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
-  Workflow, MapPin, ScrollText, Gift, TrendingDown,
-  GraduationCap, Inbox, Kanban, Radar, UserCog, Mail,
-  QrCode, Trophy, FileBarChart, Brain, ChevronDown,
-  Crosshair, Star, RefreshCw, DollarSign, Wallet,
-  ChevronRight, Crown, Sparkle, Flame, Rocket, UsersRound,
-  BarChart2, Network
+  Code, Building2, Phone, Globe, Globe2,
+  Workflow, ScrollText, Gift, TrendingDown,
+  Inbox, Kanban, QrCode, FileBarChart, Brain,
+  ChevronDown, Star, DollarSign, Wallet,
+  Crown, Rocket, UsersRound,
+  BarChart2, Network, Crosshair, Heart, Target,
+  Map, Mic, ShieldCheck, LineChart, MessageSquare,
+  ChevronRight, Sparkle, Users2
 } from 'lucide-react'
-
-type PlanGate = 'all' | 'growth' | 'pro' | 'enterprise'
 
 interface NavItem {
   href: string
   label: string
   icon: any
-  plan?: PlanGate
+  plan?: 'growth' | 'pro' | 'enterprise'
   badge?: string
 }
 
@@ -33,120 +32,116 @@ interface NavGroup {
   icon: any
   items: NavItem[]
   defaultOpen?: boolean
+  accent?: string
+}
+
+const PLAN_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  growth:     { label: 'Growth',     color: '#10b981', bg: 'rgba(16,185,129,0.1)',   border: 'rgba(16,185,129,0.2)'  },
+  pro:        { label: 'Pro',        color: '#a78bfa', bg: 'rgba(167,139,250,0.1)',  border: 'rgba(167,139,250,0.2)' },
+  enterprise: { label: 'Ent',        color: '#fbbf24', bg: 'rgba(251,191,36,0.1)',   border: 'rgba(251,191,36,0.2)'  },
 }
 
 const groups: NavGroup[] = [
+  // ── MÜŞTERİLER ──────────────────────────────────────────────────────────────
   {
-    id: 'leads',
-    label: 'Lead Yönetimi',
+    id: 'customers',
+    label: 'Müşteriler',
     icon: Users,
     defaultOpen: true,
     items: [
-      { href: '/leads',          label: 'Leadler',         icon: Users },
-      { href: '/lead-machine',   label: 'Lead Makinesi',   icon: Target },
-      { href: '/network',        label: 'Ağ Haritası',     icon: Network },
-      { href: '/decision-maker', label: 'Karar Verici',    icon: Crosshair, plan: 'pro' },
-      { href: '/health-scores',  label: 'Müşteri Sağlığı', icon: Heart, plan: 'pro' },
+      { href: '/leads',           label: 'Müşteri Listesi',      icon: Users },
+      { href: '/lead-machine',    label: 'Müşteri Bul',          icon: Target },
+      { href: '/decision-maker',  label: 'Karar Verici Bul',     icon: Crosshair,  plan: 'pro' },
+      { href: '/network',         label: 'İlişki Haritası',      icon: Network },
+      { href: '/health-scores',   label: 'Müşteri Skorları',     icon: Heart,      plan: 'pro' },
     ],
   },
+  // ── SATIŞ ────────────────────────────────────────────────────────────────────
   {
     id: 'sales',
-    label: 'Satış & Pipeline',
+    label: 'Satış',
     icon: Kanban,
     defaultOpen: true,
     items: [
-      { href: '/products',  label: 'Ürün Kataloğu',        icon: Package,  badge: 'AI' },
-      { href: '/pipeline',  label: 'Pipeline & Kanban',    icon: Kanban },
-      { href: '/proposals', label: 'Teklifler',            icon: FileText },
-      { href: '/workflow',  label: 'Workflow Engine',       icon: Zap,      plan: 'growth', badge: 'V2' },
-      { href: '/agent',     label: 'AI Satış Ajanı',       icon: Bot,      plan: 'pro',    badge: 'AI' },
+      { href: '/pipeline',   label: 'Pipeline & Kanban',    icon: Kanban },
+      { href: '/proposals',  label: 'Teklifler',             icon: FileText },
+      { href: '/products',   label: 'Ürün Kataloğu',         icon: Package,   badge: 'AI' },
+      { href: '/microsites', label: 'Dijital Katalog',        icon: Globe },
+      { href: '/qr-codes',   label: 'QR Kod Üretici',        icon: QrCode },
+      { href: '/workflow',   label: 'İş Akışları',            icon: Workflow,  plan: 'growth', badge: 'Yeni' },
+      { href: '/agent',      label: 'AI Satış Asistanı',     icon: Bot,       plan: 'pro',    badge: 'AI' },
     ],
   },
+  // ── İLETİŞİM ─────────────────────────────────────────────────────────────────
   {
-    id: 'outreach',
-    label: 'Kampanya & Mesaj',
-    icon: Megaphone,
+    id: 'communication',
+    label: 'İletişim',
+    icon: MessageSquare,
     items: [
-      { href: '/inbox',           label: 'Unified Inbox',    icon: Inbox },
-      { href: '/campaigns',       label: 'WA Kampanya',      icon: Megaphone },
-      { href: '/email-campaigns', label: 'Email Kampanya',   icon: Mail },
-      { href: '/sms-campaigns',   label: 'SMS Kampanya',     icon: Smartphone },
-      { href: '/voice-outreach',  label: 'AI Sesli Arama',   icon: Phone,  plan: 'pro',    badge: 'AI' },
-      { href: '/video-outreach',  label: 'AI Video Mesaj',   icon: Video,  plan: 'growth', badge: 'AI' },
+      { href: '/inbox',            label: 'Gelen Kutusu',        icon: Inbox },
+      { href: '/campaigns',        label: 'WhatsApp Kampanya',   icon: Megaphone },
+      { href: '/email-campaigns',  label: 'E-posta Kampanya',    icon: Megaphone },
+      { href: '/sms-campaigns',    label: 'SMS Kampanya',        icon: Smartphone },
+      { href: '/voice-outreach',   label: 'Sesli Arama',         icon: Phone,       plan: 'pro',    badge: 'AI' },
+      { href: '/video-outreach',   label: 'Video Mesaj',          icon: Video,       plan: 'growth', badge: 'AI' },
     ],
   },
+  // ── PAZARLAMA ─────────────────────────────────────────────────────────────────
   {
-    id: 'ads',
-    label: 'Reklam Yönetimi',
+    id: 'marketing',
+    label: 'Pazarlama',
     icon: Target,
     items: [
-      { href: '/ads',          label: 'Meta Ads',           icon: Megaphone },
-      { href: '/meta-intent',  label: 'Meta CAPI & Kitle',  icon: Target,   plan: 'pro', badge: 'AI' },
-      { href: '/google-ads',   label: 'Google Ads',         icon: BarChart2 },
-      { href: '/ads-advanced', label: 'Gelişmiş Reklam AI', icon: Brain, plan: 'pro', badge: 'AI' },
+      { href: '/ads',           label: 'Meta Reklamları',          icon: BarChart2 },
+      { href: '/google-ads',    label: 'Google Reklamları',        icon: BarChart2 },
+      { href: '/ads-advanced',  label: 'Reklam Optimizasyonu',    icon: Brain,    plan: 'pro', badge: 'AI' },
+      { href: '/meta-intent',   label: 'Hedef Kitle Yönetimi',    icon: Users2,   plan: 'pro', badge: 'AI' },
     ],
   },
-  {
-    id: 'ai',
-    label: 'AI Araçlar',
-    icon: Sparkles,
-    items: [
-      { href: '/ar-experience',  label: 'AR Deneyimi',      icon: Box,    plan: 'enterprise', badge: 'BETA' },
-      { href: '/microsites',     label: 'Dijital Katalog',  icon: Globe },
-      { href: '/qr-codes',       label: 'QR Kod Üretici',   icon: QrCode },
-    ],
-  },
+  // ── PAZAR ANALİZİ ─────────────────────────────────────────────────────────────
   {
     id: 'market',
-    label: 'Pazar & Rakip',
+    label: 'Pazar Analizi',
     icon: TrendingUp,
     items: [
-      { href: '/competitor',     label: 'Rakip Hijack',     icon: Target,   plan: 'growth' },
-      { href: '/shadow',         label: 'Gizli Rakip İzle', icon: Eye,      plan: 'pro' },
-      { href: '/price-tracker',  label: 'Fiyat Takibi',     icon: TrendingDown },
-      { href: '/visual-trends',  label: 'Trend Catcher',    icon: Sparkles, plan: 'growth' },
-      { href: '/cultural',       label: 'Kültürel Uyum',    icon: Globe,    plan: 'pro' },
+      { href: '/competitor',    label: 'Rakip Analizi',         icon: Target,      plan: 'growth' },
+      { href: '/shadow',        label: 'Pazar Takibi',          icon: ShieldCheck, plan: 'pro' },
+      { href: '/price-tracker', label: 'Fiyat Takibi',          icon: TrendingDown },
+      { href: '/visual-trends', label: 'Pazar Trendleri',       icon: Sparkles,    plan: 'growth' },
+      { href: '/cultural',      label: 'Kültür & Dil Uyumu',   icon: Globe,       plan: 'pro' },
     ],
   },
+  // ── BÜYÜME & FİNANS ───────────────────────────────────────────────────────────
   {
     id: 'growth',
-    label: 'Büyüme & Gelir',
-    icon: DollarSign,
+    label: 'Büyüme & Finans',
+    icon: LineChart,
     items: [
-      { href: '/analytics',      label: 'Analitik',         icon: BarChart3 },
-      { href: '/reports',        label: 'Raporlar',         icon: FileBarChart },
-      { href: '/revenue',        label: 'Gelir Tahmini',    icon: DollarSign, plan: 'growth' },
-      { href: '/financial',      label: 'Büyüme Zekası',    icon: TrendingUp, plan: 'pro', badge: 'AI' },
-      { href: '/loyalty',        label: 'Müşteri Sağlığı',  icon: Trophy },
-      { href: '/referral',       label: 'Referral Loop',    icon: Gift },
-      { href: '/debt-collector', label: 'Tahsilat',         icon: TrendingDown },
+      { href: '/analytics',     label: 'Analitik',              icon: BarChart3 },
+      { href: '/reports',       label: 'Raporlar',              icon: FileBarChart },
+      { href: '/revenue',       label: 'Gelir Tahmini',         icon: DollarSign,  plan: 'growth' },
+      { href: '/financial',     label: 'Finansal Analiz',       icon: TrendingUp,  plan: 'pro', badge: 'AI' },
+      { href: '/loyalty',       label: 'Müşteri Sadakati',      icon: Star },
+      { href: '/referral',      label: 'Tavsiye Kampanyası',    icon: Gift },
+      { href: '/debt-collector',label: 'Fatura Takibi',         icon: FileText },
     ],
   },
+  // ── SİSTEM ────────────────────────────────────────────────────────────────────
   {
     id: 'system',
-    label: 'Sistem & Ayarlar',
+    label: 'Sistem',
     icon: Settings,
     items: [
-      { href: '/automations', label: 'Otomasyonlar',   icon: Zap },
-      { href: '/wa-numbers',  label: 'WA Numaralar',   icon: Smartphone },
-      { href: '/developer',   label: 'API Erişimi',    icon: Code,       plan: 'pro' },
-      { href: '/whitelabel',  label: 'White-Label',    icon: Building2,  plan: 'enterprise' },
-      { href: '/monitoring',  label: 'Monitör',        icon: Activity },
-      { href: '/billing',     label: 'Abonelik',       icon: CreditCard },
-      { href: '/settings',    label: 'Ayarlar',        icon: Settings },
+      { href: '/automations', label: 'Otomasyon Kuralları',   icon: Zap },
+      { href: '/wa-numbers',  label: 'WhatsApp Numaraları',   icon: Smartphone },
+      { href: '/developer',   label: 'API & Geliştirici',     icon: Code,      plan: 'pro' },
+      { href: '/whitelabel',  label: 'White-Label',            icon: Building2, plan: 'enterprise' },
+      { href: '/monitoring',  label: 'Sistem İzleme',          icon: Activity },
+      { href: '/billing',     label: 'Abonelik & Kredi',       icon: CreditCard },
+      { href: '/settings',    label: 'Genel Ayarlar',          icon: Settings },
     ],
   },
 ]
-
-const planColors: Record<string, string> = {
-  growth:     'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-  pro:        'bg-violet-500/15 text-violet-400 border border-violet-500/20',
-  enterprise: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-}
-
-const planLabels: Record<string, string> = {
-  growth: 'Growth', pro: 'Pro', enterprise: 'Enterprise',
-}
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -161,182 +156,184 @@ export default function Sidebar() {
     setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }))
 
   const creditsLeft = (user?.creditsTotal ?? 0) - (user?.creditsUsed ?? 0)
-  const creditsPct  = user?.creditsTotal
-    ? Math.max(0, (creditsLeft / user.creditsTotal) * 100)
-    : 0
-  const creditColor = creditsPct > 40 ? 'bg-blue-500' : creditsPct > 15 ? 'bg-amber-500' : 'bg-red-500'
+  const creditsPct  = user?.creditsTotal ? Math.max(0, (creditsLeft / user.creditsTotal) * 100) : 0
+  const creditColor = creditsPct > 40 ? '#3b82f6' : creditsPct > 15 ? '#f59e0b' : '#ef4444'
 
   const isActiveGroup = (g: NavGroup) => g.items.some(i => pathname === i.href)
 
-  return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-40">
+  const S = {
+    sidebar: {
+      width: 248,
+      background: 'linear-gradient(180deg,#07090f 0%,#060a14 100%)',
+      borderRight: '1px solid rgba(255,255,255,0.06)',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      height: '100vh',
+      position: 'fixed' as const,
+      left: 0,
+      top: 0,
+      zIndex: 40,
+    },
+    logo: {
+      padding: '18px 16px',
+      borderBottom: '1px solid rgba(255,255,255,0.05)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      flexShrink: 0,
+    },
+    logoIcon: {
+      width: 32,
+      height: 32,
+      background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)',
+      borderRadius: 9,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: '0 4px 12px rgba(59,130,246,0.35)',
+      flexShrink: 0,
+    },
+    logoText: {
+      color: '#fff',
+      fontWeight: 700,
+      fontSize: 15,
+      letterSpacing: '-0.3px',
+    },
+    nav: {
+      flex: 1,
+      overflowY: 'auto' as const,
+      padding: '10px 10px',
+      scrollbarWidth: 'none' as const,
+    },
+  }
 
-      {/* Logo */}
-      <div className="px-5 py-4 border-b border-slate-800 flex items-center gap-3 flex-shrink-0">
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/25">
-          <Zap size={15} className="text-white" />
+  return (
+    <aside style={S.sidebar}>
+
+      {/* ── LOGO ── */}
+      <div style={S.logo}>
+        <div style={S.logoIcon}>
+          <Zap size={15} color="white" />
         </div>
-        <span className="text-white font-bold text-base tracking-tight">LeadFlow AI</span>
+        <span style={S.logoText}>LeadFlow AI</span>
       </div>
 
-      {/* Kredi Bar */}
+      {/* ── KREDİ ÇUBUĞU ── */}
       {user && (
-        <div className="mx-4 mt-3 mb-1 bg-slate-800/60 rounded-xl p-3 flex-shrink-0">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-1.5">
-              <Wallet size={12} className="text-slate-400" />
-              <span className="text-xs text-slate-400">Kalan Kredi</span>
-            </div>
-            <span className={`text-xs font-semibold ${creditsPct > 40 ? 'text-blue-400' : creditsPct > 15 ? 'text-amber-400' : 'text-red-400'}`}>
-              {creditsLeft} / {user.creditsTotal}
+        <div style={{ margin: '10px 10px 0', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ color: '#475569', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Wallet size={11} /> Kalan Kredi
+            </span>
+            <span style={{ color: creditColor, fontSize: 11, fontWeight: 700 }}>
+              {creditsLeft.toLocaleString('tr-TR')} / {user.creditsTotal?.toLocaleString('tr-TR')}
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-1.5">
-            <div className={`${creditColor} h-1.5 rounded-full transition-all duration-500`}
-              style={{ width: `${creditsPct}%` }} />
+          <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 2 }}>
+            <div style={{ height: '100%', width: `${creditsPct}%`, background: creditColor, borderRadius: 2, transition: 'width 0.5s', boxShadow: `0 0 6px ${creditColor}60` }} />
           </div>
           {creditsPct < 20 && (
-            <Link href="/billing"
-              className="mt-2 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 transition">
-              <Zap size={10} /> Kredi satin al
+            <Link href="/billing" style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b', fontSize: 11, textDecoration: 'none' }}>
+              <Zap size={10} /> Kredi satın al
             </Link>
           )}
         </div>
       )}
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 scrollbar-hide">
+      {/* ── NAVİGASYON ── */}
+      <nav style={S.nav}>
 
         {/* Dashboard */}
-        <Link href="/dashboard"
-          className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition mb-1 ${
-            pathname === '/dashboard'
-              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}>
-          <LayoutDashboard size={16} />
-          Dashboard
+        <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 9, marginBottom: 6, textDecoration: 'none', fontSize: 13, fontWeight: 600, transition: 'all 0.15s',
+          background: pathname === '/dashboard' ? 'linear-gradient(135deg,rgba(59,130,246,0.25),rgba(37,99,235,0.15))' : 'transparent',
+          color: pathname === '/dashboard' ? '#93c5fd' : '#64748b',
+          border: pathname === '/dashboard' ? '1px solid rgba(59,130,246,0.2)' : '1px solid transparent',
+        }}>
+          <LayoutDashboard size={15} />
+          Ana Sayfa
         </Link>
 
-        {/* One Cikan Ozellikler */}
-        <div className="mb-3 mt-1 space-y-1.5">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-1.5">Guclu Araclar</p>
+        {/* Özel Araçlar */}
+        <div style={{ marginBottom: 8 }}>
+          <p style={{ color: '#1e293b', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '0 10px', marginBottom: 6 }}>ÖZEL ARAÇLAR</p>
 
-          {/* Ihale Avcisi */}
-          <Link href="/tenders"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
-              pathname === '/tenders'
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                : 'bg-amber-500/5 border-amber-500/15 text-amber-400/80 hover:bg-amber-500/15 hover:border-amber-500/30 hover:text-amber-300'
-            }`}>
-            <div className="w-7 h-7 bg-amber-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <ScrollText size={14} className="text-amber-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">Ihale Avcisi</p>
-              <p className="text-[10px] text-amber-500/60 leading-tight mt-0.5">Devlet ihalelerini yakala</p>
-            </div>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/25 flex-shrink-0">PRO</span>
-          </Link>
-
-          {/* Ihracat Zekasi */}
-          <Link href="/export"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
-              pathname === '/export'
-                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
-                : 'bg-emerald-500/5 border-emerald-500/15 text-emerald-400/80 hover:bg-emerald-500/15 hover:border-emerald-500/30 hover:text-emerald-300'
-            }`}>
-            <div className="w-7 h-7 bg-emerald-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Globe2 size={14} className="text-emerald-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">Ihracat Zekasi</p>
-              <p className="text-[10px] text-emerald-500/60 leading-tight mt-0.5">Global pazarlara ac</p>
-            </div>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 flex-shrink-0">ENT</span>
-          </Link>
-
-          {/* Ekip Yonetimi */}
-          <Link href="/team"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
-              pathname === '/team' || pathname === '/team-intelligence'
-                ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                : 'bg-blue-500/5 border-blue-500/15 text-blue-400/80 hover:bg-blue-500/15 hover:border-blue-500/30 hover:text-blue-300'
-            }`}>
-            <div className="w-7 h-7 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <UsersRound size={14} className="text-blue-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">Ekip Yonetimi</p>
-              <p className="text-[10px] text-blue-500/60 leading-tight mt-0.5">Takimini birlikte yonet</p>
-            </div>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/25 flex-shrink-0">PRO</span>
-          </Link>
-
-          {/* Ekip Raporlari — Ekip Yönetimi'ne taşındı */}
+          {[
+            { href: '/tenders', label: 'İhale Takibi',  sub: 'Devlet & özel ihaleler',  icon: ScrollText, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.15)',  active: 'rgba(245,158,11,0.18)',  badge: 'PRO' },
+            { href: '/export',  label: 'İhracat',        sub: 'Global pazarlara giriş',  icon: Globe2,     color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.15)',  active: 'rgba(16,185,129,0.18)',  badge: 'ENT' },
+            { href: '/team',    label: 'Ekip',           sub: 'Takım & performans yönet', icon: UsersRound, color: '#60a5fa', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.15)',  active: 'rgba(59,130,246,0.18)',  badge: 'PRO' },
+          ].map(item => {
+            const isActive = pathname === item.href || (item.href === '/team' && pathname === '/team-intelligence')
+            const Icon = item.icon
+            return (
+              <Link key={item.href} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 11, marginBottom: 5, textDecoration: 'none', transition: 'all 0.15s',
+                background: isActive ? item.active : item.bg,
+                border: `1px solid ${isActive ? item.color + '35' : item.border}`,
+              }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: isActive ? `${item.color}22` : `${item.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon size={13} color={item.color} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ color: isActive ? '#fff' : item.color, fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{item.label}</p>
+                  <p style={{ color: isActive ? `${item.color}90` : `${item.color}60`, fontSize: 10, margin: '2px 0 0', lineHeight: 1 }}>{item.sub}</p>
+                </div>
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 5, background: `${item.color}18`, color: item.color, border: `1px solid ${item.color}25`, flexShrink: 0 }}>{item.badge}</span>
+              </Link>
+            )
+          })}
         </div>
 
-        <div className="border-t border-slate-800/80 mb-2" />
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.04)', margin: '4px 0 8px' }} />
 
-        {/* Gruplar */}
+        {/* ── GRUPLAR ── */}
         {groups.map(group => {
-          const isOpen   = openGroups[group.id]
+          const isOpen = openGroups[group.id]
           const hasActive = isActiveGroup(group)
           const GroupIcon = group.icon
 
           return (
-            <div key={group.id} className="mb-0.5">
-              <button
-                onClick={() => toggle(group.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition group ${
-                  hasActive && !isOpen
-                    ? 'text-blue-400 bg-blue-500/10'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <GroupIcon size={13} />
-                  {group.label}
+            <div key={group.id} style={{ marginBottom: 2 }}>
+              <button onClick={() => toggle(group.id)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+                  background: hasActive && !isOpen ? 'rgba(59,130,246,0.07)' : 'transparent',
+                  color: hasActive ? '#94a3b8' : '#334155',
+                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <GroupIcon size={12} />
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{group.label}</span>
                 </div>
-                <ChevronDown
-                  size={13}
-                  className={`transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'}`}
-                />
+                <ChevronDown size={11} style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
               </button>
 
               {isOpen && (
-                <div className="ml-2 mt-0.5 space-y-0.5 border-l border-slate-800 pl-3">
+                <div style={{ marginLeft: 6, marginTop: 2, paddingLeft: 10, borderLeft: '1px solid rgba(255,255,255,0.05)', paddingBottom: 4 }}>
                   {group.items.map(({ href, label, icon: Icon, plan, badge }) => {
                     const active = pathname === href
-                    const locked = plan && plan !== 'all' && (
+                    const locked = plan && (
                       (plan === 'enterprise' && !['enterprise'].includes(user?.planType ?? '')) ||
                       (plan === 'pro'        && !['pro','enterprise'].includes(user?.planType ?? '')) ||
                       (plan === 'growth'     && !['growth','pro','enterprise'].includes(user?.planType ?? ''))
                     )
+                    const pm = plan ? PLAN_META[plan] : null
 
                     return (
                       <Link key={href} href={href}
-                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-sm transition group/item ${
-                          active
-                            ? 'bg-blue-600 text-white'
-                            : locked
-                            ? 'text-slate-600 hover:text-slate-500 cursor-default'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                        }`}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Icon size={14} className="flex-shrink-0" />
-                          <span className="truncate">{label}</span>
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 8, marginBottom: 1, textDecoration: 'none', transition: 'all 0.12s',
+                          background: active ? 'rgba(59,130,246,0.18)' : 'transparent',
+                          border: active ? '1px solid rgba(59,130,246,0.22)' : '1px solid transparent',
+                          color: active ? '#93c5fd' : locked ? '#1e293b' : '#64748b',
+                        }}
+                        onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)'; (e.currentTarget as HTMLElement).style.color = locked ? '#1e293b' : '#cbd5e1' }}
+                        onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = active ? '#93c5fd' : locked ? '#1e293b' : '#64748b' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                          <Icon size={13} style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: 12.5, fontWeight: active ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{label}</span>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 4 }}>
                           {badge && !active && (
-                            <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/20 leading-none">
-                              {badge}
-                            </span>
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.18)' }}>{badge}</span>
                           )}
-                          {locked && plan && (
-                            <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md leading-none ${planColors[plan]}`}>
-                              {planLabels[plan]}
-                            </span>
+                          {locked && pm && (
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: pm.bg, color: pm.color, border: `1px solid ${pm.border}` }}>{pm.label}</span>
                           )}
                         </div>
                       </Link>
@@ -349,44 +346,37 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Upgrade CTA */}
-      {user?.planType === 'starter' && (
-        <div className="mx-3 mb-3 flex-shrink-0">
-          <Link href="/billing"
-            className="block bg-gradient-to-br from-violet-600/20 to-blue-600/20 border border-violet-500/20 rounded-xl p-3.5 hover:border-violet-500/40 transition group">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Crown size={14} className="text-violet-400" />
-              <span className="text-xs font-semibold text-white">Pro'ya Gec</span>
+      {/* ── UPGRADE CTA ── */}
+      {(!user?.planType || user.planType === 'starter') && (
+        <div style={{ margin: '0 10px 10px', flexShrink: 0 }}>
+          <Link href="/billing" style={{ display: 'block', background: 'linear-gradient(135deg,rgba(124,58,237,0.15),rgba(37,99,235,0.1))', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 14, padding: '12px 14px', textDecoration: 'none', transition: 'border-color 0.2s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+              <Crown size={13} color="#a78bfa" />
+              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>Pro'ya Geç</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed mb-2.5">
-              AI araclar, gelismis reklam ve rakip izleme ozelliklerini ac.
-            </p>
-            <div className="flex items-center gap-1.5 text-violet-400 text-xs font-medium group-hover:gap-2.5 transition-all">
-              <Sparkle size={11} />
-              Planlari incele
-              <ChevronRight size={11} />
+            <p style={{ color: '#475569', fontSize: 11, lineHeight: 1.5, margin: '0 0 8px' }}>AI araçlar, gelişmiş reklam ve rakip izleme özelliklerini aç.</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#a78bfa', fontSize: 11, fontWeight: 600 }}>
+              <Sparkle size={10} /> Planları İncele <ChevronRight size={10} />
             </div>
           </Link>
         </div>
       )}
 
-      {/* User footer */}
-      <div className="px-4 py-3 border-t border-slate-800 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {user?.name?.[0]?.toUpperCase() || 'U'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-medium truncate">{user?.name}</p>
-            <p className="text-slate-500 text-[10px] truncate">{user?.email}</p>
-          </div>
-          <button
-            onClick={() => { logout(); router.push('/login') }}
-            title="Cikis Yap"
-            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition flex-shrink-0">
-            <LogOut size={13} />
-          </button>
+      {/* ── KULLANICI ── */}
+      <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+        <div style={{ width: 30, height: 30, background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+          {user?.name?.[0]?.toUpperCase() || 'U'}
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</p>
+          <p style={{ color: '#334155', fontSize: 10, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</p>
+        </div>
+        <button onClick={() => { logout(); router.push('/login') }} title="Çıkış Yap"
+          style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#334155', borderRadius: 7, transition: 'all 0.15s', flexShrink: 0 }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#334155'; (e.currentTarget as HTMLElement).style.background = 'none' }}>
+          <LogOut size={13} />
+        </button>
       </div>
     </aside>
   )
