@@ -271,7 +271,7 @@ export default function Sidebar() {
 
           {[
             { href: '/tenders', label: 'İhale Radarım',  sub: 'Devlet & özel ihaleler',   icon: ScrollText, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.15)',  active: 'rgba(245,158,11,0.18)',  badge: 'PRO' },
-            { href: '/export',  label: 'Dünya Pazarım',  sub: 'Küresel alıcılara ulaş',   icon: Globe2,     color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.15)',  active: 'rgba(16,185,129,0.18)',  badge: 'ENT' },
+            { href: '/export',  label: 'İhracat Zekam',  sub: 'Küresel alıcılara ulaş',   icon: Globe2,     color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.15)',  active: 'rgba(16,185,129,0.18)',  badge: 'ENT' },
             { href: '/team',    label: 'Ekip Merkezim',  sub: 'Performans & koçluk',      icon: UsersRound, color: '#60a5fa', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.15)',  active: 'rgba(59,130,246,0.18)',  badge: 'PRO' },
           ].map(item => {
             const isActive = pathname === item.href || (item.href === '/team' && pathname === '/team-intelligence')
