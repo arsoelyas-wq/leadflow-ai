@@ -446,29 +446,27 @@ async function runDailyTenderScan() {
 
           if (pref.sector) tender.sector = pref.sector;
 
-          let aiScore = 60, aiSummary = '', aiRecommendation = '', requirements = '', eligibility = '', documents = '';
+          let aiScore = 60, aiSummary = '', aiRecommendation = '', requirements = '', eligibility = '', documents = '', matchReason = '', riskLevel = 'Orta';
           if (process.env.ANTHROPIC_API_KEY) {
             const analyzed = await analyzeAndScoreTender(tender, pref.user_profile || pref.keyword);
-            aiScore = analyzed.score;
-            aiSummary = analyzed.summary;
-            aiRecommendation = analyzed.recommendation;
-            requirements = analyzed.requirements;
-            eligibility = analyzed.eligibility;
-            documents = analyzed.documents;
+            aiScore = analyzed.score; aiSummary = analyzed.summary;
+            aiRecommendation = analyzed.recommendation; requirements = analyzed.requirements;
+            eligibility = analyzed.eligibility; documents = analyzed.documents;
+            matchReason = analyzed.match_reason; riskLevel = analyzed.risk_level;
             await sleep(300);
           }
 
-          await supabase.from('tenders').insert([{
-            user_id: pref.user_id,
-            ...tender,
-            ai_score: aiScore,
-            ai_summary: aiSummary,
-            ai_recommendation: aiRecommendation,
-            requirements,
-            eligibility,
-            documents,
-            notify_sent: false,
+          const baseDaily = {
+            user_id: pref.user_id, ...tender,
+            ai_score: aiScore, ai_summary: aiSummary, ai_recommendation: aiRecommendation,
+            requirements, eligibility, documents, notify_sent: false,
+          };
+          const { error: dailyErr } = await supabase.from('tenders').insert([{
+            ...baseDaily, match_reason: matchReason, risk_level: riskLevel,
           }]);
+          if (dailyErr?.message?.includes('column')) {
+            await supabase.from('tenders').insert([baseDaily]);
+          }
           newCount++;
         }
 
@@ -570,20 +568,29 @@ router.post('/scan', async (req: any, res: any) => {
 
           if (sector) tender.sector = sector;
 
-          let aiScore = 60, aiSummary = '', aiRecommendation = '', requirements = '', eligibility = '', documents = '';
+          let aiScore = 60, aiSummary = '', aiRecommendation = '', requirements = '', eligibility = '', documents = '', matchReason = '', riskLevel = 'Orta';
           if (process.env.ANTHROPIC_API_KEY) {
             const analyzed = await analyzeAndScoreTender(tender, user_profile || `${keyword} ${sector}`);
             aiScore = analyzed.score; aiSummary = analyzed.summary;
             aiRecommendation = analyzed.recommendation; requirements = analyzed.requirements;
             eligibility = analyzed.eligibility; documents = analyzed.documents;
+            matchReason = analyzed.match_reason; riskLevel = analyzed.risk_level;
             await sleep(300);
           }
 
-          await supabase.from('tenders').insert([{
+          // Try with new fields, fall back to base fields if columns don't exist yet
+          const baseInsert = {
             user_id: userId, scan_id: scan?.id, ...tender,
             ai_score: aiScore, ai_summary: aiSummary, ai_recommendation: aiRecommendation,
             requirements, eligibility, documents, notify_sent: false,
+          };
+          const { error: insertErr } = await supabase.from('tenders').insert([{
+            ...baseInsert, match_reason: matchReason, risk_level: riskLevel,
           }]);
+          if (insertErr?.message?.includes('column')) {
+            // New columns don't exist yet — insert without them
+            await supabase.from('tenders').insert([baseInsert]);
+          }
           added++;
         }
 
@@ -643,7 +650,7 @@ router.get('/deadline-alerts', async (req: any, res: any) => {
     const { data } = await supabase.from('tenders')
       .select('id, title, deadline, country, ai_score, status')
       .eq('user_id', req.userId)
-      .not('status', 'in', '("won","lost","dismissed")')
+      .not('status', 'in', '(won,lost,dismissed)')
       .not('deadline', 'is', null)
       .lte('deadline', in7Days)
       .gte('deadline', now)
