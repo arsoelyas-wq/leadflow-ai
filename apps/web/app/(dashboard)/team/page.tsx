@@ -731,45 +731,36 @@ export default function TeamPage() {
           </div>
 
           {/* Benchmark Karşılaştırma */}
-          {benchmark?.members?.length > 0 && (
+          {benchmark && (
             <div style={{ ...card, padding:'18px 20px' }}>
-              <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>🎯 Benchmark Karşılaştırması</h3>
-              <div style={{ overflowX:'auto' }}>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                  <thead>
-                    <tr>
-                      {['Üye','Genel','Satış','Empati','Kapanış','Analiz'].map(h=>(
-                        <th key={h} style={{ color:'#64748b', fontWeight:600, textAlign:'left', padding:'6px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:11 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {benchmark.members.map((m:any)=>(
-                      <tr key={m.id}>
-                        <td style={{ padding:'8px 8px', color:'#fff', fontWeight:600 }}>{m.name}</td>
-                        {['overall','sales_technique','empathy','closing'].map(k=>(
-                          <td key={k} style={{ padding:'8px 8px' }}>
-                            {m.scores?.[k] ? (
-                              <span style={{ color:scoreColor(m.scores[k]), fontWeight:700 }}>{m.scores[k]}</span>
-                            ) : <span style={{ color:'#334155' }}>—</span>}
-                          </td>
-                        ))}
-                        <td style={{ padding:'8px 8px', color:'#475569' }}>{m.total_analyses||0}</td>
-                      </tr>
-                    ))}
-                    {/* Sektör ortalaması */}
-                    {benchmark.sector_avg && (
-                      <tr style={{ borderTop:'1px dashed rgba(245,158,11,0.25)' }}>
-                        <td style={{ padding:'8px 8px', color:'#fbbf24', fontWeight:700, fontSize:10 }}>⭐ Sektör Ort.</td>
-                        {['overall','sales_technique','empathy','closing'].map(k=>(
-                          <td key={k} style={{ padding:'8px 8px', color:'#fbbf24', fontWeight:700 }}>{benchmark.sector_avg[k]||'—'}</td>
-                        ))}
-                        <td/>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>🎯 Sektör Benchmark Karşılaştırması</h3>
+              {benchmark.total_analyses === 0 ? (
+                <p style={{ color:'#475569', fontSize:13 }}>Henüz analiz yok — WhatsApp konuşmalarını analiz ettikten sonra sektör karşılaştırması görünür</p>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {(benchmark.comparison||[]).map((c:any) => {
+                    const labels: Record<string,string> = { overall:'Genel Skor', professionalism:'Profesyonellik', sales_technique:'Satış Tekniği', empathy:'Empati', closing:'Kapanış' }
+                    return (
+                      <div key={c.metric} style={{ display:'flex', alignItems:'center', gap:14 }}>
+                        <span style={{ color:'#64748b', fontSize:12, width:130, flexShrink:0 }}>{labels[c.metric]||c.metric}</span>
+                        <div style={{ flex:1, height:6, background:'rgba(255,255,255,0.05)', borderRadius:3, position:'relative' }}>
+                          <div style={{ position:'absolute', top:0, left:0, height:'100%', width:`${c.user}%`, background:scoreColor(c.user), borderRadius:3 }} />
+                          <div style={{ position:'absolute', top:-3, left:`${c.benchmark}%`, width:2, height:12, background:'#f59e0b', borderRadius:1 }} title={`Benchmark: ${c.benchmark}`} />
+                        </div>
+                        <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                          <span style={{ color:scoreColor(c.user), fontWeight:700, fontSize:12, width:30, textAlign:'right' }}>{c.user}</span>
+                          <span style={{ color:c.status==='above'?'#10b981':'#ef4444', fontSize:10, padding:'1px 6px', borderRadius:20, background:c.status==='above'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)' }}>
+                            {c.diff >= 0 ? '+' : ''}{c.diff}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div style={{ marginTop:6, padding:'8px 12px', background:'rgba(245,158,11,0.07)', border:'1px solid rgba(245,158,11,0.15)', borderRadius:9 }}>
+                    <span style={{ color:'#fbbf24', fontSize:11 }}>📊 {benchmark.total_analyses} konuşma analiz edildi · ▌ Sarı çizgi = sektör ortalaması</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

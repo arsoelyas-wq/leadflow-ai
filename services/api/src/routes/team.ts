@@ -133,7 +133,8 @@ router.get('/activity', async (req: any, res: any) => {
 
     const activity = await Promise.all((members||[]).map(async (member:any) => {
       const [msgs, leads, wonLeads, coaching] = await Promise.allSettled([
-        supabase.from('messages').select('id, sent_at').eq('user_id', req.userId).eq('agent_id', member.id).gte('sent_at', weekAgo),
+        supabase.from('messages').select('id, sent_at').eq('user_id', req.userId).eq('agent_id', member.id).gte('sent_at', weekAgo)
+          .catch(() => ({ data: [] })),
         supabase.from('leads').select('id, status').eq('user_id', req.userId).eq('assigned_member_id', member.id),
         supabase.from('leads').select('id').eq('user_id', req.userId).eq('assigned_member_id', member.id).eq('status', 'won').gte('won_at', monthAgo),
         supabase.from('sales_coaching').select('analysis_score').eq('user_id', req.userId).eq('agent_name', member.name),
@@ -294,7 +295,6 @@ Kısa (max 200 kelime), WhatsApp formatında, emoji kullan. Güçlü yönleri sa
     const message = resp.content[0]?.text?.trim() || '';
     if (member.wa_phone) {
       await sendWhatsAppToMember(req.userId, member.wa_phone, message);
-      await supabase.from('leads').insert([{ user_id: req.userId, source: 'coaching_log', notes: `Koçluk mesajı gönderildi: ${message.substring(0,100)}...`, status: 'new', company_name: `[Koçluk] ${member.name}` }]).select();
     }
     res.json({ message, sent: !!member.wa_phone, avgScore });
   } catch(e:any) { res.status(500).json({ error: e.message }); }
