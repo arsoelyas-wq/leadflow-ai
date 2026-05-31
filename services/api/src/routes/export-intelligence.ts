@@ -191,92 +191,136 @@ async function searchGoogleMaps(sector: string, sectorLocal: string, country: an
   return results;
 }
 
-// ── 4. WEB ARAMA (Ticaret Dizinleri + Genel Web) ─────────────────────────────
+// ── 4. WEB ARAMA — Çoklu Kaynak, Yüksek Hacim ───────────────────────────────
 async function searchWebImporters(searchTerms: Record<string, string>, country: any, sector: string): Promise<any[]> {
   const EXA_KEY = process.env.EXA_API_KEY;
   const TAVILY_KEY = process.env.TAVILY_API_KEY;
   const results: any[] = [];
+  const seen = new Set<string>();
 
   const lang = country.language;
   const localTerm = searchTerms[lang] || searchTerms['en'] || `${sector} importer`;
   const enTerm = searchTerms['en'] || `${sector} importer`;
 
-  const tradeDomains: Record<string, string[]> = {
-    'DE':['wer-liefert-was.de','europages.de','kompass.com','gelbeseiten.de','yellowpages.de'],
-    'GB':['europages.co.uk','kompass.com','yell.com','companieshouse.gov.uk'],
-    'FR':['europages.fr','kompass.fr','societe.com','pagesjaunes.fr'],
-    'NL':['europages.nl','kompass.nl','kvk.nl','goudengids.nl'],
-    'IT':['europages.it','kompass.it','paginegialle.it'],
-    'ES':['europages.es','kompass.es','paginasamarillas.es'],
-    'US':['thomasnet.com','manta.com','kompass.com','dnb.com'],
-    'AE':['yellowpages.ae','kompass.com','europages.com'],
-    'SA':['kompass.com','tradekey.com','saudiexporter.com'],
-    'IN':['indiamart.com','kompass.com','tradeindia.com'],
-    'CN':['kompass.com','made-in-china.com'],
-  };
+  function addResult(r: any, verifiedImporter: boolean) {
+    if (!r.company_name || r.company_name.length < 3) return;
+    const key = r.company_name.toLowerCase().substring(0, 30);
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({ ...r, verified_importer: verifiedImporter });
+  }
 
-  // Exa.ai ile ticaret dizini araması
+  // Exa.ai — 5 farklı sorgu, her birinde 20 sonuç → 100 potansiyel lead
   if (EXA_KEY) {
+    const tradeDomains: Record<string, string[]> = {
+      'DE':['wer-liefert-was.de','europages.de','kompass.com','gelbeseiten.de'],
+      'GB':['europages.co.uk','kompass.com','yell.com','b2bindex.co.uk'],
+      'FR':['europages.fr','kompass.fr','societe.com','pagesjaunes.fr'],
+      'NL':['europages.nl','kompass.nl','kvk.nl'],
+      'IT':['europages.it','kompass.it','paginegialle.it'],
+      'ES':['europages.es','kompass.es'],
+      'US':['thomasnet.com','manta.com','kompass.com','dnb.com'],
+      'AE':['yellowpages.ae','kompass.com'],
+      'SA':['kompass.com','tradekey.com'],
+      'IN':['indiamart.com','kompass.com','tradeindia.com'],
+      'CN':['kompass.com'],
+      'JP':['kompass.com','jpbiz.net'],
+    };
+
+    // Geniş arama sorguları — importer türleri
     const queries = [
-      `${localTerm} ${country.name} contact wholesale`,
-      `${enTerm} import ${country.name} B2B buyer distributor`,
+      `${localTerm} ${country.name} wholesale importer contact`,
+      `${enTerm} buyer purchasing ${country.name} company`,
+      `${enTerm} distributor trading company ${country.name}`,
+      `${localTerm} ${country.name} import business supplier`,
+      `buy ${enTerm} ${country.name} B2B procurement`,
     ];
+
     for (const q of queries) {
+      if (results.length >= 80) break;
       try {
         const res = await axios.post('https://api.exa.ai/search', {
-          query: q, numResults: 8, useAutoprompt: true,
-          includeDomains: ['europages.com','kompass.com','thomasnet.com', ...(tradeDomains[country.code]||[])],
-          startPublishedDate: '2022-01-01',
-          contents: { text: { maxCharacters: 500 } },
-        }, { headers:{ 'x-api-key':EXA_KEY, 'Content-Type':'application/json' }, timeout:15000 });
+          query: q, numResults: 20, useAutoprompt: false,
+          includeDomains: ['europages.com','kompass.com','thomasnet.com','manta.com','tradekey.com','globalsources.com','alibaba.com','made-in-china.com', ...(tradeDomains[country.code]||[])],
+          startPublishedDate: '2021-01-01',
+          contents: { text: { maxCharacters: 400 } },
+        }, { headers:{ 'x-api-key':EXA_KEY, 'Content-Type':'application/json' }, timeout:18000 });
 
         for (const r of (res.data?.results || [])) {
-          if (!r.title || r.title.length < 5) continue;
-          const combined = (r.title+' '+(r.text||'')).toLowerCase();
-          if (!combined.match(/import|distribut|wholesale|supplier|trading|grossist|importeur|importateur/i)) continue;
-          if (combined.match(/manufactur|produc|fabrik|herstell/i)) continue;
-          const budgetMatch = (r.text||'').match(/[\$€£₺][\s]?[\d,]+[KMB]?|[\d,.]+\s*(EUR|USD|GBP|TRY)/i);
-          results.push({
-            company_name: (r.title.split('|')[0].split('-')[0].trim()).substring(0, 100),
-            website: r.url || null,
+          if (!r.title || r.title.length < 4) continue;
+          const rawName = r.title.split('|')[0].split(' - ')[0].split(' – ')[0].trim().substring(0, 100);
+          if (rawName.length < 3) continue;
+          addResult({
+            company_name: rawName, website: r.url||null,
             description: (r.text||'').substring(0, 300),
-            country: country.name, country_code: country.code, sector,
-            source_type: 'web_directory', budget_hint: budgetMatch?.[0]||null,
-            verified_importer: true,
-          });
-          if (results.length >= 10) break;
+            country: country.name, country_code: country.code, sector, source_type: 'web_directory',
+          }, true);
         }
-        await sleep(300);
+        await sleep(250);
       } catch(e:any) { console.log('[WebSearch] Exa error:', e.message); }
-      if (results.length >= 10) break;
+    }
+
+    // Genel web araması — domain kısıtlaması olmadan
+    const openQueries = [
+      `"${enTerm}" importer "${country.name}" email OR contact`,
+      `site:linkedin.com "${enTerm}" "import" "${country.name}"`,
+      `"${enTerm}" wholesale "${country.name}" +importer`,
+    ];
+    for (const q of openQueries) {
+      if (results.length >= 100) break;
+      try {
+        const res = await axios.post('https://api.exa.ai/search', {
+          query: q, numResults: 15, useAutoprompt: false,
+          contents: { text: { maxCharacters: 300 } },
+        }, { headers:{ 'x-api-key':EXA_KEY, 'Content-Type':'application/json' }, timeout:15000 });
+        for (const r of (res.data?.results || [])) {
+          if (!r.title || r.title.length < 4) continue;
+          const rawName = r.title.split('|')[0].split(' - ')[0].trim().substring(0, 100);
+          if (rawName.length < 3) continue;
+          const combined = (rawName+' '+(r.text||'')).toLowerCase();
+          if (!combined.match(/import|distribut|wholesale|buyer|purchas|trading|supply/i)) continue;
+          addResult({
+            company_name: rawName, website: r.url||null,
+            description: (r.text||'').substring(0, 200),
+            country: country.name, country_code: country.code, sector, source_type: 'web_search',
+          }, false);
+        }
+        await sleep(200);
+      } catch {}
     }
   }
 
-  // Tavily fallback
-  if (results.length < 5 && TAVILY_KEY) {
-    try {
-      const res = await axios.post('https://api.tavily.com/search', {
-        api_key: TAVILY_KEY,
-        query: `${enTerm} importer wholesale company ${country.name} contact`,
-        search_depth: 'advanced', max_results: 8,
-      }, { timeout: 12000 });
-      for (const r of (res.data?.results||[])) {
-        if (!r.title || r.title.length < 5) continue;
-        const combined = ((r.title||'')+' '+(r.content||'')).toLowerCase();
-        if (!combined.match(/import|distribut|wholesale|trading|supplier/i)) continue;
-        results.push({
-          company_name: (r.title.split('|')[0].split('-')[0].trim()).substring(0,100),
-          website: r.url||null,
-          description: (r.content||'').substring(0,200),
-          country: country.name, country_code: country.code, sector,
-          source_type: 'web_search', verified_importer: false,
-        });
-      }
-    } catch(e:any) { console.log('[WebSearch] Tavily error:', e.message); }
+  // Tavily — paralel arama, her zaman çalış
+  if (TAVILY_KEY && results.length < 50) {
+    const tavilyQueries = [
+      `${enTerm} importer wholesale company ${country.name} contact phone`,
+      `${enTerm} buyer distributor ${country.name} B2B supplier`,
+    ];
+    for (const tq of tavilyQueries) {
+      if (results.length >= 80) break;
+      try {
+        const res = await axios.post('https://api.tavily.com/search', {
+          api_key: TAVILY_KEY,
+          query: tq, search_depth: 'advanced', max_results: 10,
+        }, { timeout: 12000 });
+        for (const r of (res.data?.results||[])) {
+          if (!r.title || r.title.length < 4) continue;
+          const rawName = r.title.split('|')[0].split(' - ')[0].trim().substring(0,100);
+          if (rawName.length < 3) continue;
+          addResult({
+            company_name: rawName, website: r.url||null,
+            description: (r.content||'').substring(0, 200),
+            country: country.name, country_code: country.code, sector, source_type: 'web_search',
+          }, false);
+        }
+      } catch(e:any) { console.log('[WebSearch] Tavily error:', e.message); }
+    }
   }
 
+  console.log(`[WebSearch] ${results.length} unique results for "${sector}" in ${country.name}`);
   return results;
 }
+
 
 // ── 5. LİNKEDİN KARAR VERİCİ ARAMA ──────────────────────────────────────────
 async function searchLinkedInDecisionMakers(sector: string, companyName: string, country: any): Promise<{ name?: string; title?: string; linkedin?: string } | null> {
@@ -362,8 +406,13 @@ JSON: {"subject":"...","body":"..."}` }]
 
 // ── ANA ARAMA MOTORU (5 Kaynak Paralel) ──────────────────────────────────────
 async function runExportSearch(sessionId: string, userId: string, countryCode: string, sector: string, hsCodes: string[], hsCodeNames: string[], searchTerms: Record<string, string>, searchTermsLocal: string, country: any, senderCompany: string, senderProduct: string): Promise<void> {
+  const isTempSession = sessionId.startsWith('temp-');
+  async function updateSession(data: any) {
+    if (isTempSession) return; // No DB record for temp sessions
+    await supabase.from('export_search_sessions').update(data).eq('id', sessionId);
+  }
   try {
-    await supabase.from('export_search_sessions').update({ status:'running', step:'market_data', progress:15 }).eq('id', sessionId);
+    await updateSession({ status:'running', step:'market_data', progress:15 });
 
     // Parallel: market data + Google Maps + Web search
     const [marketIntel, mapsResults, webResults] = await Promise.allSettled([
@@ -372,7 +421,7 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
       searchWebImporters(searchTerms, country, sector),
     ]);
 
-    await supabase.from('export_search_sessions').update({ step:'merging_results', progress:55 }).eq('id', sessionId);
+    await updateSession({ step:'merging_results', progress:55 });
 
     const maps = mapsResults.status==='fulfilled' ? mapsResults.value : [];
     const web  = webResults.status==='fulfilled'  ? webResults.value  : [];
@@ -387,7 +436,7 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
       allImporters.push(imp);
     }
 
-    await supabase.from('export_search_sessions').update({ step:'enriching_contacts', progress:70 }).eq('id', sessionId);
+    await updateSession({ step:'enriching_contacts', progress:70 });
 
     // Enrich top 8 companies (add phone/email + LinkedIn decision maker)
     const enriched: any[] = [];
@@ -405,7 +454,7 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
     // Rest without enrichment (speed)
     for (const imp of allImporters.slice(8)) enriched.push(imp);
 
-    await supabase.from('export_search_sessions').update({ step:'saving_results', progress:88 }).eq('id', sessionId);
+    await updateSession({ step:'saving_results', progress:88 });
 
     // Company scoring (0-100)
     function calcCompanyScore(e: any): number {
@@ -481,7 +530,7 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
     const risk = PAYMENT_RISK[countryCode] || { score:60, label:'Orta', dso:60, notes:'' };
     const cultural = CULTURAL_INTEL[countryCode] || null;
 
-    await supabase.from('export_search_sessions').update({
+    await updateSession({
       status:'completed', progress:100, step:'done',
       result: JSON.stringify({
         importersFound: savedCount,
@@ -491,12 +540,12 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
         culturalIntel: cultural,
       }),
       completed_at: new Date().toISOString(),
-    }).eq('id', sessionId);
+    });
 
-    console.log(`[ExportSearch] Done: ${enriched.length} leads — ${maps.length} Maps + ${web.length} Web (${sector} / ${country.name})`);
+    console.log(`[ExportSearch] Done: ${savedCount} saved (${enriched.length} found) — ${maps.length} Maps + ${web.length} Web (${sector} / ${country.name})`);
   } catch(e:any) {
     console.error('[ExportSearch] error:', e.message);
-    await supabase.from('export_search_sessions').update({ status:'failed', step:e.message }).eq('id', sessionId);
+    await updateSession({ status:'failed', step:e.message });
   }
 }
 
@@ -613,16 +662,22 @@ router.post('/start-search', async (req: any, res: any) => {
 
     const { codes:hsCodes, names:hsCodeNames, searchTerms, searchTermsLocal } = await mapSectorToHSCodes(sector);
 
-    const { data:session } = await supabase.from('export_search_sessions').insert([{
-      user_id:userId, country_code:countryCode, sector, status:'running', step:'starting', progress:5,
-    }]).select().single();
+    // Create session — use fallback UUID if insert fails
+    let sessionId = `temp-${Date.now()}`;
+    try {
+      const { data:session, error:sessErr } = await supabase.from('export_search_sessions').insert([{
+        user_id:userId, country_code:countryCode, sector, status:'running', step:'starting', progress:5,
+      }]).select().single();
+      if (!sessErr && session?.id) sessionId = session.id;
+      else console.error('[ExportSearch] Session create error:', sessErr?.message);
+    } catch(sessEx:any) { console.error('[ExportSearch] Session exception:', sessEx.message); }
 
     res.json({
-      ok:true, sessionId:session?.id, hsCodes, hsCodeNames,
-      message:`${country.flag} ${country.name}'de "${sector}" aranıyor — Google Haritalar + Web + LinkedIn + Ticaret Dizinleri`,
+      ok:true, sessionId, hsCodes, hsCodeNames,
+      message:`${country.flag} ${country.name}'de "${sector}" aranıyor...`,
     });
 
-    runExportSearch(session?.id, userId, countryCode, sector, hsCodes, hsCodeNames, searchTerms, searchTermsLocal, country, senderCompany, senderProduct);
+    runExportSearch(sessionId, userId, countryCode, sector, hsCodes, hsCodeNames, searchTerms, searchTermsLocal, country, senderCompany, senderProduct);
   } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 

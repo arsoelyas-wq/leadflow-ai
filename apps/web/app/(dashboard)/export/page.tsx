@@ -258,17 +258,30 @@ export default function ExportPage() {
 
   const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 5000) }
 
+  // loadLeads — sadece lead listesini güncelle (hızlı)
+  const loadLeads = useCallback(async () => {
+    try {
+      const d: any = await api.get(`/api/export/export-leads?limit=500${filterCountry ? `&countryCode=${filterCountry}` : ''}`)
+      if (d?.leads) setExportLeads(d.leads)
+    } catch(e:any) { console.error('loadLeads error:', e.message) }
+  }, [filterCountry])
+
   const loadAll = useCallback(async () => {
     setLoading(true)
     const [c, l, ca, m, an] = await Promise.allSettled([
       api.get('/api/export/countries'),
-      api.get(`/api/export/export-leads?limit=100${filterCountry ? `&countryCode=${filterCountry}` : ''}`),
+      api.get(`/api/export/export-leads?limit=500${filterCountry ? `&countryCode=${filterCountry}` : ''}`),
       api.get('/api/export/campaigns'),
       api.get('/api/export/messages'),
       api.get('/api/export/analytics'),
     ])
     if (c.status === 'fulfilled') setCountries((c.value as any).countries || [])
-    if (l.status === 'fulfilled') setExportLeads((l.value as any).leads || [])
+    if (l.status === 'fulfilled') {
+      const leads = (l.value as any).leads
+      if (leads !== undefined) setExportLeads(leads || [])
+    } else {
+      console.error('export-leads failed:', (l as any).reason?.message)
+    }
     if (ca.status === 'fulfilled') setCampaigns((ca.value as any).campaigns || [])
     if (m.status === 'fulfilled') setMessages((m.value as any).messages || [])
     if (an.status === 'fulfilled') setAnalytics(an.value)
@@ -276,6 +289,13 @@ export default function ExportPage() {
   }, [filterCountry])
 
   useEffect(() => { loadAll() }, [loadAll])
+
+  // Auto-poll leads every 15s when a search might be running
+  useEffect(() => {
+    if (!activeSessionId) return
+    const iv = setInterval(() => { loadLeads() }, 5000)
+    return () => clearInterval(iv)
+  }, [activeSessionId, loadLeads])
 
   const loadCountryIntel = async (country: any) => {
     setLoadingIntel(true); setCountryIntel(null)
@@ -554,6 +574,9 @@ export default function ExportPage() {
       {tab === 'leads' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
+            <button onClick={loadAll} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.08)', color:'#34d399', fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+              <RefreshCw size={12} style={{ animation:loading?'exp-spin 1s linear infinite':'none' }} /> Yenile
+            </button>
             <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} style={{ ...inp, height: 40, cursor: 'pointer' }}>
               <option value="">Tüm Pazarlar ({exportLeads.length})</option>
               {[...new Set(exportLeads.map(l => l.country_code))].map(code => {
