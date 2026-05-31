@@ -49,11 +49,11 @@ const groups: NavGroup[] = [
     icon: Users,
     defaultOpen: true,
     items: [
-      { href: '/leads',           label: 'Müşteri Listesi',      icon: Users },
-      { href: '/lead-machine',    label: 'Müşteri Bul',          icon: Target },
-      { href: '/decision-maker',  label: 'Karar Verici Bul',     icon: Crosshair,  plan: 'pro' },
-      { href: '/network',         label: 'İlişki Haritası',      icon: Network },
-      { href: '/health-scores',   label: 'Müşteri Skorları',     icon: Heart,      plan: 'pro' },
+      { href: '/leads',           label: 'Müşterilerim',         icon: Users },
+      { href: '/lead-machine',    label: 'Yeni Müşteri Bul',     icon: Target },
+      { href: '/decision-maker',  label: 'Karar Vericiler',      icon: Crosshair,  plan: 'pro' },   // "Nasıl ulaşılır?" merakı
+      { href: '/network',         label: 'Bağlantı Ağım',        icon: Network },
+      { href: '/health-scores',   label: 'Müşteri Sinyali',      icon: Heart,      plan: 'pro' },   // Sinyal = kritik bilgi, merak
     ],
   },
   // ── SATIŞ ────────────────────────────────────────────────────────────────────
@@ -63,13 +63,13 @@ const groups: NavGroup[] = [
     icon: Kanban,
     defaultOpen: true,
     items: [
-      { href: '/pipeline',   label: 'Pipeline & Kanban',    icon: Kanban },
-      { href: '/proposals',  label: 'Teklifler',             icon: FileText },
-      { href: '/products',   label: 'Ürün Kataloğu',         icon: Package,   badge: 'AI' },
-      { href: '/microsites', label: 'Dijital Katalog',        icon: Globe },
-      { href: '/qr-codes',   label: 'QR Kod Üretici',        icon: QrCode },
-      { href: '/workflow',   label: 'İş Akışları',            icon: Workflow,  plan: 'growth', badge: 'Yeni' },
-      { href: '/agent',      label: 'AI Satış Asistanı',     icon: Bot,       plan: 'pro',    badge: 'AI' },
+      { href: '/pipeline',   label: 'Satış Akışım',         icon: Kanban },
+      { href: '/proposals',  label: 'Tekliflerim',           icon: FileText },
+      { href: '/products',   label: 'Ürün Listem',           icon: Package,   badge: 'AI' },
+      { href: '/microsites', label: 'Dijital Vitrinim',      icon: Globe },
+      { href: '/qr-codes',   label: 'QR Araçları',           icon: QrCode },
+      { href: '/workflow',   label: 'Oto-Pilot',             icon: Workflow,  plan: 'growth', badge: 'Yeni' }, // "Ne otomatik çalışıyor?" merakı
+      { href: '/agent',      label: 'Satış Ajanım',          icon: Bot,       plan: 'pro',    badge: 'AI' },   // "Benim ajanım?" sahiplik + merak
     ],
   },
   // ── İLETİŞİM ─────────────────────────────────────────────────────────────────
@@ -78,12 +78,12 @@ const groups: NavGroup[] = [
     label: 'İletişim',
     icon: MessageSquare,
     items: [
-      { href: '/inbox',            label: 'Gelen Kutusu',        icon: Inbox },
-      { href: '/campaigns',        label: 'WhatsApp Kampanya',   icon: Megaphone },
-      { href: '/email-campaigns',  label: 'E-posta Kampanya',    icon: Megaphone },
-      { href: '/sms-campaigns',    label: 'SMS Kampanya',        icon: Smartphone },
-      { href: '/voice-outreach',   label: 'Sesli Arama',         icon: Phone,       plan: 'pro',    badge: 'AI' },
-      { href: '/video-outreach',   label: 'Video Mesaj',          icon: Video,       plan: 'growth', badge: 'AI' },
+      { href: '/inbox',            label: 'Mesaj Merkezim',      icon: Inbox },
+      { href: '/campaigns',        label: 'WhatsApp Yayını',     icon: Megaphone },
+      { href: '/email-campaigns',  label: 'E-posta Yayını',      icon: Megaphone },
+      { href: '/sms-campaigns',    label: 'SMS Yayını',          icon: Smartphone },
+      { href: '/voice-outreach',   label: 'Sesli Ajan',          icon: Phone,       plan: 'pro',    badge: 'AI' }, // "Ajan ne yapıyor?" merakı
+      { href: '/video-outreach',   label: 'Video Klonum',        icon: Video,       plan: 'growth', badge: 'AI' }, // "Klonum?" çok güçlü merak
     ],
   },
   // ── PAZARLAMA ─────────────────────────────────────────────────────────────────
@@ -92,10 +92,10 @@ const groups: NavGroup[] = [
     label: 'Pazarlama',
     icon: Target,
     items: [
-      { href: '/ads',           label: 'Meta Reklamları',          icon: BarChart2 },
-      { href: '/google-ads',    label: 'Google Reklamları',        icon: BarChart2 },
-      { href: '/ads-advanced',  label: 'Reklam Optimizasyonu',    icon: Brain,    plan: 'pro', badge: 'AI' },
-      { href: '/meta-intent',   label: 'Hedef Kitle Yönetimi',    icon: Users2,   plan: 'pro', badge: 'AI' },
+      { href: '/ads',           label: 'Meta Reklamlarım',      icon: BarChart2 },
+      { href: '/google-ads',    label: 'Google Reklamlarım',    icon: BarChart2 },
+      { href: '/ads-advanced',  label: 'Reklam Otopilotu',      icon: Brain,    plan: 'pro', badge: 'AI' }, // Otopilot = merak
+      { href: '/meta-intent',   label: 'Akıllı Kitle',          icon: Users2,   plan: 'pro', badge: 'AI' }, // "Nasıl akıllı?" merakı
     ],
   },
   // ── PAZAR ANALİZİ ─────────────────────────────────────────────────────────────
@@ -104,11 +104,11 @@ const groups: NavGroup[] = [
     label: 'Pazar Analizi',
     icon: TrendingUp,
     items: [
-      { href: '/competitor',    label: 'Rakip Analizi',         icon: Target,      plan: 'growth' },
-      { href: '/shadow',        label: 'Pazar Takibi',          icon: ShieldCheck, plan: 'pro' },
-      { href: '/price-tracker', label: 'Fiyat Takibi',          icon: TrendingDown },
-      { href: '/visual-trends', label: 'Pazar Trendleri',       icon: Sparkles,    plan: 'growth' },
-      { href: '/cultural',      label: 'Kültür & Dil Uyumu',   icon: Globe,       plan: 'pro' },
+      { href: '/competitor',    label: 'Rakip Radarım',        icon: Target,      plan: 'growth' }, // Radar = istihbarat, merak
+      { href: '/shadow',        label: 'Rakip İzleme',         icon: ShieldCheck, plan: 'pro' },    // Sessiz gözetleme hissi
+      { href: '/price-tracker', label: 'Fiyat Alarmı',         icon: TrendingDown },                // Alarm = aciliyet + değer
+      { href: '/visual-trends', label: 'Trend Alarmı',         icon: Sparkles,    plan: 'growth' }, // "Hangi trend?" merakı
+      { href: '/cultural',      label: 'Yerel Uyum',           icon: Globe,       plan: 'pro' },    // Kısa + net + uluslararası his
     ],
   },
   // ── BÜYÜME & FİNANS ───────────────────────────────────────────────────────────
@@ -117,13 +117,13 @@ const groups: NavGroup[] = [
     label: 'Büyüme & Finans',
     icon: LineChart,
     items: [
-      { href: '/analytics',     label: 'Analitik',              icon: BarChart3 },
-      { href: '/reports',       label: 'Raporlar',              icon: FileBarChart },
-      { href: '/revenue',       label: 'Gelir Tahmini',         icon: DollarSign,  plan: 'growth' },
-      { href: '/financial',     label: 'Finansal Analiz',       icon: TrendingUp,  plan: 'pro', badge: 'AI' },
-      { href: '/loyalty',       label: 'Müşteri Sadakati',      icon: Star },
-      { href: '/referral',      label: 'Tavsiye Kampanyası',    icon: Gift },
-      { href: '/debt-collector',label: 'Fatura Takibi',         icon: FileText },
+      { href: '/analytics',     label: 'Analizlerim',          icon: BarChart3 },
+      { href: '/reports',       label: 'Raporlarım',           icon: FileBarChart },
+      { href: '/revenue',       label: 'Gelir Öngörüsü',       icon: DollarSign,  plan: 'growth' }, // Öngörü = bilge/güçlü
+      { href: '/financial',     label: 'Para Akışım',          icon: TrendingUp,  plan: 'pro', badge: 'AI' }, // Paranın gidişi = merak
+      { href: '/loyalty',       label: 'Sadakat Puanım',       icon: Star },
+      { href: '/referral',      label: 'Tavsiye Ağım',         icon: Gift },
+      { href: '/debt-collector',label: 'Alacaklarım',          icon: FileText },  // Sahiplik + net + aciliyet
     ],
   },
   // ── SİSTEM ────────────────────────────────────────────────────────────────────
@@ -132,13 +132,13 @@ const groups: NavGroup[] = [
     label: 'Sistem',
     icon: Settings,
     items: [
-      { href: '/automations', label: 'Otomasyon Kuralları',   icon: Zap },
-      { href: '/wa-numbers',  label: 'WhatsApp Numaraları',   icon: Smartphone },
-      { href: '/developer',   label: 'API & Geliştirici',     icon: Code,      plan: 'pro' },
-      { href: '/whitelabel',  label: 'White-Label',            icon: Building2, plan: 'enterprise' },
-      { href: '/monitoring',  label: 'Sistem İzleme',          icon: Activity },
-      { href: '/billing',     label: 'Abonelik & Kredi',       icon: CreditCard },
-      { href: '/settings',    label: 'Genel Ayarlar',          icon: Settings },
+      { href: '/automations', label: 'Otomasyon Merkezim',   icon: Zap },
+      { href: '/wa-numbers',  label: 'WhatsApp Hatlarım',    icon: Smartphone },
+      { href: '/developer',   label: 'API Erişimim',         icon: Code,      plan: 'pro' },
+      { href: '/whitelabel',  label: 'White-Label',          icon: Building2, plan: 'enterprise' },
+      { href: '/monitoring',  label: 'Sistem Monitörüm',     icon: Activity },
+      { href: '/billing',     label: 'Aboneliğim',           icon: CreditCard },
+      { href: '/settings',    label: 'Ayarlarım',            icon: Settings },
     ],
   },
 ]
@@ -258,9 +258,9 @@ export default function Sidebar() {
           <p style={{ color: '#1e293b', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '0 10px', marginBottom: 6 }}>ÖZEL ARAÇLAR</p>
 
           {[
-            { href: '/tenders', label: 'İhale Takibi',  sub: 'Devlet & özel ihaleler',  icon: ScrollText, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.15)',  active: 'rgba(245,158,11,0.18)',  badge: 'PRO' },
-            { href: '/export',  label: 'İhracat',        sub: 'Global pazarlara giriş',  icon: Globe2,     color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.15)',  active: 'rgba(16,185,129,0.18)',  badge: 'ENT' },
-            { href: '/team',    label: 'Ekip',           sub: 'Takım & performans yönet', icon: UsersRound, color: '#60a5fa', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.15)',  active: 'rgba(59,130,246,0.18)',  badge: 'PRO' },
+            { href: '/tenders', label: 'İhale Radarım',  sub: 'Devlet & özel ihaleler',   icon: ScrollText, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.15)',  active: 'rgba(245,158,11,0.18)',  badge: 'PRO' },
+            { href: '/export',  label: 'Dünya Pazarım',  sub: 'Küresel alıcılara ulaş',   icon: Globe2,     color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.15)',  active: 'rgba(16,185,129,0.18)',  badge: 'ENT' },
+            { href: '/team',    label: 'Ekip Merkezim',  sub: 'Performans & koçluk',      icon: UsersRound, color: '#60a5fa', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.15)',  active: 'rgba(59,130,246,0.18)',  badge: 'PRO' },
           ].map(item => {
             const isActive = pathname === item.href || (item.href === '/team' && pathname === '/team-intelligence')
             const Icon = item.icon
