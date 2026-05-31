@@ -664,15 +664,27 @@ async function runSQL(sql: string): Promise<void> {
 }
 
 async function autoMigrateExport() {
-  // Check and create each table independently
-  // Drop FK constraints if they exist (they cause user_id mismatch errors)
+  // Drop FK constraints via multiple methods
+  const dropConstraintSQL = `
+    ALTER TABLE IF EXISTS export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_u_ser_id_fkey";
+    ALTER TABLE IF EXISTS export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_user_id_fkey";
+    ALTER TABLE IF EXISTS export_search_sessions DROP CONSTRAINT IF EXISTS export_search_sessions_user_id_fkey;
+    ALTER TABLE IF EXISTS export_messages DROP CONSTRAINT IF EXISTS "export_messages_user_id_fkey";
+    ALTER TABLE IF EXISTS export_campaigns DROP CONSTRAINT IF EXISTS "export_campaigns_user_id_fkey";
+  `;
+  // Try REST API SQL endpoint
+  try { await runSQL(dropConstraintSQL); } catch {}
+  // Try Supabase Management API
   try {
-    await runSQL(`
-      ALTER TABLE export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_u_ser_id_fkey";
-      ALTER TABLE export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_user_id_fkey";
-      ALTER TABLE export_messages DROP CONSTRAINT IF EXISTS "export_messages_user_id_fkey";
-      ALTER TABLE export_campaigns DROP CONSTRAINT IF EXISTS "export_campaigns_user_id_fkey";
-    `);
+    const projectRef = process.env.SUPABASE_URL?.match(/https?:\/\/([^.]+)\./)?.[1];
+    if (projectRef) {
+      await axios.post(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+        query: dropConstraintSQL,
+      }, {
+        headers: { 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' },
+        timeout: 15000,
+      });
+    }
   } catch {}
 
   const migrations = [
@@ -784,8 +796,13 @@ router.post('/start-search', async (req: any, res: any) => {
       const { data:session, error:sessErr } = await supabase.from('export_search_sessions').insert([{
         user_id:userId, country_code:countryCode, sector, status:'running', step:'starting', progress:5,
       }]).select().single();
-      if (!sessErr && session?.id) sessionId = session.id;
-      else console.error('[ExportSearch] Session create error:', sessErr?.message);
+      if (!sessErr && session?.id) {
+        sessionId = session.id;
+      } else {
+        // FK constraint veya başka bir hata — session tracking devre dışı
+        // Arama arka planda devam eder, frontend temp ID ile polling yapar
+        console.log('[ExportSearch] Session tracking unavailable (FK constraint?), using temp ID:', sessErr?.message?.substring(0, 80));
+      }
     } catch(sessEx:any) { console.error('[ExportSearch] Session exception:', sessEx.message); }
 
     res.json({

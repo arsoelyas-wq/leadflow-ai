@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { Search, RefreshCw, MessageSquare, Mail, CheckCircle, X, Copy, Play, ArrowRight, Zap, ExternalLink, TrendingUp, Clock, ChevronRight, Star } from 'lucide-react'
 
@@ -256,6 +257,7 @@ function MarketPanel({ intel, country }: { intel: any; country: any }) {
 
 // ── ANA SAYFA ─────────────────────────────────────────────────────────────────
 export default function ExportPage() {
+  const router = useRouter()
   const [tab, setTab] = useState<'find' | 'leads' | 'campaigns' | 'messages' | 'analytics'>('find')
   const [countries, setCountries] = useState<any[]>([])
   const [exportLeads, setExportLeads] = useState<any[]>([])
@@ -710,12 +712,12 @@ export default function ExportPage() {
                       </div>
 
                       <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-                        {/* Lead detail page link */}
-                        <a href={`/leads?highlight=${lead.id}`}
-                          style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 10px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#64748b', fontSize:11, textDecoration:'none', cursor:'pointer' }}
+                        {/* Lead detail page — router.push to avoid auth redirect */}
+                        <button onClick={() => router.push(`/leads/${lead.id}`)}
+                          style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 10px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#64748b', fontSize:11, cursor:'pointer' }}
                           title="Lead detayını aç">
                           <ExternalLink size={11} />
-                        </a>
+                        </button>
                         <button onClick={() => generateMessage(lead.id)} disabled={generatingMsg === lead.id}
                           style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.22)', background: 'rgba(16,185,129,0.07)', color: '#34d399', fontSize: 11, cursor: 'pointer' }}>
                           {generatingMsg === lead.id ? <RefreshCw size={11} style={{ animation: 'exp-spin 1s linear infinite' }} /> : <MessageSquare size={11} />}
