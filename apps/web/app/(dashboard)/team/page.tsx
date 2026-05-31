@@ -176,7 +176,14 @@ export default function TeamPage() {
   const [stats, setStats] = useState<any>(null)
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'team'|'activity'|'leaderboard'|'kpi'|'coaching'>('team')
+  const [activeTab, setActiveTab] = useState<'team'|'activity'|'leaderboard'|'kpi'|'coaching'|'analytics'>('team')
+  const [trend, setTrend] = useState<any>(null)
+  const [benchmark, setBenchmark] = useState<any>(null)
+  const [trendDays, setTrendDays] = useState(30)
+  const [trendMember, setTrendMember] = useState('')
+  const [reportSettings, setReportSettings] = useState({ weekly_enabled:true, alert_threshold:50 })
+  const [sendingReport, setSendingReport] = useState(false)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [selectedMember, setSelectedMember] = useState<any>(null)
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
@@ -210,6 +217,23 @@ export default function TeamPage() {
   }, [])
 
   useEffect(() => { loadAll() }, [loadAll])
+
+  const loadAnalytics = useCallback(async () => {
+    setLoadingAnalytics(true)
+    const params = new URLSearchParams({ days: String(trendDays) })
+    if (trendMember) params.set('memberId', trendMember)
+    const [t, b, s] = await Promise.allSettled([
+      api.get(`/api/ti-reports/trend?${params}`),
+      api.get('/api/ti-reports/benchmark'),
+      api.get('/api/ti-reports/settings'),
+    ])
+    if (t.status==='fulfilled') setTrend(t.value)
+    if (b.status==='fulfilled') setBenchmark(b.value)
+    if (s.status==='fulfilled') { const d = s.value as any; setReportSettings(d.settings||d) }
+    setLoadingAnalytics(false)
+  }, [trendDays, trendMember])
+
+  useEffect(() => { if (activeTab==='analytics') loadAnalytics() }, [activeTab, loadAnalytics])
 
   const deleteMember = async (id:string) => {
     if (!confirm('Üye silinsin mi?')) return
@@ -309,7 +333,7 @@ export default function TeamPage() {
 
       {/* TABS */}
       <div style={{ display:'flex', gap:3, background:'rgba(0,0,0,0.32)', padding:4, borderRadius:12, width:'fit-content', marginBottom:18, border:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
-        {[{id:'team',label:'👥 Ekip'},{id:'activity',label:'⚡ Aktivite'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'kpi',label:'🎯 KPI & Hedefler'},{id:'coaching',label:'🎓 Koçluk'}].map(t=>(
+        {[{id:'team',label:'👥 Ekip'},{id:'activity',label:'⚡ Aktivite'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'kpi',label:'🎯 KPI'},{id:'coaching',label:'🎓 Koçluk'},{id:'analytics',label:'📈 Analitik'}].map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id as any)}
             style={{ padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(124,58,237,0.28)':'none', whiteSpace:'nowrap' }}>
             {t.label}
@@ -629,6 +653,150 @@ export default function TeamPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ── ANALİTİK TAB ── */}
+      {activeTab === 'analytics' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:14, overflowY:'auto' }}>
+          {/* Filtreler */}
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', flexShrink:0 }}>
+            <select value={trendDays} onChange={e=>setTrendDays(Number(e.target.value))} style={{ ...inp, height:38 }}>
+              <option value={7}>Son 7 gün</option>
+              <option value={30}>Son 30 gün</option>
+              <option value={90}>Son 90 gün</option>
+            </select>
+            <select value={trendMember} onChange={e=>setTrendMember(e.target.value)} style={{ ...inp, height:38 }}>
+              <option value="">Tüm Ekip</option>
+              {members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <button onClick={loadAnalytics} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, border:'1px solid rgba(139,92,246,0.3)', background:'rgba(139,92,246,0.08)', color:'#a78bfa', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+              <RefreshCw size={12} style={{ animation:loadingAnalytics?'tm-spin 1s linear infinite':'none' }} /> Yenile
+            </button>
+            <button onClick={async()=>{ setSendingReport(true); try { await api.post('/api/ti-reports/send-weekly',{}); showMsg('success','Haftalık rapor gönderildi') } catch(e:any) { showMsg('error',e.message) } setSendingReport(false) }} disabled={sendingReport}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer', marginLeft:'auto' }}>
+              {sendingReport?<RefreshCw size={11} style={{ animation:'tm-spin 1s linear infinite' }}/>:<Send size={11}/>}
+              Haftalık Rapor Gönder
+            </button>
+          </div>
+
+          {/* Trend Grafiği */}
+          <div style={{ ...card, padding:'18px 20px' }}>
+            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px', display:'flex', alignItems:'center', gap:8 }}>
+              <TrendingUp size={14} color="#8b5cf6" /> Koçluk Skoru Trendi
+            </h3>
+            {loadingAnalytics ? (
+              <div style={{ display:'flex', justifyContent:'center', height:120, alignItems:'center' }}><RefreshCw size={20} style={{ color:'#475569', animation:'tm-spin 1s linear infinite' }} /></div>
+            ) : (() => {
+              const points = (trend?.trend||[]).filter((p:any) => p.overall !== null)
+              if (!points.length) return (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:120, color:'#334155', gap:8 }}>
+                  <BarChart2 size={24} /> Henüz analiz verisi yok — WhatsApp konuşmalarını analiz edin
+                </div>
+              )
+              const W=560, H=160, PAD=20
+              const vals = points.map((p:any)=>p.overall)
+              const minV = Math.max(0, Math.min(...vals)-10), maxV = Math.min(100, Math.max(...vals)+10)
+              const range = maxV-minV||1
+              const tx = (i:number) => PAD+(i/(points.length-1||1))*(W-PAD*2)
+              const ty = (v:number) => H-PAD-((v-minV)/range)*(H-PAD*2)
+              const path = points.map((p:any,i:number)=>`${i===0?'M':'L'}${tx(i).toFixed(1)},${ty(p.overall).toFixed(1)}`).join(' ')
+              const benchY = ty(trend?.benchmarks?.overall||68)
+              return (
+                <div>
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', height:160 }}>
+                    {[25,50,75].map(v=>{
+                      const y=ty(Math.min(maxV,Math.max(minV,v))); if(y<PAD||y>H-PAD) return null
+                      return <line key={v} x1={PAD} y1={y} x2={W-PAD} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth={1}/>
+                    })}
+                    {benchY>=PAD && benchY<=H-PAD && <>
+                      <line x1={PAD} y1={benchY} x2={W-PAD} y2={benchY} stroke="#f59e0b" strokeWidth={1} strokeDasharray="5 4" opacity={0.5}/>
+                      <text x={W-PAD+4} y={benchY+4} fill="#f59e0b" fontSize={9}>Ref</text>
+                    </>}
+                    <path d={path} fill="none" stroke="#8b5cf6" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ filter:'drop-shadow(0 0 4px #8b5cf680)' }}/>
+                    {points.map((p:any,i:number)=>(
+                      <g key={i}>
+                        <circle cx={tx(i)} cy={ty(p.overall)} r={4} fill="#8b5cf6" stroke="rgba(3,8,22,0.97)" strokeWidth={2}/>
+                        <text x={tx(i)} y={ty(p.overall)-10} textAnchor="middle" fill="#c4b5fd" fontSize={9}>{p.overall}</text>
+                      </g>
+                    ))}
+                  </svg>
+                  <div style={{ display:'flex', gap:16, marginTop:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:5 }}><div style={{ width:12, height:3, borderRadius:2, background:'#8b5cf6' }}/><span style={{ color:'#64748b', fontSize:10 }}>Genel Skor</span></div>
+                    <div style={{ display:'flex', alignItems:'center', gap:5 }}><div style={{ width:12, height:1, borderTop:'1px dashed #f59e0b' }}/><span style={{ color:'#64748b', fontSize:10 }}>Benchmark</span></div>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+
+          {/* Benchmark Karşılaştırma */}
+          {benchmark?.members?.length > 0 && (
+            <div style={{ ...card, padding:'18px 20px' }}>
+              <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>🎯 Benchmark Karşılaştırması</h3>
+              <div style={{ overflowX:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead>
+                    <tr>
+                      {['Üye','Genel','Satış','Empati','Kapanış','Analiz'].map(h=>(
+                        <th key={h} style={{ color:'#64748b', fontWeight:600, textAlign:'left', padding:'6px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)', fontSize:11 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {benchmark.members.map((m:any)=>(
+                      <tr key={m.id}>
+                        <td style={{ padding:'8px 8px', color:'#fff', fontWeight:600 }}>{m.name}</td>
+                        {['overall','sales_technique','empathy','closing'].map(k=>(
+                          <td key={k} style={{ padding:'8px 8px' }}>
+                            {m.scores?.[k] ? (
+                              <span style={{ color:scoreColor(m.scores[k]), fontWeight:700 }}>{m.scores[k]}</span>
+                            ) : <span style={{ color:'#334155' }}>—</span>}
+                          </td>
+                        ))}
+                        <td style={{ padding:'8px 8px', color:'#475569' }}>{m.total_analyses||0}</td>
+                      </tr>
+                    ))}
+                    {/* Sektör ortalaması */}
+                    {benchmark.sector_avg && (
+                      <tr style={{ borderTop:'1px dashed rgba(245,158,11,0.25)' }}>
+                        <td style={{ padding:'8px 8px', color:'#fbbf24', fontWeight:700, fontSize:10 }}>⭐ Sektör Ort.</td>
+                        {['overall','sales_technique','empathy','closing'].map(k=>(
+                          <td key={k} style={{ padding:'8px 8px', color:'#fbbf24', fontWeight:700 }}>{benchmark.sector_avg[k]||'—'}</td>
+                        ))}
+                        <td/>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Rapor Ayarları */}
+          <div style={{ ...card, padding:'18px 20px' }}>
+            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>⚙️ Rapor Ayarları</h3>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              <label style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}>
+                <div onClick={()=>setReportSettings(p=>({...p,weekly_enabled:!p.weekly_enabled}))}
+                  style={{ width:38, height:20, borderRadius:10, background:reportSettings.weekly_enabled?'#7c3aed':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0 }}>
+                  <div style={{ position:'absolute', top:2, left:reportSettings.weekly_enabled?18:2, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+                </div>
+                <div>
+                  <p style={{ color:'#fff', fontSize:13, margin:0 }}>Haftalık otomatik rapor</p>
+                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>Her Pazartesi email ile gönderilir</p>
+                </div>
+              </label>
+              <div>
+                <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Uyarı Eşiği: {reportSettings.alert_threshold}/100 altındaki skorlar için uyarı</label>
+                <input type="range" min={20} max={80} value={reportSettings.alert_threshold} onChange={e=>setReportSettings(p=>({...p,alert_threshold:Number(e.target.value)}))} style={{ width:'100%', accentColor:'#7c3aed' }} />
+              </div>
+              <button onClick={async()=>{ try { await api.patch('/api/ti-reports/settings',reportSettings); showMsg('success','Ayarlar kaydedildi') } catch(e:any) { showMsg('error',e.message) } }}
+                style={{ padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', width:'fit-content' }}>
+                Ayarları Kaydet
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

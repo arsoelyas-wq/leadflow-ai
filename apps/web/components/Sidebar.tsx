@@ -273,22 +273,7 @@ export default function Sidebar() {
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/25 flex-shrink-0">PRO</span>
           </Link>
 
-          {/* Ekip Raporlari */}
-          <Link href="/team-reports"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition group relative overflow-hidden ${
-              pathname === '/team-reports'
-                ? 'bg-purple-500/20 border-purple-500/40 text-purple-300'
-                : 'bg-purple-500/5 border-purple-500/15 text-purple-400/80 hover:bg-purple-500/15 hover:border-purple-500/30 hover:text-purple-300'
-            }`}>
-            <div className="w-7 h-7 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <BarChart2 size={14} className="text-purple-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold leading-tight">Ekip Raporlari</p>
-              <p className="text-[10px] text-purple-500/60 leading-tight mt-0.5">Trend, benchmark, email</p>
-            </div>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/25 flex-shrink-0">PRO</span>
-          </Link>
+          {/* Ekip Raporlari — Ekip Yönetimi'ne taşındı */}
         </div>
 
         <div className="border-t border-slate-800/80 mb-2" />
