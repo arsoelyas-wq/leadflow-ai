@@ -308,7 +308,8 @@ router.post('/weekly-report', async (req: any, res: any) => {
 
     const reports = await Promise.all((members||[]).map(async (m:any) => {
       const [msgs, won, coaching] = await Promise.allSettled([
-        supabase.from('messages').select('id').eq('user_id', req.userId).eq('agent_id', m.id).gte('sent_at', weekAgo),
+        supabase.from('messages').select('id').eq('user_id', req.userId).eq('agent_id', m.id).gte('sent_at', weekAgo)
+          .catch(() => ({ data: [] })),
         supabase.from('leads').select('id').eq('user_id', req.userId).eq('assigned_member_id', m.id).eq('status', 'won').gte('won_at', weekAgo),
         supabase.from('sales_coaching').select('analysis_score').eq('user_id', req.userId).eq('agent_name', m.name).gte('created_at', weekAgo),
       ]);
