@@ -9,98 +9,102 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+function cleanText(text: string) { return text?.replace(/\s+/g, ' ').trim() || ''; }
 
 // ── ÜLKE VERİTABANI ──────────────────────────────────────────────────────────
 const COUNTRIES = [
-  { code:'DE', name:'Almanya',           flag:'🇩🇪', language:'de', currency:'EUR', region:'Avrupa',    comtradeCode:'276' },
-  { code:'GB', name:'İngiltere',         flag:'🇬🇧', language:'en', currency:'GBP', region:'Avrupa',    comtradeCode:'826' },
-  { code:'FR', name:'Fransa',            flag:'🇫🇷', language:'fr', currency:'EUR', region:'Avrupa',    comtradeCode:'251' },
-  { code:'NL', name:'Hollanda',          flag:'🇳🇱', language:'nl', currency:'EUR', region:'Avrupa',    comtradeCode:'528' },
-  { code:'BE', name:'Belçika',           flag:'🇧🇪', language:'fr', currency:'EUR', region:'Avrupa',    comtradeCode:'56'  },
-  { code:'IT', name:'İtalya',            flag:'🇮🇹', language:'it', currency:'EUR', region:'Avrupa',    comtradeCode:'381' },
-  { code:'ES', name:'İspanya',           flag:'🇪🇸', language:'es', currency:'EUR', region:'Avrupa',    comtradeCode:'724' },
-  { code:'PL', name:'Polonya',           flag:'🇵🇱', language:'pl', currency:'PLN', region:'Avrupa',    comtradeCode:'616' },
-  { code:'US', name:'ABD',               flag:'🇺🇸', language:'en', currency:'USD', region:'Amerika',   comtradeCode:'842' },
-  { code:'CA', name:'Kanada',            flag:'🇨🇦', language:'en', currency:'CAD', region:'Amerika',   comtradeCode:'124' },
-  { code:'AE', name:'BAE',               flag:'🇦🇪', language:'ar', currency:'AED', region:'Körfez',    comtradeCode:'784' },
-  { code:'SA', name:'Suudi Arabistan',   flag:'🇸🇦', language:'ar', currency:'SAR', region:'Körfez',    comtradeCode:'682' },
-  { code:'QA', name:'Katar',             flag:'🇶🇦', language:'ar', currency:'QAR', region:'Körfez',    comtradeCode:'634' },
-  { code:'KW', name:'Kuveyt',            flag:'🇰🇼', language:'ar', currency:'KWD', region:'Körfez',    comtradeCode:'414' },
-  { code:'EG', name:'Mısır',             flag:'🇪🇬', language:'ar', currency:'EGP', region:'Afrika',    comtradeCode:'818' },
-  { code:'MA', name:'Fas',               flag:'🇲🇦', language:'fr', currency:'MAD', region:'Afrika',    comtradeCode:'504' },
-  { code:'KZ', name:'Kazakistan',        flag:'🇰🇿', language:'ru', currency:'KZT', region:'Orta Asya', comtradeCode:'398' },
-  { code:'AZ', name:'Azerbaycan',        flag:'🇦🇿', language:'az', currency:'AZN', region:'Orta Asya', comtradeCode:'31'  },
-  { code:'UZ', name:'Özbekistan',        flag:'🇺🇿', language:'uz', currency:'UZS', region:'Orta Asya', comtradeCode:'860' },
-  { code:'RU', name:'Rusya',             flag:'🇷🇺', language:'ru', currency:'RUB', region:'Orta Asya', comtradeCode:'643' },
-  { code:'CN', name:'Çin',               flag:'🇨🇳', language:'zh', currency:'CNY', region:'Asya',      comtradeCode:'156' },
-  { code:'JP', name:'Japonya',           flag:'🇯🇵', language:'ja', currency:'JPY', region:'Asya',      comtradeCode:'392' },
-  { code:'IN', name:'Hindistan',         flag:'🇮🇳', language:'en', currency:'INR', region:'Asya',      comtradeCode:'356' },
+  { code:'DE', name:'Almanya',           flag:'🇩🇪', language:'de', currency:'EUR', region:'Avrupa',    comtradeCode:'276', googleDomain:'google.de', lang:'de' },
+  { code:'GB', name:'İngiltere',         flag:'🇬🇧', language:'en', currency:'GBP', region:'Avrupa',    comtradeCode:'826', googleDomain:'google.co.uk', lang:'en' },
+  { code:'FR', name:'Fransa',            flag:'🇫🇷', language:'fr', currency:'EUR', region:'Avrupa',    comtradeCode:'251', googleDomain:'google.fr', lang:'fr' },
+  { code:'NL', name:'Hollanda',          flag:'🇳🇱', language:'nl', currency:'EUR', region:'Avrupa',    comtradeCode:'528', googleDomain:'google.nl', lang:'nl' },
+  { code:'BE', name:'Belçika',           flag:'🇧🇪', language:'fr', currency:'EUR', region:'Avrupa',    comtradeCode:'56',  googleDomain:'google.be', lang:'fr' },
+  { code:'IT', name:'İtalya',            flag:'🇮🇹', language:'it', currency:'EUR', region:'Avrupa',    comtradeCode:'381', googleDomain:'google.it', lang:'it' },
+  { code:'ES', name:'İspanya',           flag:'🇪🇸', language:'es', currency:'EUR', region:'Avrupa',    comtradeCode:'724', googleDomain:'google.es', lang:'es' },
+  { code:'PL', name:'Polonya',           flag:'🇵🇱', language:'pl', currency:'PLN', region:'Avrupa',    comtradeCode:'616', googleDomain:'google.pl', lang:'pl' },
+  { code:'US', name:'ABD',               flag:'🇺🇸', language:'en', currency:'USD', region:'Amerika',   comtradeCode:'842', googleDomain:'google.com', lang:'en' },
+  { code:'CA', name:'Kanada',            flag:'🇨🇦', language:'en', currency:'CAD', region:'Amerika',   comtradeCode:'124', googleDomain:'google.ca', lang:'en' },
+  { code:'AE', name:'BAE',               flag:'🇦🇪', language:'ar', currency:'AED', region:'Körfez',    comtradeCode:'784', googleDomain:'google.ae', lang:'ar' },
+  { code:'SA', name:'Suudi Arabistan',   flag:'🇸🇦', language:'ar', currency:'SAR', region:'Körfez',    comtradeCode:'682', googleDomain:'google.com.sa', lang:'ar' },
+  { code:'QA', name:'Katar',             flag:'🇶🇦', language:'ar', currency:'QAR', region:'Körfez',    comtradeCode:'634', googleDomain:'google.com.qa', lang:'ar' },
+  { code:'KW', name:'Kuveyt',            flag:'🇰🇼', language:'ar', currency:'KWD', region:'Körfez',    comtradeCode:'414', googleDomain:'google.com.kw', lang:'ar' },
+  { code:'EG', name:'Mısır',             flag:'🇪🇬', language:'ar', currency:'EGP', region:'Afrika',    comtradeCode:'818', googleDomain:'google.com.eg', lang:'ar' },
+  { code:'MA', name:'Fas',               flag:'🇲🇦', language:'fr', currency:'MAD', region:'Afrika',    comtradeCode:'504', googleDomain:'google.co.ma', lang:'fr' },
+  { code:'KZ', name:'Kazakistan',        flag:'🇰🇿', language:'ru', currency:'KZT', region:'Orta Asya', comtradeCode:'398', googleDomain:'google.kz', lang:'ru' },
+  { code:'AZ', name:'Azerbaycan',        flag:'🇦🇿', language:'az', currency:'AZN', region:'Orta Asya', comtradeCode:'31',  googleDomain:'google.az', lang:'ru' },
+  { code:'UZ', name:'Özbekistan',        flag:'🇺🇿', language:'uz', currency:'UZS', region:'Orta Asya', comtradeCode:'860', googleDomain:'google.com', lang:'ru' },
+  { code:'RU', name:'Rusya',             flag:'🇷🇺', language:'ru', currency:'RUB', region:'Orta Asya', comtradeCode:'643', googleDomain:'google.ru', lang:'ru' },
+  { code:'CN', name:'Çin',               flag:'🇨🇳', language:'zh', currency:'CNY', region:'Asya',      comtradeCode:'156', googleDomain:'google.com', lang:'zh' },
+  { code:'JP', name:'Japonya',           flag:'🇯🇵', language:'ja', currency:'JPY', region:'Asya',      comtradeCode:'392', googleDomain:'google.co.jp', lang:'ja' },
+  { code:'IN', name:'Hindistan',         flag:'🇮🇳', language:'en', currency:'INR', region:'Asya',      comtradeCode:'356', googleDomain:'google.co.in', lang:'en' },
 ];
 
-// ── ÖDEME RİSK VERİTABANI (Coface/OECD bazlı) ────────────────────────────────
+// ── ÖDEME RİSK SKORLARI ───────────────────────────────────────────────────────
 const PAYMENT_RISK: Record<string, { score: number; label: string; dso: number; notes: string }> = {
-  'DE': { score:95, label:'Çok Düşük',    dso:30, notes:'Güçlü hukuki sistem, düzenli ödeme kültürü' },
-  'GB': { score:90, label:'Çok Düşük',    dso:35, notes:'Köklü ticaret hukuku, güvenilir bankacılık' },
-  'FR': { score:85, label:'Düşük',        dso:45, notes:'LC veya banka garantisi önerilebilir' },
-  'NL': { score:92, label:'Çok Düşük',    dso:30, notes:'Hollanda finans merkezi, çok güvenilir' },
-  'BE': { score:88, label:'Düşük',        dso:35, notes:'AB finans sistemi, güvenilir' },
-  'IT': { score:72, label:'Orta',         dso:60, notes:'Geç ödeme yaygın, LC tavsiye edilir' },
-  'ES': { score:78, label:'Orta',         dso:50, notes:'Ekonomik dalgalanma riski var' },
-  'PL': { score:80, label:'Düşük',        dso:40, notes:'AB üyesi, gelişen ekonomi' },
-  'US': { score:91, label:'Çok Düşük',    dso:30, notes:'Güçlü hukuki sistem, wire transfer yaygın' },
-  'CA': { score:90, label:'Çok Düşük',    dso:30, notes:'ABD ile aynı düzey güvenilirlik' },
-  'AE': { score:82, label:'Düşük',        dso:30, notes:'LC yaygın, bankacılık sistemi güçlü' },
-  'SA': { score:75, label:'Orta',         dso:45, notes:'LC veya avans önerilebilir' },
-  'QA': { score:80, label:'Düşük',        dso:35, notes:'Petrol geliri yüksek, güvenilir' },
-  'KW': { score:78, label:'Orta',         dso:40, notes:'LC ile çalışmak güvenli' },
-  'EG': { score:42, label:'Yüksek',       dso:90, notes:'Döviz kısıtlaması var, akreditif şart' },
-  'MA': { score:55, label:'Orta-Yüksek',  dso:60, notes:'MAD transferi kısıtlı, EUR tercih edilmeli' },
-  'KZ': { score:50, label:'Orta-Yüksek',  dso:60, notes:'Banka garantisi alın' },
-  'AZ': { score:62, label:'Orta',         dso:45, notes:'EUR veya USD ile çalışın' },
-  'UZ': { score:45, label:'Yüksek',       dso:75, notes:'Avans veya LC zorunlu' },
-  'RU': { score:25, label:'Çok Yüksek',   dso:120, notes:'Yaptırım riski kritik, dikkatli değerlendirin' },
-  'CN': { score:65, label:'Orta',         dso:60, notes:'Büyük alıcılar güvenilir, küçükler dikkat' },
-  'JP': { score:93, label:'Çok Düşük',    dso:30, notes:'En güvenilir pazarlardan biri' },
-  'IN': { score:55, label:'Orta-Yüksek',  dso:75, notes:'LC ile çalışın, avans alın' },
+  'DE':{ score:95, label:'Çok Düşük',   dso:30,  notes:'Güçlü hukuki sistem, düzenli ödeme kültürü' },
+  'GB':{ score:90, label:'Çok Düşük',   dso:35,  notes:'Köklü ticaret hukuku, güvenilir bankacılık' },
+  'FR':{ score:85, label:'Düşük',       dso:45,  notes:'LC veya banka garantisi önerilebilir' },
+  'NL':{ score:92, label:'Çok Düşük',   dso:30,  notes:'Finans merkezi, çok güvenilir' },
+  'BE':{ score:88, label:'Düşük',       dso:35,  notes:'AB finans sistemi, güvenilir' },
+  'IT':{ score:72, label:'Orta',        dso:60,  notes:'Geç ödeme yaygın, LC tavsiye edilir' },
+  'ES':{ score:78, label:'Orta',        dso:50,  notes:'Ekonomik dalgalanma riski var' },
+  'PL':{ score:80, label:'Düşük',       dso:40,  notes:'AB üyesi, gelişen ekonomi' },
+  'US':{ score:91, label:'Çok Düşük',   dso:30,  notes:'Güçlü hukuki sistem, wire transfer yaygın' },
+  'CA':{ score:90, label:'Çok Düşük',   dso:30,  notes:'Güvenilir bankacılık sistemi' },
+  'AE':{ score:82, label:'Düşük',       dso:30,  notes:'LC yaygın, bankacılık güçlü' },
+  'SA':{ score:75, label:'Orta',        dso:45,  notes:'LC veya avans önerilebilir' },
+  'QA':{ score:80, label:'Düşük',       dso:35,  notes:'Petrol geliri yüksek, güvenilir' },
+  'KW':{ score:78, label:'Orta',        dso:40,  notes:'LC ile çalışmak güvenli' },
+  'EG':{ score:42, label:'Yüksek',      dso:90,  notes:'Döviz kısıtlaması var, akreditif şart' },
+  'MA':{ score:55, label:'Orta-Yüksek', dso:60,  notes:'EUR transferi tercih edilmeli' },
+  'KZ':{ score:50, label:'Orta-Yüksek', dso:60,  notes:'Banka garantisi alın' },
+  'AZ':{ score:62, label:'Orta',        dso:45,  notes:'EUR veya USD ile çalışın' },
+  'UZ':{ score:45, label:'Yüksek',      dso:75,  notes:'Avans veya LC zorunlu' },
+  'RU':{ score:25, label:'Çok Yüksek',  dso:120, notes:'Yaptırım riski kritik, dikkatli değerlendirin' },
+  'CN':{ score:65, label:'Orta',        dso:60,  notes:'Büyük alıcılar güvenilir, küçükler dikkat' },
+  'JP':{ score:93, label:'Çok Düşük',   dso:30,  notes:'En güvenilir pazarlardan biri' },
+  'IN':{ score:55, label:'Orta-Yüksek', dso:75,  notes:'LC ile çalışın, avans alın' },
 };
 
-// ── KÜLTÜREL ZEKA VERİTABANI ──────────────────────────────────────────────────
+// ── KÜLTÜREL ZEKA ─────────────────────────────────────────────────────────────
 const CULTURAL_INTEL: Record<string, { greeting: string; taboo: string; timing: string; tip: string }> = {
-  'DE': { greeting:'Herr/Frau kullanın, Dr. varsa mutlaka yazın', taboo:'İlk emailde fiyat sormayın', timing:'09:00-17:00, Cuma 15:00\'de biter', tip:'Teknik detaylar ve sertifikalar çok önemli' },
-  'GB': { greeting:'Mr/Ms kullanın, informal geçiş hızlı olur', taboo:'Fazla resmi olmayın', timing:'09:00-17:30, pazar tatil', tip:'Mizah kabul görür, güven yavaş kurulur' },
-  'FR': { greeting:'Monsieur/Madame, Fransızca deneyin', taboo:'Fransız rakiplerini eleştirmeyin', timing:'12:00-14:00 öğle paydosu kutsal', tip:'Fransızca email iyi izlenim bırakır' },
-  'AE': { greeting:'Sheikh/Sahibi gibi unvanlar önemli', taboo:'Ramazan\'da gündüz gıda/içecek görseli göndermeyin', timing:'Cuma ve Cumartesi hafta sonu', tip:'Kişisel ilişki kurulmadan iş yapılmaz' },
-  'SA': { greeting:'Erkek-kadın karışık toplantıdan kaçının', taboo:'Alkol veya domuz eti ürünleri', timing:'Perşembe-Cuma hafta sonu', tip:'İlişki kurma süreci uzun, sabırlı olun' },
-  'JP': { greeting:'San ekleyin: Tanaka-san, kartvizite saygıyla bakın', taboo:'Direkt "hayır" demeyin', timing:'09:00-18:00, mesai sonrası da müzakere', tip:'İlk toplantı karar toplantısı değildir' },
-  'CN': { greeting:'Şirket unvanı önce, isim sonra', taboo:'Tayvan, Tibet, Tiananmen konuşmayın', timing:'08:00-17:30, öğle siesta var', tip:'WeChat üzerinden iletişim WhatsApp\'tan etkili' },
-  'RU': { greeting:'Bayan/Bay + soyisim resmi', taboo:'Rusya\'nın politikasını eleştirmeyin', timing:'09:00-18:00, yaz aylarında yavaşlar', tip:'Güçlü görünün, uzun vadeli düşünün' },
-  'IN': { greeting:'Sir/Madam yaygın', taboo:'Sığırla ilgili her şey', timing:'09:30-18:30, öğle uzun', tip:'Fiyat pazarlığı beklenir, ilk teklifin %20 üzerinde başlayın' },
+  'DE':{ greeting:'Herr/Frau kullanın, Dr. varsa mutlaka ekleyin', taboo:'İlk emailde fiyat sormayın', timing:'09:00-17:00, Cuma 15\'te biter', tip:'Teknik detaylar ve sertifikalar çok önemli' },
+  'GB':{ greeting:'Mr/Ms kullanın, informal geçiş hızlı', taboo:'Fazla resmi olmayın', timing:'09:00-17:30, pazar tatil', tip:'Mizah kabul görür, güven yavaş kurulur' },
+  'FR':{ greeting:'Monsieur/Madame, Fransızca deneyin', taboo:'Fransız rakiplerini eleştirmeyin', timing:'12:00-14:00 öğle paydosu kutsal', tip:'Fransızca email çok iyi izlenim bırakır' },
+  'AE':{ greeting:'Sheikh/Sahibi gibi unvanlar önemli', taboo:'Ramazan\'da gündüz gıda/içecek görseli göndermeyin', timing:'Cuma-Cumartesi hafta sonu', tip:'Kişisel ilişki kurulmadan iş yapılmaz' },
+  'SA':{ greeting:'Bay/erkek-kadın karışık toplantıdan kaçının', taboo:'Alkol veya domuz eti ürünleri', timing:'Perşembe-Cuma hafta sonu', tip:'İlişki kurma süreci uzun, sabırlı olun' },
+  'JP':{ greeting:'San ekleyin: Tanaka-san, kartvizite saygıyla bakın', taboo:'Direkt "hayır" demeyin', timing:'09:00-18:00, mesai sonrası da müzakere', tip:'İlk toplantı karar toplantısı değildir' },
+  'CN':{ greeting:'Şirket unvanı önce, isim sonra', taboo:'Tayvan, Tibet konuşmayın', timing:'08:00-17:30, öğle siesta var', tip:'WeChat WhatsApp\'tan etkili' },
+  'RU':{ greeting:'Bayan/Bay + soyisim resmi', taboo:'Rusya\'nın politikasını eleştirmeyin', timing:'09:00-18:00, yaz aylarında yavaşlar', tip:'Güçlü görünün, uzun vadeli düşünün' },
+  'IN':{ greeting:'Sir/Madam yaygın', taboo:'Sığırla ilgili her şey', timing:'09:30-18:30, öğle uzun', tip:'Fiyat pazarlığı beklenir, %20 yukarıdan başlayın' },
+  'US':{ greeting:'İlk isimle hitap normal', taboo:'Fazla resmi olmayın', timing:'09:00-17:00', tip:'ROI odaklı konuşun, somut rakamlar verin' },
 };
 
-// ── 1. HS KOD EŞLEŞTİRİCİ (Claude AI) ───────────────────────────────────────
-async function mapSectorToHSCodes(sector: string): Promise<{ codes: string[]; names: string[]; searchTerms: Record<string, string> }> {
+// ── 1. HS KOD EŞLEŞTİRİCİ ────────────────────────────────────────────────────
+async function mapSectorToHSCodes(sector: string): Promise<{ codes: string[]; names: string[]; searchTerms: Record<string, string>; searchTermsLocal: string }> {
   try {
     const resp = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `"${sector}" sektörü için HS kodlarını belirle. JSON döndür:
+      max_tokens: 500,
+      messages: [{ role:'user', content:`"${sector}" için HS kodlarını ve çok dilli arama terimlerini ver. JSON döndür:
 {
-  "codes": ["9401", "9403"],
-  "names": ["Oturma mobilyası", "Diğer mobilya"],
+  "codes": ["9401","9403"],
+  "names": ["Oturma mobilyası","Diğer mobilya"],
   "searchTerms": {
-    "en": "furniture importer distributor",
-    "de": "Möbel Importeur Großhandel",
-    "fr": "importateur mobilier grossiste",
-    "ar": "مستورد أثاث",
-    "ru": "импортер мебели",
-    "zh": "家具进口商",
-    "ja": "家具インポーター"
-  }
+    "en": "furniture importer distributor wholesale",
+    "de": "Möbel Importeur Großhandel Händler",
+    "fr": "importateur mobilier grossiste distributeur",
+    "ar": "مستورد أثاث بالجملة",
+    "ru": "импортер мебели оптовик дистрибьютор",
+    "zh": "家具进口商批发商",
+    "ja": "家具インポーター卸売",
+    "it": "importatore mobili grossista",
+    "es": "importador muebles mayorista",
+    "nl": "meubel importeur groothandel",
+    "pl": "importer mebli hurtownik"
+  },
+  "googleMapsType": "furniture store"
 }
-Max 4 HS kodu, en ilgili olanlar. SADECE JSON.`
-      }]
+Max 4 HS kodu. SADECE JSON.` }]
     });
     const text = resp.content[0]?.text?.trim().replace(/```json|```/g, '') || '{}';
     const parsed = JSON.parse(text);
@@ -108,143 +112,213 @@ Max 4 HS kodu, en ilgili olanlar. SADECE JSON.`
       codes: parsed.codes || [],
       names: parsed.names || [],
       searchTerms: parsed.searchTerms || {},
+      searchTermsLocal: parsed.googleMapsType || sector,
     };
   } catch {
-    return { codes: [], names: [], searchTerms: { en: `${sector} importer` } };
+    return { codes:[], names:[], searchTerms:{ en:`${sector} importer` }, searchTermsLocal:sector };
   }
 }
 
-// ── 2. UN COMTRADE PAZAR İSTATİSTİKLERİ ──────────────────────────────────────
+// ── 2. PAZAR İSTATİSTİKLERİ (Ticaret Verisi) ─────────────────────────────────
 async function getMarketIntelligence(hsCodes: string[], countryCode: string, country: any): Promise<{
-  marketSizeUSD: number; turkeyExportsUSD: number; turkeySharePct: number;
-  avgUnitPriceUSD: number; topSuppliers: string[]; yoyGrowthPct: number; year: number;
+  marketSizeUSD:number; turkeyExportsUSD:number; turkeySharePct:number;
+  avgUnitPriceUSD:number; yoyGrowthPct:number; year:number;
 }> {
-  const empty = { marketSizeUSD:0, turkeyExportsUSD:0, turkeySharePct:0, avgUnitPriceUSD:0, topSuppliers:[], yoyGrowthPct:0, year:2023 };
-  if (!hsCodes.length || !country.comtradeCode) return empty;
-
+  const empty = { marketSizeUSD:0, turkeyExportsUSD:0, turkeySharePct:0, avgUnitPriceUSD:0, yoyGrowthPct:0, year:2023 };
+  if (!hsCodes.length || !country?.comtradeCode) return empty;
   try {
-    const hs = hsCodes[0]; // Primary HS code
+    const hs = hsCodes[0];
     const year = 2023;
     const TURKEY = '792';
     const targetCode = country.comtradeCode;
-
-    // Turkey's exports to target country (reporter=TR, partner=target)
-    const trResp = await axios.get('https://comtrade.un.org/api/get', {
-      params: { r: TURKEY, p: targetCode, ps: year, px: 'HS', cc: hs, type: 'C', freq: 'A', fmt: 'json', max: 1 },
-      timeout: 12000,
-    });
-    const trData = trResp.data?.dataset?.[0];
-    const turkeyExportsUSD = trData?.TradeValue || 0;
-
-    // Target country's total imports (reporter=target, partner=ALL)
-    const mktResp = await axios.get('https://comtrade.un.org/api/get', {
-      params: { r: targetCode, p: 0, ps: year, px: 'HS', cc: hs, type: 'C', freq: 'A', fmt: 'json', max: 1 },
-      timeout: 12000,
-    });
-    const mktData = mktResp.data?.dataset?.[0];
+    const [trResp, mktResp, prevResp] = await Promise.allSettled([
+      axios.get('https://comtrade.un.org/api/get', { params:{ r:TURKEY, p:targetCode, ps:year, px:'HS', cc:hs, type:'C', freq:'A', fmt:'json', max:1 }, timeout:12000 }),
+      axios.get('https://comtrade.un.org/api/get', { params:{ r:targetCode, p:0, ps:year, px:'HS', cc:hs, type:'C', freq:'A', fmt:'json', max:1 }, timeout:12000 }),
+      axios.get('https://comtrade.un.org/api/get', { params:{ r:TURKEY, p:targetCode, ps:year-1, px:'HS', cc:hs, type:'C', freq:'A', fmt:'json', max:1 }, timeout:10000 }),
+    ]);
+    const turkeyExportsUSD = trResp.status==='fulfilled' ? (trResp.value.data?.dataset?.[0]?.TradeValue||0) : 0;
+    const mktData = mktResp.status==='fulfilled' ? mktResp.value.data?.dataset?.[0] : null;
     const marketSizeUSD = mktData?.TradeValue || 0;
     const netWeight = mktData?.NetWeight || 0;
-    const avgUnitPriceUSD = netWeight > 0 ? Math.round(marketSizeUSD / netWeight) : 0;
-
-    const turkeySharePct = marketSizeUSD > 0 ? parseFloat(((turkeyExportsUSD / marketSizeUSD) * 100).toFixed(1)) : 0;
-
-    // Previous year for YoY growth (rough estimate using Turkey data)
-    const prevResp = await axios.get('https://comtrade.un.org/api/get', {
-      params: { r: TURKEY, p: targetCode, ps: year - 1, px: 'HS', cc: hs, type: 'C', freq: 'A', fmt: 'json', max: 1 },
-      timeout: 10000,
-    });
-    const prevVal = prevResp.data?.dataset?.[0]?.TradeValue || 0;
-    const yoyGrowthPct = prevVal > 0 ? parseFloat((((turkeyExportsUSD - prevVal) / prevVal) * 100).toFixed(1)) : 0;
-
-    return { marketSizeUSD, turkeyExportsUSD, turkeySharePct, avgUnitPriceUSD, topSuppliers:[], yoyGrowthPct, year };
-  } catch (e: any) {
-    console.log('[Comtrade] error:', e.message);
-    return empty;
-  }
+    const avgUnitPriceUSD = netWeight>0 ? Math.round(marketSizeUSD/netWeight) : 0;
+    const turkeySharePct = marketSizeUSD>0 ? parseFloat(((turkeyExportsUSD/marketSizeUSD)*100).toFixed(1)) : 0;
+    const prevVal = prevResp.status==='fulfilled' ? (prevResp.value.data?.dataset?.[0]?.TradeValue||0) : 0;
+    const yoyGrowthPct = prevVal>0 ? parseFloat((((turkeyExportsUSD-prevVal)/prevVal)*100).toFixed(1)) : 0;
+    return { marketSizeUSD, turkeyExportsUSD, turkeySharePct, avgUnitPriceUSD, yoyGrowthPct, year };
+  } catch(e:any) { console.log('[MarketData] error:', e.message); return empty; }
 }
 
-// ── 3. EXA.AI İTHALATÇI ARAMA ────────────────────────────────────────────────
-async function findImportersExa(searchTerms: Record<string, string>, country: any, sector: string): Promise<any[]> {
-  const EXA_API_KEY = process.env.EXA_API_KEY;
-  if (!EXA_API_KEY) return [];
-
-  const lang = country.language;
-  const localTerm = searchTerms[lang] || searchTerms['en'] || `${sector} importer`;
+// ── 3. GOOGLE MAPS MÜŞTERİ ARAMA ─────────────────────────────────────────────
+async function searchGoogleMaps(sector: string, sectorLocal: string, country: any): Promise<any[]> {
+  const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY;
+  if (!GOOGLE_KEY) return [];
   const results: any[] = [];
-
-  const importerDomains: Record<string, string[]> = {
-    'DE': ['wer-liefert-was.de','europages.de','kompass.com','gelbeseiten.de'],
-    'GB': ['europages.co.uk','kompass.com','companieshouse.gov.uk'],
-    'FR': ['europages.fr','kompass.fr','societe.com'],
-    'NL': ['europages.nl','kompass.nl','kvk.nl'],
-    'US': ['thomasnet.com','manta.com','kompass.com'],
-    'AE': ['yellowpages.ae','kompass.com','europages.com'],
-    'SA': ['kompass.com','tradekey.com'],
-    'QA': ['kompass.com','tradekey.com'],
-    'JP': ['kompass.com','jpbiz.net'],
-    'CN': ['kompass.com','1688.com'],
-    'IN': ['indiamart.com','kompass.com','tradeindia.com'],
-  };
-
   const queries = [
-    `${localTerm} ${country.name} wholesale importer distributor`,
-    `${searchTerms['en'] || sector} import ${country.name} B2B contact`,
+    `${sectorLocal} importer ${country.name}`,
+    `${sectorLocal} wholesale ${country.name}`,
+    `${sector} distributor ${country.name}`,
   ];
-
-  for (const q of queries) {
+  for (const query of queries) {
     try {
-      const res = await axios.post('https://api.exa.ai/search', {
-        query: q,
-        numResults: 8,
-        useAutoprompt: true,
-        includeDomains: ['europages.com', 'kompass.com', 'thomasnet.com', ...(importerDomains[country.code] || [])],
-        startPublishedDate: '2022-01-01',
-        contents: { text: { maxCharacters: 500 } },
-      }, { headers: { 'x-api-key': EXA_API_KEY, 'Content-Type': 'application/json' }, timeout: 15000 });
-
-      for (const r of (res.data?.results || [])) {
-        if (!r.title || r.title.length < 5) continue;
-        const combined = (r.title + ' ' + (r.text || '')).toLowerCase();
-        const isImporter = combined.match(/import|distribut|wholesale|supplier|buy|purchas|trading|handel|grossist|importeur|importateur|importador/i);
-        const isManufacturer = combined.match(/manufactur|produc|fabrik|herstell|fabricant|fabricante/i);
-        if (!isImporter || isManufacturer) continue; // Skip manufacturers
-
-        results.push({
-          company_name: r.title.split('|')[0].split('-')[0].trim().substring(0, 100),
-          website: r.url || '',
-          description: (r.text || '').substring(0, 300),
-          country: country.name, country_code: country.code,
-          sector,
-          source: 'exa_importer',
-          verified_importer: true, // Found via importer-specific search
-        });
-        if (results.length >= 12) break;
+      const r = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+        params: { query, key: GOOGLE_KEY, language: country.language },
+        timeout: 12000,
+      });
+      for (const p of (r.data.results || []).slice(0, 5)) {
+        if (results.find(x => x.company_name === p.name)) continue;
+        try {
+          const det = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+            params: { place_id: p.place_id, fields:'name,formatted_phone_number,website,formatted_address,rating,international_phone_number', key: GOOGLE_KEY },
+            timeout: 8000,
+          });
+          const d = det.data.result;
+          results.push({
+            company_name: (d.name || p.name).substring(0, 100),
+            phone: d.international_phone_number || d.formatted_phone_number || null,
+            website: d.website || null,
+            address: d.formatted_address || p.formatted_address || null,
+            country: country.name, country_code: country.code, sector,
+            source_type: 'maps', rating: d.rating || null,
+            verified_importer: false,
+          });
+          if (results.length >= 12) break;
+        } catch {}
+        await sleep(200);
       }
-      await sleep(300);
-    } catch (e: any) { console.log(`[Exa] error:`, e.message); }
-    if (results.length >= 12) break;
+      if (results.length >= 12) break;
+    } catch(e:any) { console.log('[Maps] error:', e.message); }
   }
   return results;
 }
 
-// ── 4. TAVILY ŞİRKET ARAŞTIRMASI ─────────────────────────────────────────────
-async function researchCompanyTavily(companyName: string, country: string): Promise<{ phone?: string; email?: string; size?: string; verified: boolean }> {
+// ── 4. WEB ARAMA (Ticaret Dizinleri + Genel Web) ─────────────────────────────
+async function searchWebImporters(searchTerms: Record<string, string>, country: any, sector: string): Promise<any[]> {
+  const EXA_KEY = process.env.EXA_API_KEY;
   const TAVILY_KEY = process.env.TAVILY_API_KEY;
-  if (!TAVILY_KEY) return { verified: false };
-  try {
-    const res = await axios.post('https://api.tavily.com/search', {
-      api_key: TAVILY_KEY,
-      query: `${companyName} ${country} importer contact phone email`,
-      search_depth: 'basic', max_results: 3,
-    }, { timeout: 10000 });
-    const content = (res.data?.results || []).map((r: any) => r.content || '').join(' ');
-    const phone = content.match(/\+?[\d\s\-()]{8,18}/)?.[0]?.trim();
-    const email = content.match(/[\w.-]+@[\w.-]+\.\w{2,}/i)?.[0];
-    return { phone, email, verified: !!(phone || email) };
-  } catch { return { verified: false }; }
+  const results: any[] = [];
+
+  const lang = country.language;
+  const localTerm = searchTerms[lang] || searchTerms['en'] || `${sector} importer`;
+  const enTerm = searchTerms['en'] || `${sector} importer`;
+
+  const tradeDomains: Record<string, string[]> = {
+    'DE':['wer-liefert-was.de','europages.de','kompass.com','gelbeseiten.de','yellowpages.de'],
+    'GB':['europages.co.uk','kompass.com','yell.com','companieshouse.gov.uk'],
+    'FR':['europages.fr','kompass.fr','societe.com','pagesjaunes.fr'],
+    'NL':['europages.nl','kompass.nl','kvk.nl','goudengids.nl'],
+    'IT':['europages.it','kompass.it','paginegialle.it'],
+    'ES':['europages.es','kompass.es','paginasamarillas.es'],
+    'US':['thomasnet.com','manta.com','kompass.com','dnb.com'],
+    'AE':['yellowpages.ae','kompass.com','europages.com'],
+    'SA':['kompass.com','tradekey.com','saudiexporter.com'],
+    'IN':['indiamart.com','kompass.com','tradeindia.com'],
+    'CN':['kompass.com','made-in-china.com'],
+  };
+
+  // Exa.ai ile ticaret dizini araması
+  if (EXA_KEY) {
+    const queries = [
+      `${localTerm} ${country.name} contact wholesale`,
+      `${enTerm} import ${country.name} B2B buyer distributor`,
+    ];
+    for (const q of queries) {
+      try {
+        const res = await axios.post('https://api.exa.ai/search', {
+          query: q, numResults: 8, useAutoprompt: true,
+          includeDomains: ['europages.com','kompass.com','thomasnet.com', ...(tradeDomains[country.code]||[])],
+          startPublishedDate: '2022-01-01',
+          contents: { text: { maxCharacters: 500 } },
+        }, { headers:{ 'x-api-key':EXA_KEY, 'Content-Type':'application/json' }, timeout:15000 });
+
+        for (const r of (res.data?.results || [])) {
+          if (!r.title || r.title.length < 5) continue;
+          const combined = (r.title+' '+(r.text||'')).toLowerCase();
+          if (!combined.match(/import|distribut|wholesale|supplier|trading|grossist|importeur|importateur/i)) continue;
+          if (combined.match(/manufactur|produc|fabrik|herstell/i)) continue;
+          const budgetMatch = (r.text||'').match(/[\$€£₺][\s]?[\d,]+[KMB]?|[\d,.]+\s*(EUR|USD|GBP|TRY)/i);
+          results.push({
+            company_name: (r.title.split('|')[0].split('-')[0].trim()).substring(0, 100),
+            website: r.url || null,
+            description: (r.text||'').substring(0, 300),
+            country: country.name, country_code: country.code, sector,
+            source_type: 'web_directory', budget_hint: budgetMatch?.[0]||null,
+            verified_importer: true,
+          });
+          if (results.length >= 10) break;
+        }
+        await sleep(300);
+      } catch(e:any) { console.log('[WebSearch] Exa error:', e.message); }
+      if (results.length >= 10) break;
+    }
+  }
+
+  // Tavily fallback
+  if (results.length < 5 && TAVILY_KEY) {
+    try {
+      const res = await axios.post('https://api.tavily.com/search', {
+        api_key: TAVILY_KEY,
+        query: `${enTerm} importer wholesale company ${country.name} contact`,
+        search_depth: 'advanced', max_results: 8,
+      }, { timeout: 12000 });
+      for (const r of (res.data?.results||[])) {
+        if (!r.title || r.title.length < 5) continue;
+        const combined = ((r.title||'')+' '+(r.content||'')).toLowerCase();
+        if (!combined.match(/import|distribut|wholesale|trading|supplier/i)) continue;
+        results.push({
+          company_name: (r.title.split('|')[0].split('-')[0].trim()).substring(0,100),
+          website: r.url||null,
+          description: (r.content||'').substring(0,200),
+          country: country.name, country_code: country.code, sector,
+          source_type: 'web_search', verified_importer: false,
+        });
+      }
+    } catch(e:any) { console.log('[WebSearch] Tavily error:', e.message); }
+  }
+
+  return results;
 }
 
-// ── 5. OUTREACH MESAJI ÜRET ───────────────────────────────────────────────────
+// ── 5. LİNKEDİN KARAR VERİCİ ARAMA ──────────────────────────────────────────
+async function searchLinkedInDecisionMakers(sector: string, companyName: string, country: any): Promise<{ name?: string; title?: string; linkedin?: string } | null> {
+  const EXA_KEY = process.env.EXA_API_KEY;
+  if (!EXA_KEY) return null;
+  try {
+    const query = `${sector} importer ${companyName} ${country.name} procurement manager director LinkedIn`;
+    const res = await axios.post('https://api.exa.ai/search', {
+      query, numResults: 3, useAutoprompt: false,
+      includeDomains: ['linkedin.com'],
+      contents: { text: { maxCharacters: 200 } },
+    }, { headers:{ 'x-api-key':EXA_KEY, 'Content-Type':'application/json' }, timeout:10000 });
+
+    const result = (res.data?.results||[])[0];
+    if (!result) return null;
+    // Extract name from LinkedIn URL pattern: linkedin.com/in/firstname-lastname
+    const nameMatch = result.url?.match(/linkedin\.com\/in\/([\w-]+)/);
+    const name = nameMatch ? nameMatch[1].replace(/-/g,' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : null;
+    const titleMatch = (result.text||'').match(/(director|manager|buyer|head|chief|president|owner|CEO|CFO|procurement)[^\n]*/i);
+    return { name: name||undefined, title: titleMatch?.[0]?.substring(0,80)||undefined, linkedin: result.url||undefined };
+  } catch { return null; }
+}
+
+// ── 6. ŞİRKET BİLGİSİ ZENGİNLEŞTİR ──────────────────────────────────────────
+async function enrichCompany(company: any, country: any): Promise<any> {
+  if (company.phone && company.email) return company; // Already complete
+  const TAVILY_KEY = process.env.TAVILY_API_KEY;
+  if (!TAVILY_KEY) return company;
+  try {
+    const r = await axios.post('https://api.tavily.com/search', {
+      api_key: TAVILY_KEY,
+      query: `"${company.company_name}" ${country.name} contact phone email importer`,
+      search_depth: 'basic', max_results: 3,
+    }, { timeout: 8000 });
+    const content = (r.data?.results||[]).map((x:any) => x.content||'').join(' ');
+    const phone = company.phone || content.match(/\+?[\d\s\-().]{9,18}/)?.[0]?.trim();
+    const email = company.email || content.match(/[\w.+-]+@[\w.-]+\.\w{2,}/i)?.[0];
+    return { ...company, phone: phone||null, email: email||null };
+  } catch { return company; }
+}
+
+// ── OUTREACH MESAJI ÜRET ──────────────────────────────────────────────────────
 async function generateOutreachMessage(params: {
   companyName: string; country: string; language: string; sector: string;
   senderCompany: string; senderProduct: string; channel: string; hsCodes?: string[];
@@ -256,109 +330,126 @@ async function generateOutreachMessage(params: {
     it:'İtalyanca', es:'İspanyolca', nl:'Hollandaca', pl:'Lehçe',
   };
   const cultural = CULTURAL_INTEL[params.country] || null;
-
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 600,
-      messages: [{
-        role: 'user',
-        content: `${langNames[language] || 'İngilizce'} dilinde ${channel} outreach mesajı yaz.
+      model: 'claude-sonnet-4-6', max_tokens: 600,
+      messages: [{ role:'user', content:`${langNames[language]||'İngilizce'} dilinde ${channel} outreach mesajı yaz.
 
 Gönderen: ${senderCompany} (Türk üretici/ihracatçı)
-Ürün: ${senderProduct}${hsCodes?.length ? ` (HS: ${hsCodes.join(', ')})` : ''}
+Ürün: ${senderProduct}${hsCodes?.length?` (HS: ${hsCodes.join(', ')})`:''}
 Alıcı: ${companyName} — ${country}
 Sektör: ${sector}
 Kanal: ${channel}
-Kültürel not: ${cultural?.tip || 'Profesyonel ol'}
+Kültürel ipucu: ${cultural?.tip||'Profesyonel ve doğal ol'}
 
 KURALLAR:
-- ${langNames[language] || 'İngilizce'} dil, çok doğal ve profesyonel
-- ${channel === 'whatsapp' ? '3-4 kısa cümle maksimum' : '120-180 kelime'}
+- ${langNames[language]||'İngilizce'} dil, çok doğal ve profesyonel
+- ${channel==='whatsapp'?'3-4 kısa cümle':'120-180 kelime'}
 - Türk ihracatçı olduğunu doğal belirt
-- Somut değer öneri (kalite/fiyat/teslimat)
-- ${channel === 'email' ? '"subject" alanını da doldur' : '"subject" boş bırak'}
-- Sahte veya genel değil, ${companyName} şirketine özel hissettir
+- Somut değer öner (kalite/fiyat/teslimat)
+- ${channel==='email'?'"subject" alanını da doldur':'"subject" boş bırak'}
+- ${companyName} şirketine özel hissettir, genel değil
 
-JSON döndür: {"subject": "...", "body": "..."}`
-      }]
+JSON: {"subject":"...","body":"..."}` }]
     });
     const text = r.content[0]?.text?.trim();
     const match = text?.match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : { body: text || '' };
+    return match ? JSON.parse(match[0]) : { body: text||'' };
   } catch {
-    return { body: `Dear ${companyName} team, we are ${senderCompany} from Turkey. We would like to discuss a potential business partnership in ${sector}.` };
+    return { body:`Dear ${companyName} team, we are ${senderCompany} from Turkey. We would like to discuss a potential business partnership in ${sector}.` };
   }
 }
 
-// ── 6. ARAMA OTURUMU (Polling tabanlı) ───────────────────────────────────────
-async function runExportSearch(sessionId: string, userId: string, countryCode: string, sector: string, hsCodes: string[], hsCCodeNames: string[], searchTerms: Record<string, string>, country: any, senderCompany: string, senderProduct: string): Promise<void> {
+// ── ANA ARAMA MOTORU (5 Kaynak Paralel) ──────────────────────────────────────
+async function runExportSearch(sessionId: string, userId: string, countryCode: string, sector: string, hsCodes: string[], hsCodeNames: string[], searchTerms: Record<string, string>, searchTermsLocal: string, country: any, senderCompany: string, senderProduct: string): Promise<void> {
   try {
-    await supabase.from('export_search_sessions').update({ status: 'running', step: 'hs_codes', progress: 10 }).eq('id', sessionId);
+    await supabase.from('export_search_sessions').update({ status:'running', step:'market_data', progress:15 }).eq('id', sessionId);
 
-    // Step 2: Market Intelligence (UN Comtrade)
-    await supabase.from('export_search_sessions').update({ step: 'market_data', progress: 25 }).eq('id', sessionId);
-    const marketIntel = await getMarketIntelligence(hsCodes, countryCode, country);
+    // Parallel: market data + Google Maps + Web search
+    const [marketIntel, mapsResults, webResults] = await Promise.allSettled([
+      getMarketIntelligence(hsCodes, countryCode, country),
+      searchGoogleMaps(sector, searchTermsLocal, country),
+      searchWebImporters(searchTerms, country, sector),
+    ]);
 
-    const risk = PAYMENT_RISK[countryCode] || { score: 60, label: 'Orta', dso: 60, notes: '' };
-    const cultural = CULTURAL_INTEL[countryCode] || null;
+    await supabase.from('export_search_sessions').update({ step:'merging_results', progress:55 }).eq('id', sessionId);
 
-    // Step 3: Find Importers (Exa.ai)
-    await supabase.from('export_search_sessions').update({ step: 'finding_importers', progress: 45 }).eq('id', sessionId);
-    const importers = await findImportersExa(searchTerms, country, sector);
+    const maps = mapsResults.status==='fulfilled' ? mapsResults.value : [];
+    const web  = webResults.status==='fulfilled'  ? webResults.value  : [];
 
-    // Step 4: Research companies (Tavily) — top 5
-    await supabase.from('export_search_sessions').update({ step: 'researching_companies', progress: 65 }).eq('id', sessionId);
-    const enriched: any[] = [];
-    for (const imp of importers.slice(0, 8)) {
-      const details = await researchCompanyTavily(imp.company_name, country.name);
-      enriched.push({ ...imp, phone: details.phone || null, email: details.email || null, research_verified: details.verified });
-      await sleep(200);
+    // Merge + deduplicate
+    const seen = new Set<string>();
+    const allImporters: any[] = [];
+    for (const imp of [...maps, ...web]) {
+      const key = imp.company_name.toLowerCase().substring(0,20);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      allImporters.push(imp);
     }
 
-    // Step 5: Save to leads + session result
-    await supabase.from('export_search_sessions').update({ step: 'saving_results', progress: 85 }).eq('id', sessionId);
+    await supabase.from('export_search_sessions').update({ step:'enriching_contacts', progress:70 }).eq('id', sessionId);
 
+    // Enrich top 8 companies (add phone/email + LinkedIn decision maker)
+    const enriched: any[] = [];
+    for (const imp of allImporters.slice(0, 8)) {
+      const [enrichedImp, linkedIn] = await Promise.allSettled([
+        enrichCompany(imp, country),
+        searchLinkedInDecisionMakers(sector, imp.company_name, country),
+      ]);
+      const final = enrichedImp.status==='fulfilled' ? enrichedImp.value : imp;
+      const li = linkedIn.status==='fulfilled' ? linkedIn.value : null;
+      enriched.push({ ...final, decision_maker_name: li?.name||null, decision_maker_title: li?.title||null, decision_maker_linkedin: li?.linkedin||null });
+      await sleep(150);
+    }
+
+    // Rest without enrichment (speed)
+    for (const imp of allImporters.slice(8)) enriched.push(imp);
+
+    await supabase.from('export_search_sessions').update({ step:'saving_results', progress:88 }).eq('id', sessionId);
+
+    // Save to leads
     if (enriched.length > 0) {
       const toInsert = enriched.map(e => ({
         user_id: userId,
         company_name: e.company_name,
-        phone: e.phone || null,
-        email: e.email || null,
-        website: e.website || null,
-        city: country.name,
-        country: country.name,
-        country_code: countryCode,
-        sector,
-        status: 'new',
-        source: 'export_search',
-        notes: `${country.flag} ${country.name} ihracat hedefi | HS: ${hsCodes.join(', ')} | ${e.verified_importer ? '✅ Doğrulanmış İthalatçı' : ''}`,
-        hs_codes: JSON.stringify(hsCodes),
-        verified_importer: e.verified_importer || false,
+        phone: e.phone||null, email: e.email||null, website: e.website||null,
+        city: (e.address?.split(',')?.[0]||country.name).substring(0,100),
+        country: country.name, country_code: countryCode, sector,
+        status: 'new', source: 'export_search',
+        notes: `${country.flag} ${country.name} ihracat hedefi${e.verified_importer?' | ✅ Doğrulanmış İthalatçı':''}${e.decision_maker_name?` | 👤 ${e.decision_maker_name} (${e.decision_maker_title||'Yönetici'})`:''}`,
+        hs_codes: hsCodes.length ? JSON.stringify(hsCodes) : null,
+        verified_importer: e.verified_importer||false,
+        decision_maker_name: e.decision_maker_name||null,
+        decision_maker_title: e.decision_maker_title||null,
+        decision_maker_linkedin: e.decision_maker_linkedin||null,
       }));
-      await supabase.from('leads').insert(toInsert).select();
+      await supabase.from('leads').insert(toInsert);
     }
 
-    // Save market intel to session
+    const intel = marketIntel.status==='fulfilled' ? marketIntel.value : null;
+    const risk = PAYMENT_RISK[countryCode] || { score:60, label:'Orta', dso:60, notes:'' };
+    const cultural = CULTURAL_INTEL[countryCode] || null;
+
     await supabase.from('export_search_sessions').update({
-      status: 'completed', progress: 100, step: 'done',
+      status:'completed', progress:100, step:'done',
       result: JSON.stringify({
         importersFound: enriched.length,
-        marketIntel: { ...marketIntel, hsCodes, hsCodeNames: hsCCodeNames },
+        sources: { maps: maps.length, web: web.length },
+        marketIntel: intel ? { ...intel, hsCodes, hsCodeNames } : null,
         paymentRisk: risk,
         culturalIntel: cultural,
       }),
       completed_at: new Date().toISOString(),
     }).eq('id', sessionId);
 
-    console.log(`[ExportSearch] Session ${sessionId} done: ${enriched.length} importers found for ${sector} in ${country.name}`);
-  } catch (e: any) {
+    console.log(`[ExportSearch] Done: ${enriched.length} leads — ${maps.length} Maps + ${web.length} Web (${sector} / ${country.name})`);
+  } catch(e:any) {
     console.error('[ExportSearch] error:', e.message);
-    await supabase.from('export_search_sessions').update({ status: 'failed', step: e.message }).eq('id', sessionId);
+    await supabase.from('export_search_sessions').update({ status:'failed', step:e.message }).eq('id', sessionId);
   }
 }
 
-// ── AUTO-MIGRATE export_search_sessions ──────────────────────────────────────
+// ── AUTO-MIGRATE ──────────────────────────────────────────────────────────────
 async function autoMigrateExport() {
   try {
     const { error } = await supabase.from('export_search_sessions').select('id').limit(1);
@@ -369,8 +460,7 @@ async function autoMigrateExport() {
         user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
         country_code TEXT, sector TEXT, status TEXT DEFAULT 'pending',
         step TEXT, progress INTEGER DEFAULT 0,
-        result JSONB, completed_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ DEFAULT now()
+        result JSONB, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()
       );
       ALTER TABLE export_search_sessions ENABLE ROW LEVEL SECURITY;
       DROP POLICY IF EXISTS "user_own_export" ON export_search_sessions;
@@ -378,310 +468,206 @@ async function autoMigrateExport() {
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS hs_codes TEXT;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS verified_importer BOOLEAN DEFAULT false;
       ALTER TABLE leads ADD COLUMN IF NOT EXISTS country_code TEXT;
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_name TEXT;
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_title TEXT;
+      ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_linkedin TEXT;
     `;
     await axios.post(`${process.env.SUPABASE_URL}/rest/v1/sql`, sql, {
-      headers: { 'Content-Type':'text/plain', 'apikey':process.env.SUPABASE_SERVICE_KEY, 'Authorization':`Bearer ${process.env.SUPABASE_SERVICE_KEY}`, 'Prefer':'return=minimal' },
-      timeout: 20000,
+      headers:{ 'Content-Type':'text/plain','apikey':process.env.SUPABASE_SERVICE_KEY,'Authorization':`Bearer ${process.env.SUPABASE_SERVICE_KEY}`,'Prefer':'return=minimal' },
+      timeout:20000,
     });
-    console.log('[ExportMigrate] Tables created');
-  } catch (e: any) { console.log('[ExportMigrate] skipped:', e.message); }
+  } catch(e:any) { console.log('[ExportMigrate] skipped:', e.message); }
 }
 autoMigrateExport();
 setTimeout(autoMigrateExport, 5000);
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
 // ROUTES
-// ═══════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
 
-// GET /api/export/countries
 router.get('/countries', (_req: any, res: any) => {
-  const enriched = COUNTRIES.map(c => ({
-    ...c,
-    paymentRisk: PAYMENT_RISK[c.code] || { score:60, label:'Orta', dso:60, notes:'' },
-    hasCulturalIntel: !!CULTURAL_INTEL[c.code],
-  }));
-  res.json({ countries: enriched });
+  res.json({ countries: COUNTRIES.map(c => ({ ...c, paymentRisk: PAYMENT_RISK[c.code]||{ score:60,label:'Orta',dso:60,notes:'' }, hasCulturalIntel: !!CULTURAL_INTEL[c.code] })) });
 });
 
-// POST /api/export/start-search — Yeni arama başlat (anında döner, arka planda çalışır)
 router.post('/start-search', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { countryCode, sector } = req.body;
-    if (!countryCode || !sector) return res.status(400).json({ error: 'countryCode ve sector zorunlu' });
+    if (!countryCode||!sector) return res.status(400).json({ error:'countryCode ve sector zorunlu' });
+    const country = COUNTRIES.find(c=>c.code===countryCode);
+    if (!country) return res.status(400).json({ error:'Geçersiz ülke kodu' });
 
-    const country = COUNTRIES.find(c => c.code === countryCode);
-    if (!country) return res.status(400).json({ error: 'Geçersiz ülke kodu' });
+    const { data:profile } = await supabase.from('business_profiles').select('*').eq('user_id',userId).maybeSingle();
+    const { data:userRow } = await supabase.from('users').select('company').eq('id',userId).single();
+    const senderCompany = (typeof profile?.company==='string'?profile.company:profile?.company?.name) || userRow?.company || 'Türk İhracatçı';
+    const senderProduct = (typeof profile?.product==='string'?profile.product:profile?.product?.description) || sector;
 
-    // Kullanıcı profili
-    const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).maybeSingle();
-    const { data: userRow } = await supabase.from('users').select('company, name').eq('id', userId).single();
-    const senderCompany = (typeof profile?.company === 'string' ? profile.company : profile?.company?.name) || userRow?.company || 'Türk İhracatçı';
-    const senderProduct = (typeof profile?.product === 'string' ? profile.product : profile?.product?.description) || sector;
+    const { codes:hsCodes, names:hsCodeNames, searchTerms, searchTermsLocal } = await mapSectorToHSCodes(sector);
 
-    // 1. HS kod eşleştir (hızlı)
-    const { codes: hsCodes, names: hsCodeNames, searchTerms } = await mapSectorToHSCodes(sector);
-
-    // 2. Session oluştur
-    const { data: session } = await supabase.from('export_search_sessions').insert([{
-      user_id: userId, country_code: countryCode, sector,
-      status: 'running', step: 'starting', progress: 5,
+    const { data:session } = await supabase.from('export_search_sessions').insert([{
+      user_id:userId, country_code:countryCode, sector, status:'running', step:'starting', progress:5,
     }]).select().single();
 
     res.json({
-      ok: true,
-      sessionId: session?.id,
-      hsCodes, hsCodeNames,
-      message: `${country.flag} ${country.name}'de "${sector}" aranıyor... HS kodları: ${hsCodes.join(', ')}`,
+      ok:true, sessionId:session?.id, hsCodes, hsCodeNames,
+      message:`${country.flag} ${country.name}'de "${sector}" aranıyor — Google Haritalar + Web + LinkedIn + Ticaret Dizinleri`,
     });
 
-    // Arka planda çalıştır
-    runExportSearch(session?.id, userId, countryCode, sector, hsCodes, hsCodeNames, searchTerms, country, senderCompany, senderProduct);
-
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    runExportSearch(session?.id, userId, countryCode, sector, hsCodes, hsCodeNames, searchTerms, searchTermsLocal, country, senderCompany, senderProduct);
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// GET /api/export/search-session/:id/status — Polling
 router.get('/search-session/:id/status', async (req: any, res: any) => {
   try {
-    const { data } = await supabase.from('export_search_sessions').select('*')
-      .eq('id', req.params.id).eq('user_id', req.userId).single();
-    if (!data) return res.status(404).json({ error: 'Oturum bulunamadı' });
-    const result = data.result ? (typeof data.result === 'string' ? JSON.parse(data.result) : data.result) : null;
-    res.json({
-      status: data.status, step: data.step, progress: data.progress,
-      importersFound: result?.importersFound || 0,
-      marketIntel: result?.marketIntel || null,
-      paymentRisk: result?.paymentRisk || null,
-      culturalIntel: result?.culturalIntel || null,
-    });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    const { data } = await supabase.from('export_search_sessions').select('*').eq('id',req.params.id).eq('user_id',req.userId).single();
+    if (!data) return res.status(404).json({ error:'Oturum bulunamadı' });
+    const result = data.result ? (typeof data.result==='string'?JSON.parse(data.result):data.result) : null;
+    res.json({ status:data.status, step:data.step, progress:data.progress, importersFound:result?.importersFound||0, sources:result?.sources||null, marketIntel:result?.marketIntel||null, paymentRisk:result?.paymentRisk||null, culturalIntel:result?.culturalIntel||null });
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// GET /api/export/market-intel/:countryCode — Anlık pazar zekası (HS kodu olmadan)
 router.get('/market-intel/:countryCode', async (req: any, res: any) => {
-  const country = COUNTRIES.find(c => c.code === req.params.countryCode);
-  if (!country) return res.status(404).json({ error: 'Ülke bulunamadı' });
-  const risk = PAYMENT_RISK[req.params.countryCode] || { score:60, label:'Orta', dso:60, notes:'' };
-  const cultural = CULTURAL_INTEL[req.params.countryCode] || null;
-
-  // Turkey's total exports to this country (all products, 2023)
+  const country = COUNTRIES.find(c=>c.code===req.params.countryCode);
+  if (!country) return res.status(404).json({ error:'Ülke bulunamadı' });
   let totalExportsUSD = 0;
   try {
-    const r = await axios.get('https://comtrade.un.org/api/get', {
-      params: { r:'792', p:country.comtradeCode, ps:2023, px:'HS', cc:'TOTAL', type:'C', freq:'A', fmt:'json', max:1 },
-      timeout: 10000,
-    });
-    totalExportsUSD = r.data?.dataset?.[0]?.TradeValue || 0;
+    const r = await axios.get('https://comtrade.un.org/api/get', { params:{ r:'792', p:country.comtradeCode, ps:2023, px:'HS', cc:'TOTAL', type:'C', freq:'A', fmt:'json', max:1 }, timeout:10000 });
+    totalExportsUSD = r.data?.dataset?.[0]?.TradeValue||0;
   } catch {}
-
-  res.json({ country: { ...country, paymentRisk: risk, culturalIntel: cultural, totalExportsUSD } });
+  res.json({ country:{ ...country, paymentRisk:PAYMENT_RISK[req.params.countryCode]||null, culturalIntel:CULTURAL_INTEL[req.params.countryCode]||null, totalExportsUSD } });
 });
 
-// POST /api/export/generate-message
 router.post('/generate-message', async (req: any, res: any) => {
   try {
-    const { leadId, channel = 'whatsapp' } = req.body;
-    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
-    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
-
-    const country = COUNTRIES.find(c => c.code === (lead.country_code || 'DE')) || COUNTRIES[0];
-    const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).maybeSingle();
-    const { data: userRow } = await supabase.from('users').select('company').eq('id', req.userId).single();
-    const senderCompany = (typeof profile?.company === 'string' ? profile.company : profile?.company?.name) || userRow?.company || 'Şirketimiz';
-    const senderProduct = (typeof profile?.product === 'string' ? profile.product : profile?.product?.description) || lead.sector || '';
-
+    const { leadId, channel='whatsapp' } = req.body;
+    const { data:lead } = await supabase.from('leads').select('*').eq('id',leadId).eq('user_id',req.userId).single();
+    if (!lead) return res.status(404).json({ error:'Lead bulunamadı' });
+    const country = COUNTRIES.find(c=>c.code===(lead.country_code||'DE'))||COUNTRIES[0];
+    const { data:profile } = await supabase.from('business_profiles').select('*').eq('user_id',req.userId).maybeSingle();
+    const { data:userRow } = await supabase.from('users').select('company').eq('id',req.userId).single();
+    const senderCompany = (typeof profile?.company==='string'?profile.company:profile?.company?.name)||userRow?.company||'Şirketimiz';
+    const senderProduct = (typeof profile?.product==='string'?profile.product:profile?.product?.description)||lead.sector||'';
     const hsCodes = lead.hs_codes ? JSON.parse(lead.hs_codes) : [];
-    const message = await generateOutreachMessage({
-      companyName: lead.company_name, country: country.name, language: country.language,
-      sector: lead.sector || '', senderCompany, senderProduct, channel, hsCodes,
-    });
-
-    // Mesajı kaydet (DB'ye)
-    await supabase.from('export_messages').upsert([{
-      user_id: req.userId, lead_id: leadId,
-      country_code: country.code, channel,
-      subject: message.subject || null, body: message.body,
-      language: country.language, status: 'draft',
-    }], { onConflict: 'user_id,lead_id,channel' });
-
-    res.json({ ok: true, message, lead: lead.company_name, country: country.name, language: country.language });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    const message = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
+    await supabase.from('export_messages').upsert([{ user_id:req.userId, lead_id:leadId, country_code:country.code, channel, subject:message.subject||null, body:message.body, language:country.language, status:'draft' }], { onConflict:'user_id,lead_id,channel' });
+    res.json({ ok:true, message, lead:lead.company_name, country:country.name, language:country.language });
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// GET /api/export/messages — Tüm üretilmiş mesajları getir
 router.get('/messages', async (req: any, res: any) => {
   try {
     const { countryCode, channel } = req.query;
-    let query = supabase.from('export_messages').select('*, leads(company_name, country, sector, phone, website)')
-      .eq('user_id', req.userId).order('created_at', { ascending: false }).limit(100);
+    let query = supabase.from('export_messages').select('*, leads(company_name,country,sector,phone,website,decision_maker_name,decision_maker_title,decision_maker_linkedin)').eq('user_id',req.userId).order('created_at',{ ascending:false }).limit(100);
     if (countryCode) query = query.eq('country_code', countryCode);
     if (channel) query = query.eq('channel', channel);
     const { data } = await query;
-    res.json({ messages: data || [] });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    res.json({ messages:data||[] });
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// POST /api/export/bulk-messages
 router.post('/bulk-messages', async (req: any, res: any) => {
   try {
-    const { countryCode, leadIds, channel = 'whatsapp' } = req.body;
-    if (!leadIds?.length) return res.status(400).json({ error: 'leadIds zorunlu' });
-    const country = COUNTRIES.find(c => c.code === countryCode);
-    if (!country) return res.status(400).json({ error: 'Geçersiz ülke' });
-    const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).maybeSingle();
-    const { data: userRow } = await supabase.from('users').select('company').eq('id', req.userId).single();
-    const senderCompany = (typeof profile?.company === 'string' ? profile.company : profile?.company?.name) || userRow?.company || 'Şirketimiz';
-    const senderProduct = (typeof profile?.product === 'string' ? profile.product : profile?.product?.description) || '';
-
-    res.json({ ok: true, message: `${leadIds.length} lead için ${country.name} mesajları oluşturuluyor...` });
-
+    const { countryCode, leadIds, channel='whatsapp' } = req.body;
+    if (!leadIds?.length) return res.status(400).json({ error:'leadIds zorunlu' });
+    const country = COUNTRIES.find(c=>c.code===countryCode);
+    if (!country) return res.status(400).json({ error:'Geçersiz ülke' });
+    const { data:profile } = await supabase.from('business_profiles').select('*').eq('user_id',req.userId).maybeSingle();
+    const { data:userRow } = await supabase.from('users').select('company').eq('id',req.userId).single();
+    const senderCompany = (typeof profile?.company==='string'?profile.company:profile?.company?.name)||userRow?.company||'Şirketimiz';
+    const senderProduct = (typeof profile?.product==='string'?profile.product:profile?.product?.description)||'';
+    res.json({ ok:true, message:`${leadIds.length} lead için mesajlar oluşturuluyor...` });
     (async () => {
       for (const leadId of leadIds) {
         try {
-          const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
+          const { data:lead } = await supabase.from('leads').select('*').eq('id',leadId).eq('user_id',req.userId).single();
           if (!lead) continue;
           const hsCodes = lead.hs_codes ? JSON.parse(lead.hs_codes) : [];
-          const msg = await generateOutreachMessage({
-            companyName: lead.company_name, country: country.name, language: country.language,
-            sector: lead.sector || '', senderCompany, senderProduct, channel, hsCodes,
-          });
-          await supabase.from('export_messages').upsert([{
-            user_id: req.userId, lead_id: leadId,
-            country_code: countryCode, channel,
-            subject: msg.subject || null, body: msg.body,
-            language: country.language, status: 'draft',
-          }], { onConflict: 'user_id,lead_id,channel' });
+          const msg = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
+          await supabase.from('export_messages').upsert([{ user_id:req.userId, lead_id:leadId, country_code:countryCode, channel, subject:msg.subject||null, body:msg.body, language:country.language, status:'draft' }], { onConflict:'user_id,lead_id,channel' });
           await sleep(400);
-        } catch (e: any) { console.error('bulk msg error:', e.message); }
+        } catch(e:any) { console.error('bulk msg error:', e.message); }
       }
     })();
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// POST /api/export/create-campaign
 router.post('/create-campaign', async (req: any, res: any) => {
   try {
     const { name, countryCode, leadIds, channel, campaignType } = req.body;
-    if (!leadIds?.length) return res.status(400).json({ error: 'Lead seçin' });
-    const country = COUNTRIES.find(c => c.code === countryCode);
-    const { data: campaign, error } = await supabase.from('export_campaigns').insert([{
-      user_id: req.userId,
-      name: name || `${country?.flag} ${country?.name} ${channel?.toUpperCase()} Kampanyası`,
-      country_code: countryCode, country_name: country?.name,
-      channel, campaign_type: campaignType || 'outreach',
-      lead_count: leadIds.length, lead_ids: leadIds,
-      status: 'draft', language: country?.language,
-    }]).select().single();
+    if (!leadIds?.length) return res.status(400).json({ error:'Lead seçin' });
+    const country = COUNTRIES.find(c=>c.code===countryCode);
+    const { data:campaign, error } = await supabase.from('export_campaigns').insert([{ user_id:req.userId, name:name||`${country?.flag} ${country?.name} ${channel?.toUpperCase()} Kampanyası`, country_code:countryCode, country_name:country?.name, channel, campaign_type:campaignType||'outreach', lead_count:leadIds.length, lead_ids:leadIds, status:'draft', language:country?.language }]).select().single();
     if (error) throw error;
-    res.json({ ok: true, campaign, message: `${leadIds.length} lead için ${country?.name} kampanyası oluşturuldu` });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    res.json({ ok:true, campaign, message:`${leadIds.length} lead için ${country?.name} kampanyası oluşturuldu` });
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// POST /api/export/campaigns/:id/send — Kampanya gönder (WhatsApp entegrasyonu)
 router.post('/campaigns/:id/send', async (req: any, res: any) => {
   try {
-    const { data: camp } = await supabase.from('export_campaigns').select('*').eq('id', req.params.id).eq('user_id', req.userId).single();
-    if (!camp) return res.status(404).json({ error: 'Kampanya bulunamadı' });
-    if (camp.status === 'running') return res.status(400).json({ error: 'Kampanya zaten çalışıyor' });
-
-    await supabase.from('export_campaigns').update({ status: 'running', started_at: new Date().toISOString() }).eq('id', req.params.id);
-    res.json({ ok: true, message: `${camp.lead_count} lead için kampanya başlatıldı` });
-
+    const { data:camp } = await supabase.from('export_campaigns').select('*').eq('id',req.params.id).eq('user_id',req.userId).single();
+    if (!camp) return res.status(404).json({ error:'Kampanya bulunamadı' });
+    if (camp.status==='running') return res.status(400).json({ error:'Kampanya zaten çalışıyor' });
+    await supabase.from('export_campaigns').update({ status:'running', started_at:new Date().toISOString() }).eq('id',req.params.id);
+    res.json({ ok:true, message:`${camp.lead_count} lead için kampanya başlatıldı` });
     (async () => {
       try {
         const { sendWhatsAppMessage } = require('./settings');
-        const leadIds: string[] = camp.lead_ids || [];
+        const leadIds: string[] = camp.lead_ids||[];
         let sent = 0;
-
         for (const leadId of leadIds) {
           try {
-            const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).single();
+            const { data:lead } = await supabase.from('leads').select('*').eq('id',leadId).single();
             if (!lead?.phone) continue;
-
-            // Get or generate message
-            const { data: existingMsg } = await supabase.from('export_messages')
-              .select('body').eq('lead_id', leadId).eq('channel', camp.channel).eq('user_id', req.userId).maybeSingle();
-
-            const msgBody = existingMsg?.body;
-            if (!msgBody) continue;
-
-            if (camp.channel === 'whatsapp') {
-              await sendWhatsAppMessage(req.userId, lead.phone, msgBody);
-              await supabase.from('messages').insert([{
-                user_id: req.userId, lead_id: leadId,
-                direction: 'out', content: msgBody,
-                channel: 'whatsapp', sent_at: new Date().toISOString(),
-                metadata: JSON.stringify({ type: 'export_campaign', campaign_id: camp.id }),
-              }]);
+            const { data:existingMsg } = await supabase.from('export_messages').select('body').eq('lead_id',leadId).eq('channel',camp.channel).eq('user_id',req.userId).maybeSingle();
+            if (!existingMsg?.body) continue;
+            if (camp.channel==='whatsapp') {
+              await sendWhatsAppMessage(req.userId, lead.phone, existingMsg.body);
+              await supabase.from('messages').insert([{ user_id:req.userId, lead_id:leadId, direction:'out', content:existingMsg.body, channel:'whatsapp', sent_at:new Date().toISOString(), metadata:JSON.stringify({ type:'export_campaign', campaign_id:camp.id }) }]);
             }
-
-            await supabase.from('export_messages').update({ status: 'sent', sent_at: new Date().toISOString() })
-              .eq('lead_id', leadId).eq('campaign_id', camp.id);
-            sent++;
-            await sleep(8000); // Anti-ban delay
-          } catch (e: any) { console.error('send error:', e.message); }
+            await supabase.from('export_messages').update({ status:'sent', sent_at:new Date().toISOString() }).eq('lead_id',leadId).eq('user_id',req.userId);
+            sent++; await sleep(8000);
+          } catch(e:any) { console.error('send error:', e.message); }
         }
-
-        await supabase.from('export_campaigns').update({
-          status: 'completed', sent_count: sent, completed_at: new Date().toISOString(),
-        }).eq('id', req.params.id);
-      } catch (e: any) {
-        await supabase.from('export_campaigns').update({ status: 'failed' }).eq('id', req.params.id);
+        await supabase.from('export_campaigns').update({ status:'completed', sent_count:sent, completed_at:new Date().toISOString() }).eq('id',req.params.id);
+      } catch(e:any) {
+        await supabase.from('export_campaigns').update({ status:'failed' }).eq('id',req.params.id);
       }
     })();
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// GET /api/export/campaigns
 router.get('/campaigns', async (req: any, res: any) => {
   try {
-    const { data } = await supabase.from('export_campaigns').select('*').eq('user_id', req.userId).order('created_at', { ascending: false });
-    res.json({ campaigns: data || [] });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    const { data } = await supabase.from('export_campaigns').select('*').eq('user_id',req.userId).order('created_at',{ ascending:false });
+    res.json({ campaigns:data||[] });
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// GET /api/export/export-leads
 router.get('/export-leads', async (req: any, res: any) => {
   try {
-    const { countryCode, limit = 100 } = req.query;
-    let query = supabase.from('leads').select('*').eq('user_id', req.userId).eq('source', 'export_search')
-      .order('created_at', { ascending: false }).limit(Number(limit));
+    const { countryCode, limit=100 } = req.query;
+    let query = supabase.from('leads').select('*').eq('user_id',req.userId).eq('source','export_search').order('created_at',{ ascending:false }).limit(Number(limit));
     if (countryCode) query = query.eq('country_code', countryCode);
     const { data } = await query;
-    res.json({ leads: data || [] });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    res.json({ leads:data||[] });
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// GET /api/export/analytics
 router.get('/analytics', async (req: any, res: any) => {
   try {
-    const { data: leads } = await supabase.from('leads').select('country, country_code, status, sector').eq('user_id', req.userId).eq('source', 'export_search');
-    const { data: campaigns } = await supabase.from('export_campaigns').select('country_code, country_name, status, lead_count, sent_count').eq('user_id', req.userId);
-    const { data: msgs } = await supabase.from('export_messages').select('country_code, status, channel').eq('user_id', req.userId);
-
-    const byCountry: Record<string, any> = {};
-    (leads || []).forEach((l: any) => {
-      if (!byCountry[l.country]) byCountry[l.country] = { leads: 0, converted: 0, country_code: l.country_code };
+    const { data:leads } = await supabase.from('leads').select('country,country_code,status,sector').eq('user_id',req.userId).eq('source','export_search');
+    const { data:campaigns } = await supabase.from('export_campaigns').select('country_code,status,lead_count,sent_count').eq('user_id',req.userId);
+    const { data:msgs } = await supabase.from('export_messages').select('country_code,status,channel').eq('user_id',req.userId);
+    const byCountry: Record<string,any> = {};
+    (leads||[]).forEach((l:any) => {
+      if (!byCountry[l.country]) byCountry[l.country] = { leads:0, converted:0, country_code:l.country_code };
       byCountry[l.country].leads++;
-      if (l.status === 'won') byCountry[l.country].converted++;
+      if (l.status==='won') byCountry[l.country].converted++;
     });
-
-    res.json({
-      totalLeads: leads?.length || 0,
-      totalCampaigns: campaigns?.length || 0,
-      totalMessages: msgs?.length || 0,
-      sentMessages: msgs?.filter((m: any) => m.status === 'sent').length || 0,
-      byCountry: Object.entries(byCountry).map(([c, v]: any) => ({
-        country: c, country_code: v.country_code, leads: v.leads, converted: v.converted,
-        convRate: v.leads > 0 ? Math.round((v.converted / v.leads) * 100) : 0,
-      })).sort((a, b) => b.leads - a.leads).slice(0, 8),
-    });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    res.json({ totalLeads:leads?.length||0, totalCampaigns:campaigns?.length||0, totalMessages:msgs?.length||0, sentMessages:msgs?.filter((m:any)=>m.status==='sent').length||0, byCountry:Object.entries(byCountry).map(([c,v]:any)=>({ country:c, country_code:v.country_code, leads:v.leads, converted:v.converted, convRate:v.leads>0?Math.round((v.converted/v.leads)*100):0 })).sort((a,b)=>b.leads-a.leads).slice(0,8) });
+  } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-// Geriye uyumluluk
-router.get('/markets', (_req: any, res: any) => res.json({ countries: COUNTRIES }));
-router.post('/find-leads', async (req: any, res: any) => res.redirect(307, '/api/export/start-search'));
+router.get('/markets', (_req:any,res:any) => res.json({ countries:COUNTRIES }));
 
 module.exports = router;

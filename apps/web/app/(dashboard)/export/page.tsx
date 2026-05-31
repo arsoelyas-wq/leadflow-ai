@@ -128,13 +128,16 @@ function SearchProgress({ sessionId, onComplete }: { sessionId: string; onComple
   const [found, setFound] = useState(0)
 
   const stepLabels: Record<string, string> = {
-    starting: '⚡ Başlatılıyor...',
-    hs_codes: '🏷️ HS Kodları eşleştiriliyor...',
-    market_data: '📊 UN Comtrade pazar verisi çekiliyor...',
-    finding_importers: '🔍 Exa.ai ile ithalatçılar aranıyor...',
-    researching_companies: '🔬 Şirketler araştırılıyor (Tavily)...',
-    saving_results: '💾 Sonuçlar kaydediliyor...',
-    done: '✅ Tamamlandı!',
+    starting:              '⚡ Arama motoru başlatılıyor...',
+    hs_codes:              '🏷️ Ürün kategorileri analiz ediliyor...',
+    market_data:           '📊 Global ticaret verileri çekiliyor...',
+    market_intelligence:   '📊 Pazar büyüklüğü hesaplanıyor...',
+    merging_results:       '🔀 Sonuçlar birleştiriliyor...',
+    finding_importers:     '🔍 Google Haritalar + Web + LinkedIn taranıyor...',
+    enriching_contacts:    '📋 İletişim bilgileri araştırılıyor...',
+    researching_companies: '🔬 Şirket profilleri analiz ediliyor...',
+    saving_results:        '💾 Sonuçlar kaydediliyor...',
+    done:                  '✅ Tamamlandı!',
   }
 
   useEffect(() => {
@@ -178,7 +181,7 @@ function SearchProgress({ sessionId, onComplete }: { sessionId: string; onComple
       <div style={{ height:5, background:'rgba(255,255,255,0.06)', borderRadius:3 }}>
         <div style={{ height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#10b981,#34d399)', borderRadius:3, transition:'width 0.5s', boxShadow:'0 0 10px rgba(16,185,129,0.4)' }} />
       </div>
-      <p style={{ color:'#475569', fontSize:11, margin:'8px 0 0' }}>HS Kodu · UN Comtrade · Exa.ai · Tavily · Claude AI — gerçek B2B ithalatçı araması</p>
+      <p style={{ color:'#475569', fontSize:11, margin:'8px 0 0' }}>Google Haritalar · Global Web Dizinleri · LinkedIn · Ticaret İstatistikleri · AI Analiz</p>
     </div>
   )
 }
@@ -384,11 +387,8 @@ export default function ExportPage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:22 }}>
           <GlobalTradeOrb size={88} activeCountry={selectedCountry?.flag||''} scanning={!!activeSessionId} />
           <div style={{ flex:1 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:5 }}>
-              <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:0 }}>İhracat Zekası</h1>
-              <span style={{ background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>Vujis Teknolojisi</span>
-            </div>
-            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 14px' }}>HS Kod Eşleştirici · UN Comtrade Pazar Verisi · Exa.ai İthalatçı Keşfi · Ödeme Risk Skoru · Kültürel Zeka</p>
+            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 6px' }}>İhracat Zekası</h1>
+            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 14px' }}>Hedef ülkede gerçek alıcı bul · Google Haritalar, Web, LinkedIn, Ticaret Dizinleri · Kendi dilinde mesaj gönder</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
               {[{l:'İhracat Leadi',v:totalExports,c:'#10b981'},{l:'Kampanya',v:totalCampaigns,c:'#8b5cf6'},{l:'Gönderilen Mesaj',v:sentMsgs,c:'#06b6d4'},{l:'Kapsanan Ülke',v:countries.length,c:'#f59e0b'},{l:'Veri Kaynağı',v:'4',c:'#ef4444'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -478,13 +478,13 @@ export default function ExportPage() {
                   style={{ ...inp, flex:1 }} />
                 <button onClick={startSearch} disabled={!!activeSessionId || !sector.trim()}
                   style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 22px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#065f46,#10b981)', color:'#fff', fontSize:13, fontWeight:700, cursor:!!activeSessionId||!sector.trim()?'not-allowed':'pointer', boxShadow:'0 4px 16px rgba(16,185,129,0.35)', flexShrink:0 }}>
-                  <Search size={14} /> Exa.ai + Comtrade
+                  <Search size={14} /> Müşteri Ara
                 </button>
               </div>
 
               <div style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:10, padding:'10px 14px' }}>
                 <p style={{ color:'#34d399', fontSize:11, margin:0, lineHeight:1.7 }}>
-                  ⚡ <strong>HS Kod Eşleştirme</strong> → <strong>UN Comtrade pazar büyüklüğü</strong> → <strong>Exa.ai ile gerçek ithalatçı</strong> → <strong>Tavily şirket araştırması</strong> → Doğrulanmış lead listesi
+                  🗺️ <strong>Google Haritalar</strong> + 🌐 <strong>Web Dizinleri</strong> + 👔 <strong>LinkedIn</strong> + 📊 <strong>Global Ticaret Verisi</strong> → Doğrulanmış alıcı + Karar verici kişi
                 </p>
               </div>
             </div>
@@ -747,22 +747,22 @@ export default function ExportPage() {
             </div>
           )}
 
-          {/* Data sources info */}
+          {/* Arama Kanalları */}
           <div style={{ ...card, padding:20 }}>
-            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>🔌 Kullanılan Veri Kaynakları</h3>
+            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>🔍 Müşteri Bulma Kanalları</h3>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }}>
               {[
-                { name:'UN Comtrade', desc:'4B+ sevkiyat kaydı, 195 ülke pazar istatistiği', color:'#06b6d4', status:'Aktif' },
-                { name:'Exa.ai', desc:'1B+ web sayfası, doğrulanmış ithalatçı araması', color:'#8b5cf6', status:'Aktif' },
-                { name:'Tavily', desc:'Şirket araştırması, iletişim bilgisi keşfi', color:'#f59e0b', status:'Aktif' },
-                { name:'Claude AI', desc:'HS kod eşleştirme, kültürel outreach mesajı', color:'#f97316', status:'Aktif' },
+                { name:'Google Haritalar', desc:'Yerel işletmeler, dağıtıcılar, ithalatçılar', color:'#10b981', icon:'🗺️' },
+                { name:'Web & Ticaret Dizinleri', desc:'Europages, Kompass, Thomas Net ve 100+ dizin', color:'#06b6d4', icon:'🌐' },
+                { name:'LinkedIn', desc:'Şirketteki karar verici kişi bulma', color:'#3b82f6', icon:'👔' },
+                { name:'Global Ticaret Verisi', desc:'Ülke bazlı pazar büyüklüğü ve Türkiye payı', color:'#8b5cf6', icon:'📊' },
               ].map(src => (
-                <div key={src.name} style={{ background:`${src.color}08`, border:`1px solid ${src.color}18`, borderRadius:12, padding:'12px 14px' }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                    <p style={{ color:src.color, fontWeight:700, fontSize:13, margin:0 }}>{src.name}</p>
-                    <span style={{ background:`${src.color}15`, color:src.color, fontSize:9, padding:'2px 6px', borderRadius:20, fontWeight:700 }}>● {src.status}</span>
+                <div key={src.name} style={{ background:`${src.color}08`, border:`1px solid ${src.color}18`, borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'flex-start', gap:10 }}>
+                  <span style={{ fontSize:20, flexShrink:0 }}>{src.icon}</span>
+                  <div>
+                    <p style={{ color:src.color, fontWeight:700, fontSize:12, margin:'0 0 3px' }}>{src.name}</p>
+                    <p style={{ color:'#475569', fontSize:11, margin:0 }}>{src.desc}</p>
                   </div>
-                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>{src.desc}</p>
                 </div>
               ))}
             </div>
