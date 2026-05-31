@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
   Settings, CreditCard, LogOut, Zap, Activity, Target,
-  Bot, FlaskConical, Webhook, Smartphone, Eye, Package,
+  Bot, FlaskConical, Smartphone, Eye, Package,
   TrendingUp, Sparkles, Video, FileText,
   Clock, Heart, Code, Building2, Phone, Globe, Globe2, Box,
   Workflow, MapPin, ScrollText, Gift, TrendingDown,
@@ -129,7 +129,6 @@ const groups: NavGroup[] = [
     items: [
       { href: '/automations', label: 'Otomasyonlar',   icon: Zap },
       { href: '/wa-numbers',  label: 'WA Numaralar',   icon: Smartphone },
-      { href: '/webhooks',    label: 'Webhooks',       icon: Webhook },
       { href: '/developer',   label: 'API Erişimi',    icon: Code,       plan: 'pro' },
       { href: '/whitelabel',  label: 'White-Label',    icon: Building2,  plan: 'enterprise' },
       { href: '/monitoring',  label: 'Monitör',        icon: Activity },
