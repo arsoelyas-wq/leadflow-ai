@@ -350,22 +350,94 @@ async function searchLinkedInDecisionMakers(sector: string, companyName: string,
   } catch { return null; }
 }
 
-// ── 6. ŞİRKET BİLGİSİ ZENGİNLEŞTİR ──────────────────────────────────────────
-async function enrichCompany(company: any, country: any): Promise<any> {
-  if (company.phone && company.email) return company; // Already complete
-  const TAVILY_KEY = process.env.TAVILY_API_KEY;
-  if (!TAVILY_KEY) return company;
+// ── 6. CONTACT ZENGİNLEŞTİRME — Website Scraping + Hunter.io ─────────────────
+function extractFromText(text: string): { email?: string; phone?: string } {
+  const emailMatch = text.match(/[\w.+-]+@(?!example|test|domain|mail\.com)[\w.-]+\.[a-zA-Z]{2,}/);
+  const phoneMatch = text.match(/(?:\+\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?){2,4}\d{3,6}/);
+  const phone = phoneMatch?.[0]?.trim().replace(/\s+/g, ' ');
+  // Validate phone length (exclude too short or too long)
+  const validPhone = phone && phone.replace(/\D/g, '').length >= 7 ? phone : undefined;
+  return { email: emailMatch?.[0], phone: validPhone };
+}
+
+async function scrapeWebsiteContact(url: string): Promise<{ email?: string; phone?: string }> {
+  if (!url) return {};
+  const base = url.replace(/\/$/, '');
+  const pages = [base, `${base}/contact`, `${base}/contact-us`, `${base}/about`];
+  for (const page of pages) {
+    try {
+      const res = await axios.get(page, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LeadBot/1.0)', Accept: 'text/html' },
+        timeout: 5000, maxRedirects: 3,
+      });
+      const html = res.data as string;
+      // Strip tags for cleaner text
+      const text = html.replace(/<script[\s\S]*?<\/script>/gi, '')
+                       .replace(/<style[\s\S]*?<\/style>/gi, '')
+                       .replace(/<[^>]+>/g, ' ')
+                       .replace(/\s+/g, ' ');
+      const result = extractFromText(text);
+      if (result.email || result.phone) return result;
+    } catch {}
+  }
+  return {};
+}
+
+async function hunterDomainSearch(domain: string): Promise<{ email?: string; name?: string; position?: string }> {
+  const HUNTER_KEY = process.env.HUNTER_API_KEY;
+  if (!HUNTER_KEY) return {};
   try {
-    const r = await axios.post('https://api.tavily.com/search', {
-      api_key: TAVILY_KEY,
-      query: `"${company.company_name}" ${country.name} contact phone email importer`,
-      search_depth: 'basic', max_results: 3,
-    }, { timeout: 8000 });
-    const content = (r.data?.results||[]).map((x:any) => x.content||'').join(' ');
-    const phone = company.phone || content.match(/\+?[\d\s\-().]{9,18}/)?.[0]?.trim();
-    const email = company.email || content.match(/[\w.+-]+@[\w.-]+\.\w{2,}/i)?.[0];
-    return { ...company, phone: phone||null, email: email||null };
-  } catch { return company; }
+    const res = await axios.get('https://api.hunter.io/v2/domain-search', {
+      params: { domain, api_key: HUNTER_KEY, limit: 5, type: 'generic' },
+      timeout: 8000,
+    });
+    const emails: any[] = res.data?.data?.emails || [];
+    // Prefer generic/info emails, then any email
+    const best = emails.find(e => e.type === 'generic') ||
+                 emails.find(e => ['info','sales','export','trade','import','contact'].some(k => e.value?.includes(k))) ||
+                 emails[0];
+    if (!best) return {};
+    return {
+      email: best.value,
+      name: best.first_name ? `${best.first_name} ${best.last_name||''}`.trim() : undefined,
+      position: best.position || undefined,
+    };
+  } catch { return {}; }
+}
+
+// Main contact enrichment — website scraping → Hunter.io
+async function enrichCompanyContact(company: any): Promise<any> {
+  // Already has both contacts
+  if (company.email && company.phone) return company;
+
+  let email = company.email || null;
+  let phone = company.phone || null;
+  let contactName = company.decision_maker_name || null;
+  let contactTitle = company.decision_maker_title || null;
+
+  // Step 1: Scrape website contact page
+  if (company.website && !(email && phone)) {
+    const scraped = await scrapeWebsiteContact(company.website);
+    if (!email && scraped.email) email = scraped.email;
+    if (!phone && scraped.phone) phone = scraped.phone;
+  }
+
+  // Step 2: Hunter.io domain search (if still missing email)
+  if (!email && company.website) {
+    try {
+      const domain = company.website.replace(/^https?:\/\//, '').split('/')[0].replace(/^www\./, '');
+      if (domain && domain.includes('.')) {
+        const hunterResult = await hunterDomainSearch(domain);
+        if (hunterResult.email) {
+          email = hunterResult.email;
+          if (!contactName && hunterResult.name) contactName = hunterResult.name;
+          if (!contactTitle && hunterResult.position) contactTitle = hunterResult.position;
+        }
+      }
+    } catch {}
+  }
+
+  return { ...company, email, phone, decision_maker_name: contactName, decision_maker_title: contactTitle };
 }
 
 // ── OUTREACH MESAJI ÜRET ──────────────────────────────────────────────────────
@@ -442,34 +514,61 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
       allImporters.push(imp);
     }
 
-    await updateSession({ step:'enriching_contacts', progress:70 });
+    await updateSession({ step:'enriching_contacts', progress:60 });
 
-    // Enrich top 8 companies (add phone/email + LinkedIn decision maker)
-    const enriched: any[] = [];
-    for (const imp of allImporters.slice(0, 8)) {
-      const [enrichedImp, linkedIn] = await Promise.allSettled([
-        enrichCompany(imp, country),
-        searchLinkedInDecisionMakers(sector, imp.company_name, country),
-      ]);
-      const final = enrichedImp.status==='fulfilled' ? enrichedImp.value : imp;
-      const li = linkedIn.status==='fulfilled' ? linkedIn.value : null;
-      enriched.push({ ...final, decision_maker_name: li?.name||null, decision_maker_title: li?.title||null, decision_maker_linkedin: li?.linkedin||null });
-      await sleep(150);
+    // Step 1: Enrich ALL companies with contact info (parallel batches of 5)
+    // Priority: companies with website (can be scraped/Hunter'd)
+    const withWebsite = allImporters.filter(i => i.website);
+    const withoutWebsite = allImporters.filter(i => !i.website);
+
+    // Process in batches of 5 in parallel for speed
+    const batchSize = 5;
+    const enrichedAll: any[] = [];
+
+    for (let i = 0; i < withWebsite.length; i += batchSize) {
+      if (enrichedAll.filter(e => e.email || e.phone).length >= 50) break; // enough
+      const batch = withWebsite.slice(i, i + batchSize);
+      const batchResults = await Promise.allSettled(batch.map(imp => enrichCompanyContact(imp)));
+      for (const r of batchResults) {
+        if (r.status === 'fulfilled') enrichedAll.push(r.value);
+      }
+      await updateSession({ step:'enriching_contacts', progress: Math.min(85, 60 + Math.round((i/withWebsite.length)*25)) });
+    }
+    // Add companies without website (already have any contact from content extraction)
+    for (const imp of withoutWebsite) enrichedAll.push(imp);
+
+    // Step 2: LinkedIn decision makers for top 10 WITH contacts
+    const contactedLeads = enrichedAll.filter(e => e.email || e.phone).slice(0, 10);
+    for (const lead of contactedLeads) {
+      const li = await searchLinkedInDecisionMakers(sector, lead.company_name, country).catch(() => null);
+      if (li) {
+        lead.decision_maker_name = li.name || lead.decision_maker_name || null;
+        lead.decision_maker_title = li.title || lead.decision_maker_title || null;
+        lead.decision_maker_linkedin = li.linkedin || null;
+      }
     }
 
-    // Rest without enrichment (speed)
-    for (const imp of allImporters.slice(8)) enriched.push(imp);
+    // Step 3: Sort by contact completeness
+    const enriched = enrichedAll.sort((a, b) => {
+      const scoreA = (a.email?2:0) + (a.phone?2:0) + (a.decision_maker_name?1:0);
+      const scoreB = (b.email?2:0) + (b.phone?2:0) + (b.decision_maker_name?1:0);
+      return scoreB - scoreA;
+    });
+
+    const withContact = enriched.filter(e => e.email || e.phone);
+    const noContact = enriched.filter(e => !e.email && !e.phone);
+    console.log(`[ExportSearch] Contact enrichment: ${withContact.length} with contact, ${noContact.length} without (${allImporters.length} found total)`);
 
     await updateSession({ step:'saving_results', progress:88 });
 
-    // Company scoring (0-100)
+    // Company scoring (0-100) — email/phone are primary
     function calcCompanyScore(e: any): number {
       let score = 0;
-      if (e.phone) score += 20;
-      if (e.email) score += 20;
-      if (e.website) score += 15;
-      if (e.decision_maker_name) score += 25;
-      if (e.verified_importer) score += 20;
+      if (e.email) score += 35;         // Most valuable: email for outreach
+      if (e.phone) score += 30;         // Very valuable: phone for WhatsApp/call
+      if (e.decision_maker_name) score += 20; // Decision maker known
+      if (e.website) score += 10;       // Has online presence
+      if (e.verified_importer) score += 5;
       return score;
     }
 
@@ -548,7 +647,8 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
       completed_at: new Date().toISOString(),
     });
 
-    console.log(`[ExportSearch] Done: ${savedCount} saved (${enriched.length} found) — ${maps.length} Maps + ${web.length} Web (${sector} / ${country.name})`);
+    const withContactSaved = enriched.filter(e => e.email || e.phone).length;
+    console.log(`[ExportSearch] ✅ ${savedCount} saved | ${withContactSaved} with contact | ${maps.length} Maps + ${web.length} Web (${sector} / ${country.name})`);
   } catch(e:any) {
     console.error('[ExportSearch] error:', e.message);
     await updateSession({ status:'failed', step:e.message });

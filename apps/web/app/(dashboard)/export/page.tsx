@@ -274,6 +274,7 @@ export default function ExportPage() {
   const [generatingMsg, setGeneratingMsg] = useState<string | null>(null)
   const [inlineMessages, setInlineMessages] = useState<Record<string, any>>({})
   const [filterCountry, setFilterCountry] = useState('')
+  const [onlyWithContact, setOnlyWithContact] = useState(true) // Default: show only with contact
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [countryIntel, setCountryIntel] = useState<any>(null)
   const [loadingIntel, setLoadingIntel] = useState(false)
@@ -374,7 +375,11 @@ export default function ExportPage() {
     return matchRegion && matchSearch
   })
 
-  const filteredLeads = filterCountry ? exportLeads.filter(l => l.country_code === filterCountry) : exportLeads
+  const leadsWithContact = exportLeads.filter(l => l.email || l.phone)
+  const filteredLeads = exportLeads
+    .filter(l => !filterCountry || l.country_code === filterCountry)
+    .filter(l => !onlyWithContact || (l.email || l.phone))
+    .sort((a, b) => ((b.company_score||0) - (a.company_score||0)))
   const card = { background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16 } as const
   const inp = { background: '#060a1c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none' }
 
@@ -391,9 +396,9 @@ export default function ExportPage() {
             <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>Hedef pazarda doğrulanmış alıcılar · Karar verici isim ve iletişim · Yerel dilde kişiselleştirilmiş mesaj</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
               {[
-                { l: 'Alıcı', v: exportLeads.length, c: '#10b981' },
+                { l: 'İletişimli Alıcı', v: leadsWithContact.length, c: '#10b981' },
+                { l: 'Toplam Alıcı', v: exportLeads.length, c: '#64748b' },
                 { l: 'Kampanya', v: campaigns.length, c: '#8b5cf6' },
-                { l: 'İletişim', v: messages.length, c: '#06b6d4' },
                 { l: 'Hedef Pazar', v: countries.length, c: '#f59e0b' },
               ].map(m => (
                 <div key={m.l} style={{ textAlign: 'center' }}>
@@ -423,7 +428,7 @@ export default function ExportPage() {
       <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.32)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 18, border: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
         {[
           { id: 'find', label: '🌍 Alıcı Keşfi' },
-          { id: 'leads', label: `👥 Alıcı Listesi (${exportLeads.length})` },
+          { id: 'leads', label: `👥 Alıcı (${leadsWithContact.length}📞 / ${exportLeads.length})` },
           { id: 'campaigns', label: `🚀 Kampanyalar (${campaigns.length})` },
           { id: 'messages', label: `💬 İletişimler (${messages.length})` },
           { id: 'analytics', label: '📊 Analitik' },
@@ -600,6 +605,11 @@ export default function ExportPage() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
             <button onClick={loadAll} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.08)', color:'#34d399', fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
               <RefreshCw size={12} style={{ animation:loading?'exp-spin 1s linear infinite':'none' }} /> Yenile
+            </button>
+            {/* Contact filter toggle */}
+            <button onClick={() => setOnlyWithContact(!onlyWithContact)}
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8, border:`1px solid ${onlyWithContact?'rgba(16,185,129,0.45)':'rgba(255,255,255,0.1)'}`, background:onlyWithContact?'rgba(16,185,129,0.12)':'transparent', color:onlyWithContact?'#34d399':'#64748b', fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+              📞 {onlyWithContact ? `İletişimli (${leadsWithContact.filter(l=>!filterCountry||l.country_code===filterCountry).length})` : 'Tümü'}
             </button>
             <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} style={{ ...inp, height: 40, cursor: 'pointer' }}>
               <option value="">Tüm Pazarlar ({exportLeads.length})</option>
