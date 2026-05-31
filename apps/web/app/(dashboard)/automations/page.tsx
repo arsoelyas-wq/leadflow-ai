@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Plus, Trash2, Copy, CheckCircle, Play, ToggleLeft, ToggleRight, Zap, ChevronDown, AlertTriangle, Clock, X } from 'lucide-react'
+import { RefreshCw, Plus, Trash2, Copy, CheckCircle, Play, ToggleLeft, ToggleRight, Zap, ChevronDown, Clock, X } from 'lucide-react'
 
 // ── ZAP ORB ───────────────────────────────────────────────────────────────────
 function ZapOrb({ size = 90, active = false }: { size?: number; active?: boolean }) {
@@ -228,8 +228,6 @@ export default function AutomationsPage() {
   const [testing, setTesting] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [expandLog, setExpandLog] = useState<string | null>(null)
-  const [tableError, setTableError] = useState(false)
-
   const loadData = async () => {
     setLoading(true)
     const [r, l, s, w] = await Promise.allSettled([
@@ -238,8 +236,7 @@ export default function AutomationsPage() {
       api.get('/api/automations/stats'),
       api.get('/api/automations/webhook-url'),
     ])
-    if (r.status === 'fulfilled') { setRules((r.value as any).rules || []); setTableError(false) }
-    else { setTableError(true) }
+    if (r.status === 'fulfilled') setRules((r.value as any).rules || [])
     if (l.status === 'fulfilled') setLogs((l.value as any).logs || [])
     if (s.status === 'fulfilled') setStats(s.value)
     if (w.status === 'fulfilled') setWebhookUrl((w.value as any).url || '')
@@ -308,62 +305,6 @@ export default function AutomationsPage() {
           </button>
         </div>
       </div>
-
-      {/* Table setup warning */}
-      {tableError && (
-        <div style={{ marginBottom:16, padding:'14px 18px', background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:12 }}>
-          <p style={{ color:'#fbbf24', fontWeight:700, fontSize:13, margin:'0 0 8px' }}>⚠️ Supabase'de tablo gerekli</p>
-          <p style={{ color:'#94a3b8', fontSize:12, margin:'0 0 10px' }}>Kural motorunu aktifleştirmek için Supabase'de şu SQL'i çalıştırın:</p>
-          <div style={{ position:'relative' }}>
-            <code style={{ display:'block', background:'#060a1c', borderRadius:10, padding:'12px 16px', color:'#34d399', fontSize:11, fontFamily:'monospace', whiteSpace:'pre', overflowX:'auto' }}>
-{`CREATE TABLE automation_rules (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  name TEXT NOT NULL,
-  trigger TEXT NOT NULL,
-  trigger_days TEXT DEFAULT '2',
-  action TEXT NOT NULL,
-  action_message TEXT,
-  action_value TEXT,
-  action_campaign_id UUID,
-  active BOOLEAN DEFAULT true,
-  run_count INTEGER DEFAULT 0,
-  last_run_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE automation_rules ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "user_own" ON automation_rules USING (auth.uid() = user_id);
-
-ALTER TABLE automation_logs ADD COLUMN IF NOT EXISTS rule_id UUID;
-ALTER TABLE automation_logs ADD COLUMN IF NOT EXISTS lead_id UUID;`}
-            </code>
-            <button onClick={() => copy(`CREATE TABLE automation_rules (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  name TEXT NOT NULL,
-  trigger TEXT NOT NULL,
-  trigger_days TEXT DEFAULT '2',
-  action TEXT NOT NULL,
-  action_message TEXT,
-  action_value TEXT,
-  action_campaign_id UUID,
-  active BOOLEAN DEFAULT true,
-  run_count INTEGER DEFAULT 0,
-  last_run_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE automation_rules ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "user_own" ON automation_rules USING (auth.uid() = user_id);
-ALTER TABLE automation_logs ADD COLUMN IF NOT EXISTS rule_id UUID;
-ALTER TABLE automation_logs ADD COLUMN IF NOT EXISTS lead_id UUID;`)}
-              style={{ position:'absolute', top:8, right:8, padding:'5px 10px', borderRadius:7, border:'none', background:'rgba(245,158,11,0.2)', color:'#f59e0b', fontSize:10, cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
-              {copied ? <CheckCircle size={11} /> : <Copy size={11} />} Kopyala
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>

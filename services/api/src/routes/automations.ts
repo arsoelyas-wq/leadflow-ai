@@ -6,6 +6,61 @@ const axios = require('axios');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// ── OTO-MİGRASYON: automation_rules tablosunu otomatik oluştur ─────────────
+async function autoMigrate() {
+  try {
+    const { error: testErr } = await supabase.from('automation_rules').select('id').limit(1);
+    if (!testErr) return; // Tablo zaten var
+
+    const sql = `
+      CREATE TABLE IF NOT EXISTS automation_rules (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        trigger TEXT NOT NULL,
+        trigger_days TEXT DEFAULT '2',
+        action TEXT NOT NULL,
+        action_message TEXT,
+        action_value TEXT,
+        action_campaign_id UUID,
+        active BOOLEAN DEFAULT true,
+        run_count INTEGER DEFAULT 0,
+        last_run_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now()
+      );
+      ALTER TABLE automation_rules ENABLE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS "user_own" ON automation_rules;
+      CREATE POLICY "user_own" ON automation_rules USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+      ALTER TABLE automation_logs ADD COLUMN IF NOT EXISTS rule_id UUID;
+      ALTER TABLE automation_logs ADD COLUMN IF NOT EXISTS lead_id UUID;
+    `;
+
+    // PostgREST v12+ SQL endpoint (Supabase service role)
+    await axios.post(
+      `${process.env.SUPABASE_URL}/rest/v1/sql`,
+      sql,
+      {
+        headers: {
+          'Content-Type': 'text/plain',
+          'apikey': process.env.SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+          'Prefer': 'return=minimal',
+        },
+        timeout: 20000,
+      }
+    );
+    console.log('[AutoMigrate] ✅ automation_rules tablosu oluşturuldu');
+  } catch (e: any) {
+    // Tablo zaten varsa veya endpoint desteklenmiyorsa sessizce geç
+    console.log('[AutoMigrate] Tablo hazır veya atlıyor:', e?.response?.data?.message || e.message);
+  }
+}
+
+// Backend başladığında ve her 5 dakikada bir dene (Railway restart sonrası)
+autoMigrate();
+setTimeout(autoMigrate, 5000);
+
 // POST /api/automations/webhook â€” Gelen webhook'u iÅŸle
 router.post('/webhook/:userId', async (req: any, res: any) => {
   try {

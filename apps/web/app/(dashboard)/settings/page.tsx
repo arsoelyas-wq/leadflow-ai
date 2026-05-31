@@ -69,6 +69,16 @@ export default function SettingsPage() {
   // Bildirimler
   const [notifSupported, setNotifSupported] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(false)
+  const notifItems = [
+    { label: 'Yeni lead geldiğinde', defaultOn: true },
+    { label: 'Lead cevap verdiğinde', defaultOn: true },
+    { label: 'Video hazır olduğunda', defaultOn: true },
+    { label: 'Kampanya tamamlandığında', defaultOn: false },
+    { label: 'Kredi azaldığında', defaultOn: true },
+    { label: 'Reklam uyarısı', defaultOn: true },
+    { label: 'Fiyat değişikliği', defaultOn: true },
+  ]
+  const [notifToggles, setNotifToggles] = useState(() => notifItems.map(i => i.defaultOn))
 
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
@@ -308,6 +318,12 @@ export default function SettingsPage() {
     { id: 'google-capi', label: 'Google Dönüşüm', icon: TrendingUp, color: '#f97316' },
   ]
 
+  const card = { background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:'20px 22px' } as const
+  const cardTitle = { color:'#fff', fontSize:14, fontWeight:800, margin:'0 0 16px' } as const
+  const fieldLabel = { color:'#64748b', fontSize:11, display:'block' as const, marginBottom:5 }
+  const input = { width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as const }
+  const btn = (bg: string) => ({ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', borderRadius:10, border:'none', background:bg, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' } as const)
+
   return (
     <div style={{ padding: 0 }}>
       {/* Hero header */}
@@ -344,30 +360,27 @@ export default function SettingsPage() {
 
           {/* PROFIL */}
           {tab === 'profile' && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-6">
-              <h2 className="text-white font-semibold text-lg">Profil Bilgileri</h2>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+            <div style={card}>
+              <h2 style={cardTitle}>👤 Profil Bilgileri</h2>
+              <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20, paddingBottom:20, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:22, fontWeight:900, flexShrink:0 }}>
                   {user?.name?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <p className="text-white font-medium">{user?.name}</p>
-                  <p className="text-slate-400 text-sm">{user?.email}</p>
+                  <p style={{ color:'#fff', fontWeight:700, fontSize:14, margin:0 }}>{user?.name}</p>
+                  <p style={{ color:'#475569', fontSize:12, margin:'3px 0 0' }}>{user?.email}</p>
                 </div>
               </div>
-              <div className="border-t border-slate-700 pt-6 grid gap-4">
-                {[{ label: 'Ad Soyad', key: 'name' }, { label: 'Firma Adı', key: 'company' }].map(({ label, key }) => (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {[{ label:'Ad Soyad', key:'name' }, { label:'Firma Adı', key:'company' }].map(({ label, key }) => (
                   <div key={key}>
-                    <label className="text-slate-400 text-sm mb-1.5 block">{label}</label>
-                    <input value={(profile as any)[key] || ''}
-                      onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
+                    <label style={fieldLabel}>{label}</label>
+                    <input value={(profile as any)[key] || ''} onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))} style={input} />
                   </div>
                 ))}
               </div>
-              <button onClick={saveProfile} disabled={saving}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
-                <Save size={15} />{saving ? 'Kaydediliyor...' : saved ? '✓ Kaydedildi' : 'Kaydet'}
+              <button onClick={saveProfile} disabled={saving} style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), marginTop:16 }}>
+                <Save size={14} />{saving ? 'Kaydediliyor...' : saved ? '✓ Kaydedildi' : 'Kaydet'}
               </button>
             </div>
           )}
@@ -376,165 +389,161 @@ export default function SettingsPage() {
           {tab === 'channels' && (
             <>
               {/* WhatsApp */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center">
-                      <MessageSquare size={18} className="text-green-400" />
+              <div style={card}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <div style={{ width:40, height:40, background:'rgba(16,185,129,0.1)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <MessageSquare size={18} color="#34d399" />
                     </div>
                     <div>
-                      <h2 className="text-white font-semibold">WhatsApp</h2>
-                      <p className="text-slate-400 text-xs">QR kod ile bağlayın</p>
+                      <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>WhatsApp</h2>
+                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>QR kod ile bağlayın</p>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
-                    waStatus === 'connected' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-700 border-slate-600 text-slate-400'
-                  }`}>
+                  <div style={waStatus === 'connected'
+                    ? { display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:20, background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', fontSize:12, fontWeight:500 }
+                    : { display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:20, background:'rgba(100,116,139,0.12)', border:'1px solid rgba(100,116,139,0.2)', color:'#64748b', fontSize:12, fontWeight:500 }}>
                     {waStatus === 'connected' ? <Wifi size={11} /> : <WifiOff size={11} />}
                     {waStatus === 'connected' ? 'Bağlı' : 'Bağlı Değil'}
                   </div>
                 </div>
 
                 {waStatus === 'connected' ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-                      <Smartphone size={18} className="text-emerald-400" />
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, padding:14, background:'rgba(16,185,129,0.05)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:12 }}>
+                      <Smartphone size={18} color="#34d399" />
                       <div>
-                        <p className="text-white text-sm font-medium">+{settings.whatsapp_number}</p>
-                        <p className="text-slate-400 text-xs">WhatsApp aktif</p>
+                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>+{settings.whatsapp_number}</p>
+                        <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>WhatsApp aktif</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <Bot size={16} className="text-purple-400" />
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:14, background:'rgba(139,92,246,0.05)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:12 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                        <Bot size={16} color="#a78bfa" />
                         <div>
-                          <p className="text-white text-sm font-medium">AI Otomatik Yanıt</p>
-                          <p className="text-slate-400 text-xs">Claude ile otomatik cevap</p>
+                          <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>AI Otomatik Yanıt</p>
+                          <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>Claude ile otomatik cevap</p>
                         </div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" checked={settings.auto_reply_enabled || false}
-                          onChange={e => toggleAutoReply(e.target.checked)} className="sr-only peer" />
-                        <div className="w-11 h-6 bg-slate-700 peer-checked:bg-purple-600 rounded-full transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5" />
-                      </label>
+                      <div onClick={() => toggleAutoReply(!settings.auto_reply_enabled)} style={{ width:40, height:22, borderRadius:11, background:settings.auto_reply_enabled?'#8b5cf6':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
+                        <div style={{ position:'absolute', top:3, left:settings.auto_reply_enabled?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+                      </div>
                     </div>
                     <button onClick={disconnectWhatsApp}
-                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-sm transition">
+                      style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:10, fontSize:13, cursor:'pointer', alignSelf:'flex-start' }}>
                       Bağlantıyı Kes
                     </button>
                   </div>
                 ) : qrCode ? (
-                  <div className="flex flex-col items-center gap-4 p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
-                    <p className="text-white text-sm font-medium flex items-center gap-2">
-                      <QrCode size={16} className="text-green-400" /> QR kodu WhatsApp ile okutun
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:16, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
+                    <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+                      <QrCode size={16} color="#34d399" /> QR kodu WhatsApp ile okutun
                     </p>
-                    <img src={qrCode} alt="WA QR" className="w-52 h-52 rounded-xl border border-slate-600" />
-                    <p className="text-slate-500 text-xs flex items-center gap-1">
-                      <RefreshCw size={11} className="animate-spin" /> Bağlantı bekleniyor...
+                    <img src={qrCode} alt="WA QR" style={{ width:208, height:208, borderRadius:12, border:'1px solid rgba(255,255,255,0.1)' }} />
+                    <p style={{ color:'#475569', fontSize:11, margin:0, display:'flex', alignItems:'center', gap:4 }}>
+                      <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> Bağlantı bekleniyor...
                     </p>
                     <button onClick={() => { stopPolling(); setQrCode(null); setWaConnecting(false) }}
-                      className="text-slate-400 text-sm hover:text-white">İptal</button>
+                      style={{ background:'none', border:'none', color:'#64748b', fontSize:13, cursor:'pointer' }}>İptal</button>
                   </div>
                 ) : (
                   <button onClick={connectWhatsApp} disabled={waConnecting}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 text-green-300 rounded-xl text-sm font-medium transition disabled:opacity-50">
-                    {waConnecting ? <RefreshCw size={15} className="animate-spin" /> : <QrCode size={15} />}
+                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 0', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', borderRadius:12, fontSize:13, fontWeight:500, cursor:'pointer', opacity:waConnecting?0.6:1 }}>
+                    {waConnecting ? <RefreshCw size={15} style={{ animation:'settings-spin 1s linear infinite' }} /> : <QrCode size={15} />}
                     {waConnecting ? 'QR oluşturuluyor...' : 'WhatsApp Bağla'}
                   </button>
                 )}
               </div>
 
               {/* AI Video Avatar */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
-                      <Video size={18} className="text-red-400" />
+              <div style={card}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <div style={{ width:40, height:40, background:'rgba(239,68,68,0.1)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <Video size={18} color="#f87171" />
                     </div>
                     <div>
-                      <h2 className="text-white font-semibold">AI Video Avatar</h2>
-                      <p className="text-slate-400 text-xs">Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları</p>
+                      <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>AI Video Avatar</h2>
+                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları</p>
                     </div>
                   </div>
                   {avatarStatus?.hasAvatar && (
-                    <span className={`text-xs px-2 py-1 rounded-full border ${
-                      avatarStatus.avatarStatus === 'completed'
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                        : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-300'
-                    }`}>
+                    <span style={avatarStatus.avatarStatus === 'completed'
+                      ? { background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', fontSize:11, padding:'3px 10px', borderRadius:20 }
+                      : { background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)', color:'#fbbf24', fontSize:11, padding:'3px 10px', borderRadius:20 }}>
                       {avatarStatus.avatarStatus === 'completed' ? '✓ Avatar Hazır' : '⏳ İşleniyor'}
                     </span>
                   )}
                 </div>
 
                 {avatarStatus?.hasAvatar && avatarStatus.avatarStatus === 'completed' ? (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-red-500/5 border border-red-500/20 rounded-xl">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
-                          <Video size={20} className="text-red-400" />
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    <div style={{ padding:14, background:'rgba(239,68,68,0.05)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:12 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+                        <div style={{ width:48, height:48, background:'rgba(239,68,68,0.2)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <Video size={20} color="#f87171" />
                         </div>
                         <div>
-                          <p className="text-white font-medium">Kişisel Avatar Aktif ✅</p>
-                          <p className="text-slate-400 text-xs">
+                          <p style={{ color:'#fff', fontWeight:500, fontSize:13, margin:0 }}>Kişisel Avatar Aktif ✅</p>
+                          <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>
                             {avatarStatus.avatarType === 'photo' ? '📸 Fotoğraf Avatar' : '📹 Video Avatar'}
                           </p>
                         </div>
                       </div>
                       {avatarStatus.hasVoice && (
-                        <div className="flex items-center gap-2 p-3 bg-slate-900/50 rounded-lg mt-2">
-                          <span className="text-green-400">🎙️</span>
-                          <p className="text-white text-sm">{avatarStatus.voiceName} — Ses klonu aktif</p>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', background:'rgba(6,10,28,0.5)', borderRadius:8, marginTop:8 }}>
+                          <span style={{ color:'#34d399' }}>🎙️</span>
+                          <p style={{ color:'#fff', fontSize:13, margin:0 }}>{avatarStatus.voiceName} — Ses klonu aktif</p>
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div style={{ display:'flex', gap:8 }}>
                       <button onClick={() => avatarVideoRef.current?.click()}
-                        className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition">
+                        style={{ flex:1, padding:'8px 0', background:'rgba(100,116,139,0.2)', border:'1px solid rgba(255,255,255,0.06)', color:'#fff', fontSize:13, borderRadius:10, cursor:'pointer' }}>
                         Avatar Değiştir
                       </button>
                       <button onClick={async () => {
                         await api.delete('/api/avatar/avatar')
                         setAvatarStatus({ hasAvatar: false })
                         showMsg('success', 'Avatar silindi')
-                      }} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-sm transition">
+                      }} style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', fontSize:13, borderRadius:10, cursor:'pointer' }}>
                         Sil
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
-                        <p className="text-white text-sm font-medium mb-1">📹 Video Avatar</p>
-                        <p className="text-slate-400 text-xs mb-2">2-5 dk video yükle → AI klonlar</p>
-                        <p className="text-emerald-400 text-xs mb-3">En gerçekçi sonuç</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                      <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
+                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>📹 Video Avatar</p>
+                        <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>2-5 dk video yükle → AI klonlar</p>
+                        <p style={{ color:'#34d399', fontSize:11, margin:'0 0 10px' }}>En gerçekçi sonuç</p>
                         <button onClick={() => avatarVideoRef.current?.click()} disabled={uploadingAvatar}
-                          className="w-full py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs rounded-lg transition flex items-center justify-center gap-1">
-                          {uploadingAvatar ? <RefreshCw size={11} className="animate-spin" /> : null}
+                          style={{ width:'100%', padding:'7px 0', background:'#dc2626', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:uploadingAvatar?0.5:1 }}>
+                          {uploadingAvatar ? <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> : null}
                           {uploadingAvatar ? 'Yükleniyor...' : 'Video Yükle'}
                         </button>
                       </div>
-                      <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
-                        <p className="text-white text-sm font-medium mb-1">📸 Fotoğraf Avatar</p>
-                        <p className="text-slate-400 text-xs mb-2">Fotoğraf yükle → AI animasyon</p>
-                        <p className="text-yellow-400 text-xs mb-3">Hızlı & ücretsiz</p>
+                      <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
+                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>📸 Fotoğraf Avatar</p>
+                        <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>Fotoğraf yükle → AI animasyon</p>
+                        <p style={{ color:'#fbbf24', fontSize:11, margin:'0 0 10px' }}>Hızlı & ücretsiz</p>
                         <button onClick={() => avatarPhotoRef.current?.click()} disabled={uploadingAvatar}
-                          className="w-full py-2 bg-slate-600 hover:bg-slate-500 disabled:opacity-50 text-white text-xs rounded-lg transition flex items-center justify-center gap-1">
-                          {uploadingAvatar ? <RefreshCw size={11} className="animate-spin" /> : null}
+                          style={{ width:'100%', padding:'7px 0', background:'rgba(100,116,139,0.4)', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:uploadingAvatar?0.5:1 }}>
+                          {uploadingAvatar ? <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> : null}
                           {uploadingAvatar ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
                         </button>
                       </div>
                     </div>
-                    <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-xl">
-                      <p className="text-white text-sm font-medium mb-1">🎙️ Ses Klonlama</p>
-                      <p className="text-slate-400 text-xs mb-3">30sn - 3dk ses kaydı → AI sesinizi klonlar</p>
-                      <div className="flex gap-2">
+                    <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
+                      <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>🎙️ Ses Klonlama</p>
+                      <p style={{ color:'#64748b', fontSize:11, margin:'0 0 10px' }}>30sn - 3dk ses kaydı → AI sesinizi klonlar</p>
+                      <div style={{ display:'flex', gap:8 }}>
                         <input value={voiceName} onChange={e => setVoiceName(e.target.value)} placeholder="Ses adı"
-                          className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500" />
+                          style={{ ...input, flex:1, width:'auto' }} />
                         <button onClick={() => voiceRef.current?.click()} disabled={uploadingVoice}
-                          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs rounded-lg transition flex items-center gap-1">
-                          {uploadingVoice ? <RefreshCw size={11} className="animate-spin" /> : null}
+                          style={{ padding:'8px 12px', background:'#1d4ed8', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', gap:4, opacity:uploadingVoice?0.5:1, whiteSpace:'nowrap' }}>
+                          {uploadingVoice ? <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> : null}
                           {uploadingVoice ? 'Yükleniyor...' : 'Ses Yükle'}
                         </button>
                       </div>
@@ -542,65 +551,65 @@ export default function SettingsPage() {
                   </div>
                 )}
 
-                <input ref={avatarVideoRef} type="file" accept="video/*" className="hidden"
+                <input ref={avatarVideoRef} type="file" accept="video/*" style={{ display:'none' }}
                   onChange={e => e.target.files?.[0] && uploadAvatar(e.target.files[0], 'video')} />
-                <input ref={avatarPhotoRef} type="file" accept="image/*" className="hidden"
+                <input ref={avatarPhotoRef} type="file" accept="image/*" style={{ display:'none' }}
                   onChange={e => e.target.files?.[0] && uploadAvatar(e.target.files[0], 'photo')} />
-                <input ref={voiceRef} type="file" accept="audio/*" className="hidden"
+                <input ref={voiceRef} type="file" accept="audio/*" style={{ display:'none' }}
                   onChange={e => e.target.files?.[0] && uploadVoice(e.target.files[0])} />
               </div>
 
               {/* LinkedIn */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600/10 rounded-xl flex items-center justify-center">
-                      <Linkedin size={18} className="text-blue-400" />
+              <div style={card}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <div style={{ width:40, height:40, background:'rgba(59,130,246,0.1)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <Linkedin size={18} color="#60a5fa" />
                     </div>
                     <div>
-                      <h2 className="text-white font-semibold">LinkedIn</h2>
-                      <p className="text-slate-400 text-xs">Karar verici araması için bağlayın</p>
+                      <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>LinkedIn</h2>
+                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>Karar verici araması için bağlayın</p>
                     </div>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${
-                    linkedinStatus === 'connected' ? 'bg-blue-500/10 border-blue-500/30 text-blue-300' : 'bg-slate-700 border-slate-600 text-slate-400'
-                  }`}>
+                  <span style={linkedinStatus === 'connected'
+                    ? { background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', color:'#93c5fd', fontSize:11, padding:'3px 10px', borderRadius:20 }
+                    : { background:'rgba(100,116,139,0.12)', border:'1px solid rgba(100,116,139,0.2)', color:'#64748b', fontSize:11, padding:'3px 10px', borderRadius:20 }}>
                     {linkedinStatus === 'connected' ? '✓ Bağlı' : 'Bağlı Değil'}
                   </span>
                 </div>
 
                 {linkedinStatus === 'connected' ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, padding:14, background:'rgba(59,130,246,0.05)', border:'1px solid rgba(59,130,246,0.2)', borderRadius:12 }}>
+                      <div style={{ width:32, height:32, background:'#1d4ed8', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:13, fontWeight:700 }}>
                         {linkedinConnectedEmail?.[0]?.toUpperCase() || 'L'}
                       </div>
                       <div>
-                        <p className="text-white text-sm font-medium">{linkedinConnectedEmail}</p>
-                        <p className="text-slate-400 text-xs">LinkedIn bağlı</p>
+                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>{linkedinConnectedEmail}</p>
+                        <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>LinkedIn bağlı</p>
                       </div>
                     </div>
                     <button onClick={disconnectLinkedIn}
-                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 rounded-lg text-sm transition">
+                      style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:10, fontSize:13, cursor:'pointer', alignSelf:'flex-start' }}>
                       Bağlantıyı Kes
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                     <input value={linkedinEmail} onChange={e => setLinkedinEmail(e.target.value)} placeholder="LinkedIn email"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
-                    <div className="relative">
+                      style={input} />
+                    <div style={{ position:'relative' }}>
                       <input type={showLinkedinPass ? 'text' : 'password'} value={linkedinPassword}
                         onChange={e => setLinkedinPassword(e.target.value)} placeholder="LinkedIn şifre"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 pr-10" />
+                        style={{ ...input, paddingRight:36 }} />
                       <button onClick={() => setShowLinkedinPass(!showLinkedinPass)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                        style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'#64748b', cursor:'pointer', padding:0 }}>
                         {showLinkedinPass ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
                     </div>
                     <button onClick={connectLinkedIn} disabled={linkedinConnecting || !linkedinEmail || !linkedinPassword}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition">
-                      {linkedinConnecting ? <RefreshCw size={14} className="animate-spin" /> : <Linkedin size={14} />}
+                      style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'10px 0', background:'#1d4ed8', border:'none', color:'#fff', fontSize:13, fontWeight:500, borderRadius:10, cursor:'pointer', opacity:(linkedinConnecting || !linkedinEmail || !linkedinPassword)?0.4:1 }}>
+                      {linkedinConnecting ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <Linkedin size={14} />}
                       {linkedinConnecting ? 'Bağlanıyor...' : 'LinkedIn Bağla'}
                     </button>
                   </div>
@@ -608,52 +617,52 @@ export default function SettingsPage() {
               </div>
 
               {/* Email SMTP */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                    <Mail size={18} className="text-blue-400" />
+              <div style={card}>
+                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+                  <div style={{ width:40, height:40, background:'rgba(59,130,246,0.1)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <Mail size={18} color="#60a5fa" />
                   </div>
                   <div>
-                    <h2 className="text-white font-semibold">Email (SMTP)</h2>
-                    <p className="text-slate-400 text-xs">Gmail veya SMTP sunucunuzu bağlayın</p>
+                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>Email (SMTP)</h2>
+                    <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>Gmail veya SMTP sunucunuzu bağlayın</p>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                     <div>
-                      <label className="text-slate-400 text-xs mb-1.5 block">SMTP Sunucu</label>
+                      <label style={fieldLabel}>SMTP Sunucu</label>
                       <input value={settings.email_host || 'smtp.gmail.com'}
                         onChange={e => setSettings({ ...settings, email_host: e.target.value })}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
+                        style={input} />
                     </div>
                     <div>
-                      <label className="text-slate-400 text-xs mb-1.5 block">Port</label>
+                      <label style={fieldLabel}>Port</label>
                       <input type="number" value={settings.email_port || 587}
                         onChange={e => setSettings({ ...settings, email_port: parseInt(e.target.value) })}
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
+                        style={input} />
                     </div>
                   </div>
                   <input value={settings.email_user || ''} onChange={e => setSettings({ ...settings, email_user: e.target.value })}
                     placeholder="email@gmail.com"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
-                  <div className="relative">
+                    style={input} />
+                  <div style={{ position:'relative' }}>
                     <input type={showPass ? 'text' : 'password'} value={emailPass}
                       onChange={e => setEmailPass(e.target.value)} placeholder="Şifre / Uygulama Şifresi"
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 pr-10" />
+                      style={{ ...input, paddingRight:36 }} />
                     <button onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                      style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'#64748b', cursor:'pointer', padding:0 }}>
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
-                  <div className="flex gap-3">
+                  <div style={{ display:'flex', gap:10 }}>
                     <button onClick={testEmail} disabled={emailTesting || !settings.email_user || !emailPass}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 rounded-lg text-sm transition disabled:opacity-40">
-                      {emailTesting ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                      style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'rgba(59,130,246,0.15)', border:'1px solid rgba(59,130,246,0.3)', color:'#93c5fd', borderRadius:10, fontSize:13, cursor:'pointer', opacity:(emailTesting || !settings.email_user || !emailPass)?0.4:1 }}>
+                      {emailTesting ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <Send size={14} />}
                       Test Et
                     </button>
                     <button onClick={saveSettings} disabled={settingsSaving}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
-                      {settingsSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+                      style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'rgba(100,116,139,0.2)', border:'1px solid rgba(255,255,255,0.06)', color:'#fff', borderRadius:10, fontSize:13, cursor:'pointer' }}>
+                      {settingsSaving ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <Save size={14} />}
                       Kaydet
                     </button>
                   </div>
@@ -664,23 +673,14 @@ export default function SettingsPage() {
 
           {/* BİLDİRİMLER */}
           {tab === 'notifications' && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
-              <h2 className="text-white font-semibold text-lg">Bildirim Ayarları</h2>
-              {[
-                { label: 'Yeni lead geldiğinde', defaultOn: true },
-                { label: 'Lead cevap verdiğinde', defaultOn: true },
-                { label: 'Video hazır olduğunda', defaultOn: true },
-                { label: 'Kampanya tamamlandığında', defaultOn: false },
-                { label: 'Kredi azaldığında', defaultOn: true },
-                { label: 'Reklam uyarısı', defaultOn: true },
-                { label: 'Fiyat değişikliği', defaultOn: true },
-              ].map(({ label, defaultOn }) => (
-                <div key={label} className="flex items-center justify-between py-3 border-b border-slate-700/50 last:border-0">
-                  <p className="text-white text-sm">{label}</p>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked={defaultOn} className="sr-only peer" />
-                    <div className="w-10 h-5 bg-slate-700 peer-checked:bg-blue-600 rounded-full transition after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5" />
-                  </label>
+            <div style={card}>
+              <h2 style={{ ...cardTitle, fontSize:16 }}>Bildirim Ayarları</h2>
+              {notifItems.map(({ label }, idx) => (
+                <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', borderBottom: idx < notifItems.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  <p style={{ color:'#fff', fontSize:13, margin:0 }}>{label}</p>
+                  <div onClick={() => setNotifToggles(prev => prev.map((v, i) => i === idx ? !v : v))} style={{ width:40, height:22, borderRadius:11, background:notifToggles[idx]?'#3b82f6':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
+                    <div style={{ position:'absolute', top:3, left:notifToggles[idx]?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -688,16 +688,16 @@ export default function SettingsPage() {
 
           {/* GÜVENLİK */}
           {tab === 'security' && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-6">
-              <h2 className="text-white font-semibold text-lg">Güvenlik</h2>
-              <div className="space-y-4">
+            <div style={card}>
+              <h2 style={{ ...cardTitle, fontSize:16 }}>Güvenlik</h2>
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                 {['Mevcut Şifre', 'Yeni Şifre', 'Yeni Şifre (Tekrar)'].map(label => (
                   <div key={label}>
-                    <label className="text-slate-400 text-sm mb-1.5 block">{label}</label>
-                    <input type="password" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
+                    <label style={fieldLabel}>{label}</label>
+                    <input type="password" style={input} />
                   </div>
                 ))}
-                <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
+                <button style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), alignSelf:'flex-start' }}>
                   <Shield size={15} /> Şifreyi Güncelle
                 </button>
               </div>
@@ -706,40 +706,42 @@ export default function SettingsPage() {
 
           {/* 2FA */}
           {tab === '2fa' && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-6">
-              <div>
-                <h2 className="text-white font-semibold text-lg">İki Faktörlü Doğrulama (2FA)</h2>
-                <p className="text-slate-400 text-sm mt-1">Google Authenticator ile hesabınızı koruyun</p>
+            <div style={card}>
+              <div style={{ marginBottom:18 }}>
+                <h2 style={{ ...cardTitle, fontSize:16, margin:'0 0 4px' }}>İki Faktörlü Doğrulama (2FA)</h2>
+                <p style={{ color:'#64748b', fontSize:13, margin:0 }}>Google Authenticator ile hesabınızı koruyun</p>
               </div>
 
-              <div className={`flex items-center gap-3 p-4 rounded-xl border ${twoFAStatus ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-900 border-slate-700'}`}>
-                <div className={`w-3 h-3 rounded-full flex-shrink-0 ${twoFAStatus ? 'bg-emerald-400' : 'bg-slate-600'}`}/>
-                <p className="text-white text-sm">{twoFAStatus ? '✅ 2FA Aktif — Hesabınız korunuyor' : '❌ 2FA Pasif — Hesabınız korumasız'}</p>
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:14, borderRadius:12, border:'1px solid', ...(twoFAStatus ? { background:'rgba(16,185,129,0.1)', borderColor:'rgba(16,185,129,0.3)' } : { background:'rgba(6,10,28,0.5)', borderColor:'rgba(255,255,255,0.06)' }), marginBottom:18 }}>
+                <div style={{ width:12, height:12, borderRadius:'50%', flexShrink:0, background:twoFAStatus?'#34d399':'#475569' }} />
+                <p style={{ color:'#fff', fontSize:13, margin:0 }}>{twoFAStatus ? '✅ 2FA Aktif — Hesabınız korunuyor' : '❌ 2FA Pasif — Hesabınız korumasız'}</p>
               </div>
 
               {!twoFAStatus ? (
-                <div className="space-y-4">
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                   {!twoFASetup ? (
                     <button onClick={setup2FA} disabled={twoFALoading}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl">
-                      {twoFALoading ? <RefreshCw size={14} className="animate-spin"/> : <Shield size={14}/>}
+                      style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), alignSelf:'flex-start', opacity:twoFALoading?0.4:1 }}>
+                      {twoFALoading ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <Shield size={14} />}
                       2FA Kurulumunu Başlat
                     </button>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="bg-slate-900 rounded-xl p-5 text-center">
-                        <p className="text-slate-400 text-sm mb-3">Google Authenticator ile bu QR kodu okutun</p>
-                        <img src={twoFASetup.qrImageUrl} alt="2FA QR" className="mx-auto w-40 h-40 rounded-xl bg-white p-2"/>
-                        <p className="text-slate-500 text-xs mt-3">Manuel giriş: <code className="text-white bg-slate-800 px-2 py-0.5 rounded">{twoFASetup.secret}</code></p>
+                    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                      <div style={{ background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:18, textAlign:'center' }}>
+                        <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>Google Authenticator ile bu QR kodu okutun</p>
+                        <img src={twoFASetup.qrImageUrl} alt="2FA QR" style={{ width:160, height:160, borderRadius:12, background:'#fff', padding:8, margin:'0 auto', display:'block' }} />
+                        <p style={{ color:'#475569', fontSize:11, marginTop:12 }}>
+                          Manuel giriş: <code style={{ color:'#fff', background:'rgba(255,255,255,0.08)', padding:'2px 6px', borderRadius:4 }}>{twoFASetup.secret}</code>
+                        </p>
                       </div>
                       <div>
-                        <label className="text-slate-400 text-xs mb-1 block">Doğrulama Kodu (6 haneli)</label>
-                        <div className="flex gap-2">
-                          <input value={twoFACode} onChange={e=>setTwoFACode(e.target.value.replace(/\D/g,'').slice(0,6))}
+                        <label style={fieldLabel}>Doğrulama Kodu (6 haneli)</label>
+                        <div style={{ display:'flex', gap:8 }}>
+                          <input value={twoFACode} onChange={e => setTwoFACode(e.target.value.replace(/\D/g,'').slice(0,6))}
                             placeholder="000000" maxLength={6}
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 tracking-widest text-center"/>
+                            style={{ ...input, flex:1, width:'auto', letterSpacing:'0.2em', textAlign:'center' }} />
                           <button onClick={verify2FA} disabled={twoFACode.length !== 6}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm rounded-lg">
+                            style={{ ...btn('linear-gradient(135deg,#065f46,#10b981)'), opacity:twoFACode.length !== 6?0.4:1, whiteSpace:'nowrap' }}>
                             Doğrula & Aktif Et
                           </button>
                         </div>
@@ -748,14 +750,14 @@ export default function SettingsPage() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-slate-400 text-sm">2FA'yı devre dışı bırakmak için kodunuzu girin:</p>
-                  <div className="flex gap-2">
-                    <input value={twoFACode} onChange={e=>setTwoFACode(e.target.value.replace(/\D/g,'').slice(0,6))}
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <p style={{ color:'#64748b', fontSize:13, margin:0 }}>2FA&apos;yı devre dışı bırakmak için kodunuzu girin:</p>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <input value={twoFACode} onChange={e => setTwoFACode(e.target.value.replace(/\D/g,'').slice(0,6))}
                       placeholder="000000" maxLength={6}
-                      className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none tracking-widest text-center"/>
+                      style={{ ...input, flex:1, width:'auto', letterSpacing:'0.2em', textAlign:'center' }} />
                     <button onClick={disable2FA} disabled={twoFACode.length !== 6}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm rounded-lg">
+                      style={{ ...btn('linear-gradient(135deg,#7f1d1d,#ef4444)'), opacity:twoFACode.length !== 6?0.4:1, whiteSpace:'nowrap' }}>
                       Devre Dışı Bırak
                     </button>
                   </div>
@@ -766,50 +768,50 @@ export default function SettingsPage() {
 
           {/* GOOGLE SHEETS */}
           {tab === 'sheets' && (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-6">
-              <div>
-                <h2 className="text-white font-semibold text-lg">Google Sheets Sync</h2>
-                <p className="text-slate-400 text-sm mt-1">Leadlerinizi otomatik olarak Google Sheets'e aktarın</p>
+            <div style={card}>
+              <div style={{ marginBottom:18 }}>
+                <h2 style={{ ...cardTitle, fontSize:16, margin:'0 0 4px' }}>Google Sheets Sync</h2>
+                <p style={{ color:'#64748b', fontSize:13, margin:0 }}>Leadlerinizi otomatik olarak Google Sheets&apos;e aktarın</p>
               </div>
 
-              <div className="bg-slate-900 rounded-xl p-4 space-y-2">
-                <p className="text-slate-300 text-sm font-medium">📋 Nasıl Kullanılır?</p>
-                <ol className="text-slate-400 text-xs space-y-1 list-decimal list-inside">
-                  <li>Google Sheets'te yeni bir sayfa oluşturun</li>
-                  <li>URL'den Spreadsheet ID'yi kopyalayın</li>
-                  <li className="text-slate-500">docs.google.com/spreadsheets/d/<span className="text-white font-mono">ID_BURADA</span>/edit</li>
-                  <li>Aşağıya yapıştırın ve Kaydet'e tıklayın</li>
-                  <li>"Şimdi Aktar" ile leadleri aktarın</li>
+              <div style={{ background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:14, marginBottom:18 }}>
+                <p style={{ color:'#cbd5e1', fontSize:13, fontWeight:500, margin:'0 0 8px' }}>📋 Nasıl Kullanılır?</p>
+                <ol style={{ color:'#64748b', fontSize:12, paddingLeft:18, margin:0, display:'flex', flexDirection:'column', gap:4 }}>
+                  <li>Google Sheets&apos;te yeni bir sayfa oluşturun</li>
+                  <li>URL&apos;den Spreadsheet ID&apos;yi kopyalayın</li>
+                  <li style={{ color:'#475569' }}>docs.google.com/spreadsheets/d/<span style={{ color:'#fff', fontFamily:'monospace' }}>ID_BURADA</span>/edit</li>
+                  <li>Aşağıya yapıştırın ve Kaydet&apos;e tıklayın</li>
+                  <li>&quot;Şimdi Aktar&quot; ile leadleri aktarın</li>
                 </ol>
               </div>
 
-              <div>
-                <label className="text-slate-400 text-xs mb-1.5 block">Google Sheets ID</label>
-                <input value={sheetsId} onChange={e=>setSheetsId(e.target.value)}
+              <div style={{ marginBottom:18 }}>
+                <label style={fieldLabel}>Google Sheets ID</label>
+                <input value={sheetsId} onChange={e => setSheetsId(e.target.value)}
                   placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500 font-mono"/>
+                  style={{ ...input, fontFamily:'monospace' }} />
               </div>
 
-              <div className="flex gap-3">
+              <div style={{ display:'flex', gap:10 }}>
                 <button onClick={async () => {
                   setSheetsSaving(true)
                   try {
                     await api.post('/api/sheets/settings', { sheetId: sheetsId })
                     showMsg('success', 'Google Sheets ayarları kaydedildi')
-                  } catch (e:any) { showMsg('error', e.message) }
+                  } catch (e: any) { showMsg('error', e.message) }
                   finally { setSheetsSaving(false) }
                 }} disabled={sheetsSaving || !sheetsId}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-                  {sheetsSaving ? <RefreshCw size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
+                  style={{ ...btn('linear-gradient(135deg,#065f46,#10b981)'), opacity:(sheetsSaving || !sheetsId)?0.4:1 }}>
+                  {sheetsSaving ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
                   Kaydet
                 </button>
                 <button onClick={async () => {
                   try {
                     const d = await api.post('/api/sheets/export-leads', { sheetId: sheetsId, sheetName: 'Leadler' })
                     showMsg('success', d.message)
-                  } catch (e:any) { showMsg('error', e.message) }
+                  } catch (e: any) { showMsg('error', e.message) }
                 }} disabled={!sheetsId}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
+                  style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), opacity:!sheetsId?0.4:1 }}>
                   📤 Şimdi Aktar
                 </button>
               </div>
@@ -818,71 +820,68 @@ export default function SettingsPage() {
 
           {/* META CAPI */}
           {tab === 'meta-capi' && (
-            <div className="space-y-6">
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
               {/* Header card */}
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">📊</div>
-                  <div>
-                    <h2 className="text-white font-semibold">Reklam Dönüşüm Takibi</h2>
-                    <p className="text-blue-300 text-xs">Hangi reklamın müşteriye dönüştüğünü Meta&apos;ya otomatik bildir</p>
+              <div style={{ background:'rgba(59,130,246,0.08)', border:'1px solid rgba(59,130,246,0.25)', borderRadius:16, padding:'18px 20px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+                  <div style={{ width:40, height:40, background:'#1d4ed8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>📊</div>
+                  <div style={{ flex:1 }}>
+                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>Reklam Dönüşüm Takibi</h2>
+                    <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>Hangi reklamın müşteriye dönüştüğünü Meta&apos;ya otomatik bildir</p>
                   </div>
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${capi.enabled && capi.hasToken ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-                    <span className={`text-xs ${capi.enabled && capi.hasToken ? 'text-emerald-400' : 'text-slate-500'}`}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:(capi.enabled && capi.hasToken)?'#34d399':'#475569', display:'inline-block', boxShadow:(capi.enabled && capi.hasToken)?'0 0 6px #34d399':undefined }} />
+                    <span style={{ fontSize:12, color:(capi.enabled && capi.hasToken)?'#34d399':'#475569' }}>
                       {capi.enabled && capi.hasToken ? 'Aktif' : 'Pasif'}
                     </span>
                   </div>
                 </div>
-                <p className="text-slate-400 text-xs">
+                <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
                   LeadFlow&apos;da bir lead&apos;i &quot;Kazanıldı&quot; olarak işaretlediğinizde Meta otomatik öğrenir.
                   Böylece reklamlarınız zamanla daha doğru kişilere, daha düşük maliyetle ulaşır.
                 </p>
               </div>
 
               {/* Configuration */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
-                <h3 className="text-white font-medium">Bağlantı Ayarları</h3>
+              <div style={card}>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Bağlantı Ayarları</h3>
 
-                <div>
-                  <label className="text-slate-400 text-xs mb-1.5 block">Pixel ID</label>
+                <div style={{ marginBottom:12 }}>
+                  <label style={fieldLabel}>Pixel ID</label>
                   <input value={capi.pixelId} onChange={e => setCapi(p => ({ ...p, pixelId: e.target.value }))}
                     placeholder="123456789012345"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                  <p className="text-slate-500 text-xs mt-1">Meta Business Manager → Events Manager → Pixel → Settings</p>
+                    style={{ ...input, fontFamily:'monospace' }} />
+                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Meta Business Manager → Events Manager → Pixel → Settings</p>
                 </div>
 
-                <div>
-                  <label className="text-slate-400 text-xs mb-1.5 block">
-                    Access Token
-                    {capi.hasToken && <span className="ml-2 text-emerald-400">✓ Kayıtlı</span>}
+                <div style={{ marginBottom:12 }}>
+                  <label style={fieldLabel}>
+                    Access Token{' '}
+                    {capi.hasToken && <span style={{ color:'#34d399', marginLeft:6 }}>✓ Kayıtlı</span>}
                   </label>
                   <input value={capiNewToken} onChange={e => setCapiNewToken(e.target.value)}
                     type="password"
                     placeholder={capi.hasToken ? '••••••••••••• (değiştirmek için yeni token girin)' : 'EAAxxxxxxx...'}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                  <p className="text-slate-500 text-xs mt-1">Events Manager → Settings → Generate Access Token</p>
+                    style={{ ...input, fontFamily:'monospace' }} />
+                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Events Manager → Settings → Generate Access Token</p>
                 </div>
 
-                <div>
-                  <label className="text-slate-400 text-xs mb-1.5 block">Test Event Code <span className="text-slate-600">(opsiyonel)</span></label>
+                <div style={{ marginBottom:12 }}>
+                  <label style={fieldLabel}>Test Event Code <span style={{ color:'#475569' }}>(opsiyonel)</span></label>
                   <input value={capi.testCode} onChange={e => setCapi(p => ({ ...p, testCode: e.target.value }))}
                     placeholder="TEST12345"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                  <p className="text-slate-500 text-xs mt-1">Events Manager → Test Events → Server Events</p>
+                    style={{ ...input, fontFamily:'monospace' }} />
+                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Events Manager → Test Events → Server Events</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <div className={`w-10 h-5 rounded-full transition relative ${capi.enabled ? 'bg-blue-600' : 'bg-slate-700'}`}
-                      onClick={() => setCapi(p => ({ ...p, enabled: !p.enabled }))}>
-                      <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${capi.enabled ? 'left-5' : 'left-0.5'}`} />
-                    </div>
-                    <span className="text-slate-300 text-sm">CAPI Aktif</span>
-                  </label>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+                  <div onClick={() => setCapi(p => ({ ...p, enabled: !p.enabled }))} style={{ width:40, height:22, borderRadius:11, background:capi.enabled?'#3b82f6':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
+                    <div style={{ position:'absolute', top:3, left:capi.enabled?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+                  </div>
+                  <span style={{ color:'#cbd5e1', fontSize:13 }}>CAPI Aktif</span>
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div style={{ display:'flex', gap:10 }}>
                   <button onClick={async () => {
                     setCapiSaving(true)
                     try {
@@ -897,8 +896,8 @@ export default function SettingsPage() {
                     } catch (e: any) { showMsg('error', e.message) }
                     finally { setCapiSaving(false) }
                   }} disabled={capiSaving || !capi.pixelId}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-                    {capiSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), opacity:(capiSaving || !capi.pixelId)?0.4:1 }}>
+                    {capiSaving ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
                     Kaydet
                   </button>
                   <button onClick={async () => {
@@ -910,49 +909,49 @@ export default function SettingsPage() {
                     } catch (e: any) { showMsg('error', e.message) }
                     finally { setCapiTesting(false) }
                   }} disabled={capiTesting || !capi.hasToken}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-xl transition">
-                    {capiTesting ? <RefreshCw size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+                    style={{ ...btn('rgba(100,116,139,0.25)'), border:'1px solid rgba(255,255,255,0.06)', opacity:(capiTesting || !capi.hasToken)?0.4:1 }}>
+                    {capiTesting ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <FlaskConical size={14} />}
                     Test Gönder
                   </button>
                 </div>
               </div>
 
-              {/* How it works — plain Turkish */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <h3 className="text-white font-medium mb-4">Nasıl Çalışır?</h3>
-                <div className="space-y-3">
+              {/* How it works */}
+              <div style={card}>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Nasıl Çalışır?</h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
-                    { step: '1', label: 'Lead Geldi', desc: 'Yeni bir müşteri adayı oluştuğunda Meta&apos;ya bildirilir', dot: 'bg-blue-400' },
-                    { step: '2', label: 'İletişim Kuruldu', desc: 'İlk mesaj veya arama yapıldığında', dot: 'bg-cyan-400' },
-                    { step: '3', label: 'Teklif Gönderildi', desc: 'Fiyat teklifi oluşturulduğunda', dot: 'bg-amber-400' },
-                    { step: '4', label: 'Teklif Görüntülendi', desc: 'Müşteri teklifi incelediğinde', dot: 'bg-purple-400' },
-                    { step: '5', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olarak işaretlendiğinde — en önemli sinyal', dot: 'bg-emerald-400' },
-                  ].map(({ step, label, desc, dot }) => (
-                    <div key={step} className="flex items-start gap-3">
-                      <div className={`w-5 h-5 rounded-full ${dot} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5`}>{step}</div>
+                    { step: '1', label: 'Lead Geldi', desc: 'Yeni bir müşteri adayı oluştuğunda Meta\'ya bildirilir', dotColor: '#60a5fa' },
+                    { step: '2', label: 'İletişim Kuruldu', desc: 'İlk mesaj veya arama yapıldığında', dotColor: '#22d3ee' },
+                    { step: '3', label: 'Teklif Gönderildi', desc: 'Fiyat teklifi oluşturulduğunda', dotColor: '#fbbf24' },
+                    { step: '4', label: 'Teklif Görüntülendi', desc: 'Müşteri teklifi incelediğinde', dotColor: '#a78bfa' },
+                    { step: '5', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olarak işaretlendiğinde — en önemli sinyal', dotColor: '#34d399' },
+                  ].map(({ step, label, desc, dotColor }) => (
+                    <div key={step} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+                      <div style={{ width:20, height:20, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, marginTop:1 }}>{step}</div>
                       <div>
-                        <span className="text-sm font-medium text-white">{label}</span>
-                        <p className="text-slate-400 text-xs mt-0.5">{desc}</p>
+                        <span style={{ fontSize:13, fontWeight:500, color:'#fff' }}>{label}</span>
+                        <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 p-3 bg-slate-900/80 rounded-lg">
-                  <p className="text-slate-400 text-xs">
+                <div style={{ marginTop:14, padding:'10px 12px', background:'rgba(6,10,28,0.6)', borderRadius:10 }}>
+                  <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
                     Tüm veriler güvenli şekilde şifrelenerek Meta&apos;ya iletilir. Kişisel bilgiler (isim, telefon, e-posta) şifrelenmeden gönderilmez.
                   </p>
                 </div>
               </div>
 
               {/* Audience export */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <h3 className="text-white font-medium mb-2">Custom Audience Export</h3>
-                <p className="text-slate-400 text-sm mb-4">SHA-256 hashli CSV — Meta Ads Manager&apos;a direkt yükleyin</p>
-                <div className="flex gap-3">
+              <div style={card}>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 6px' }}>Custom Audience Export</h3>
+                <p style={{ color:'#64748b', fontSize:13, margin:'0 0 14px' }}>SHA-256 hashli CSV — Meta Ads Manager&apos;a direkt yükleyin</p>
+                <div style={{ display:'flex', gap:10, marginBottom:12 }}>
                   {[
-                    { path: '/api/meta-capi/audience/won',  label: 'Kazanıldı Listesi',  cls: 'bg-emerald-600/20 hover:bg-emerald-600/30 border-emerald-600/40 text-emerald-300' },
-                    { path: '/api/meta-capi/audience/lost', label: 'Kaybedildi Listesi', cls: 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300' },
-                  ].map(({ path, label, cls }) => (
+                    { path: '/api/meta-capi/audience/won',  label: 'Kazanıldı Listesi',  bg: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399' },
+                    { path: '/api/meta-capi/audience/lost', label: 'Kaybedildi Listesi', bg: 'rgba(245,158,11,0.12)',  border: '1px solid rgba(245,158,11,0.3)',  color: '#fbbf24' },
+                  ].map(({ path, label, bg, border, color }) => (
                     <button key={path} onClick={async () => {
                       const token = localStorage.getItem('token')
                       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -964,12 +963,12 @@ export default function SettingsPage() {
                       a.download = path.split('/').pop() + '.csv'
                       a.click()
                       URL.revokeObjectURL(url)
-                    }} className={`flex items-center gap-2 px-4 py-2.5 border text-sm rounded-xl transition ${cls}`}>
+                    }} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:bg, border, color, borderRadius:10, fontSize:13, cursor:'pointer' }}>
                       <Download size={14} /> {label}
                     </button>
                   ))}
                 </div>
-                <p className="text-slate-500 text-xs mt-3">
+                <p style={{ color:'#475569', fontSize:12, margin:0 }}>
                   Kazanıldı → mevcut müşterileri reklamlardan hariç tut veya Lookalike Audience oluştur
                   · Kaybedildi → retargeting kampanyaları için hedefle
                 </p>
@@ -977,15 +976,15 @@ export default function SettingsPage() {
 
               {/* Recent event log */}
               {capiEvents.length > 0 && (
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                  <h3 className="text-white font-medium mb-4">Son CAPI Eventleri</h3>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div style={card}>
+                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Son CAPI Eventleri</h3>
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:256, overflowY:'auto' }}>
                     {capiEvents.slice(0, 20).map((ev: any) => (
-                      <div key={ev.id || ev.fired_at} className="flex items-center gap-3 text-xs py-1.5 border-b border-slate-700/50">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                        <span className="text-slate-400 w-32 flex-shrink-0 font-mono">{ev.event_name}</span>
-                        <span className="text-slate-300 flex-1 truncate">{ev.leads?.company_name || ev.lead_id}</span>
-                        <span className="text-slate-500 flex-shrink-0">{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
+                      <div key={ev.id || ev.fired_at} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:ev.success?'#34d399':'#f87171', display:'inline-block' }} />
+                        <span style={{ color:'#64748b', width:128, flexShrink:0, fontFamily:'monospace' }}>{ev.event_name}</span>
+                        <span style={{ color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.leads?.company_name || ev.lead_id}</span>
+                        <span style={{ color:'#475569', flexShrink:0 }}>{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
                       </div>
                     ))}
                   </div>
@@ -996,23 +995,23 @@ export default function SettingsPage() {
 
           {/* GOOGLE ENHANCED CONVERSIONS */}
           {tab === 'google-capi' && (
-            <div className="space-y-6">
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
               {/* Header */}
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-5">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">🎯</div>
-                  <div>
-                    <h2 className="text-white font-semibold">Google Reklam Dönüşüm Takibi</h2>
-                    <p className="text-blue-300 text-xs">Hangi Google reklamının müşteriye dönüştüğünü otomatik bildir</p>
+              <div style={{ background:'rgba(59,130,246,0.08)', border:'1px solid rgba(59,130,246,0.25)', borderRadius:16, padding:'18px 20px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+                  <div style={{ width:40, height:40, background:'#1d4ed8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🎯</div>
+                  <div style={{ flex:1 }}>
+                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>Google Reklam Dönüşüm Takibi</h2>
+                    <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>Hangi Google reklamının müşteriye dönüştüğünü otomatik bildir</p>
                   </div>
-                  <div className="ml-auto flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${gcapi.enabled && gcapi.hasConnection ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
-                    <span className={`text-xs ${gcapi.enabled && gcapi.hasConnection ? 'text-emerald-400' : 'text-slate-500'}`}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:(gcapi.enabled && gcapi.hasConnection)?'#34d399':'#475569', display:'inline-block', boxShadow:(gcapi.enabled && gcapi.hasConnection)?'0 0 6px #34d399':undefined }} />
+                    <span style={{ fontSize:12, color:(gcapi.enabled && gcapi.hasConnection)?'#34d399':'#475569' }}>
                       {gcapi.enabled && gcapi.hasConnection ? 'Aktif' : gcapi.hasConnection ? 'Bağlı (Pasif)' : 'Google bağlı değil'}
                     </span>
                   </div>
                 </div>
-                <p className="text-slate-400 text-xs">
+                <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
                   LeadFlow&apos;da &quot;Kazanıldı&quot; olan her lead Google Ads&apos;e bildirilir.
                   Smart Bidding hangi reklamın müşteri getirdiğini öğrenir — daha düşük tıklama maliyeti, daha yüksek dönüşüm oranı.
                 </p>
@@ -1020,46 +1019,45 @@ export default function SettingsPage() {
 
               {/* Connection check */}
               {!gcapi.hasConnection && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between">
+                <div style={{ background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:14, padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <div>
-                    <p className="text-amber-300 text-sm font-medium">Google Ads Hesabı Bağlı Değil</p>
-                    <p className="text-amber-400/70 text-xs mt-0.5">Önce Google Ads sayfasından hesabınızı bağlayın</p>
+                    <p style={{ color:'#fbbf24', fontSize:13, fontWeight:500, margin:0 }}>Google Ads Hesabı Bağlı Değil</p>
+                    <p style={{ color:'rgba(251,191,36,0.6)', fontSize:12, margin:'3px 0 0' }}>Önce Google Ads sayfasından hesabınızı bağlayın</p>
                   </div>
-                  <a href="/google-ads" className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-sm rounded-xl transition">
+                  <a href="/google-ads" style={{ padding:'8px 14px', background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.4)', color:'#fbbf24', fontSize:13, borderRadius:10, textDecoration:'none' }}>
                     Google Ads →
                   </a>
                 </div>
               )}
 
               {/* Configuration */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
-                <h3 className="text-white font-medium">Dönüşüm Ayarları</h3>
+              <div style={card}>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Dönüşüm Ayarları</h3>
 
-                <div>
-                  <label className="text-slate-400 text-xs mb-1.5 block">Google Ads Müşteri Kimliği (Customer ID)</label>
+                <div style={{ marginBottom:12 }}>
+                  <label style={fieldLabel}>Google Ads Müşteri Kimliği (Customer ID)</label>
                   <input value={gcapi.customerId} onChange={e => setGcapi(p => ({ ...p, customerId: e.target.value }))}
                     placeholder="123-456-7890"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                  <p className="text-slate-500 text-xs mt-1">Google Ads → Hesap Ayarları → Müşteri Kimliği</p>
+                    style={{ ...input, fontFamily:'monospace' }} />
+                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Google Ads → Hesap Ayarları → Müşteri Kimliği</p>
                 </div>
 
-                <div>
-                  <label className="text-slate-400 text-xs mb-1.5 block">Dönüşüm İşlemi Kimliği (Conversion Action ID)</label>
+                <div style={{ marginBottom:12 }}>
+                  <label style={fieldLabel}>Dönüşüm İşlemi Kimliği (Conversion Action ID)</label>
                   <input value={gcapi.conversionActionId} onChange={e => setGcapi(p => ({ ...p, conversionActionId: e.target.value }))}
                     placeholder="123456789"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                  <p className="text-slate-500 text-xs mt-1">Google Ads → Araçlar → Dönüşümler → Dönüşüm İşlemi → Kimlik</p>
+                    style={{ ...input, fontFamily:'monospace' }} />
+                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Google Ads → Araçlar → Dönüşümler → Dönüşüm İşlemi → Kimlik</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-5 rounded-full transition relative cursor-pointer ${gcapi.enabled ? 'bg-blue-600' : 'bg-slate-700'}`}
-                    onClick={() => setGcapi(p => ({ ...p, enabled: !p.enabled }))}>
-                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${gcapi.enabled ? 'left-5' : 'left-0.5'}`} />
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+                  <div onClick={() => setGcapi(p => ({ ...p, enabled: !p.enabled }))} style={{ width:40, height:22, borderRadius:11, background:gcapi.enabled?'#3b82f6':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
+                    <div style={{ position:'absolute', top:3, left:gcapi.enabled?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
                   </div>
-                  <span className="text-slate-300 text-sm">Google Enhanced Conversions Aktif</span>
+                  <span style={{ color:'#cbd5e1', fontSize:13 }}>Google Enhanced Conversions Aktif</span>
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div style={{ display:'flex', gap:10 }}>
                   <button onClick={async () => {
                     setGcapiSaving(true)
                     try {
@@ -1072,8 +1070,8 @@ export default function SettingsPage() {
                     } catch (e: any) { showMsg('error', e.message) }
                     finally { setGcapiSaving(false) }
                   }} disabled={gcapiSaving || !gcapi.customerId || !gcapi.conversionActionId}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
-                    {gcapiSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), opacity:(gcapiSaving || !gcapi.customerId || !gcapi.conversionActionId)?0.4:1 }}>
+                    {gcapiSaving ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
                     Kaydet
                   </button>
                   <button onClick={async () => {
@@ -1085,34 +1083,34 @@ export default function SettingsPage() {
                     } catch (e: any) { showMsg('error', e.message) }
                     finally { setGcapiTesting(false) }
                   }} disabled={gcapiTesting || !gcapi.hasConnection || !gcapi.enabled}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-xl transition">
-                    {gcapiTesting ? <RefreshCw size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+                    style={{ ...btn('rgba(100,116,139,0.25)'), border:'1px solid rgba(255,255,255,0.06)', opacity:(gcapiTesting || !gcapi.hasConnection || !gcapi.enabled)?0.4:1 }}>
+                    {gcapiTesting ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <FlaskConical size={14} />}
                     Test Gönder
                   </button>
                 </div>
               </div>
 
               {/* How it works */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                <h3 className="text-white font-medium mb-4">Nasıl Çalışır?</h3>
-                <div className="space-y-3">
+              <div style={card}>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Nasıl Çalışır?</h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
-                    { step: '1', label: 'Lead Reklamdan Geldi', desc: 'Google reklamına tıklayan kişi LeadFlow\'a düşer (gclid otomatik yakalanır)', dot: 'bg-blue-400' },
-                    { step: '2', label: 'İletişim Kuruldu', desc: 'Mesaj veya arama yapıldığında Google\'a "Lead" sinyali gönderilir', dot: 'bg-cyan-400' },
-                    { step: '3', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olunca Google\'a "Dönüşüm" bildirimi gider — deal değeri ile birlikte', dot: 'bg-emerald-400' },
-                    { step: '4', label: 'Smart Bidding Öğrenir', desc: 'Google algoritması hangi aramalar/hedef kitleler müşteri getirdi, sonraki reklamlarda daha iyi hedefleme yapar', dot: 'bg-amber-400' },
-                  ].map(({ step, label, desc, dot }) => (
-                    <div key={step} className="flex items-start gap-3">
-                      <div className={`w-5 h-5 rounded-full ${dot} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5`}>{step}</div>
+                    { step: '1', label: 'Lead Reklamdan Geldi', desc: 'Google reklamına tıklayan kişi LeadFlow\'a düşer (gclid otomatik yakalanır)', dotColor: '#60a5fa' },
+                    { step: '2', label: 'İletişim Kuruldu', desc: 'Mesaj veya arama yapıldığında Google\'a "Lead" sinyali gönderilir', dotColor: '#22d3ee' },
+                    { step: '3', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olunca Google\'a "Dönüşüm" bildirimi gider — deal değeri ile birlikte', dotColor: '#34d399' },
+                    { step: '4', label: 'Smart Bidding Öğrenir', desc: 'Google algoritması hangi aramalar/hedef kitleler müşteri getirdi, sonraki reklamlarda daha iyi hedefleme yapar', dotColor: '#fbbf24' },
+                  ].map(({ step, label, desc, dotColor }) => (
+                    <div key={step} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+                      <div style={{ width:20, height:20, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, marginTop:1 }}>{step}</div>
                       <div>
-                        <span className="text-sm font-medium text-white">{label}</span>
-                        <p className="text-slate-400 text-xs mt-0.5">{desc}</p>
+                        <span style={{ fontSize:13, fontWeight:500, color:'#fff' }}>{label}</span>
+                        <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 p-3 bg-slate-900/80 rounded-lg">
-                  <p className="text-slate-400 text-xs">
+                <div style={{ marginTop:14, padding:'10px 12px', background:'rgba(6,10,28,0.6)', borderRadius:10 }}>
+                  <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
                     Tüm veriler şifrelenerek (SHA-256) Google&apos;a iletilir. İsim, telefon ve e-posta şifrelenmeden gönderilmez.
                     Customer Match için Kazanıldı listesini Google Ads&apos;e yükleyebilirsiniz.
                   </p>
@@ -1120,10 +1118,10 @@ export default function SettingsPage() {
               </div>
 
               {/* Customer Match export */}
-              <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 flex items-center justify-between">
+              <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div>
-                  <h3 className="text-white font-medium">Customer Match Export</h3>
-                  <p className="text-slate-400 text-sm mt-0.5">Kazanıldı listesi → Google Ads Customer Match olarak yükle</p>
+                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 4px' }}>Customer Match Export</h3>
+                  <p style={{ color:'#64748b', fontSize:13, margin:0 }}>Kazanıldı listesi → Google Ads Customer Match olarak yükle</p>
                 </div>
                 <button onClick={async () => {
                   const token = localStorage.getItem('token')
@@ -1133,22 +1131,22 @@ export default function SettingsPage() {
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a'); a.href = url; a.download = 'google-customer-match.csv'; a.click()
                   URL.revokeObjectURL(url)
-                }} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/40 text-emerald-300 text-sm rounded-xl transition">
+                }} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', borderRadius:10, fontSize:13, cursor:'pointer' }}>
                   <Download size={14} /> İndir
                 </button>
               </div>
 
               {/* Event log */}
               {gcapiEvents.length > 0 && (
-                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-                  <h3 className="text-white font-medium mb-4">Son Gönderilen Dönüşümler</h3>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                <div style={card}>
+                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Son Gönderilen Dönüşümler</h3>
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:256, overflowY:'auto' }}>
                     {gcapiEvents.slice(0, 20).map((ev: any) => (
-                      <div key={ev.id || ev.fired_at} className="flex items-center gap-3 text-xs py-1.5 border-b border-slate-700/50">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                        <span className="text-slate-400 w-32 flex-shrink-0 font-mono">{ev.event_name}</span>
-                        <span className="text-slate-300 flex-1 truncate">{ev.leads?.company_name || ev.lead_id}</span>
-                        <span className="text-slate-500 flex-shrink-0">{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
+                      <div key={ev.id || ev.fired_at} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                        <span style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:ev.success?'#34d399':'#f87171', display:'inline-block' }} />
+                        <span style={{ color:'#64748b', width:128, flexShrink:0, fontFamily:'monospace' }}>{ev.event_name}</span>
+                        <span style={{ color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.leads?.company_name || ev.lead_id}</span>
+                        <span style={{ color:'#475569', flexShrink:0 }}>{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
                       </div>
                     ))}
                   </div>
@@ -1159,6 +1157,7 @@ export default function SettingsPage() {
 
         </div>
       </div>
+      <style>{`@keyframes settings-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
