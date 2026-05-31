@@ -418,36 +418,62 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
       return score;
     }
 
-    // Save to leads — with cross-search deduplication
+    // Save to leads — with cross-search deduplication + error logging
     let savedCount = 0;
     if (enriched.length > 0) {
-      for (const e of enriched) {
-        // Check if this company already exists for this user+country+sector
-        const { data: existing } = await supabase.from('leads')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('country_code', countryCode)
-          .ilike('company_name', `%${e.company_name.substring(0,25)}%`)
-          .maybeSingle();
-        if (existing) continue; // Skip duplicate
+      // Build base lead object — only columns guaranteed to exist in schema
+      const baseColumns = (e: any) => ({
+        user_id: userId,
+        company_name: e.company_name,
+        phone: e.phone||null, email: e.email||null, website: e.website||null,
+        city: (e.address?.split(',')?.[0]||country.name).substring(0,100),
+        country: country.name,
+        sector, status: 'new', source: 'export_search',
+        notes: `${country.name} ihracat hedefi${e.verified_importer?' | ✅ Doğrulanmış':''}${e.decision_maker_name?` | 👤 ${e.decision_maker_name}${e.decision_maker_title?` (${e.decision_maker_title})`:''}`:''}`,
+      });
 
-        const score = calcCompanyScore(e);
-        await supabase.from('leads').insert([{
-          user_id: userId,
-          company_name: e.company_name,
-          phone: e.phone||null, email: e.email||null, website: e.website||null,
-          city: (e.address?.split(',')?.[0]||country.name).substring(0,100),
-          country: country.name, country_code: countryCode, sector,
-          status: 'new', source: 'export_search',
-          notes: `${country.name} ihracat hedefi${e.verified_importer?' | ✅ Doğrulanmış':''}${e.decision_maker_name?` | 👤 ${e.decision_maker_name}${e.decision_maker_title?` (${e.decision_maker_title})`:''}`:''}`,
-          hs_codes: hsCodes.length ? JSON.stringify(hsCodes) : null,
-          verified_importer: e.verified_importer||false,
-          decision_maker_name: e.decision_maker_name||null,
-          decision_maker_title: e.decision_maker_title||null,
-          decision_maker_linkedin: e.decision_maker_linkedin||null,
-          company_score: score,
-        }]);
-        savedCount++;
+      // Extended columns — added by autoMigrate (may not exist on first run)
+      const extendedColumns = (e: any, score: number) => ({
+        country_code: countryCode,
+        hs_codes: hsCodes.length ? JSON.stringify(hsCodes) : null,
+        verified_importer: e.verified_importer||false,
+        decision_maker_name: e.decision_maker_name||null,
+        decision_maker_title: e.decision_maker_title||null,
+        decision_maker_linkedin: e.decision_maker_linkedin||null,
+        company_score: score,
+      });
+
+      for (const e of enriched) {
+        try {
+          // Dedup check — use only base columns
+          const { data: existing } = await supabase.from('leads')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('country', country.name)
+            .ilike('company_name', `%${e.company_name.substring(0,25)}%`)
+            .maybeSingle();
+          if (existing) continue;
+
+          const score = calcCompanyScore(e);
+
+          // Try insert with all columns
+          const { error: insertErr } = await supabase.from('leads').insert([{
+            ...baseColumns(e), ...extendedColumns(e, score),
+          }]);
+
+          if (insertErr) {
+            // Fallback: insert only guaranteed base columns
+            console.log('[ExportSearch] Extended insert failed, using base columns:', insertErr.message);
+            const { error: baseErr } = await supabase.from('leads').insert([baseColumns(e)]);
+            if (baseErr) {
+              console.error('[ExportSearch] Base insert also failed:', baseErr.message);
+              continue;
+            }
+          }
+          savedCount++;
+        } catch (insertEx: any) {
+          console.error('[ExportSearch] Lead save error:', insertEx.message);
+        }
       }
     }
 
@@ -632,7 +658,10 @@ router.post('/generate-message', async (req: any, res: any) => {
     const senderProduct = (typeof profile?.product==='string'?profile.product:profile?.product?.description)||lead.sector||'';
     const hsCodes = lead.hs_codes ? JSON.parse(lead.hs_codes) : [];
     const message = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
-    await supabase.from('export_messages').upsert([{ user_id:req.userId, lead_id:leadId, country_code:country.code, channel, subject:message.subject||null, body:message.body, language:country.language, status:'draft' }], { onConflict:'user_id,lead_id,channel' });
+    const msgData = { user_id:req.userId, lead_id:leadId, country_code:country.code, channel, subject:message.subject||null, body:message.body, language:country.language, status:'draft' };
+    // Try upsert first, fall back to insert if unique constraint missing
+    const { error: upsertErr } = await supabase.from('export_messages').upsert([msgData], { onConflict:'user_id,lead_id,channel' });
+    if (upsertErr) await supabase.from('export_messages').insert([msgData]).select();
     res.json({ ok:true, message, lead:lead.company_name, country:country.name, language:country.language });
   } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
@@ -640,7 +669,7 @@ router.post('/generate-message', async (req: any, res: any) => {
 router.get('/messages', async (req: any, res: any) => {
   try {
     const { countryCode, channel } = req.query;
-    let query = supabase.from('export_messages').select('*, leads(company_name,country,sector,phone,website,decision_maker_name,decision_maker_title,decision_maker_linkedin)').eq('user_id',req.userId).order('created_at',{ ascending:false }).limit(100);
+    let query = supabase.from('export_messages').select('*, leads(company_name,country,sector,phone,website)').eq('user_id',req.userId).order('created_at',{ ascending:false }).limit(100);
     if (countryCode) query = query.eq('country_code', countryCode);
     if (channel) query = query.eq('channel', channel);
     const { data } = await query;
@@ -666,7 +695,9 @@ router.post('/bulk-messages', async (req: any, res: any) => {
           if (!lead) continue;
           const hsCodes = lead.hs_codes ? JSON.parse(lead.hs_codes) : [];
           const msg = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
-          await supabase.from('export_messages').upsert([{ user_id:req.userId, lead_id:leadId, country_code:countryCode, channel, subject:msg.subject||null, body:msg.body, language:country.language, status:'draft' }], { onConflict:'user_id,lead_id,channel' });
+          const bmData = { user_id:req.userId, lead_id:leadId, country_code:countryCode, channel, subject:msg.subject||null, body:msg.body, language:country.language, status:'draft' };
+          const { error: bmErr } = await supabase.from('export_messages').upsert([bmData], { onConflict:'user_id,lead_id,channel' });
+          if (bmErr) await supabase.from('export_messages').insert([bmData]).select();
           await sleep(400);
         } catch(e:any) { console.error('bulk msg error:', e.message); }
       }
@@ -729,7 +760,7 @@ router.get('/campaigns', async (req: any, res: any) => {
 router.get('/export-leads', async (req: any, res: any) => {
   try {
     const { countryCode, limit=100 } = req.query;
-    let query = supabase.from('leads').select('*').eq('user_id',req.userId).eq('source','export_search').order('company_score',{ ascending:false }).order('created_at',{ ascending:false }).limit(Number(limit));
+    let query = supabase.from('leads').select('*').eq('user_id',req.userId).eq('source','export_search').order('created_at',{ ascending:false }).limit(Number(limit));
     if (countryCode) query = query.eq('country_code', countryCode);
     const { data } = await query;
     res.json({ leads:data||[] });
