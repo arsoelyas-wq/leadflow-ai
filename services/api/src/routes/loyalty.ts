@@ -5,33 +5,41 @@ const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// GET /api/loyalty/scores
+// GET /api/loyalty/scores → returns customers with health score fields
 router.get('/scores', async (req: any, res: any) => {
   try {
-    const { data: leads } = await supabase.from('leads').select('id, company_name, contact_name, status, won_at, phone')
-      .eq('user_id', req.userId).not('status', 'eq', 'lost');
+    const { data: leads } = await supabase.from('leads')
+      .select('id, company_name, contact_name, status, won_at, phone, city, sector, created_at')
+      .eq('user_id', req.userId)
+      .not('status', 'eq', 'lost')
+      .order('created_at', { ascending: false })
+      .limit(200);
 
-    const scores = await Promise.all((leads || []).map(async (lead: any) => {
-      const { data: messages } = await supabase.from('messages').select('id, sent_at').eq('lead_id', lead.id);
-      const { data: invoices } = await supabase.from('invoices').select('amount, status').eq('lead_id', lead.id);
+    const customers = await Promise.all((leads || []).map(async (lead: any) => {
+      const [{ data: messages }, { data: repliedMsgs }, { data: invoices }, { data: lastMsg }] = await Promise.all([
+        supabase.from('messages').select('id').eq('lead_id', lead.id),
+        supabase.from('messages').select('id').eq('lead_id', lead.id).eq('direction', 'in'),
+        supabase.from('invoices').select('amount, status').eq('lead_id', lead.id),
+        supabase.from('messages').select('sent_at').eq('lead_id', lead.id).order('sent_at', { ascending: false }).limit(1),
+      ]);
 
-      const msgCount = messages?.length || 0;
-      const totalPaid = invoices?.filter((i: any) => i.status === 'paid').reduce((a: number, i: any) => a + parseFloat(i.amount || 0), 0) || 0;
-      const isWon = lead.status === 'won';
+      const totalPaid = (invoices || []).filter((i: any) => i.status === 'paid').reduce((a: number, i: any) => a + parseFloat(i.amount || 0), 0);
 
-      // Puan hesapla
-      let points = 0;
-      if (isWon) points += 100;
-      points += Math.min(msgCount * 5, 50);
-      points += Math.min(Math.floor(totalPaid / 100), 200);
-
-      const tier = points >= 300 ? 'platinum' : points >= 200 ? 'gold' : points >= 100 ? 'silver' : 'bronze';
-
-      return { lead, points, tier, msgCount, totalPaid };
+      return {
+        id: lead.id,
+        company_name: lead.company_name,
+        contact_name: lead.contact_name,
+        status: lead.status,
+        city: lead.city,
+        sector: lead.sector,
+        total_paid: totalPaid,
+        total_messages: messages?.length || 0,
+        replied_messages: repliedMsgs?.length || 0,
+        last_contact: lastMsg?.[0]?.sent_at || lead.won_at || null,
+      };
     }));
 
-    scores.sort((a, b) => b.points - a.points);
-    res.json({ scores: scores.slice(0, 50) });
+    res.json({ customers });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

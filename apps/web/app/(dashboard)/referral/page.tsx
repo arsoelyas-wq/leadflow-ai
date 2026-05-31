@@ -127,7 +127,7 @@ export default function ReferralPage() {
             <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Referral Loop</h1>
             <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>Kazanılan müşterilerden otomatik referans kampanyası</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-              {[{label:'Gönderilen',value:stats?.sent||0,color:'#06b6d4'},{label:'Referans',value:stats?.referrals||0,color:'#d97706'},{label:'Kazanılan',value:stats?.won||0,color:'#10b981'}].map(m => (
+              {[{label:'Gönderilen',value:stats?.sent||0,color:'#06b6d4'},{label:'Referans',value:stats?.referralsReceived||0,color:'#d97706'},{label:'Kazanılan',value:stats?.referralsWon||0,color:'#10b981'}].map(m => (
                 <div key={m.label} style={{ textAlign:'center' }}>
                   <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>
                   <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.label}</p>
@@ -191,9 +191,9 @@ export default function ReferralPage() {
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
               <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 Performans</h3>
               {[
-                { label:'Referans Dönüşüm', value:`%${stats?.referrals&&stats?.sent?Math.round((stats.referrals/stats.sent)*100):0}`, color:'#d97706' },
+                { label:'Referans Dönüşüm', value:`%${stats?.referralsReceived&&stats?.sent?Math.round((stats.referralsReceived/stats.sent)*100):0}`, color:'#d97706' },
                 { label:'Normal Dönüşüm', value:'%22', color:'#94a3b8' },
-                { label:'Kazanılan Referanslar', value:stats?.won||0, color:'#10b981' },
+                { label:'Kazanılan Referanslar', value:stats?.referralsWon||0, color:'#10b981' },
               ].map(m => (
                 <div key={m.label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
                   <span style={{ color:'#94a3b8', fontSize:12 }}>{m.label}</span>

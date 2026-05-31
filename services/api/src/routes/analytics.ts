@@ -11,7 +11,10 @@ const supabase = createClient(
 router.get('/overview', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const periodParam = (req.query.period as string) || '30d';
+    const days = periodParam === '7d' ? 7 : periodParam === '90d' ? 90 : 30;
+    const periodAgo = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
     const [
       { data: leads },
       { data: user },
@@ -20,8 +23,8 @@ router.get('/overview', async (req: any, res: any) => {
     ] = await Promise.all([
       supabase.from('leads').select('status, source, created_at').eq('user_id', userId),
       supabase.from('users').select('credits_total, credits_used').eq('id', userId).single(),
-      supabase.from('campaigns').select('name, channel, status, total_sent, total_replied').eq('user_id', userId),
-      supabase.from('messages').select('channel, direction').eq('user_id', userId),
+      supabase.from('campaigns').select('name, channel, status, total_sent, total_replied, created_at').eq('user_id', userId),
+      supabase.from('messages').select('channel, direction, sent_at').eq('user_id', userId),
     ]);
 
     const allLeads = leads || [];
@@ -29,7 +32,7 @@ router.get('/overview', async (req: any, res: any) => {
     const allMessages = messages || [];
 
     const totalLeads = allLeads.length;
-    const newLeads = allLeads.filter((l: any) => l.created_at >= weekAgo).length;
+    const newLeads = allLeads.filter((l: any) => l.created_at >= periodAgo).length;
 
     const sourceBreakdown: Record<string, number> = {};
     allLeads.forEach((l: any) => {
@@ -43,8 +46,7 @@ router.get('/overview', async (req: any, res: any) => {
     });
 
     const activeCampaigns = allCampaigns.filter((c: any) => c.status === 'active').length;
-    // Reply rate — sadece son 30 günün kampanyalarına bak (tüm tarih yerine)
-    const recentCampaigns = allCampaigns.filter((c: any) => c.created_at >= weekAgo || c.status === 'active');
+    const recentCampaigns = allCampaigns.filter((c: any) => c.created_at >= periodAgo || c.status === 'active');
     const totalSent = recentCampaigns.reduce((s: number, c: any) => s + (c.total_sent || 0), 0);
     const totalReplied = recentCampaigns.reduce((s: number, c: any) => s + (c.total_replied || 0), 0);
     const replyRate = totalSent > 0 ? Math.round((totalReplied / totalSent) * 100) : 0;
@@ -54,9 +56,10 @@ router.get('/overview', async (req: any, res: any) => {
       .sort((a: any, b: any) => (b.total_sent || 0) - (a.total_sent || 0))
       .slice(0, 5);
 
+    const periodMessages = allMessages.filter((m: any) => m.sent_at >= periodAgo);
     const channelStats = {
-      whatsapp: allMessages.filter((m: any) => m.channel === 'whatsapp' && m.direction === 'out').length,
-      email: allMessages.filter((m: any) => m.channel === 'email' && m.direction === 'out').length,
+      whatsapp: periodMessages.filter((m: any) => m.channel === 'whatsapp' && m.direction === 'out').length,
+      email: periodMessages.filter((m: any) => m.channel === 'email' && m.direction === 'out').length,
     };
 
     const credits = (user?.credits_total || 0) - (user?.credits_used || 0);
@@ -64,7 +67,7 @@ router.get('/overview', async (req: any, res: any) => {
     res.json({
       totalLeads, newLeads, replyRate, activeCampaigns, credits,
       totalSent, totalReplied, sourceBreakdown, statusBreakdown,
-      channelStats, topCampaigns,
+      channelStats, topCampaigns, period: periodParam, days,
     });
   } catch (error: any) {
     console.error('Analytics error:', error.message);
