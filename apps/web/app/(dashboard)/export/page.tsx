@@ -129,24 +129,44 @@ function SearchProgress({ sessionId, onComplete }: { sessionId: string; onComple
     enriching_contacts: '📋 Şirket profilleri oluşturuluyor...', researching_companies: '🔬 Alıcılar doğrulanıyor...',
     saving_results: '💾 Alıcı listesi kaydediliyor...', done: '✅ Tamamlandı!',
   }
+  const isTemp = sessionId.startsWith('temp-')
+  // Temp session: don't poll DB, just show animated progress
+  const [elapsed, setElapsed] = useState(0)
   useEffect(() => {
+    if (!isTemp) return
+    const iv = setInterval(() => setElapsed(p => p + 1), 1000)
+    return () => clearInterval(iv)
+  }, [isTemp])
+
+  useEffect(() => {
+    if (isTemp) return // Skip DB polling for temp sessions
     const iv = setInterval(async () => {
       try {
         const d: any = await api.get(`/api/export/search-session/${sessionId}/status`)
         setProgress(d.progress || 0); setStep(STEPS[d.step] || d.step || '...'); setStatus(d.status); setFound(d.importersFound || 0)
         if (d.status === 'completed' || d.status === 'failed') { clearInterval(iv); if (d.status === 'completed') setTimeout(() => onComplete(d), 800) }
-      } catch { clearInterval(iv) }
-    }, 2800)
+      } catch(e) { /* silent — keep polling */ }
+    }, 3000)
     return () => clearInterval(iv)
-  }, [sessionId])
+  }, [sessionId, isTemp])
+
+  // Temp session: estimated progress based on elapsed time (~90s typical)
+  const tempProgress = isTemp ? Math.min(95, Math.round((elapsed / 90) * 100)) : progress
+  const tempStep = isTemp ? (
+    elapsed < 10 ? STEPS['hs_codes'] :
+    elapsed < 25 ? STEPS['market_data'] :
+    elapsed < 45 ? STEPS['finding_importers'] :
+    elapsed < 70 ? STEPS['enriching_contacts'] :
+    STEPS['saving_results']
+  ) : step
 
   if (status === 'completed') return (
     <div style={{ padding: '14px 20px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
       <CheckCircle size={16} color="#10b981" />
-      <p style={{ color: '#34d399', fontSize: 13, margin: 0, fontWeight: 600 }}>✅ {found} yeni alıcı bulundu — liste güncelleniyor...</p>
+      <p style={{ color: '#34d399', fontSize: 13, margin: 0, fontWeight: 600 }}>✅ {found} yeni alıcı bulundu — Alıcı Listesi sekmesini açın</p>
     </div>
   )
-  if (status === 'failed') return (
+  if (!isTemp && status === 'failed') return (
     <div style={{ padding: '12px 18px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 12 }}>
       <p style={{ color: '#f87171', fontSize: 13, margin: 0 }}>❌ Arama tamamlanamadı — lütfen tekrar deneyin</p>
     </div>
@@ -156,13 +176,17 @@ function SearchProgress({ sessionId, onComplete }: { sessionId: string; onComple
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <RefreshCw size={13} color="#10b981" style={{ animation: 'exp-spin 1s linear infinite' }} />
-          <span style={{ color: '#34d399', fontSize: 13, fontWeight: 600 }}>{step}</span>
+          <span style={{ color: '#34d399', fontSize: 13, fontWeight: 600 }}>{tempStep}</span>
         </div>
-        <span style={{ color: '#10b981', fontSize: 12, fontWeight: 700 }}>{progress}%</span>
+        <span style={{ color: '#10b981', fontSize: 12, fontWeight: 700 }}>{tempProgress}%{isTemp?' (tahmini)':''}</span>
       </div>
       <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
-        <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg,#10b981,#34d399)', borderRadius: 2, transition: 'width 0.5s', boxShadow: '0 0 8px rgba(16,185,129,0.4)' }} />
+        <div style={{ height: '100%', width: `${tempProgress}%`, background: 'linear-gradient(90deg,#10b981,#34d399)', borderRadius: 2, transition: 'width 0.8s', boxShadow: '0 0 8px rgba(16,185,129,0.4)' }} />
       </div>
+      {isTemp && elapsed > 80 && (
+        <p style={{ color: '#34d399', fontSize: 11, margin: '8px 0 0' }}>🔍 Arama bitiyor — <strong>Alıcı Listesi</strong> sekmesini kontrol edin veya Yenile butonuna basın</p>
+      )}
+      {!isTemp && <p style={{ color: '#475569', fontSize: 10, margin: '6px 0 0' }}>Arama arka planda devam ediyor...</p>}
     </div>
   )
 }
@@ -649,22 +673,45 @@ export default function ExportPage() {
                           {lead.decision_maker_name && <span style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.22)', color: '#a78bfa', fontSize: 9, padding: '2px 6px', borderRadius: 20, flexShrink: 0 }}>👤 KV Bulundu</span>}
                           {(hasMsg || existingMsg) && <span style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.22)', color: '#22d3ee', fontSize: 9, padding: '2px 6px', borderRadius: 20, flexShrink: 0 }}>💬 Hazır</span>}
                         </div>
-                        <div style={{ display: 'flex', gap: 10, fontSize: 11, color: '#475569', flexWrap: 'wrap' }}>
-                          <span>{country?.name || lead.country}</span>
-                          {lead.sector && <span>· {lead.sector}</span>}
-                          {lead.phone && <span style={{ color: '#10b981' }}>· 📞 {lead.phone}</span>}
-                          {lead.email && <span style={{ color: '#3b82f6' }}>· ✉️ {lead.email}</span>}
-                          {lead.website && <a href={lead.website} target="_blank" rel="noopener noreferrer" style={{ color: '#334155', textDecoration: 'none' }}>· 🔗 Site</a>}
-                          {lead.decision_maker_name && <span style={{ color: '#8b5cf6' }}>· 👤 {lead.decision_maker_name}{lead.decision_maker_title ? ` (${lead.decision_maker_title})` : ''}</span>}
-                          {lead.decision_maker_linkedin && <a href={lead.decision_maker_linkedin} target="_blank" rel="noopener noreferrer" style={{ color: '#0ea5e9', textDecoration: 'none', fontSize: 10 }}>LinkedIn ↗</a>}
+                        <div style={{ display: 'flex', gap: 8, fontSize: 11, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <span style={{ color:'#475569' }}>{country?.name || lead.country}</span>
+                          {lead.sector && <span style={{ color:'#334155' }}>· {lead.sector}</span>}
+                          {lead.phone && (
+                            <a href={`tel:${lead.phone}`} style={{ display:'flex', alignItems:'center', gap:3, color:'#10b981', textDecoration:'none', fontWeight:600, background:'rgba(16,185,129,0.1)', padding:'2px 7px', borderRadius:6 }}>
+                              📞 {lead.phone}
+                            </a>
+                          )}
+                          {lead.email && (
+                            <a href={`mailto:${lead.email}`} style={{ display:'flex', alignItems:'center', gap:3, color:'#3b82f6', textDecoration:'none', fontWeight:600, background:'rgba(59,130,246,0.1)', padding:'2px 7px', borderRadius:6 }}>
+                              ✉️ {lead.email}
+                            </a>
+                          )}
+                          {lead.website && <a href={lead.website.startsWith('http')?lead.website:`https://${lead.website}`} target="_blank" rel="noopener noreferrer" style={{ color:'#64748b', textDecoration:'none', fontSize:10 }}>🔗 Site ↗</a>}
+                          {!lead.phone && !lead.email && <span style={{ color:'#1e293b', fontSize:10 }}>İletişim bilgisi yok</span>}
                         </div>
+                        {lead.decision_maker_name && (
+                          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3 }}>
+                            <span style={{ color:'#8b5cf6', fontSize:10, background:'rgba(139,92,246,0.1)', padding:'2px 7px', borderRadius:6 }}>
+                              👤 {lead.decision_maker_name}{lead.decision_maker_title?` — ${lead.decision_maker_title}`:''}
+                            </span>
+                            {lead.decision_maker_linkedin && <a href={lead.decision_maker_linkedin} target="_blank" rel="noopener noreferrer" style={{ color:'#0ea5e9', textDecoration:'none', fontSize:10 }}>LinkedIn ↗</a>}
+                          </div>
+                        )}
                       </div>
 
-                      <button onClick={() => generateMessage(lead.id)} disabled={generatingMsg === lead.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.22)', background: 'rgba(16,185,129,0.07)', color: '#34d399', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
-                        {generatingMsg === lead.id ? <RefreshCw size={11} style={{ animation: 'exp-spin 1s linear infinite' }} /> : <MessageSquare size={11} />}
-                        Mesaj Yaz
-                      </button>
+                      <div style={{ display:'flex', gap:5, flexShrink:0 }}>
+                        {/* Lead detail page link */}
+                        <a href={`/leads?highlight=${lead.id}`}
+                          style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 10px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#64748b', fontSize:11, textDecoration:'none', cursor:'pointer' }}
+                          title="Lead detayını aç">
+                          <ExternalLink size={11} />
+                        </a>
+                        <button onClick={() => generateMessage(lead.id)} disabled={generatingMsg === lead.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.22)', background: 'rgba(16,185,129,0.07)', color: '#34d399', fontSize: 11, cursor: 'pointer' }}>
+                          {generatingMsg === lead.id ? <RefreshCw size={11} style={{ animation: 'exp-spin 1s linear infinite' }} /> : <MessageSquare size={11} />}
+                          Mesaj Yaz
+                        </button>
+                      </div>
                     </div>
 
                     {(hasMsg || existingMsg) && (

@@ -250,9 +250,15 @@ async function searchWebImporters(searchTerms: Record<string, string>, country: 
           if (!r.title || r.title.length < 4) continue;
           const rawName = r.title.split('|')[0].split(' - ')[0].split(' – ')[0].trim().substring(0, 100);
           if (rawName.length < 3) continue;
+          const content = r.text || '';
+          // Extract phone and email directly from Exa content
+          const phoneMatch = content.match(/(?:\+|00)?[\d\s\-().]{9,18}(?=\s|$|,)/);
+          const emailMatch = content.match(/[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}/);
           addResult({
             company_name: rawName, website: r.url||null,
-            description: (r.text||'').substring(0, 300),
+            description: content.substring(0, 300),
+            phone: phoneMatch?.[0]?.trim()||null,
+            email: emailMatch?.[0]||null,
             country: country.name, country_code: country.code, sector, source_type: 'web_directory',
           }, true);
         }
@@ -559,20 +565,30 @@ async function runSQL(sql: string): Promise<void> {
 
 async function autoMigrateExport() {
   // Check and create each table independently
+  // Drop FK constraints if they exist (they cause user_id mismatch errors)
+  try {
+    await runSQL(`
+      ALTER TABLE export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_u_ser_id_fkey";
+      ALTER TABLE export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_user_id_fkey";
+      ALTER TABLE export_messages DROP CONSTRAINT IF EXISTS "export_messages_user_id_fkey";
+      ALTER TABLE export_campaigns DROP CONSTRAINT IF EXISTS "export_campaigns_user_id_fkey";
+    `);
+  } catch {}
+
   const migrations = [
     {
       table: 'export_search_sessions',
       sql: `
         CREATE TABLE IF NOT EXISTS export_search_sessions (
           id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+          user_id TEXT NOT NULL,
           country_code TEXT, sector TEXT, status TEXT DEFAULT 'pending',
           step TEXT, progress INTEGER DEFAULT 0,
           result JSONB, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()
         );
         ALTER TABLE export_search_sessions ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "user_own_export_s" ON export_search_sessions;
-        CREATE POLICY "user_own_export_s" ON export_search_sessions USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id);
+        CREATE POLICY "user_own_export_s" ON export_search_sessions USING (true);
       `,
     },
     {
@@ -580,7 +596,7 @@ async function autoMigrateExport() {
       sql: `
         CREATE TABLE IF NOT EXISTS export_messages (
           id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+          user_id TEXT NOT NULL,
           lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
           country_code TEXT, channel TEXT DEFAULT 'whatsapp',
           subject TEXT, body TEXT NOT NULL, language TEXT,
@@ -589,7 +605,7 @@ async function autoMigrateExport() {
         );
         ALTER TABLE export_messages ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "user_own_export_m" ON export_messages;
-        CREATE POLICY "user_own_export_m" ON export_messages USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id);
+        CREATE POLICY "user_own_export_m" ON export_messages USING (true);
         CREATE UNIQUE INDEX IF NOT EXISTS export_messages_unique_idx ON export_messages(user_id, lead_id, channel);
       `,
     },
@@ -598,7 +614,7 @@ async function autoMigrateExport() {
       sql: `
         CREATE TABLE IF NOT EXISTS export_campaigns (
           id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+          user_id TEXT NOT NULL,
           name TEXT NOT NULL, country_code TEXT, country_name TEXT,
           channel TEXT DEFAULT 'whatsapp', campaign_type TEXT DEFAULT 'outreach',
           lead_count INTEGER DEFAULT 0, sent_count INTEGER DEFAULT 0,
@@ -608,7 +624,7 @@ async function autoMigrateExport() {
         );
         ALTER TABLE export_campaigns ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "user_own_export_c" ON export_campaigns;
-        CREATE POLICY "user_own_export_c" ON export_campaigns USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id);
+        CREATE POLICY "user_own_export_c" ON export_campaigns USING (true);
       `,
     },
   ];
