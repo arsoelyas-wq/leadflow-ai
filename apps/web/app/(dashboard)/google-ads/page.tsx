@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import QSOptimizer from './QSOptimizer'
 import AdsAdvanced from './AdsAdvanced'
@@ -123,6 +124,7 @@ function GoogleAlgorithmBanner({ eventsToday, eventsTotal, lastAt, eventTypes }:
 }
 
 export default function GoogleAdsPage() {
+  const { t } = useI18n()
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [campaigns, setCampaigns] = useState<any[]>([])

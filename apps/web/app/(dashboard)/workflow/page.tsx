@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api'
 import {
@@ -397,6 +398,7 @@ function FlowPreview({ nodes }: { nodes: WorkflowNode[] }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function WorkflowPage() {
+  const { t } = useI18n()
   const [view, setView]               = useState<View>('list')
   const [workflows, setWorkflows]     = useState<WorkflowDef[]>([])
   const [templates, setTemplates]     = useState<any[]>([])

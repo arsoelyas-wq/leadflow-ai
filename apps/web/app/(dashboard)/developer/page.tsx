@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Code, Plus, Trash2, Copy, RefreshCw, Key, CheckCircle } from 'lucide-react'
@@ -81,6 +82,7 @@ const SCOPE_OPTIONS = [
 ]
 
 export default function DeveloperPage() {
+  const { t } = useI18n()
   const [keys, setKeys] = useState<any[]>([])
   const [usage, setUsage] = useState<any>(null)
   const [docs, setDocs] = useState<any>(null)

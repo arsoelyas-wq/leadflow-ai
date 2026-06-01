@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Play, Plus, Gift, Users, TrendingUp, CheckCircle, Eye } from 'lucide-react'
@@ -78,6 +79,7 @@ function NetworkWeb({ size = 110, expanding = false }: { size?: number; expandin
 }
 
 export default function ReferralPage() {
+  const { t } = useI18n()
   const [settings, setSettings] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)

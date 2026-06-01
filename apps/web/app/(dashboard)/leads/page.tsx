@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
+import { useI18n } from '@/lib/i18n'
 import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw, Download, Tag, Flame } from 'lucide-react'
 
 interface Lead {
@@ -30,10 +31,6 @@ const GRADE_COLOR: Record<string, string> = {
 }
 
 const STATUS_OPTS = ['', 'new', 'contacted', 'qualified', 'replied', 'offered', 'won', 'lost']
-const statusLabel: Record<string, string> = {
-  new: 'Yeni', contacted: 'İletişime Geçildi', qualified: 'Nitelikli',
-  replied: 'Cevap Verdi', offered: 'Teklif Verildi', won: 'Kazanıldı', lost: 'Kaybedildi'
-}
 const statusColor: Record<string, string> = {
   new: 'bg-blue-500/20 text-blue-300',
   contacted: 'bg-yellow-500/20 text-yellow-300',
@@ -45,6 +42,9 @@ const statusColor: Record<string, string> = {
 }
 
 export default function LeadsPage() {
+  const { t } = useI18n()
+  const statusLabel = (s: string) => t(`leads.status.${s}`, s)
+
   const [leads, setLeads] = useState<Lead[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -229,22 +229,22 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Leadler</h1>
-          <p className="text-slate-400 mt-1">{total} lead bulundu</p>
+          <h1 className="text-2xl font-bold text-white">{t('leads.title','Leadler')}</h1>
+          <p className="text-slate-400 mt-1">{t('leads.found','{n} lead').replace('{n}',String(total))}</p>
         </div>
         <div className="flex gap-3">
           <button onClick={exportExcel} disabled={exporting}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm">
             {exporting ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
-            {selected.length > 0 ? `${selected.length} Seçiliyi İndir` : 'Excel İndir'}
+            {selected.length > 0 ? `${selected.length} ${t('leads.selected_download','Seçiliyi İndir')}` : t('leads.download_excel','Excel İndir')}
           </button>
           <Link href="/decision-maker"
             className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm">
-            <Crosshair size={16} /> Karar Verici Bul
+            <Crosshair size={16} /> {t('leads.find_dm','Karar Verici Bul')}
           </Link>
           <Link href="/leads/scrape"
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-medium transition text-sm">
-            <Plus size={16} /> Lead Topla
+            <Plus size={16} /> {t('leads.collect','Lead Topla')}
           </Link>
         </div>
       </div>
@@ -263,14 +263,14 @@ export default function LeadsPage() {
         <div className="flex-1 min-w-60 relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Firma adı ara..."
+            placeholder={t('leads.search_placeholder','Firma adı ara...')}
             className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
         </div>
         <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}
           className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
-          <option value="">Tüm Durumlar</option>
+          <option value="">{t('leads.all_statuses','Tüm Durumlar')}</option>
           {STATUS_OPTS.filter(Boolean).map(s => (
-            <option key={s} value={s}>{statusLabel[s]}</option>
+            <option key={s} value={s}>{statusLabel(s)}</option>
           ))}
         </select>
         {sectors.length > 0 && (
@@ -278,7 +278,7 @@ export default function LeadsPage() {
             <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <select value={sector} onChange={e => { setSector(e.target.value); setPage(1) }}
               className="bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
-              <option value="">Tüm Sektörler</option>
+              <option value="">{t('leads.all_sectors','Tüm Sektörler')}</option>
               {sectors.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -290,14 +290,14 @@ export default function LeadsPage() {
       {/* Saved lists filter */}
       {lists.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-slate-400 text-sm">📁 Listeler:</span>
+          <span className="text-slate-400 text-sm">{t('leads.lists','Listeler:')}</span>
           <button
             onClick={() => { setList(''); setPage(1) }}
             className={`px-3 py-1 rounded-full text-xs font-medium transition border ${
               !list ? 'bg-blue-600/20 text-blue-300 border-blue-500/40' : 'bg-slate-800 text-slate-400 hover:text-white border-slate-700'
             }`}
           >
-            Tümü
+            {t('leads.all_list','Tümü')}
           </button>
           {lists.map(l => (
             <button
@@ -316,22 +316,22 @@ export default function LeadsPage() {
       {/* Bulk actions */}
       {selected.length > 0 && (
         <div className="flex items-center gap-3 bg-blue-600/10 border border-blue-500/30 rounded-lg px-4 py-3 flex-wrap">
-          <span className="text-blue-300 text-sm font-medium">{selected.length} seçili</span>
+          <span className="text-blue-300 text-sm font-medium">{t('leads.n_selected','{n} seçili').replace('{n}', String(selected.length))}</span>
           <div className="flex gap-2 ml-auto flex-wrap">
             <button onClick={bulkFindDMs} disabled={bulkDmRunning}
               className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-300 text-xs rounded-lg transition flex items-center gap-1 disabled:opacity-60">
               {bulkDmRunning ? <RefreshCw size={12} className="animate-spin" /> : <Crosshair size={12} />}
-              {bulkDmRunning && bulkDmProgress ? `KV Aranıyor ${bulkDmProgress.completed}/${bulkDmProgress.total}` : 'KV Bul'}
+              {bulkDmRunning && bulkDmProgress ? `${t('leads.kv_searching','KV Aranıyor')} ${bulkDmProgress.completed}/${bulkDmProgress.total}` : t('leads.kv_find','KV Bul')}
             </button>
             {['contacted', 'replied', 'won', 'lost'].map(s => (
               <button key={s} onClick={() => bulkStatus(s)}
                 className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded-lg transition">
-                → {statusLabel[s]}
+                → {statusLabel(s)}
               </button>
             ))}
             <button onClick={bulkDelete}
               className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs rounded-lg transition flex items-center gap-1">
-              <Trash2 size={12} /> Sil
+              <Trash2 size={12} /> {t('leads.delete','Sil')}
             </button>
           </div>
         </div>
@@ -346,21 +346,21 @@ export default function LeadsPage() {
                 <input type="checkbox" checked={selected.length === leads.length && leads.length > 0}
                   onChange={selectAll} className="accent-blue-500" />
               </th>
-              <th className="p-4 text-slate-400 text-sm font-medium">Firma</th>
-              <th className="p-4 text-slate-400 text-sm font-medium">Karar Verici</th>
-              <th className="p-4 text-slate-400 text-sm font-medium">İletişim</th>
-              <th className="p-4 text-slate-400 text-sm font-medium">Puan</th>
-              <th className="p-4 text-slate-400 text-sm font-medium">Durum</th>
-              <th className="p-4 text-slate-400 text-sm font-medium">Tarih</th>
+              <th className="p-4 text-slate-400 text-sm font-medium">{t('leads.col_company','Firma')}</th>
+              <th className="p-4 text-slate-400 text-sm font-medium">{t('leads.col_dm','Karar Verici')}</th>
+              <th className="p-4 text-slate-400 text-sm font-medium">{t('leads.col_contact','İletişim')}</th>
+              <th className="p-4 text-slate-400 text-sm font-medium">{t('leads.col_score','Puan')}</th>
+              <th className="p-4 text-slate-400 text-sm font-medium">{t('leads.col_status','Durum')}</th>
+              <th className="p-4 text-slate-400 text-sm font-medium">{t('leads.col_date','Tarih')}</th>
               <th className="p-4 w-16"></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="p-12 text-center text-slate-500">Yükleniyor...</td></tr>
+              <tr><td colSpan={8} className="p-12 text-center text-slate-500">{t('page.loading','Yükleniyor...')}</td></tr>
             ) : leads.length === 0 ? (
               <tr><td colSpan={8} className="p-12 text-center text-slate-500">
-                Lead bulunamadı. <Link href="/leads/scrape" className="text-blue-400">Lead topla →</Link>
+                {t('leads.no_leads','Lead bulunamadı.')} <Link href="/leads/scrape" className="text-blue-400">{t('leads.collect_link','Lead topla →')}</Link>
               </td></tr>
             ) : leads.map(lead => (
               <tr key={lead.id} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition">
@@ -409,7 +409,7 @@ export default function LeadsPage() {
                           )}
                         </div>
                       ) : (
-                        <p className="text-slate-500 text-xs">Bulunamadı</p>
+                        <p className="text-slate-500 text-xs">{t('leads.not_found','Bulunamadı')}</p>
                       )}
                     </div>
                   ) : (
@@ -472,11 +472,11 @@ export default function LeadsPage() {
                 </td>
                 <td className="p-4">
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColor[lead.status] || 'bg-slate-700 text-slate-300'}`}>
-                    {statusLabel[lead.status] || lead.status}
+                    {statusLabel(lead.status)}
                   </span>
                 </td>
                 <td className="p-4 text-slate-400 text-xs">
-                  {new Date(lead.created_at).toLocaleDateString('tr-TR')}
+                  {new Date(lead.created_at).toLocaleDateString()}
                 </td>
                 <td className="p-4">
                   <Link href={`/leads/${lead.id}`} className="text-slate-400 hover:text-white transition">
@@ -491,12 +491,12 @@ export default function LeadsPage() {
         {/* Pagination */}
         {total > 20 && (
           <div className="flex items-center justify-between p-4 border-t border-slate-700">
-            <p className="text-slate-400 text-sm">{total} sonuçtan {(page-1)*20+1}–{Math.min(page*20, total)} gösteriliyor</p>
+            <p className="text-slate-400 text-sm">{t('leads.pagination','{start}–{end} / {total}').replace('{start}', String((page-1)*20+1)).replace('{end}', String(Math.min(page*20, total))).replace('{total}', String(total))}</p>
             <div className="flex gap-2">
               <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
-                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-lg transition">← Önceki</button>
+                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-lg transition">{t('leads.prev','← Önceki')}</button>
               <button onClick={() => setPage(p => p+1)} disabled={page * 20 >= total}
-                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-lg transition">Sonraki →</button>
+                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-sm rounded-lg transition">{t('leads.next','Sonraki →')}</button>
             </div>
           </div>
         )}

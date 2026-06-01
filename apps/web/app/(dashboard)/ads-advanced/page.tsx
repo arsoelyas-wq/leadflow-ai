@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api'
@@ -15,6 +16,7 @@ const TABS = [
 ]
 
 export default function AdsAdvancedPage() {
+  const { t } = useI18n()
   const [tab, setTab] = useState('smart')
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(false)

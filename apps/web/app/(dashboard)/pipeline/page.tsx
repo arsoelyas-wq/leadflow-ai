@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
@@ -49,6 +50,7 @@ function initials(name: string) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function PipelinePage() {
+  const { t } = useI18n()
   const [board, setBoard]             = useState<Record<string, any[]>>({})
   const [stats, setStats]             = useState<any>(null)
   const [funnel, setFunnel]           = useState<any[]>([])
@@ -121,16 +123,16 @@ export default function PipelinePage() {
             <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
               <Target className="w-4 h-4 text-blue-400" />
             </div>
-            Pipeline & Satış Takibi
+            {t('pipeline.title', 'Pipeline & Satış Takibi')}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5 ml-10">Kartları sürükleyerek aşama değiştir — workflow otomatik tetiklenir</p>
+          <p className="text-slate-500 text-sm mt-0.5 ml-10">{t('pipeline.subtitle', 'Kartları sürükleyerek aşama değiştir')}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex bg-slate-800/80 border border-slate-700 rounded-xl p-1">
             {(['kanban', 'funnel'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${v === view ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-                {v === 'kanban' ? '⊞ Kanban' : '▽ Huni'}
+                {v === 'kanban' ? `⊞ ${t('pipeline.kanban','Kanban')}` : `▽ ${t('pipeline.funnel_view','Huni')}`}
               </button>
             ))}
           </div>
@@ -152,10 +154,10 @@ export default function PipelinePage() {
       {stats && (
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: 'Toplam Lead',  value: stats.total,        sub: 'pipeline geneli',  Icon: BarChart3,  iconCls: 'text-slate-400',   bgCls: 'bg-slate-700/60'      },
-            { label: 'Aktif Deal',   value: stats.inProgress,   sub: 'işlem devam ediyor', Icon: TrendingUp, iconCls: 'text-blue-400',  bgCls: 'bg-blue-500/15'       },
-            { label: 'Kazanıldı',    value: stats.won,          sub: 'başarıyla kapandı', Icon: Trophy,    iconCls: 'text-emerald-400', bgCls: 'bg-emerald-500/15'    },
-            { label: 'Win Rate',     value: `%${stats.winRate}`, sub: `${stats.lost} kaybedildi`, Icon: Target, iconCls: 'text-amber-400', bgCls: 'bg-amber-500/15' },
+            { label: t('pipeline.stat_total','Toplam Lead'),  value: stats.total,        sub: t('pipeline.pipeline_total','pipeline geneli'),  Icon: BarChart3,  iconCls: 'text-slate-400',   bgCls: 'bg-slate-700/60'      },
+            { label: t('pipeline.stat_active','Aktif Deal'),   value: stats.inProgress,   sub: t('pipeline.in_progress','işlem devam ediyor'), Icon: TrendingUp, iconCls: 'text-blue-400',  bgCls: 'bg-blue-500/15'       },
+            { label: t('pipeline.stat_won','Kazanıldı'),    value: stats.won,          sub: t('pipeline.closed_success','başarıyla kapandı'), Icon: Trophy,    iconCls: 'text-emerald-400', bgCls: 'bg-emerald-500/15'    },
+            { label: t('pipeline.stat_win_rate','Win Rate'),     value: `${stats.winRate}%`, sub: t('pipeline.lost_count','{n} kaybedildi').replace('{n}', String(stats.lost)), Icon: Target, iconCls: 'text-amber-400', bgCls: 'bg-amber-500/15' },
           ].map(({ label, value, sub, Icon, iconCls, bgCls }) => (
             <div key={label} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center gap-3 hover:border-slate-600 transition group">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${bgCls} group-hover:scale-105 transition-transform`}>
@@ -176,7 +178,7 @@ export default function PipelinePage() {
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
         <input
           value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Lead ara — firma adı veya kişi..."
+          placeholder={t('pipeline.search','Lead ara — firma adı veya kişi...')}
           className="w-full pl-10 pr-10 py-2.5 bg-slate-800/60 border border-slate-700 hover:border-slate-600 focus:border-blue-500 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none transition"
         />
         {search && (
@@ -193,10 +195,10 @@ export default function PipelinePage() {
         /* ── Funnel View ── */
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-8">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-white font-bold text-lg">Dönüşüm Hunisi</h2>
+            <h2 className="text-white font-bold text-lg">{t('pipeline.funnel','Dönüşüm Hunisi')}</h2>
             <div className="flex items-center gap-4 text-sm">
-              <span className="text-slate-500">Toplam: <span className="text-white font-semibold">{stats?.total || 0} lead</span></span>
-              <span className="text-slate-500">Win rate: <span className="text-emerald-400 font-bold">%{stats?.winRate || 0}</span></span>
+              <span className="text-slate-500">{t('pipeline.total','Toplam:')} <span className="text-white font-semibold">{stats?.total || 0} lead</span></span>
+              <span className="text-slate-500">Win rate: <span className="text-emerald-400 font-bold">{stats?.winRate || 0}%</span></span>
             </div>
           </div>
           <div className="space-y-5">
@@ -210,9 +212,9 @@ export default function PipelinePage() {
                   <div className="flex items-center justify-between mb-2 text-sm">
                     <div className="flex items-center gap-2.5">
                       <div className={`w-2.5 h-2.5 rounded-full ${stage.dot}`} />
-                      <span className="text-slate-200 font-medium">{stage.label}</span>
+                      <span className="text-slate-200 font-medium">{t(`pipeline.stage.${stage.key}`, stage.label)}</span>
                       {i > 0 && fe?.rate !== undefined && (
-                        <span className="text-xs text-slate-500 bg-slate-700/60 px-2 py-0.5 rounded-lg">{fe.rate}% dönüşüm</span>
+                        <span className="text-xs text-slate-500 bg-slate-700/60 px-2 py-0.5 rounded-lg">{fe.rate}% {t('pipeline.conversion','dönüşüm')}</span>
                       )}
                     </div>
                     <span className="text-white font-bold">{count}</span>
@@ -227,9 +229,9 @@ export default function PipelinePage() {
           </div>
           <div className="border-t border-slate-700/60 mt-8 pt-6 grid grid-cols-3 gap-4 text-center">
             {[
-              { label: 'Giriş (Yeni)',  value: board['new']?.length || 0,  color: 'text-slate-300' },
-              { label: 'Aktif Süreç',   value: stats?.inProgress || 0,     color: 'text-blue-400'  },
-              { label: 'Kazanıldı',     value: board['won']?.length || 0,  color: 'text-emerald-400' },
+              { label: t('pipeline.entry','Giriş (Yeni)'),  value: board['new']?.length || 0,  color: 'text-slate-300' },
+              { label: t('pipeline.active_process','Aktif Süreç'),   value: stats?.inProgress || 0,     color: 'text-blue-400'  },
+              { label: t('pipeline.stat_won','Kazanıldı'),     value: board['won']?.length || 0,  color: 'text-emerald-400' },
             ].map(s => (
               <div key={s.label} className="bg-slate-900/40 rounded-xl py-4">
                 <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
@@ -269,7 +271,7 @@ export default function PipelinePage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${stage.dot} flex-shrink-0`} />
-                      <span className="text-[13px] font-semibold text-white">{stage.label}</span>
+                      <span className="text-[13px] font-semibold text-white">{t(`pipeline.stage.${stage.key}`, stage.label)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {rottenCnt > 0 && (
@@ -301,7 +303,7 @@ export default function PipelinePage() {
                       isDrop ? 'border-blue-500/40 bg-blue-500/5' : 'border-slate-700/30'
                     }`}>
                       <p className="text-slate-600 text-xs">
-                        {isDrop ? 'Buraya bırak' : allCards.length === 0 ? 'Buraya sürükle' : 'Arama sonucu yok'}
+                        {isDrop ? t('pipeline.drop_here','Buraya bırak') : allCards.length === 0 ? t('pipeline.drag_here','Buraya sürükle') : t('pipeline.no_results','Arama sonucu yok')}
                       </p>
                     </div>
                   )}
@@ -451,7 +453,7 @@ export default function PipelinePage() {
           <span className="w-3.5 h-3.5 rounded-md bg-blue-600 inline-flex items-center justify-center text-white text-[8px] font-bold">AB</span>
           Şirket rengi otomatik
         </span>
-        <span>Kartları sürükle → bırak ile aşama değiştir</span>
+        <span>{t('pipeline.drag_hint','Kartları sürükle → bırak ile aşama değiştir')}</span>
       </div>
     </div>
   )

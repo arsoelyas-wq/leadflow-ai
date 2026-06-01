@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Plus, Trash2, RefreshCw, Star, QrCode, Wifi, WifiOff, Settings2, ShieldCheck } from 'lucide-react'
@@ -82,6 +83,7 @@ function getBanRisk(sentToday: number, limit: number) {
 }
 
 export default function WANumbersPage() {
+  const { t } = useI18n()
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)

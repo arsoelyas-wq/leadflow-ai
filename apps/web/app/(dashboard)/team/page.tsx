@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
@@ -168,6 +169,7 @@ function AddMemberModal({ onClose, onAdded }: { onClose:()=>void; onAdded:()=>vo
 
 // ── ANA SAYFA ─────────────────────────────────────────────────────────────────
 export default function TeamPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const [members, setMembers] = useState<any[]>([])
   const [activity, setActivity] = useState<any[]>([])

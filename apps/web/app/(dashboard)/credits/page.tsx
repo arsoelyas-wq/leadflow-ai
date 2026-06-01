@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Zap, TrendingUp, RefreshCw, CheckCircle, BarChart3 } from 'lucide-react'
@@ -21,6 +22,7 @@ const CREDIT_COSTS = [
 ]
 
 export default function CreditsPage() {
+  const { t } = useI18n()
   const [balance, setBalance] = useState<any>(null)
   const [stats, setStats] = useState<any>(null)
   const [upgrading, setUpgrading] = useState('')

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Eye, Copy, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
@@ -303,6 +304,7 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function ShadowPage() {
+  const { t } = useI18n()
   const [competitors, setCompetitors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState<string | null>(null)

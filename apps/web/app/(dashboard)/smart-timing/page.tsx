@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Clock, RefreshCw, Calendar, Zap, Send, Trash2, TrendingUp } from 'lucide-react'
 
 export default function SmartTimingPage() {
+  const { t } = useI18n()
   const [analysis, setAnalysis] = useState<any>(null)
   const [scheduled, setScheduled] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])

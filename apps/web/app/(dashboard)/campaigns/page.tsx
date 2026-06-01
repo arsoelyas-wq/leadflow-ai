@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { Plus, Play, Pause, BarChart2, MessageSquare, Search, Trash2, TrendingUp, Send, Users } from 'lucide-react'
@@ -30,6 +31,7 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
 }
 
 export default function CampaignsPage() {
+  const { t } = useI18n()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -53,7 +55,7 @@ export default function CampaignsPage() {
   }
 
   const deleteCampaign = async (id: string) => {
-    if (!confirm('Bu kampanyayı silmek istediğinize emin misiniz?')) return
+    if (!confirm(t('campaigns.confirm_delete', 'Bu kampanyayı silmek istediğinize emin misiniz?'))) return
     try { await api.delete(`/api/campaigns/${id}`); load() } catch {}
   }
 
@@ -74,22 +76,22 @@ export default function CampaignsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Kampanyalar</h1>
-          <p className="text-slate-400 mt-1 text-sm">{campaigns.length} kampanya · {activeCnt} aktif</p>
+          <h1 className="text-2xl font-bold text-white">{t('campaigns.title', 'Kampanyalar')}</h1>
+          <p className="text-slate-400 mt-1 text-sm">{t('campaigns.subtitle', '{n} kampanya · {active} aktif').replace('{n}', String(campaigns.length)).replace('{active}', String(activeCnt))}</p>
         </div>
         <Link href="/campaigns/new"
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-medium transition">
-          <Plus size={18} /> Yeni Kampanya
+          <Plus size={18} /> {t('campaigns.new', 'Yeni Kampanya')}
         </Link>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Toplam Kampanya', value: campaigns.length, icon: BarChart2, color: 'text-blue-400' },
-          { label: 'Toplam Gönderim', value: totalSent.toLocaleString('tr-TR'), icon: Send, color: 'text-emerald-400' },
-          { label: 'Toplam Yanıt', value: totalReplied.toLocaleString('tr-TR'), icon: TrendingUp, color: 'text-cyan-400' },
-          { label: 'Ort. Yanıt Oranı', value: `%${avgReplyRate}`, icon: Users, color: 'text-purple-400' },
+          { label: t('campaigns.stat_total', 'Toplam Kampanya'), value: campaigns.length, icon: BarChart2, color: 'text-blue-400' },
+          { label: t('campaigns.stat_sent', 'Toplam Gönderim'), value: totalSent.toLocaleString(), icon: Send, color: 'text-emerald-400' },
+          { label: t('campaigns.stat_replied', 'Toplam Yanıt'), value: totalReplied.toLocaleString(), icon: TrendingUp, color: 'text-cyan-400' },
+          { label: t('campaigns.stat_reply_rate', 'Ort. Yanıt Oranı'), value: `${avgReplyRate}%`, icon: Users, color: 'text-purple-400' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -106,42 +108,42 @@ export default function CampaignsPage() {
         <div className="relative flex-1 min-w-56">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Kampanya ara..."
+            placeholder={t('campaigns.search', 'Kampanya ara...')}
             className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition" />
         </div>
         <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)}
           className="bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500">
-          <option value="all">Tüm Kanallar</option>
+          <option value="all">{t('campaigns.all_channels', 'Tüm Kanallar')}</option>
           {Object.entries(CHANNEL_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
+            <option key={k} value={k}>{t(`campaigns.channel.${k}`, v.label)}</option>
           ))}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="bg-slate-800 border border-slate-700 text-white text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500">
-          <option value="all">Tüm Durumlar</option>
-          {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
+          <option value="all">{t('leads.all_statuses', 'Tüm Durumlar')}</option>
+          {Object.entries(STATUS_CONFIG).map(([k]) => (
+            <option key={k} value={k}>{t(`campaigns.status.${k}`, k)}</option>
           ))}
         </select>
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="text-center py-12 text-slate-500">Yükleniyor...</div>
+        <div className="text-center py-12 text-slate-500">{t('page.loading', 'Yükleniyor...')}</div>
       ) : filtered.length === 0 ? (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
           <MessageSquare size={40} className="text-slate-600 mx-auto mb-4" />
           <h3 className="text-white font-semibold mb-2">
-            {campaigns.length === 0 ? 'Henüz kampanya yok' : 'Sonuç bulunamadı'}
+            {campaigns.length === 0 ? t('campaigns.no_campaigns', 'Henüz kampanya yok') : t('campaigns.no_results', 'Sonuç bulunamadı')}
           </h3>
           <p className="text-slate-400 text-sm mb-6">
             {campaigns.length === 0
-              ? 'İlk kampanyanızı oluşturun ve leadlerinize otomatik mesaj gönderin'
-              : 'Arama kriterlerinizi değiştirin'}
+              ? t('campaigns.create_desc', 'İlk kampanyanızı oluşturun ve leadlerinize otomatik mesaj gönderin')
+              : t('campaigns.change_criteria', 'Arama kriterlerinizi değiştirin')}
           </p>
           {campaigns.length === 0 && (
             <Link href="/campaigns/new" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl transition">
-              <Plus size={16} /> Kampanya Oluştur
+              <Plus size={16} /> {t('campaigns.create', 'Kampanya Oluştur')}
             </Link>
           )}
         </div>
@@ -161,13 +163,13 @@ export default function CampaignsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center flex-wrap gap-2 mb-2">
                       <h3 className="text-white font-semibold">{campaign.name}</h3>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${st.cls}`}>{st.label}</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${st.cls}`}>{t(`campaigns.status.${campaign.status}`, st.label)}</span>
                       <span className={`px-2 py-0.5 rounded-full text-xs ${ch.bg} ${ch.color}`}>{ch.label}</span>
                     </div>
                     <div className="mb-2">
                       <div className="flex justify-between text-xs text-slate-400 mb-1">
-                        <span>{(campaign.totalSent || 0).toLocaleString('tr-TR')} gönderildi</span>
-                        <span className="text-emerald-400 font-medium">%{replyRate} yanıt oranı</span>
+                        <span>{(campaign.totalSent || 0).toLocaleString()} {t('campaigns.sent', 'gönderildi')}</span>
+                        <span className="text-emerald-400 font-medium">{t('campaigns.reply_rate', '%{rate} yanıt oranı').replace('{rate}', String(replyRate))}</span>
                       </div>
                       <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                         <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all"
@@ -175,23 +177,23 @@ export default function CampaignsPage() {
                       </div>
                     </div>
                     <p className="text-slate-500 text-xs">
-                      {campaign.totalReplied} yanıt · {new Date(campaign.createdAt).toLocaleDateString('tr-TR')}
+                      {campaign.totalReplied} {t('campaigns.replied', 'yanıt')} · {new Date(campaign.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Link href={`/campaigns/${campaign.id}`}
-                      className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 transition" title="Analitik">
+                      className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 transition" title={t('campaigns.analytics', 'Analitik')}>
                       <BarChart2 size={15} />
                     </Link>
                     {campaign.status !== 'completed' && (
                       <button onClick={() => toggleCampaign(campaign.id, campaign.status)}
                         className={`p-2 rounded-lg transition ${campaign.status === 'active' ? 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300' : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'}`}
-                        title={campaign.status === 'active' ? 'Duraklat' : 'Başlat'}>
+                        title={campaign.status === 'active' ? t('campaigns.pause', 'Duraklat') : t('campaigns.resume', 'Başlat')}>
                         {campaign.status === 'active' ? <Pause size={15} /> : <Play size={15} />}
                       </button>
                     )}
                     <button onClick={() => deleteCampaign(campaign.id)}
-                      className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 transition" title="Sil">
+                      className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 transition" title={t('campaigns.delete', 'Sil')}>
                       <Trash2 size={15} />
                     </button>
                   </div>

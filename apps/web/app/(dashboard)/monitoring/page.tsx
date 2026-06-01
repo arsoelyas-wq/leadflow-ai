@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { Activity, AlertCircle, CheckCircle, Clock, Cpu, HardDrive, RefreshCw, XCircle, ChevronDown, ChevronRight, Zap } from 'lucide-react'
@@ -80,6 +81,7 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 }
 
 export default function MonitoringPage() {
+  const { t } = useI18n()
   const [status, setStatus] = useState<any>(null)
   const [errors, setErrors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

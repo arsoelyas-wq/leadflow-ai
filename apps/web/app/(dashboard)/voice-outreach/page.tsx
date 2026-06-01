@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import {
@@ -779,6 +780,7 @@ function StepLaunch({ selectedVoiceName, selectedVoiceType, callMode, selectedLe
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function VoicePage() {
+  const { t } = useI18n()
   const [step, setStep] = useState(1)
   const [callMode, setCallMode] = useState<'single' | 'campaign'>('single')
   const [leads, setLeads] = useState<any[]>([])

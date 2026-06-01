@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
@@ -28,6 +29,7 @@ const channelIcon: Record<string, any> = {
 const channelLabel: Record<string, string> = { whatsapp: 'WhatsApp', email: 'Email' }
 
 export default function MessagesPage() {
+  const { t } = useI18n()
   const { user } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,11 +129,11 @@ export default function MessagesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Mesajlar</h1>
+          <h1 className="text-2xl font-bold text-white">{t('messages.title', 'Mesajlar')}</h1>
           <p className="text-slate-400 mt-1 text-sm">
             {incomingCount > 0
-              ? <span className="text-green-400">{incomingCount} gelen mesaj</span>
-              : `${messages.length} mesaj`}
+              ? <span className="text-green-400">{incomingCount} {t('messages.inbox','Gelen Kutusu')}</span>
+              : `${messages.length} ${t('messages.title','Mesajlar')}`}
           </p>
         </div>
         <button onClick={load}
@@ -145,20 +147,20 @@ export default function MessagesPage() {
         <div className="flex-1 min-w-48 relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Firma veya mesaj ara..."
+            placeholder={t('messages.search','Firma veya mesaj ara...')}
             className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
         </div>
         <select value={channel} onChange={e => setChannel(e.target.value)}
           className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
-          <option value="">Tüm Kanallar</option>
+          <option value="">{t('campaigns.all_channels','Tüm Kanallar')}</option>
           <option value="whatsapp">WhatsApp</option>
           <option value="email">Email</option>
         </select>
         <select value={direction} onChange={e => setDirection(e.target.value)}
           className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
-          <option value="">Tümü</option>
-          <option value="in">Gelen</option>
-          <option value="out">Giden</option>
+          <option value="">{t('messages.all','Tümü')}</option>
+          <option value="in">{t('messages.inbox','Gelen')}</option>
+          <option value="out">{t('messages.sent','Giden')}</option>
         </select>
       </div>
 
@@ -166,12 +168,12 @@ export default function MessagesPage() {
         {/* Message List */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
           {loading ? (
-            <div className="p-12 text-center text-slate-500">Yükleniyor...</div>
+            <div className="p-12 text-center text-slate-500">{t('page.loading','Yükleniyor...')}</div>
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center">
               <MessageSquare size={32} className="text-slate-600 mx-auto mb-3" />
               <p className="text-slate-400 text-sm">
-                {messages.length === 0 ? 'Henüz mesaj yok. Kampanya başlatınca mesajlar burada görünür.' : 'Mesaj bulunamadı'}
+                {messages.length === 0 ? t('messages.no_messages','Henüz mesaj yok') : t('messages.no_messages','Mesaj bulunamadı')}
               </p>
             </div>
           ) : (

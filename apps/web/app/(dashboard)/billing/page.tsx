@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
@@ -81,6 +82,7 @@ const PLANS = [
 ]
 
 export default function BillingPage() {
+  const { t } = useI18n()
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState<string | null>(null)
@@ -119,10 +121,10 @@ export default function BillingPage() {
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <CreditOrb size={90} pct={pct} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>Abonelik & Kredi</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Kredinizi yönetin, geçmişinizi takip edin, yeni paket satın alın</p>
+            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('billing.title','Abonelik & Kredi')}</h1>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('billing.credits','Kredinizi yönetin, geçmişinizi takip edin, yeni paket satın alın')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-              {[{l:'Toplam Kredi',v:creditsTotal,c:'#94a3b8'},{l:'Kalan Kredi',v:creditsLeft,c:pctColor},{l:'Kullanılan',v:creditsUsed,c:'#f59e0b'}].map(m => (
+              {[{l:t('billing.credits','Toplam Kredi'),v:creditsTotal,c:'#94a3b8'},{l:t('billing.credits_remaining','Kalan Kredi'),v:creditsLeft,c:pctColor},{l:t('billing.credits_used','Kullanılan'),v:creditsUsed,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
                   <p style={{ color:m.c, fontSize:22, fontWeight:800, margin:0 }}>{m.v}</p>
                   <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.l}</p>

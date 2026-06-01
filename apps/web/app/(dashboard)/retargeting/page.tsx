@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Target, RefreshCw, Send, Zap, Clock, TrendingUp, Bot, Play, Eye } from 'lucide-react'
 
 export default function RetargetingPage() {
+  const { t } = useI18n()
   const [leads, setLeads] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import {
   BarChart2, TrendingUp, TrendingDown, Mail, Bell, Settings,
@@ -35,6 +36,7 @@ function TrendDot({ diff }: { diff: number }) {
 }
 
 export default function TeamReportsPage() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<'trend' | 'benchmark' | 'settings'>('trend')
   const [trend, setTrend] = useState<any>(null)
   const [benchmark, setBenchmark] = useState<any>(null)

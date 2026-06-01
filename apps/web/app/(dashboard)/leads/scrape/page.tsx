@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -33,6 +34,7 @@ const LEAD_COUNTS = [
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function LeadFinderPage() {
+  const { t } = useI18n()
   const router = useRouter()
 
   // Form state

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -256,6 +257,7 @@ function AdminPanel({ avatars, onRefresh }: { avatars: any[]; onRefresh: () => v
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
 export default function AvatarLibraryPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const [avatars, setAvatars]             = useState<any[]>([])
   const [loading, setLoading]             = useState(true)

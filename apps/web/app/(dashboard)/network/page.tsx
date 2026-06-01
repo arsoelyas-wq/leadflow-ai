@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
@@ -39,6 +40,7 @@ const CONN_TYPE_COLOR: Record<string, string> = {
 }
 
 export default function NetworkPage() {
+  const { t } = useI18n()
   const [nodes, setNodes]         = useState<Node[]>([])
   const [edges, setEdges]         = useState<Edge[]>([])
   const [loading, setLoading]     = useState(true)

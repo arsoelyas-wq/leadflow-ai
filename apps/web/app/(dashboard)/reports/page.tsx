@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Download, ArrowUpRight, ArrowDownRight } from 'lucide-react'
@@ -62,6 +63,7 @@ function ChangeBadge({ value }: { value: number }) {
 }
 
 export default function ReportsPage() {
+  const { t } = useI18n()
   const [weekly, setWeekly] = useState<any>(null)
   const [monthly, setMonthly] = useState<any>(null)
   const [view, setView] = useState<'weekly'|'monthly'>('weekly')

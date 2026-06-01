@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Radar, RefreshCw, Search, TrendingUp, AlertTriangle, Info, Zap } from 'lucide-react'
@@ -6,6 +7,7 @@ import { Radar, RefreshCw, Search, TrendingUp, AlertTriangle, Info, Zap } from '
 const SECTORS = ['Mobilya','Tekstil','İnşaat','Gıda','Elektronik','Otomotiv','Turizm','Tarım']
 
 export default function CrisisRadarPage() {
+  const { t } = useI18n()
   const [alerts, setAlerts] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [analysis, setAnalysis] = useState('')

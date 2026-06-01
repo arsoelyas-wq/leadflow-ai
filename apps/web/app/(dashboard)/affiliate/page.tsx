@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Gift, Plus, Copy, CheckCircle, RefreshCw, ExternalLink, TrendingUp } from 'lucide-react'
 
 export default function AffiliatePage() {
+  const { t } = useI18n()
   const [links, setLinks] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [creating, setCreating] = useState(false)

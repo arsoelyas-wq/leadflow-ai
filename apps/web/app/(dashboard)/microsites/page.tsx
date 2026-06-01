@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { Globe, Plus, RefreshCw, ExternalLink, Eye, Copy, CheckCircle, Trash2, ToggleLeft, ToggleRight, Sparkles, Zap, ChevronRight, Send } from 'lucide-react'
@@ -138,6 +139,7 @@ function MicrositeCard({ ms, onCopy, onDelete, onToggle, onSend, copied }: any) 
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MicrositePage() {
+  const { t } = useI18n()
   const [microsites, setMicrosites] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [leads, setLeads] = useState<any[]>([])

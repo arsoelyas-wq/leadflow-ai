@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Plus, Trash2, Copy, CheckCircle, Play, ToggleLeft, ToggleRight, Zap, ChevronDown, Clock, X } from 'lucide-react'
@@ -218,6 +219,7 @@ function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreate
 }
 
 export default function AutomationsPage() {
+  const { t } = useI18n()
   const [rules, setRules] = useState<any[]>([])
   const [logs, setLogs] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)

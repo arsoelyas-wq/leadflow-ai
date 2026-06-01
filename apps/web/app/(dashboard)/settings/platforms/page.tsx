@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
@@ -41,6 +42,7 @@ function FlagImg({ code, size = 28 }: { code: string; size?: number }) {
 }
 
 export default function PlatformsPage() {
+  const { t } = useI18n()
   const { user } = useAuth()
   const [countries, setCountries] = useState<any[]>([])
   const [currentCountry, setCurrentCountry] = useState<any>(null)

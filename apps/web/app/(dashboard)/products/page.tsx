@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { Plus, Trash2, RefreshCw, Upload, FileSpreadsheet, Sparkles, Edit3, ToggleLeft, ToggleRight, Package, Brain, CheckCircle, X, Image as ImageIcon } from 'lucide-react'
@@ -190,6 +191,7 @@ function ProductForm({ initial, onClose, onSaved, token }: { initial?: Product |
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ProductsPage() {
+  const { t } = useI18n()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)

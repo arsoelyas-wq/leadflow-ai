@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Video, Upload, Mic, Play, Trash2, Star, CheckCircle,
@@ -59,6 +60,7 @@ function EngineTag({ engine }: { engine: Replica['engine'] }) {
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
 export default function ReplicaPage() {
+  const { t } = useI18n()
   const [replicas, setReplicas]     = useState<Replica[]>([])
   const [loading, setLoading]       = useState(true)
   const [tab, setTab]               = useState<'list' | 'create'>('list')

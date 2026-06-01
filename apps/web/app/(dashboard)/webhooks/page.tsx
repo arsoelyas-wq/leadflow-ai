@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Plus, Trash2, RefreshCw, Webhook, CheckCircle, XCircle, Play, ToggleLeft, ToggleRight, ChevronDown, Copy } from 'lucide-react'
@@ -12,6 +13,7 @@ const EVENT_OPTIONS = [
 ]
 
 export default function WebhooksPage() {
+  const { t } = useI18n()
   const [webhooks, setWebhooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useCallback } from 'react'
 import {
   Bot, Play, Pause, RefreshCw, Settings, MessageCircle,
@@ -109,6 +110,7 @@ const EVENT_COLORS: Record<string, string> = {
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 
 export default function AgentPage() {
+  const { t } = useI18n()
   const { user } = useAuth()
   const [tab, setTab] = useState<'setup' | 'conversations' | 'activity' | 'escalations'>('setup')
   const [profile, setProfile] = useState<AgentProfile | null>(null)

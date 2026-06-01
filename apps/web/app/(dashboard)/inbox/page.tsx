@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { Inbox, Send, RefreshCw, MessageSquare, Search, X, Phone, Mail, MapPin, TrendingUp } from 'lucide-react'
@@ -52,6 +53,7 @@ const STAGE_LABELS: Record<string, string> = {
 }
 
 export default function UnifiedInboxPage() {
+  const { t } = useI18n()
   const [conversations, setConversations] = useState<any[]>([])
   const [messages, setMessages] = useState<any[]>([])
   const [selectedLead, setSelectedLead] = useState<any>(null)
@@ -149,7 +151,7 @@ export default function UnifiedInboxPage() {
         <div className="px-4 pt-4 pb-3 border-b border-slate-700">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-white font-bold text-sm flex items-center gap-2">
-              <Inbox size={15} className="text-blue-400" /> Gelen Kutusu
+              <Inbox size={15} className="text-blue-400" /> {t('messages.inbox','Gelen Kutusu')}
             </h1>
             {stats?.unread > 0 && (
               <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{stats.unread}</span>
@@ -157,7 +159,7 @@ export default function UnifiedInboxPage() {
           </div>
           <div className="relative mb-2">
             <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ara..."
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('page.search','Ara...')}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-8 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition" />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">

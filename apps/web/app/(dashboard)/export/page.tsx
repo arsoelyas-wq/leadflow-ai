@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
@@ -257,6 +258,7 @@ function MarketPanel({ intel, country }: { intel: any; country: any }) {
 
 // ── ANA SAYFA ─────────────────────────────────────────────────────────────────
 export default function ExportPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const [tab, setTab] = useState<'find' | 'leads' | 'campaigns' | 'messages' | 'analytics'>('find')
   const [countries, setCountries] = useState<any[]>([])

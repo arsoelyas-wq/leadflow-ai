@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Download, TrendingUp, TrendingDown, Users, MessageSquare, Target, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react'
@@ -131,6 +132,7 @@ function StatCard({ label, value, sub, color, icon, trend, sparkData }: any) {
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
+  const { t } = useI18n()
   const [data, setData] = useState<any>(null)
   const [period, setPeriod] = useState<'7d'|'30d'|'90d'>('30d')
   const [loading, setLoading] = useState(true)
@@ -181,7 +183,7 @@ export default function AnalyticsPage() {
             <DataFlowSphere size={90} active={loading} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0 }}>Analitik Dashboard</h1>
+                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0 }}>{t('analytics.title','Analitik Dashboard')}</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: '3px 10px' }}>
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'df-ping 2s ease-in-out infinite' }} />
                   <span style={{ color: '#34d399', fontSize: 11, fontWeight: 600 }}>Canlı</span>
@@ -195,7 +197,7 @@ export default function AnalyticsPage() {
                 {(['7d','30d','90d'] as const).map(p => (
                   <button key={p} onClick={() => setPeriod(p)}
                     style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${period===p?'rgba(16,185,129,0.5)':'rgba(255,255,255,0.08)'}`, background: period===p?'rgba(16,185,129,0.15)':'transparent', color: period===p?'#34d399':'#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                    {p === '7d' ? 'Son 7 Gün' : p === '30d' ? 'Son 30 Gün' : 'Son 90 Gün'}
+                    {p === '7d' ? t('analytics.last7d','Son 7 Gün') : p === '30d' ? t('analytics.last30d','Son 30 Gün') : t('analytics.last90d','Son 90 Gün')}
                   </button>
                 ))}
               </div>
@@ -215,10 +217,10 @@ export default function AnalyticsPage() {
       {/* ── STAT CARDS */}
       {data && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
-          <StatCard label="Toplam Lead" value={data.totalLeads} sub={`+${data.newLeads} yeni`} color="#10b981" icon="👥" trend={12} />
-          <StatCard label="Cevap Oranı" value={`%${data.replyRate}`} sub="kampanya bazlı" color="#8b5cf6" icon="💬" trend={data.replyRate > 10 ? 5 : -8} />
-          <StatCard label="Aktif Kampanya" value={data.activeCampaigns} sub="devam eden" color="#06b6d4" icon="📢" />
-          <StatCard label="Kalan Kredi" value={data.credits} sub="kullanılabilir" color="#f59e0b" icon="⚡" />
+          <StatCard label={t('analytics.total_leads','Toplam Lead')} value={data.totalLeads} sub={`+${data.newLeads} ${t('analytics.new_leads','yeni')}`} color="#10b981" icon="👥" trend={12} />
+          <StatCard label={t('analytics.conversion','Cevap Oranı')} value={`${data.replyRate}%`} sub={t('analytics.campaigns','kampanya bazlı')} color="#8b5cf6" icon="💬" trend={data.replyRate > 10 ? 5 : -8} />
+          <StatCard label={t('analytics.campaigns','Aktif Kampanya')} value={data.activeCampaigns} sub={t('analytics.overview','devam eden')} color="#06b6d4" icon="📢" />
+          <StatCard label={t('billing.credits_remaining','Kalan Kredi')} value={data.credits} sub={t('analytics.export','kullanılabilir')} color="#f59e0b" icon="⚡" />
         </div>
       )}
 

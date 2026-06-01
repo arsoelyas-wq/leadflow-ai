@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import {
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle,
@@ -37,6 +38,7 @@ function MetricCard({ label, value, sub, trend, color }: any) {
 }
 
 export default function AdsIntelligencePage() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<'dashboard' | 'leads' | 'alerts' | 'optimize'>('dashboard')
   const [dashboard, setDashboard] = useState<any>(null)
   const [alerts, setAlerts] = useState<any[]>([])

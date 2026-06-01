@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Heart, RefreshCw, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
 
 export default function HealthPage() {
+  const { t } = useI18n()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 

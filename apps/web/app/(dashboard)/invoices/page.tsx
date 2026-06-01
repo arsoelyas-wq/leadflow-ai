@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { FileText, Plus, RefreshCw, ExternalLink, CheckCircle } from 'lucide-react'
@@ -12,6 +13,7 @@ const STATUS_COLORS: Record<string,string> = {
 const STATUS_LABELS: Record<string,string> = { draft:'Taslak', sent:'Gönderildi', paid:'Ödendi', overdue:'Gecikmiş' }
 
 export default function InvoicesPage() {
+  const { t } = useI18n()
   const [invoices, setInvoices] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [leads, setLeads] = useState<any[]>([])

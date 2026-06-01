@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useMemo } from 'react'
 import { api } from '@/lib/api'
 import {
@@ -53,6 +54,7 @@ const CONF = {
 type Filter = 'all' | 'no-contact' | 'has-contact'
 
 export default function DecisionMakerPage() {
+  const { t } = useI18n()
   const [leads, setLeads]   = useState<Lead[]>([])
   const [stats, setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)

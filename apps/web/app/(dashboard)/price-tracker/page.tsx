@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Plus, ExternalLink, Trash2, Target, TrendingDown, TrendingUp, Bell, CheckCircle, X } from 'lucide-react'
@@ -370,6 +371,7 @@ function PriceCard({ tracker, onCheck, onDelete, onTargetUpdate, checking }: any
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function PriceTrackerPage() {
+  const { t } = useI18n()
   const [trackers, setTrackers] = useState<any[]>([])
   const [alerts, setAlerts] = useState<any[]>([])
   const [stats, setStats] = useState<any>({ total: 0, priceDrops: 0, priceRises: 0 })

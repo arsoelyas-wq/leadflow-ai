@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Star, RefreshCw, Zap, TrendingUp, Award, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function QualityV2Page() {
+  const { t } = useI18n()
   const [topLeads, setTopLeads] = useState<any[]>([])
   const [distribution, setDistribution] = useState<any>(null)
   const [loading, setLoading] = useState(true)

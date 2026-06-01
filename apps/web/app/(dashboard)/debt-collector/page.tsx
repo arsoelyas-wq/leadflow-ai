@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Send, Download, AlertTriangle, CheckCircle, Shield, Plus, X } from 'lucide-react'
@@ -173,6 +174,7 @@ const BUCKETS = [
 ]
 
 export default function DebtCollectorPage() {
+  const { t } = useI18n()
   const [invoices, setInvoices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState<string | null>(null)

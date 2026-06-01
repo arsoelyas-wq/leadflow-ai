@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import {
@@ -959,6 +960,7 @@ function StepResultCampaign({ campaignId, onReset }: { campaignId: string; onRes
 }
 
 export default function VideoOutreachPage() {
+  const { t } = useI18n()
   const [step, setStep] = useState(1)
   const [leads, setLeads] = useState<any[]>([])
   const [videos, setVideos] = useState<any[]>([])

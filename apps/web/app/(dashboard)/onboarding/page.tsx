@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
@@ -40,6 +41,7 @@ const OBJECTION_TEMPLATES = [
 ]
 
 export default function OnboardingPage() {
+  const { t } = useI18n()
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)

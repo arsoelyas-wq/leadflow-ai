@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Trash2, Zap, Globe, Search, BarChart3, Plus, Copy, CheckCircle, Target } from 'lucide-react'
@@ -139,6 +140,7 @@ function LeadRow({ lead }: { lead: any }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CompetitorPage() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<'list' | 'hijack' | 'leads' | 'analyze'>('list')
   const [competitors, setCompetitors] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])

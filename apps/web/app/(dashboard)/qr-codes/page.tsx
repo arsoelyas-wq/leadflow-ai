@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Trash2, Download, Copy, CheckCircle, Sparkles, ChevronRight } from 'lucide-react'
@@ -201,6 +202,7 @@ function QRCard({ qr, onDelete, showMsg }: any) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function QRPage() {
+  const { t } = useI18n()
   const [qrCodes, setQrCodes] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)

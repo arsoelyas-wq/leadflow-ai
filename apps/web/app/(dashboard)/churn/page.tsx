@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { TrendingDown, RefreshCw, AlertTriangle, MessageSquare } from 'lucide-react'
@@ -11,6 +12,7 @@ const RISK_COLORS: Record<string,string> = {
 const RISK_ICONS: Record<string,string> = { high:'🚨', medium:'⚠️', low:'✅' }
 
 export default function ChurnPage() {
+  const { t } = useI18n()
   const [predictions, setPredictions] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, AlertTriangle, Zap, TrendingUp, TrendingDown, Brain } from 'lucide-react'
@@ -88,6 +89,7 @@ function NeuralConstellation({ size = 110, analyzing = false, metrics = {} as Re
 }
 
 export default function FinancialPage() {
+  const { t } = useI18n()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)

@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Heart, RefreshCw, Zap, Sparkles, MessageSquare } from 'lucide-react'
 
 export default function EmotionalIQPage() {
+  const { t } = useI18n()
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState(false)

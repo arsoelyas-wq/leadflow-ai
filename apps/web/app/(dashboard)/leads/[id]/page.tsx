@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
@@ -135,6 +136,7 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 }
 
 export default function LeadDetailPage() {
+  const { t } = useI18n()
   const { id }  = useParams()
   const router  = useRouter()
   const [lead, setLead]           = useState<Lead | null>(null)

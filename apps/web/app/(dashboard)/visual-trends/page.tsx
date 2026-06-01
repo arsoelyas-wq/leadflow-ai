@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Search, Copy, CheckCircle, ExternalLink, Zap, TrendingUp, MessageSquare, Instagram, Hash, ChevronRight } from 'lucide-react'
@@ -339,6 +340,7 @@ function TrendItem({ item }: { item: any }) {
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function VisualTrendPage() {
+  const { t } = useI18n()
   const [keyword, setKeyword] = useState('')
   const [sector, setSector] = useState('')
   const [loading, setLoading] = useState(false)

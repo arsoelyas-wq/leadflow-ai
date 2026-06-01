@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Plus, Play, Pause, Trash2, Users, RefreshCw, Zap, MessageSquare, Clock, ChevronDown, ChevronUp, Bot } from 'lucide-react'
@@ -39,6 +40,7 @@ const STEP_TEMPLATES = [
 ]
 
 export default function SequencesPage() {
+  const { t } = useI18n()
   const [sequences, setSequences] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)

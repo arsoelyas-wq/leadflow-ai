@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Bot, Play, Pause, RefreshCw, Plus, Trash2, Clock, Target, Zap } from 'lucide-react'
@@ -18,6 +19,7 @@ const SOURCES = [
 ]
 
 export default function HunterSettingsPage() {
+  const { t } = useI18n()
   const [config, setConfig] = useState<any>(null)
   const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

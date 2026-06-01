@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Smartphone, Send, RefreshCw, CheckCircle, ExternalLink, Search, X } from 'lucide-react'
@@ -42,6 +43,7 @@ function smsSegments(text: string) {
 }
 
 export default function SMSPage() {
+  const { t } = useI18n()
   const [stats, setStats] = useState<any>(null)
   const [leads, setLeads] = useState<any[]>([])
   const [campaigns, setCampaigns] = useState<any[]>([])

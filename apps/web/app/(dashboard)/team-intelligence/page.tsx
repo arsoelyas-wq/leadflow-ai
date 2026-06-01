@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react';
 import {
   Users, Phone, MessageSquare, BarChart2, TrendingUp, TrendingDown,
@@ -51,6 +52,7 @@ function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg'
 }
 
 export default function TeamIntelligencePage() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<'dashboard' | 'team' | 'analyses' | 'report'>('dashboard');
   const [dashboard, setDashboard] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);

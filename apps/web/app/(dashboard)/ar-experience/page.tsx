@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import {
@@ -143,6 +144,7 @@ function btnStyle(bg: string): React.CSSProperties {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ARPage() {
+  const { t } = useI18n()
   // ── Core state
   const [models, setModels] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])

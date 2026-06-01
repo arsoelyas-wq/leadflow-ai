@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Shield, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react'
 
 export default function KvkkPage() {
+  const { t } = useI18n()
   const [status, setStatus] = useState<any>(null)
   const [form, setForm] = useState({ privacyPolicyUrl:'', dataRetentionDays:'730', dpoEmail:'', consentText:'', encryptionEnabled:true, processingRegistry:false, securityTested:false })
   const [saving, setSaving] = useState(false)

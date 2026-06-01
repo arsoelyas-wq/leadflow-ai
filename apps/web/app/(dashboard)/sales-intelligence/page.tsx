@@ -1,4 +1,5 @@
 'use client';
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react';
 import { 
   Users, TrendingUp, TrendingDown, MessageSquare, Phone, 
@@ -60,6 +61,7 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
 }
 
 export default function SalesIntelligencePage() {
+  const { t } = useI18n()
   const [tab, setTab] = useState<'dashboard'|'team'|'analyses'|'report'>('dashboard');
   const [dashboard, setDashboard] = useState<any>(null);
   const [team, setTeam] = useState<any[]>([]);

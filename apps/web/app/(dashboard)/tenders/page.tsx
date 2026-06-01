@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { FileText, Search, RefreshCw, Globe, CheckCircle, Clock, Star, ExternalLink, Bell, Trash2, X, Play, ChevronDown, BarChart2, AlertTriangle, TrendingUp, Copy, Download, Zap } from 'lucide-react'
@@ -447,6 +448,7 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function TendersPage() {
+  const { t } = useI18n()
   const [tenders, setTenders] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [prefs, setPrefs] = useState<any[]>([])

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
@@ -53,6 +54,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function CampaignDetailPage() {
+  const { t } = useI18n()
   const params = useParams()
   const router = useRouter()
   const id = params?.id as string

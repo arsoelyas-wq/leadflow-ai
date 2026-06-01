@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Heart, AlertTriangle, TrendingUp, Users, MessageSquare } from 'lucide-react'
@@ -93,6 +94,7 @@ function calcHealthScore(customer: any): number {
 }
 
 export default function LoyaltyPage() {
+  const { t } = useI18n()
   const [customers, setCustomers] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)

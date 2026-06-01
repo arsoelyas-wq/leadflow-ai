@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Plus, Play, Trash2, RefreshCw, FlaskConical, Trophy, TrendingUp, MessageSquare } from 'lucide-react'
 
 export default function ABTestingPage() {
+  const { t } = useI18n()
   const [tests, setTests] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

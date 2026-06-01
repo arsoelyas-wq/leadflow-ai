@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Search, Zap, RefreshCw, Plus, Instagram, Facebook, Globe, ShoppingBag, BookOpen, Users, TrendingUp, Target, ArrowRight, ExternalLink } from 'lucide-react'
@@ -24,6 +25,7 @@ const CITIES = [
 ]
 
 export default function LeadMachinePage() {
+  const { t } = useI18n()
   const [selectedSources, setSelectedSources] = useState<string[]>(['google_maps'])
   const [keyword, setKeyword] = useState('')
   const [customKeyword, setCustomKeyword] = useState('')

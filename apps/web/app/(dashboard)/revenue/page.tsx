@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, TrendingUp, DollarSign, Target, Zap } from 'lucide-react'
@@ -111,6 +112,7 @@ function RevenueCandlestick({ size = 110, data = [], forecastData = [] }: { size
 }
 
 export default function RevenuePage() {
+  const { t } = useI18n()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [scenario, setScenario] = useState<'base'|'best'|'worst'>('base')

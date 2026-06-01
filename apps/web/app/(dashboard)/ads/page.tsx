@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import MetaOptimizer from './MetaOptimizer'
@@ -134,6 +135,7 @@ function AlgorithmTrainingBanner({ platform, eventsToday, eventsTotal, lastAt, e
 }
 
 export default function AdsPage() {
+  const { t } = useI18n()
   const searchParams = useSearchParams()
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)

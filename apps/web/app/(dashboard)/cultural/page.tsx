@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Copy, CheckCircle, Globe, Zap, Languages, Clock, ChevronDown, Search, MessageSquare } from 'lucide-react'
@@ -341,6 +342,7 @@ function CulturalCard({ profile, countryCode }: { profile: any; countryCode: str
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function CulturalPage() {
+  const { t } = useI18n()
   const [leads, setLeads] = useState<any[]>([])
   const [leadSearch, setLeadSearch] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]) // multi-select

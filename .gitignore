@@ -7,3 +7,10 @@ dist
 .vercel
 .env*.local
 musetalk_models/
+test-video-free.js
+test_short.wav
+test_speech.wav
+apps/web/app/(dashboard)/billing/page.tsx.bak
+.playwright-mcp/
+.superpowers/
+.claude/worktrees/

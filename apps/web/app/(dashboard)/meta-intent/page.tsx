@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import { RefreshCw, Zap, Users, Copy, CheckCircle, AlertTriangle, TrendingUp, Send, Target, BarChart3, ChevronDown } from 'lucide-react'
@@ -193,6 +194,7 @@ function StatCard({ label, value, color, icon }: any) {
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function MetaPage() {
+  const { t } = useI18n()
   const [stats, setStats] = useState<any>(null)
   const [sending, setSending] = useState(false)
   const [creating, setCreating] = useState(false)

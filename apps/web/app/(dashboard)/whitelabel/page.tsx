@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Building2, Plus, RefreshCw, BarChart3, Globe, Copy, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react'
@@ -66,6 +67,7 @@ function BrandGalaxy({ size = 100, brandCount = 0 }: { size?: number; brandCount
 }
 
 export default function WhitelabelPage() {
+  const { t } = useI18n()
   const [brands, setBrands] = useState<any[]>([])
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)

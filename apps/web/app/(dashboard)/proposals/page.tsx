@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   FileText, Plus, Send, RefreshCw, CheckCircle,
@@ -66,6 +67,7 @@ const STATUS_LABEL: Record<string, string> = {
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
 export default function ProposalsPage() {
+  const { t } = useI18n()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [stats, setStats]         = useState<any>(null)
   const [leads, setLeads]         = useState<any[]>([])

@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { GraduationCap, Play, RefreshCw, Star, TrendingUp, AlertTriangle, CheckCircle, Zap } from 'lucide-react'
 
 export default function SalesCoachPage() {
+  const { t } = useI18n()
   const [reports, setReports] = useState<any[]>([])
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react'
 
 export default function SettingsPage() {
+  const { t } = useI18n()
   const { user } = useAuth()
   const [tab, setTab] = useState<'profile' | 'channels' | 'notifications' | 'security' | '2fa' | 'sheets' | 'meta-capi' | 'google-capi'>('profile')
   const [saving, setSaving] = useState(false)
@@ -308,10 +310,10 @@ export default function SettingsPage() {
   }
 
   const tabs = [
-    { id: 'profile', label: 'Profil', icon: User, color: '#06b6d4' },
-    { id: 'channels', label: 'Kanallar', icon: Key, color: '#10b981' },
-    { id: 'notifications', label: 'Bildirimler', icon: Bell, color: '#f59e0b' },
-    { id: 'security', label: 'Güvenlik', icon: Shield, color: '#ef4444' },
+    { id: 'profile', label: t('settings.profile','Profil'), icon: User, color: '#06b6d4' },
+    { id: 'channels', label: t('settings.integrations','Kanallar'), icon: Key, color: '#10b981' },
+    { id: 'notifications', label: t('settings.notifications','Bildirimler'), icon: Bell, color: '#f59e0b' },
+    { id: 'security', label: t('settings.security','Güvenlik'), icon: Shield, color: '#ef4444' },
     { id: '2fa', label: '2FA', icon: Lock, color: '#8b5cf6' },
     { id: 'sheets', label: 'Google Sheets', icon: Globe, color: '#34d399' },
     { id: 'meta-capi', label: 'Meta Dönüşüm', icon: Zap, color: '#3b82f6' },
@@ -330,7 +332,7 @@ export default function SettingsPage() {
       <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(3,5,18,0.98),rgba(5,8,22,0.99))', borderRadius:20, padding:'24px 28px', marginBottom:24, border:'1px solid rgba(59,130,246,0.18)' }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(59,130,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.02) 1px,transparent 1px)', backgroundSize:'38px 38px', zIndex:0 }} />
         <div style={{ position:'relative', zIndex:2 }}>
-          <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>⚙️ Ayarlar</h1>
+          <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>⚙️ {t('settings.title','Ayarlar')}</h1>
           <p style={{ color:'#64748b', fontSize:13, margin:0 }}>Hesap profili, kanal bağlantıları, güvenlik ve entegrasyon ayarları</p>
         </div>
       </div>
@@ -380,7 +382,7 @@ export default function SettingsPage() {
                 ))}
               </div>
               <button onClick={saveProfile} disabled={saving} style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), marginTop:16 }}>
-                <Save size={14} />{saving ? 'Kaydediliyor...' : saved ? '✓ Kaydedildi' : 'Kaydet'}
+                <Save size={14} />{saving ? t('page.loading','Kaydediliyor...') : saved ? `✓ ${t('settings.saved','Kaydedildi')}` : t('settings.save','Kaydet')}
               </button>
             </div>
           )}

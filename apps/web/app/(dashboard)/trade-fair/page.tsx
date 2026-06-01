@@ -1,9 +1,11 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Globe, Plus, RefreshCw, Users, Send, CheckCircle, Calendar, MapPin } from 'lucide-react'
 
 export default function TradeFairPage() {
+  const { t } = useI18n()
   const [fairs, setFairs] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [selectedFair, setSelectedFair] = useState<any>(null)

@@ -1,4 +1,5 @@
 'use client'
+import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { Mail, Send, RefreshCw, CheckCircle, Sparkles, Eye, Search, X } from 'lucide-react'
@@ -18,6 +19,7 @@ const EMAIL_TEMPLATES = [
 ]
 
 export default function EmailCampaignsPage() {
+  const { t } = useI18n()
   const [stats, setStats] = useState<any>(null)
   const [campaigns, setCampaigns] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
