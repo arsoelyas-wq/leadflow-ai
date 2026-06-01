@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import Sidebar from '../../components/Sidebar'
+import TopBar from '../../components/TopBar'
 import PWAInstallBanner from '../../components/PWAInstallBanner'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -10,15 +11,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-    }
+    if (!loading && !user) router.push('/login')
   }, [user, loading, router])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div style={{ minHeight:'100vh', background:'#060a14', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ width:32, height:32, border:'2px solid #3b82f6', borderTopColor:'transparent', borderRadius:'50%', animation:'ls-spin 0.8s linear infinite' }}/>
+        <style>{`@keyframes ls-spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     )
   }
@@ -26,11 +26,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
+    <div style={{ minHeight:'100vh', background:'#060a14', display:'flex' }}>
       <Sidebar />
-      <main className="flex-1 ml-64 p-8 overflow-auto">
+
+      {/* Ülke & Dil seçici — sağ üst, her sayfada görünür */}
+      <div style={{ position:'fixed', top:14, right:20, zIndex:50, display:'flex', alignItems:'center', gap:8 }}>
+        <TopBar />
+      </div>
+
+      <main style={{ flex:1, marginLeft:248, padding:'28px 32px', overflowX:'hidden', minHeight:'100vh' }}>
         {children}
       </main>
+
       <PWAInstallBanner />
     </div>
   )

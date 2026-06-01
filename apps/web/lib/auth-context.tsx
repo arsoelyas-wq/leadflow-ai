@@ -13,6 +13,10 @@ interface User {
   creditsTotal: number
   creditsUsed: number
   onboardingDone?: boolean
+  countryCode?: string
+  languageCode?: string
+  currency?: string
+  timezone?: string
 }
 
 interface AuthContextType {
