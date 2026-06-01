@@ -183,7 +183,7 @@ export default function DashboardPage() {
     completed: { color:'#60a5fa', bg:'rgba(59,130,246,0.12)'  },
     draft:     { color:'#64748b', bg:'rgba(100,116,139,0.12)' },
   }
-  const statusLabel: Record<string,string> = { active:'Aktif', paused:'Duraklatıldı', completed:'Tamamlandı', draft:'Taslak' }
+  const statusLabel = (s: string) => t(`status.${s}`, s)
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
@@ -203,7 +203,7 @@ export default function DashboardPage() {
             <p style={{ color:'#475569', fontSize:13, margin:0 }}>İşte bugünkü özet</p>
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:20, background:realtimeConnected?'rgba(16,185,129,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${realtimeConnected?'rgba(16,185,129,0.25)':'rgba(100,116,139,0.2)'}` }}>
               <div style={{ width:6, height:6, borderRadius:'50%', background:realtimeConnected?'#10b981':'#475569', animation:realtimeConnected?'pulse-dot 2s infinite':'none' }}/>
-              <span style={{ color:realtimeConnected?'#34d399':'#475569', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : 'Bağlanıyor...'}</span>
+              <span style={{ color:realtimeConnected?'#34d399':'#475569', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : t('dashboard.connecting', 'Bağlanıyor...')}</span>
             </div>
           </div>
         </div>
@@ -220,11 +220,11 @@ export default function DashboardPage() {
             {showNotifs && (
               <div style={{ position:'absolute', right:0, top:46, width:320, background:'linear-gradient(135deg,#0d111f,#090d1a)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, boxShadow:'0 24px 60px rgba(0,0,0,0.6)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
                 <div style={{ padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ color:'#fff', fontWeight:700, fontSize:13 }}>Bildirimler</span>
-                  <button onClick={() => setNotifications([])} style={{ background:'none', border:'none', color:'#334155', cursor:'pointer', fontSize:11, padding:0 }}>Temizle</button>
+                  <span style={{ color:'#fff', fontWeight:700, fontSize:13 }}>{t('dashboard.notifications','Bildirimler')}</span>
+                  <button onClick={() => setNotifications([])} style={{ background:'none', border:'none', color:'#334155', cursor:'pointer', fontSize:11, padding:0 }}>{t('dashboard.clear','Temizle')}</button>
                 </div>
                 {notifications.length === 0 ? (
-                  <div style={{ padding:'28px 16px', textAlign:'center', color:'#334155', fontSize:13 }}>Henüz bildirim yok</div>
+                  <div style={{ padding:'28px 16px', textAlign:'center', color:'#334155', fontSize:13 }}>{t('dashboard.no_notifs','Henüz bildirim yok')}</div>
                 ) : (
                   <div style={{ maxHeight:280, overflowY:'auto' }}>
                     {notifications.map(n => {
@@ -286,20 +286,20 @@ export default function DashboardPage() {
         ) : [
           {
             label: t('dashboard.total_leads'), value: stats?.totalLeads?.toLocaleString('tr-TR') || '0',
-            sub: `+${stats?.weekLeads || 0} bu hafta`,
+            sub: `+${stats?.weekLeads || 0} ${t('this_week','bu hafta')}`,
             trend: stats?.weekGrowth || 0, icon: Users, color: '#3b82f6',
             sparkColor: '#3b82f6',
           },
           {
             label: t('dashboard.pipeline'),
             value: `₺${((stats?.pipelineValue || 0)/1000).toFixed(0)}K`,
-            sub: `${stats?.activeCampaigns || 0} aktif kampanya`,
+            sub: `${stats?.activeCampaigns || 0} ${t('active','aktif')} kampanya`,
             trend: null, icon: DollarSign, color: '#10b981',
             sparkColor: '#10b981',
           },
           {
             label: t('dashboard.reply_rate'), value: `%${stats?.replyRate || 0}`,
-            sub: `${stats?.totalSent || 0} mesaj gönderildi`,
+            sub: `${stats?.totalSent || 0} ${t('sent','gönderildi')}`,
             trend: null, icon: TrendingUp, color: '#8b5cf6',
             sparkColor: '#8b5cf6',
           },
@@ -351,9 +351,9 @@ export default function DashboardPage() {
           ) : (
             <div style={{ height:120, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10 }}>
               <BarChart2 size={28} color="#1e293b"/>
-              <p style={{ color:'#334155', fontSize:13, margin:0 }}>Henüz mesaj gönderilmedi</p>
+              <p style={{ color:'#334155', fontSize:13, margin:0 }}>{t('dashboard.no_messages')}</p>
               <Link href="/campaigns/new" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
-                İlk kampanyayı başlat <ArrowRight size={12}/>
+                {t('dashboard.start_campaign')} <ArrowRight size={12}/>
               </Link>
             </div>
           )}
@@ -419,7 +419,7 @@ export default function DashboardPage() {
                       <p style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</p>
                       <p style={{ color:'#475569', fontSize:11, margin:0 }}>{c.total_sent||0} gönderildi · %{replyRate} cevap</p>
                     </div>
-                    <span style={{ color:ss.color, background:ss.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, flexShrink:0 }}>{statusLabel[c.status]||c.status}</span>
+                    <span style={{ color:ss.color, background:ss.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, flexShrink:0 }}>{statusLabel(c.status)}</span>
                   </Link>
                 )
               })}
@@ -511,7 +511,7 @@ export default function DashboardPage() {
                       <span style={{ color:scoreColor, fontSize:11, fontWeight:700, width:24, flexShrink:0 }}>{score}</span>
                     </div>
                     <span style={{ color:ls.color, background:ls.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, width:'fit-content' }}>
-                      {statusLabel[lead.status]||'Yeni'}
+                      {statusLabel(lead.status||'new')}
                     </span>
                   </Link>
                 )

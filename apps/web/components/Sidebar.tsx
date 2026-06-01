@@ -256,9 +256,9 @@ export default function Sidebar() {
           <p style={{ color: '#1e293b', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '0 10px', marginBottom: 6 }}>ÖZEL ARAÇLAR</p>
 
           {[
-            { href: '/tenders', label: 'İhale Radarım',  sub: 'Devlet & özel ihaleler',   icon: ScrollText, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.15)',  active: 'rgba(245,158,11,0.18)',  badge: 'PRO' },
-            { href: '/export',  label: 'İhracat Zekam',  sub: 'Küresel alıcılara ulaş',   icon: Globe2,     color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.15)',  active: 'rgba(16,185,129,0.18)',  badge: 'ENT' },
-            { href: '/team',    label: 'Ekip Merkezim',  sub: 'Performans & koçluk',      icon: UsersRound, color: '#60a5fa', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.15)',  active: 'rgba(59,130,246,0.18)',  badge: 'PRO' },
+            { href: '/tenders', label: 'nav.tenders', subKey: 'nav.tenders_sub', icon: ScrollText, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.15)',  active: 'rgba(245,158,11,0.18)',  badge: 'PRO' },
+            { href: '/export',  label: 'nav.export',  subKey: 'nav.export_sub',  icon: Globe2,     color: '#10b981', bg: 'rgba(16,185,129,0.08)',  border: 'rgba(16,185,129,0.15)',  active: 'rgba(16,185,129,0.18)',  badge: 'ENT' },
+            { href: '/team',    label: 'nav.team',    subKey: 'nav.team_sub',    icon: UsersRound, color: '#60a5fa', bg: 'rgba(59,130,246,0.08)',  border: 'rgba(59,130,246,0.15)',  active: 'rgba(59,130,246,0.18)',  badge: 'PRO' },
           ].map(item => {
             const isActive = pathname === item.href || (item.href === '/team' && pathname === '/team-intelligence')
             const Icon = item.icon
@@ -272,7 +272,7 @@ export default function Sidebar() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ color: isActive ? '#fff' : item.color, fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{t(item.label, item.label)}</p>
-                  <p style={{ color: isActive ? `${item.color}90` : `${item.color}60`, fontSize: 10, margin: '2px 0 0', lineHeight: 1 }}>{item.sub}</p>
+                  <p style={{ color: isActive ? `${item.color}90` : `${item.color}60`, fontSize: 10, margin: '2px 0 0', lineHeight: 1 }}>{(item as any).subKey ? t((item as any).subKey) : (item as any).sub}</p>
                 </div>
                 <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 5, background: `${item.color}18`, color: item.color, border: `1px solid ${item.color}25`, flexShrink: 0 }}>{item.badge}</span>
               </Link>
@@ -360,11 +360,11 @@ export default function Sidebar() {
           <Link href="/billing" style={{ display: 'block', background: 'linear-gradient(135deg,rgba(124,58,237,0.15),rgba(37,99,235,0.1))', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 14, padding: '12px 14px', textDecoration: 'none', transition: 'border-color 0.2s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6, paddingRight: 16 }}>
               <Crown size={13} color="#a78bfa" />
-              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>Pro'ya Geç</span>
+              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{t('cta.title', "Pro'ya Geç")}</span>
             </div>
-            <p style={{ color: '#475569', fontSize: 11, lineHeight: 1.5, margin: '0 0 8px' }}>AI araçlar, gelişmiş reklam ve rakip izleme özelliklerini aç.</p>
+            <p style={{ color: '#475569', fontSize: 11, lineHeight: 1.5, margin: '0 0 8px' }}>{t('cta.desc', 'AI araçlar, gelişmiş reklam ve rakip izleme özelliklerini aç.')}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#a78bfa', fontSize: 11, fontWeight: 600 }}>
-              <Sparkle size={10} /> Planları İncele <ChevronRight size={10} />
+              <Sparkle size={10} /> {t('cta.button', 'Planları İncele')} <ChevronRight size={10} />
             </div>
           </Link>
         </div>
