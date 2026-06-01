@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import { useI18n } from '@/lib/i18n'
 import {
   LayoutDashboard, Users, Megaphone, BarChart3,
   Settings, CreditCard, LogOut, Zap, Activity,
@@ -41,105 +42,88 @@ const PLAN_META: Record<string, { label: string; color: string; bg: string; bord
   enterprise: { label: 'Ent',        color: '#fbbf24', bg: 'rgba(251,191,36,0.1)',   border: 'rgba(251,191,36,0.2)'  },
 }
 
+// labelKey yerine label kullanılan yapı — Sidebar render'da t() ile çevirilir
 const groups: NavGroup[] = [
   // ── MÜŞTERİLER ──────────────────────────────────────────────────────────────
   {
     id: 'customers',
-    label: 'Müşteriler',
+    label: 'nav.customers',  // translation key
     icon: Users,
     defaultOpen: false,
     items: [
-      { href: '/leads',           label: 'Müşterilerim',         icon: Users },
-      { href: '/lead-machine',    label: 'Yeni Müşteri Bul',     icon: Target },
-      { href: '/decision-maker',  label: 'Karar Vericiler',      icon: Crosshair,  plan: 'pro' },   // "Nasıl ulaşılır?" merakı
-      { href: '/network',         label: 'Bağlantı Ağım',        icon: Network },
-      { href: '/health-scores',   label: 'Müşteri Sinyali',      icon: Heart,      plan: 'pro' },   // Sinyal = kritik bilgi, merak
+      { href: '/leads',           label: 'nav.leads',         icon: Users },
+      { href: '/lead-machine',    label: 'nav.lead_machine',  icon: Target },
+      { href: '/decision-maker',  label: 'nav.decision_maker',icon: Crosshair,  plan: 'pro' },
+      { href: '/network',         label: 'nav.network',        icon: Network },
+      { href: '/health-scores',   label: 'nav.health_scores', icon: Heart,      plan: 'pro' },
     ],
   },
   // ── SATIŞ ────────────────────────────────────────────────────────────────────
   {
-    id: 'sales',
-    label: 'Satış',
-    icon: Kanban,
-    defaultOpen: false,
+    id: 'sales',          label: 'nav.sales',          icon: Kanban,       defaultOpen: false,
     items: [
-      { href: '/pipeline',   label: 'Satış Akışım',         icon: Kanban },
-      { href: '/proposals',  label: 'Tekliflerim',           icon: FileText },
-      { href: '/products',   label: 'Ürün Listem',           icon: Package,   badge: 'AI' },
-      { href: '/microsites', label: 'Dijital Vitrinim',      icon: Globe },
-      { href: '/qr-codes',   label: 'QR Araçları',           icon: QrCode },
-      { href: '/workflow',   label: 'Oto-Pilot',             icon: Workflow,  plan: 'growth', badge: 'Yeni' }, // "Ne otomatik çalışıyor?" merakı
-      { href: '/agent',      label: 'Satış Ajanım',          icon: Bot,       plan: 'pro',    badge: 'AI' },   // "Benim ajanım?" sahiplik + merak
+      { href: '/pipeline',   label: 'nav.pipeline',      icon: Kanban },
+      { href: '/proposals',  label: 'nav.proposals',     icon: FileText },
+      { href: '/products',   label: 'nav.products',      icon: Package,  badge: 'AI' },
+      { href: '/microsites', label: 'nav.microsites',    icon: Globe },
+      { href: '/qr-codes',   label: 'nav.qr_codes',      icon: QrCode },
+      { href: '/workflow',   label: 'nav.workflow',       icon: Workflow, plan: 'growth', badge: 'Yeni' },
+      { href: '/agent',      label: 'nav.agent',          icon: Bot,      plan: 'pro',    badge: 'AI' },
     ],
   },
-  // ── İLETİŞİM ─────────────────────────────────────────────────────────────────
   {
-    id: 'communication',
-    label: 'İletişim',
-    icon: MessageSquare,
+    id: 'communication',  label: 'nav.communication',  icon: MessageSquare,
     items: [
-      { href: '/inbox',            label: 'Mesaj Merkezim',      icon: Inbox },
-      { href: '/campaigns',        label: 'WhatsApp Yayını',     icon: Megaphone },
-      { href: '/email-campaigns',  label: 'E-posta Yayını',      icon: Megaphone },
-      { href: '/sms-campaigns',    label: 'SMS Yayını',          icon: Smartphone },
-      { href: '/voice-outreach',   label: 'Sesli Ajan',          icon: Phone,       plan: 'pro',    badge: 'AI' }, // "Ajan ne yapıyor?" merakı
-      { href: '/video-outreach',   label: 'Video Klonum',        icon: Video,       plan: 'growth', badge: 'AI' }, // "Klonum?" çok güçlü merak
+      { href: '/inbox',           label: 'nav.inbox',     icon: Inbox },
+      { href: '/campaigns',       label: 'nav.campaigns', icon: Megaphone },
+      { href: '/email-campaigns', label: 'nav.email',     icon: Megaphone },
+      { href: '/sms-campaigns',   label: 'nav.sms',       icon: Smartphone },
+      { href: '/voice-outreach',  label: 'nav.voice',     icon: Phone,    plan: 'pro',    badge: 'AI' },
+      { href: '/video-outreach',  label: 'nav.video',     icon: Video,    plan: 'growth', badge: 'AI' },
     ],
   },
-  // ── PAZARLAMA ─────────────────────────────────────────────────────────────────
   {
-    id: 'marketing',
-    label: 'Pazarlama',
-    icon: Target,
+    id: 'marketing',      label: 'nav.marketing',      icon: Target,
     items: [
-      { href: '/ads',           label: 'Meta Reklamlarım',      icon: BarChart2 },
-      { href: '/google-ads',    label: 'Google Reklamlarım',    icon: BarChart2 },
-      { href: '/ads-advanced',  label: 'Reklam Otopilotu',      icon: Brain,    plan: 'pro', badge: 'AI' }, // Otopilot = merak
-      { href: '/meta-intent',   label: 'Akıllı Kitle',          icon: Users2,   plan: 'pro', badge: 'AI' }, // "Nasıl akıllı?" merakı
+      { href: '/ads',          label: 'nav.ads',          icon: BarChart2 },
+      { href: '/google-ads',   label: 'nav.google_ads',   icon: BarChart2 },
+      { href: '/ads-advanced', label: 'nav.ads_advanced', icon: Brain,  plan: 'pro', badge: 'AI' },
+      { href: '/meta-intent',  label: 'nav.meta_intent',  icon: Users2, plan: 'pro', badge: 'AI' },
     ],
   },
-  // ── PAZAR ANALİZİ ─────────────────────────────────────────────────────────────
   {
-    id: 'market',
-    label: 'Pazar Analizi',
-    icon: TrendingUp,
+    id: 'market',         label: 'nav.market',         icon: TrendingUp,
     items: [
-      { href: '/competitor',    label: 'Rakip Radarım',        icon: Target,      plan: 'growth' }, // Radar = istihbarat, merak
-      { href: '/shadow',        label: 'Rakip İzleme',         icon: ShieldCheck, plan: 'pro' },    // Sessiz gözetleme hissi
-      { href: '/price-tracker', label: 'Fiyat Alarmı',         icon: TrendingDown },                // Alarm = aciliyet + değer
-      { href: '/visual-trends', label: 'Trend Alarmı',         icon: Sparkles,    plan: 'growth' }, // "Hangi trend?" merakı
-      { href: '/cultural',      label: 'Yerel Uyum',           icon: Globe,       plan: 'pro' },    // Kısa + net + uluslararası his
+      { href: '/competitor',    label: 'nav.competitor',    icon: Target,      plan: 'growth' },
+      { href: '/shadow',        label: 'nav.shadow',        icon: ShieldCheck, plan: 'pro' },
+      { href: '/price-tracker', label: 'nav.price_tracker', icon: TrendingDown },
+      { href: '/visual-trends', label: 'nav.visual_trends', icon: Sparkles,    plan: 'growth' },
+      { href: '/cultural',      label: 'nav.cultural',      icon: Globe,       plan: 'pro' },
     ],
   },
-  // ── BÜYÜME & FİNANS ───────────────────────────────────────────────────────────
   {
-    id: 'growth',
-    label: 'Büyüme & Finans',
-    icon: LineChart,
+    id: 'growth',         label: 'nav.growth',         icon: LineChart,
     items: [
-      { href: '/analytics',     label: 'Analizlerim',          icon: BarChart3 },
-      { href: '/reports',       label: 'Raporlarım',           icon: FileBarChart },
-      { href: '/revenue',       label: 'Gelir Öngörüsü',       icon: DollarSign,  plan: 'growth' }, // Öngörü = bilge/güçlü
-      { href: '/financial',     label: 'Para Akışım',          icon: TrendingUp,  plan: 'pro', badge: 'AI' }, // Paranın gidişi = merak
-      { href: '/loyalty',       label: 'Sadakat Puanım',       icon: Star },
-      { href: '/referral',      label: 'Tavsiye Ağım',         icon: Gift },
-      { href: '/debt-collector',label: 'Alacaklarım',          icon: FileText },  // Sahiplik + net + aciliyet
+      { href: '/analytics',      label: 'nav.analytics',      icon: BarChart3 },
+      { href: '/reports',        label: 'nav.reports',        icon: FileBarChart },
+      { href: '/revenue',        label: 'nav.revenue',        icon: DollarSign,  plan: 'growth' },
+      { href: '/financial',      label: 'nav.financial',      icon: TrendingUp,  plan: 'pro', badge: 'AI' },
+      { href: '/loyalty',        label: 'nav.loyalty',        icon: Star },
+      { href: '/referral',       label: 'nav.referral',       icon: Gift },
+      { href: '/debt-collector', label: 'nav.debt_collector', icon: FileText },
     ],
   },
-  // ── SİSTEM ────────────────────────────────────────────────────────────────────
   {
-    id: 'system',
-    label: 'Sistem',
-    icon: Settings,
+    id: 'system',         label: 'nav.system',         icon: Settings,
     items: [
-      { href: '/automations', label: 'Otomasyon Merkezim',   icon: Zap },
-      { href: '/wa-numbers',  label: 'WhatsApp Hatlarım',    icon: Smartphone },
-      { href: '/developer',   label: 'API Erişimim',         icon: Code,      plan: 'pro' },
-      { href: '/whitelabel',  label: 'White-Label',          icon: Building2, plan: 'enterprise' },
-      { href: '/monitoring',  label: 'Sistem Monitörüm',     icon: Activity },
-      { href: '/billing',     label: 'Aboneliğim',           icon: CreditCard },
-      { href: '/settings/platforms', label: 'Ülke & Platformlar', icon: Globe2 },
-      { href: '/settings',           label: 'Ayarlarım',           icon: Settings },
+      { href: '/automations',        label: 'nav.automations', icon: Zap },
+      { href: '/wa-numbers',         label: 'nav.wa_numbers',  icon: Smartphone },
+      { href: '/developer',          label: 'nav.developer',   icon: Code,      plan: 'pro' },
+      { href: '/whitelabel',         label: 'nav.whitelabel',  icon: Building2, plan: 'enterprise' },
+      { href: '/monitoring',         label: 'nav.monitoring',  icon: Activity },
+      { href: '/billing',            label: 'nav.billing',     icon: CreditCard },
+      { href: '/settings/platforms', label: 'nav.platforms',   icon: Globe2 },
+      { href: '/settings',           label: 'nav.settings',    icon: Settings },
     ],
   },
 ]
@@ -148,6 +132,7 @@ export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuth()
+  const { t } = useI18n()
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
     Object.fromEntries(groups.map(g => [g.id, g.defaultOpen ?? false]))
@@ -263,7 +248,7 @@ export default function Sidebar() {
           border: pathname === '/dashboard' ? '1px solid rgba(59,130,246,0.2)' : '1px solid transparent',
         }}>
           <LayoutDashboard size={15} />
-          Ana Sayfa
+          {t('nav.dashboard', 'Ana Sayfa')}
         </Link>
 
         {/* Özel Araçlar */}
@@ -286,7 +271,7 @@ export default function Sidebar() {
                   <Icon size={13} color={item.color} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ color: isActive ? '#fff' : item.color, fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{item.label}</p>
+                  <p style={{ color: isActive ? '#fff' : item.color, fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>{t(item.label, item.label)}</p>
                   <p style={{ color: isActive ? `${item.color}90` : `${item.color}60`, fontSize: 10, margin: '2px 0 0', lineHeight: 1 }}>{item.sub}</p>
                 </div>
                 <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 5, background: `${item.color}18`, color: item.color, border: `1px solid ${item.color}25`, flexShrink: 0 }}>{item.badge}</span>
@@ -312,7 +297,7 @@ export default function Sidebar() {
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                   <GroupIcon size={12} />
-                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{group.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{t(group.label, group.label)}</span>
                 </div>
                 <ChevronDown size={11} style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
               </button>
@@ -339,7 +324,7 @@ export default function Sidebar() {
                         onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = active ? '#93c5fd' : locked ? '#1e293b' : '#64748b' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                           <Icon size={13} style={{ flexShrink: 0 }} />
-                          <span style={{ fontSize: 12.5, fontWeight: active ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{label}</span>
+                          <span style={{ fontSize: 12.5, fontWeight: active ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{t(label, label)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 4 }}>
                           {badge && !active && (
