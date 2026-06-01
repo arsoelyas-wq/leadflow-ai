@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { useI18n } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { createClient } from '@supabase/supabase-js'
 import {
@@ -112,6 +113,7 @@ function Skeleton({ h = 20, w = '100%', r = 6 }: { h?: number; w?: number|string
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -195,13 +197,13 @@ export default function DashboardPage() {
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>
         <div>
           <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>
-            Hoş geldin, {user?.name?.split(' ')[0]}
+            {t('dashboard.greeting')}, {user?.name?.split(' ')[0]}
           </h1>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
             <p style={{ color:'#475569', fontSize:13, margin:0 }}>İşte bugünkü özet</p>
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:20, background:realtimeConnected?'rgba(16,185,129,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${realtimeConnected?'rgba(16,185,129,0.25)':'rgba(100,116,139,0.2)'}` }}>
               <div style={{ width:6, height:6, borderRadius:'50%', background:realtimeConnected?'#10b981':'#475569', animation:realtimeConnected?'pulse-dot 2s infinite':'none' }}/>
-              <span style={{ color:realtimeConnected?'#34d399':'#475569', fontSize:11, fontWeight:600 }}>{realtimeConnected?'Canlı':'Bağlanıyor...'}</span>
+              <span style={{ color:realtimeConnected?'#34d399':'#475569', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : 'Bağlanıyor...'}</span>
             </div>
           </div>
         </div>
@@ -246,7 +248,7 @@ export default function DashboardPage() {
             )}
           </div>
           <Link href="/campaigns/new" style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(59,130,246,0.35)', transition:'all 0.15s' }}>
-            <Zap size={14}/> Yeni Kampanya
+            <Zap size={14}/> {t('dashboard.new_campaign')}
           </Link>
         </div>
       </div>
@@ -283,26 +285,26 @@ export default function DashboardPage() {
           ))
         ) : [
           {
-            label: 'Toplam Lead', value: stats?.totalLeads?.toLocaleString('tr-TR') || '0',
+            label: t('dashboard.total_leads'), value: stats?.totalLeads?.toLocaleString('tr-TR') || '0',
             sub: `+${stats?.weekLeads || 0} bu hafta`,
             trend: stats?.weekGrowth || 0, icon: Users, color: '#3b82f6',
             sparkColor: '#3b82f6',
           },
           {
-            label: 'Pipeline Değeri',
+            label: t('dashboard.pipeline'),
             value: `₺${((stats?.pipelineValue || 0)/1000).toFixed(0)}K`,
             sub: `${stats?.activeCampaigns || 0} aktif kampanya`,
             trend: null, icon: DollarSign, color: '#10b981',
             sparkColor: '#10b981',
           },
           {
-            label: 'Cevap Oranı', value: `%${stats?.replyRate || 0}`,
+            label: t('dashboard.reply_rate'), value: `%${stats?.replyRate || 0}`,
             sub: `${stats?.totalSent || 0} mesaj gönderildi`,
             trend: null, icon: TrendingUp, color: '#8b5cf6',
             sparkColor: '#8b5cf6',
           },
           {
-            label: 'Kalan Kredi', value: (stats?.credits || 0).toLocaleString('tr-TR'),
+            label: t('dashboard.credits'), value: (stats?.credits || 0).toLocaleString('tr-TR'),
             sub: stats?.planType || 'starter',
             trend: null, icon: Zap, color: '#f59e0b',
             sparkColor: '#f59e0b',
@@ -339,7 +341,7 @@ export default function DashboardPage() {
         {/* Area Chart */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>Mesaj Gönderim Trendi</h2>
+            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
             <span style={{ color:'#334155', fontSize:12 }}>Son 7 gün</span>
           </div>
           {loading ? (
@@ -360,7 +362,7 @@ export default function DashboardPage() {
         {/* Lead Funnel */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>Lead Hunisi</h2>
+            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.funnel')}</h2>
             <Link href="/pipeline" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>Tümü <ChevronRight size={12}/></Link>
           </div>
           {loading ? (
@@ -398,7 +400,7 @@ export default function DashboardPage() {
         {/* Campaigns */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>Kampanyalar</h2>
+            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
             <Link href="/campaigns" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>Tümü <ChevronRight size={12}/></Link>
           </div>
           {loading ? (
@@ -434,7 +436,7 @@ export default function DashboardPage() {
         {/* Activity Feed */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>Son Aktivite</h2>
+            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.activity')}</h2>
             <Activity size={14} color="#475569"/>
           </div>
           {loading ? (
@@ -467,7 +469,7 @@ export default function DashboardPage() {
       {/* ── RECENT LEADS ── */}
       <div style={{ ...card, padding:'20px 22px' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>Son Leadler</h2>
+          <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.leads')}</h2>
           <Link href="/leads" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>
             Tümünü gör <ArrowRight size={12}/>
           </Link>
