@@ -194,6 +194,8 @@ app.use('/api/meta',                 authMiddleware, require('./routes/meta-inte
 app.use('/api/meta-capi',            authMiddleware, require('./routes/meta-capi'));
 app.use('/api/google-capi',          authMiddleware, require('./routes/google-capi'));
 app.use('/api/export',               authMiddleware, require('./routes/export-intelligence'));
+const { router: platformsRouter } = require('./routes/platforms');
+app.use('/api/platforms',            authMiddleware, platformsRouter);
 app.use('/api/ar',                   authMiddleware, require('./routes/ar-integration'));
 app.use('/api/sales-intelligence',   authMiddleware, require('./routes/sales-intelligence'));
 app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-reports'));

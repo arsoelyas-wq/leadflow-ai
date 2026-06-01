@@ -138,7 +138,8 @@ const groups: NavGroup[] = [
       { href: '/whitelabel',  label: 'White-Label',          icon: Building2, plan: 'enterprise' },
       { href: '/monitoring',  label: 'Sistem Monitörüm',     icon: Activity },
       { href: '/billing',     label: 'Aboneliğim',           icon: CreditCard },
-      { href: '/settings',    label: 'Ayarlarım',            icon: Settings },
+      { href: '/settings/platforms', label: 'Ülke & Platformlar', icon: Globe2 },
+      { href: '/settings',           label: 'Ayarlarım',           icon: Settings },
     ],
   },
 ]

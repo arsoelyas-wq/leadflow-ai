@@ -22,6 +22,10 @@ function formatUser(u: any) {
     creditsTotal: u.credits_total,
     creditsUsed: u.credits_used,
     onboardingDone: u.onboarding_done,
+    countryCode: u.country_code || 'TR',
+    languageCode: u.language_code || 'tr',
+    currency: u.currency || 'TRY',
+    timezone: u.timezone || 'Europe/Istanbul',
   }
 }
 
@@ -106,7 +110,7 @@ router.get('/me', async (req: any, res: any) => {
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, name, company, plan_type, credits_total, credits_used, onboarding_done, sector')
+      .select('id, email, name, company, plan_type, credits_total, credits_used, onboarding_done, sector, country_code, language_code, currency, timezone')
       .eq('id', decoded.userId)
       .single();
 
