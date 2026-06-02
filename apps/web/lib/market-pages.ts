@@ -234,9 +234,12 @@ export async function fetchMarketPage(slug: string): Promise<MarketPage | null> 
     const { createClient } = await import('@supabase/supabase-js')
     // Use service key (server-side only — never exposed to browser)
     // SUPABASE_SERVICE_KEY must be set in Vercel environment variables (Settings → Env Vars)
-    const serviceKey = process.env.SUPABASE_SERVICE_KEY ||
+    const serviceKey = (
+      process.env.SUPABASE_SERVICE_KEY ||
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY  // fallback to anon (needs RLS policy)
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      ''
+    )
 
     const sb = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sivrmewtljftzlwmppub.supabase.co',
