@@ -1,6 +1,45 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useMemo } from 'react'
+
+const DM: Record<string, Record<string, string>> = {
+  tr: {
+    title:'Karar Verici Bulucu', subtitle:'LinkdAPI + Claude AI ile karar vericileri otomatik bul ve kaydet',
+    total_lead:'Toplam Lead', with_contact:'Yetkili Bulunan', with_email:'Email Bulunan', coverage:'Kapsama Oranı',
+    search:'Şirket veya şehir ara...', all:'Hepsi', no_contact:'Yetkili Yok', has_contact:'Yetkili Var',
+    select_all:'Tümünü Seç', deselect_all:'Seçimi Kaldır', select_lead:'Lead Seçin', score:'Puan',
+  },
+  de: {
+    title:'Entscheidungsträger-Finder', subtitle:'Entscheidungsträger automatisch finden und speichern mit LinkdAPI + Claude AI',
+    total_lead:'Leads gesamt', with_contact:'Entscheider gefunden', with_email:'E-Mail gefunden', coverage:'Abdeckungsrate',
+    search:'Unternehmen oder Stadt suchen...', all:'Alle', no_contact:'Kein Entscheider', has_contact:'Entscheider vorhanden',
+    select_all:'Alle auswählen', deselect_all:'Auswahl aufheben', select_lead:'Lead auswählen', score:'Punkte',
+  },
+  ru: {
+    title:'Поиск ЛПР', subtitle:'Автоматически находите и сохраняйте ЛПР с LinkdAPI + Claude AI',
+    total_lead:'Всего лидов', with_contact:'ЛПР найдено', with_email:'Email найден', coverage:'Охват',
+    search:'Поиск по компании или городу...', all:'Все', no_contact:'Нет ЛПР', has_contact:'Есть ЛПР',
+    select_all:'Выбрать всё', deselect_all:'Снять выбор', select_lead:'Выбрать лид', score:'Балл',
+  },
+  en: {
+    title:'Decision Maker Finder', subtitle:'Automatically find and save decision makers with LinkdAPI + Claude AI',
+    total_lead:'Total Leads', with_contact:'Decision Maker Found', with_email:'Email Found', coverage:'Coverage Rate',
+    search:'Search company or city...', all:'All', no_contact:'No Decision Maker', has_contact:'Has Decision Maker',
+    select_all:'Select All', deselect_all:'Deselect All', select_lead:'Select Lead', score:'Score',
+  },
+  fr: {
+    title:'Finder de Décideurs', subtitle:'Trouver et sauvegarder automatiquement des décideurs avec LinkdAPI + Claude AI',
+    total_lead:'Leads totaux', with_contact:'Décideur trouvé', with_email:'E-mail trouvé', coverage:'Taux de couverture',
+    search:'Rechercher par entreprise ou ville...', all:'Tous', no_contact:'Pas de décideur', has_contact:'Décideur présent',
+    select_all:'Tout sélectionner', deselect_all:'Désélectionner', select_lead:'Sélectionner lead', score:'Score',
+  },
+  ar: {
+    title:'الباحث عن صانعي القرار', subtitle:'إيجاد وحفظ صانعي القرار تلقائياً مع LinkdAPI + Claude AI',
+    total_lead:'إجمالي العملاء', with_contact:'صانع القرار موجود', with_email:'Email موجود', coverage:'نسبة التغطية',
+    search:'البحث بالشركة أو المدينة...', all:'الكل', no_contact:'لا يوجد صانع قرار', has_contact:'يوجد صانع قرار',
+    select_all:'اختيار الكل', deselect_all:'إلغاء التحديد', select_lead:'اختر عميلاً', score:'النقاط',
+  },
+}
 import { api } from '@/lib/api'
 import {
   Crosshair, Search, RefreshCw, Users, Mail,
@@ -54,7 +93,8 @@ const CONF = {
 type Filter = 'all' | 'no-contact' | 'has-contact'
 
 export default function DecisionMakerPage() {
-  const { t } = useI18n()
+  const { lang } = useI18n()
+  const L = DM[lang] || DM.tr
   const [leads, setLeads]   = useState<Lead[]>([])
   const [stats, setStats]   = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -203,7 +243,7 @@ export default function DecisionMakerPage() {
         </h1>
         <p className="text-slate-400 mt-1 text-sm flex items-center gap-1.5">
           <Crosshair size={13} className="text-violet-400" />
-          {t('dm.subtitle','LinkdAPI + Claude AI ile karar vericileri otomatik bul ve kaydet')}
+          {L.subtitle}
         </p>
       </div>
 
@@ -223,10 +263,10 @@ export default function DecisionMakerPage() {
       {stats && (
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: t('dm.total_lead','Toplam Lead'),     value: stats.totalLeads,         icon: Users,     color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
-            { label: t('dm.with_contact','Yetkili Bulunan'), value: stats.withContact,        icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-            { label: t('dm.with_email','Email Bulunan'),   value: stats.withEmail,          icon: Mail,      color: 'text-purple-400',  bg: 'bg-purple-500/10'  },
-            { label: t('Kapsama Oranı','Kapsama Oranı'),   value: `%${stats.coverageRate}`, icon: BarChart3, color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
+            { label: L.total_lead,     value: stats.totalLeads,         icon: Users,     color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
+            { label: L.with_contact, value: stats.withContact,        icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+            { label: L.with_email,   value: stats.withEmail,          icon: Mail,      color: 'text-purple-400',  bg: 'bg-purple-500/10'  },
+            { label: L.coverage,   value: `%${stats.coverageRate}`, icon: BarChart3, color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
           ].map(s => (
             <div key={s.label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
               <div className={`w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center mb-3`}>
@@ -247,7 +287,7 @@ export default function DecisionMakerPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={t('decision_maker.sirket_veya_sehir_ara', 'Şirket veya şehir ara...')}
+            placeholder={L.search}
             className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition"
           />
           {search && (
@@ -260,9 +300,9 @@ export default function DecisionMakerPage() {
         {/* Filter chips */}
         <div className="flex gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1">
           {([
-            { id: 'all',         label: t('Tümü','Tümü') },
-            { id: 'no-contact', label: t('dm.no_contact','Yetkili Yok') },
-            { id: 'has-contact', label: t('dm.has_contact','Yetkili Var') },
+            { id: 'all', label: L.all },
+            { id: 'no-contact', label: L.no_contact },
+            { id: 'has-contact', label: L.has_contact },
           ] as { id: Filter; label: string }[]).map(f => (
             <button key={f.id}
               onClick={() => setFilter(f.id)}
@@ -278,7 +318,7 @@ export default function DecisionMakerPage() {
         {filtered.length > 0 && (
           <button onClick={selectedIds.size === filtered.length ? clearAll : selectAll}
             className="px-3 py-2.5 text-xs text-slate-400 hover:text-white bg-slate-800 border border-slate-700 rounded-xl transition">
-            {selectedIds.size === filtered.length ? t('dm.deselect_all','Seçimi Kaldır') : t('dm.select_all','Tümünü Seç')}
+            {selectedIds.size === filtered.length ? L.deselect_all : L.select_all}
           </button>
         )}
 
@@ -295,7 +335,7 @@ export default function DecisionMakerPage() {
             ? `${doneCount}/${results.length} Taranıyor...`
             : selectedIds.size > 0
             ? `${selectedIds.size} Şirketi Tara`
-            : t('dm.select_lead','Lead Seçin')}
+            : L.select_lead}
         </button>
       </div>
 
@@ -368,9 +408,9 @@ export default function DecisionMakerPage() {
                   </span>
                 )}
                 {res?.done && res.employees.length === 0 && !res.error && (
-                  <span className="text-xs text-slate-500">{t('decision_maker.bulunamadi', 'Bulunamadı')}</span>
+                  <span className="text-xs text-slate-500">{lang === 'de' ? 'Nicht gefunden' : lang === 'ru' ? 'Не найдено' : lang === 'en' ? 'Not found' : 'Bulunamadı'}</span>
                 )}
-                <span className="text-xs text-slate-600">Puan: {lead.score}</span>
+                <span className="text-xs text-slate-600">{L.score}: {lead.score}</span>
               </div>
             </button>
           )
@@ -420,11 +460,11 @@ export default function DecisionMakerPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold text-sm">{r.company}</p>
                     {!r.done
-                      ? <p className="text-blue-400 text-xs flex items-center gap-1"><RefreshCw size={10} className="animate-spin" />{t('decision_maker.linkedin_taraniyor', 'LinkedIn taranıyor...')}</p>
+                      ? <p className="text-blue-400 text-xs flex items-center gap-1"><RefreshCw size={10} className="animate-spin" />{lang === 'de' ? 'LinkedIn wird durchsucht...' : lang === 'ru' ? 'Поиск LinkedIn...' : lang === 'en' ? 'Searching LinkedIn...' : 'LinkedIn taranıyor...'}</p>
                       : r.error
                       ? <p className="text-red-400 text-xs">{r.error}</p>
                       : r.employees.length === 0
-                      ? <p className="text-slate-500 text-xs">{t('decision_maker.linkedinde_calisan_buluna', 'LinkedIn\'de çalışan bulunamadı')}</p>
+                      ? <p className="text-slate-500 text-xs">{lang === 'de' ? 'Keine Mitarbeiter auf LinkedIn' : lang === 'ru' ? 'Сотрудники не найдены' : lang === 'en' ? 'No employees found' : 'LinkedIn\'de çalışan bulunamadı'}</p>
                       : <p className="text-slate-400 text-xs">
                           {r.employees.length} çalışan
                           {dms.length > 0 && <span className="text-violet-400 ml-1">· {dms.length} karar verici</span>}

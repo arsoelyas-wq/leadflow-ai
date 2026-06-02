@@ -94,6 +94,41 @@ function FlagImg({ code, size = 32 }: { code: string; size?: number }) {
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const REGIONS_TR = ['Tümü', 'Avrupa', 'Körfez', 'Amerika', 'Orta Asya', 'Asya', 'Afrika']
+
+const EXPORT_REGIONS: Record<string, string[]> = {
+  tr: ['Tümü', 'Avrupa', 'Körfez', 'Amerika', 'Orta Asya', 'Asya', 'Afrika'],
+  de: ['Alle', 'Europa', 'Golf-Region', 'Amerika', 'Zentralasien', 'Asien', 'Afrika'],
+  ru: ['Все', 'Европа', 'Залив', 'Америка', 'Центральная Азия', 'Азия', 'Африка'],
+  en: ['All', 'Europe', 'Gulf', 'Americas', 'Central Asia', 'Asia', 'Africa'],
+  fr: ['Tous', 'Europe', 'Golfe', 'Amériques', 'Asie centrale', 'Asie', 'Afrique'],
+  ar: ['الكل', 'أوروبا', 'الخليج', 'الأمريكتان', 'آسيا الوسطى', 'آسيا', 'أفريقيا'],
+}
+
+const EXPORT_REGION_MAP: Record<string, Record<string, string>> = {
+  de: { 'Tümü':'Alle','Avrupa':'Europa','Körfez':'Golf-Region','Amerika':'Amerika','Orta Asya':'Zentralasien','Asya':'Asien','Afrika':'Afrika' },
+  ru: { 'Tümü':'Все','Avrupa':'Европа','Körfez':'Залив','Amerika':'Америка','Orta Asya':'Центральная Азия','Asya':'Азия','Afrika':'Африка' },
+  en: { 'Tümü':'All','Avrupa':'Europe','Körfez':'Gulf','Amerika':'Americas','Orta Asya':'Central Asia','Asya':'Asia','Afrika':'Africa' },
+  fr: { 'Tümü':'Tous','Avrupa':'Europe','Körfez':'Golfe','Amerika':'Amériques','Orta Asya':'Asie centrale','Asya':'Asie','Afrika':'Afrique' },
+  ar: { 'Tümü':'الكل','Avrupa':'أوروبا','Körfez':'الخليج','Amerika':'الأمريكتان','Orta Asya':'آسيا الوسطى','Asya':'آسيا','Afrika':'أفريقيا' },
+}
+
+const EXPORT_TRUST: Record<string, Record<string, string>> = {
+  tr: { very:'Çok Güvenli', trust:'Güvenli', mid:'Orta', careful:'Dikkatli', risky:'Riskli' },
+  de: { very:'Sehr vertrauenswürdig', trust:'Vertrauenswürdig', mid:'Mittel', careful:'Vorsicht', risky:'Riskant' },
+  ru: { very:'Очень надёжный', trust:'Надёжный', mid:'Средний', careful:'Осторожно', risky:'Рискованный' },
+  en: { very:'Very Trusted', trust:'Trusted', mid:'Medium', careful:'Careful', risky:'Risky' },
+  fr: { very:'Très fiable', trust:'Fiable', mid:'Moyen', careful:'Prudent', risky:'Risqué' },
+  ar: { very:'موثوق جداً', trust:'موثوق', mid:'متوسط', careful:'بحذر', risky:'محفوف بالمخاطر' },
+}
+
+const EXPORT_TEXT: Record<string, Record<string, string>> = {
+  tr: { subtitle:'Hedef pazarda doğrulanmış alıcılar · Karar verici isim ve iletişim · Yerel dilde kişiselleştirilmiş mesaj', search_country:'Ülke ara...', country_search:'Ülke ara...' },
+  de: { subtitle:'Verifizierte Käufer auf Zielmärkten · Name und Kontakt der Entscheidungsträger · Personalisierte Nachrichten auf Landessprache', search_country:'Land suchen...', country_search:'Land suchen...' },
+  ru: { subtitle:'Проверенные покупатели на целевых рынках · Имена и контакты ЛПР · Персонализированные сообщения на местном языке', search_country:'Поиск страны...', country_search:'Поиск страны...' },
+  en: { subtitle:'Verified buyers in target markets · Decision maker names and contacts · Personalized messages in local language', search_country:'Search country...', country_search:'Search country...' },
+  fr: { subtitle:'Acheteurs vérifiés sur les marchés cibles · Noms et contacts des décideurs · Messages personnalisés en langue locale', search_country:'Rechercher un pays...', country_search:'Rechercher...' },
+  ar: { subtitle:'مشترون موثقون في الأسواق المستهدفة · أسماء وجهات اتصال صانعي القرار · رسائل مخصصة باللغة المحلية', search_country:'البحث عن دولة...', country_search:'بحث...' },
+}
 const CHANNELS = [
   { key: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: '#10b981' },
   { key: 'email',    label: 'E-posta',  icon: Mail,          color: '#3b82f6' },
@@ -104,9 +139,9 @@ function riskColor(s: number) {
   if (s >= 85) return '#10b981'; if (s >= 70) return '#34d399'
   if (s >= 55) return '#f59e0b'; if (s >= 40) return '#f97316'; return '#ef4444'
 }
-function riskLabel(s: number) {
-  if (s >= 85) return 'Çok Güvenli'; if (s >= 70) return 'Güvenli'
-  if (s >= 55) return 'Orta'; if (s >= 40) return 'Dikkatli'; return 'Riskli'
+function riskLabel(s: number, trust: Record<string,string>) {
+  if (s >= 85) return trust.very; if (s >= 70) return trust.trust
+  if (s >= 55) return trust.mid; if (s >= 40) return trust.careful; return trust.risky
 }
 function fmtUSD(n: number) {
   if (!n) return '—'; if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`
@@ -258,7 +293,9 @@ function MarketPanel({ intel, country }: { intel: any; country: any }) {
 
 // ── ANA SAYFA ─────────────────────────────────────────────────────────────────
 export default function ExportPage() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const ET = EXPORT_TEXT[lang] || EXPORT_TEXT.tr
+  const TRUST = EXPORT_TRUST[lang] || EXPORT_TRUST.tr
   const router = useRouter()
   const [tab, setTab] = useState<'find' | 'leads' | 'campaigns' | 'messages' | 'analytics'>('find')
   const [countries, setCountries] = useState<any[]>([])
@@ -269,7 +306,7 @@ export default function ExportPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCountry, setSelectedCountry] = useState<any>(null)
   const [selectedRegion, setSelectedRegion] = useState('Tümü')
-  const REGIONS = REGIONS_TR
+  const REGIONS = EXPORT_REGIONS[lang] || EXPORT_REGIONS.tr
   const [sector, setSector] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [selectedChannel, setSelectedChannel] = useState('whatsapp')
@@ -398,7 +435,7 @@ export default function ExportPage() {
           <GlobeOrb size={84} scanning={!!activeSessionId} countryCode={selectedCountry?.code || ''} />
           <div style={{ flex: 1 }}>
             <h1 style={{ color: '#fff', fontSize: 23, fontWeight: 800, margin: '0 0 5px' }}>{t('export.ihracat_zekasi', 'İhracat Zekası')}</h1>
-            <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>{t('export.hedef_pazarda_dogrulanmis', 'Hedef pazarda doğrulanmış alıcılar · Karar verici isim ve iletişim · Yerel dilde kişiselleştirilmiş mesaj')}</p>
+            <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>{ET.subtitle}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
               {[
                 { l: t('export.buyers_with_contact','İletişimli Alıcı'), v: leadsWithContact.length, c: '#10b981' },
@@ -452,16 +489,20 @@ export default function ExportPage() {
           {/* Filters row */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-              {REGIONS.map(r => (
-                <button key={r} onClick={() => setSelectedRegion(r)}
-                  style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${selectedRegion === r ? 'rgba(16,185,129,0.45)' : 'rgba(255,255,255,0.07)'}`, background: selectedRegion === r ? 'rgba(16,185,129,0.14)' : 'transparent', color: selectedRegion === r ? '#34d399' : '#64748b', fontSize: 12, fontWeight: selectedRegion === r ? 700 : 400, cursor: 'pointer' }}>
-                  {r}
-                </button>
-              ))}
+              {REGIONS.map((r, i) => {
+                const trKey = REGIONS_TR[i]  // always compare with Turkish DB value
+                const active = selectedRegion === trKey
+                return (
+                  <button key={r} onClick={() => setSelectedRegion(trKey)}
+                    style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${active ? 'rgba(16,185,129,0.45)' : 'rgba(255,255,255,0.07)'}`, background: active ? 'rgba(16,185,129,0.14)' : 'transparent', color: active ? '#34d399' : '#64748b', fontSize: 12, fontWeight: active ? 700 : 400, cursor: 'pointer' }}>
+                    {r}
+                  </button>
+                )
+              })}
             </div>
             <div style={{ marginLeft: 'auto', position: 'relative' }}>
               <input value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
-                placeholder={t('export.ulke_ara', 'Ülke ara...')}
+                placeholder={ET.search_country}
                 style={{ ...inp, width: 160, padding: '7px 12px', fontSize: 12, height: 34 }} />
             </div>
           </div>
@@ -501,7 +542,7 @@ export default function ExportPage() {
                       {/* Risk dot */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: riskColor(risk?.score || 60) }} />
-                        <span style={{ color: riskColor(risk?.score || 60), fontSize: 9, fontWeight: 600 }}>{riskLabel(risk?.score || 60)}</span>
+                        <span style={{ color: riskColor(risk?.score || 60), fontSize: 9, fontWeight: 600 }}>{riskLabel(risk?.score || 60, TRUST)}</span>
                       </div>
                     </div>
                   </div>
