@@ -146,7 +146,7 @@ export default function MonitoringPage() {
                 style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: `1px solid ${autoRefresh ? 'rgba(6,182,212,0.3)' : 'rgba(100,116,139,0.2)'}`, background: autoRefresh ? 'rgba(6,182,212,0.08)' : 'transparent', color: autoRefresh ? '#22d3ee' : '#64748b', fontSize: 11, cursor: 'pointer' }}>
                 <Zap size={12} /> {autoRefresh ? '30s Oto-Yenileme Aktif' : 'Oto-Yenileme Kapalı'}
               </button>
-              {lastUpdate && <span style={{ color: '#334155', fontSize: 10 }}>Son: {lastUpdate.toLocaleTimeString('tr-TR')}</span>}
+              {lastUpdate && <span style={{ color: '#334155', fontSize: 10 }}>Son: {lastUpdate.toLocaleTimeString()}</span>}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
@@ -196,7 +196,7 @@ export default function MonitoringPage() {
                 {log.status === 'up' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
                 <span style={{ color: log.status === 'up' ? '#4ade80' : '#f87171', fontSize: 11 }}>{log.status === 'up' ? 'Çevrimiçi' : 'Çevrimdışı'}</span>
                 <span style={{ color: '#334155', fontSize: 11 }}>{log.response_time_ms}ms</span>
-                <span style={{ color: '#1e293b', fontSize: 10, marginLeft: 'auto' }}>{new Date(log.checked_at).toLocaleTimeString('tr-TR')}</span>
+                <span style={{ color: '#1e293b', fontSize: 10, marginLeft: 'auto' }}>{new Date(log.checked_at).toLocaleTimeString()}</span>
               </div>
             ))}
           </div>
@@ -244,7 +244,7 @@ export default function MonitoringPage() {
                         {err.level?.toUpperCase()}
                       </span>
                       {err.endpoint && <span style={{ background: 'rgba(255,255,255,0.04)', color: '#64748b', fontSize: 10, padding: '2px 7px', borderRadius: 6, fontFamily: 'monospace' }}>{err.endpoint}</span>}
-                      <span style={{ color: '#1e293b', fontSize: 10 }}>{new Date(err.created_at).toLocaleString('tr-TR')}</span>
+                      <span style={{ color: '#1e293b', fontSize: 10 }}>{new Date(err.created_at).toLocaleString()}</span>
                     </div>
                     <p style={{ color: '#fff', fontSize: 13, fontWeight: 600, margin: '0 0 6px' }}>{err.message}</p>
                     {err.stack_trace?.length > 0 && (

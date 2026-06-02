@@ -254,7 +254,7 @@ export default function WebhooksPage() {
                             {log.error && <span className="text-red-400 text-xs">— {log.error}</span>}
                           </div>
                           <span className="text-slate-500 text-xs">
-                            {new Date(log.created_at).toLocaleString('tr-TR')}
+                            {new Date(log.created_at).toLocaleString()}
                           </span>
                         </div>
                       ))}

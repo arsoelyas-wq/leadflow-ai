@@ -411,7 +411,7 @@ export default function CompetitorPage() {
                         <span>🌍 {countryName}</span>
                         {comp.sector && <span>🏭 {comp.sector}</span>}
                         {(comp.total_leads_found || 0) > 0 && <span style={{ color: '#10b981' }}>👥 {comp.total_leads_found} lead</span>}
-                        {comp.last_scanned_at && <span>📡 {new Date(comp.last_scanned_at).toLocaleDateString('tr-TR')}</span>}
+                        {comp.last_scanned_at && <span>📡 {new Date(comp.last_scanned_at).toLocaleDateString()}</span>}
                       </div>
                       <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap' }}>
                         {(comp.channels || []).slice(0, 6).map((ch: string) => {

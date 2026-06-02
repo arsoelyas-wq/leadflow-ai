@@ -283,7 +283,7 @@ export default function DebtCollectorPage() {
                 { label: 'Toplam Fatura', value: enriched.length, color: '#94a3b8' },
                 { label: 'Gecikmiş', value: overdueInvoices.length, color: '#ef4444' },
                 { label: 'Ödendi', value: paidInvoices.length, color: '#10b981' },
-                { label: 'Toplam Borç', value: `₺${totalOverdue.toLocaleString('tr-TR')}`, color: '#f97316' }
+                { label: 'Toplam Borç', value: `₺${totalOverdue.toLocaleString()}`, color: '#f97316' }
               ].map(m => (
                 <div key={m.label} style={{ textAlign: 'center' }}>
                   <p style={{ color: m.color, fontSize: 18, fontWeight: 800, margin: 0 }}>{m.value}</p>
@@ -322,7 +322,7 @@ export default function DebtCollectorPage() {
             style={{ padding: '12px 10px', borderRadius: 13, border: `1px solid ${activeBucket === b.key ? b.color + '60' : 'rgba(255,255,255,0.06)'}`, background: activeBucket === b.key ? `${b.color}10` : 'rgba(3,8,22,0.7)', cursor: 'pointer', textAlign: 'left' }}>
             <p style={{ color: b.color, fontSize: 18, fontWeight: 800, margin: 0 }}>{b.count}</p>
             <p style={{ color: '#94a3b8', fontSize: 11, margin: '2px 0 0', fontWeight: 600 }}>{b.label}</p>
-            <p style={{ color: '#475569', fontSize: 10, margin: '1px 0 0' }}>₺{b.amount.toLocaleString('tr-TR')}</p>
+            <p style={{ color: '#475569', fontSize: 10, margin: '1px 0 0' }}>₺{b.amount.toLocaleString()}</p>
           </button>
         ))}
       </div>
@@ -392,7 +392,7 @@ export default function DebtCollectorPage() {
                       </div>
                       <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#475569', flexWrap: 'wrap' }}>
                         {inv.daysOverdue > 0 && <span style={{ color: bucketDef.color }}>{inv.daysOverdue} gün gecikmiş</span>}
-                        {inv.due_date && <span>Vade: {new Date(inv.due_date).toLocaleDateString('tr-TR')}</span>}
+                        {inv.due_date && <span>Vade: {new Date(inv.due_date).toLocaleDateString()}</span>}
                         {inv.description && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{inv.description}</span>}
                         {(inv.collection_attempts || 0) > 0 && <span style={{ color: '#f59e0b' }}>{inv.collection_attempts} hatırlatma gönderildi</span>}
                       </div>
@@ -400,7 +400,7 @@ export default function DebtCollectorPage() {
 
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <p style={{ color: inv.daysOverdue > 0 ? '#ef4444' : '#10b981', fontWeight: 800, fontSize: 16, margin: '0 0 8px' }}>
-                        {inv.currency || 'TL'} {parseFloat(inv.amount || 0).toLocaleString('tr-TR')}
+                        {inv.currency || 'TL'} {parseFloat(inv.amount || 0).toLocaleString()}
                       </p>
                       <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button onClick={() => generatePaymentLink(inv)}
@@ -430,7 +430,7 @@ export default function DebtCollectorPage() {
             <div style={{ marginTop: 16, padding: '12px 18px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
               <CheckCircle size={15} color="#10b981" />
               <p style={{ color: '#34d399', fontSize: 13, margin: 0 }}>
-                <strong>{paidInvoices.length} fatura ödenmiş</strong> — toplam ₺{paidInvoices.reduce((s, i) => s + parseFloat(i.amount || 0), 0).toLocaleString('tr-TR')} tahsil edildi
+                <strong>{paidInvoices.length} fatura ödenmiş</strong> — toplam ₺{paidInvoices.reduce((s, i) => s + parseFloat(i.amount || 0), 0).toLocaleString()} tahsil edildi
               </p>
             </div>
           )}

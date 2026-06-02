@@ -84,9 +84,9 @@ export default function MessagesPage() {
     const d = new Date(dateStr)
     const now = new Date()
     const diff = now.getTime() - d.getTime()
-    if (diff < 86400000) return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    if (diff < 86400000) return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
     if (diff < 172800000) return 'Dün'
-    return d.toLocaleDateString('tr-TR')
+    return d.toLocaleDateString()
   }
 
   const sendReply = async () => {

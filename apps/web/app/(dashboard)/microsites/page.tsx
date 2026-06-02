@@ -93,7 +93,7 @@ function MicrositeCard({ ms, onCopy, onDelete, onToggle, onSend, copied }: any) 
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: '#475569' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={11} /> {ms.views} görüntüleme</span>
               {ms.leads?.city && <span>📍 {ms.leads.city}</span>}
-              <span>{new Date(ms.created_at).toLocaleDateString('tr-TR')}</span>
+              <span>{new Date(ms.created_at).toLocaleDateString()}</span>
               <span style={{ color: '#334155', fontFamily: 'monospace', fontSize: 11 }}>/{ms.slug.slice(0, 20)}{ms.slug.length > 20 ? '…' : ''}</span>
             </div>
           </div>

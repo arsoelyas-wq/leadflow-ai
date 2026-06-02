@@ -506,7 +506,7 @@ export default function MetaPage() {
                 <span style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600 }}>{e.event_name}</span>
                 <span style={{ color: '#334155', fontSize: 11, flex: 1 }}>{e.lead_id ? `Lead: ${e.lead_id.slice(0, 8)}...` : ''}</span>
                 <span style={{ color: e.success ? '#34d399' : '#f87171', fontSize: 10 }}>{e.success ? '✅ Başarılı' : '❌ Başarısız'}</span>
-                <span style={{ color: '#1e293b', fontSize: 10 }}>{new Date(e.sent_at).toLocaleString('tr-TR')}</span>
+                <span style={{ color: '#1e293b', fontSize: 10 }}>{new Date(e.sent_at).toLocaleString()}</span>
               </div>
             ))}
           </div>

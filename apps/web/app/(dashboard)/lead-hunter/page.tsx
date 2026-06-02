@@ -255,7 +255,7 @@ export default function HunterSettingsPage() {
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {logs.map((log: any) => (
                   <div key={log.id} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">{new Date(log.ran_at).toLocaleString('tr-TR')}</span>
+                    <span className="text-slate-400">{new Date(log.ran_at).toLocaleString()}</span>
                     <span className={`font-medium ${log.leads_found > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
                       {log.leads_found} lead
                     </span>

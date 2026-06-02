@@ -531,7 +531,7 @@ export default function GoogleAdsPage() {
               </div>
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
                 <p className="text-2xl font-bold text-amber-400">
-                  {gSummary.totalRevenue > 0 ? `₺${gSummary.totalRevenue.toLocaleString('tr-TR')}` : '—'}
+                  {gSummary.totalRevenue > 0 ? `₺${gSummary.totalRevenue.toLocaleString()}` : '—'}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">{t('google_ads.toplam_kazanc', 'Toplam Kazanç')}</p>
               </div>
@@ -552,7 +552,7 @@ export default function GoogleAdsPage() {
                         {row.won > 0 && <span className="text-emerald-400 text-sm font-medium">{row.won} müşteri</span>}
                         {row.revenue > 0 && (
                           <span className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-semibold text-amber-400">
-                            ₺{row.revenue.toLocaleString('tr-TR')}
+                            ₺{row.revenue.toLocaleString()}
                           </span>
                         )}
                         {row.won === 0 && <span className="text-xs text-slate-600">{t('google_ads.henuz_musteri_yok', 'Henüz müşteri yok')}</span>}

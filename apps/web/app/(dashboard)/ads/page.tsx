@@ -488,7 +488,7 @@ export default function AdsPage() {
               </div>
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
                 <p className="text-2xl font-bold text-amber-400">
-                  {adSummary.totalRevenue > 0 ? `₺${adSummary.totalRevenue.toLocaleString('tr-TR')}` : '—'}
+                  {adSummary.totalRevenue > 0 ? `₺${adSummary.totalRevenue.toLocaleString()}` : '—'}
                 </p>
                 <p className="text-xs text-slate-400 mt-1">{t('ads.toplam_kazanc', 'Toplam Kazanç')}</p>
               </div>
@@ -527,7 +527,7 @@ export default function AdsPage() {
                         )}
                         {row.revenue > 0 && (
                           <div className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-semibold text-amber-400">
-                            ₺{row.revenue.toLocaleString('tr-TR')}
+                            ₺{row.revenue.toLocaleString()}
                           </div>
                         )}
                         {row.won === 0 && (

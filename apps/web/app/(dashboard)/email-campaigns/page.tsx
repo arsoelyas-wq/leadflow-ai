@@ -382,7 +382,7 @@ export default function EmailCampaignsPage() {
               <div className="flex-1">
                 <p className="text-white font-medium">{c.subject}</p>
                 <div className="flex gap-3 text-xs text-slate-400 mt-0.5">
-                  <span>{new Date(c.sent_at).toLocaleString('tr-TR')}</span>
+                  <span>{new Date(c.sent_at).toLocaleString()}</span>
                   <span className="text-emerald-400">{c.sent_count} gönderildi</span>
                   {c.failed_count > 0 && <span className="text-red-400">{c.failed_count} başarısız</span>}
                   {c.from_email && <span>{c.from_email}</span>}

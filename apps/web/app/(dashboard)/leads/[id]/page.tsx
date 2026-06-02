@@ -401,7 +401,7 @@ export default function LeadDetailPage() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-white truncate">{lead.company_name}</h1>
           <p className="text-slate-400 text-xs mt-0.5">
-            {lead.source} · {new Date(lead.created_at).toLocaleDateString('tr-TR')}
+            {lead.source} · {new Date(lead.created_at).toLocaleDateString()}
             {lead.sector && <span className="ml-2 px-1.5 py-0.5 bg-indigo-500/15 text-indigo-400 text-xs rounded">{lead.sector}</span>}
           </p>
         </div>
@@ -827,7 +827,7 @@ export default function LeadDetailPage() {
                   <span className="text-white font-semibold text-sm">Vision AI Analiz</span>
                   {lead?.vision_analyzed_at && (
                     <span className="ml-2 text-[10px] text-slate-500">
-                      {new Date(lead.vision_analyzed_at).toLocaleDateString('tr-TR')}
+                      {new Date(lead.vision_analyzed_at).toLocaleDateString()}
                     </span>
                   )}
                 </div>

@@ -237,7 +237,7 @@ export default function BillingPage() {
               </div>
               <div style={{ flex:1 }}>
                 <p style={{ color:'#fff', fontWeight:600, fontSize:13, margin:0 }}>{p.package_name||'Kredi Paketi'}</p>
-                <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0' }}>{new Date(p.created_at).toLocaleDateString('tr-TR')} · {p.credits||0} kredi</p>
+                <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0' }}>{new Date(p.created_at).toLocaleDateString()} · {p.credits||0} kredi</p>
               </div>
               <div style={{ textAlign:'right' }}>
                 <p style={{ color:'#10b981', fontWeight:800, fontSize:14, margin:0 }}>₺{p.amount}</p>

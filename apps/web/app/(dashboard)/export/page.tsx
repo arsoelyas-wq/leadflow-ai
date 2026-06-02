@@ -775,7 +775,7 @@ export default function ExportPage() {
                       </span>
                       {ch && <span style={{ background: `${ch.color}14`, border: `1px solid ${ch.color}22`, color: ch.color, fontSize: 10, padding: '2px 8px', borderRadius: 20 }}>{ch.label}</span>}
                     </div>
-                    <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{country?.name} · {camp.lead_count} alıcı{camp.sent_count ? ` · ${camp.sent_count} gönderildi` : ''} · {new Date(camp.created_at).toLocaleDateString('tr-TR')}</p>
+                    <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{country?.name} · {camp.lead_count} alıcı{camp.sent_count ? ` · ${camp.sent_count} gönderildi` : ''} · {new Date(camp.created_at).toLocaleDateString()}</p>
                   </div>
                   {camp.status === 'draft' && (
                     <button onClick={() => sendCampaign(camp.id)}

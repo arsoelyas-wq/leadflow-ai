@@ -986,7 +986,7 @@ export default function SettingsPage() {
                         <span style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:ev.success?'#34d399':'#f87171', display:'inline-block' }} />
                         <span style={{ color:'#64748b', width:128, flexShrink:0, fontFamily:'monospace' }}>{ev.event_name}</span>
                         <span style={{ color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.leads?.company_name || ev.lead_id}</span>
-                        <span style={{ color:'#475569', flexShrink:0 }}>{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
+                        <span style={{ color:'#475569', flexShrink:0 }}>{new Date(ev.fired_at).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
@@ -1148,7 +1148,7 @@ export default function SettingsPage() {
                         <span style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:ev.success?'#34d399':'#f87171', display:'inline-block' }} />
                         <span style={{ color:'#64748b', width:128, flexShrink:0, fontFamily:'monospace' }}>{ev.event_name}</span>
                         <span style={{ color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.leads?.company_name || ev.lead_id}</span>
-                        <span style={{ color:'#475569', flexShrink:0 }}>{new Date(ev.fired_at).toLocaleString('tr-TR')}</span>
+                        <span style={{ color:'#475569', flexShrink:0 }}>{new Date(ev.fired_at).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

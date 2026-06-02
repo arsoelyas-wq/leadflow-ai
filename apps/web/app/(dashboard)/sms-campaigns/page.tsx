@@ -396,7 +396,7 @@ export default function SMSPage() {
               <div className="flex-1">
                 <p className="text-white text-sm truncate">{c.message}</p>
                 <p className="text-slate-400 text-xs mt-0.5">
-                  {new Date(c.sent_at).toLocaleDateString('tr-TR')} · {c.provider}
+                  {new Date(c.sent_at).toLocaleDateString()} · {c.provider}
                 </p>
               </div>
               <div className="flex gap-3 text-xs flex-shrink-0">

@@ -610,7 +610,7 @@ export default function VisualTrendPage() {
               <button key={h.id} onClick={() => setKeyword(h.keyword)}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 22, color: '#a78bfa', fontSize: 12, cursor: 'pointer' }}>
                 🔮 {h.keyword}
-                <span style={{ color: '#334155', fontSize: 10 }}>{new Date(h.analyzed_at).toLocaleDateString('tr-TR')}</span>
+                <span style={{ color: '#334155', fontSize: 10 }}>{new Date(h.analyzed_at).toLocaleDateString()}</span>
               </button>
             ))}
           </div>

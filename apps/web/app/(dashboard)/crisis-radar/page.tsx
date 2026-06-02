@@ -140,7 +140,7 @@ export default function CrisisRadarPage() {
               <p className={`text-sm font-medium ${typeColor(alert.type)}`}>{alert.title}</p>
               <div className="flex gap-2 text-xs text-slate-400 mt-0.5">
                 <span>{alert.sector}</span>
-                {alert.scanned_at && <span>{new Date(alert.scanned_at).toLocaleDateString('tr-TR')}</span>}
+                {alert.scanned_at && <span>{new Date(alert.scanned_at).toLocaleDateString()}</span>}
               </div>
             </div>
             {alert.link && (

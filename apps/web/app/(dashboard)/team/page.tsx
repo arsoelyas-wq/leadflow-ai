@@ -417,7 +417,7 @@ export default function TeamPage() {
                           <span>{member.email}</span>
                           {member.wa_phone && <span style={{ color:'#10b981' }}>📞 {member.wa_phone}</span>}
                           {member.leads_count > 0 && <span>📋 {member.leads_count} lead</span>}
-                          {member.last_login && <span>Son giriş: {new Date(member.last_login).toLocaleDateString('tr-TR')}</span>}
+                          {member.last_login && <span>Son giriş: {new Date(member.last_login).toLocaleDateString()}</span>}
                         </div>
                       </div>
                       <div style={{ display:'flex', gap:6, flexShrink:0 }}>
@@ -532,7 +532,7 @@ export default function TeamPage() {
                     <div style={{ display:'flex', gap:12, fontSize:11, color:'#475569' }}>
                       <span>🏆 {m.wonCount} kapandı</span>
                       <span>📊 %{m.convRate} dönüşüm</span>
-                      {m.revenue>0 && <span style={{ color:'#10b981' }}>💰 ₺{m.revenue.toLocaleString('tr-TR')}</span>}
+                      {m.revenue>0 && <span style={{ color:'#10b981' }}>💰 ₺{m.revenue.toLocaleString()}</span>}
                       {m.avgScore>0 && <span>⭐ Skor: {m.avgScore}</span>}
                     </div>
                   </div>

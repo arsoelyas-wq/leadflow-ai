@@ -412,7 +412,7 @@ export default function AdsAdvancedPage() {
                       <p className="text-white text-sm">{a.audience_name}</p>
                       <p className="text-slate-400 text-xs">{a.size} kişi — {a.platform}</p>
                     </div>
-                    <span className="text-xs text-slate-500">{new Date(a.created_at).toLocaleDateString('tr-TR')}</span>
+                    <span className="text-xs text-slate-500">{new Date(a.created_at).toLocaleDateString()}</span>
                   </div>
                 ))}
               </div>

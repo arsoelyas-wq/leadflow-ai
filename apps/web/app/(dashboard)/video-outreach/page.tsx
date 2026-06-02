@@ -1059,7 +1059,7 @@ export default function VideoOutreachPage() {
             ...avatarPayload,
             voiceId: selectedVoice.voice_id,
             aspectRatio, language: language || undefined, autoSend,
-            campaignName: `Video — ${new Date().toLocaleDateString('tr-TR')}`,
+            campaignName: `Video — ${new Date().toLocaleDateString()}`,
           }),
         })
         const d = await r.json()
@@ -1253,7 +1253,7 @@ export default function VideoOutreachPage() {
                       {v.sent_at && <span className="text-xs text-teal-400">{t('video_outreach.gonderildi', 'Gönderildi ✓')}</span>}
                       {!v.sent_at && v.optimal_send_at && v.status === 'completed' && (
                         <span className="flex items-center gap-1 text-xs text-amber-400">
-                          <Timer className="w-3 h-3"/> {new Date(v.optimal_send_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}'de gönder
+                          <Timer className="w-3 h-3"/> {new Date(v.optimal_send_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}'de gönder
                         </span>
                       )}
                     </div>

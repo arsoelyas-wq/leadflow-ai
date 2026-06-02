@@ -712,7 +712,7 @@ export default function SalesIntelligencePage() {
                       <td className="px-4 py-3 text-center"><ScoreBadge score={c.score}/></td>
                       <td className="px-4 py-3 text-xs text-gray-400 max-w-[200px] truncate">{c.summary}</td>
                       <td className="px-4 py-3 text-right text-xs text-gray-500">
-                        {new Date(c.created_at).toLocaleDateString('tr-TR')}
+                        {new Date(c.created_at).toLocaleDateString()}
                       </td>
                     </tr>
                   ))}

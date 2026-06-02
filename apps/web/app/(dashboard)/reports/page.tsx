@@ -169,7 +169,7 @@ export default function ReportsPage() {
                     <div style={{ height:7, background:'rgba(255,255,255,0.06)', borderRadius:3 }}>
                       <div style={{ height:'100%', width:`${pct}%`, background:pct>=100?'#10b981':g.color, borderRadius:3, boxShadow:`0 0 8px ${g.color}60`, transition:'width 0.8s' }} />
                     </div>
-                    <p style={{ color:'#475569', fontSize:11, margin:'3px 0 0' }}>{g.current.toLocaleString('tr-TR')} / {g.goal.toLocaleString('tr-TR')} (%{pct})</p>
+                    <p style={{ color:'#475569', fontSize:11, margin:'3px 0 0' }}>{g.current.toLocaleString()} / {g.goal.toLocaleString()} (%{pct})</p>
                   </div>
                 )
               })}

@@ -264,7 +264,7 @@ export default function UnifiedInboxPage() {
                     <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
                     <div className="flex items-center justify-end gap-1 mt-1">
                       <span className="text-xs opacity-50">
-                        {new Date(m.sent_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(m.sent_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       {isOut && <span className="text-xs opacity-60">✓✓</span>}
                     </div>

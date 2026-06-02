@@ -231,7 +231,7 @@ export default function RevenuePage() {
                   <div key={ch.channel} style={{ flex:1, textAlign:'center', padding:'12px', background:'rgba(0,0,0,0.2)', borderRadius:12, border:'1px solid rgba(255,255,255,0.05)' }}>
                     <p style={{ color:ch.color, fontSize:18, fontWeight:800, margin:'0 0 4px' }}>%{ch.replyRate}</p>
                     <p style={{ color:'#94a3b8', fontSize:12, margin:'0 0 2px' }}>{ch.channel}</p>
-                    <p style={{ color:'#475569', fontSize:11, margin:0 }}>{ch.sent.toLocaleString('tr-TR')} gönderim</p>
+                    <p style={{ color:'#475569', fontSize:11, margin:0 }}>{ch.sent.toLocaleString()} gönderim</p>
                   </div>
                 ))}
               </div>

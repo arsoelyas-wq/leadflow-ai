@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
                 </div>
               </div>
               <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>
-                {lastRefresh ? `Son güncelleme: ${lastRefresh.toLocaleTimeString('tr-TR')}` : 'Veriler yükleniyor...'}
+                {lastRefresh ? `Son güncelleme: ${lastRefresh.toLocaleTimeString()}` : 'Veriler yükleniyor...'}
               </p>
               {/* Period selector */}
               <div style={{ display: 'flex', gap: 6 }}>
@@ -240,7 +240,7 @@ export default function AnalyticsPage() {
                 <div key={ch.label} style={{ marginBottom: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ color: '#e2e8f0', fontSize: 13 }}>{ch.icon} {ch.label}</span>
-                    <span style={{ color: ch.color, fontWeight: 700, fontSize: 13 }}>{ch.value.toLocaleString('tr-TR')} ({pct}%)</span>
+                    <span style={{ color: ch.color, fontWeight: 700, fontSize: 13 }}>{ch.value.toLocaleString()} ({pct}%)</span>
                   </div>
                   <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: ch.color, borderRadius: 3, transition: 'width 0.8s ease', boxShadow: `0 0 8px ${ch.color}60` }} />
@@ -282,7 +282,7 @@ export default function AnalyticsPage() {
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'rgba(0,0,0,0.2)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.04)' }}>
                 <span style={{ color: '#334155', fontWeight: 700, fontSize: 13, width: 20 }}>#{i+1}</span>
                 <span style={{ color: '#e2e8f0', fontSize: 13, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                <span style={{ color: '#64748b', fontSize: 11 }}>{c.total_sent?.toLocaleString('tr-TR')} gönderim</span>
+                <span style={{ color: '#64748b', fontSize: 11 }}>{c.total_sent?.toLocaleString()} gönderim</span>
                 <span style={{ color: '#10b981', fontSize: 11, fontWeight: 700 }}>%{c.total_sent ? Math.round((c.total_replied||0)/c.total_sent*100) : 0} yanıt</span>
               </div>
             ))}

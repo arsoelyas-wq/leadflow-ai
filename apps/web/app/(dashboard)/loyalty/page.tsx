@@ -192,7 +192,7 @@ export default function LoyaltyPage() {
                   <div style={{ display:'flex', gap:12, fontSize:11, color:'#475569' }}>
                     {c.city && <span>📍 {c.city}</span>}
                     {c.status && <span>📊 {c.status}</span>}
-                    {c.total_paid > 0 && <span style={{ color:'#f59e0b' }}>💰 ₺{c.total_paid.toLocaleString('tr-TR')}</span>}
+                    {c.total_paid > 0 && <span style={{ color:'#f59e0b' }}>💰 ₺{c.total_paid.toLocaleString()}</span>}
                   </div>
                 </div>
                 {c.healthScore < 50 && (

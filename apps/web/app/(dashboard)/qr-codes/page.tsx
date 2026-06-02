@@ -172,7 +172,7 @@ function QRCard({ qr, onDelete, showMsg }: any) {
             <span>📷</span> {qr.scans} tarama
           </div>
           <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#334155' }} />
-          <span style={{ color: '#334155', fontSize: 11 }}>{new Date(qr.created_at).toLocaleDateString('tr-TR')}</span>
+          <span style={{ color: '#334155', fontSize: 11 }}>{new Date(qr.created_at).toLocaleDateString()}</span>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={downloadQR} disabled={downloading}

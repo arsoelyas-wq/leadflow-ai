@@ -387,7 +387,7 @@ export default function AutomationsPage() {
                 {rule.last_run_at && (
                   <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:6 }}>
                     <Clock size={11} color="#334155" />
-                    <span style={{ color:'#334155', fontSize:11 }}>Son çalışma: {new Date(rule.last_run_at).toLocaleString('tr-TR')}</span>
+                    <span style={{ color:'#334155', fontSize:11 }}>Son çalışma: {new Date(rule.last_run_at).toLocaleString()}</span>
                   </div>
                 )}
               </div>
@@ -416,7 +416,7 @@ export default function AutomationsPage() {
                     <p style={{ color:'#fff', fontSize:12, fontWeight:600, margin:0 }}>{log.source || 'Otomasyon'}</p>
                     <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0' }}>{log.destination || 'Aksiyon gerçekleşti'}</p>
                   </div>
-                  <span style={{ color:'#1e293b', fontSize:10 }}>{new Date(log.received_at).toLocaleString('tr-TR')}</span>
+                  <span style={{ color:'#1e293b', fontSize:10 }}>{new Date(log.received_at).toLocaleString()}</span>
                   <button onClick={() => setExpandLog(expandLog === `${i}` ? null : `${i}`)} style={{ background:'none', border:'none', color:'#334155', cursor:'pointer', padding:2 }}>
                     <ChevronDown size={14} style={{ transform:expandLog===`${i}`?'rotate(180deg)':'none', transition:'transform 0.2s' }} />
                   </button>

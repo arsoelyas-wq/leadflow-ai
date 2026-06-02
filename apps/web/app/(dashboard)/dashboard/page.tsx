@@ -237,7 +237,7 @@ export default function DashboardPage() {
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
                             <p style={{ color:'#e2e8f0', fontSize:12, margin:0, lineHeight:1.5 }}>{n.text}</p>
-                            <p style={{ color:'#334155', fontSize:10, margin:'3px 0 0' }}>{n.time.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</p>
+                            <p style={{ color:'#334155', fontSize:10, margin:'3px 0 0' }}>{n.time.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</p>
                           </div>
                         </div>
                       )
@@ -285,7 +285,7 @@ export default function DashboardPage() {
           ))
         ) : [
           {
-            label: t('dashboard.total_leads'), value: stats?.totalLeads?.toLocaleString('tr-TR') || '0',
+            label: t('dashboard.total_leads'), value: stats?.totalLeads?.toLocaleString() || '0',
             sub: `+${stats?.weekLeads || 0} ${t('this_week','bu hafta')}`,
             trend: stats?.weekGrowth || 0, icon: Users, color: '#3b82f6',
             sparkColor: '#3b82f6',
@@ -304,7 +304,7 @@ export default function DashboardPage() {
             sparkColor: '#8b5cf6',
           },
           {
-            label: t('dashboard.credits'), value: (stats?.credits || 0).toLocaleString('tr-TR'),
+            label: t('dashboard.credits'), value: (stats?.credits || 0).toLocaleString(),
             sub: stats?.planType || 'starter',
             trend: null, icon: Zap, color: '#f59e0b',
             sparkColor: '#f59e0b',
@@ -378,8 +378,8 @@ export default function DashboardPage() {
                 return (
                   <div key={f.key}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ color:'#94a3b8', fontSize:12 }}>{f.label}</span>
-                      <span style={{ color, fontSize:12, fontWeight:700 }}>{f.count.toLocaleString('tr-TR')}</span>
+                      <span style={{ color:'#94a3b8', fontSize:12 }}>{t(`pipeline.stage.${f.key}`, f.label)}</span>
+                      <span style={{ color, fontSize:12, fontWeight:700 }}>{f.count.toLocaleString()}</span>
                     </div>
                     <div style={{ height:6, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
                       <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:3, boxShadow:`0 0 8px ${color}40`, transition:'width 0.8s ease' }}/>
@@ -417,7 +417,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</p>
-                      <p style={{ color:'#475569', fontSize:11, margin:0 }}>{c.total_sent||0} gönderildi · %{replyRate} cevap</p>
+                      <p style={{ color:'#475569', fontSize:11, margin:0 }}>{c.total_sent||0} {t('campaigns.sent','gönderildi')} · {replyRate}% {t('campaigns.replied','cevap')}</p>
                     </div>
                     <span style={{ color:ss.color, background:ss.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, flexShrink:0 }}>{statusLabel(c.status)}</span>
                   </Link>
@@ -451,7 +451,7 @@ export default function DashboardPage() {
                       {(m.content||'').slice(0,55)}{(m.content||'').length>55?'...':''}
                     </p>
                     <p style={{ color:'#334155', fontSize:10, margin:'2px 0 0', display:'flex', alignItems:'center', gap:3 }}>
-                      <Clock size={9}/> {new Date(m.sent_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}
+                      <Clock size={9}/> {new Date(m.sent_at).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}
                     </p>
                   </div>
                 </div>
@@ -471,7 +471,7 @@ export default function DashboardPage() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.leads')}</h2>
           <Link href="/leads" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>
-            Tümünü gör <ArrowRight size={12}/>
+            {t('dashboard.see_all','Tümünü gör')} <ArrowRight size={12}/>
           </Link>
         </div>
         {loading ? (
@@ -480,7 +480,7 @@ export default function DashboardPage() {
           <div>
             {/* Table header */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-              {['Şirket / Kişi','Kaynak','Puan','Durum'].map(h => (
+              {[t('leads.col_company','Şirket / Kişi'),t('leads.col_source','Kaynak'),t('leads.col_score','Puan'),t('leads.col_status','Durum')].map(h => (
                 <span key={h} style={{ color:'#334155', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</span>
               ))}
             </div>

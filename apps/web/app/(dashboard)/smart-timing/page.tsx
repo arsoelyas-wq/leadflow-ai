@@ -45,7 +45,7 @@ export default function SmartTimingPage() {
       const data = await api.post('/api/smart-timing/best-time-campaign', {})
       const dt = new Date(data.recommendedTime)
       setSchedTime(dt.toISOString().slice(0, 16))
-      showMsg('success', `Önerilen zaman: ${dt.toLocaleString('tr-TR')} — ${data.reason}`)
+      showMsg('success', `Önerilen zaman: ${dt.toLocaleString()} — ${data.reason}`)
     } catch (e: any) { showMsg('error', e.message) }
   }
 
@@ -215,7 +215,7 @@ export default function SmartTimingPage() {
                         <p className="text-white text-sm font-medium">{s.leads?.company_name}</p>
                         <p className="text-slate-400 text-xs truncate">{s.message?.slice(0, 50)}...</p>
                         <p className="text-blue-400 text-xs mt-1">
-                          📅 {new Date(s.scheduled_at).toLocaleString('tr-TR')}
+                          📅 {new Date(s.scheduled_at).toLocaleString()}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">

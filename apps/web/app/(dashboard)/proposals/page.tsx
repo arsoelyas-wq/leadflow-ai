@@ -174,7 +174,7 @@ export default function ProposalsPage() {
         currency,
       })
       setCreatedResult(data)
-      showMsg('success', `Teklif oluşturuldu! Toplam: ${symOf(currency)}${data.totalPrice?.toLocaleString('tr-TR')}`)
+      showMsg('success', `Teklif oluşturuldu! Toplam: ${symOf(currency)}${data.totalPrice?.toLocaleString()}`)
       load()
     } catch (e: any) { showMsg('error', e.message) }
     setCreating(false)
@@ -219,13 +219,13 @@ export default function ProposalsPage() {
     setNegotiating(false)
   }
 
-  const fmtDate = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('tr-TR') : '—'
+  const fmtDate = (iso: string | null) => iso ? new Date(iso).toLocaleDateString() : '—'
   const fmtTime = (iso: string | null) => {
     if (!iso) return null
     const diff = Date.now() - new Date(iso).getTime()
     if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}dk önce`
     if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}sa önce`
-    return new Date(iso).toLocaleDateString('tr-TR')
+    return new Date(iso).toLocaleDateString()
   }
 
   if (loading) return (
@@ -266,8 +266,8 @@ export default function ProposalsPage() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Pipeline Değeri', value: `₺${(stats.totalPipeline || 0).toLocaleString('tr-TR')}`, color: 'text-white', sub: `${stats.total} teklif` },
-            { label: 'Kabul Edilen', value: `₺${(stats.totalValue || 0).toLocaleString('tr-TR')}`, color: 'text-emerald-400', sub: `${stats.accepted} teklif` },
+            { label: 'Pipeline Değeri', value: `₺${(stats.totalPipeline || 0).toLocaleString()}`, color: 'text-white', sub: `${stats.total} teklif` },
+            { label: 'Kabul Edilen', value: `₺${(stats.totalValue || 0).toLocaleString()}`, color: 'text-emerald-400', sub: `${stats.accepted} teklif` },
             { label: 'Görüntülenme', value: stats.totalViews || 0, color: 'text-blue-400', sub: 'toplam açılma' },
             { label: 'Dönüşüm', value: stats.total ? `%${Math.round((stats.accepted / stats.total) * 100)}` : '%0', color: 'text-violet-400', sub: `${stats.sent} gönderildi` },
           ].map(s => (
@@ -328,7 +328,7 @@ export default function ProposalsPage() {
                   </div>
 
                   <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">
-                    <span className="text-emerald-400 font-bold text-sm">₺{Number(p.total_price).toLocaleString('tr-TR')}</span>
+                    <span className="text-emerald-400 font-bold text-sm">₺{Number(p.total_price).toLocaleString()}</span>
                     {p.leads?.contact_name && <span>{p.leads.contact_name}</span>}
                     <span>{fmtDate(p.created_at)}</span>
                     {p.valid_until && <span>Geçerli: {p.valid_until}</span>}
@@ -673,7 +673,7 @@ export default function ProposalsPage() {
               className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500">
               <option value="">{t('proposals.teklif_secin', 'Teklif seçin')}</option>
               {proposals.filter(p => ['sent', 'negotiating', 'draft'].includes(p.status)).map(p => (
-                <option key={p.id} value={p.id}>{p.leads?.company_name} — ₺{Number(p.total_price).toLocaleString('tr-TR')}</option>
+                <option key={p.id} value={p.id}>{p.leads?.company_name} — ₺{Number(p.total_price).toLocaleString()}</option>
               ))}
             </select>
             <textarea value={negMsg} onChange={e => setNegMsg(e.target.value)} rows={3}
@@ -691,7 +691,7 @@ export default function ProposalsPage() {
                   <div><span className="text-slate-400">Taktik:</span> <span className="text-violet-300 font-medium">{negResult.negotiation.tactic}</span></div>
                   <div><span className="text-slate-400">{t('proposals.indirim', 'İndirim:')}</span> <span className="text-amber-300 font-medium">%{negResult.negotiation.discountPercent}</span></div>
                   {negResult.negotiation.newPrice > 0 && (
-                    <div className="col-span-2"><span className="text-slate-400">Yeni fiyat:</span> <span className="text-emerald-400 font-bold">₺{negResult.negotiation.newPrice?.toLocaleString('tr-TR')}</span></div>
+                    <div className="col-span-2"><span className="text-slate-400">Yeni fiyat:</span> <span className="text-emerald-400 font-bold">₺{negResult.negotiation.newPrice?.toLocaleString()}</span></div>
                   )}
                 </div>
                 {negResult.negotiation.counterMessage && (

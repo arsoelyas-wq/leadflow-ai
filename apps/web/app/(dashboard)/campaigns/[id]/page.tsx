@@ -319,7 +319,7 @@ export default function CampaignDetailPage() {
                     <p className="text-slate-400 text-xs truncate">{msg.content}</p>
                   </div>
                   <span className="text-slate-600 text-xs flex-shrink-0">
-                    {new Date(msg.sent_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(msg.sent_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               ))}

@@ -188,7 +188,7 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
               {comp.sector && <span>🏭 {comp.sector}</span>}
               {shadowData.reviews?.avg ? <span style={{ color: '#f59e0b' }}>⭐ {shadowData.reviews.avg}/5 ({shadowData.reviews.count})</span> : null}
               {shadowData.techStack?.length ? <span>🔧 {shadowData.techStack.slice(0,2).join(', ')}</span> : null}
-              {comp.last_scanned_at && <span>📡 {new Date(comp.last_scanned_at).toLocaleDateString('tr-TR')}</span>}
+              {comp.last_scanned_at && <span>📡 {new Date(comp.last_scanned_at).toLocaleDateString()}</span>}
             </div>
             {changes.length > 0 && (
               <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap' }}>

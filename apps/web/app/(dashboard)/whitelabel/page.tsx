@@ -129,7 +129,7 @@ export default function WhitelabelPage() {
             <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>White-Label / Bayi Sistemi</h1>
             <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('whitelabel.kendi_markanizla_bayiler', 'Kendi markanızla bayiler oluşturun — özel domain, logo, renk ve gelir paylaşımı')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-              {[{l:'Toplam Bayi',v:summary?.totalBrands||0,c:'#8b5cf6'},{l:'Aktif Bayi',v:summary?.activeBrands||0,c:'#10b981'},{l:'Aylık Gelir',v:`₺${(summary?.estimatedMonthlyRevenue||0).toLocaleString('tr-TR')}`,c:'#f59e0b'}].map(m => (
+              {[{l:'Toplam Bayi',v:summary?.totalBrands||0,c:'#8b5cf6'},{l:'Aktif Bayi',v:summary?.activeBrands||0,c:'#10b981'},{l:'Aylık Gelir',v:`₺${(summary?.estimatedMonthlyRevenue||0).toLocaleString()}`,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
                   <p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p>
                   <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.l}</p>
@@ -229,7 +229,7 @@ export default function WhitelabelPage() {
                   <div style={{ display:'flex', gap:12, fontSize:11, color:'#475569', flexWrap:'wrap' }}>
                     {brand.domain && <span><Globe size={10} style={{ display:'inline', marginRight:3 }} />{brand.domain}</span>}
                     <span><DollarSign size={10} style={{ display:'inline', marginRight:2 }} />%{brand.revenue_share} gelir payı</span>
-                    <span>{new Date(brand.created_at).toLocaleDateString('tr-TR')}</span>
+                    <span>{new Date(brand.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:6, flexShrink:0 }}>
@@ -245,7 +245,7 @@ export default function WhitelabelPage() {
               </div>
               {selectedBrand === brand.id && brandStats && (
                 <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid rgba(255,255,255,0.05)', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
-                  {[{l:'Kullanıcı',v:brandStats.stats?.totalUsers},{l:'Lead',v:brandStats.stats?.totalLeads},{l:'Mesaj',v:brandStats.stats?.totalMessages},{l:'Video',v:brandStats.stats?.totalVideos},{l:'Aylık Gelir',v:`₺${(brandStats.stats?.monthlyRevenue||0).toLocaleString('tr-TR')}`}].map(st => (
+                  {[{l:'Kullanıcı',v:brandStats.stats?.totalUsers},{l:'Lead',v:brandStats.stats?.totalLeads},{l:'Mesaj',v:brandStats.stats?.totalMessages},{l:'Video',v:brandStats.stats?.totalVideos},{l:'Aylık Gelir',v:`₺${(brandStats.stats?.monthlyRevenue||0).toLocaleString()}`}].map(st => (
                     <div key={st.l} style={{ textAlign:'center', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:9 }}>
                       <p style={{ color:'#fff', fontWeight:800, fontSize:14, margin:0 }}>{st.v}</p>
                       <p style={{ color:'#475569', fontSize:10, margin:0 }}>{st.l}</p>

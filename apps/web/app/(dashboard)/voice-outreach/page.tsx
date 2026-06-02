@@ -397,7 +397,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg }: any) {
                           <span className="text-white text-sm font-medium truncate">{v.name}</span>
                           {active && <CheckCircle className="w-3.5 h-3.5 text-violet-400 shrink-0"/>}
                         </div>
-                        <span className="text-xs text-slate-500">{new Date(v.created_at).toLocaleDateString('tr-TR')}</span>
+                        <span className="text-xs text-slate-500">{new Date(v.created_at).toLocaleDateString()}</span>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
                         <button onClick={e => { e.stopPropagation(); if (playing===v.id){globalAudio?.pause();globalAudio=null;setPlaying(null);return} globalAudio?.pause();globalAudio=null;setPlaying(v.id);const a=new Audio(v.sample_url);globalAudio=a;a.onended=()=>{setPlaying(null);globalAudio=null};a.play().catch(()=>setPlaying(null)) }}

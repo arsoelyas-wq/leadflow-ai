@@ -100,11 +100,11 @@ export default function InvoicesPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
             <p className="text-slate-400 text-xs">Tahsil Edilen</p>
-            <p className="text-emerald-400 text-2xl font-bold">₺{stats.totalRevenue?.toLocaleString('tr-TR')}</p>
+            <p className="text-emerald-400 text-2xl font-bold">₺{stats.totalRevenue?.toLocaleString()}</p>
           </div>
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
             <p className="text-slate-400 text-xs">Bekleyen</p>
-            <p className="text-yellow-400 text-2xl font-bold">₺{stats.pendingRevenue?.toLocaleString('tr-TR')}</p>
+            <p className="text-yellow-400 text-2xl font-bold">₺{stats.pendingRevenue?.toLocaleString()}</p>
           </div>
         </div>
       )}
@@ -151,7 +151,7 @@ export default function InvoicesPage() {
                 </div>
               ))}
             </div>
-            <div className="text-right mt-2 text-white font-medium">Toplam: ₺{(total*1.18).toLocaleString('tr-TR')} (KDV dahil)</div>
+            <div className="text-right mt-2 text-white font-medium">Toplam: ₺{(total*1.18).toLocaleString()} (KDV dahil)</div>
           </div>
           <div className="flex gap-2">
             <button onClick={createInvoice} disabled={creating||!form.leadId}
@@ -179,9 +179,9 @@ export default function InvoicesPage() {
                   {STATUS_LABELS[inv.status]||inv.status}
                 </span>
               </div>
-              <p className="text-slate-400 text-xs mt-0.5">{inv.client_name} — {new Date(inv.created_at).toLocaleDateString('tr-TR')}</p>
+              <p className="text-slate-400 text-xs mt-0.5">{inv.client_name} — {new Date(inv.created_at).toLocaleDateString()}</p>
             </div>
-            <p className="text-white font-bold">₺{parseFloat(inv.total||0).toLocaleString('tr-TR')}</p>
+            <p className="text-white font-bold">₺{parseFloat(inv.total||0).toLocaleString()}</p>
             <div className="flex gap-2">
               {inv.status !== 'paid' && (
                 <button onClick={()=>updateStatus(inv.id,'paid')}

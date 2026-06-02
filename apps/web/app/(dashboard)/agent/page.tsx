@@ -235,7 +235,7 @@ export default function AgentPage() {
     if (diff < 60_000) return 'Az önce'
     if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}dk önce`
     if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}sa önce`
-    return d.toLocaleDateString('tr-TR')
+    return d.toLocaleDateString()
   }
 
   if (loading) return (

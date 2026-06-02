@@ -759,7 +759,7 @@ export default function TeamIntelligencePage() {
                       <td className="px-4 py-3 text-center"><ScorePill score={a.score}/></td>
                       <td className="px-4 py-3 text-xs text-gray-400 max-w-[200px] truncate">{a.summary}</td>
                       <td className="px-4 py-3 text-right text-xs text-gray-500">
-                        {new Date(a.created_at).toLocaleDateString('tr-TR')}
+                        {new Date(a.created_at).toLocaleDateString()}
                       </td>
                     </tr>
                   ))}

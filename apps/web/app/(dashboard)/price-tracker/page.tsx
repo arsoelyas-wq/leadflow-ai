@@ -303,7 +303,7 @@ function PriceCard({ tracker, onCheck, onDelete, onTargetUpdate, checking }: any
                   🎯 Hedef: {formatPrice(tracker.target_price)} {targetGap !== null && targetGap > 0 ? `(%${targetGap.toFixed(1)} uzak)` : targetGap !== null && targetGap <= 0 ? '✅ TUTTURULDU!' : ''}
                 </span>
               )}
-              {tracker.last_checked && <span>📡 {new Date(tracker.last_checked).toLocaleDateString('tr-TR')}</span>}
+              {tracker.last_checked && <span>📡 {new Date(tracker.last_checked).toLocaleDateString()}</span>}
             </div>
           </div>
 
@@ -616,10 +616,10 @@ export default function PriceTrackerPage() {
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
                     <div style={{ color, fontSize: 13, fontWeight: 700 }}>
-                      {a.old_price?.toLocaleString('tr-TR')} → {a.new_price?.toLocaleString('tr-TR')} {curr}
+                      {a.old_price?.toLocaleString()} → {a.new_price?.toLocaleString()} {curr}
                       <span style={{ fontSize: 11, marginLeft: 6, opacity: 0.7 }}>({isDown ? '-' : '+'}{pct}%)</span>
                     </div>
-                    <div style={{ color: '#334155', fontSize: 11 }}>{new Date(a.checked_at).toLocaleString('tr-TR')}</div>
+                    <div style={{ color: '#334155', fontSize: 11 }}>{new Date(a.checked_at).toLocaleString()}</div>
                   </div>
                 </div>
               )
