@@ -1,7 +1,8 @@
-import { MarketPage, MARKET_SLUGS } from '@/lib/market-pages'
+import { MarketPage, MARKET_SLUGS, getMarketUI } from '@/lib/market-pages'
 
 export default function MarketFooter({ page }: { page: MarketPage }) {
   const market = MARKET_SLUGS[page.slug]
+  const ui = getMarketUI(page.slug)
   const year = new Date().getFullYear()
 
   return (
@@ -31,8 +32,8 @@ export default function MarketFooter({ page }: { page: MarketPage }) {
 
         {/* Links */}
         <div style={{ display: 'flex', gap: 28 }}>
-          <a href="/privacy" style={{ color: '#334155', fontSize: 13, textDecoration: 'none' }}>Gizlilik Politikası</a>
-          <a href="/terms" style={{ color: '#334155', fontSize: 13, textDecoration: 'none' }}>Kullanım Şartları</a>
+          <a href="/privacy" style={{ color: '#334155', fontSize: 13, textDecoration: 'none' }}>{ui.privacy}</a>
+          <a href="/terms" style={{ color: '#334155', fontSize: 13, textDecoration: 'none' }}>{ui.terms}</a>
           {page.whatsapp_number && (
             <a href={`https://wa.me/${page.whatsapp_number.replace(/[^0-9]/g, '')}`}
               target="_blank" rel="noreferrer"
@@ -41,7 +42,7 @@ export default function MarketFooter({ page }: { page: MarketPage }) {
         </div>
 
         <p style={{ color: '#1e293b', fontSize: 13, margin: 0 }}>
-          © {year} LeadFlow AI. Tüm hakları saklıdır.
+          © {year} LeadFlow AI. {ui.copyright}
         </p>
       </div>
     </footer>

@@ -1,6 +1,7 @@
-import { MarketPage } from '@/lib/market-pages'
+import { MarketPage, getMarketUI } from '@/lib/market-pages'
 
 export default function MarketContact({ page }: { page: MarketPage }) {
+  const ui = getMarketUI(page.slug)
   return (
     <section style={{
       padding: '100px 24px',
@@ -12,14 +13,14 @@ export default function MarketContact({ page }: { page: MarketPage }) {
           fontWeight: 900, color: '#fff',
           margin: '0 0 20px', letterSpacing: '-0.025em',
         }}>
-          Hemen Başlayın
+          {ui.cta_title}
         </h2>
         <p style={{
           color: '#64748b', fontSize: 19, lineHeight: 1.7,
           margin: '0 0 52px',
           maxWidth: 560, marginLeft: 'auto', marginRight: 'auto',
         }}>
-          14 gün ücretsiz deneyin. Kredi kartı gerekmez. İstediğiniz zaman iptal edin.
+          {ui.cta_desc}
         </p>
 
         {/* CTA buttons */}
@@ -75,7 +76,7 @@ export default function MarketContact({ page }: { page: MarketPage }) {
 
         {/* Trust badges */}
         <div style={{ display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap', marginTop: 52 }}>
-          {['🔒 SSL Güvenli', '⚡ 14 Gün Ücretsiz', '🚫 Kart Gerekmez', '✅ İstediğin an iptal'].map(b => (
+          {ui.trust_badges.map(b => (
             <span key={b} style={{ color: '#334155', fontSize: 14, fontWeight: 600 }}>{b}</span>
           ))}
         </div>

@@ -1,7 +1,8 @@
-import { MarketPage } from '@/lib/market-pages'
+import { MarketPage, getMarketUI } from '@/lib/market-pages'
 
 export default function MarketFeatures({ page }: { page: MarketPage }) {
   if (!page.features?.length) return null
+  const ui = getMarketUI(page.slug)
   return (
     <section style={{
       padding: '100px 24px',
@@ -15,10 +16,10 @@ export default function MarketFeatures({ page }: { page: MarketPage }) {
             fontWeight: 900, color: '#fff',
             margin: '0 0 18px', letterSpacing: '-0.025em',
           }}>
-            Neden LeadFlow AI?
+            {ui.features_title}
           </h2>
           <p style={{ color: '#64748b', fontSize: 19, margin: 0, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
-            Rakipleriniz manuel çalışırken siz otomatik büyüyün
+            {ui.features_sub}
           </p>
         </div>
 

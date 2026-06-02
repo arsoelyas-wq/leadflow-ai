@@ -1,4 +1,4 @@
-import { MarketPage } from '@/lib/market-pages'
+import { MarketPage, getMarketUI } from '@/lib/market-pages'
 
 const AVATAR_BG = [
   'linear-gradient(135deg,#3b82f6,#6366f1)',
@@ -10,6 +10,7 @@ const AVATAR_BG = [
 
 export default function MarketTestimonials({ page }: { page: MarketPage }) {
   if (!page.testimonials?.length) return null
+  const ui = getMarketUI(page.slug)
   return (
     <section style={{
       padding: '100px 24px',
@@ -22,10 +23,10 @@ export default function MarketTestimonials({ page }: { page: MarketPage }) {
             fontWeight: 900, color: '#fff',
             margin: '0 0 18px', letterSpacing: '-0.025em',
           }}>
-            Müşterilerimiz Ne Diyor?
+            {ui.testimonials_title}
           </h2>
           <p style={{ color: '#64748b', fontSize: 19, margin: 0 }}>
-            Gerçek şirketler, gerçek sonuçlar
+            {ui.testimonials_sub}
           </p>
         </div>
 

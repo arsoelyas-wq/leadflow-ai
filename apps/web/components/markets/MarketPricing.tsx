@@ -1,7 +1,8 @@
-import { MarketPage } from '@/lib/market-pages'
+import { MarketPage, getMarketUI } from '@/lib/market-pages'
 
 export default function MarketPricing({ page }: { page: MarketPage }) {
   if (!page.price_monthly) return null
+  const ui = getMarketUI(page.slug)
 
   const savings = page.price_annual && page.price_annual < page.price_monthly
     ? Math.round((1 - page.price_annual / page.price_monthly) * 100)
@@ -20,9 +21,9 @@ export default function MarketPricing({ page }: { page: MarketPage }) {
           fontWeight: 900, color: '#fff',
           margin: '0 0 18px', letterSpacing: '-0.025em',
         }}>
-          Basit Fiyatlandırma
+          {ui.pricing_title}
         </h2>
-        <p style={{ color: '#64748b', fontSize: 19, margin: '0 0 52px' }}>Gizli ücret yok. İstediğiniz zaman iptal.</p>
+        <p style={{ color: '#64748b', fontSize: 19, margin: '0 0 52px' }}>{ui.pricing_sub}</p>
 
         <div style={{
           background: 'linear-gradient(145deg, rgba(59,130,246,0.07), rgba(99,102,241,0.04))',
@@ -50,12 +51,12 @@ export default function MarketPricing({ page }: { page: MarketPage }) {
               <span style={{ color: '#fff', fontSize: 72, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>
                 {page.price_monthly.toLocaleString()}
               </span>
-              <span style={{ color: '#64748b', fontSize: 20, fontWeight: 500 }}>/ay</span>
+              <span style={{ color: '#64748b', fontSize: 20, fontWeight: 500 }}>{ui.per_month}</span>
             </div>
             {savings > 0 && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 100, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
                 <span style={{ color: '#34d399', fontSize: 13, fontWeight: 700 }}>
-                  Yıllık ödemede {sym}{page.price_annual.toLocaleString()}/ay — %{savings} tasarruf!
+                  {ui.annual_save(sym, page.price_annual, savings)}
                 </span>
               </div>
             )}
@@ -94,7 +95,7 @@ export default function MarketPricing({ page }: { page: MarketPage }) {
           </a>
 
           <p style={{ color: '#334155', fontSize: 13, marginTop: 18, position: 'relative', zIndex: 1 }}>
-            Kredi kartı gerekmez • İstediğiniz zaman iptal
+            {ui.no_card} • {ui.cancel_anytime}
           </p>
         </div>
       </div>
