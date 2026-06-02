@@ -477,7 +477,7 @@ export default function PriceTrackerPage() {
                 <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Rakip Fiyat Takibi</h1>
                 <span style={{ background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>7/24</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>Rakiplerin fiyatlarını 7/24 izle — hedef fiyata düşünce WhatsApp'a alarm al</p>
+              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('price_tracker.rakiplerin_fiyatlarini_72', 'Rakiplerin fiyatlarını 7/24 izle — hedef fiyata düşünce WhatsApp\'a alarm al')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {['📉 Fiyat Düşüş Alarmı', '🎯 Hedef Fiyat', '📊 Trend Grafiği', '⚡ WhatsApp Bildirim', '🌍 Her Site'].map(f => (
                   <span key={f} style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
@@ -528,19 +528,19 @@ export default function PriceTrackerPage() {
         <div style={{ marginBottom: 22, background: 'linear-gradient(135deg,rgba(3,8,20,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 18, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
             <Plus size={15} style={{ color: '#10b981' }} />
-            <h3 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Yeni Ürün Fiyatı Takip Et</h3>
+            <h3 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('price_tracker.yeni_urun_fiyati_takip_et', 'Yeni Ürün Fiyatı Takip Et')}</h3>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Ürün URL * (Trendyol, Amazon, rakip site...)</label>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.urun_url_trendyol_amazon', 'Ürün URL * (Trendyol, Amazon, rakip site...)')}</label>
               <input value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} placeholder="https://www.trendyol.com/..." style={{ ...inp, border: `1px solid ${form.url ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'}` }} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Ürün Adı</label>
-              <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Koltuk Takımı 3+1" style={inp} />
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.urun_adi', 'Ürün Adı')}</label>
+              <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder={t('price_tracker.koltuk_takimi_31', 'Koltuk Takımı 3+1')} style={inp} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Rakip Adı</label>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.rakip_adi', 'Rakip Adı')}</label>
               <input value={form.competitorName} onChange={e => setForm(p => ({ ...p, competitorName: e.target.value }))} placeholder="Trendyol, Dekonil..." style={inp} />
             </div>
             <div>
@@ -554,9 +554,9 @@ export default function PriceTrackerPage() {
               {adding ? <RefreshCw size={13} style={{ animation: 'pt-spin 1s linear infinite' }} /> : <Plus size={13} />}
               {adding ? 'Fiyat tespit ediliyor...' : 'Takibe Al'}
             </button>
-            <button onClick={() => setShowAdd(false)} style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>İptal</button>
+            <button onClick={() => setShowAdd(false)} style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>{t('price_tracker.iptal', 'İptal')}</button>
           </div>
-          <p style={{ color: '#334155', fontSize: 11, marginTop: 10 }}>💡 URL ekledikten sonra otomatik fiyat tespit edilir. Hedef fiyat girersen, o fiyata düştüğünde WhatsApp'a anında bildirim gelir.</p>
+          <p style={{ color: '#334155', fontSize: 11, marginTop: 10 }}>{t('price_tracker.url_ekledikten_sonra_otom', '💡 URL ekledikten sonra otomatik fiyat tespit edilir. Hedef fiyat girersen, o fiyata düştüğünde WhatsApp\'a anında bildirim gelir.')}</p>
         </div>
       )}
 
@@ -583,7 +583,7 @@ export default function PriceTrackerPage() {
       ) : trackers.length === 0 ? (
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,20,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><PriceSphere size={60} direction="flat" /></div>
-          <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>Henüz takip edilen ürün yok</p>
+          <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('price_tracker.henuz_takip_edilen_urun_y', 'Henüz takip edilen ürün yok')}</p>
           <button onClick={() => setShowAdd(true)} style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 14, fontWeight: 700 }}>
             + İlk URL'i Ekle
           </button>
@@ -600,7 +600,7 @@ export default function PriceTrackerPage() {
       {/* ── RECENT ALERTS ─────────────────────────────────────────────────── */}
       {alerts.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <h3 style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600, margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1 }}>Son Fiyat Değişimleri</h3>
+          <h3 style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600, margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('price_tracker.son_fiyat_degisimleri', 'Son Fiyat Değişimleri')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {alerts.slice(0, 10).map((a: any) => {
               const isDown = a.direction === 'down'

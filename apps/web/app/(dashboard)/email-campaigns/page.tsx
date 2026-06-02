@@ -135,7 +135,7 @@ export default function EmailCampaignsPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Mail size={24} className="text-blue-400" /> Email Kampanya
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Kendi SMTP sunucunuzdan profesyonel email gönderin</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('email_campaigns.kendi_smtp_sunucunuzdan_p', 'Kendi SMTP sunucunuzdan profesyonel email gönderin')}</p>
         </div>
       </div>
 
@@ -154,7 +154,7 @@ export default function EmailCampaignsPage() {
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-blue-400">{stats.totalSent}</p>
-            <p className="text-slate-400 text-xs mt-1">Gönderilen Email</p>
+            <p className="text-slate-400 text-xs mt-1">{t('email_campaigns.gonderilen_email', 'Gönderilen Email')}</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
             <p className={`text-2xl font-bold ${stats.configured ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -183,7 +183,7 @@ export default function EmailCampaignsPage() {
       {activeTab === 'settings' && (
         <div className="space-y-4">
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <p className="text-white font-semibold mb-3">Hızlı Kurulum</p>
+            <p className="text-white font-semibold mb-3">{t('email_campaigns.hizli_kurulum', 'Hızlı Kurulum')}</p>
             <div className="grid grid-cols-5 gap-2 mb-4">
               {SMTP_PRESETS.map(preset => (
                 <button key={preset.name} onClick={() => setSmtp(p => ({ ...p, smtp_host: preset.host, smtp_port: preset.port }))}
@@ -198,7 +198,7 @@ export default function EmailCampaignsPage() {
           </div>
 
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
-            <p className="text-white font-semibold">SMTP Bağlantı Bilgileri</p>
+            <p className="text-white font-semibold">{t('email_campaigns.smtp_baglanti_bilgileri', 'SMTP Bağlantı Bilgileri')}</p>
             <div className="grid lg:grid-cols-2 gap-4">
               {[
                 { k: 'smtp_host', l: 'SMTP Sunucu *', p: 'smtp.gmail.com' },
@@ -246,7 +246,7 @@ export default function EmailCampaignsPage() {
 
             {/* Template library */}
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-              <p className="text-white font-semibold text-sm mb-3">Hazır Şablonlar</p>
+              <p className="text-white font-semibold text-sm mb-3">{t('email_campaigns.hazir_sablonlar', 'Hazır Şablonlar')}</p>
               <div className="grid grid-cols-3 gap-2">
                 {EMAIL_TEMPLATES.map(tpl => (
                   <button key={tpl.label} onClick={() => applyTemplate(tpl)}
@@ -260,7 +260,7 @@ export default function EmailCampaignsPage() {
 
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-white font-semibold">Email İçeriği</p>
+                <p className="text-white font-semibold">{t('email_campaigns.email_icerigi', 'Email İçeriği')}</p>
                 <button onClick={generateContent} disabled={generating || !email.subject}
                   className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs rounded-lg transition">
                   {generating ? <RefreshCw size={11} className="animate-spin" /> : <Sparkles size={11} />}
@@ -271,20 +271,20 @@ export default function EmailCampaignsPage() {
               <div>
                 <label className="text-slate-400 text-xs mb-1 block">Konu *</label>
                 <input value={email.subject} onChange={e => setEmail(p => ({ ...p, subject: e.target.value }))}
-                  placeholder="Özel Teklif — Sadece Sizin İçin!"
+                  placeholder={t('email_campaigns.ozel_teklif_sadece_sizin', 'Özel Teklif — Sadece Sizin İçin!')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
               </div>
 
               <div>
-                <label className="text-slate-400 text-xs mb-1 block">Hedef (AI için)</label>
+                <label className="text-slate-400 text-xs mb-1 block">{t('email_campaigns.hedef_ai_icin', 'Hedef (AI için)')}</label>
                 <input value={email.goal} onChange={e => setEmail(p => ({ ...p, goal: e.target.value }))}
-                  placeholder="Mobilya satışı, toplantı daveti, indirim duyurusu..."
+                  placeholder={t('email_campaigns.mobilya_satisi_toplanti_d', 'Mobilya satışı, toplantı daveti, indirim duyurusu...')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-400 text-xs">HTML İçerik *</label>
+                  <label className="text-slate-400 text-xs">{t('email_campaigns.html_icerik', 'HTML İçerik *')}</label>
                   <button onClick={() => setPreview(!preview)} className="text-blue-400 text-xs flex items-center gap-1">
                     <Eye size={10} /> {preview ? 'Kodu Göster' : 'Önizle'}
                   </button>
@@ -298,7 +298,7 @@ export default function EmailCampaignsPage() {
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-none font-mono" />
                 )}
                 <p className="text-slate-500 text-xs mt-1">
-                  Kişiselleştirme: <code className="text-blue-300">{`{{firma}}`}</code> → şirket adı, <code className="text-blue-300">{`{{isim}}`}</code> → kişi adı
+                  Kişiselleştirme: <code className="text-blue-300">{`{{firma}}`}</code>{t('email_campaigns.sirket_adi', '→ şirket adı,')}<code className="text-blue-300">{`{{isim}}`}</code> → kişi adı
                 </p>
               </div>
 
@@ -349,7 +349,7 @@ export default function EmailCampaignsPage() {
               )}
             </div>
             {filteredLeads.length === 0 ? (
-              <p className="text-slate-400 text-xs text-center py-4">Email adresi olan lead bulunamadı</p>
+              <p className="text-slate-400 text-xs text-center py-4">{t('email_campaigns.email_adresi_olan_lead_bu', 'Email adresi olan lead bulunamadı')}</p>
             ) : (
               <div className="space-y-1 flex-1 overflow-y-auto max-h-[400px]">
                 {filteredLeads.map(l => (
@@ -375,7 +375,7 @@ export default function EmailCampaignsPage() {
           {campaigns.length === 0 ? (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center">
               <Mail size={36} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-400">Henüz kampanya yok</p>
+              <p className="text-slate-400">{t('email_campaigns.henuz_kampanya_yok', 'Henüz kampanya yok')}</p>
             </div>
           ) : campaigns.map(c => (
             <div key={c.id} className="bg-slate-800/50 border border-slate-700 rounded-xl px-5 py-4 flex items-center gap-4">

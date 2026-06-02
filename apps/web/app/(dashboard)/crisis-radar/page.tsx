@@ -58,7 +58,7 @@ export default function CrisisRadarPage() {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Radar size={24} className="text-orange-400"/> Kriz & Fırsat Radarı
         </h1>
-        <p className="text-slate-400 mt-1 text-sm">Sektörünüzdeki gelişmeleri 7/24 izle — AI ile strateji önerileri al</p>
+        <p className="text-slate-400 mt-1 text-sm">{t('crisis_radar.sektorunuzdeki_gelismeler', 'Sektörünüzdeki gelişmeleri 7/24 izle — AI ile strateji önerileri al')}</p>
       </div>
 
       {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type==='success'?'bg-emerald-500/10 border-emerald-500/30 text-emerald-300':'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
@@ -83,7 +83,7 @@ export default function CrisisRadarPage() {
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-4">
           <h2 className="text-white font-semibold">🔍 Manuel Tarama</h2>
           <div>
-            <label className="text-slate-400 text-xs mb-1.5 block">Sektör</label>
+            <label className="text-slate-400 text-xs mb-1.5 block">{t('crisis_radar.sektor', 'Sektör')}</label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {SECTORS.map(s=>(
                 <button key={s} onClick={()=>setSector(s)}
@@ -100,7 +100,7 @@ export default function CrisisRadarPage() {
           </button>
           {analysis && (
             <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl">
-              <p className="text-orange-300 text-xs font-medium mb-2">🤖 AI Strateji Önerisi</p>
+              <p className="text-orange-300 text-xs font-medium mb-2">{t('crisis_radar.ai_strateji_onerisi', '🤖 AI Strateji Önerisi')}</p>
               <p className="text-white text-sm">{analysis}</p>
             </div>
           )}
@@ -131,7 +131,7 @@ export default function CrisisRadarPage() {
         : alerts.length===0 ? (
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center">
             <Radar size={36} className="text-slate-600 mx-auto mb-2"/>
-            <p className="text-slate-400">Henüz gelişme tespit edilmedi</p>
+            <p className="text-slate-400">{t('crisis_radar.henuz_gelisme_tespit_edil', 'Henüz gelişme tespit edilmedi')}</p>
           </div>
         ) : alerts.map((alert, i) => (
           <div key={i} className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 flex items-start gap-3">

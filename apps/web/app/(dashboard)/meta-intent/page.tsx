@@ -343,7 +343,7 @@ export default function MetaPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(24,119,242,0.2)', borderRadius: 20, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <Send size={16} style={{ color: '#1877f2' }} />
-            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Conversion Event Gönder</h2>
+            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('meta_intent.conversion_event_gonder', 'Conversion Event Gönder')}</h2>
           </div>
 
           {/* Event type selector */}
@@ -373,7 +373,7 @@ export default function MetaPage() {
               </div>
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>Sektör</label>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>{t('meta_intent.sektor', 'Sektör')}</label>
               <div style={{ position: 'relative' }}>
                 <select value={sectorFilter} onChange={e => setSector(e.target.value)} style={{ ...inp, appearance: 'none', paddingRight: 28 }}>
                   {SECTORS.map(s => <option key={s} value={s === 'Tüm sektörler' ? '' : s}>{s}</option>)}
@@ -386,7 +386,7 @@ export default function MetaPage() {
           {/* Advanced */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>Gönderilecek Limit</label>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>{t('meta_intent.gonderilecek_limit', 'Gönderilecek Limit')}</label>
               <input type="number" value={batchLimit} onChange={e => setBatchLimit(Number(e.target.value))} min={1} max={2000}
                 style={inp} />
             </div>
@@ -430,13 +430,13 @@ export default function MetaPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <Users size={16} style={{ color: '#8b5cf6' }} />
-            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Custom Audience Oluştur</h2>
+            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('meta_intent.custom_audience_olustur', 'Custom Audience Oluştur')}</h2>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>Kitle Adı *</label>
-              <input value={audienceName} onChange={e => setAudienceName(e.target.value)} placeholder="Sıcak Leadler 2026 Q2"
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>{t('meta_intent.kitle_adi', 'Kitle Adı *')}</label>
+              <input value={audienceName} onChange={e => setAudienceName(e.target.value)} placeholder={t('meta_intent.sicak_leadler_2026_q2', 'Sıcak Leadler 2026 Q2')}
                 style={{ ...inp, border: `1px solid ${audienceName ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)'}` }} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -450,7 +450,7 @@ export default function MetaPage() {
                 </div>
               </div>
               <div>
-                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>Sektör Filtre</label>
+                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 4 }}>{t('meta_intent.sektor_filtre', 'Sektör Filtre')}</label>
                 <div style={{ position: 'relative' }}>
                   <select value={sectorFilter} onChange={e => setSector(e.target.value)} style={{ ...inp, appearance: 'none', paddingRight: 28 }}>
                     {SECTORS.map(s => <option key={s} value={s === 'Tüm sektörler' ? '' : s}>{s}</option>)}
@@ -480,7 +480,7 @@ export default function MetaPage() {
                 {audienceResult.metaAudienceId ? '✅ Kitle Oluşturuldu!' : '📋 Veriler Hazır'}
               </p>
               <div style={{ display: 'flex', gap: 16 }}>
-                <div><p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>{audienceResult.totalContacts}</p><p style={{ color: '#475569', fontSize: 10, margin: 0 }}>Kişi</p></div>
+                <div><p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>{audienceResult.totalContacts}</p><p style={{ color: '#475569', fontSize: 10, margin: 0 }}>{t('meta_intent.kisi', 'Kişi')}</p></div>
                 <div><p style={{ color: '#3b82f6', fontSize: 16, fontWeight: 700, margin: 0 }}>{audienceResult.phones}</p><p style={{ color: '#475569', fontSize: 10, margin: 0 }}>Telefon</p></div>
                 <div><p style={{ color: '#10b981', fontSize: 16, fontWeight: 700, margin: 0 }}>{audienceResult.emails}</p><p style={{ color: '#475569', fontSize: 10, margin: 0 }}>E-posta</p></div>
               </div>
@@ -498,7 +498,7 @@ export default function MetaPage() {
       {/* ── EVENT HISTORY ─────────────────────────────────────────────────── */}
       {eventHistory.length > 0 && (
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 18, padding: 22, marginBottom: 20 }}>
-          <h3 style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1 }}>📊 Son Event Geçmişi</h3>
+          <h3 style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('meta_intent.son_event_gecmisi', '📊 Son Event Geçmişi')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             {eventHistory.slice(0, 8).map((e: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: e.success ? 'rgba(24,119,242,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${e.success ? 'rgba(24,119,242,0.15)' : 'rgba(239,68,68,0.15)'}`, borderRadius: 10 }}>

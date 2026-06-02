@@ -239,7 +239,7 @@ export default function LeadFinderPage() {
             ) : isError ? (
               <div className="text-center space-y-2">
                 <AlertTriangle className="w-12 h-12 text-red-400 mx-auto" />
-                <h2 className="text-xl font-bold text-white">Hata Oluştu</h2>
+                <h2 className="text-xl font-bold text-white">{t('leads.hata_olustu', 'Hata Oluştu')}</h2>
                 <p className="text-red-400 text-sm">{jobStatus.error}</p>
               </div>
             ) : (
@@ -250,7 +250,7 @@ export default function LeadFinderPage() {
                     <Search className="w-6 h-6 text-blue-400" />
                   </div>
                 </div>
-                <h2 className="text-lg font-bold text-white">Lead Aranıyor...</h2>
+                <h2 className="text-lg font-bold text-white">{t('leads.lead_araniyor', 'Lead Aranıyor...')}</h2>
                 <p className="text-blue-400 text-sm">{jobStatus.phase}</p>
               </div>
             )}
@@ -261,14 +261,14 @@ export default function LeadFinderPage() {
             {!isDone && !isError && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">İlerleme</span>
+                  <span className="text-slate-400">{t('leads.ilerleme', 'İlerleme')}</span>
                   <span className="text-white font-medium">{pct}%</span>
                 </div>
                 <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
                   <div className="h-2.5 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-700"
                     style={{ width: `${Math.max(4, pct)}%` }} />
                 </div>
-                <p className="text-xs text-slate-500 text-center">Sayfadan ayrılabilirsiniz — işlem arka planda devam eder</p>
+                <p className="text-xs text-slate-500 text-center">{t('leads.sayfadan_ayrilabilirsiniz', 'Sayfadan ayrılabilirsiniz — işlem arka planda devam eder')}</p>
               </div>
             )}
 
@@ -285,7 +285,7 @@ export default function LeadFinderPage() {
                 </div>
                 <div className="bg-slate-900/50 rounded-xl p-3">
                   <p className="text-2xl font-bold text-amber-400">{skipped}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Tekrar atlandı</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{t('leads.tekrar_atlandi', 'Tekrar atlandı')}</p>
                 </div>
               </div>
             )}
@@ -296,7 +296,7 @@ export default function LeadFinderPage() {
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-amber-300 text-sm font-medium">{skipped} tekrar lead atlandı</p>
-                  <p className="text-amber-400/70 text-xs mt-0.5">Bu leadler zaten CRM'inizde kayıtlı. Kredi harcanmadı.</p>
+                  <p className="text-amber-400/70 text-xs mt-0.5">{t('leads.bu_leadler_zaten_crminizd', 'Bu leadler zaten CRM\'inizde kayıtlı. Kredi harcanmadı.')}</p>
                 </div>
               </div>
             )}
@@ -304,11 +304,11 @@ export default function LeadFinderPage() {
             {/* Zero result guidance */}
             {isDone && totalSaved === 0 && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-2 text-sm">
-                <p className="text-red-300 font-medium">Sonuç bulunamadı — olası nedenler:</p>
+                <p className="text-red-300 font-medium">{t('leads.sonuc_bulunamadi_olasi_ne', 'Sonuç bulunamadı — olası nedenler:')}</p>
                 <ul className="text-red-400/80 space-y-1 list-disc list-inside text-xs">
-                  <li>Google Places API anahtarı geçersiz veya kotası dolmuş</li>
-                  <li>Bu şehir/sektör kombinasyonu için yeterli veri yok</li>
-                  <li>Arama terimi çok spesifik — daha genel bir kelime deneyin</li>
+                  <li>{t('leads.google_places_api_anahtar', 'Google Places API anahtarı geçersiz veya kotası dolmuş')}</li>
+                  <li>{t('leads.bu_sehirsektor_kombinasyo', 'Bu şehir/sektör kombinasyonu için yeterli veri yok')}</li>
+                  <li>{t('leads.arama_terimi_cok_spesifik', 'Arama terimi çok spesifik — daha genel bir kelime deneyin')}</li>
                   <li>Tüm sonuçlar zaten CRM'inizde kayıtlı ({skipped} tekrar)</li>
                 </ul>
               </div>
@@ -351,7 +351,7 @@ export default function LeadFinderPage() {
                           <th className="px-3 py-2 text-left text-slate-400 font-medium">Firma</th>
                           <th className="px-3 py-2 text-left text-slate-400 font-medium">Telefon</th>
                           <th className="px-3 py-2 text-left text-slate-400 font-medium">Web</th>
-                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Şehir</th>
+                          <th className="px-3 py-2 text-left text-slate-400 font-medium">{t('leads.sehir', 'Şehir')}</th>
                           <th className="px-3 py-2 text-right text-slate-400 font-medium">Puan</th>
                         </tr>
                       </thead>
@@ -400,7 +400,7 @@ export default function LeadFinderPage() {
           <Search size={12} /> Akıllı Çoklu Kaynak Arama
         </div>
         <h1 className="text-3xl font-bold text-white">Lead Bul</h1>
-        <p className="text-slate-400 text-sm">Google Maps öncelikli · Gerektiğinde ek kaynaklar devreye girer</p>
+        <p className="text-slate-400 text-sm">{t('leads.google_maps_oncelikli_ger', 'Google Maps öncelikli · Gerektiğinde ek kaynaklar devreye girer')}</p>
       </div>
 
       {/* Credit indicator */}
@@ -425,7 +425,7 @@ export default function LeadFinderPage() {
           <input
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
-            placeholder="mobilya mağazası, restoran, avukat..."
+            placeholder={t('leads.mobilya_magazasi_restoran', 'mobilya mağazası, restoran, avukat...')}
             className="w-full bg-slate-900/60 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500 transition"
           />
         </div>
@@ -441,7 +441,7 @@ export default function LeadFinderPage() {
                 type="text"
                 value={countrySearch}
                 onChange={e => setCountrySearch(e.target.value)}
-                placeholder="Ülke ara..."
+                placeholder={t('leads.ulke_ara', 'Ülke ara...')}
                 className="w-full bg-slate-900/60 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
               />
               <select
@@ -507,11 +507,11 @@ export default function LeadFinderPage() {
                     <input
                       value={citySearch}
                       onChange={e => setCitySearch(e.target.value)}
-                      placeholder="Şehir ara..."
+                      placeholder={t('leads.sehir_ara', 'Şehir ara...')}
                       className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
                       autoFocus
                     />
-                    <button type="button" onClick={selectAllCities} className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition whitespace-nowrap">Tümü</button>
+                    <button type="button" onClick={selectAllCities} className="text-[11px] font-semibold text-blue-400 hover:text-blue-300 transition whitespace-nowrap">{t('leads.tumu', 'Tümü')}</button>
                     <span className="text-slate-700">·</span>
                     <button type="button" onClick={() => setSelectedCities([])} className="text-[11px] text-slate-400 hover:text-white transition whitespace-nowrap">Temizle</button>
                   </div>
@@ -539,7 +539,7 @@ export default function LeadFinderPage() {
                       )
                     })}
                     {filteredCityList.length === 0 && (
-                      <p className="col-span-2 text-center text-slate-500 text-xs py-4">Sonuç bulunamadı</p>
+                      <p className="col-span-2 text-center text-slate-500 text-xs py-4">{t('leads.sonuc_bulunamadi', 'Sonuç bulunamadı')}</p>
                     )}
                   </div>
                 </div>
@@ -562,7 +562,7 @@ export default function LeadFinderPage() {
 
         {/* Lead count */}
         <div className="space-y-3">
-          <label className="text-slate-300 text-sm font-medium">Kaç lead istiyorsunuz?</label>
+          <label className="text-slate-300 text-sm font-medium">{t('leads.kac_lead_istiyorsunuz', 'Kaç lead istiyorsunuz?')}</label>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {LEAD_COUNTS.map(opt => (
               <button
@@ -595,13 +595,13 @@ export default function LeadFinderPage() {
                 : 'border-dashed border-slate-600 hover:border-slate-500 bg-slate-800/20'
             }`}
           >
-            <span className="text-slate-400 text-sm shrink-0">✏️ Özel sayı:</span>
+            <span className="text-slate-400 text-sm shrink-0">{t('leads.ozel_sayi', '✏️ Özel sayı:')}</span>
             <input
               type="number"
               value={customCount}
               onFocus={() => setShowCustom(true)}
               onChange={e => { setCustomCount(e.target.value); setShowCustom(true) }}
-              placeholder="Örn: 300"
+              placeholder={t('leads.orn_300', 'Örn: 300')}
               min={10} max={2000}
               className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-500"
             />
@@ -654,7 +654,7 @@ export default function LeadFinderPage() {
                     {state && <span className="text-white text-[10px]">✓</span>}
                   </div>
                   <span>{icon} {label}</span>
-                  {slow && <span className="text-xs opacity-60 ml-auto">yavaş</span>}
+                  {slow && <span className="text-xs opacity-60 ml-auto">{t('leads.yavas', 'yavaş')}</span>}
                 </button>
               ))}
             </div>
@@ -686,12 +686,12 @@ export default function LeadFinderPage() {
         <div className="space-y-2">
           <label className="text-slate-300 text-sm font-medium flex items-center gap-2">
             📁 Liste Adı
-            <span className="text-slate-500 text-xs font-normal">(isteğe bağlı)</span>
+            <span className="text-slate-500 text-xs font-normal">{t('leads.istege_bagli', '(isteğe bağlı)')}</span>
           </label>
           <input
             value={listName}
             onChange={e => setListName(e.target.value)}
-            placeholder="Örn: İstanbul Restauranlar Mayıs 2026"
+            placeholder={t('leads.orn_istanbul_restauranlar', 'Örn: İstanbul Restauranlar Mayıs 2026')}
             className="w-full bg-slate-900/60 border border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500 transition"
           />
           {listName.trim() && (
@@ -714,7 +714,7 @@ export default function LeadFinderPage() {
           className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base transition flex items-center justify-center gap-2"
         >
           {loading
-            ? <><Loader2 size={18} className="animate-spin" /> Bağlanıyor...</>
+            ? <><Loader2 size={18} className="animate-spin" />{t('leads.baglaniyor', 'Bağlanıyor...')}</>
             : <>
                 <Search size={18} />
                 {effectiveCount} Lead Bul
@@ -726,7 +726,7 @@ export default function LeadFinderPage() {
         {!hasEnough && credits && (
           <p className="text-center text-sm text-red-400">
             Yetersiz kredi — {effectiveCount} gerekli, {available} mevcut.{' '}
-            <a href="/settings/billing" className="underline hover:text-red-300">Kredi yükle →</a>
+            <a href="/settings/billing" className="underline hover:text-red-300">{t('leads.kredi_yukle', 'Kredi yükle →')}</a>
           </p>
         )}
 

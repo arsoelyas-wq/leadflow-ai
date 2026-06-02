@@ -132,8 +132,8 @@ export default function LoyaltyPage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
           <HealthOrb size={95} score={avgScore} scanning={loading} />
           <div>
-            <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Müşteri Sağlığı</h1>
-            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>Ağırlıklı sağlık skoru: Recency %30 + Satın Alma %30 + Etkileşim %20 + Büyüme %20</p>
+            <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('loyalty.musteri_sagligi', 'Müşteri Sağlığı')}</h1>
+            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('loyalty.agirlikli_saglik_skoru_re', 'Ağırlıklı sağlık skoru: Recency %30 + Satın Alma %30 + Etkileşim %20 + Büyüme %20')}</p>
             <div style={{ display:'flex', gap:6 }}>
               {(['all','healthy','risk','critical'] as const).map(s => (
                 <button key={s} onClick={()=>setSegment(s)}
@@ -158,7 +158,7 @@ export default function LoyaltyPage() {
       {atRisk > 0 && (
         <div style={{ marginBottom:16, padding:'12px 18px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
           <AlertTriangle size={16} style={{ color:'#f87171', flexShrink:0 }} />
-          <p style={{ color:'#fca5a5', fontSize:13, margin:0 }}><strong>{atRisk} müşteri kritik eşiğin altında</strong> — hemen iletişime geçin!</p>
+          <p style={{ color:'#fca5a5', fontSize:13, margin:0 }}><strong>{atRisk} müşteri kritik eşiğin altında</strong>{t('loyalty.hemen_iletisime_gecin', '— hemen iletişime geçin!')}</p>
         </div>
       )}
 
@@ -197,7 +197,7 @@ export default function LoyaltyPage() {
                 </div>
                 {c.healthScore < 50 && (
                   <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:9, padding:'6px 12px', flexShrink:0 }}>
-                    <p style={{ color:'#f87171', fontSize:11, margin:0, fontWeight:600 }}>Acil İletişim!</p>
+                    <p style={{ color:'#f87171', fontSize:11, margin:0, fontWeight:600 }}>{t('loyalty.acil_iletisim', 'Acil İletişim!')}</p>
                   </div>
                 )}
               </div>

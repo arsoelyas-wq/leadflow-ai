@@ -146,7 +146,7 @@ export default function NetworkPage() {
       <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Firma adı, şehir veya sektör ara..."
+          placeholder={t('network.firma_adi_sehir_veya_sekt', 'Firma adı, şehir veya sektör ara...')}
           className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500" />
       </div>
 
@@ -158,7 +158,7 @@ export default function NetworkPage() {
       ) : nodes.length === 0 ? (
         <div className="text-center py-16 bg-slate-800/30 border border-slate-700 rounded-xl">
           <Network size={48} className="text-slate-600 mx-auto mb-4" />
-          <h2 className="text-white font-semibold mb-2">Henüz Ağ Bağlantısı Yok</h2>
+          <h2 className="text-white font-semibold mb-2">{t('network.henuz_ag_baglantisi_yok', 'Henüz Ağ Bağlantısı Yok')}</h2>
           <p className="text-slate-400 text-sm mb-6">
             Leadleriniz arasında referans, tanışıklık veya ortak ağ bağlantıları ekleyin.<br />
             Bu bağlantılar satışlarınızı hızlandırır.
@@ -210,7 +210,7 @@ export default function NetworkPage() {
                             {peer.label}
                           </Link>
                         ) : (
-                          <span className="text-slate-500 text-xs flex-1">Silinmiş lead</span>
+                          <span className="text-slate-500 text-xs flex-1">{t('network.silinmis_lead', 'Silinmiş lead')}</span>
                         )}
                         {edge.notes && (
                           <span className="text-slate-600 text-xs truncate max-w-32">{edge.notes}</span>
@@ -261,7 +261,7 @@ export default function NetworkPage() {
                 <label className="text-slate-400 text-xs mb-1.5 block">Kaynak Firma</label>
                 <select value={form.leadId} onChange={e => setForm(f => ({ ...f, leadId: e.target.value }))}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500">
-                  <option value="">Firma seçin...</option>
+                  <option value="">{t('network.firma_secin', 'Firma seçin...')}</option>
                   {allLeads.map(l => (
                     <option key={l.id} value={l.id}>{l.company_name}</option>
                   ))}
@@ -269,10 +269,10 @@ export default function NetworkPage() {
               </div>
 
               <div>
-                <label className="text-slate-400 text-xs mb-1.5 block">Bağlı Firma</label>
+                <label className="text-slate-400 text-xs mb-1.5 block">{t('network.bagli_firma', 'Bağlı Firma')}</label>
                 <select value={form.connectedTo} onChange={e => setForm(f => ({ ...f, connectedTo: e.target.value }))}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500">
-                  <option value="">Firma seçin...</option>
+                  <option value="">{t('network.firma_secin', 'Firma seçin...')}</option>
                   {allLeads.filter(l => l.id !== form.leadId).map(l => (
                     <option key={l.id} value={l.id}>{l.company_name}</option>
                   ))}
@@ -280,20 +280,20 @@ export default function NetworkPage() {
               </div>
 
               <div>
-                <label className="text-slate-400 text-xs mb-1.5 block">Bağlantı Türü</label>
+                <label className="text-slate-400 text-xs mb-1.5 block">{t('network.baglanti_turu', 'Bağlantı Türü')}</label>
                 <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500">
                   <option value="referral">Referans</option>
-                  <option value="knows">Tanıyor</option>
-                  <option value="same_network">Ortak Ağ</option>
-                  <option value="customer_ref">Müşteri Referansı</option>
+                  <option value="knows">{t('network.taniyor', 'Tanıyor')}</option>
+                  <option value="same_network">{t('network.ortak_ag', 'Ortak Ağ')}</option>
+                  <option value="customer_ref">{t('network.musteri_referansi', 'Müşteri Referansı')}</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-slate-400 text-xs mb-1.5 block">Not (opsiyonel)</label>
                 <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  placeholder="Örn: Aynı sanayi sitesindeler"
+                  placeholder={t('network.orn_ayni_sanayi_sitesinde', 'Örn: Aynı sanayi sitesindeler')}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500" />
               </div>
             </div>

@@ -76,7 +76,7 @@ export default function QualityV2Page() {
             <Star size={24} className="text-yellow-400" />
             Lead Quality Engine v2
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Claude AI ile 15+ faktör analizi — A/B/C/D sınıflandırma, öncelik sıralaması</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('lead_quality.claude_ai_ile_15_faktor_a', 'Claude AI ile 15+ faktör analizi — A/B/C/D sınıflandırma, öncelik sıralaması')}</p>
         </div>
         <button onClick={scoreAll} disabled={scoring}
           className="flex items-center gap-2 px-4 py-2.5 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition">
@@ -129,7 +129,7 @@ export default function QualityV2Page() {
       ) : topLeads.length === 0 ? (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
           <Star size={40} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400 mb-3">Henüz skorlanmış lead yok</p>
+          <p className="text-slate-400 mb-3">{t('lead_quality.henuz_skorlanmis_lead_yok', 'Henüz skorlanmış lead yok')}</p>
           <button onClick={scoreAll} disabled={scoring}
             className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white text-sm rounded-lg transition">
             Tümünü Skorla
@@ -202,7 +202,7 @@ export default function QualityV2Page() {
                     {/* Breakdown */}
                     {lead.scoringData.breakdown && (
                       <div className="bg-slate-900/50 rounded-xl p-4">
-                        <h3 className="text-white text-xs font-medium mb-3">📊 Skor Dağılımı</h3>
+                        <h3 className="text-white text-xs font-medium mb-3">{t('lead_quality.skor_dagilimi', '📊 Skor Dağılımı')}</h3>
                         {Object.entries(lead.scoringData.breakdown).map(([key, val]: any) => (
                           <div key={key} className="flex justify-between mb-1.5">
                             <span className="text-slate-400 text-xs">{key}</span>
@@ -216,7 +216,7 @@ export default function QualityV2Page() {
                     <div className="bg-slate-900/50 rounded-xl p-4 space-y-3">
                       {lead.scoringData.strengths?.length > 0 && (
                         <div>
-                          <h3 className="text-emerald-400 text-xs font-medium mb-2">✅ Güçlü Yönler</h3>
+                          <h3 className="text-emerald-400 text-xs font-medium mb-2">{t('lead_quality.guclu_yonler', '✅ Güçlü Yönler')}</h3>
                           {lead.scoringData.strengths.map((s: string, i: number) => (
                             <p key={i} className="text-slate-300 text-xs">• {s}</p>
                           ))}
@@ -224,7 +224,7 @@ export default function QualityV2Page() {
                       )}
                       {lead.scoringData.weaknesses?.length > 0 && (
                         <div>
-                          <h3 className="text-red-400 text-xs font-medium mb-2">⚠️ Zayıf Yönler</h3>
+                          <h3 className="text-red-400 text-xs font-medium mb-2">{t('lead_quality.zayif_yonler', '⚠️ Zayıf Yönler')}</h3>
                           {lead.scoringData.weaknesses.map((w: string, i: number) => (
                             <p key={i} className="text-slate-300 text-xs">• {w}</p>
                           ))}
@@ -234,11 +234,11 @@ export default function QualityV2Page() {
 
                     {/* Öneri */}
                     <div className="bg-slate-900/50 rounded-xl p-4">
-                      <h3 className="text-yellow-400 text-xs font-medium mb-2">💡 AI Önerisi</h3>
+                      <h3 className="text-yellow-400 text-xs font-medium mb-2">{t('lead_quality.ai_onerisi', '💡 AI Önerisi')}</h3>
                       <p className="text-slate-300 text-xs leading-relaxed">{lead.scoringData.recommendation}</p>
                       {lead.scoringData.estimatedValue && (
                         <div className="mt-3 p-2 bg-slate-800 rounded-lg">
-                          <p className="text-slate-400 text-xs">Tahmini değer</p>
+                          <p className="text-slate-400 text-xs">{t('lead_quality.tahmini_deger', 'Tahmini değer')}</p>
                           <p className="text-white text-sm font-medium capitalize">{lead.scoringData.estimatedValue}</p>
                         </div>
                       )}

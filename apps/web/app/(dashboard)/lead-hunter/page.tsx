@@ -104,7 +104,7 @@ export default function HunterSettingsPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Bot size={24} className="text-emerald-400"/> 7/24 Otomatik Lead Avcısı
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Sistemi kur — arka planda sürekli yeni lead bulsun</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('lead_hunter.sistemi_kur_arka_planda_s', 'Sistemi kur — arka planda sürekli yeni lead bulsun')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={runNow}
@@ -147,7 +147,7 @@ export default function HunterSettingsPage() {
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 flex items-center justify-between">
             <div>
               <p className="text-white font-medium">Otomatik Tarama</p>
-              <p className="text-slate-400 text-xs mt-0.5">Hunter'ı aktif/pasif yap</p>
+              <p className="text-slate-400 text-xs mt-0.5">{t('lead_hunter.hunteri_aktifpasif_yap', 'Hunter\'ı aktif/pasif yap')}</p>
             </div>
             <button onClick={()=>setActive(!active)}
               className={`w-12 h-6 rounded-full transition-colors relative ${active?'bg-emerald-500':'bg-slate-600'}`}>
@@ -157,7 +157,7 @@ export default function HunterSettingsPage() {
 
           {/* Kaynaklar */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-            <p className="text-white font-medium mb-3">📡 Lead Kaynakları</p>
+            <p className="text-white font-medium mb-3">{t('lead_hunter.lead_kaynaklari', '📡 Lead Kaynakları')}</p>
             <div className="space-y-2">
               {SOURCES.map(s => (
                 <label key={s.id} className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer border transition ${sources.includes(s.id)?'bg-slate-700 border-slate-500':'border-transparent hover:bg-slate-800'}`}>
@@ -171,10 +171,10 @@ export default function HunterSettingsPage() {
 
           {/* Ayarlar */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-4">
-            <p className="text-white font-medium">⚙️ Tarama Ayarları</p>
+            <p className="text-white font-medium">{t('lead_hunter.tarama_ayarlari', '⚙️ Tarama Ayarları')}</p>
             <div>
               <div className="flex justify-between text-sm mb-1.5">
-                <span className="text-slate-400">Tarama aralığı</span>
+                <span className="text-slate-400">{t('lead_hunter.tarama_araligi', 'Tarama aralığı')}</span>
                 <span className="text-white font-medium">Her {interval} saat</span>
               </div>
               <input type="range" min={2} max={24} value={interval} onChange={e=>setInterval2(parseInt(e.target.value))} className="w-full accent-emerald-500"/>
@@ -182,7 +182,7 @@ export default function HunterSettingsPage() {
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1.5">
-                <span className="text-slate-400">Tarama başına max lead</span>
+                <span className="text-slate-400">{t('lead_hunter.tarama_basina_max_lead', 'Tarama başına max lead')}</span>
                 <span className="text-white font-medium">{maxLeads}</span>
               </div>
               <input type="range" min={10} max={200} step={10} value={maxLeads} onChange={e=>setMaxLeads(parseInt(e.target.value))} className="w-full accent-emerald-500"/>
@@ -190,8 +190,8 @@ export default function HunterSettingsPage() {
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={autoWorkflow} onChange={e=>setAutoWorkflow(e.target.checked)} className="accent-emerald-500"/>
               <div>
-                <p className="text-white text-sm">Yeni lead'e otomatik workflow başlat</p>
-                <p className="text-slate-500 text-xs">Bulunan her yeni lead'e cold_outreach başlar</p>
+                <p className="text-white text-sm">{t('lead_hunter.yeni_leade_otomatik_workf', 'Yeni lead\'e otomatik workflow başlat')}</p>
+                <p className="text-slate-500 text-xs">{t('lead_hunter.bulunan_her_yeni_leade_co', 'Bulunan her yeni lead\'e cold_outreach başlar')}</p>
               </div>
             </label>
           </div>
@@ -213,7 +213,7 @@ export default function HunterSettingsPage() {
             <div className="flex gap-2">
               <input value={customKeyword} onChange={e=>setCustomKeyword(e.target.value)}
                 onKeyDown={e=>e.key==='Enter'&&addCustomKeyword()}
-                placeholder="Özel sektör ekle..."
+                placeholder={t('lead_hunter.ozel_sektor_ekle', 'Özel sektör ekle...')}
                 className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-emerald-500"/>
               <button onClick={addCustomKeyword} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition">
                 <Plus size={12}/>
@@ -250,7 +250,7 @@ export default function HunterSettingsPage() {
               <Clock size={14} className="text-slate-400"/> Son Taramalar
             </p>
             {logs.length === 0 ? (
-              <p className="text-slate-500 text-sm">Henüz tarama yapılmadı</p>
+              <p className="text-slate-500 text-sm">{t('lead_hunter.henuz_tarama_yapilmadi', 'Henüz tarama yapılmadı')}</p>
             ) : (
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {logs.map((log: any) => (

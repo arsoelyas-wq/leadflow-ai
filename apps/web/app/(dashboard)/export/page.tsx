@@ -396,8 +396,8 @@ export default function ExportPage() {
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 22 }}>
           <GlobeOrb size={84} scanning={!!activeSessionId} countryCode={selectedCountry?.code || ''} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 23, fontWeight: 800, margin: '0 0 5px' }}>İhracat Zekası</h1>
-            <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>Hedef pazarda doğrulanmış alıcılar · Karar verici isim ve iletişim · Yerel dilde kişiselleştirilmiş mesaj</p>
+            <h1 style={{ color: '#fff', fontSize: 23, fontWeight: 800, margin: '0 0 5px' }}>{t('export.ihracat_zekasi', 'İhracat Zekası')}</h1>
+            <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>{t('export.hedef_pazarda_dogrulanmis', 'Hedef pazarda doğrulanmış alıcılar · Karar verici isim ve iletişim · Yerel dilde kişiselleştirilmiş mesaj')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
               {[
                 { l: 'İletişimli Alıcı', v: leadsWithContact.length, c: '#10b981' },
@@ -460,7 +460,7 @@ export default function ExportPage() {
             </div>
             <div style={{ marginLeft: 'auto', position: 'relative' }}>
               <input value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
-                placeholder="Ülke ara..."
+                placeholder={t('export.ulke_ara', 'Ülke ara...')}
                 style={{ ...inp, width: 160, padding: '7px 12px', fontSize: 12, height: 34 }} />
             </div>
           </div>
@@ -512,7 +512,7 @@ export default function ExportPage() {
                   {/* Opportunity bar */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: '#334155', fontSize: 9 }}>Fırsat Skoru</span>
+                      <span style={{ color: '#334155', fontSize: 9 }}>{t('export.firsat_skoru', 'Fırsat Skoru')}</span>
                       <span style={{ color: oppScore >= 75 ? '#10b981' : oppScore >= 55 ? '#f59e0b' : '#ef4444', fontSize: 9, fontWeight: 700 }}>{oppScore}</span>
                     </div>
                     <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
@@ -523,7 +523,7 @@ export default function ExportPage() {
                   {isSelected && (
                     <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 5, color: '#34d399' }}>
                       <CheckCircle size={11} />
-                      <span style={{ fontSize: 10, fontWeight: 600 }}>Seçildi</span>
+                      <span style={{ fontSize: 10, fontWeight: 600 }}>{t('export.secildi', 'Seçildi')}</span>
                     </div>
                   )}
                 </button>
@@ -585,7 +585,7 @@ export default function ExportPage() {
           {/* Country stats quick view */}
           {exportLeads.length > 0 && !selectedCountry && (
             <div style={{ ...card, padding: '16px 18px' }}>
-              <p style={{ color: '#64748b', fontSize: 11, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase' as const, letterSpacing: 1 }}>Mevcut Alıcı Dağılımı</p>
+              <p style={{ color: '#64748b', fontSize: 11, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase' as const, letterSpacing: 1 }}>{t('export.mevcut_alici_dagilimi', 'Mevcut Alıcı Dağılımı')}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
                 {Object.entries(leadsByCountry).slice(0, 8).map(([code, count]: any) => {
                   const c = countries.find(x => x.code === code)
@@ -634,7 +634,7 @@ export default function ExportPage() {
             {selectedLeads.length > 0 && (
               <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignItems: 'center' }}>
                 <span style={{ color: '#64748b', fontSize: 12 }}>{selectedLeads.length} seçili</span>
-                <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Kampanya adı" style={{ ...inp, width: 180, height: 36, fontSize: 12 }} />
+                <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder={t('export.kampanya_adi', 'Kampanya adı')} style={{ ...inp, width: 180, height: 36, fontSize: 12 }} />
                 <button onClick={createCampaign}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                   <Zap size={12} /> Kampanya Oluştur
@@ -646,8 +646,8 @@ export default function ExportPage() {
           {filteredLeads.length === 0 ? (
             <div style={{ ...card, padding: 52, textAlign: 'center' }}>
               <div style={{ fontSize: 44, marginBottom: 14 }}>🌍</div>
-              <h3 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: '0 0 8px' }}>Alıcı listesi boş</h3>
-              <p style={{ color: '#475569', fontSize: 13, margin: '0 0 20px' }}>Hedef pazarı ve sektörü seçerek alıcı aramasını başlatın</p>
+              <h3 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: '0 0 8px' }}>{t('export.alici_listesi_bos', 'Alıcı listesi boş')}</h3>
+              <p style={{ color: '#475569', fontSize: 13, margin: '0 0 20px' }}>{t('export.hedef_pazari_ve_sektoru_s', 'Hedef pazarı ve sektörü seçerek alıcı aramasını başlatın')}</p>
               <button onClick={() => setTab('find')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                 Alıcı Bul <ArrowRight size={13} />
               </button>
@@ -683,9 +683,9 @@ export default function ExportPage() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4, flexWrap: 'wrap' }}>
                           <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.company_name}</p>
-                          {lead.verified_importer && <span style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.28)', color: '#34d399', fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>✅ Doğrulandı</span>}
+                          {lead.verified_importer && <span style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.28)', color: '#34d399', fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{t('export.dogrulandi', '✅ Doğrulandı')}</span>}
                           {lead.decision_maker_name && <span style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.22)', color: '#a78bfa', fontSize: 9, padding: '2px 6px', borderRadius: 20, flexShrink: 0 }}>👤 KV Bulundu</span>}
-                          {(hasMsg || existingMsg) && <span style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.22)', color: '#22d3ee', fontSize: 9, padding: '2px 6px', borderRadius: 20, flexShrink: 0 }}>💬 Hazır</span>}
+                          {(hasMsg || existingMsg) && <span style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.22)', color: '#22d3ee', fontSize: 9, padding: '2px 6px', borderRadius: 20, flexShrink: 0 }}>{t('export.hazir', '💬 Hazır')}</span>}
                         </div>
                         <div style={{ display: 'flex', gap: 8, fontSize: 11, flexWrap: 'wrap', alignItems: 'center' }}>
                           <span style={{ color:'#475569' }}>{country?.name || lead.country}</span>
@@ -701,7 +701,7 @@ export default function ExportPage() {
                             </a>
                           )}
                           {lead.website && <a href={lead.website.startsWith('http')?lead.website:`https://${lead.website}`} target="_blank" rel="noopener noreferrer" style={{ color:'#64748b', textDecoration:'none', fontSize:10 }}>🔗 Site ↗</a>}
-                          {!lead.phone && !lead.email && <span style={{ color:'#1e293b', fontSize:10 }}>İletişim bilgisi yok</span>}
+                          {!lead.phone && !lead.email && <span style={{ color:'#1e293b', fontSize:10 }}>{t('export.iletisim_bilgisi_yok', 'İletişim bilgisi yok')}</span>}
                         </div>
                         {lead.decision_maker_name && (
                           <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:3 }}>
@@ -717,7 +717,7 @@ export default function ExportPage() {
                         {/* Lead detail page — router.push to avoid auth redirect */}
                         <button onClick={() => router.push(`/leads/${lead.id}`)}
                           style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 10px', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)', color:'#64748b', fontSize:11, cursor:'pointer' }}
-                          title="Lead detayını aç">
+                          title={t('export.lead_detayini_ac', 'Lead detayını aç')}>
                           <ExternalLink size={11} />
                         </button>
                         <button onClick={() => generateMessage(lead.id)} disabled={generatingMsg === lead.id}
@@ -753,7 +753,7 @@ export default function ExportPage() {
             <div style={{ ...card, padding: 52, textAlign: 'center' }}>
               <div style={{ fontSize: 36, marginBottom: 14 }}>🚀</div>
               <p style={{ color: '#94a3b8', fontSize: 14, margin: '0 0 8px' }}>Kampanya yok</p>
-              <p style={{ color: '#475569', fontSize: 12, margin: '0 0 18px' }}>Alıcılar sekmesinden alıcıları seçip kampanya oluşturun</p>
+              <p style={{ color: '#475569', fontSize: 12, margin: '0 0 18px' }}>{t('export.alicilar_sekmesinden_alic', 'Alıcılar sekmesinden alıcıları seçip kampanya oluşturun')}</p>
               <button onClick={() => setTab('leads')} style={{ padding: '9px 18px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                 Alıcı Listesi
               </button>
@@ -783,7 +783,7 @@ export default function ExportPage() {
                       <Play size={13} /> Gönder
                     </button>
                   )}
-                  {camp.status === 'running' && <div style={{ color: '#3b82f6', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}><RefreshCw size={13} style={{ animation: 'exp-spin 1s linear infinite' }} /> Gönderiliyor...</div>}
+                  {camp.status === 'running' && <div style={{ color: '#3b82f6', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}><RefreshCw size={13} style={{ animation: 'exp-spin 1s linear infinite' }} />{t('export.gonderiliyor', 'Gönderiliyor...')}</div>}
                 </div>
                 {camp.status === 'running' && camp.lead_count > 0 && (
                   <div style={{ marginTop: 12, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
@@ -802,8 +802,8 @@ export default function ExportPage() {
           {messages.length === 0 ? (
             <div style={{ ...card, padding: 40, textAlign: 'center', color: '#475569' }}>
               <MessageSquare size={28} style={{ margin: '0 auto 12px', display: 'block', color: '#334155' }} />
-              <p style={{ fontSize: 13, margin: '0 0 6px', color: '#94a3b8' }}>Hazır iletişim yok</p>
-              <p style={{ fontSize: 11, margin: 0 }}>Alıcılar sekmesinde "Mesaj Yaz" butonunu kullanın</p>
+              <p style={{ fontSize: 13, margin: '0 0 6px', color: '#94a3b8' }}>{t('export.hazir_iletisim_yok', 'Hazır iletişim yok')}</p>
+              <p style={{ fontSize: 11, margin: 0 }}>{t('export.alicilar_sekmesinde_mesaj', 'Alıcılar sekmesinde "Mesaj Yaz" butonunu kullanın')}</p>
             </div>
           ) : messages.map(m => {
             const country = countries.find(c => c.code === m.country_code)
@@ -855,7 +855,7 @@ export default function ExportPage() {
 
           {analytics?.byCountry?.length > 0 && (
             <div style={{ ...card, padding: 22 }}>
-              <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 16px' }}>Pazar Dağılımı</h3>
+              <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 16px' }}>{t('export.pazar_dagilimi', 'Pazar Dağılımı')}</h3>
               {analytics.byCountry.map((r: any) => {
                 const c = countries.find(x => x.code === r.country_code)
                 const pct = analytics.totalLeads > 0 ? Math.round((r.leads / analytics.totalLeads) * 100) : 0
@@ -881,7 +881,7 @@ export default function ExportPage() {
           )}
 
           <div style={{ ...card, padding: 20 }}>
-            <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>Platform Kapsamı</h3>
+            <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>{t('export.platform_kapsami', 'Platform Kapsamı')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
               {[
                 { label: 'Hedef Pazar', value: `${countries.length} ülke`, icon: '🌍', c: '#10b981' },

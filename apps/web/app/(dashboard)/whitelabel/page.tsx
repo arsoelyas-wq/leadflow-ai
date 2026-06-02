@@ -127,7 +127,7 @@ export default function WhitelabelPage() {
           <BrandGalaxy size={88} brandCount={brands.length} />
           <div style={{ flex: 1 }}>
             <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>White-Label / Bayi Sistemi</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Kendi markanızla bayiler oluşturun — özel domain, logo, renk ve gelir paylaşımı</p>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('whitelabel.kendi_markanizla_bayiler', 'Kendi markanızla bayiler oluşturun — özel domain, logo, renk ve gelir paylaşımı')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {[{l:'Toplam Bayi',v:summary?.totalBrands||0,c:'#8b5cf6'},{l:'Aktif Bayi',v:summary?.activeBrands||0,c:'#10b981'},{l:'Aylık Gelir',v:`₺${(summary?.estimatedMonthlyRevenue||0).toLocaleString('tr-TR')}`,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -147,7 +147,7 @@ export default function WhitelabelPage() {
       {/* Enterprise warning */}
       <div style={{ marginBottom:16, padding:'12px 18px', background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
         <AlertTriangle size={15} color="#f59e0b" />
-        <p style={{ color:'#fbbf24', fontSize:12, margin:0 }}><strong>Enterprise özelliği:</strong> Her bayinin kendi izole ortamı vardır. Domain DNS kaydını bayiye ait sunucuya yönlendirmeniz gerekir.</p>
+        <p style={{ color:'#fbbf24', fontSize:12, margin:0 }}><strong>{t('whitelabel.enterprise_ozelligi', 'Enterprise özelliği:')}</strong>{t('whitelabel.her_bayinin_kendi_izole_o', 'Her bayinin kendi izole ortamı vardır. Domain DNS kaydını bayiye ait sunucuya yönlendirmeniz gerekir.')}</p>
       </div>
 
       {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, margin:0 }}>{msg.text}</p></div>}
@@ -155,9 +155,9 @@ export default function WhitelabelPage() {
       {/* New brand form */}
       {showForm && (
         <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(139,92,246,0.25)', borderRadius:18, padding:24, marginBottom:20 }}>
-          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 18px' }}>🏢 Yeni Bayi Oluştur</h3>
+          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 18px' }}>{t('whitelabel.yeni_bayi_olustur', '🏢 Yeni Bayi Oluştur')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Marka Adı *</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="örn: ABC CRM" style={inputStyle} /></div>
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('whitelabel.marka_adi', 'Marka Adı *')}</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t('whitelabel.orn_abc_crm', 'örn: ABC CRM')} style={inputStyle} /></div>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Domain (opsiyonel)</label><input value={form.domain} onChange={e=>setForm({...form,domain:e.target.value})} placeholder="crm.firmam.com" style={inputStyle} /></div>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Logo URL</label><input value={form.logo_url} onChange={e=>setForm({...form,logo_url:e.target.value})} placeholder="https://..." style={inputStyle} /></div>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Plan</label>
@@ -171,14 +171,14 @@ export default function WhitelabelPage() {
                 <input value={form.primary_color} onChange={e=>setForm({...form,primary_color:e.target.value})} style={{ ...inputStyle, flex:1 }} />
               </div>
             </div>
-            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Gelir Payı (%)</label><input type="number" min={0} max={50} value={form.revenue_share} onChange={e=>setForm({...form,revenue_share:parseInt(e.target.value)})} style={inputStyle} /></div>
+            <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('whitelabel.gelir_payi', 'Gelir Payı (%)')}</label><input type="number" min={0} max={50} value={form.revenue_share} onChange={e=>setForm({...form,revenue_share:parseInt(e.target.value)})} style={inputStyle} /></div>
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <button onClick={createBrand} disabled={creating||!form.name}
               style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 22px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#3b0764,#8b5cf6)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               {creating?<RefreshCw size={13} style={{ animation:'bg-spin 1s linear infinite' }} />:<Building2 size={13} />} {creating?'Oluşturuluyor...':'Bayi Oluştur'}
             </button>
-            <button onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:11, border:'1px solid rgba(255,255,255,0.08)', background:'transparent', color:'#64748b', fontSize:13, cursor:'pointer' }}>İptal</button>
+            <button onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:11, border:'1px solid rgba(255,255,255,0.08)', background:'transparent', color:'#64748b', fontSize:13, cursor:'pointer' }}>{t('whitelabel.iptal', 'İptal')}</button>
           </div>
         </div>
       )}
@@ -186,7 +186,7 @@ export default function WhitelabelPage() {
       {/* New brand credentials */}
       {newBrandResult && (
         <div style={{ marginBottom:16, background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:14, padding:20 }}>
-          <h3 style={{ color:'#34d399', fontWeight:700, fontSize:14, margin:'0 0 12px' }}>✅ Bayi Oluşturuldu!</h3>
+          <h3 style={{ color:'#34d399', fontWeight:700, fontSize:14, margin:'0 0 12px' }}>{t('whitelabel.bayi_olusturuldu', '✅ Bayi Oluşturuldu!')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             {[{l:'Admin Email',v:newBrandResult.adminEmail},{l:'Geçici Şifre',v:newBrandResult.tempPassword}].map(f => (
               <div key={f.l} style={{ background:'#060a1c', borderRadius:10, padding:'10px 14px' }}>
@@ -198,7 +198,7 @@ export default function WhitelabelPage() {
               </div>
             ))}
           </div>
-          <p style={{ color:'#f59e0b', fontSize:11, margin:'10px 0 0' }}>⚠️ Bu bilgileri kaydedin — şifre bir daha gösterilmeyecek!</p>
+          <p style={{ color:'#f59e0b', fontSize:11, margin:'10px 0 0' }}>{t('whitelabel.bu_bilgileri_kaydedin_sif', '⚠️ Bu bilgileri kaydedin — şifre bir daha gösterilmeyecek!')}</p>
         </div>
       )}
 
@@ -208,7 +208,7 @@ export default function WhitelabelPage() {
       ) : brands.length === 0 ? (
         <div style={{ textAlign:'center', padding:48, color:'#475569' }}>
           <p style={{ fontSize:36, margin:'0 0 12px' }}>🏢</p>
-          <p style={{ fontSize:14, margin:0 }}>Henüz bayi yok — yeni bayi oluşturarak gelir paylaşımı başlatın</p>
+          <p style={{ fontSize:14, margin:0 }}>{t('whitelabel.henuz_bayi_yok_yeni_bayi', 'Henüz bayi yok — yeni bayi oluşturarak gelir paylaşımı başlatın')}</p>
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>

@@ -89,7 +89,7 @@ export default function TradeFairPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Globe size={24} className="text-cyan-400"/> Fuar Asistanı
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Fuar öncesi randevu — fuar sonrası teşekkür — tam otomasyon</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('trade_fair.fuar_oncesi_randevu_fuar', 'Fuar öncesi randevu — fuar sonrası teşekkür — tam otomasyon')}</p>
         </div>
         <button onClick={()=>setShowAdd(!showAdd)}
           className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm rounded-xl transition">
@@ -150,7 +150,7 @@ export default function TradeFairPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={addFair} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm rounded-lg transition">Kaydet</button>
-            <button onClick={()=>setShowAdd(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">İptal</button>
+            <button onClick={()=>setShowAdd(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">{t('trade_fair.iptal', 'İptal')}</button>
           </div>
         </div>
       )}
@@ -202,7 +202,7 @@ export default function TradeFairPage() {
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {exhibitors.length===0 ? (
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 text-center">
-                  <p className="text-slate-400 text-sm">Katılımcı bulunamadı — "Katılımcıları Bul" butonuna tıklayın</p>
+                  <p className="text-slate-400 text-sm">{t('trade_fair.katilimci_bulunamadi_kati', 'Katılımcı bulunamadı — "Katılımcıları Bul" butonuna tıklayın')}</p>
                 </div>
               ) : exhibitors.map(ex=>(
                 <div key={ex.id} className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 flex items-center gap-3">
@@ -214,8 +214,8 @@ export default function TradeFairPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {ex.pre_message_sent && <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">Ön ✓</span>}
-                    {ex.meeting_scheduled && <span className="text-xs px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded">Görüşme ✓</span>}
+                    {ex.pre_message_sent && <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded">{t('trade_fair.on', 'Ön ✓')}</span>}
+                    {ex.meeting_scheduled && <span className="text-xs px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded">{t('trade_fair.gorusme', 'Görüşme ✓')}</span>}
                     {ex.post_message_sent && <span className="text-xs px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded">Son ✓</span>}
                     {!ex.meeting_scheduled && (
                       <button onClick={()=>markMeeting(ex.id)}

@@ -51,7 +51,7 @@ export default function KvkkPage() {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Shield size={24} className="text-blue-400"/> KVKK & GDPR Uyumluluk
         </h1>
-        <p className="text-slate-400 mt-1 text-sm">Kişisel verilerin korunması mevzuatına uygunluk paneli</p>
+        <p className="text-slate-400 mt-1 text-sm">{t('kvkk.kisisel_verilerin_korunma', 'Kişisel verilerin korunması mevzuatına uygunluk paneli')}</p>
       </div>
 
       {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type==='success'?'bg-emerald-500/10 border-emerald-500/30 text-emerald-300':'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
@@ -92,7 +92,7 @@ export default function KvkkPage() {
 
       {/* Ayarlar */}
       <div className="bg-slate-800/50 border border-blue-500/30 rounded-xl p-5 space-y-4">
-        <h2 className="text-white font-semibold">⚙️ KVKK Ayarları</h2>
+        <h2 className="text-white font-semibold">{t('kvkk.kvkk_ayarlari', '⚙️ KVKK Ayarları')}</h2>
         <div className="grid lg:grid-cols-2 gap-3">
           {[
             {k:'privacyPolicyUrl',l:'Gizlilik Politikası URL',p:'https://sirket.com/gizlilik'},
@@ -106,9 +106,9 @@ export default function KvkkPage() {
             </div>
           ))}
           <div className="lg:col-span-2">
-            <label className="text-slate-400 text-xs mb-1 block">Açık Rıza Metni</label>
+            <label className="text-slate-400 text-xs mb-1 block">{t('kvkk.acik_riza_metni', 'Açık Rıza Metni')}</label>
             <textarea value={form.consentText} onChange={e=>setForm(p=>({...p,consentText:e.target.value}))}
-              placeholder="Kişisel verileriniz, KVKK kapsamında..."
+              placeholder={t('kvkk.kisisel_verileriniz_kvkk', 'Kişisel verileriniz, KVKK kapsamında...')}
               rows={3} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-none"/>
           </div>
         </div>

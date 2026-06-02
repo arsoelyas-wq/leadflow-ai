@@ -60,7 +60,7 @@ export default function EmotionalIQPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Heart size={24} className="text-pink-400"/> Duygusal Zeka Katmanı
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Sosyal medya analizi ile empati mesajları — robotik his tamamen yok</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('emotional_iq.sosyal_medya_analizi_ile', 'Sosyal medya analizi ile empati mesajları — robotik his tamamen yok')}</p>
         </div>
         <button onClick={scanBatch} disabled={scanning}
           className="flex items-center gap-2 px-4 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
@@ -90,21 +90,21 @@ export default function EmotionalIQPage() {
         <h2 className="text-white font-semibold flex items-center gap-2">
           <Sparkles size={16} className="text-yellow-400"/> Mesaj Güçlendirici
         </h2>
-        <p className="text-slate-400 text-sm">Normal bir mesajı AI ile kişiselleştirilmiş empati mesajına dönüştür</p>
+        <p className="text-slate-400 text-sm">{t('emotional_iq.normal_bir_mesaji_ai_ile', 'Normal bir mesajı AI ile kişiselleştirilmiş empati mesajına dönüştür')}</p>
         
         <div>
-          <label className="text-slate-400 text-xs mb-1.5 block">Lead Seç</label>
+          <label className="text-slate-400 text-xs mb-1.5 block">{t('emotional_iq.lead_sec', 'Lead Seç')}</label>
           <select value={selectedLead} onChange={e=>setSelectedLead(e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-pink-500">
-            <option value="">Lead seçin</option>
+            <option value="">{t('emotional_iq.lead_secin', 'Lead seçin')}</option>
             {leads.map(l=><option key={l.id} value={l.id}>{l.company_name} {l.city?`— ${l.city}`:''}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="text-slate-400 text-xs mb-1.5 block">Ana Mesajınız</label>
+          <label className="text-slate-400 text-xs mb-1.5 block">{t('emotional_iq.ana_mesajiniz', 'Ana Mesajınız')}</label>
           <textarea value={baseMessage} onChange={e=>setBaseMessage(e.target.value)}
-            placeholder="Merhaba, size özel bir teklifimiz var..."
+            placeholder={t('emotional_iq.merhaba_size_ozel_bir_tek', 'Merhaba, size özel bir teklifimiz var...')}
             rows={3}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-pink-500 resize-none"/>
         </div>
@@ -120,7 +120,7 @@ export default function EmotionalIQPage() {
           <div className="space-y-3 mt-2">
             {result.context?.events?.length > 0 && (
               <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-                <p className="text-yellow-300 text-xs font-medium mb-1">🔍 Tespit Edilen Gelişmeler</p>
+                <p className="text-yellow-300 text-xs font-medium mb-1">{t('emotional_iq.tespit_edilen_gelismeler', '🔍 Tespit Edilen Gelişmeler')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {result.context.events.map((e:string,i:number)=>(
                     <span key={i} className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-300 rounded-full">{e}</span>
@@ -137,7 +137,7 @@ export default function EmotionalIQPage() {
               <div className="p-4 bg-pink-500/10 border border-pink-500/20 rounded-xl">
                 <p className="text-pink-300 text-xs mb-2 flex items-center gap-1">
                   <Sparkles size={10}/> Güçlendirilmiş Mesaj
-                  {result.improved && <span className="ml-auto text-emerald-400">✓ İyileştirildi</span>}
+                  {result.improved && <span className="ml-auto text-emerald-400">{t('emotional_iq.iyilestirildi', '✓ İyileştirildi')}</span>}
                 </p>
                 <p className="text-white text-sm">{result.enhanced}</p>
                 <button onClick={()=>navigator.clipboard.writeText(result.enhanced)}
@@ -156,11 +156,11 @@ export default function EmotionalIQPage() {
           <MessageSquare size={16} className="text-blue-400"/> Nasıl Çalışır?
         </h2>
         <div className="space-y-2 text-slate-400 text-sm">
-          <p>1. Sistem lead'in adı ve şirketi ile Google News'te haber arar</p>
-          <p>2. Ödül, terfi, yıl dönümü, yeni açılış gibi olayları tespit eder</p>
-          <p>3. Claude AI bu bilgiyle empati cümlesi üretir</p>
-          <p>4. Mesajınızın başına kişisel giriş eklenir</p>
-          <p className="text-pink-400">→ Sonuç: Hiçbir satışçının 1000 kişi için yapamayacağı kişisel dikkat</p>
+          <p>{t('emotional_iq.1_sistem_leadin_adi_ve_si', '1. Sistem lead\'in adı ve şirketi ile Google News\'te haber arar')}</p>
+          <p>{t('emotional_iq.2_odul_terfi_yil_donumu_y', '2. Ödül, terfi, yıl dönümü, yeni açılış gibi olayları tespit eder')}</p>
+          <p>{t('emotional_iq.3_claude_ai_bu_bilgiyle_e', '3. Claude AI bu bilgiyle empati cümlesi üretir')}</p>
+          <p>{t('emotional_iq.4_mesajinizin_basina_kisi', '4. Mesajınızın başına kişisel giriş eklenir')}</p>
+          <p className="text-pink-400">{t('emotional_iq.sonuc_hicbir_satiscinin_1', '→ Sonuç: Hiçbir satışçının 1000 kişi için yapamayacağı kişisel dikkat')}</p>
         </div>
       </div>
     </div>

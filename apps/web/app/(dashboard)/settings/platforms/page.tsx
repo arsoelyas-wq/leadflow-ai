@@ -140,8 +140,8 @@ export default function PlatformsPage() {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>
         <div>
-          <h1 style={{ color:'#fff', fontSize:22, fontWeight:800, margin:'0 0 5px' }}>Ülke & Platform Ayarları</h1>
-          <p style={{ color:'#475569', fontSize:13, margin:0 }}>Aktif ülkenizi seçin — sistem o ülkeye özel kaynaklarla çalışır</p>
+          <h1 style={{ color:'#fff', fontSize:22, fontWeight:800, margin:'0 0 5px' }}>{t('settings.ulke_platform_ayarlari', 'Ülke & Platform Ayarları')}</h1>
+          <p style={{ color:'#475569', fontSize:13, margin:0 }}>{t('settings.aktif_ulkenizi_secin_sist', 'Aktif ülkenizi seçin — sistem o ülkeye özel kaynaklarla çalışır')}</p>
         </div>
         <button onClick={loadAll} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:10, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', color:'#64748b', fontSize:12, cursor:'pointer' }}>
           <RefreshCw size={12} style={{ animation:loading?'pl-spin 1s linear infinite':'none' }}/> Yenile
@@ -160,7 +160,7 @@ export default function PlatformsPage() {
           <div style={{ display:'flex', alignItems:'center', gap:16 }}>
             {currentCountry && <FlagImg code={currentCountry.code || currentCountry.country_code || 'TR'} size={44} />}
             <div>
-              <p style={{ color:'#64748b', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', margin:'0 0 4px' }}>Aktif Ülke</p>
+              <p style={{ color:'#64748b', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', margin:'0 0 4px' }}>{t('settings.aktif_ulke', 'Aktif Ülke')}</p>
               <h2 style={{ color:'#fff', fontSize:20, fontWeight:800, margin:'0 0 3px' }}>
                 {loading ? '...' : currentCountry?.name || 'Türkiye'}
               </h2>
@@ -173,7 +173,7 @@ export default function PlatformsPage() {
           </div>
           <button onClick={() => setShowCountryPicker(!showCountryPicker)}
             style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 20px', borderRadius:11, border:'1px solid rgba(59,130,246,0.3)', background:'rgba(59,130,246,0.1)', color:'#93c5fd', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            <Globe2 size={15} /> Ülke Değiştir <ChevronDown size={13} style={{ transform:showCountryPicker?'rotate(180deg)':'none', transition:'transform 0.2s' }}/>
+            <Globe2 size={15} />{t('settings.ulke_degistir', 'Ülke Değiştir')}<ChevronDown size={13} style={{ transform:showCountryPicker?'rotate(180deg)':'none', transition:'transform 0.2s' }}/>
           </button>
         </div>
 
@@ -189,7 +189,7 @@ export default function PlatformsPage() {
                 </button>
               ))}
               <input value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
-                placeholder="Ülke ara..." style={{ ...inp, padding:'5px 12px', fontSize:12, marginLeft:'auto', width:160 }}/>
+                placeholder={t('settings.ulke_ara', 'Ülke ara...')} style={{ ...inp, padding:'5px 12px', fontSize:12, marginLeft:'auto', width:160 }}/>
             </div>
 
             {/* Country grid */}
@@ -236,9 +236,9 @@ export default function PlatformsPage() {
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
           <Globe size={15} color="#64748b"/>
           <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>Global Platformlar</h3>
-          <span style={{ background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.2)', color:'#34d399', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>Her ülkede aktif</span>
+          <span style={{ background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.2)', color:'#34d399', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>{t('settings.her_ulkede_aktif', 'Her ülkede aktif')}</span>
           <Lock size={12} color="#334155" style={{ marginLeft:4 }}/>
-          <span style={{ color:'#334155', fontSize:11 }}>Kapatılamaz</span>
+          <span style={{ color:'#334155', fontSize:11 }}>{t('settings.kapatilamaz', 'Kapatılamaz')}</span>
         </div>
         {loading ? (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
@@ -282,7 +282,7 @@ export default function PlatformsPage() {
         ) : localPlatforms.length === 0 ? (
           <div style={{ textAlign:'center', padding:'32px 0', color:'#334155' }}>
             <Globe size={28} style={{ margin:'0 auto 10px', display:'block' }}/>
-            <p style={{ fontSize:13, margin:0 }}>Bu ülkeye özel platform bulunamadı</p>
+            <p style={{ fontSize:13, margin:0 }}>{t('settings.bu_ulkeye_ozel_platform_b', 'Bu ülkeye özel platform bulunamadı')}</p>
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>

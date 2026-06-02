@@ -439,7 +439,7 @@ export default function LeadDetailPage() {
 
           {/* İletişim Bilgileri */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <h2 className="text-white font-semibold mb-4 text-sm">İletişim Bilgileri</h2>
+            <h2 className="text-white font-semibold mb-4 text-sm">{t('leads.iletisim_bilgileri', 'İletişim Bilgileri')}</h2>
             <div className="space-y-3">
               {lead.contact_name && (
                 <Row icon="👤" label="Yetkili" value={lead.contact_name} />
@@ -527,7 +527,7 @@ export default function LeadDetailPage() {
                     </div>
                     {scoring.estimatedValue && (
                       <p className="text-slate-400 text-xs mt-1.5 flex items-center gap-1">
-                        <DollarSign size={10} /> Tahmini değer: <span className="text-white capitalize">{scoring.estimatedValue}</span>
+                        <DollarSign size={10} />{t('leads.tahmini_deger', 'Tahmini değer:')}<span className="text-white capitalize">{scoring.estimatedValue}</span>
                       </p>
                     )}
                   </div>
@@ -656,7 +656,7 @@ export default function LeadDetailPage() {
                 {/* Müşteri Şikayetleri */}
                 {competitorData.analysis?.customerComplaints?.length > 0 && (
                   <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-                    <h3 className="text-amber-400 text-xs font-semibold mb-2">⚠️ Müşteri Şikayetleri</h3>
+                    <h3 className="text-amber-400 text-xs font-semibold mb-2">{t('leads.musteri_sikayetleri', '⚠️ Müşteri Şikayetleri')}</h3>
                     {competitorData.analysis.customerComplaints.map((c: string, i: number) => (
                       <p key={i} className="text-slate-300 text-xs">• {c}</p>
                     ))}
@@ -668,7 +668,7 @@ export default function LeadDetailPage() {
                   {competitorData.analysis?.suggestedWhatsApp && (
                     <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-green-400 text-xs font-semibold">💬 Önerilen WhatsApp</h3>
+                        <h3 className="text-green-400 text-xs font-semibold">{t('leads.onerilen_whatsapp', '💬 Önerilen WhatsApp')}</h3>
                         <button onClick={() => copyText(competitorData.analysis.suggestedWhatsApp, 'wa')}
                           className="text-slate-500 hover:text-white transition">
                           {copied === 'wa' ? <CheckCircle size={11} className="text-emerald-400" /> : <Copy size={11} />}
@@ -710,12 +710,12 @@ export default function LeadDetailPage() {
             >
               <h2 className="text-white font-semibold text-sm flex items-center gap-2">
                 <Swords size={15} className="text-red-400" /> AI Savaş Kartı
-                <span className="text-xs font-normal text-slate-500">Satış koçu</span>
+                <span className="text-xs font-normal text-slate-500">{t('leads.satis_kocu', 'Satış koçu')}</span>
               </h2>
               <div className="flex items-center gap-2">
                 {bcLoading && <RefreshCw size={13} className="animate-spin text-red-400" />}
                 {!battlecard && !bcLoading && (
-                  <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg">Oluştur</span>
+                  <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg">{t('leads.olustur', 'Oluştur')}</span>
                 )}
                 {battlecard && (bcExpanded ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />)}
               </div>
@@ -724,7 +724,7 @@ export default function LeadDetailPage() {
             {bcExpanded && bcLoading && (
               <div className="px-5 pb-5 text-center py-8">
                 <Swords size={20} className="text-red-400 mx-auto mb-2 animate-pulse" />
-                <p className="text-slate-400 text-sm">AI savaş kartı hazırlanıyor...</p>
+                <p className="text-slate-400 text-sm">{t('leads.ai_savas_karti_hazirlaniy', 'AI savaş kartı hazırlanıyor...')}</p>
               </div>
             )}
 
@@ -734,7 +734,7 @@ export default function LeadDetailPage() {
                 {battlecard.openingLine && (
                   <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-blue-400 text-xs font-semibold">💬 Açılış Cümlesi</h3>
+                      <h3 className="text-blue-400 text-xs font-semibold">{t('leads.acilis_cumlesi', '💬 Açılış Cümlesi')}</h3>
                       <button onClick={() => copyText(battlecard.openingLine!, 'bc_open')}
                         className="text-slate-500 hover:text-white transition">
                         {copied === 'bc_open' ? <CheckCircle size={11} className="text-emerald-400" /> : <Copy size={11} />}
@@ -748,7 +748,7 @@ export default function LeadDetailPage() {
                   {/* Acı Noktaları */}
                   {battlecard.painPoints?.length && (
                     <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3">
-                      <h3 className="text-red-400 text-xs font-semibold mb-2">🎯 Acı Noktaları</h3>
+                      <h3 className="text-red-400 text-xs font-semibold mb-2">{t('leads.aci_noktalari', '🎯 Acı Noktaları')}</h3>
                       {battlecard.painPoints.map((p, i) => (
                         <p key={i} className="text-slate-300 text-xs">• {p}</p>
                       ))}
@@ -757,7 +757,7 @@ export default function LeadDetailPage() {
                   {/* Değer Önerileri */}
                   {battlecard.valueProps?.length && (
                     <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
-                      <h3 className="text-emerald-400 text-xs font-semibold mb-2">✅ Güçlü Argümanlar</h3>
+                      <h3 className="text-emerald-400 text-xs font-semibold mb-2">{t('leads.guclu_argumanlar', '✅ Güçlü Argümanlar')}</h3>
                       {battlecard.valueProps.map((v, i) => (
                         <p key={i} className="text-slate-300 text-xs">• {v}</p>
                       ))}
@@ -768,7 +768,7 @@ export default function LeadDetailPage() {
                 {/* İtiraz Yönetimi */}
                 {battlecard.objections?.length && (
                   <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
-                    <h3 className="text-yellow-400 text-xs font-semibold mb-2">⚡ İtiraz → Karşı Cevap</h3>
+                    <h3 className="text-yellow-400 text-xs font-semibold mb-2">{t('leads.itiraz_karsi_cevap', '⚡ İtiraz → Karşı Cevap')}</h3>
                     <div className="space-y-2">
                       {battlecard.objections.map((o, i) => (
                         <div key={i} className="text-xs">
@@ -784,7 +784,7 @@ export default function LeadDetailPage() {
                   {/* Kapanış */}
                   {battlecard.closingAsk && (
                     <div className="flex-1 bg-violet-500/5 border border-violet-500/20 rounded-xl p-3">
-                      <h3 className="text-violet-400 text-xs font-semibold mb-1">🔒 Kapanış Sorusu</h3>
+                      <h3 className="text-violet-400 text-xs font-semibold mb-1">{t('leads.kapanis_sorusu', '🔒 Kapanış Sorusu')}</h3>
                       <p className="text-slate-300 text-xs">{battlecard.closingAsk}</p>
                     </div>
                   )}
@@ -858,7 +858,7 @@ export default function LeadDetailPage() {
                   <div className="w-6 h-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"/>
                   <div>
                     <p className="text-indigo-300 text-sm font-medium">Website analiz ediliyor…</p>
-                    <p className="text-slate-500 text-xs mt-0.5">Screenshot → Claude Vision → Kişisel mesaj</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{t('leads.screenshot_claude_vision', 'Screenshot → Claude Vision → Kişisel mesaj')}</p>
                   </div>
                 </div>
               </div>
@@ -890,7 +890,7 @@ export default function LeadDetailPage() {
                   )}
                   {visionData.productService && (
                     <div className="bg-slate-800/60 rounded-xl p-3">
-                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Ürün/Hizmet</p>
+                      <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">{t('leads.urunhizmet', 'Ürün/Hizmet')}</p>
                       <p className="text-slate-200 text-xs leading-relaxed">{visionData.productService}</p>
                     </div>
                   )}
@@ -899,7 +899,7 @@ export default function LeadDetailPage() {
                 {/* Pain points */}
                 {visionData.painPoints?.length > 0 && (
                   <div className="bg-red-500/5 border border-red-500/15 rounded-xl p-3">
-                    <p className="text-[10px] text-red-400 font-semibold uppercase tracking-wider mb-2">Olası Sorunlar</p>
+                    <p className="text-[10px] text-red-400 font-semibold uppercase tracking-wider mb-2">{t('leads.olasi_sorunlar', 'Olası Sorunlar')}</p>
                     {visionData.painPoints.map((p: string, i: number) => (
                       <p key={i} className="text-slate-300 text-xs mb-1">• {p}</p>
                     ))}
@@ -909,7 +909,7 @@ export default function LeadDetailPage() {
                 {/* Icebreaker */}
                 {visionData.icebreaker && (
                   <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-3">
-                    <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider mb-1.5">Buz Kırıcı</p>
+                    <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider mb-1.5">{t('leads.buz_kirici', 'Buz Kırıcı')}</p>
                     <p className="text-slate-200 text-xs italic leading-relaxed">"{visionData.icebreaker}"</p>
                   </div>
                 )}
@@ -928,7 +928,7 @@ export default function LeadDetailPage() {
                           setTimeout(() => setVisionCopied(false), 2000)
                         }}
                         className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg transition bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400">
-                        {visionCopied ? <><CheckCircle size={10}/> Kopyalandı</> : <><Copy size={10}/> Kopyala</>}
+                        {visionCopied ? <><CheckCircle size={10}/>{t('leads.kopyalandi', 'Kopyalandı')}</> : <><Copy size={10}/> Kopyala</>}
                       </button>
                     </div>
                     <p className="text-slate-200 text-xs leading-relaxed">{visionData.personalizedMessage}</p>
@@ -956,8 +956,8 @@ export default function LeadDetailPage() {
             ) : activities.length === 0 ? (
               <div className="text-center py-6">
                 <Activity size={28} className="text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-500 text-xs">Henüz aktivite kaydı yok</p>
-                <p className="text-slate-600 text-xs mt-1">Email gönder, ara veya WhatsApp mesajı at — otomatik kaydedilir</p>
+                <p className="text-slate-500 text-xs">{t('leads.henuz_aktivite_kaydi_yok', 'Henüz aktivite kaydı yok')}</p>
+                <p className="text-slate-600 text-xs mt-1">{t('leads.email_gonder_ara_veya_wha', 'Email gönder, ara veya WhatsApp mesajı at — otomatik kaydedilir')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1006,7 +1006,7 @@ export default function LeadDetailPage() {
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-none" />
             ) : (
               <p className="text-slate-300 text-sm leading-relaxed">
-                {lead.notes || <span className="text-slate-500 italic">Not eklenmemiş.</span>}
+                {lead.notes || <span className="text-slate-500 italic">{t('leads.not_eklenmemis', 'Not eklenmemiş.')}</span>}
               </p>
             )}
           </div>
@@ -1030,7 +1030,7 @@ export default function LeadDetailPage() {
                 <div className={`h-1.5 rounded-full ${(lead.hot_score || 0) >= 50 ? 'bg-red-500' : 'bg-amber-500'}`}
                   style={{ width: `${Math.min((lead.hot_score || 0), 100)}%` }} />
               </div>
-              <p className="text-xs text-slate-500 mt-1.5">Son 7 gün aktivite bazlı</p>
+              <p className="text-xs text-slate-500 mt-1.5">{t('leads.son_7_gun_aktivite_bazli', 'Son 7 gün aktivite bazlı')}</p>
             </div>
           )}
 
@@ -1068,7 +1068,7 @@ export default function LeadDetailPage() {
               </div>
               {lead.company_size && (
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-slate-500">Çalışan</span>
+                  <span className="text-slate-500">{t('leads.calisan', 'Çalışan')}</span>
                   <span className="text-white font-medium">~{lead.company_size}</span>
                 </div>
               )}
@@ -1089,7 +1089,7 @@ export default function LeadDetailPage() {
           {/* Puan + Grade */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-slate-400 text-xs">AI Puanı</h3>
+              <h3 className="text-slate-400 text-xs">{t('leads.ai_puani', 'AI Puanı')}</h3>
               {lead.ai_grade && (
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${GRADE_STYLE[lead.ai_grade]}`}>
                   {lead.ai_grade} Sınıfı
@@ -1115,7 +1115,7 @@ export default function LeadDetailPage() {
 
           {/* Durum */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <h3 className="text-slate-400 text-xs mb-3">Durumu Güncelle</h3>
+            <h3 className="text-slate-400 text-xs mb-3">{t('leads.durumu_guncelle', 'Durumu Güncelle')}</h3>
             <div className="space-y-1.5">
               {STATUS_OPTS.map(opt => (
                 <button key={opt.value} onClick={() => updateStatus(opt.value)}
@@ -1131,7 +1131,7 @@ export default function LeadDetailPage() {
 
           {/* Hızlı Aksiyonlar */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-            <h3 className="text-slate-400 text-xs mb-3">Hızlı Aksiyon</h3>
+            <h3 className="text-slate-400 text-xs mb-3">{t('leads.hizli_aksiyon', 'Hızlı Aksiyon')}</h3>
             <div className="space-y-2">
               {lead.phone && (
                 <>
@@ -1183,7 +1183,7 @@ export default function LeadDetailPage() {
 
               {portalUrl && (
                 <div className="mt-2 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                  <p className="text-orange-300 text-xs font-medium mb-1">📋 Kopyalandı!</p>
+                  <p className="text-orange-300 text-xs font-medium mb-1">{t('leads.kopyalandi', '📋 Kopyalandı!')}</p>
                   <code className="text-white text-xs break-all">{portalUrl}</code>
                 </div>
               )}
@@ -1202,7 +1202,7 @@ export default function LeadDetailPage() {
             {connections.length === 0 ? (
               <p className="text-slate-600 text-xs text-center py-3">
                 Henüz bağlantı yok.<br />
-                <Link href="/network" className="text-blue-500 hover:text-blue-400">Ağ haritasından ekle →</Link>
+                <Link href="/network" className="text-blue-500 hover:text-blue-400">{t('leads.ag_haritasindan_ekle', 'Ağ haritasından ekle →')}</Link>
               </p>
             ) : (
               <div className="space-y-2">
@@ -1231,11 +1231,11 @@ export default function LeadDetailPage() {
               <div className="grid grid-cols-2 gap-2 text-center">
                 <div className="bg-slate-900/50 rounded-lg p-2">
                   <div className="text-lg font-bold text-blue-400">%{community.replyRate}</div>
-                  <div className="text-xs text-slate-500">Cevap oranı</div>
+                  <div className="text-xs text-slate-500">{t('leads.cevap_orani', 'Cevap oranı')}</div>
                 </div>
                 <div className="bg-slate-900/50 rounded-lg p-2">
                   <div className="text-lg font-bold text-emerald-400">%{community.winRate}</div>
-                  <div className="text-xs text-slate-500">Kazanma oranı</div>
+                  <div className="text-xs text-slate-500">{t('leads.kazanma_orani', 'Kazanma oranı')}</div>
                 </div>
               </div>
               <div className="flex justify-between items-center mt-2 text-xs">

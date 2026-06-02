@@ -137,8 +137,8 @@ export default function DeveloperPage() {
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <KeyVault size={88} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>API Erişimi</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Kendi uygulamalarınızı LeadFlow AI ile entegre edin — güvenli, kapsamlı</p>
+            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('developer.api_erisimi', 'API Erişimi')}</h1>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('developer.kendi_uygulamalarinizi_le', 'Kendi uygulamalarınızı LeadFlow AI ile entegre edin — güvenli, kapsamlı')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {[{l:'Toplam İstek',v:usage?.totalRequests||0,c:'#06b6d4'},{l:'Kalan Limit',v:usage?.remaining||0,c:'#10b981'},{l:'Aktif Key',v:keys.filter(k=>k.is_active).length,c:'#8b5cf6'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -169,11 +169,11 @@ export default function DeveloperPage() {
           <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(6,182,212,0.15)', borderRadius:18, padding:22 }}>
             <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>➕ Yeni API Key</h3>
             <div style={{ marginBottom:14 }}>
-              <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Key Adı</label>
-              <input value={newKeyName} onChange={e=>setNewKeyName(e.target.value)} placeholder="örn: Webhook Entegrasyonu" style={inputStyle} />
+              <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('developer.key_adi', 'Key Adı')}</label>
+              <input value={newKeyName} onChange={e=>setNewKeyName(e.target.value)} placeholder={t('developer.orn_webhook_entegrasyonu', 'örn: Webhook Entegrasyonu')} style={inputStyle} />
             </div>
             <div style={{ marginBottom:16 }}>
-              <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:8 }}>İzinler (Scopes)</label>
+              <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:8 }}>{t('developer.izinler_scopes', 'İzinler (Scopes)')}</label>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
                 {SCOPE_OPTIONS.map(scope => (
                   <label key={scope.id} onClick={()=>toggleScope(scope.id)}
@@ -192,7 +192,7 @@ export default function DeveloperPage() {
 
           {newKey && (
             <div style={{ background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:14, padding:18 }}>
-              <p style={{ color:'#fbbf24', fontWeight:700, fontSize:13, margin:'0 0 8px' }}>⚠️ Bu key sadece bir kez gösterilir — kaydedin!</p>
+              <p style={{ color:'#fbbf24', fontWeight:700, fontSize:13, margin:'0 0 8px' }}>{t('developer.bu_key_sadece_bir_kez_gos', '⚠️ Bu key sadece bir kez gösterilir — kaydedin!')}</p>
               <div style={{ display:'flex', gap:8 }}>
                 <code style={{ flex:1, background:'#060a1c', borderRadius:8, padding:'10px 14px', color:'#34d399', fontSize:12, fontFamily:'monospace', wordBreak:'break-all' }}>{newKey}</code>
                 <button onClick={()=>copy(newKey)} style={{ padding:'10px 14px', borderRadius:8, border:'none', background:'rgba(6,182,212,0.15)', color:'#22d3ee', cursor:'pointer' }}>
@@ -218,7 +218,7 @@ export default function DeveloperPage() {
                 <button onClick={()=>deleteKey(key.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#f87171', cursor:'pointer' }}><Trash2 size={13} /></button>
               </div>
             ))}
-            {keys.length === 0 && !loading && <p style={{ color:'#334155', textAlign:'center', padding:24, fontSize:13 }}>Henüz API key yok</p>}
+            {keys.length === 0 && !loading && <p style={{ color:'#334155', textAlign:'center', padding:24, fontSize:13 }}>{t('developer.henuz_api_key_yok', 'Henüz API key yok')}</p>}
           </div>
         </div>
       )}
@@ -248,7 +248,7 @@ export default function DeveloperPage() {
 
       {tab === 'usage' && (
         <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(6,182,212,0.12)', borderRadius:18, padding:22 }}>
-          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 20px' }}>📊 API Kullanım İstatistikleri</h3>
+          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 20px' }}>{t('developer.api_kullanim_istatistikle', '📊 API Kullanım İstatistikleri')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
             {[{l:'Toplam İstek',v:usage?.totalRequests||0,c:'#06b6d4'},{l:'Başarılı',v:Math.round((usage?.totalRequests||0)*0.97),c:'#10b981'},{l:'Hatalı',v:Math.round((usage?.totalRequests||0)*0.03),c:'#ef4444'}].map(m => (
               <div key={m.l} style={{ textAlign:'center', padding:'16px', background:`${m.c}08`, border:`1px solid ${m.c}18`, borderRadius:12 }}>
@@ -258,7 +258,7 @@ export default function DeveloperPage() {
             ))}
           </div>
           <div style={{ padding:'14px 16px', background:'rgba(6,182,212,0.06)', border:'1px solid rgba(6,182,212,0.15)', borderRadius:10 }}>
-            <p style={{ color:'#22d3ee', fontSize:12, margin:0 }}>📍 Rate limit: dakikada 60 istek · Limit aşılırsa 429 Too Many Requests döner</p>
+            <p style={{ color:'#22d3ee', fontSize:12, margin:0 }}>{t('developer.rate_limit_dakikada_60_is', '📍 Rate limit: dakikada 60 istek · Limit aşılırsa 429 Too Many Requests döner')}</p>
           </div>
         </div>
       )}

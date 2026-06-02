@@ -56,7 +56,7 @@ export default function CreditsPage() {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Zap size={24} className="text-yellow-400"/> Kredi Sistemi
         </h1>
-        <p className="text-slate-400 mt-1 text-sm">Kullanım bazlı fiyatlandırma — ne kadar kullanırsanız o kadar ödersiniz</p>
+        <p className="text-slate-400 mt-1 text-sm">{t('credits.kullanim_bazli_fiyatlandi', 'Kullanım bazlı fiyatlandırma — ne kadar kullanırsanız o kadar ödersiniz')}</p>
       </div>
 
       {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type==='success'?'bg-emerald-500/10 border-emerald-500/30 text-emerald-300':'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
@@ -71,7 +71,7 @@ export default function CreditsPage() {
               <p className="text-slate-400 text-sm mt-1">/ {balance.total?.toLocaleString()} toplam • Plan: <span className="text-blue-400 capitalize">{balance.plan}</span></p>
             </div>
             <div className="text-right">
-              <p className="text-slate-400 text-sm">Kullanım</p>
+              <p className="text-slate-400 text-sm">{t('credits.kullanim', 'Kullanım')}</p>
               <p className="text-2xl font-bold text-yellow-400">%{balance.usagePercent}</p>
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function CreditsPage() {
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
             <p className="text-lg font-bold text-white capitalize">{stats.topAction || '-'}</p>
-            <p className="text-slate-400 text-xs mt-1">En Çok Kullanılan</p>
+            <p className="text-slate-400 text-xs mt-1">{t('credits.en_cok_kullanilan', 'En Çok Kullanılan')}</p>
           </div>
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-emerald-400">{balance?.remaining || 0}</p>

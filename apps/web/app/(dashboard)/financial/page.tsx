@@ -131,8 +131,8 @@ export default function FinancialPage() {
           <div style={{ display:'flex', alignItems:'center', gap:24 }}>
             <NeuralConstellation size={95} analyzing={analyzing} metrics={metrics} />
             <div>
-              <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Büyüme Zekası</h1>
-              <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>6 aylık trend, churn tespiti, AI büyüme önerileri</p>
+              <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('financial.buyume_zekasi', 'Büyüme Zekası')}</h1>
+              <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('financial.6_aylik_trend_churn_tespi', '6 aylık trend, churn tespiti, AI büyüme önerileri')}</p>
               <div style={{ display:'flex', gap:8 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, background:growth>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border:`1px solid ${growth>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:20, padding:'4px 12px' }}>
                   {growth >= 0 ? <TrendingUp size={13} style={{ color:'#34d399' }} /> : <TrendingDown size={13} style={{ color:'#f87171' }} />}
@@ -176,7 +176,7 @@ export default function FinancialPage() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
             {/* Source ROI — real % */}
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 Kaynak ROI (Gerçek %)</h3>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.kaynak_roi_gercek', '📊 Kaynak ROI (Gerçek %)')}</h3>
               {sourcePerf.slice(0,5).map((s: any, i: number) => {
                 const colors = ['#10b981','#06b6d4','#8b5cf6','#f59e0b','#ec4899']
                 return (
@@ -198,7 +198,7 @@ export default function FinancialPage() {
 
             {/* Monthly target */}
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>🎯 Aylık Lead Hedefi</h3>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.aylik_lead_hedefi', '🎯 Aylık Lead Hedefi')}</h3>
               {(() => {
                 const current = data?.summary?.last30Leads||0
                 const pct = Math.min(100, Math.round((current/monthlyTarget)*100))
@@ -231,7 +231,7 @@ export default function FinancialPage() {
           {/* AI Recommendations */}
           {aiAdvice.length > 0 && (
             <div style={{ background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.06))', border:'1px solid rgba(124,58,237,0.2)', borderRadius:16, padding:20 }}>
-              <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 12px', textTransform:'uppercase', letterSpacing:1 }}>🤖 AI Önerileri</p>
+              <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 12px', textTransform:'uppercase', letterSpacing:1 }}>{t('financial.ai_onerileri', '🤖 AI Önerileri')}</p>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {aiAdvice.slice(0,3).map((rec: string, i: number) => (
                   <div key={i} style={{ display:'flex', gap:8, padding:'10px 12px', background:'rgba(0,0,0,0.2)', borderRadius:10 }}>

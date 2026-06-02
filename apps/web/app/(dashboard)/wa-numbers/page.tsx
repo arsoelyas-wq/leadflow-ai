@@ -141,7 +141,7 @@ export default function WANumbersPage() {
           <PhoneConstellation size={90} connected={connected} total={numbers.length} />
           <div style={{ flex: 1 }}>
             <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>WhatsApp Numaralar</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Çoklu numara yönetimi — ban riskini dağıt, kapasiteyi artır</p>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('wa_numbers.coklu_numara_yonetimi_ban', 'Çoklu numara yönetimi — ban riskini dağıt, kapasiteyi artır')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[{l:'Toplam',v:numbers.length,c:'#94a3b8'},{l:'Bağlı',v:connected,c:'#22c55e'},{l:'Günlük Kapasite',v:stats?.totalCapacity||0,c:'#06b6d4'},{l:'Bugün Gönderilen',v:stats?.usedToday||0,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -161,22 +161,22 @@ export default function WANumbersPage() {
       {/* Add Form */}
       {showAdd && (
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 18, padding: 22, marginBottom: 20 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>➕ Yeni Numara Bağla</h3>
+          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>{t('wa_numbers.yeni_numara_bagla', '➕ Yeni Numara Bağla')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>İsim (opsiyonel)</label>
-              <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="örn: Satış Hattı 1" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('wa_numbers.isim_opsiyonel', 'İsim (opsiyonel)')}</label>
+              <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={t('wa_numbers.orn_satis_hatti_1', 'örn: Satış Hattı 1')} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Günlük Mesaj Limiti</label>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('wa_numbers.gunluk_mesaj_limiti', 'Günlük Mesaj Limiti')}</label>
               <input type="number" value={dailyLimit} onChange={e => setDailyLimit(Number(e.target.value))} min={10} max={500} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
             </div>
           </div>
           {qrCode ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: 14, border: '1px solid rgba(34,197,94,0.15)' }}>
-              <p style={{ color: '#fff', fontWeight: 700, margin: 0 }}>📱 WhatsApp ile QR'ı okutun</p>
+              <p style={{ color: '#fff', fontWeight: 700, margin: 0 }}>{t('wa_numbers.whatsapp_ile_qri_okutun', '📱 WhatsApp ile QR\'ı okutun')}</p>
               <img src={qrCode} alt="QR" style={{ width: 200, height: 200, borderRadius: 12 }} />
-              <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Bağlantı bekleniyor...</p>
+              <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>{t('wa_numbers.baglanti_bekleniyor', 'Bağlantı bekleniyor...')}</p>
             </div>
           ) : (
             <button onClick={connectNumber} disabled={connecting}
@@ -194,7 +194,7 @@ export default function WANumbersPage() {
       ) : numbers.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 48, color: '#475569' }}>
           <p style={{ fontSize: 40, margin: '0 0 12px' }}>📱</p>
-          <p style={{ fontSize: 14, margin: 0 }}>Henüz numara yok — anti-ban için birden fazla numara ekleyin</p>
+          <p style={{ fontSize: 14, margin: 0 }}>{t('wa_numbers.henuz_numara_yok_antiban', 'Henüz numara yok — anti-ban için birden fazla numara ekleyin')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -225,7 +225,7 @@ export default function WANumbersPage() {
                   {/* Usage bar */}
                   <div style={{ width: 120, flexShrink: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: '#475569', fontSize: 10 }}>Bugün</span>
+                      <span style={{ color: '#475569', fontSize: 10 }}>{t('wa_numbers.bugun', 'Bugün')}</span>
                       <span style={{ color: healthColor, fontSize: 10, fontWeight: 700 }}>{num.sent_today || 0}/{num.daily_limit || 100}</span>
                     </div>
                     <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
@@ -256,7 +256,7 @@ export default function WANumbersPage() {
                 {/* Edit limit */}
                 {editId === num.id && (
                   <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ color: '#64748b', fontSize: 12 }}>Günlük limit:</span>
+                    <span style={{ color: '#64748b', fontSize: 12 }}>{t('wa_numbers.gunluk_limit', 'Günlük limit:')}</span>
                     <input type="number" defaultValue={num.daily_limit} id={`lim-${num.id}`} min={10} max={500}
                       style={{ width: 80, ...inputStyle }} />
                     <button onClick={() => { const el = document.getElementById(`lim-${num.id}`) as HTMLInputElement; updateLimit(num.id, parseInt(el.value)) }}

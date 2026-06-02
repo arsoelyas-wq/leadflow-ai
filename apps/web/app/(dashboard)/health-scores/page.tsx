@@ -27,7 +27,7 @@ export default function HealthPage() {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Heart size={24} className="text-pink-400" /> Müşteri Başarı Skoru
         </h1>
-        <p className="text-slate-400 mt-1 text-sm">Her lead için sağlık skoru, churn riski ve öneriler</p>
+        <p className="text-slate-400 mt-1 text-sm">{t('health_scores.her_lead_icin_saglik_skor', 'Her lead için sağlık skoru, churn riski ve öneriler')}</p>
       </div>
 
       {/* Summary */}

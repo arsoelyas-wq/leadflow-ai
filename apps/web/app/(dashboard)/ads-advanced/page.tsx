@@ -122,7 +122,7 @@ export default function AdsAdvancedPage() {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Brain size={24} className="text-purple-400"/> Gelişmiş Reklam Yönetimi
         </h1>
-        <p className="text-slate-400 mt-1 text-sm">AI destekli profesyonel reklam optimizasyonu — Smart Launch, CAPI, ROAS, Bid Yönetimi</p>
+        <p className="text-slate-400 mt-1 text-sm">{t('ads_advanced.ai_destekli_profesyonel_r', 'AI destekli profesyonel reklam optimizasyonu — Smart Launch, CAPI, ROAS, Bid Yönetimi')}</p>
       </div>
 
       {msg && <div className={`px-4 py-3 rounded-xl border text-sm ${msg.type==='success'?'bg-emerald-500/10 border-emerald-500/30 text-emerald-300':'bg-red-500/10 border-red-500/30 text-red-300'}`}>{msg.text}</div>}
@@ -160,8 +160,8 @@ export default function AdsAdvancedPage() {
         {/* 1. Smart Launch */}
         {tab==='smart' && (
           <div className="space-y-4">
-            <h2 className="text-white font-semibold flex items-center gap-2"><Zap size={16} className="text-yellow-400"/> Smart Ad Launch — AI ile Tek Tuşta Reklam</h2>
-            <p className="text-slate-400 text-sm">Ürününüzü yazın — AI hedef kitle, reklam metni ve kampanya ayarlarını otomatik belirler</p>
+            <h2 className="text-white font-semibold flex items-center gap-2"><Zap size={16} className="text-yellow-400"/>{t('ads_advanced.smart_ad_launch_ai_ile_te', 'Smart Ad Launch — AI ile Tek Tuşta Reklam')}</h2>
+            <p className="text-slate-400 text-sm">{t('ads_advanced.urununuzu_yazin_ai_hedef', 'Ürününüzü yazın — AI hedef kitle, reklam metni ve kampanya ayarlarını otomatik belirler')}</p>
             <div className="grid lg:grid-cols-2 gap-4">
               {[
                 {k:'product',l:'Ürün / Hizmet *',p:'Mobilya, Tadilat, Yazılım...'},
@@ -187,7 +187,7 @@ export default function AdsAdvancedPage() {
         {tab==='monitor' && (
           <div className="space-y-4">
             <h2 className="text-white font-semibold flex items-center gap-2"><Eye size={16} className="text-blue-400"/> 7/24 Ad Monitor</h2>
-            <p className="text-slate-400 text-sm">Her 15 dakikada kampanyalarınızı kontrol eder — CTR düşerse, CPM yükselirse anında uyarır</p>
+            <p className="text-slate-400 text-sm">{t('ads_advanced.her_15_dakikada_kampanyal', 'Her 15 dakikada kampanyalarınızı kontrol eder — CTR düşerse, CPM yükselirse anında uyarır')}</p>
             <div className="grid lg:grid-cols-3 gap-3">
               {[
                 {k:'adAccountId',l:'Ad Account ID',p:'act_xxxxxxxxx'},
@@ -208,7 +208,7 @@ export default function AdsAdvancedPage() {
             </button>
             {monitorAlerts.length > 0 && (
               <div className="space-y-2 mt-4">
-                <h3 className="text-white text-sm font-medium">⚠️ Son Uyarılar</h3>
+                <h3 className="text-white text-sm font-medium">{t('ads_advanced.son_uyarilar', '⚠️ Son Uyarılar')}</h3>
                 {monitorAlerts.map((a:any)=>(
                   <div key={a.id} className={`border rounded-xl px-4 py-2.5 text-sm ${a.alert_type==='low_ctr'?'bg-red-500/10 border-red-500/20 text-red-300':'bg-orange-500/10 border-orange-500/20 text-orange-300'}`}>
                     <span className="font-medium">{a.campaign_name}</span> — {a.message}
@@ -223,16 +223,16 @@ export default function AdsAdvancedPage() {
         {tab==='competitor' && (
           <div className="space-y-4">
             <h2 className="text-white font-semibold flex items-center gap-2">🕵️ Competitor Ad Mirroring</h2>
-            <p className="text-slate-400 text-sm">Meta Ad Library'den rakip reklamları çek — AI ile analiz et — kendi stratejini geliştir</p>
+            <p className="text-slate-400 text-sm">{t('ads_advanced.meta_ad_libraryden_rakip', 'Meta Ad Library\'den rakip reklamları çek — AI ile analiz et — kendi stratejini geliştir')}</p>
             <div className="grid lg:grid-cols-2 gap-3">
               <div>
-                <label className="text-slate-400 text-xs mb-1 block">Anahtar Kelime / Rakip İsmi</label>
+                <label className="text-slate-400 text-xs mb-1 block">{t('ads_advanced.anahtar_kelime_rakip_ismi', 'Anahtar Kelime / Rakip İsmi')}</label>
                 <input value={competitorForm.keywords} onChange={e=>setCompetitorForm(p=>({...p,keywords:e.target.value}))}
                   placeholder="mobilya, dekorasyon, tadilat..."
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500"/>
               </div>
               <div>
-                <label className="text-slate-400 text-xs mb-1 block">Ülke</label>
+                <label className="text-slate-400 text-xs mb-1 block">{t('ads_advanced.ulke', 'Ülke')}</label>
                 <select value={competitorForm.country} onChange={e=>setCompetitorForm(p=>({...p,country:e.target.value}))}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
                   {['TR','DE','US','AE','SA'].map(c=><option key={c}>{c}</option>)}
@@ -280,7 +280,7 @@ export default function AdsAdvancedPage() {
         {tab==='roas' && (
           <div className="space-y-4">
             <h2 className="text-white font-semibold flex items-center gap-2"><TrendingUp size={16} className="text-green-400"/> Predictive ROAS Optimizer</h2>
-            <p className="text-slate-400 text-sm">Son 30 günlük verileri analiz eder — AI ile sonraki 30 günün ROAS'ını tahmin eder</p>
+            <p className="text-slate-400 text-sm">{t('ads_advanced.son_30_gunluk_verileri_an', 'Son 30 günlük verileri analiz eder — AI ile sonraki 30 günün ROAS\'ını tahmin eder')}</p>
             <button onClick={predictRoas} disabled={loading}
               className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
               {loading?<RefreshCw size={14} className="animate-spin"/>:<BarChart3 size={14}/>}
@@ -295,15 +295,15 @@ export default function AdsAdvancedPage() {
                   </div>
                   <div className="bg-slate-900 rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-blue-400">%{roasPrediction.confidenceScore}</p>
-                    <p className="text-slate-400 text-xs mt-1">Güven Skoru</p>
+                    <p className="text-slate-400 text-xs mt-1">{t('ads_advanced.guven_skoru', 'Güven Skoru')}</p>
                   </div>
                   <div className="bg-slate-900 rounded-xl p-4 text-center">
                     <p className="text-sm font-bold text-yellow-400">{roasPrediction.budgetRecommendation}</p>
-                    <p className="text-slate-400 text-xs mt-1">Bütçe Önerisi</p>
+                    <p className="text-slate-400 text-xs mt-1">{t('ads_advanced.butce_onerisi', 'Bütçe Önerisi')}</p>
                   </div>
                 </div>
                 <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4">
-                  <p className="text-green-300 text-sm font-medium mb-2">📋 Aksiyon Planı</p>
+                  <p className="text-green-300 text-sm font-medium mb-2">{t('ads_advanced.aksiyon_plani', '📋 Aksiyon Planı')}</p>
                   {roasPrediction.actionPlan?.map((a:string,i:number)=>(
                     <p key={i} className="text-slate-300 text-sm">✓ {a}</p>
                   ))}
@@ -317,7 +317,7 @@ export default function AdsAdvancedPage() {
         {tab==='keywords' && (
           <div className="space-y-4">
             <h2 className="text-white font-semibold flex items-center gap-2"><Search size={16} className="text-blue-400"/> Keyword Intelligence</h2>
-            <p className="text-slate-400 text-sm">Google Ads arama terimlerini analiz eder — negatif liste önerir — boşa harcanan bütçeyi kurtarır</p>
+            <p className="text-slate-400 text-sm">{t('ads_advanced.google_ads_arama_terimler', 'Google Ads arama terimlerini analiz eder — negatif liste önerir — boşa harcanan bütçeyi kurtarır')}</p>
             <button onClick={analyzeKeywords} disabled={loading}
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
               {loading?<RefreshCw size={14} className="animate-spin"/>:<Search size={14}/>}
@@ -350,7 +350,7 @@ export default function AdsAdvancedPage() {
         {tab==='bid' && (
           <div className="space-y-4">
             <h2 className="text-white font-semibold flex items-center gap-2">⚔️ AI Bid-War Sentinel</h2>
-            <p className="text-slate-400 text-sm">Açık artırma verilerini analiz eder — rakipleri tespit eder — teklif stratejisi önerir</p>
+            <p className="text-slate-400 text-sm">{t('ads_advanced.acik_artirma_verilerini_a', 'Açık artırma verilerini analiz eder — rakipleri tespit eder — teklif stratejisi önerir')}</p>
             <button onClick={analyzeBid} disabled={loading}
               className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
               {loading?<RefreshCw size={14} className="animate-spin"/>:<AlertTriangle size={14}/>}
@@ -381,10 +381,10 @@ export default function AdsAdvancedPage() {
         {tab==='retargeting' && (
           <div className="space-y-4">
             <h2 className="text-white font-semibold flex items-center gap-2"><Target size={16} className="text-purple-400"/> Dynamic Retargeting Cycle</h2>
-            <p className="text-slate-400 text-sm">Lead listesini Meta'ya yükle — Custom Audience oluştur — sadece tanıdığın kişilere reklam ver</p>
+            <p className="text-slate-400 text-sm">{t('ads_advanced.lead_listesini_metaya_yuk', 'Lead listesini Meta\'ya yükle — Custom Audience oluştur — sadece tanıdığın kişilere reklam ver')}</p>
             <div className="grid lg:grid-cols-2 gap-3">
               <div>
-                <label className="text-slate-400 text-xs mb-1 block">Kitle Adı</label>
+                <label className="text-slate-400 text-xs mb-1 block">{t('ads_advanced.kitle_adi', 'Kitle Adı')}</label>
                 <input value={retargetForm.audienceName} onChange={e=>setRetargetForm(p=>({...p,audienceName:e.target.value}))}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"/>
               </div>
@@ -392,7 +392,7 @@ export default function AdsAdvancedPage() {
                 <label className="text-slate-400 text-xs mb-1 block">Leadler ({selectedLeads.length} seçili)</label>
                 <div className="flex gap-2">
                   <button onClick={()=>setSelectedLeads(leads.map(l=>l.id))}
-                    className="px-3 py-2 bg-slate-700 text-slate-300 text-xs rounded-lg hover:bg-slate-600">Tümünü Seç</button>
+                    className="px-3 py-2 bg-slate-700 text-slate-300 text-xs rounded-lg hover:bg-slate-600">{t('ads_advanced.tumunu_sec', 'Tümünü Seç')}</button>
                   <button onClick={()=>setSelectedLeads([])}
                     className="px-3 py-2 bg-slate-700 text-slate-300 text-xs rounded-lg hover:bg-slate-600">Temizle</button>
                 </div>

@@ -47,7 +47,7 @@ export default function AffiliatePage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Gift size={24} className="text-pink-400"/> Affiliate Programı
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Referans linki oluşturun — her kayıt için komisyon kazanın</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('affiliate.referans_linki_olusturun', 'Referans linki oluşturun — her kayıt için komisyon kazanın')}</p>
         </div>
         <button onClick={createLink} disabled={creating}
           className="flex items-center gap-2 px-4 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
@@ -77,7 +77,7 @@ export default function AffiliatePage() {
 
       {/* Komisyon Bilgisi */}
       <div className="bg-pink-500/5 border border-pink-500/20 rounded-xl p-5">
-        <h2 className="text-white font-semibold mb-3 flex items-center gap-2"><TrendingUp size={16} className="text-pink-400"/> Komisyon Yapısı</h2>
+        <h2 className="text-white font-semibold mb-3 flex items-center gap-2"><TrendingUp size={16} className="text-pink-400"/>{t('affiliate.komisyon_yapisi', 'Komisyon Yapısı')}</h2>
         <div className="grid grid-cols-3 gap-4">
           {[
             {label:'Kayıt Başına', value:'₺50', desc:'Referansınız kayıt olursa'},
@@ -97,8 +97,8 @@ export default function AffiliatePage() {
       {links.length === 0 ? (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center">
           <Gift size={40} className="text-slate-600 mx-auto mb-2"/>
-          <p className="text-slate-400">Henüz affiliate linkiniz yok</p>
-          <p className="text-slate-500 text-sm mt-1">Yeni Link butonuna tıklayarak oluşturun</p>
+          <p className="text-slate-400">{t('affiliate.henuz_affiliate_linkiniz', 'Henüz affiliate linkiniz yok')}</p>
+          <p className="text-slate-500 text-sm mt-1">{t('affiliate.yeni_link_butonuna_tiklay', 'Yeni Link butonuna tıklayarak oluşturun')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -111,8 +111,8 @@ export default function AffiliatePage() {
                   <code className="text-emerald-400 text-xs bg-slate-900 px-2 py-1 rounded block truncate">{url}</code>
                   <div className="flex gap-4 mt-2 text-xs text-slate-400">
                     <span>Kod: <span className="text-white">{link.code}</span></span>
-                    <span>Tıklama: <span className="text-blue-400">{link.clicks}</span></span>
-                    <span>Dönüşüm: <span className="text-emerald-400">{link.conversions}</span></span>
+                    <span>{t('affiliate.tiklama', 'Tıklama:')}<span className="text-blue-400">{link.clicks}</span></span>
+                    <span>{t('affiliate.donusum', 'Dönüşüm:')}<span className="text-emerald-400">{link.conversions}</span></span>
                   </div>
                 </div>
                 <div className="flex gap-2">

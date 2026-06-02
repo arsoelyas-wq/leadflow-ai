@@ -342,13 +342,13 @@ export default function GoogleAdsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Google Ads</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Arama kampanyaları ve lead otomasyonu</p>
+            <p className="text-slate-400 text-sm mt-0.5">{t('google_ads.arama_kampanyalari_ve_lea', 'Arama kampanyaları ve lead otomasyonu')}</p>
           </div>
           <div className="flex items-center gap-3">
             {connected ? (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/25 rounded-lg">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="text-emerald-400 text-xs font-medium">Google Bağlı</span>
+                <span className="text-emerald-400 text-xs font-medium">{t('google_ads.google_bagli', 'Google Bağlı')}</span>
               </div>
             ) : (
               <button onClick={connectGoogle} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition">
@@ -379,7 +379,7 @@ export default function GoogleAdsPage() {
               <Sparkles className="w-6 h-6 text-amber-400" />
             </div>
             <h3 className="text-white font-semibold text-lg">AI Kampanya</h3>
-            <p className="text-slate-400 text-sm mt-1 leading-relaxed">Siteni veya işletmeni anlat, Google kampanyası oluştursun</p>
+            <p className="text-slate-400 text-sm mt-1 leading-relaxed">{t('google_ads.siteni_veya_isletmeni_anl', 'Siteni veya işletmeni anlat, Google kampanyası oluştursun')}</p>
             <div className="mt-4 flex items-center gap-1 text-amber-400 text-xs font-medium">
               Oluştur <ChevronRight className="w-3.5 h-3.5" />
             </div>
@@ -393,7 +393,7 @@ export default function GoogleAdsPage() {
             <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition">
               {extracting ? <RefreshCw className="w-6 h-6 text-purple-400 animate-spin" /> : <Users className="w-6 h-6 text-purple-400" />}
             </div>
-            <h3 className="text-white font-semibold text-lg">Lead Çek</h3>
+            <h3 className="text-white font-semibold text-lg">{t('google_ads.lead_cek', 'Lead Çek')}</h3>
             <p className="text-slate-400 text-sm mt-1 leading-relaxed">
               {extracting ? "Google Ads'dan lead'ler çekiliyor..." : "Kampanyalardan lead'leri otomatik al"}
             </p>
@@ -412,7 +412,7 @@ export default function GoogleAdsPage() {
               <TrendingUp className="w-6 h-6 text-emerald-400" />
             </div>
             <h3 className="text-white font-semibold text-lg">AI Optimizasyon</h3>
-            <p className="text-slate-400 text-sm mt-1 leading-relaxed">Kalite Skoru analizi ve anahtar kelime önerileri</p>
+            <p className="text-slate-400 text-sm mt-1 leading-relaxed">{t('google_ads.kalite_skoru_analizi_ve_a', 'Kalite Skoru analizi ve anahtar kelime önerileri')}</p>
             <div className="mt-4 flex items-center gap-1 text-emerald-400 text-xs font-medium">
               {showQs ? 'Gizle' : 'Analiz Et'} <ChevronRight className="w-3.5 h-3.5" />
             </div>
@@ -427,7 +427,7 @@ export default function GoogleAdsPage() {
               <span className="text-sm font-medium text-white">Kalite Skoru (Quality Score)</span>
             </div>
             {qsData.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-6">Kalite skoru verisi bulunamadı. Aktif kampanya gerekli.</p>
+              <p className="text-slate-400 text-sm text-center py-6">{t('google_ads.kalite_skoru_verisi_bulun', 'Kalite skoru verisi bulunamadı. Aktif kampanya gerekli.')}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
@@ -517,8 +517,8 @@ export default function GoogleAdsPage() {
         {gSummary && (gSummary.totalLeads > 0 || gResults.length > 0) && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">Reklam Sonuçlarım</h2>
-              <span className="text-xs text-slate-500">Google reklamlarından gelen leadlerin satışa dönüşümü</span>
+              <h2 className="text-base font-semibold text-white">{t('google_ads.reklam_sonuclarim', 'Reklam Sonuçlarım')}</h2>
+              <span className="text-xs text-slate-500">{t('google_ads.google_reklamlarindan_gel', 'Google reklamlarından gelen leadlerin satışa dönüşümü')}</span>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 text-center">
@@ -527,19 +527,19 @@ export default function GoogleAdsPage() {
               </div>
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-400">{gSummary.totalWon}</p>
-                <p className="text-xs text-slate-400 mt-1">Müşteriye Dönen</p>
+                <p className="text-xs text-slate-400 mt-1">{t('google_ads.musteriye_donen', 'Müşteriye Dönen')}</p>
               </div>
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
                 <p className="text-2xl font-bold text-amber-400">
                   {gSummary.totalRevenue > 0 ? `₺${gSummary.totalRevenue.toLocaleString('tr-TR')}` : '—'}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">Toplam Kazanç</p>
+                <p className="text-xs text-slate-400 mt-1">{t('google_ads.toplam_kazanc', 'Toplam Kazanç')}</p>
               </div>
             </div>
             {gResults.length > 0 && (
               <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-slate-700/50">
-                  <span className="text-sm font-medium text-white">Kampanya Bazında</span>
+                  <span className="text-sm font-medium text-white">{t('google_ads.kampanya_bazinda', 'Kampanya Bazında')}</span>
                 </div>
                 <div className="divide-y divide-slate-700/30">
                   {gResults.slice(0, 6).map((row: any, i: number) => (
@@ -555,7 +555,7 @@ export default function GoogleAdsPage() {
                             ₺{row.revenue.toLocaleString('tr-TR')}
                           </span>
                         )}
-                        {row.won === 0 && <span className="text-xs text-slate-600">Henüz müşteri yok</span>}
+                        {row.won === 0 && <span className="text-xs text-slate-600">{t('google_ads.henuz_musteri_yok', 'Henüz müşteri yok')}</span>}
                       </div>
                     </div>
                   ))}
@@ -608,12 +608,12 @@ export default function GoogleAdsPage() {
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">İşletmeni Anlat</h2>
-                    <p className="text-sm text-slate-400 mt-1">Web siteni gir veya açıklama yaz</p>
+                    <h2 className="text-lg font-semibold text-white">{t('google_ads.isletmeni_anlat', 'İşletmeni Anlat')}</h2>
+                    <p className="text-sm text-slate-400 mt-1">{t('google_ads.web_siteni_gir_veya_acikl', 'Web siteni gir veya açıklama yaz')}</p>
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs text-slate-400 mb-1.5 block">Web Sitesi URL <span className="text-slate-600">— isteğe bağlı</span></label>
+                      <label className="text-xs text-slate-400 mb-1.5 block">Web Sitesi URL <span className="text-slate-600">{t('google_ads.istege_bagli', '— isteğe bağlı')}</span></label>
                       <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 gap-2 focus-within:border-amber-500 transition">
                         <Globe className="w-4 h-4 text-slate-500 shrink-0" />
                         <input
@@ -627,22 +627,22 @@ export default function GoogleAdsPage() {
                     </div>
                     <div className="text-center text-xs text-slate-500">— veya —</div>
                     <div>
-                      <label className="text-xs text-slate-400 mb-1.5 block">İşletme Açıklaması</label>
+                      <label className="text-xs text-slate-400 mb-1.5 block">{t('google_ads.isletme_aciklamasi', 'İşletme Açıklaması')}</label>
                       <textarea
                         value={desc}
                         onChange={e => setDesc(e.target.value)}
-                        placeholder="Örn: Ankara'da çatı tamiri yapıyoruz. Konut sahiplerine ulaşmak istiyoruz, ortalama iş bedeli 8.000 TL..."
+                        placeholder={t('google_ads.orn_ankarada_cati_tamiri', 'Örn: Ankara\'da çatı tamiri yapıyoruz. Konut sahiplerine ulaşmak istiyoruz, ortalama iş bedeli 8.000 TL...')}
                         className="w-full h-28 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-amber-500 transition"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-400 mb-1.5 block">Hedef Konum <span className="text-slate-600">— isteğe bağlı</span></label>
+                      <label className="text-xs text-slate-400 mb-1.5 block">Hedef Konum <span className="text-slate-600">{t('google_ads.istege_bagli', '— isteğe bağlı')}</span></label>
                       <input
                         type="text"
                         value={location}
                         onChange={e => setLocation(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
-                        placeholder="İstanbul, Ankara... (boş bırakırsan Türkiye)"
+                        placeholder={t('google_ads.istanbul_ankara_bos_birak', 'İstanbul, Ankara... (boş bırakırsan Türkiye)')}
                       />
                     </div>
                   </div>
@@ -694,7 +694,7 @@ export default function GoogleAdsPage() {
                         </div>
                       </div>
                       <div>
-                        <p className="text-white font-semibold text-lg">Kampanya Hazırlanıyor</p>
+                        <p className="text-white font-semibold text-lg">{t('google_ads.kampanya_hazirlaniyor', 'Kampanya Hazırlanıyor')}</p>
                         <p className="text-amber-400 text-sm mt-2 min-h-[20px]">{AI_MSGS[aiMsgIdx]}</p>
                       </div>
                       <div className="flex justify-center gap-1.5">
@@ -707,7 +707,7 @@ export default function GoogleAdsPage() {
                     <>
                       <div>
                         <h2 className="text-lg font-semibold text-white">Anahtar Kelimeler</h2>
-                        <p className="text-sm text-slate-400 mt-1">AI'ın önerdiği arama terimleri</p>
+                        <p className="text-sm text-slate-400 mt-1">{t('google_ads.aiin_onerdigi_arama_terim', 'AI\'ın önerdiği arama terimleri')}</p>
                       </div>
                       <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 max-h-52 overflow-y-auto">
                         {draft?.ad_groups?.[0]?.keywords || draft?.keywords ? (
@@ -719,7 +719,7 @@ export default function GoogleAdsPage() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-slate-400 text-sm text-center py-4">Anahtar kelimeler planın içinde. Devam edebilirsin.</p>
+                          <p className="text-slate-400 text-sm text-center py-4">{t('google_ads.anahtar_kelimeler_planin', 'Anahtar kelimeler planın içinde. Devam edebilirsin.')}</p>
                         )}
                         {draft?.campaign_name && (
                           <p className="mt-3 text-xs text-slate-500 border-t border-slate-700/50 pt-3">Kampanya: <span className="text-slate-300">{draft.campaign_name}</span></p>
@@ -737,8 +737,8 @@ export default function GoogleAdsPage() {
               {step === 4 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Günlük Bütçe</h2>
-                    <p className="text-sm text-slate-400 mt-1">Google Ads için günlük harcama limiti</p>
+                    <h2 className="text-lg font-semibold text-white">{t('google_ads.gunluk_butce', 'Günlük Bütçe')}</h2>
+                    <p className="text-sm text-slate-400 mt-1">{t('google_ads.google_ads_icin_gunluk_ha', 'Google Ads için günlük harcama limiti')}</p>
                   </div>
                   <div className="space-y-3">
                     <div className="grid grid-cols-4 gap-2">
@@ -757,16 +757,16 @@ export default function GoogleAdsPage() {
                       value={budget}
                       onChange={e => setBudget(e.target.value)}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500 transition"
-                      placeholder="Özel tutar..."
+                      placeholder={t('google_ads.ozel_tutar', 'Özel tutar...')}
                     />
                     <div>
-                      <label className="text-xs text-slate-400 mb-1.5 block">Ortalama Müşteri Değeri (TRY) <span className="text-slate-600">— ROI için</span></label>
+                      <label className="text-xs text-slate-400 mb-1.5 block">{t('google_ads.ortalama_musteri_degeri_t', 'Ortalama Müşteri Değeri (TRY)')}<span className="text-slate-600">{t('google_ads.roi_icin', '— ROI için')}</span></label>
                       <input
                         type="number"
                         value={avgDeal}
                         onChange={e => setAvgDeal(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500 transition"
-                        placeholder="Örn: 8000"
+                        placeholder={t('google_ads.orn_8000', 'Örn: 8000')}
                       />
                     </div>
                   </div>
@@ -785,7 +785,7 @@ export default function GoogleAdsPage() {
                 <div className="space-y-4">
                   <div>
                     <h2 className="text-lg font-semibold text-white">Onay Listesi</h2>
-                    <p className="text-sm text-slate-400 mt-1">Kampanyanı yayına almadan önce kontrol et</p>
+                    <p className="text-sm text-slate-400 mt-1">{t('google_ads.kampanyani_yayina_almadan', 'Kampanyanı yayına almadan önce kontrol et')}</p>
                   </div>
                   <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl divide-y divide-slate-700/40">
                     {[
@@ -808,7 +808,7 @@ export default function GoogleAdsPage() {
                   {!connected && (
                     <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl">
                       <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="text-amber-300 text-xs">Google hesabınızı bağlayın ve sonra yayınlayın</span>
+                      <span className="text-amber-300 text-xs">{t('google_ads.google_hesabinizi_baglayi', 'Google hesabınızı bağlayın ve sonra yayınlayın')}</span>
                     </div>
                   )}
                   <div className="flex gap-3">

@@ -162,14 +162,14 @@ export default function TeamIntelligencePage() {
             </div>
             Ekip Zekası
           </h1>
-          <p className="text-gray-500 text-sm mt-1">WhatsApp ve telefon konuşmalarını AI ile analiz et</p>
+          <p className="text-gray-500 text-sm mt-1">{t('team_intelligence.whatsapp_ve_telefon_konus', 'WhatsApp ve telefon konuşmalarını AI ile analiz et')}</p>
         </div>
         <div className="flex items-center gap-2">
           <select value={days} onChange={e => setDays(Number(e.target.value))}
             className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
-            <option value={7}>Son 7 gün</option>
-            <option value={30}>Son 30 gün</option>
-            <option value={90}>Son 90 gün</option>
+            <option value={7}>{t('team_intelligence.son_7_gun', 'Son 7 gün')}</option>
+            <option value={30}>{t('team_intelligence.son_30_gun', 'Son 30 gün')}</option>
+            <option value={90}>{t('team_intelligence.son_90_gun', 'Son 90 gün')}</option>
           </select>
           <button onClick={() => { loadDashboard(); loadMembers(); loadAnalyses(); }}
             className="p-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">
@@ -265,7 +265,7 @@ export default function TeamIntelligencePage() {
                         </div>
                       </div>
                     ))}
-                    {!dashboard.best?.length && <p className="text-xs text-gray-600 text-center py-4">Henüz analiz yok</p>}
+                    {!dashboard.best?.length && <p className="text-xs text-gray-600 text-center py-4">{t('team_intelligence.henuz_analiz_yok', 'Henüz analiz yok')}</p>}
                   </div>
                 </div>
 
@@ -287,7 +287,7 @@ export default function TeamIntelligencePage() {
                         </div>
                       </div>
                     ))}
-                    {!dashboard.worst?.filter((c: any) => c.score).length && <p className="text-xs text-gray-600 text-center py-4">Henüz analiz yok</p>}
+                    {!dashboard.worst?.filter((c: any) => c.score).length && <p className="text-xs text-gray-600 text-center py-4">{t('team_intelligence.henuz_analiz_yok', 'Henüz analiz yok')}</p>}
                   </div>
                 </div>
               </div>
@@ -316,7 +316,7 @@ export default function TeamIntelligencePage() {
           ) : (
             <div className="text-center py-20 text-gray-600">
               <Activity className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-              <p className="text-sm">Önce ekip üyesi ekle ve analiz başlat</p>
+              <p className="text-sm">{t('team_intelligence.once_ekip_uyesi_ekle_ve_a', 'Önce ekip üyesi ekle ve analiz başlat')}</p>
             </div>
           )}
         </div>
@@ -337,7 +337,7 @@ export default function TeamIntelligencePage() {
           {showAddMember && (
             <div className="bg-white/3 border border-purple-500/30 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-purple-300">Yeni Ekip Üyesi</h3>
+                <h3 className="font-medium text-purple-300">{t('team_intelligence.yeni_ekip_uyesi', 'Yeni Ekip Üyesi')}</h3>
                 <button onClick={() => setShowAddMember(false)}><X className="w-4 h-4 text-gray-400"/></button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -346,17 +346,17 @@ export default function TeamIntelligencePage() {
                 <input value={newMember.email} onChange={e => setNewMember({...newMember, email: e.target.value})}
                   placeholder="Email" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-500"/>
                 <input value={newMember.wa_phone} onChange={e => setNewMember({...newMember, wa_phone: e.target.value})}
-                  placeholder="WhatsApp numarası (905551234567)" className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-500"/>
+                  placeholder={t('team_intelligence.whatsapp_numarasi_9055512', 'WhatsApp numarası (905551234567)')} className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-500"/>
                 <select value={newMember.role} onChange={e => setNewMember({...newMember, role: e.target.value})}
                   className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-purple-500">
-                  <option>Satış Temsilcisi</option>
-                  <option>Kıdemli Satış Temsilcisi</option>
-                  <option>Satış Müdürü</option>
-                  <option>Müşteri Hizmetleri</option>
+                  <option>{t('team_intelligence.satis_temsilcisi', 'Satış Temsilcisi')}</option>
+                  <option>{t('team_intelligence.kidemli_satis_temsilcisi', 'Kıdemli Satış Temsilcisi')}</option>
+                  <option>{t('team_intelligence.satis_muduru', 'Satış Müdürü')}</option>
+                  <option>{t('team_intelligence.musteri_hizmetleri', 'Müşteri Hizmetleri')}</option>
                 </select>
               </div>
               <div className="flex justify-end gap-2">
-                <button onClick={() => setShowAddMember(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">İptal</button>
+                <button onClick={() => setShowAddMember(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">{t('team_intelligence.iptal', 'İptal')}</button>
                 <button onClick={addMember} disabled={loading}
                   className="px-5 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl text-sm font-medium">
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin"/> : 'Ekle'}
@@ -415,7 +415,7 @@ export default function TeamIntelligencePage() {
                 {/* Hatlar */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500 font-medium">Bağlı Hatlar</span>
+                    <span className="text-xs text-gray-500 font-medium">{t('team_intelligence.bagli_hatlar', 'Bağlı Hatlar')}</span>
                     <button onClick={() => setShowAddLine(showAddLine === m.id ? null : m.id)}
                       className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1">
                       <Plus className="w-3 h-3"/> Hat Ekle
@@ -455,7 +455,7 @@ export default function TeamIntelligencePage() {
                   ))}
 
                   {(!m.phone_lines || m.phone_lines.filter((l: any) => l.is_active).length === 0) && showAddLine !== m.id && (
-                    <div className="text-xs text-gray-600 text-center py-2">Hat eklenmemiş</div>
+                    <div className="text-xs text-gray-600 text-center py-2">{t('team_intelligence.hat_eklenmemis', 'Hat eklenmemiş')}</div>
                   )}
                 </div>
 
@@ -472,9 +472,9 @@ export default function TeamIntelligencePage() {
             {members.length === 0 && (
               <div className="col-span-2 text-center py-16 text-gray-600">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-                <p className="text-sm">Ekip üyesi eklenmemiş</p>
+                <p className="text-sm">{t('team_intelligence.ekip_uyesi_eklenmemis', 'Ekip üyesi eklenmemiş')}</p>
                 <button onClick={() => setShowAddMember(true)}
-                  className="mt-3 text-sm text-purple-400 hover:text-purple-300">+ İlk üyeyi ekle</button>
+                  className="mt-3 text-sm text-purple-400 hover:text-purple-300">{t('team_intelligence.ilk_uyeyi_ekle', '+ İlk üyeyi ekle')}</button>
               </div>
             )}
           </div>
@@ -490,7 +490,7 @@ export default function TeamIntelligencePage() {
               <h2 className="font-semibold flex-1">Analizler ({analyses.length})</h2>
               <select value={filterChannel} onChange={e => { setFilterChannel(e.target.value); }}
                 className="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white">
-                <option value="">Tümü</option>
+                <option value="">{t('team_intelligence.tumu', 'Tümü')}</option>
                 <option value="whatsapp">WhatsApp</option>
                 <option value="phone">Telefon</option>
               </select>
@@ -521,7 +521,7 @@ export default function TeamIntelligencePage() {
               {analyses.length === 0 && (
                 <div className="text-center py-12 text-gray-600">
                   <BarChart2 className="w-10 h-10 mx-auto mb-2 opacity-30"/>
-                  <p className="text-sm">Henüz analiz yok</p>
+                  <p className="text-sm">{t('team_intelligence.henuz_analiz_yok', 'Henüz analiz yok')}</p>
                 </div>
               )}
             </div>
@@ -557,7 +557,7 @@ export default function TeamIntelligencePage() {
 
                 {/* Detaylı skorlar */}
                 <div className="space-y-2.5">
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Detaylı Puanlar</h4>
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('team_intelligence.detayli_puanlar', 'Detaylı Puanlar')}</h4>
                   <ScoreBar label="Profesyonellik" score={selectedAnalysis.professionalism_score || 0}/>
                   <ScoreBar label="Satış Tekniği" score={selectedAnalysis.sales_technique_score || 0}/>
                   <ScoreBar label="Empati" score={selectedAnalysis.empathy_score || 0}/>
@@ -569,7 +569,7 @@ export default function TeamIntelligencePage() {
                 <div className="grid grid-cols-2 gap-4">
                   {selectedAnalysis.strengths?.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Güçlü Yönler</h4>
+                      <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">{t('team_intelligence.guclu_yonler', 'Güçlü Yönler')}</h4>
                       <div className="space-y-1.5">
                         {selectedAnalysis.strengths.map((s: string, i: number) => (
                           <div key={i} className="flex items-start gap-1.5 text-xs">
@@ -582,7 +582,7 @@ export default function TeamIntelligencePage() {
                   )}
                   {selectedAnalysis.weaknesses?.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Zayıf Yönler</h4>
+                      <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">{t('team_intelligence.zayif_yonler', 'Zayıf Yönler')}</h4>
                       <div className="space-y-1.5">
                         {selectedAnalysis.weaknesses.map((w: string, i: number) => (
                           <div key={i} className="flex items-start gap-1.5 text-xs">
@@ -598,7 +598,7 @@ export default function TeamIntelligencePage() {
                 {/* Kaçırılan fırsatlar */}
                 {selectedAnalysis.lost_opportunities?.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Kaçırılan Fırsatlar</h4>
+                    <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">{t('team_intelligence.kacirilan_firsatlar', 'Kaçırılan Fırsatlar')}</h4>
                     <div className="space-y-2">
                       {selectedAnalysis.lost_opportunities.map((o: any, i: number) => (
                         <div key={i} className="p-3 bg-amber-500/8 border border-amber-500/20 rounded-xl">
@@ -613,7 +613,7 @@ export default function TeamIntelligencePage() {
                 {/* Öneriler */}
                 {selectedAnalysis.recommendations?.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Öneriler</h4>
+                    <h4 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">{t('team_intelligence.oneriler', 'Öneriler')}</h4>
                     <div className="space-y-1.5">
                       {selectedAnalysis.recommendations.map((r: string, i: number) => (
                         <div key={i} className="flex items-start gap-1.5 text-xs">
@@ -629,7 +629,7 @@ export default function TeamIntelligencePage() {
               <div className="flex items-center justify-center h-80 bg-white/3 border border-white/8 rounded-2xl text-gray-600">
                 <div className="text-center">
                   <Eye className="w-10 h-10 mx-auto mb-2 opacity-30"/>
-                  <p className="text-sm">Sol listeden bir analiz seç</p>
+                  <p className="text-sm">{t('team_intelligence.sol_listeden_bir_analiz_s', 'Sol listeden bir analiz seç')}</p>
                 </div>
               </div>
             )}
@@ -666,7 +666,7 @@ export default function TeamIntelligencePage() {
 
           {/* Detaylı skorlar */}
           <div className="bg-white/3 border border-white/8 rounded-2xl p-5">
-            <h3 className="font-semibold mb-4">Performans Skorları</h3>
+            <h3 className="font-semibold mb-4">{t('team_intelligence.performans_skorlari', 'Performans Skorları')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ScoreBar label="Profesyonellik" score={memberReport.scores?.professionalism || 0}/>
               <ScoreBar label="Satış Tekniği" score={memberReport.scores?.sales_technique || 0}/>
@@ -726,17 +726,17 @@ export default function TeamIntelligencePage() {
           {/* Konuşma geçmişi */}
           <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/8">
-              <h3 className="font-semibold">Konuşma Geçmişi</h3>
+              <h3 className="font-semibold">{t('team_intelligence.konusma_gecmisi', 'Konuşma Geçmişi')}</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/8 text-gray-500 text-xs">
-                    <th className="text-left px-4 py-3">Müşteri</th>
+                    <th className="text-left px-4 py-3">{t('team_intelligence.musteri', 'Müşteri')}</th>
                     <th className="text-center px-4 py-3">Kanal</th>
-                    <th className="text-center px-4 py-3">Süre</th>
+                    <th className="text-center px-4 py-3">{t('team_intelligence.sure', 'Süre')}</th>
                     <th className="text-center px-4 py-3">Skor</th>
-                    <th className="text-left px-4 py-3">Özet</th>
+                    <th className="text-left px-4 py-3">{t('team_intelligence.ozet', 'Özet')}</th>
                     <th className="text-right px-4 py-3">Tarih</th>
                   </tr>
                 </thead>
@@ -766,7 +766,7 @@ export default function TeamIntelligencePage() {
                 </tbody>
               </table>
               {!memberReport.recent_analyses?.length && (
-                <div className="text-center py-10 text-gray-600 text-sm">Bu üye için analiz bulunamadı</div>
+                <div className="text-center py-10 text-gray-600 text-sm">{t('team_intelligence.bu_uye_icin_analiz_buluna', 'Bu üye için analiz bulunamadı')}</div>
               )}
             </div>
           </div>
@@ -776,7 +776,7 @@ export default function TeamIntelligencePage() {
       {tab === 'report' && !memberReport && (
         <div className="text-center py-20 text-gray-600">
           <Award className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-          <p className="text-sm">Ekip sekmesinden bir üye seçerek rapor görüntüle</p>
+          <p className="text-sm">{t('team_intelligence.ekip_sekmesinden_bir_uye', 'Ekip sekmesinden bir üye seçerek rapor görüntüle')}</p>
         </div>
       )}
     </div>

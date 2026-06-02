@@ -647,7 +647,7 @@ export default function WorkflowPage() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-bold text-white">Ne yapmak istiyorsunuz?</h1>
-              <p className="text-slate-400 text-sm mt-1">Hedefi seçin, gerisi otomatik kurulsun.</p>
+              <p className="text-slate-400 text-sm mt-1">{t('workflow.hedefi_secin_gerisi_otoma', 'Hedefi seçin, gerisi otomatik kurulsun.')}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {GOALS.map(g => {
@@ -670,21 +670,21 @@ export default function WorkflowPage() {
         {step === 2 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Akışı ayarlayın</h1>
-              <p className="text-slate-400 text-sm mt-1">Birkaç tercih yapın, sistem akışı otomatik oluştursun.</p>
+              <h1 className="text-2xl font-bold text-white">{t('workflow.akisi_ayarlayin', 'Akışı ayarlayın')}</h1>
+              <p className="text-slate-400 text-sm mt-1">{t('workflow.birkac_tercih_yapin_siste', 'Birkaç tercih yapın, sistem akışı otomatik oluştursun.')}</p>
             </div>
 
             <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 space-y-5">
               {/* Name */}
               <div>
-                <label className="text-slate-300 text-sm font-medium block mb-2">Akış Adı</label>
+                <label className="text-slate-300 text-sm font-medium block mb-2">{t('workflow.akis_adi', 'Akış Adı')}</label>
                 <input value={wizConfig.name} onChange={e => setWizConfig(c => ({ ...c, name: e.target.value }))}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 text-sm" />
               </div>
 
               {/* Channel */}
               <div>
-                <label className="text-slate-300 text-sm font-medium block mb-2">İletişim Kanalı</label>
+                <label className="text-slate-300 text-sm font-medium block mb-2">{t('workflow.iletisim_kanali', 'İletişim Kanalı')}</label>
                 <div className="grid grid-cols-3 gap-3">
                   {(['whatsapp', 'email', 'sms'] as Channel[]).map(ch => {
                     const Icon = CHANNEL_ICONS[ch]
@@ -702,9 +702,9 @@ export default function WorkflowPage() {
 
               {/* Message */}
               <div>
-                <label className="text-slate-300 text-sm font-medium block mb-2">İlk Mesaj Şablonu</label>
+                <label className="text-slate-300 text-sm font-medium block mb-2">{t('workflow.ilk_mesaj_sablonu', 'İlk Mesaj Şablonu')}</label>
                 <textarea value={wizConfig.message} onChange={e => setWizConfig(c => ({ ...c, message: e.target.value }))}
-                  rows={3} placeholder="Mesajınızı yazın... {{isim}}, {{firma}}, {{sehir}} kullanabilirsiniz"
+                  rows={3} placeholder={t('workflow.mesajinizi_yazin_isim_fir', 'Mesajınızı yazın... {{isim}}, {{firma}}, {{sehir}} kullanabilirsiniz')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500 resize-none" />
                 <p className="text-slate-600 text-xs mt-1">Değişkenler: {'{{isim}}'} {'{{firma}}'} {'{{sehir}}'} {'{{sektor}}'}</p>
               </div>
@@ -712,8 +712,8 @@ export default function WorkflowPage() {
               {/* AI toggle */}
               <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-700">
                 <div>
-                  <p className="text-white text-sm font-medium">AI Kişiselleştirme</p>
-                  <p className="text-slate-500 text-xs mt-0.5">Claude Haiku her mesajı alıcıya göre uyarlar</p>
+                  <p className="text-white text-sm font-medium">{t('workflow.ai_kisisellestirme', 'AI Kişiselleştirme')}</p>
+                  <p className="text-slate-500 text-xs mt-0.5">{t('workflow.claude_haiku_her_mesaji_a', 'Claude Haiku her mesajı alıcıya göre uyarlar')}</p>
                 </div>
                 <button onClick={() => setWizConfig(c => ({ ...c, useAI: !c.useAI }))}
                   className={`w-12 h-6 rounded-full transition-colors ${wizConfig.useAI ? 'bg-amber-500' : 'bg-slate-700'}`}>
@@ -754,8 +754,8 @@ export default function WorkflowPage() {
               {/* Smart timing */}
               <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-700">
                 <div>
-                  <p className="text-white text-sm font-medium">Doğru An Motoru</p>
-                  <p className="text-slate-500 text-xs mt-0.5">Sektöre göre en iyi iletişim saatini otomatik seçer</p>
+                  <p className="text-white text-sm font-medium">{t('workflow.dogru_an_motoru', 'Doğru An Motoru')}</p>
+                  <p className="text-slate-500 text-xs mt-0.5">{t('workflow.sektore_gore_en_iyi_ileti', 'Sektöre göre en iyi iletişim saatini otomatik seçer')}</p>
                 </div>
                 <button onClick={() => setWizConfig(c => ({ ...c, smartTiming: !c.smartTiming }))}
                   className={`w-12 h-6 rounded-full transition-colors ${wizConfig.smartTiming ? 'bg-amber-500' : 'bg-slate-700'}`}>
@@ -775,15 +775,15 @@ export default function WorkflowPage() {
         {step === 3 && (
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl font-bold text-white">Hazır! Başlatın</h1>
-              <p className="text-slate-400 text-sm mt-1">Akışı gözden geçirin ve lead'leri seçin.</p>
+              <h1 className="text-2xl font-bold text-white">{t('workflow.hazir_baslatin', 'Hazır! Başlatın')}</h1>
+              <p className="text-slate-400 text-sm mt-1">{t('workflow.akisi_gozden_gecirin_ve_l', 'Akışı gözden geçirin ve lead\'leri seçin.')}</p>
             </div>
 
             {msg && <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm">{msg}</div>}
 
             {/* Flow preview */}
             <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5">
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-4">Akış Önizlemesi</p>
+              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-4">{t('workflow.akis_onizlemesi', 'Akış Önizlemesi')}</p>
               <div className="space-y-2">
                 {previewNodes.map((n, i) => {
                   const Icon = NODE_ICONS[n.type]
@@ -811,13 +811,13 @@ export default function WorkflowPage() {
             {/* Lead selection */}
             <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-slate-300 text-sm font-medium">Lead Seçimi <span className="text-slate-500">({selectedLeads.length} seçili)</span></p>
+                <p className="text-slate-300 text-sm font-medium">{t('workflow.lead_secimi', 'Lead Seçimi')}<span className="text-slate-500">({selectedLeads.length} seçili)</span></p>
                 <button onClick={() => setSelectedLeads(allLeads.map(l => l.id))} className="text-xs text-amber-400 hover:text-amber-300 transition">
                   Tümünü seç
                 </button>
               </div>
               <input value={leadFilter} onChange={e => setLeadFilter(e.target.value)}
-                placeholder="Firma adı ara..."
+                placeholder={t('workflow.firma_adi_ara', 'Firma adı ara...')}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500 mb-3" />
               <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
                 {filteredLeads.slice(0, 50).map(l => (
@@ -831,7 +831,7 @@ export default function WorkflowPage() {
                     </div>
                   </label>
                 ))}
-                {filteredLeads.length === 0 && <p className="text-slate-500 text-sm text-center py-4">Lead bulunamadı</p>}
+                {filteredLeads.length === 0 && <p className="text-slate-500 text-sm text-center py-4">{t('workflow.lead_bulunamadi', 'Lead bulunamadı')}</p>}
               </div>
               <p className="text-slate-600 text-xs mt-2">
                 Lead seçmeden kaydetmek de mümkün — sonra el ile ekleyebilirsiniz.
@@ -884,7 +884,7 @@ export default function WorkflowPage() {
         {msg && <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2.5 rounded-xl text-sm">{msg}</div>}
         <div className="grid grid-cols-3 gap-6">
           <div className="space-y-2">
-            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Adım Ekle</p>
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">{t('workflow.adim_ekle', 'Adım Ekle')}</p>
             {PALETTE.map(([type, title, desc]) => {
               const Icon = NODE_ICONS[type]
               const cc = NODE_COLORS[type]
@@ -970,7 +970,7 @@ export default function WorkflowPage() {
       ) : workflows.length === 0 ? (
         /* Empty state — show goal cards directly */
         <div className="space-y-4">
-          <p className="text-slate-400 text-sm">Henüz otomasyon yok. Hedef seçerek 60 saniyede kurun:</p>
+          <p className="text-slate-400 text-sm">{t('workflow.henuz_otomasyon_yok_hedef', 'Henüz otomasyon yok. Hedef seçerek 60 saniyede kurun:')}</p>
           <div className="grid grid-cols-2 gap-4">
             {GOALS.map(g => {
               const Icon = g.icon
@@ -1046,7 +1046,7 @@ export default function WorkflowPage() {
                   <div className="border-t border-slate-700/60 px-5 pb-5 pt-4 space-y-4">
                     {/* Flow preview */}
                     <div>
-                      <p className="text-slate-500 text-xs mb-2">Akış</p>
+                      <p className="text-slate-500 text-xs mb-2">{t('workflow.akis', 'Akış')}</p>
                       <FlowPreview nodes={wf.nodes} />
                     </div>
 
@@ -1107,7 +1107,7 @@ export default function WorkflowPage() {
       {/* Templates at bottom when has workflows */}
       {workflows.length > 0 && templates.length > 0 && (
         <div>
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-3">Hazır Şablonlar</p>
+          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-3">{t('workflow.hazir_sablonlar', 'Hazır Şablonlar')}</p>
           <div className="grid grid-cols-3 gap-3">
             {templates.map(tpl => (
               <button key={tpl.id} onClick={() => {
@@ -1123,7 +1123,7 @@ export default function WorkflowPage() {
                 <p className="text-slate-500 text-xs mb-2 line-clamp-2">{tpl.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-slate-600">{TRIGGER_LABELS[tpl.trigger_type]} · {tpl.nodes.length} adım</span>
-                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 transition">Düzenle &rarr;</span>
+                  <span className="text-xs text-amber-500 opacity-0 group-hover:opacity-100 transition">{t('workflow.duzenle_rarr', 'Düzenle &rarr;')}</span>
                 </div>
               </button>
             ))}
@@ -1138,18 +1138,18 @@ export default function WorkflowPage() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
               <div>
                 <h2 className="text-white font-semibold">Lead Ekle</h2>
-                <p className="text-slate-500 text-xs mt-0.5">Seçilen leadler bu workflow'a dahil edilir</p>
+                <p className="text-slate-500 text-xs mt-0.5">{t('workflow.secilen_leadler_bu_workfl', 'Seçilen leadler bu workflow\'a dahil edilir')}</p>
               </div>
               <button onClick={() => setEnrollModalWfId(null)} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="px-5 py-4 space-y-3">
               <input value={enrollFilter} onChange={e => setEnrollFilter(e.target.value)}
-                placeholder="Firma adı ara..."
+                placeholder={t('workflow.firma_adi_ara', 'Firma adı ara...')}
                 className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500" />
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500">{enrollSelected.length} lead seçildi</span>
                 <button onClick={() => setEnrollSelected(enrollFilteredLeads.map(l => l.id))}
-                  className="text-amber-400 hover:text-amber-300">Tümünü seç</button>
+                  className="text-amber-400 hover:text-amber-300">{t('workflow.tumunu_sec', 'Tümünü seç')}</button>
               </div>
               <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
                 {enrollFilteredLeads.slice(0, 100).map(l => (
@@ -1165,7 +1165,7 @@ export default function WorkflowPage() {
                   </label>
                 ))}
                 {enrollFilteredLeads.length === 0 && (
-                  <p className="text-slate-500 text-sm text-center py-6">Lead bulunamadı</p>
+                  <p className="text-slate-500 text-sm text-center py-6">{t('workflow.lead_bulunamadi', 'Lead bulunamadı')}</p>
                 )}
               </div>
             </div>

@@ -179,14 +179,14 @@ export default function SalesIntelligencePage() {
             <BarChart2 className="w-7 h-7 text-purple-400"/>
             Satış Zekası & Performans
           </h1>
-          <p className="text-gray-400 text-sm mt-1">WhatsApp konuşmalarını AI ile analiz et, ekip performansını ölç</p>
+          <p className="text-gray-400 text-sm mt-1">{t('sales_intelligence.whatsapp_konusmalarini_ai', 'WhatsApp konuşmalarını AI ile analiz et, ekip performansını ölç')}</p>
         </div>
         <div className="flex items-center gap-3">
           <select value={days} onChange={e => setDays(Number(e.target.value))}
             className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
-            <option value={7}>Son 7 gün</option>
-            <option value={30}>Son 30 gün</option>
-            <option value={90}>Son 90 gün</option>
+            <option value={7}>{t('sales_intelligence.son_7_gun', 'Son 7 gün')}</option>
+            <option value={30}>{t('sales_intelligence.son_30_gun', 'Son 30 gün')}</option>
+            <option value={90}>{t('sales_intelligence.son_90_gun', 'Son 90 gün')}</option>
           </select>
           <button onClick={() => { loadDashboard(); loadAnalyses(); }}
             className="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm hover:bg-white/10">
@@ -213,13 +213,13 @@ export default function SalesIntelligencePage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
                 className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm col-span-2">
-                <option value="">Lead seç...</option>
+                <option value="">{t('sales_intelligence.lead_sec', 'Lead seç...')}</option>
                 {leads.filter(l => l.phone).map(l => (
                   <option key={l.id} value={l.id}>{l.company_name} — {l.phone}</option>
                 ))}
               </select>
               <input value={analysisAgent} onChange={e => setAnalysisAgent(e.target.value)}
-                placeholder="Temsilci adı (opsiyonel)"
+                placeholder={t('sales_intelligence.temsilci_adi_opsiyonel', 'Temsilci adı (opsiyonel)')}
                 className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"/>
               <div className="flex gap-2">
                 <button onClick={analyzeConversation} disabled={analyzing || !selectedLead}
@@ -228,7 +228,7 @@ export default function SalesIntelligencePage() {
                   Analiz Et
                 </button>
                 <button onClick={analyzeAll} disabled={analyzing}
-                  className="px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-sm" title="Tümünü analiz et">
+                  className="px-3 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-lg text-sm" title={t('sales_intelligence.tumunu_analiz_et', 'Tümünü analiz et')}>
                   <Users className="w-4 h-4"/>
                 </button>
               </div>
@@ -272,7 +272,7 @@ export default function SalesIntelligencePage() {
                       <thead>
                         <tr className="border-b border-white/10 text-gray-400 text-xs">
                           <th className="text-left px-4 py-3">Temsilci</th>
-                          <th className="text-center px-4 py-3">Konuşma</th>
+                          <th className="text-center px-4 py-3">{t('sales_intelligence.konusma', 'Konuşma')}</th>
                           <th className="text-center px-4 py-3">Ort. Skor</th>
                           <th className="text-center px-4 py-3">Min</th>
                           <th className="text-center px-4 py-3">Max</th>
@@ -367,7 +367,7 @@ export default function SalesIntelligencePage() {
           ) : (
             <div className="text-center py-20 text-gray-500">
               <BarChart2 className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-              <p>Henüz analiz yok. İlk konuşmayı analiz etmek için yukarıdaki formu kullan.</p>
+              <p>{t('sales_intelligence.henuz_analiz_yok_ilk_konu', 'Henüz analiz yok. İlk konuşmayı analiz etmek için yukarıdaki formu kullan.')}</p>
             </div>
           )}
         </div>
@@ -377,7 +377,7 @@ export default function SalesIntelligencePage() {
       {tab === 'team' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-lg">Ekip Üyeleri</h2>
+            <h2 className="font-semibold text-lg">{t('sales_intelligence.ekip_uyeleri', 'Ekip Üyeleri')}</h2>
             <button onClick={() => setAddingMember(!addingMember)}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm">
               <Plus className="w-4 h-4"/> Üye Ekle
@@ -386,24 +386,24 @@ export default function SalesIntelligencePage() {
 
           {addingMember && (
             <div className="bg-white/5 border border-purple-500/30 rounded-2xl p-4 space-y-3">
-              <h3 className="text-sm font-medium text-purple-300">Yeni Ekip Üyesi</h3>
+              <h3 className="text-sm font-medium text-purple-300">{t('sales_intelligence.yeni_ekip_uyesi', 'Yeni Ekip Üyesi')}</h3>
               <div className="grid grid-cols-2 gap-3">
                 <input value={newMember.name} onChange={e => setNewMember({...newMember, name: e.target.value})}
                   placeholder="Ad Soyad *" className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"/>
                 <input value={newMember.email} onChange={e => setNewMember({...newMember, email: e.target.value})}
                   placeholder="Email" className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"/>
                 <input value={newMember.phone} onChange={e => setNewMember({...newMember, phone: e.target.value})}
-                  placeholder="WhatsApp numarası" className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"/>
+                  placeholder={t('sales_intelligence.whatsapp_numarasi', 'WhatsApp numarası')} className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"/>
                 <select value={newMember.role} onChange={e => setNewMember({...newMember, role: e.target.value})}
                   className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm">
-                  <option>Satış Temsilcisi</option>
-                  <option>Kıdemli Satış Temsilcisi</option>
-                  <option>Satış Müdürü</option>
-                  <option>Müşteri Hizmetleri</option>
+                  <option>{t('sales_intelligence.satis_temsilcisi', 'Satış Temsilcisi')}</option>
+                  <option>{t('sales_intelligence.kidemli_satis_temsilcisi', 'Kıdemli Satış Temsilcisi')}</option>
+                  <option>{t('sales_intelligence.satis_muduru', 'Satış Müdürü')}</option>
+                  <option>{t('sales_intelligence.musteri_hizmetleri', 'Müşteri Hizmetleri')}</option>
                 </select>
               </div>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setAddingMember(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">İptal</button>
+                <button onClick={() => setAddingMember(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">{t('sales_intelligence.iptal', 'İptal')}</button>
                 <button onClick={addTeamMember} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm">Ekle</button>
               </div>
             </div>
@@ -437,7 +437,7 @@ export default function SalesIntelligencePage() {
                         <ScoreBadge score={agentData.avg_score}/>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-gray-400">Konuşma</span>
+                        <span className="text-gray-400">{t('sales_intelligence.konusma', 'Konuşma')}</span>
                         <span className="text-white">{agentData.conversation_count}</span>
                       </div>
                       <button onClick={() => loadAgentReport(m.name)}
@@ -446,7 +446,7 @@ export default function SalesIntelligencePage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-500 text-center pt-2">Henüz analiz yok</div>
+                    <div className="text-xs text-gray-500 text-center pt-2">{t('sales_intelligence.henuz_analiz_yok', 'Henüz analiz yok')}</div>
                   )}
                 </div>
               );
@@ -454,7 +454,7 @@ export default function SalesIntelligencePage() {
             {team.length === 0 && (
               <div className="col-span-3 text-center py-12 text-gray-500">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-30"/>
-                <p className="text-sm">Ekip üyesi eklenmemiş</p>
+                <p className="text-sm">{t('sales_intelligence.ekip_uyesi_eklenmemis', 'Ekip üyesi eklenmemiş')}</p>
               </div>
             )}
           </div>
@@ -487,7 +487,7 @@ export default function SalesIntelligencePage() {
               {analyses.length === 0 && (
                 <div className="text-center py-12 text-gray-500">
                   <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-30"/>
-                  <p className="text-sm">Henüz analiz yok</p>
+                  <p className="text-sm">{t('sales_intelligence.henuz_analiz_yok', 'Henüz analiz yok')}</p>
                 </div>
               )}
             </div>
@@ -514,7 +514,7 @@ export default function SalesIntelligencePage() {
 
               {/* Detaylı Puanlar */}
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Detaylı Puanlar</h4>
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('sales_intelligence.detayli_puanlar', 'Detaylı Puanlar')}</h4>
                 <ScoreBar label="Profesyonellik" score={selectedAnalysis.professionalism_score || 0}/>
                 <ScoreBar label="Yanıt Hızı & Kalitesi" score={selectedAnalysis.responsiveness_score || 0}/>
                 <ScoreBar label="Satış Tekniği" score={selectedAnalysis.sales_technique_score || 0}/>
@@ -525,7 +525,7 @@ export default function SalesIntelligencePage() {
               {/* Güçlü Yönler */}
               {selectedAnalysis.strengths?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">Güçlü Yönler</h4>
+                  <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">{t('sales_intelligence.guclu_yonler', 'Güçlü Yönler')}</h4>
                   <div className="space-y-1">
                     {selectedAnalysis.strengths.map((s: string, i: number) => (
                       <div key={i} className="flex items-start gap-2 text-sm">
@@ -540,7 +540,7 @@ export default function SalesIntelligencePage() {
               {/* Zayıf Yönler */}
               {selectedAnalysis.weaknesses?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Zayıf Yönler</h4>
+                  <h4 className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">{t('sales_intelligence.zayif_yonler', 'Zayıf Yönler')}</h4>
                   <div className="space-y-1">
                     {selectedAnalysis.weaknesses.map((w: string, i: number) => (
                       <div key={i} className="flex items-start gap-2 text-sm">
@@ -555,7 +555,7 @@ export default function SalesIntelligencePage() {
               {/* Kaçırılan Fırsatlar */}
               {selectedAnalysis.lost_opportunities?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Kaçırılan Fırsatlar</h4>
+                  <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">{t('sales_intelligence.kacirilan_firsatlar', 'Kaçırılan Fırsatlar')}</h4>
                   <div className="space-y-2">
                     {selectedAnalysis.lost_opportunities.map((o: any, i: number) => (
                       <div key={i} className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
@@ -570,7 +570,7 @@ export default function SalesIntelligencePage() {
               {/* Öneriler */}
               {selectedAnalysis.recommendations?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">Öneriler</h4>
+                  <h4 className="text-xs font-semibold text-purple-400 uppercase tracking-wider mb-2">{t('sales_intelligence.oneriler', 'Öneriler')}</h4>
                   <div className="space-y-1">
                     {selectedAnalysis.recommendations.map((r: string, i: number) => (
                       <div key={i} className="flex items-start gap-2 text-sm">
@@ -585,7 +585,7 @@ export default function SalesIntelligencePage() {
               {/* Önemli Anlar */}
               {selectedAnalysis.key_moments?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Önemli Anlar</h4>
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{t('sales_intelligence.onemli_anlar', 'Önemli Anlar')}</h4>
                   <div className="space-y-2">
                     {selectedAnalysis.key_moments.map((m: any, i: number) => (
                       <div key={i} className={`flex items-start gap-2 text-xs p-2 rounded-lg ${m.type === 'positive' ? 'bg-emerald-500/10' : m.type === 'negative' ? 'bg-red-500/10' : 'bg-white/5'}`}>
@@ -601,7 +601,7 @@ export default function SalesIntelligencePage() {
             <div className="flex items-center justify-center h-80 text-gray-500 bg-white/5 rounded-2xl border border-white/10">
               <div className="text-center">
                 <Eye className="w-10 h-10 mx-auto mb-2 opacity-30"/>
-                <p className="text-sm">Detayları görmek için bir analiz seç</p>
+                <p className="text-sm">{t('sales_intelligence.detaylari_gormek_icin_bir', 'Detayları görmek için bir analiz seç')}</p>
               </div>
             </div>
           )}
@@ -634,7 +634,7 @@ export default function SalesIntelligencePage() {
 
           {/* Detaylı Skorlar */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-            <h3 className="font-semibold mb-4">Detaylı Skorlar</h3>
+            <h3 className="font-semibold mb-4">{t('sales_intelligence.detayli_skorlar', 'Detaylı Skorlar')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ScoreBar label="Profesyonellik" score={agentReport.scores?.professionalism || 0}/>
               <ScoreBar label="Satış Tekniği" score={agentReport.scores?.sales_technique || 0}/>
@@ -689,17 +689,17 @@ export default function SalesIntelligencePage() {
           {/* Konuşma Geçmişi */}
           <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
             <div className="p-4 border-b border-white/10">
-              <h3 className="font-semibold">Konuşma Geçmişi</h3>
+              <h3 className="font-semibold">{t('sales_intelligence.konusma_gecmisi', 'Konuşma Geçmişi')}</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-gray-400 text-xs">
-                    <th className="text-left px-4 py-3">Müşteri</th>
+                    <th className="text-left px-4 py-3">{t('sales_intelligence.musteri', 'Müşteri')}</th>
                     <th className="text-left px-4 py-3">Telefon</th>
                     <th className="text-center px-4 py-3">Mesaj</th>
                     <th className="text-center px-4 py-3">Skor</th>
-                    <th className="text-left px-4 py-3">Özet</th>
+                    <th className="text-left px-4 py-3">{t('sales_intelligence.ozet', 'Özet')}</th>
                     <th className="text-right px-4 py-3">Tarih</th>
                   </tr>
                 </thead>
@@ -726,7 +726,7 @@ export default function SalesIntelligencePage() {
       {tab === 'report' && !agentReport && (
         <div className="text-center py-20 text-gray-500">
           <BarChart2 className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-          <p>Ekip sekmesinden bir temsilci seçerek rapor görüntüle</p>
+          <p>{t('sales_intelligence.ekip_sekmesinden_bir_tems', 'Ekip sekmesinden bir temsilci seçerek rapor görüntüle')}</p>
         </div>
       )}
     </div>

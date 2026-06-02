@@ -398,14 +398,14 @@ export default function VisualTrendPage() {
               <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>Visual Trend Catcher</h1>
               <span style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Pinterest & Instagram'dan trend sinyalleri yakala — AI ile kampanya fikirleri üret</p>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('visual_trends.pinterest_instagramdan_tr', 'Pinterest & Instagram\'dan trend sinyalleri yakala — AI ile kampanya fikirleri üret')}</p>
 
             {/* Search bar */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
               <div style={{ flex: 1, position: 'relative' }}>
                 <input value={keyword} onChange={e => setKeyword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !loading && analyze()}
-                  placeholder="Trend arama kelimesi (örn: duvar panel, dekorasyon...)"
+                  placeholder={t('visual_trends.trend_arama_kelimesi_orn', 'Trend arama kelimesi (örn: duvar panel, dekorasyon...)')}
                   maxLength={100}
                   style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${keyword ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 12, padding: '12px 16px 12px 44px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
                 <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
@@ -413,7 +413,7 @@ export default function VisualTrendPage() {
               <div style={{ position: 'relative', minWidth: 160 }}>
                 <select value={sector} onChange={e => setSector(e.target.value)}
                   style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 32px 12px 14px', color: sector ? '#fff' : '#64748b', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer' }}>
-                  <option value="">Sektör (opsiyonel)</option>
+                  <option value="">{t('visual_trends.sektor_opsiyonel', 'Sektör (opsiyonel)')}</option>
                   {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', fontSize: 12 }}>▾</span>
@@ -506,7 +506,7 @@ export default function VisualTrendPage() {
               ) : (
                 <div style={{ textAlign: 'center', padding: 48, color: '#334155' }}>
                   <ChromaScope size={56} />
-                  <p style={{ marginTop: 16 }}>Trend sinyali bulunamadı — farklı bir keyword deneyin</p>
+                  <p style={{ marginTop: 16 }}>{t('visual_trends.trend_sinyali_bulunamadi', 'Trend sinyali bulunamadı — farklı bir keyword deneyin')}</p>
                   <p style={{ fontSize: 12, color: '#1e293b', marginTop: 8 }}>
                     {!result.sourcesAvailable?.exa && !result.sourcesAvailable?.tavily
                       ? 'EXA_API_KEY veya TAVILY_API_KEY Railway\'e eklenmemiş'
@@ -518,7 +518,7 @@ export default function VisualTrendPage() {
               {/* Web results */}
               {result.webResults?.length > 0 && (
                 <div style={{ marginTop: 24 }}>
-                  <h3 style={{ color: '#475569', fontSize: 12, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>🌐 Web Trend Kaynakları</h3>
+                  <h3 style={{ color: '#475569', fontSize: 12, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('visual_trends.web_trend_kaynaklari', '🌐 Web Trend Kaynakları')}</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {result.webResults.slice(0, 4).map((w: any, i: number) => (
                       <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 14px', background: 'rgba(3,5,18,0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 11 }}>
@@ -566,7 +566,7 @@ export default function VisualTrendPage() {
 
               {report.actionPlan?.length > 0 && (
                 <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 16, padding: 18 }}>
-                  <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}>📋 Aksiyon Planı</p>
+                  <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('visual_trends.aksiyon_plani', '📋 Aksiyon Planı')}</p>
                   {report.actionPlan.map((a: string, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 7 }}>
                       <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{i + 1}.</span>
@@ -623,7 +623,7 @@ export default function VisualTrendPage() {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <ChromaScope size={70} scanning={false} />
           </div>
-          <p style={{ color: '#334155', fontSize: 14, margin: '0 0 6px' }}>Bir trend keywordü girin ve analizi başlatın</p>
+          <p style={{ color: '#334155', fontSize: 14, margin: '0 0 6px' }}>{t('visual_trends.bir_trend_keywordu_girin', 'Bir trend keywordü girin ve analizi başlatın')}</p>
           <p style={{ color: '#1e293b', fontSize: 12 }}>Pinterest + Instagram sinyalleri + AI kampanya fikirleri</p>
         </div>
       )}

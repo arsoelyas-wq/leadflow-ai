@@ -295,8 +295,8 @@ export default function CampaignDetailPage() {
           {messages.length === 0 ? (
             <div className="text-center py-8">
               <Clock size={24} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-500 text-sm">Henüz mesaj yok</p>
-              <p className="text-slate-600 text-xs mt-1">Kampanyayı başlatınca mesajlar burada görünür</p>
+              <p className="text-slate-500 text-sm">{t('campaigns.henuz_mesaj_yok', 'Henüz mesaj yok')}</p>
+              <p className="text-slate-600 text-xs mt-1">{t('campaigns.kampanyayi_baslatinca_mes', 'Kampanyayı başlatınca mesajlar burada görünür')}</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto">

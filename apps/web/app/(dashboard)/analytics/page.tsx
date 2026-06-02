@@ -186,7 +186,7 @@ export default function AnalyticsPage() {
                 <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0 }}>{t('analytics.title','Analitik Dashboard')}</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: '3px 10px' }}>
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'df-ping 2s ease-in-out infinite' }} />
-                  <span style={{ color: '#34d399', fontSize: 11, fontWeight: 600 }}>Canlı</span>
+                  <span style={{ color: '#34d399', fontSize: 11, fontWeight: 600 }}>{t('C:.canli', 'Canlı')}</span>
                 </div>
               </div>
               <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>
@@ -229,7 +229,7 @@ export default function AnalyticsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
           {/* Channel comparison */}
           <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 18, padding: 22 }}>
-            <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}>📱 Kanal Karşılaştırması</h3>
+            <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}>{t('C:.kanal_karsilastirmasi', '📱 Kanal Karşılaştırması')}</h3>
             {[
               { label: 'WhatsApp', value: data.channelStats?.whatsapp || 0, color: '#25d366', icon: '💬' },
               { label: 'Email', value: data.channelStats?.email || 0, color: '#3b82f6', icon: '✉️' },
@@ -252,7 +252,7 @@ export default function AnalyticsPage() {
 
           {/* Funnel */}
           <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(16,185,129,0.18)', borderRadius: 18, padding: 22 }}>
-            <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}>🎯 Satış Hunisi</h3>
+            <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}>{t('C:.satis_hunisi', '🎯 Satış Hunisi')}</h3>
             {funnelSteps.map((step, i) => {
               const count = statuses[step.key] || 0
               const pct = Math.round((count / total) * 100)
@@ -276,7 +276,7 @@ export default function AnalyticsPage() {
       {/* ── TOP CAMPAIGNS */}
       {data?.topCampaigns?.length > 0 && (
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 22 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>🏆 En İyi Kampanyalar</h3>
+          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>{t('C:.en_iyi_kampanyalar', '🏆 En İyi Kampanyalar')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {data.topCampaigns.map((c: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'rgba(0,0,0,0.2)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.04)' }}>

@@ -272,10 +272,10 @@ export default function ProductsPage() {
             <QuantumOrb size={56} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Ürün Kataloğu</h1>
+                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('products.urun_katalogu', 'Ürün Kataloğu')}</h1>
                 <span style={{ background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: 0, maxWidth: 540 }}>Ürünlerinizi ekleyin — AI tüm kampanya, WhatsApp ve çağrılarda bunları öğrenip müşterilere özel teklifler sunar</p>
+              <p style={{ color: '#64748b', fontSize: 14, margin: 0, maxWidth: 540 }}>{t('products.urunlerinizi_ekleyin_ai_t', 'Ürünlerinizi ekleyin — AI tüm kampanya, WhatsApp ve çağrılarda bunları öğrenip müşterilere özel teklifler sunar')}</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
@@ -339,18 +339,18 @@ export default function ProductsPage() {
       {/* ── EXCEL TEMPLATE INFO ───────────────────────────────────────────── */}
       <div style={{ marginBottom: 20, padding: '12px 18px', background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 12 }}>
         <FileSpreadsheet size={14} style={{ color: '#34d399', flexShrink: 0 }} />
-        <span>Toplu yükleme için önce <a href={`${API_URL}/api/products/excel-template`} download style={{ color: '#34d399', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>Excel şablonunu indirin</a>, doldurun ve "Excel İçe Aktar" ile yükleyin. Maksimum 500 ürün.</span>
+        <span>{t('products.toplu_yukleme_icin_once', 'Toplu yükleme için önce')}<a href={`${API_URL}/api/products/excel-template`} download style={{ color: '#34d399', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }}>{t('products.excel_sablonunu_indirin', 'Excel şablonunu indirin')}</a>{t('products.doldurun_ve_excel_ice_akt', ', doldurun ve "Excel İçe Aktar" ile yükleyin. Maksimum 500 ürün.')}</span>
       </div>
 
       {/* ── SEARCH + FILTER ───────────────────────────────────────────────── */}
       {products.length > 0 && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ürün ara..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('products.urun_ara', 'Ürün ara...')}
             style={{ flex: 1, minWidth: 200, background: 'rgba(5,8,22,0.9)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '9px 14px', color: '#fff', fontSize: 13, outline: 'none' }} />
           <div style={{ position: 'relative' }}>
             <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
               style={{ background: 'rgba(5,8,22,0.9)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '9px 32px 9px 14px', color: filterCat ? '#fff' : '#64748b', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer', minWidth: 160 }}>
-              <option value="">Tüm kategoriler</option>
+              <option value="">{t('products.tum_kategoriler', 'Tüm kategoriler')}</option>
               {cats.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }}>▾</span>
@@ -370,7 +370,7 @@ export default function ProductsPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(5,8,22,0.97),rgba(8,6,20,0.99))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><QuantumOrb size={52} /></div>
           <p style={{ color: '#475569', fontSize: 15, margin: '0 0 6px' }}>{products.length === 0 ? 'Henüz ürün yok' : 'Arama sonucu bulunamadı'}</p>
-          <p style={{ color: '#334155', fontSize: 13, margin: '0 0 20px' }}>Ürün ekledikçe AI tüm konuşmalarda bunları kullanır</p>
+          <p style={{ color: '#334155', fontSize: 13, margin: '0 0 20px' }}>{t('products.urun_ekledikce_ai_tum_kon', 'Ürün ekledikçe AI tüm konuşmalarda bunları kullanır')}</p>
           {products.length === 0 && (
             <button onClick={() => setShowForm(true)}
               style={{ padding: '11px 28px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 20px rgba(79,70,229,0.3)' }}>

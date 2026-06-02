@@ -170,23 +170,23 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Şirket Adı *</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.sirket_adi', 'Şirket Adı *')}</label>
                     <input value={company.name} onChange={e => setCompany(p => ({...p, name: e.target.value}))}
-                      placeholder="örn: Acme Teknoloji A.Ş."
+                      placeholder={t('onboarding.orn_acme_teknoloji_as', 'örn: Acme Teknoloji A.Ş.')}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition"/>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Sektör *</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.sektor', 'Sektör *')}</label>
                     <select value={company.sector} onChange={e => setCompany(p => ({...p, sector: e.target.value}))}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
-                      <option value="">Seçin</option>
+                      <option value="">{t('onboarding.secin', 'Seçin')}</option>
                       {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Şehir</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.sehir', 'Şehir')}</label>
                     <input value={company.city} onChange={e => setCompany(p => ({...p, city: e.target.value}))}
-                      placeholder="İstanbul"
+                      placeholder={t('onboarding.istanbul', 'İstanbul')}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"/>
                   </div>
                   <div>
@@ -202,10 +202,10 @@ export default function OnboardingPage() {
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"/>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Çalışan Sayısı</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.calisan_sayisi', 'Çalışan Sayısı')}</label>
                     <select value={company.employee_count} onChange={e => setCompany(p => ({...p, employee_count: e.target.value}))}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
-                      <option value="">Seçin</option>
+                      <option value="">{t('onboarding.secin', 'Seçin')}</option>
                       {['1-10','11-50','51-200','201-500','500+'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
@@ -217,33 +217,33 @@ export default function OnboardingPage() {
             {step === 2 && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Ürün/Hizmet Adı *</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.urunhizmet_adi', 'Ürün/Hizmet Adı *')}</label>
                   <input value={product.name} onChange={e => setProduct(p => ({...p, name: e.target.value}))}
-                    placeholder="örn: CRM Yazılımı, Dekoratif Panel, Sigorta Paketi"
+                    placeholder={t('onboarding.orn_crm_yazilimi_dekorati', 'örn: CRM Yazılımı, Dekoratif Panel, Sigorta Paketi')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"/>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Ne iş yapıyorsunuz? (AI bunu kullanarak konuşacak) *</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.ne_is_yapiyorsunuz_ai_bun', 'Ne iş yapıyorsunuz? (AI bunu kullanarak konuşacak) *')}</label>
                   <textarea value={product.description} onChange={e => setProduct(p => ({...p, description: e.target.value}))}
-                    placeholder="örn: Firmaların satış süreçlerini otomatikleştiren bir yazılım geliştiriyoruz. Müşterilerimiz ortalama %40 daha fazla satış yapıyor..."
+                    placeholder={t('onboarding.orn_firmalarin_satis_sure', 'örn: Firmaların satış süreçlerini otomatikleştiren bir yazılım geliştiriyoruz. Müşterilerimiz ortalama %40 daha fazla satış yapıyor...')}
                     rows={3} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 resize-none"/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Fiyat Aralığı</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.fiyat_araligi', 'Fiyat Aralığı')}</label>
                     <input value={product.price_range} onChange={e => setProduct(p => ({...p, price_range: e.target.value}))}
-                      placeholder="örn: 500-5000 TL/ay"
+                      placeholder={t('onboarding.orn_5005000_tlay', 'örn: 500-5000 TL/ay')}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"/>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Teslimat/Kurulum Süresi</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.teslimatkurulum_suresi', 'Teslimat/Kurulum Süresi')}</label>
                     <input value={product.delivery_time} onChange={e => setProduct(p => ({...p, delivery_time: e.target.value}))}
-                      placeholder="örn: 1 gün, 1 hafta"
+                      placeholder={t('onboarding.orn_1_gun_1_hafta', 'örn: 1 gün, 1 hafta')}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"/>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">3 Temel Avantajınız</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.3_temel_avantajiniz', '3 Temel Avantajınız')}</label>
                   {product.advantages.map((adv, i) => (
                     <input key={i} value={adv}
                       onChange={e => setProduct(p => ({...p, advantages: p.advantages.map((a, j) => j === i ? e.target.value : a)}))}
@@ -252,9 +252,9 @@ export default function OnboardingPage() {
                   ))}
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Müşteri Ne Kazanır? (Sonuç odaklı)</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.musteri_ne_kazanir_sonuc', 'Müşteri Ne Kazanır? (Sonuç odaklı)')}</label>
                   <input value={product.target_result} onChange={e => setProduct(p => ({...p, target_result: e.target.value}))}
-                    placeholder="örn: 3 ayda satışlarını %30 artıran müşterilerimiz var"
+                    placeholder={t('onboarding.orn_3_ayda_satislarini_30', 'örn: 3 ayda satışlarını %30 artıran müşterilerimiz var')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500"/>
                 </div>
               </div>
@@ -264,7 +264,7 @@ export default function OnboardingPage() {
             {step === 3 && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Hedef Sektörler</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.hedef_sektorler', 'Hedef Sektörler')}</label>
                   <div className="flex flex-wrap gap-2">
                     {SECTORS.slice(0, 10).map(s => (
                       <button key={s} onClick={() => setTarget(p => ({
@@ -282,22 +282,22 @@ export default function OnboardingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Hedef Şirket Büyüklüğü</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.hedef_sirket_buyuklugu', 'Hedef Şirket Büyüklüğü')}</label>
                     <select value={target.company_size} onChange={e => setTarget(p => ({...p, company_size: e.target.value}))}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-500">
-                      <option value="">Tümü</option>
+                      <option value="">{t('onboarding.tumu', 'Tümü')}</option>
                       {['1-10 kişi','11-50 kişi','51-200 kişi','200+ kişi'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-xs text-slate-400 mb-1.5 block font-medium">Karar Verici Kim?</label>
                     <input value={target.decision_maker} onChange={e => setTarget(p => ({...p, decision_maker: e.target.value}))}
-                      placeholder="örn: CEO, Satın Alma Müdürü"
+                      placeholder={t('onboarding.orn_ceo_satin_alma_muduru', 'örn: CEO, Satın Alma Müdürü')}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-500"/>
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-2 block font-medium">Hedef Müşterinizin 3 Büyük Sorunu</label>
+                  <label className="text-xs text-slate-400 mb-2 block font-medium">{t('onboarding.hedef_musterinizin_3_buyu', 'Hedef Müşterinizin 3 Büyük Sorunu')}</label>
                   {target.pain_points.map((pain, i) => (
                     <input key={i} value={pain}
                       onChange={e => setTarget(p => ({...p, pain_points: p.pain_points.map((x, j) => j === i ? e.target.value : x)}))}
@@ -306,9 +306,9 @@ export default function OnboardingPage() {
                   ))}
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Coğrafi Hedef</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.cografi_hedef', 'Coğrafi Hedef')}</label>
                   <input value={target.geography} onChange={e => setTarget(p => ({...p, geography: e.target.value}))}
-                    placeholder="örn: İstanbul, Ankara, Tüm Türkiye, DACH Bölgesi"
+                    placeholder={t('onboarding.orn_istanbul_ankara_tum_t', 'örn: İstanbul, Ankara, Tüm Türkiye, DACH Bölgesi')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-teal-500"/>
                 </div>
               </div>
@@ -318,7 +318,7 @@ export default function OnboardingPage() {
             {step === 4 && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-slate-400 mb-2 block font-medium">AI Temsilcinin Konuşma Tonu</label>
+                  <label className="text-xs text-slate-400 mb-2 block font-medium">{t('onboarding.ai_temsilcinin_konusma_to', 'AI Temsilcinin Konuşma Tonu')}</label>
                   <div className="grid grid-cols-2 gap-3">
                     {TONES.map(tone => (
                       <button key={tone.key} onClick={() => setSalesStyle(p => ({...p, tone: tone.key}))}
@@ -336,16 +336,16 @@ export default function OnboardingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">AI Temsilci Adı</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.ai_temsilci_adi', 'AI Temsilci Adı')}</label>
                     <input value={salesStyle.agent_name} onChange={e => setSalesStyle(p => ({...p, agent_name: e.target.value}))}
-                      placeholder="örn: Ahmet, Ayşe, Mehmet"
+                      placeholder={t('onboarding.orn_ahmet_ayse_mehmet', 'örn: Ahmet, Ayşe, Mehmet')}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500"/>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">Dil Tarzı</label>
+                    <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.dil_tarzi', 'Dil Tarzı')}</label>
                     <select value={salesStyle.language_style} onChange={e => setSalesStyle(p => ({...p, language_style: e.target.value}))}
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500">
-                      <option value="">Seçin</option>
+                      <option value="">{t('onboarding.secin', 'Seçin')}</option>
                       <option value="formal">Resmi (Siz)</option>
                       <option value="informal">Samimi (Sen)</option>
                       <option value="mixed">Karma</option>
@@ -353,15 +353,15 @@ export default function OnboardingPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Açılış Cümlesi (İlk 10 saniye)</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.acilis_cumlesi_ilk_10_san', 'Açılış Cümlesi (İlk 10 saniye)')}</label>
                   <textarea value={salesStyle.opening_line} onChange={e => setSalesStyle(p => ({...p, opening_line: e.target.value}))}
-                    placeholder="örn: Merhaba, ben Ahmet, ABC Teknoloji'den arıyorum. Şirketinizin satış süreçleriyle ilgili kısa bir bilgi vermek istiyorum, uygun bir anınız var mı?"
+                    placeholder={t('onboarding.orn_merhaba_ben_ahmet_abc', 'örn: Merhaba, ben Ahmet, ABC Teknoloji\'den arıyorum. Şirketinizin satış süreçleriyle ilgili kısa bir bilgi vermek istiyorum, uygun bir anınız var mı?')}
                     rows={2} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 resize-none"/>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">Kullanılmayacak Kelimeler</label>
+                  <label className="text-xs text-slate-400 mb-1.5 block font-medium">{t('onboarding.kullanilmayacak_kelimeler', 'Kullanılmayacak Kelimeler')}</label>
                   <input value={salesStyle.avoid_words} onChange={e => setSalesStyle(p => ({...p, avoid_words: e.target.value}))}
-                    placeholder="örn: yapay zeka, robot, otomatik (virgülle ayırın)"
+                    placeholder={t('onboarding.orn_yapay_zeka_robot_otom', 'örn: yapay zeka, robot, otomatik (virgülle ayırın)')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500"/>
                 </div>
               </div>
@@ -372,7 +372,7 @@ export default function OnboardingPage() {
               <div className="space-y-5">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs text-slate-400 font-medium">Sık Sorulan Sorular</label>
+                    <label className="text-xs text-slate-400 font-medium">{t('onboarding.sik_sorulan_sorular', 'Sık Sorulan Sorular')}</label>
                     <button onClick={() => setFaq(p => [...p, { q: '', a: '' }])}
                       className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
                       <Plus className="w-3 h-3"/> Ekle
@@ -396,7 +396,7 @@ export default function OnboardingPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 mb-2 block font-medium">İtiraz Karşılama Cevapları</label>
+                  <label className="text-xs text-slate-400 mb-2 block font-medium">{t('onboarding.itiraz_karsilama_cevaplar', 'İtiraz Karşılama Cevapları')}</label>
                   <div className="space-y-3">
                     {objections.map((obj, i) => (
                       <div key={i} className="bg-slate-800 rounded-xl p-3 space-y-2">
@@ -418,8 +418,8 @@ export default function OnboardingPage() {
                   <CheckCircle className="w-10 h-10 text-emerald-400"/>
                 </div>
                 <div>
-                  <h3 className="text-white text-2xl font-bold mb-2">Harika! Sisteminiz Hazır 🎉</h3>
-                  <p className="text-slate-400">AI asistanınız artık şirketinizi, ürününüzü ve satış tarzınızı biliyor.</p>
+                  <h3 className="text-white text-2xl font-bold mb-2">{t('onboarding.harika_sisteminiz_hazir', 'Harika! Sisteminiz Hazır 🎉')}</h3>
+                  <p className="text-slate-400">{t('onboarding.ai_asistaniniz_artik_sirk', 'AI asistanınız artık şirketinizi, ürününüzü ve satış tarzınızı biliyor.')}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-left">
                   {[
@@ -457,7 +457,7 @@ export default function OnboardingPage() {
                   : `bg-gradient-to-r ${STEPS[step-1].color} text-white hover:opacity-90`
               } disabled:opacity-50`}>
               {saving ? 'Kaydediliyor...' : step === STEPS.length ? (
-                <><Sparkles className="w-4 h-4"/> Dashboard'a Geç</>
+                <><Sparkles className="w-4 h-4"/>{t('onboarding.dashboarda_gec', 'Dashboard\'a Geç')}</>
               ) : (
                 <>Devam Et <ArrowRight className="w-4 h-4"/></>
               )}

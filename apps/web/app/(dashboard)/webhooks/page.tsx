@@ -103,7 +103,7 @@ export default function WebhooksPage() {
             <Webhook size={24} className="text-orange-400" />
             Webhook Sistemi
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">LeadFlow olaylarını dış sistemlere (CRM, Zapier, Make) ilet</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('webhooks.leadflow_olaylarini_dis_s', 'LeadFlow olaylarını dış sistemlere (CRM, Zapier, Make) ilet')}</p>
         </div>
         <button onClick={() => setShowCreate(!showCreate)}
           className="flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">
@@ -120,7 +120,7 @@ export default function WebhooksPage() {
       {/* Secret Key Uyarısı */}
       {newSecret && (
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5">
-          <p className="text-yellow-300 text-sm font-medium mb-2">⚠️ Secret Key — Sadece bir kez gösterilir!</p>
+          <p className="text-yellow-300 text-sm font-medium mb-2">{t('webhooks.secret_key_sadece_bir_kez', '⚠️ Secret Key — Sadece bir kez gösterilir!')}</p>
           <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-3">
             <code className="text-emerald-300 text-sm flex-1 break-all">{newSecret}</code>
             <button onClick={() => { navigator.clipboard.writeText(newSecret); showMsg('success', 'Kopyalandı!') }}
@@ -138,9 +138,9 @@ export default function WebhooksPage() {
           <h2 className="text-white font-semibold">Yeni Webhook</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Webhook Adı *</label>
+              <label className="text-slate-400 text-xs mb-1.5 block">{t('webhooks.webhook_adi', 'Webhook Adı *')}</label>
               <input value={name} onChange={e => setName(e.target.value)}
-                placeholder="örn: Zapier CRM Entegrasyonu"
+                placeholder={t('webhooks.orn_zapier_crm_entegrasyo', 'örn: Zapier CRM Entegrasyonu')}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-orange-500" />
             </div>
             <div>
@@ -171,7 +171,7 @@ export default function WebhooksPage() {
           </div>
 
           <div className="p-3 bg-slate-900/50 border border-slate-700 rounded-lg">
-            <p className="text-slate-400 text-xs">🔒 Her webhook için benzersiz secret key otomatik oluşturulur. İmza doğrulaması için kullanın: <code className="text-orange-300">X-LeadFlow-Signature</code> header</p>
+            <p className="text-slate-400 text-xs">{t('webhooks.her_webhook_icin_benzersi', '🔒 Her webhook için benzersiz secret key otomatik oluşturulur. İmza doğrulaması için kullanın:')}<code className="text-orange-300">X-LeadFlow-Signature</code> header</p>
           </div>
 
           <div className="flex gap-3">
@@ -181,7 +181,7 @@ export default function WebhooksPage() {
               {saving ? 'Oluşturuluyor...' : 'Oluştur'}
             </button>
             <button onClick={() => setShowCreate(false)}
-              className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition">İptal</button>
+              className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition">{t('webhooks.iptal', 'İptal')}</button>
           </div>
         </div>
       )}
@@ -194,8 +194,8 @@ export default function WebhooksPage() {
       ) : webhooks.length === 0 ? (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
           <Webhook size={40} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400 mb-2">Henüz webhook yok</p>
-          <p className="text-slate-500 text-sm">Zapier, Make veya özel CRM'inize bağlanın</p>
+          <p className="text-slate-400 mb-2">{t('webhooks.henuz_webhook_yok', 'Henüz webhook yok')}</p>
+          <p className="text-slate-500 text-sm">{t('webhooks.zapier_make_veya_ozel_crm', 'Zapier, Make veya özel CRM\'inize bağlanın')}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -222,7 +222,7 @@ export default function WebhooksPage() {
                     {wh.active ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
                   </button>
                   <button onClick={() => testWebhook(wh.id)} disabled={testing === wh.id}
-                    className="p-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition" title="Test Gönder">
+                    className="p-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition" title={t('webhooks.test_gonder', 'Test Gönder')}>
                     {testing === wh.id ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
                   </button>
                   <button onClick={() => loadLogs(wh.id)}
@@ -241,7 +241,7 @@ export default function WebhooksPage() {
                 <div className="border-t border-slate-700 p-4">
                   <p className="text-white text-sm font-medium mb-3">Son Loglar</p>
                   {logs.length === 0 ? (
-                    <p className="text-slate-500 text-xs text-center py-4">Henüz log yok</p>
+                    <p className="text-slate-500 text-xs text-center py-4">{t('webhooks.henuz_log_yok', 'Henüz log yok')}</p>
                   ) : (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {logs.map(log => (
@@ -269,7 +269,7 @@ export default function WebhooksPage() {
 
       {/* Entegrasyon Rehberi */}
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <h2 className="text-white font-semibold mb-4">Popüler Entegrasyonlar</h2>
+        <h2 className="text-white font-semibold mb-4">{t('webhooks.populer_entegrasyonlar', 'Popüler Entegrasyonlar')}</h2>
         <div className="grid grid-cols-3 gap-3">
           {[
             { name: 'Zapier', desc: '5000+ app ile bağlan', url: 'zapier.com', color: 'text-orange-400' },

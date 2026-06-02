@@ -69,7 +69,7 @@ export default function SalesCoachPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <GraduationCap size={24} className="text-purple-400"/> Satış Koçu & Denetçi
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">WhatsApp + tüm kanal konuşmalarını AI ile analiz et — patron için rapor</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('sales_coach.whatsapp_tum_kanal_konusm', 'WhatsApp + tüm kanal konuşmalarını AI ile analiz et — patron için rapor')}</p>
         </div>
         <button onClick={analyzeBatch} disabled={analyzing}
           className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
@@ -110,7 +110,7 @@ export default function SalesCoachPage() {
             </div>
             {weeklyReport.topMissedOpportunity && (
               <div className="lg:col-span-2">
-                <p className="text-slate-400 text-xs mb-1 flex items-center gap-1"><AlertTriangle size={10}/> En Çok Kaçırılan Fırsat</p>
+                <p className="text-slate-400 text-xs mb-1 flex items-center gap-1"><AlertTriangle size={10}/>{t('sales_coach.en_cok_kacirilan_firsat', 'En Çok Kaçırılan Fırsat')}</p>
                 <p className="text-white text-sm">{weeklyReport.topMissedOpportunity}</p>
               </div>
             )}
@@ -121,17 +121,17 @@ export default function SalesCoachPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Tek Analiz */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-3">
-          <h2 className="text-white font-semibold text-sm">🔍 Tek Konuşma Analiz</h2>
+          <h2 className="text-white font-semibold text-sm">{t('sales_coach.tek_konusma_analiz', '🔍 Tek Konuşma Analiz')}</h2>
           <div>
-            <label className="text-slate-400 text-xs mb-1 block">Lead Seç</label>
+            <label className="text-slate-400 text-xs mb-1 block">{t('sales_coach.lead_sec', 'Lead Seç')}</label>
             <select value={selectedLead} onChange={e=>setSelectedLead(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500">
-              <option value="">Lead seçin</option>
+              <option value="">{t('sales_coach.lead_secin', 'Lead seçin')}</option>
               {leads.map(l=><option key={l.id} value={l.id}>{l.company_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-slate-400 text-xs mb-1 block">Satış Temsilcisi Adı</label>
+            <label className="text-slate-400 text-xs mb-1 block">{t('sales_coach.satis_temsilcisi_adi', 'Satış Temsilcisi Adı')}</label>
             <input value={agentName} onChange={e=>setAgentName(e.target.value)}
               placeholder="Ahmet, Mehmet..."
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500"/>
@@ -145,8 +145,8 @@ export default function SalesCoachPage() {
 
         {/* Leaderboard */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
-          <h2 className="text-white font-semibold text-sm mb-3">🏆 Satış Sıralaması</h2>
-          {leaderboard.length===0 ? <p className="text-slate-400 text-xs">Henüz analiz yok</p> :
+          <h2 className="text-white font-semibold text-sm mb-3">{t('sales_coach.satis_siralamasi', '🏆 Satış Sıralaması')}</h2>
+          {leaderboard.length===0 ? <p className="text-slate-400 text-xs">{t('sales_coach.henuz_analiz_yok', 'Henüz analiz yok')}</p> :
           leaderboard.map((agent, i) => (
             <div key={agent.name} className="flex items-center gap-3 py-2 border-b border-slate-700 last:border-0">
               <span className={`text-sm font-bold ${i===0?'text-yellow-400':i===1?'text-slate-300':'text-slate-500'}`}>#{i+1}</span>

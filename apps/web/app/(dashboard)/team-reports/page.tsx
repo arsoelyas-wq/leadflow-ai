@@ -204,7 +204,7 @@ export default function TeamReportsPage() {
             </div>
             Ekip Raporları
           </h1>
-          <p className="text-slate-400 text-sm mt-1">Haftalık rapor, trend analizi ve sektör karşılaştırması</p>
+          <p className="text-slate-400 text-sm mt-1">{t('team_reports.haftalik_rapor_trend_anal', 'Haftalık rapor, trend analizi ve sektör karşılaştırması')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={sendWeeklyReport} disabled={sending}
@@ -239,13 +239,13 @@ export default function TeamReportsPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <select value={days} onChange={e => setDays(Number(e.target.value))}
               className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-              <option value={7}>Son 7 gün</option>
-              <option value={30}>Son 30 gün</option>
-              <option value={90}>Son 90 gün</option>
+              <option value={7}>{t('team_reports.son_7_gun', 'Son 7 gün')}</option>
+              <option value={30}>{t('team_reports.son_30_gun', 'Son 30 gün')}</option>
+              <option value={90}>{t('team_reports.son_90_gun', 'Son 90 gün')}</option>
             </select>
             <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)}
               className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white">
-              <option value="">Tüm Ekip</option>
+              <option value="">{t('team_reports.tum_ekip', 'Tüm Ekip')}</option>
               {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
             <button onClick={loadTrend} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-xl">
@@ -253,7 +253,7 @@ export default function TeamReportsPage() {
             </button>
             <div className="flex items-center gap-3 text-xs text-slate-500 ml-2">
               <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-purple-500 inline-block rounded"/> Genel Skor</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-teal-500 inline-block rounded"/> Satış</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-teal-500 inline-block rounded"/>{t('team_reports.satis', 'Satış')}</span>
               <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-amber-500 inline-block rounded opacity-60"/> Benchmark</span>
             </div>
           </div>
@@ -270,7 +270,7 @@ export default function TeamReportsPage() {
           {trend?.trend?.length > 0 && (
             <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-700">
-                <h3 className="font-semibold text-white text-sm">Dönem Detayları</h3>
+                <h3 className="font-semibold text-white text-sm">{t('team_reports.donem_detaylari', 'Dönem Detayları')}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -278,9 +278,9 @@ export default function TeamReportsPage() {
                     <tr className="border-b border-slate-700 text-slate-500 text-xs">
                       <th className="text-left px-4 py-3">Tarih</th>
                       <th className="text-center px-4 py-3">Genel</th>
-                      <th className="text-center px-4 py-3">Satış</th>
+                      <th className="text-center px-4 py-3">{t('team_reports.satis', 'Satış')}</th>
                       <th className="text-center px-4 py-3">Empati</th>
-                      <th className="text-center px-4 py-3">Kapanış</th>
+                      <th className="text-center px-4 py-3">{t('team_reports.kapanis', 'Kapanış')}</th>
                       <th className="text-center px-4 py-3">Analiz</th>
                     </tr>
                   </thead>
@@ -323,7 +323,7 @@ export default function TeamReportsPage() {
                   <div className={`text-4xl font-black ${benchmark.user_scores?.overall >= benchmark.benchmarks?.overall ? 'text-emerald-400' : 'text-amber-400'}`}>
                     {benchmark.user_scores?.overall || '—'}
                   </div>
-                  <div className="text-xs text-slate-500 mt-1">Genel Ortalamanız</div>
+                  <div className="text-xs text-slate-500 mt-1">{t('team_reports.genel_ortalamaniz', 'Genel Ortalamanız')}</div>
                   <div className={`text-xs mt-2 font-medium ${benchmark.user_scores?.overall >= benchmark.benchmarks?.overall ? 'text-emerald-400' : 'text-red-400'}`}>
                     {benchmark.user_scores?.overall >= benchmark.benchmarks?.overall
                       ? `✓ Sektör ortalamasının ${benchmark.user_scores?.overall - benchmark.benchmarks?.overall} puan üstünde`
@@ -332,7 +332,7 @@ export default function TeamReportsPage() {
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-center">
                   <div className="text-3xl font-bold text-amber-400">{benchmark.benchmarks?.overall}</div>
-                  <div className="text-xs text-slate-500 mt-1">Sektör Ortalaması</div>
+                  <div className="text-xs text-slate-500 mt-1">{t('team_reports.sektor_ortalamasi', 'Sektör Ortalaması')}</div>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-center">
                   <div className="text-3xl font-bold text-blue-400">{benchmark.total_analyses}</div>
@@ -350,7 +350,7 @@ export default function TeamReportsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-300">{METRIC_LABELS[c.metric] || c.metric}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500">Sektör: <strong className="text-amber-400">{c.benchmark}</strong></span>
+                        <span className="text-xs text-slate-500">{t('team_reports.sektor', 'Sektör:')}<strong className="text-amber-400">{c.benchmark}</strong></span>
                         <span className={`text-sm font-bold ${c.user >= c.benchmark ? 'text-emerald-400' : 'text-red-400'}`}>{c.user || '—'}</span>
                         <TrendDot diff={c.diff}/>
                       </div>
@@ -380,7 +380,7 @@ export default function TeamReportsPage() {
                     </div>
                   ))}
                   {!(benchmark.comparison || []).some((c: any) => c.status === 'above') && (
-                    <p className="text-xs text-slate-600">Henüz sektör ortalaması aşılmamış</p>
+                    <p className="text-xs text-slate-600">{t('team_reports.henuz_sektor_ortalamasi_a', 'Henüz sektör ortalaması aşılmamış')}</p>
                   )}
                 </div>
                 <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
@@ -394,7 +394,7 @@ export default function TeamReportsPage() {
                     </div>
                   ))}
                   {!(benchmark.comparison || []).some((c: any) => c.status === 'below') && (
-                    <p className="text-xs text-slate-600 text-center py-2">Tüm metriklerde sektör ortalaması aşılmış! 🎉</p>
+                    <p className="text-xs text-slate-600 text-center py-2">{t('team_reports.tum_metriklerde_sektor_or', 'Tüm metriklerde sektör ortalaması aşılmış! 🎉')}</p>
                   )}
                 </div>
               </div>
@@ -402,7 +402,7 @@ export default function TeamReportsPage() {
           ) : (
             <div className="text-center py-20 text-slate-600">
               <BarChart2 className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-              <p className="text-sm">Benchmark için önce analiz yapılması gerekiyor</p>
+              <p className="text-sm">{t('team_reports.benchmark_icin_once_anali', 'Benchmark için önce analiz yapılması gerekiyor')}</p>
             </div>
           )}
         </div>
@@ -418,7 +418,7 @@ export default function TeamReportsPage() {
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <Mail className="w-4 h-4 text-purple-400"/> Haftalık Email Raporu
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">Her Pazartesi sabahı 09:00'da otomatik gönderilir</p>
+                <p className="text-xs text-slate-500 mt-1">{t('team_reports.her_pazartesi_sabahi_0900', 'Her Pazartesi sabahı 09:00\'da otomatik gönderilir')}</p>
               </div>
               <button onClick={() => setSettings((s: any) => ({...s, weekly_enabled: !s.weekly_enabled}))}
                 className={`w-12 h-6 rounded-full transition-all ${settings.weekly_enabled ? 'bg-purple-600' : 'bg-slate-600'} relative`}>
@@ -445,7 +445,7 @@ export default function TeamReportsPage() {
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <Bell className="w-4 h-4 text-amber-400"/> Düşük Skor Uyarısı
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">Belirlenen skorun altındaki konuşmalar için email uyarısı</p>
+                <p className="text-xs text-slate-500 mt-1">{t('team_reports.belirlenen_skorun_altinda', 'Belirlenen skorun altındaki konuşmalar için email uyarısı')}</p>
               </div>
               <button onClick={() => setSettings((s: any) => ({...s, alert_enabled: !s.alert_enabled}))}
                 className={`w-12 h-6 rounded-full transition-all ${settings.alert_enabled ? 'bg-amber-600' : 'bg-slate-600'} relative`}>
@@ -453,12 +453,12 @@ export default function TeamReportsPage() {
               </button>
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-slate-400">Uyarı Eşiği: <strong className="text-white">{settings.alert_threshold}</strong></label>
+              <label className="text-xs text-slate-400">{t('team_reports.uyari_esigi', 'Uyarı Eşiği:')}<strong className="text-white">{settings.alert_threshold}</strong></label>
               <input type="range" min="30" max="70" value={settings.alert_threshold}
                 onChange={e => setSettings((s: any) => ({...s, alert_threshold: Number(e.target.value)}))}
                 className="w-full accent-amber-500"/>
               <div className="flex justify-between text-xs text-slate-600">
-                <span>30 (Çok hassas)</span>
+                <span>{t('team_reports.30_cok_hassas', '30 (Çok hassas)')}</span>
                 <span>70 (Az hassas)</span>
               </div>
             </div>

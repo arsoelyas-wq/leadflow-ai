@@ -156,7 +156,7 @@ export default function SequencesPage() {
             <Bot size={24} className="text-blue-400" />
             AI Satış Sekansları
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Otomatik çok adımlı satış süreci — lead'e ilk mesajdan kapanışa kadar</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('sequences.otomatik_cok_adimli_satis', 'Otomatik çok adımlı satış süreci — lead\'e ilk mesajdan kapanışa kadar')}</p>
         </div>
         <button onClick={() => setShowCreate(!showCreate)}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">
@@ -189,13 +189,13 @@ export default function SequencesPage() {
       {/* Yeni Sekans Formu */}
       {showCreate && (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-5">
-          <h2 className="text-white font-semibold">Yeni Sekans Oluştur</h2>
+          <h2 className="text-white font-semibold">{t('sequences.yeni_sekans_olustur', 'Yeni Sekans Oluştur')}</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Sekans Adı *</label>
+              <label className="text-slate-400 text-xs mb-1.5 block">{t('sequences.sekans_adi', 'Sekans Adı *')}</label>
               <input value={name} onChange={e => setName(e.target.value)}
-                placeholder="örn: 5 Günlük WhatsApp Takip"
+                placeholder={t('sequences.orn_5_gunluk_whatsapp_tak', 'örn: 5 Günlük WhatsApp Takip')}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500" />
             </div>
             <div>
@@ -235,8 +235,8 @@ export default function SequencesPage() {
                     <select value={step.condition} onChange={e => updateStep(idx, 'condition', e.target.value)}
                       className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs focus:outline-none">
                       <option value="any">Her zaman</option>
-                      <option value="not_replied">Cevap vermemişse</option>
-                      <option value="replied">Cevap vermişse</option>
+                      <option value="not_replied">{t('sequences.cevap_vermemisse', 'Cevap vermemişse')}</option>
+                      <option value="replied">{t('sequences.cevap_vermisse', 'Cevap vermişse')}</option>
                     </select>
                   </div>
                   <button onClick={() => removeStep(idx)} className="text-slate-600 hover:text-red-400 transition">
@@ -249,16 +249,16 @@ export default function SequencesPage() {
                   <input type="number" value={step.delay_hours} onChange={e => updateStep(idx, 'delay_hours', Number(e.target.value))}
                     className="w-20 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-white text-xs focus:outline-none"
                     min="0" />
-                  <span className="text-slate-500 text-xs">saat sonra gönder</span>
+                  <span className="text-slate-500 text-xs">{t('sequences.saat_sonra_gonder', 'saat sonra gönder')}</span>
                 </div>
 
                 {step.type === 'message' ? (
                   <textarea value={step.message} onChange={e => updateStep(idx, 'message', e.target.value)}
-                    rows={2} placeholder="Mesaj şablonu... [FIRMA_ADI], [AD], [SEHIR] kullanabilirsin"
+                    rows={2} placeholder={t('sequences.mesaj_sablonu_firmaadi_ad', 'Mesaj şablonu... [FIRMA_ADI], [AD], [SEHIR] kullanabilirsin')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500 resize-none" />
                 ) : (
                   <textarea value={step.ai_prompt} onChange={e => updateStep(idx, 'ai_prompt', e.target.value)}
-                    rows={2} placeholder="AI prompt... (ne tür mesaj üretsin?)"
+                    rows={2} placeholder={t('sequences.ai_prompt_ne_tur_mesaj_ur', 'AI prompt... (ne tür mesaj üretsin?)')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500 resize-none" />
                 )}
               </div>
@@ -287,7 +287,7 @@ export default function SequencesPage() {
       ) : sequences.length === 0 ? (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
           <Bot size={40} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">Henüz sekans yok — "Yeni Sekans" ile başlayın</p>
+          <p className="text-slate-400">{t('sequences.henuz_sekans_yok_yeni_sek', 'Henüz sekans yok — "Yeni Sekans" ile başlayın')}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -374,7 +374,7 @@ export default function SequencesPage() {
                       <p className="text-white text-sm font-medium mb-3">Aktif Leadler ({enrollments.length})</p>
                       <div className="max-h-48 overflow-y-auto space-y-1.5">
                         {enrollments.length === 0 ? (
-                          <p className="text-slate-500 text-xs text-center py-4">Henüz lead eklenmedi</p>
+                          <p className="text-slate-500 text-xs text-center py-4">{t('sequences.henuz_lead_eklenmedi', 'Henüz lead eklenmedi')}</p>
                         ) : enrollments.map(enr => (
                           <div key={enr.id} className="flex items-center justify-between px-3 py-2 bg-slate-900 rounded-lg">
                             <div>

@@ -173,9 +173,9 @@ export default function NewCampaignPage() {
           <div className="space-y-6">
             <h2 className="text-white font-semibold text-lg">Kampanya Bilgileri</h2>
             <div>
-              <label className="text-slate-300 text-sm font-medium block mb-2">Kampanya Adı *</label>
+              <label className="text-slate-300 text-sm font-medium block mb-2">{t('campaigns.kampanya_adi', 'Kampanya Adı *')}</label>
               <input value={name} onChange={e => setName(e.target.value)}
-                placeholder="örn: Mayıs Dekorasyon Kampanyası"
+                placeholder={t('campaigns.orn_mayis_dekorasyon_kamp', 'örn: Mayıs Dekorasyon Kampanyası')}
                 className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition" />
             </div>
             <div>
@@ -194,7 +194,7 @@ export default function NewCampaignPage() {
 
             {/* Zamanlama */}
             <div>
-              <label className="text-slate-300 text-sm font-medium block mb-3">Gönderim Zamanı</label>
+              <label className="text-slate-300 text-sm font-medium block mb-3">{t('campaigns.gonderim_zamani', 'Gönderim Zamanı')}</label>
               <div className="flex gap-3">
                 <button onClick={() => setIsScheduled(false)}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition ${!isScheduled ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500'}`}>
@@ -224,9 +224,9 @@ export default function NewCampaignPage() {
         {/* STEP 2 */}
         {step === 2 && (
           <div className="space-y-5">
-            <h2 className="text-white font-semibold text-lg">Mesaj Şablonu</h2>
+            <h2 className="text-white font-semibold text-lg">{t('campaigns.mesaj_sablonu', 'Mesaj Şablonu')}</h2>
             <div className="flex flex-wrap gap-2 p-3 bg-slate-900/50 rounded-xl border border-slate-700 text-xs text-slate-400">
-              <span>Kişiselleştirme değişkenleri:</span>
+              <span>{t('campaigns.kisisellestirme_degiskenl', 'Kişiselleştirme değişkenleri:')}</span>
               {['{{firma}}', '{{sehir}}', '{{sektor}}', '{{isim}}'].map(v => (
                 <button key={v} onClick={() => setCustomMessage(m => m + v)}
                   className="bg-slate-700 hover:bg-slate-600 text-blue-300 px-2 py-0.5 rounded font-mono transition">
@@ -236,7 +236,7 @@ export default function NewCampaignPage() {
             </div>
 
             <div>
-              <p className="text-slate-400 text-xs font-medium mb-2 uppercase tracking-wider">Hazır Şablonlar</p>
+              <p className="text-slate-400 text-xs font-medium mb-2 uppercase tracking-wider">{t('campaigns.hazir_sablonlar', 'Hazır Şablonlar')}</p>
               <div className="grid gap-2">
                 {(TEMPLATES[channel as keyof typeof TEMPLATES] || TEMPLATES.whatsapp).map(t => (
                   <button key={t.id} onClick={() => selectTemplate(t.text)}
@@ -249,9 +249,9 @@ export default function NewCampaignPage() {
             </div>
 
             <div>
-              <p className="text-slate-400 text-xs font-medium mb-2 uppercase tracking-wider">Mesaj İçeriği</p>
+              <p className="text-slate-400 text-xs font-medium mb-2 uppercase tracking-wider">{t('campaigns.mesaj_icerigi', 'Mesaj İçeriği')}</p>
               <textarea value={customMessage} onChange={e => setCustomMessage(e.target.value)}
-                rows={7} placeholder="Mesajınızı yazın veya yukarıdan şablon seçin..."
+                rows={7} placeholder={t('campaigns.mesajinizi_yazin_veya_yuk', 'Mesajınızı yazın veya yukarıdan şablon seçin...')}
                 className="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 transition resize-none" />
               <p className="text-slate-500 text-xs mt-1">{customMessage.length} karakter</p>
             </div>
@@ -262,7 +262,7 @@ export default function NewCampaignPage() {
         {step === 3 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-white font-semibold text-lg">Lead Seç</h2>
+              <h2 className="text-white font-semibold text-lg">{t('campaigns.lead_sec', 'Lead Seç')}</h2>
               <button onClick={selectAll} className="text-blue-400 text-sm hover:text-blue-300 transition">
                 {filteredLeads.every(l => selectedLeads.includes(l.id)) && filteredLeads.length > 0
                   ? 'Seçimi Kaldır' : `Tümünü Seç (${filteredLeads.length})`}
@@ -272,7 +272,7 @@ export default function NewCampaignPage() {
               <div className="relative flex-1">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
-                  placeholder="Firma veya şehir ara..."
+                  placeholder={t('campaigns.firma_veya_sehir_ara', 'Firma veya şehir ara...')}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-8 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition" />
                 {leadSearch && (
                   <button onClick={() => setLeadSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
@@ -288,7 +288,7 @@ export default function NewCampaignPage() {
               </select>
             </div>
             {loadingLeads ? (
-              <div className="text-center py-8 text-slate-500">Leadler yükleniyor...</div>
+              <div className="text-center py-8 text-slate-500">{t('campaigns.leadler_yukleniyor', 'Leadler yükleniyor...')}</div>
             ) : filteredLeads.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-slate-400">{leads.length === 0 ? 'Lead bulunamadı.' : 'Arama kriterinize uyan lead yok.'}</p>
@@ -335,7 +335,7 @@ export default function NewCampaignPage() {
         {/* STEP 4 */}
         {step === 4 && (
           <div className="space-y-5">
-            <h2 className="text-white font-semibold text-lg">Kampanya Özeti</h2>
+            <h2 className="text-white font-semibold text-lg">{t('campaigns.kampanya_ozeti', 'Kampanya Özeti')}</h2>
             <div className="space-y-3">
               {[
                 { label: 'Kampanya Adı', value: name },
@@ -351,7 +351,7 @@ export default function NewCampaignPage() {
               ))}
             </div>
             <div className="bg-slate-900 rounded-xl p-4 border border-slate-700">
-              <p className="text-slate-400 text-xs font-medium mb-2 uppercase tracking-wider">Mesaj Önizlemesi (örnek lead ile)</p>
+              <p className="text-slate-400 text-xs font-medium mb-2 uppercase tracking-wider">{t('campaigns.mesaj_onizlemesi_ornek_le', 'Mesaj Önizlemesi (örnek lead ile)')}</p>
               <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{previewMessage}</p>
             </div>
             {error && (

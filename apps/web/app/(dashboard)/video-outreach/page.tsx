@@ -1114,7 +1114,7 @@ export default function VideoOutreachPage() {
             </div>
             AI Video Outreach
           </h1>
-          <p className="text-slate-400 text-sm mt-1">MuseTalk + ElevenLabs · AI Avatar Kütüphanesi · Kişisel video mesajları</p>
+          <p className="text-slate-400 text-sm mt-1">{t('video_outreach.musetalk_elevenlabs_ai_av', 'MuseTalk + ElevenLabs · AI Avatar Kütüphanesi · Kişisel video mesajları')}</p>
         </div>
         <div className="flex items-center gap-3">
           {stats && (
@@ -1166,7 +1166,7 @@ export default function VideoOutreachPage() {
                 </div>
                 {analytics.by_hook && Object.keys(analytics.by_hook).length > 0 && (
                   <div className="space-y-2 pt-2 border-t border-slate-700">
-                    <p className="text-xs text-slate-500">Hook A/B Karşılaştırması</p>
+                    <p className="text-xs text-slate-500">{t('video_outreach.hook_ab_karsilastirmasi', 'Hook A/B Karşılaştırması')}</p>
                     {Object.entries(analytics.by_hook).map(([hook, stats]: [string, any]) => (
                       <div key={hook} className="flex items-center gap-2">
                         <span className="text-xs text-slate-400 w-14">Hook {hook.toUpperCase()}</span>
@@ -1182,7 +1182,7 @@ export default function VideoOutreachPage() {
 
               {/* Top sectors */}
               <div className="md:col-span-2 space-y-3">
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Sektöre Göre İzlenme</p>
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">{t('video_outreach.sektore_gore_izlenme', 'Sektöre Göre İzlenme')}</p>
                 {analytics.by_sector?.length > 0 ? (
                   <div className="space-y-2">
                     {analytics.by_sector.slice(0, 6).map((s: any) => (
@@ -1198,7 +1198,7 @@ export default function VideoOutreachPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-slate-600 text-sm py-4">Henüz yeterli veri yok. Videolar izlendikçe burada görünecek.</p>
+                  <p className="text-slate-600 text-sm py-4">{t('video_outreach.henuz_yeterli_veri_yok_vi', 'Henüz yeterli veri yok. Videolar izlendikçe burada görünecek.')}</p>
                 )}
               </div>
             </div>
@@ -1232,7 +1232,7 @@ export default function VideoOutreachPage() {
                     <div className="flex items-center gap-2">
                       <p className="text-white text-sm font-medium truncate">{v.research_data?.brandName || v.leads?.company_name}</p>
                       {v.research_quality === 'web_search' && (
-                        <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded shrink-0">🔍 Araştırıldı</span>
+                        <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded shrink-0">{t('video_outreach.arastirildi', '🔍 Araştırıldı')}</span>
                       )}
                       {v.script_score > 0 && (
                         <span className="flex items-center gap-0.5 text-xs text-purple-400 shrink-0">
@@ -1250,7 +1250,7 @@ export default function VideoOutreachPage() {
                           <Eye className="w-3 h-3"/> {v.view_count}x izlendi
                         </span>
                       )}
-                      {v.sent_at && <span className="text-xs text-teal-400">Gönderildi ✓</span>}
+                      {v.sent_at && <span className="text-xs text-teal-400">{t('video_outreach.gonderildi', 'Gönderildi ✓')}</span>}
                       {!v.sent_at && v.optimal_send_at && v.status === 'completed' && (
                         <span className="flex items-center gap-1 text-xs text-amber-400">
                           <Timer className="w-3 h-3"/> {new Date(v.optimal_send_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}'de gönder
@@ -1286,7 +1286,7 @@ export default function VideoOutreachPage() {
                 )}
               </div>
             )})}
-            {videos.length === 0 && <div className="text-center py-8 text-slate-600 text-sm">Henüz video yok</div>}
+            {videos.length === 0 && <div className="text-center py-8 text-slate-600 text-sm">{t('video_outreach.henuz_video_yok', 'Henüz video yok')}</div>}
           </div>
         </div>
       )}
@@ -1324,7 +1324,7 @@ export default function VideoOutreachPage() {
             ) : (
               <button onClick={generate} disabled={generating || !canNext()}
                 className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-medium text-sm">
-                {generating ? <><RefreshCw className="w-4 h-4 animate-spin"/> Oluşturuluyor...</> : <><Zap className="w-4 h-4"/> Video Oluştur</>}
+                {generating ? <><RefreshCw className="w-4 h-4 animate-spin"/>{t('video_outreach.olusturuluyor', 'Oluşturuluyor...')}</> : <><Zap className="w-4 h-4"/>{t('video_outreach.video_olustur', 'Video Oluştur')}</>}
               </button>
             )}
           </div>

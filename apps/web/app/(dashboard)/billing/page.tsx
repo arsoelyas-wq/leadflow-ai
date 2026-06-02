@@ -136,7 +136,7 @@ export default function BillingPage() {
         <div style={{ position: 'relative', zIndex: 2, marginTop: 20, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
           <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 3, boxShadow: `0 0 10px ${pctColor}60`, transition: 'width 0.8s' }} />
         </div>
-        {pct <= 20 && <p style={{ position: 'relative', zIndex: 2, color: '#f87171', fontSize: 12, margin: '8px 0 0' }}>⚠️ Krediniz azalıyor — paket satın almayı düşünün!</p>}
+        {pct <= 20 && <p style={{ position: 'relative', zIndex: 2, color: '#f87171', fontSize: 12, margin: '8px 0 0' }}>{t('billing.krediniz_azaliyor_paket_s', '⚠️ Krediniz azalıyor — paket satın almayı düşünün!')}</p>}
       </div>
 
       {msg && <div style={{ marginBottom: 16, padding: '12px 18px', background: msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border: `1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius: 12 }}><p style={{ color: msg.type==='success'?'#34d399':'#f87171', fontSize: 13, margin: 0 }}>{msg.text}</p></div>}
@@ -188,7 +188,7 @@ export default function BillingPage() {
 
       {activeTab === 'usage' && (
         <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, padding:24 }}>
-          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 20px' }}>📊 Kredi Kullanım Dökümü</h3>
+          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 20px' }}>{t('billing.kredi_kullanim_dokumu', '📊 Kredi Kullanım Dökümü')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 }}>
             {[
               { label:'Lead Scraping', used:Math.round(creditsUsed*0.45), color:'#06b6d4', icon:'🔍' },
@@ -222,13 +222,13 @@ export default function BillingPage() {
       {activeTab === 'history' && (
         <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, overflow:'hidden' }}>
           <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:0 }}>🧾 Ödeme Geçmişi</h3>
-            {history.length>0 && <button style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.25)', background:'rgba(16,185,129,0.06)', color:'#34d399', fontSize:11, cursor:'pointer' }}><Download size={12} /> CSV İndir</button>}
+            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:0 }}>{t('billing.odeme_gecmisi', '🧾 Ödeme Geçmişi')}</h3>
+            {history.length>0 && <button style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.25)', background:'rgba(16,185,129,0.06)', color:'#34d399', fontSize:11, cursor:'pointer' }}><Download size={12} />{t('billing.csv_indir', 'CSV İndir')}</button>}
           </div>
           {history.length === 0 ? (
             <div style={{ padding:40, textAlign:'center', color:'#475569' }}>
               <p style={{ fontSize:28, margin:'0 0 10px' }}>🧾</p>
-              <p style={{ fontSize:13, margin:0 }}>Henüz ödeme geçmişi yok</p>
+              <p style={{ fontSize:13, margin:0 }}>{t('billing.henuz_odeme_gecmisi_yok', 'Henüz ödeme geçmişi yok')}</p>
             </div>
           ) : history.map((p: any, i: number) => (
             <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid rgba(255,255,255,0.03)' }}>
@@ -241,7 +241,7 @@ export default function BillingPage() {
               </div>
               <div style={{ textAlign:'right' }}>
                 <p style={{ color:'#10b981', fontWeight:800, fontSize:14, margin:0 }}>₺{p.amount}</p>
-                <span style={{ background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.25)', color:'#34d399', fontSize:10, padding:'2px 7px', borderRadius:20 }}>Tamamlandı</span>
+                <span style={{ background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.25)', color:'#34d399', fontSize:10, padding:'2px 7px', borderRadius:20 }}>{t('billing.tamamlandi', 'Tamamlandı')}</span>
               </div>
             </div>
           ))}

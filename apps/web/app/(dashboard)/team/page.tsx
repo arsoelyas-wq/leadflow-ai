@@ -299,8 +299,8 @@ export default function TeamPage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:22 }}>
           <TeamOrb size={86} members={members} scanning={loading} />
           <div style={{ flex:1 }}>
-            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 5px' }}>Ekip Yönetimi</h1>
-            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>Ekibi yönet · Otomatik lead dağıt · AI koçluk · Performans takibi · Liderlik tablosu</p>
+            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 5px' }}>{t('team.ekip_yonetimi', 'Ekip Yönetimi')}</h1>
+            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('team.ekibi_yonet_otomatik_lead', 'Ekibi yönet · Otomatik lead dağıt · AI koçluk · Performans takibi · Liderlik tablosu')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
               {[
                 { l:'Toplam Üye', v:stats?.total||0, c:'#94a3b8' },
@@ -349,7 +349,7 @@ export default function TeamPage() {
           {/* Yük dengesizliği uyarısı */}
           {loadBalance?.warnings?.length > 0 && (
             <div style={{ padding:'12px 18px', background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:12 }}>
-              <p style={{ color:'#f87171', fontSize:12, fontWeight:700, margin:'0 0 4px' }}>⚠️ Yük Dengesizliği Tespit Edildi</p>
+              <p style={{ color:'#f87171', fontSize:12, fontWeight:700, margin:'0 0 4px' }}>{t('team.yuk_dengesizligi_tespit_e', '⚠️ Yük Dengesizliği Tespit Edildi')}</p>
               {loadBalance.warnings.map((w:any,i:number) => <p key={i} style={{ color:'#94a3b8', fontSize:11, margin:0 }}>{w.warning}</p>)}
             </div>
           )}
@@ -384,7 +384,7 @@ export default function TeamPage() {
             <div style={{ ...card, padding:52, textAlign:'center' }}>
               <Users size={36} color="#334155" style={{ margin:'0 auto 14px', display:'block' }} />
               <h3 style={{ color:'#fff', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>Ekip yok</h3>
-              <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>İlk ekip üyenizi ekleyin</p>
+              <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>{t('team.ilk_ekip_uyenizi_ekleyin', 'İlk ekip üyenizi ekleyin')}</p>
               <button onClick={()=>setShowAdd(true)} style={{ padding:'10px 22px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 <Plus size={14} style={{ display:'inline', marginRight:6 }} /> Üye Ekle
               </button>
@@ -572,7 +572,7 @@ export default function TeamPage() {
           {weeklyReport && (
             <div style={{ ...card, padding:'16px 18px' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:0 }}>📊 Haftalık Ekip Raporu</h3>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:0 }}>{t('team.haftalik_ekip_raporu', '📊 Haftalık Ekip Raporu')}</h3>
                 <button onClick={()=>navigator.clipboard?.writeText(weeklyReport)} style={{ display:'flex', alignItems:'center', gap:4, padding:'5px 10px', borderRadius:8, border:'1px solid rgba(255,255,255,0.08)', background:'transparent', color:'#64748b', fontSize:11, cursor:'pointer' }}>
                   <Copy size={11} /> Kopyala
                 </button>
@@ -616,7 +616,7 @@ export default function TeamPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:12, overflowY:'auto' }}>
           <div style={{ ...card, padding:'14px 18px', marginBottom:4 }}>
             <p style={{ color:'#a78bfa', fontSize:12, margin:0 }}>
-              🎓 <strong>AI Koçluk:</strong> WhatsApp konuşma analizine dayalı kişiselleştirilmiş koçluk mesajı üretir ve WA numarası tanımlıysa direkt iletir.
+              🎓 <strong>{t('team.ai_kocluk', 'AI Koçluk:')}</strong> WhatsApp konuşma analizine dayalı kişiselleştirilmiş koçluk mesajı üretir ve WA numarası tanımlıysa direkt iletir.
             </p>
           </div>
           {members.map(member=>{
@@ -633,7 +633,7 @@ export default function TeamPage() {
                     <div style={{ display:'flex', gap:8, fontSize:11, color:'#475569' }}>
                       <span>{ri.label}</span>
                       {act?.avgCoachingScore && <span style={{ color:scoreColor(act.avgCoachingScore) }}>⭐ Ort: {act.avgCoachingScore}/100</span>}
-                      {member.wa_phone ? <span style={{ color:'#10b981' }}>✅ WA: {member.wa_phone}</span> : <span style={{ color:'#f87171' }}>❌ WA numarası yok</span>}
+                      {member.wa_phone ? <span style={{ color:'#10b981' }}>✅ WA: {member.wa_phone}</span> : <span style={{ color:'#f87171' }}>{t('team.wa_numarasi_yok', '❌ WA numarası yok')}</span>}
                     </div>
                   </div>
                   <button onClick={()=>sendCoaching(member.id)} disabled={sendingCoaching===member.id}
@@ -644,7 +644,7 @@ export default function TeamPage() {
                 </div>
                 {coaching[member.id] && (
                   <div style={{ padding:'12px 14px', background:'rgba(139,92,246,0.07)', border:'1px solid rgba(139,92,246,0.18)', borderRadius:10 }}>
-                    <p style={{ color:'#c4b5fd', fontSize:11, fontWeight:700, margin:'0 0 6px', textTransform:'uppercase', letterSpacing:1 }}>Oluşturulan Koçluk Mesajı</p>
+                    <p style={{ color:'#c4b5fd', fontSize:11, fontWeight:700, margin:'0 0 6px', textTransform:'uppercase', letterSpacing:1 }}>{t('team.olusturulan_kocluk_mesaji', 'Oluşturulan Koçluk Mesajı')}</p>
                     <p style={{ color:'#e2e8f0', fontSize:12, margin:0, lineHeight:1.7 }}>{coaching[member.id]}</p>
                     <button onClick={()=>navigator.clipboard?.writeText(coaching[member.id])}
                       style={{ display:'flex', alignItems:'center', gap:4, marginTop:8, padding:'4px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.07)', background:'transparent', color:'#64748b', fontSize:10, cursor:'pointer' }}>
@@ -664,12 +664,12 @@ export default function TeamPage() {
           {/* Filtreler */}
           <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', flexShrink:0 }}>
             <select value={trendDays} onChange={e=>setTrendDays(Number(e.target.value))} style={{ ...inp, height:38 }}>
-              <option value={7}>Son 7 gün</option>
-              <option value={30}>Son 30 gün</option>
-              <option value={90}>Son 90 gün</option>
+              <option value={7}>{t('team.son_7_gun', 'Son 7 gün')}</option>
+              <option value={30}>{t('team.son_30_gun', 'Son 30 gün')}</option>
+              <option value={90}>{t('team.son_90_gun', 'Son 90 gün')}</option>
             </select>
             <select value={trendMember} onChange={e=>setTrendMember(e.target.value)} style={{ ...inp, height:38 }}>
-              <option value="">Tüm Ekip</option>
+              <option value="">{t('team.tum_ekip', 'Tüm Ekip')}</option>
               {members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
             <button onClick={loadAnalytics} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, border:'1px solid rgba(139,92,246,0.3)', background:'rgba(139,92,246,0.08)', color:'#a78bfa', fontSize:11, fontWeight:600, cursor:'pointer' }}>
@@ -735,9 +735,9 @@ export default function TeamPage() {
           {/* Benchmark Karşılaştırma */}
           {benchmark && (
             <div style={{ ...card, padding:'18px 20px' }}>
-              <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>🎯 Sektör Benchmark Karşılaştırması</h3>
+              <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>{t('team.sektor_benchmark_karsilas', '🎯 Sektör Benchmark Karşılaştırması')}</h3>
               {benchmark.total_analyses === 0 ? (
-                <p style={{ color:'#475569', fontSize:13 }}>Henüz analiz yok — WhatsApp konuşmalarını analiz ettikten sonra sektör karşılaştırması görünür</p>
+                <p style={{ color:'#475569', fontSize:13 }}>{t('team.henuz_analiz_yok_whatsapp', 'Henüz analiz yok — WhatsApp konuşmalarını analiz ettikten sonra sektör karşılaştırması görünür')}</p>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {(benchmark.comparison||[]).map((c:any) => {
@@ -768,7 +768,7 @@ export default function TeamPage() {
 
           {/* Rapor Ayarları */}
           <div style={{ ...card, padding:'18px 20px' }}>
-            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>⚙️ Rapor Ayarları</h3>
+            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>{t('team.rapor_ayarlari', '⚙️ Rapor Ayarları')}</h3>
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               <label style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}>
                 <div onClick={()=>setReportSettings(p=>({...p,weekly_enabled:!p.weekly_enabled}))}
@@ -776,8 +776,8 @@ export default function TeamPage() {
                   <div style={{ position:'absolute', top:2, left:reportSettings.weekly_enabled?18:2, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
                 </div>
                 <div>
-                  <p style={{ color:'#fff', fontSize:13, margin:0 }}>Haftalık otomatik rapor</p>
-                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>Her Pazartesi email ile gönderilir</p>
+                  <p style={{ color:'#fff', fontSize:13, margin:0 }}>{t('team.haftalik_otomatik_rapor', 'Haftalık otomatik rapor')}</p>
+                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>{t('team.her_pazartesi_email_ile_g', 'Her Pazartesi email ile gönderilir')}</p>
                 </div>
               </label>
               <div>
@@ -823,7 +823,7 @@ export default function TeamPage() {
               </div>
               {/* WA numarası */}
               <div>
-                <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:6 }}>WhatsApp Numarası</label>
+                <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:6 }}>{t('team.whatsapp_numarasi', 'WhatsApp Numarası')}</label>
                 <div style={{ display:'flex', gap:8 }}>
                   <input defaultValue={selectedMember.wa_phone||''} id="wa-phone-edit" placeholder="905551234567"
                     style={{ flex:1, background:'#060a1c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:13, outline:'none' }} />
@@ -836,12 +836,12 @@ export default function TeamPage() {
               {/* Hedefler */}
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div>
-                  <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:6 }}>Aylık Lead Hedefi</label>
+                  <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:6 }}>{t('team.aylik_lead_hedefi', 'Aylık Lead Hedefi')}</label>
                   <input type="number" defaultValue={selectedMember.target_leads_monthly||30} id="target-leads"
                     style={{ width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as const }} />
                 </div>
                 <div>
-                  <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:6 }}>Dönüşüm Hedefi (%)</label>
+                  <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:6 }}>{t('team.donusum_hedefi', 'Dönüşüm Hedefi (%)')}</label>
                   <input type="number" defaultValue={selectedMember.target_conversion_rate||25} id="target-conv"
                     style={{ width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as const }} />
                 </div>

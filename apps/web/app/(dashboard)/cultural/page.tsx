@@ -454,10 +454,10 @@ export default function CulturalPage() {
           <CulturalGlobe size={100} activeCountries={allSelectedCountries} rotating={adapting || translating} />
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>Kültürel Uyum & Çeviri</h1>
-              <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>75 ÜLKE</span>
+              <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>{t('cultural.kulturel_uyum_ceviri', 'Kültürel Uyum & Çeviri')}</h1>
+              <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>{t('cultural.75_ulke', '75 ÜLKE')}</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>50+ dil, kültürel uyum, global kampanya çevirisi — AI ile saniyeler içinde</p>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>{t('cultural.50_dil_kulturel_uyum_glob', '50+ dil, kültürel uyum, global kampanya çevirisi — AI ile saniyeler içinde')}</p>
             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
               {['🌍 75 Ülke', '🤖 AI Profil', '💬 Mesaj Uyarla', '📱 Kampanya Çevir', '⚡ Anında'].map(f => (
                 <span key={f} style={{ background: 'rgba(6,182,212,0.07)', border: '1px solid rgba(6,182,212,0.18)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
@@ -481,7 +481,7 @@ export default function CulturalPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(6,182,212,0.18)', borderRadius: 20, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <Globe size={16} style={{ color: '#06b6d4' }} />
-            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Lead İçin Kültürel Uyarlama</h2>
+            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('cultural.lead_icin_kulturel_uyarla', 'Lead İçin Kültürel Uyarlama')}</h2>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -560,7 +560,7 @@ export default function CulturalPage() {
 
             {/* Country selector */}
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Hedef Ülke *</label>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('cultural.hedef_ulke', 'Hedef Ülke *')}</label>
               <CountrySelector selected={selectedCountry} onSelect={setSelectedCountry} label="Ülke seçin" />
             </div>
 
@@ -568,7 +568,7 @@ export default function CulturalPage() {
             <div>
               <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Uyarlanacak Mesaj *</label>
               <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4}
-                placeholder="Türkçe mesajınızı buraya yazın, AI kültüre uyarlar..."
+                placeholder={t('cultural.turkce_mesajinizi_buraya', 'Türkçe mesajınızı buraya yazın, AI kültüre uyarlar...')}
                 style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
               <p style={{ color: '#334155', fontSize: 10, margin: '4px 0 0', textAlign: 'right' }}>{message.length}/2000</p>
             </div>
@@ -586,7 +586,7 @@ export default function CulturalPage() {
               {/* Adapted message */}
               <div style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 14, padding: 16, marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ color: '#67e8f9', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>✅ Uyarlanmış Mesaj</span>
+                  <span style={{ color: '#67e8f9', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{t('cultural.uyarlanmis_mesaj', '✅ Uyarlanmış Mesaj')}</span>
                   <button onClick={() => copy(result.adapted.adaptedMessage, 'adapted')}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px solid rgba(6,182,212,0.3)', background: 'transparent', color: '#67e8f9', fontSize: 11, cursor: 'pointer' }}>
                     {copiedField === 'adapted' ? <CheckCircle size={11} /> : <Copy size={11} />} Kopyala
@@ -615,7 +615,7 @@ export default function CulturalPage() {
               {/* Cultural tips */}
               {result.adapted.culturalTips?.length > 0 && (
                 <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 12 }}>
-                  <p style={{ color: '#34d399', fontSize: 10, fontWeight: 700, margin: '0 0 7px', textTransform: 'uppercase', letterSpacing: 1 }}>💡 Kültürel İpuçları</p>
+                  <p style={{ color: '#34d399', fontSize: 10, fontWeight: 700, margin: '0 0 7px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('cultural.kulturel_ipuclari', '💡 Kültürel İpuçları')}</p>
                   {result.adapted.culturalTips.map((t: string, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
                       <span style={{ color: '#34d399', fontSize: 10 }}>▸</span>
@@ -662,15 +662,15 @@ export default function CulturalPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 20, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <Languages size={16} style={{ color: '#8b5cf6' }} />
-            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Kampanya Çevirisi</h2>
-            <span style={{ color: '#475569', fontSize: 12 }}>— tek mesajı 10 dile çevir</span>
+            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('cultural.kampanya_cevirisi', 'Kampanya Çevirisi')}</h2>
+            <span style={{ color: '#475569', fontSize: 12 }}>{t('cultural.tek_mesaji_10_dile_cevir', '— tek mesajı 10 dile çevir')}</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Kampanya Mesajı *</label>
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('cultural.kampanya_mesaji', 'Kampanya Mesajı *')}</label>
               <textarea value={campaignMsg} onChange={e => setCampaignMsg(e.target.value)} rows={4}
-                placeholder="Çevrilecek kampanya mesajını yazın..."
+                placeholder={t('cultural.cevrilecek_kampanya_mesaj', 'Çevrilecek kampanya mesajını yazın...')}
                 style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
             </div>
 

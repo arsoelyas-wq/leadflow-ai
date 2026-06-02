@@ -283,10 +283,10 @@ export default function QRPage() {
             <QRScanFrame size={100} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>QR Kod Üretici</h1>
+                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('qr_codes.qr_kod_uretici', 'QR Kod Üretici')}</h1>
                 <span style={{ background: 'linear-gradient(135deg,#06b6d4,#8b5cf6)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>PRO</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 480 }}>Microsite, WhatsApp, web sitesi, WiFi — anında QR oluştur, tarama sayısını takip et</p>
+              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 480 }}>{t('qr_codes.microsite_whatsapp_web_si', 'Microsite, WhatsApp, web sitesi, WiFi — anında QR oluştur, tarama sayısını takip et')}</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {['🌐 Web', '💬 WhatsApp', '📞 Telefon', '📶 WiFi', '✉️ E-Posta'].map(f => (
                   <span key={f} style={{ background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
@@ -321,7 +321,7 @@ export default function QRPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(6,182,212,0.18)', borderRadius: 20, padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <Sparkles size={16} style={{ color: '#06b6d4' }} />
-            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Yeni QR Kod Oluştur</h2>
+            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('qr_codes.yeni_qr_kod_olustur', 'Yeni QR Kod Oluştur')}</h2>
           </div>
 
           {/* Type selector */}
@@ -347,8 +347,8 @@ export default function QRPage() {
             </div>
             {type === 'wifi' && (
               <div>
-                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>WiFi Şifresi</label>
-                <input value={extra} onChange={e => setExtra(e.target.value)} placeholder="Şifre (boş bırakılabilir)"
+                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('qr_codes.wifi_sifresi', 'WiFi Şifresi')}</label>
+                <input value={extra} onChange={e => setExtra(e.target.value)} placeholder={t('qr_codes.sifre_bos_birakilabilir', 'Şifre (boş bırakılabilir)')}
                   style={{ width: '100%', background: '#060a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 13px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
               </div>
             )}
@@ -374,7 +374,7 @@ export default function QRPage() {
           {/* URL preview */}
           {finalUrl && (
             <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.3)', borderRadius: 8, marginBottom: 14, border: '1px solid rgba(255,255,255,0.05)' }}>
-              <p style={{ color: '#334155', fontSize: 10, margin: '0 0 2px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Oluşturulacak link</p>
+              <p style={{ color: '#334155', fontSize: 10, margin: '0 0 2px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>{t('qr_codes.olusturulacak_link', 'Oluşturulacak link')}</p>
               <p style={{ color: '#64748b', fontSize: 11, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{finalUrl}</p>
             </div>
           )}
@@ -388,19 +388,19 @@ export default function QRPage() {
 
         {/* Live Preview */}
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: `1px solid ${previewSrc ? `${typeConf.color}30` : 'rgba(255,255,255,0.06)'}`, borderRadius: 20, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', transition: 'border-color 0.3s' }}>
-          <p style={{ color: '#334155', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 16px', textAlign: 'center' }}>Canlı Önizleme</p>
+          <p style={{ color: '#334155', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 16px', textAlign: 'center' }}>{t('qr_codes.canli_onizleme', 'Canlı Önizleme')}</p>
           {previewSrc ? (
             <>
               <div style={{ width: 160, height: 160, background: '#fff', borderRadius: 14, padding: 8, boxShadow: `0 8px 32px ${typeConf.color}30`, margin: '0 0 12px' }}>
                 <img key={previewSrc} src={previewSrc} alt="QR" style={{ width: '100%', height: '100%', display: 'block', borderRadius: 6 }} />
               </div>
               <p style={{ color: typeConf.color, fontSize: 12, fontWeight: 600, margin: 0, textAlign: 'center' }}>{typeConf.icon} {typeConf.label}</p>
-              <p style={{ color: '#334155', fontSize: 10, margin: '4px 0 0', textAlign: 'center' }}>Siyah kutu tıklanabilir</p>
+              <p style={{ color: '#334155', fontSize: 10, margin: '4px 0 0', textAlign: 'center' }}>{t('qr_codes.siyah_kutu_tiklanabilir', 'Siyah kutu tıklanabilir')}</p>
             </>
           ) : (
             <div style={{ textAlign: 'center' }}>
               <QRScanFrame size={80} />
-              <p style={{ color: '#334155', fontSize: 12, marginTop: 12 }}>Link yazınca<br/>önizleme çıkar</p>
+              <p style={{ color: '#334155', fontSize: 12, marginTop: 12 }}>{t('qr_codes.link_yazinca', 'Link yazınca')}<br/>{t('qr_codes.onizleme_cikar', 'önizleme çıkar')}</p>
             </div>
           )}
         </div>
@@ -412,7 +412,7 @@ export default function QRPage() {
           <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>QR Kodlarım {qrCodes.length > 0 && <span style={{ color: '#334155', fontWeight: 400, fontSize: 13 }}>({qrCodes.length})</span>}</h2>
           {qrCodes.length > 0 && (
             <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => setFilter('')} style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${!filter ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.06)'}`, background: !filter ? 'rgba(6,182,212,0.1)' : 'transparent', color: !filter ? '#67e8f9' : '#475569', fontSize: 11, cursor: 'pointer' }}>Tümü</button>
+              <button onClick={() => setFilter('')} style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${!filter ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.06)'}`, background: !filter ? 'rgba(6,182,212,0.1)' : 'transparent', color: !filter ? '#67e8f9' : '#475569', fontSize: 11, cursor: 'pointer' }}>{t('qr_codes.tumu', 'Tümü')}</button>
               {QR_TYPES.filter(t => qrCodes.some(q => q.type === t.key)).map(t => (
                 <button key={t.key} onClick={() => setFilter(filter === t.key ? '' : t.key)}
                   style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${filter === t.key ? `${t.color}50` : 'rgba(255,255,255,0.06)'}`, background: filter === t.key ? `${t.color}15` : 'transparent', color: filter === t.key ? t.color : '#475569', fontSize: 11, cursor: 'pointer' }}>
@@ -431,7 +431,7 @@ export default function QRPage() {
           <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: '48px 24px', textAlign: 'center' }}>
             <QRScanFrame size={72} />
             <p style={{ color: '#475569', fontSize: 14, margin: '16px 0 6px' }}>{filter ? 'Bu tipte QR kod yok' : 'Henüz QR kod oluşturmadınız'}</p>
-            <p style={{ color: '#334155', fontSize: 12, margin: 0 }}>Yukarıdaki formdan ilk QR kodunuzu oluşturun</p>
+            <p style={{ color: '#334155', fontSize: 12, margin: 0 }}>{t('qr_codes.yukaridaki_formdan_ilk_qr', 'Yukarıdaki formdan ilk QR kodunuzu oluşturun')}</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 16 }}>

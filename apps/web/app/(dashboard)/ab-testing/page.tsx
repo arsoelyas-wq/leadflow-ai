@@ -103,7 +103,7 @@ export default function ABTestingPage() {
             <FlaskConical size={24} className="text-purple-400" />
             A/B Mesaj Testi
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Hangi mesaj daha fazla cevap alıyor? Test et, kazan.</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('ab_testing.hangi_mesaj_daha_fazla_ce', 'Hangi mesaj daha fazla cevap alıyor? Test et, kazan.')}</p>
         </div>
         <button onClick={() => setShowCreate(!showCreate)}
           className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">
@@ -123,9 +123,9 @@ export default function ABTestingPage() {
           <h2 className="text-white font-semibold">Yeni A/B Test</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-slate-400 text-xs mb-1.5 block">Test Adı *</label>
+              <label className="text-slate-400 text-xs mb-1.5 block">{t('ab_testing.test_adi', 'Test Adı *')}</label>
               <input value={name} onChange={e => setName(e.target.value)}
-                placeholder="örn: Kişisel vs Genel Mesaj"
+                placeholder={t('ab_testing.orn_kisisel_vs_genel_mesa', 'örn: Kişisel vs Genel Mesaj')}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500" />
             </div>
             <div>
@@ -162,7 +162,7 @@ export default function ABTestingPage() {
           </div>
 
           <div className="p-3 bg-slate-900/50 border border-slate-700 rounded-lg">
-            <p className="text-slate-400 text-xs">💡 Kullanılabilir değişkenler: <span className="text-blue-300">[FIRMA_ADI]</span> <span className="text-blue-300">[AD]</span> <span className="text-blue-300">[SEHIR]</span> <span className="text-blue-300">[SEKTOR]</span></p>
+            <p className="text-slate-400 text-xs">{t('ab_testing.kullanilabilir_degiskenle', '💡 Kullanılabilir değişkenler:')}<span className="text-blue-300">[FIRMA_ADI]</span> <span className="text-blue-300">[AD]</span> <span className="text-blue-300">[SEHIR]</span> <span className="text-blue-300">[SEKTOR]</span></p>
           </div>
 
           <div className="flex gap-3">
@@ -187,7 +187,7 @@ export default function ABTestingPage() {
       ) : tests.length === 0 ? (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
           <FlaskConical size={40} className="text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">Henüz test yok — "Yeni Test" ile başlayın</p>
+          <p className="text-slate-400">{t('ab_testing.henuz_test_yok_yeni_test', 'Henüz test yok — "Yeni Test" ile başlayın')}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -222,11 +222,11 @@ export default function ABTestingPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => syncTest(test.id)} disabled={syncing === test.id}
-                      className="p-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition" title="Sonuçları Güncelle">
+                      className="p-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition" title={t('ab_testing.sonuclari_guncelle', 'Sonuçları Güncelle')}>
                       <RefreshCw size={13} className={syncing === test.id ? 'animate-spin' : ''} />
                     </button>
                     <button onClick={() => setSelectedTest(selectedTest === test.id ? null : test.id)}
-                      className="p-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 rounded-lg transition" title="Test Başlat">
+                      className="p-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 rounded-lg transition" title={t('ab_testing.test_baslat', 'Test Başlat')}>
                       <Play size={13} />
                     </button>
                     <button onClick={() => deleteTest(test.id)}
@@ -281,7 +281,7 @@ export default function ABTestingPage() {
                 {selectedTest === test.id && (
                   <div className="border-t border-slate-700 p-5 space-y-4">
                     <p className="text-white text-sm font-medium">Lead Seç ({selectedLeads.length} seçili)</p>
-                    <p className="text-slate-400 text-xs">Seçilen leadler ikiye bölünür: yarısına A, yarısına B gönderilir.</p>
+                    <p className="text-slate-400 text-xs">{t('ab_testing.secilen_leadler_ikiye_bol', 'Seçilen leadler ikiye bölünür: yarısına A, yarısına B gönderilir.')}</p>
                     <div className="max-h-48 overflow-y-auto space-y-1.5 bg-slate-900 rounded-lg p-2">
                       {leads.filter(l => !l.notes?.startsWith('AB_TEST')).map(lead => (
                         <label key={lead.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg cursor-pointer">

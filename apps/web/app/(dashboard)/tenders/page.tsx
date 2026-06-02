@@ -515,8 +515,8 @@ export default function TendersPage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:22 }}>
           <TenderOrb size={85} scanning={!!activeScanId} tenderCount={tenders.length} />
           <div style={{ flex:1 }}>
-            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>İhale Avcısı</h1>
-            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>23 ülke · EKAP · TED Europa · World Bank · Exa.ai · AI analiz · Teklif taslağı</p>
+            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>{t('tenders.ihale_avcisi', 'İhale Avcısı')}</h1>
+            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('tenders.23_ulke_ekap_ted_europa_w', '23 ülke · EKAP · TED Europa · World Bank · Exa.ai · AI analiz · Teklif taslağı')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:10 }}>
               {[{l:'Toplam',v:stats?.total||0,c:'#94a3b8'},{l:'Aktif',v:stats?.active||0,c:'#10b981'},{l:'Yüksek Skor',v:stats?.highScore||0,c:'#8b5cf6'},{l:'Başvuruldu',v:stats?.applied||0,c:'#3b82f6'},{l:'Kazanıldı',v:stats?.won||0,c:'#c084fc'},{l:'Tarama',v:stats?.totalScans||0,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -549,8 +549,8 @@ export default function TendersPage() {
       {alerts.length > 0 && activeTab === 'tenders' && (
         <div style={{ marginBottom:14, padding:'12px 18px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
           <AlertTriangle size={15} color="#ef4444" />
-          <p style={{ color:'#f87171', fontSize:13, margin:0 }}><strong>{alerts.length} ihale</strong> son 7 gün içinde kapanıyor — hemen kontrol edin!</p>
-          <button onClick={() => setActiveTab('alerts')} style={{ marginLeft:'auto', padding:'4px 10px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#f87171', fontSize:11, cursor:'pointer' }}>Görüntüle</button>
+          <p style={{ color:'#f87171', fontSize:13, margin:0 }}><strong>{alerts.length} ihale</strong>{t('tenders.son_7_gun_icinde_kapaniyo', 'son 7 gün içinde kapanıyor — hemen kontrol edin!')}</p>
+          <button onClick={() => setActiveTab('alerts')} style={{ marginLeft:'auto', padding:'4px 10px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#f87171', fontSize:11, cursor:'pointer' }}>{t('tenders.goruntule', 'Görüntüle')}</button>
         </div>
       )}
 
@@ -575,19 +575,19 @@ export default function TendersPage() {
             <div style={{ display:'flex', gap:8, marginBottom:14, flexShrink:0, flexWrap:'wrap' }}>
               <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
                 style={{ background:'rgba(3,8,22,0.9)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'7px 12px', color:'#fff', fontSize:12, outline:'none', cursor:'pointer' }}>
-                <option value="">Tüm Ülkeler</option>
+                <option value="">{t('tenders.tum_ulkeler', 'Tüm Ülkeler')}</option>
                 {COUNTRIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
               <select value={filterScore} onChange={e => setFilterScore(e.target.value)}
                 style={{ background:'rgba(3,8,22,0.9)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'7px 12px', color:'#fff', fontSize:12, outline:'none', cursor:'pointer' }}>
-                <option value="">Tüm Skorlar</option>
-                <option value="80">80+ (Yüksek)</option>
-                <option value="65">65+ (İyi)</option>
+                <option value="">{t('tenders.tum_skorlar', 'Tüm Skorlar')}</option>
+                <option value="80">{t('tenders.80_yuksek', '80+ (Yüksek)')}</option>
+                <option value="65">{t('tenders.65_iyi', '65+ (İyi)')}</option>
                 <option value="50">50+ (Orta)</option>
               </select>
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
                 style={{ background:'rgba(3,8,22,0.9)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'7px 12px', color:'#fff', fontSize:12, outline:'none', cursor:'pointer' }}>
-                <option value="">Tüm Durumlar</option>
+                <option value="">{t('tenders.tum_durumlar', 'Tüm Durumlar')}</option>
                 {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
               <button onClick={load} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:9, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -600,8 +600,8 @@ export default function TendersPage() {
             ) : tenders.length === 0 ? (
               <div style={{ textAlign:'center', padding:56, ...card }}>
                 <div style={{ fontSize:44, marginBottom:14 }}>📋</div>
-                <h3 style={{ color:'#fff', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>Henüz ihale yok</h3>
-                <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>Anahtar kelimenizi girin, tarama başlatın</p>
+                <h3 style={{ color:'#fff', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>{t('tenders.henuz_ihale_yok', 'Henüz ihale yok')}</h3>
+                <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>{t('tenders.anahtar_kelimenizi_girin', 'Anahtar kelimenizi girin, tarama başlatın')}</p>
                 <button onClick={() => setShowScan(true)}
                   style={{ padding:'11px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                   İlk Taramayı Başlat
@@ -653,7 +653,7 @@ export default function TendersPage() {
           {alerts.length === 0 ? (
             <div style={{ textAlign:'center', padding:48, ...card }}>
               <CheckCircle size={32} color="#10b981" style={{ margin:'0 auto 12px', display:'block' }} />
-              <p style={{ color:'#34d399', fontSize:14, margin:0 }}>Vadesi yaklaşan ihale yok — tüm ihaleler güvende</p>
+              <p style={{ color:'#34d399', fontSize:14, margin:0 }}>{t('tenders.vadesi_yaklasan_ihale_yok', 'Vadesi yaklaşan ihale yok — tüm ihaleler güvende')}</p>
             </div>
           ) : alerts.map((t: any) => (
             <div key={t.id} onClick={() => { setSelectedTender(t); setActiveTab('tenders') }}
@@ -689,7 +689,7 @@ export default function TendersPage() {
           </div>
           {analytics?.byCountry?.length > 0 && (
             <div style={{ ...card, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>🌍 Ülke Bazlı Kazanma Oranı</h3>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('tenders.ulke_bazli_kazanma_orani', '🌍 Ülke Bazlı Kazanma Oranı')}</h3>
               {analytics.byCountry.map((r: any) => (
                 <div key={r.country} style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
@@ -706,7 +706,7 @@ export default function TendersPage() {
           {(!analytics || analytics.totalApplied === 0) && (
             <div style={{ ...card, padding:40, textAlign:'center', color:'#475569' }}>
               <BarChart2 size={32} style={{ margin:'0 auto 12px', display:'block', color:'#334155' }} />
-              <p style={{ fontSize:13, margin:0 }}>Analitik için ihalelere başvurun ve sonuçları işaretleyin</p>
+              <p style={{ fontSize:13, margin:0 }}>{t('tenders.analitik_icin_ihalelere_b', 'Analitik için ihalelere başvurun ve sonuçları işaretleyin')}</p>
             </div>
           )}
         </div>
@@ -718,8 +718,8 @@ export default function TendersPage() {
           {prefs.length === 0 ? (
             <div style={{ ...card, padding:40, textAlign:'center', color:'#475569' }}>
               <Bell size={28} style={{ margin:'0 auto 12px', display:'block', color:'#334155' }} />
-              <p style={{ fontSize:14, margin:'0 0 8px', color:'#94a3b8' }}>Otomatik tarama kaydı yok</p>
-              <p style={{ fontSize:12, margin:'0 0 16px' }}>Tarama başlatırken "Her gün otomatik tara" seçeneğini işaretleyin</p>
+              <p style={{ fontSize:14, margin:'0 0 8px', color:'#94a3b8' }}>{t('tenders.otomatik_tarama_kaydi_yok', 'Otomatik tarama kaydı yok')}</p>
+              <p style={{ fontSize:12, margin:'0 0 16px' }}>{t('tenders.tarama_baslatirken_her_gu', 'Tarama başlatırken "Her gün otomatik tara" seçeneğini işaretleyin')}</p>
               <button onClick={() => setShowScan(true)} style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Yeni Tarama Ekle</button>
             </div>
           ) : prefs.map(pref => (
@@ -732,7 +732,7 @@ export default function TendersPage() {
                 <div style={{ display:'flex', gap:8, fontSize:11, color:'#475569' }}>
                   <span>{COUNTRIES.find(c => c.id === pref.country)?.name || pref.country}</span>
                   {pref.sector && <span>· {pref.sector}</span>}
-                  <span style={{ color:'#10b981' }}>· Günlük aktif</span>
+                  <span style={{ color:'#10b981' }}>{t('tenders.gunluk_aktif', '· Günlük aktif')}</span>
                 </div>
               </div>
               <button onClick={() => deletePref(pref.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#f87171', cursor:'pointer' }}>

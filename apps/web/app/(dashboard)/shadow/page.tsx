@@ -375,7 +375,7 @@ export default function ShadowPage() {
                 <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Shadow Competitor Monitoring</h1>
                 <span style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>PRO</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>Rakiplerinizi sürekli izleyin — fiyat, ürün, yorum ve strateji değişikliklerini anında fark edin</p>
+              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('shadow.rakiplerinizi_surekli_izl', 'Rakiplerinizi sürekli izleyin — fiyat, ürün, yorum ve strateji değişikliklerini anında fark edin')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {['🎯 Tehdit Skoru','💰 Fiyat Takibi','📊 Trend Grafik','⚡ WhatsApp Alarm','🤖 AI Strateji','🌍 75 Ülke'].map(f => (
                   <span key={f} style={{ background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.18)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
@@ -427,13 +427,13 @@ export default function ShadowPage() {
           <p style={{ color: '#a78bfa', fontWeight: 700, fontSize: 14, margin: '0 0 16px' }}>+ Yeni Rakip Ekle</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Rakip Firma Adı *</label>
-              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="örn: Dekonil"
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('shadow.rakip_firma_adi', 'Rakip Firma Adı *')}</label>
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('shadow.orn_dekonil', 'örn: Dekonil')}
                 style={{ width: '100%', background: '#07091c', border: `1px solid ${newName ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 9, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Şehir (opsiyonel)</label>
-              <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="İstanbul"
+              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('shadow.sehir_opsiyonel', 'Şehir (opsiyonel)')}</label>
+              <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder={t('shadow.istanbul', 'İstanbul')}
                 style={{ width: '100%', background: '#07091c', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
             </div>
           </div>
@@ -443,7 +443,7 @@ export default function ShadowPage() {
               {adding ? <RefreshCw size={13} style={{ animation: 'sh-spin 1s linear infinite' }} /> : null}
               {adding ? 'Ekleniyor...' : 'Ekle ve İzlemeye Başla'}
             </button>
-            <button onClick={() => setAddForm(false)} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>İptal</button>
+            <button onClick={() => setAddForm(false)} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>{t('shadow.iptal', 'İptal')}</button>
           </div>
         </div>
       )}
@@ -469,7 +469,7 @@ ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;
       ) : competitors.length === 0 ? (
         <div style={{ background: 'linear-gradient(135deg,rgba(5,0,20,0.98),rgba(8,2,25,0.99))', border: '1px solid rgba(124,58,237,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><ShadowOrb size={60} /></div>
-          <p style={{ color: '#475569', fontSize: 14, margin: '0 0 12px' }}>Henüz izlenen rakip yok</p>
+          <p style={{ color: '#475569', fontSize: 14, margin: '0 0 12px' }}>{t('shadow.henuz_izlenen_rakip_yok', 'Henüz izlenen rakip yok')}</p>
           <button onClick={() => setAddForm(true)}
             style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 20px rgba(124,58,237,0.35)' }}>
             + İlk Rakibi Ekle

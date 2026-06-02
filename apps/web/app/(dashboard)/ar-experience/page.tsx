@@ -391,10 +391,10 @@ export default function ARPage() {
           <Cube3D size={64} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>AR Ürün Deneyimi</h1>
+              <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('ar_experience.ar_urun_deneyimi', 'AR Ürün Deneyimi')}</h1>
               <span style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>3D • AR</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: 14, margin: 0, maxWidth: 480 }}>3D modellerinizi müşterinin mekanında gösterin — artırılmış gerçeklik ile satışı kapatın</p>
+            <p style={{ color: '#64748b', fontSize: 14, margin: 0, maxWidth: 480 }}>{t('ar_experience.3d_modellerinizi_musterin', '3D modellerinizi müşterinin mekanında gösterin — artırılmış gerçeklik ile satışı kapatın')}</p>
           </div>
         </div>
 
@@ -466,11 +466,11 @@ export default function ARPage() {
               <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.95),rgba(15,15,30,0.9))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
                   <Sparkles size={18} style={{ color: '#ec4899' }} />
-                  <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>3D Model Yükle</h2>
+                  <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>{t('ar_experience.3d_model_yukle', '3D Model Yükle')}</h2>
                 </div>
                 <div style={{ marginBottom: 14 }}>
-                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>Ürün Adı *</label>
-                  <input value={productName} onChange={e => setProductName(e.target.value)} placeholder="örn: Modern Koltuk Takımı"
+                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('ar_experience.urun_adi', 'Ürün Adı *')}</label>
+                  <input value={productName} onChange={e => setProductName(e.target.value)} placeholder={t('ar_experience.orn_modern_koltuk_takimi', 'örn: Modern Koltuk Takımı')}
                     style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ marginBottom: 14 }}>
@@ -484,8 +484,8 @@ export default function ARPage() {
                   </div>
                 </div>
                 <div style={{ marginBottom: 20 }}>
-                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>Açıklama (opsiyonel)</label>
-                  <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Ürün açıklaması..."
+                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('ar_experience.aciklama_opsiyonel', 'Açıklama (opsiyonel)')}</label>
+                  <input value={description} onChange={e => setDescription(e.target.value)} placeholder={t('ar_experience.urun_aciklamasi', 'Ürün açıklaması...')}
                     style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div onDragOver={e => { e.preventDefault(); setIsDragging(true) }} onDragLeave={() => setIsDragging(false)}
@@ -514,7 +514,7 @@ export default function ARPage() {
                     </div>
                   ))}
                   <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '10px 12px' }}>
-                    <p style={{ color: '#fbbf24', fontSize: 12, margin: 0 }}>⚠️ .gltf desteklenmiyor — lütfen .glb formatını kullanın</p>
+                    <p style={{ color: '#fbbf24', fontSize: 12, margin: 0 }}>{t('ar_experience.gltf_desteklenmiyor_lutfe', '⚠️ .gltf desteklenmiyor — lütfen .glb formatını kullanın')}</p>
                   </div>
                 </div>
               </div>
@@ -530,13 +530,13 @@ export default function ARPage() {
                   <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.95),rgba(15,15,30,0.9))', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 18, padding: 24 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
                       <Sparkles size={18} style={{ color: '#a78bfa' }} />
-                      <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>Fotoğraftan 3D Model Oluştur</h2>
+                      <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>{t('ar_experience.fotograftan_3d_model_olus', 'Fotoğraftan 3D Model Oluştur')}</h2>
                       <span style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700 }}>AI</span>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                       <div>
-                        <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 5 }}>Ürün Adı *</label>
-                        <input value={productName} onChange={e => setProductName(e.target.value)} placeholder="örn: Ahşap Sehpa"
+                        <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 5 }}>{t('ar_experience.urun_adi', 'Ürün Adı *')}</label>
+                        <input value={productName} onChange={e => setProductName(e.target.value)} placeholder={t('ar_experience.orn_ahsap_sehpa', 'örn: Ahşap Sehpa')}
                           style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
                       </div>
                       <div>
@@ -551,7 +551,7 @@ export default function ARPage() {
                       </div>
                     </div>
 
-                    <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 10 }}>Ürün Fotoğrafları (1-6) — daha fazla açı = daha iyi kalite</label>
+                    <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 10 }}>{t('ar_experience.urun_fotograflari_16_daha', 'Ürün Fotoğrafları (1-6) — daha fazla açı = daha iyi kalite')}</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
                       {[0, 1, 2, 3, 4, 5].map(i => {
                         const isFirst = i === 0
@@ -593,7 +593,7 @@ export default function ARPage() {
                   {/* Tips + info */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     <div style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.1),rgba(79,70,229,0.08))', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 18, padding: 20 }}>
-                      <h3 style={{ color: '#a78bfa', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>💡 En İyi Sonuç İçin</h3>
+                      <h3 style={{ color: '#a78bfa', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>{t('ar_experience.en_iyi_sonuc_icin', '💡 En İyi Sonuç İçin')}</h3>
                       {[
                         { icon: '⬜', text: 'Beyaz veya açık arka plan kullan' },
                         { icon: '🎯', text: 'Ürünü ortaya al, kesilme olmasın' },
@@ -609,11 +609,11 @@ export default function ARPage() {
                       ))}
                     </div>
                     <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 18 }}>
-                      <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Beklenen Süre</p>
+                      <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>{t('ar_experience.beklenen_sure', 'Beklenen Süre')}</p>
                       <p style={{ color: '#fff', fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>~45 saniye</p>
-                      <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>1 fotoğraf için • 6 fotoğraf ~90 sn</p>
+                      <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>{t('ar_experience.1_fotograf_icin_6_fotogra', '1 fotoğraf için • 6 fotoğraf ~90 sn')}</p>
                       <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8 }}>
-                        <p style={{ color: '#34d399', fontSize: 11, margin: 0 }}>✅ Çıktı: AR destekli .glb formatı</p>
+                        <p style={{ color: '#34d399', fontSize: 11, margin: 0 }}>{t('ar_experience.cikti_ar_destekli_glb_for', '✅ Çıktı: AR destekli .glb formatı')}</p>
                       </div>
                     </div>
                   </div>
@@ -624,8 +624,8 @@ export default function ARPage() {
               {aiScreen === 'generating' && (
                 <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.98),rgba(15,5,40,0.98))', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 18, padding: '48px 32px', textAlign: 'center', minHeight: 360 }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}><Cube3D size={72} /></div>
-                  <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 700, margin: '0 0 6px' }}>AI 3D Model Oluşturuyor...</h2>
-                  <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 32px' }}>Lütfen bekleyin — yaklaşık 45-90 saniye</p>
+                  <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 700, margin: '0 0 6px' }}>{t('ar_experience.ai_3d_model_olusturuyor', 'AI 3D Model Oluşturuyor...')}</h2>
+                  <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 32px' }}>{t('ar_experience.lutfen_bekleyin_yaklasik', 'Lütfen bekleyin — yaklaşık 45-90 saniye')}</p>
 
                   <div style={{ maxWidth: 480, margin: '0 auto 28px', textAlign: 'left' }}>
                     {AI_STAGES.map(({ label, icon, from, to }, idx) => {
@@ -655,14 +655,14 @@ export default function ARPage() {
               {aiScreen === 'preview' && aiModelUrl && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                   <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.98),rgba(15,5,40,0.98))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 18, overflow: 'hidden', height: 420, position: 'relative' }}>
-                    <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 2, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: '4px 12px', fontSize: 12, color: '#34d399', fontWeight: 600 }}>✅ 3D Model Hazır</div>
+                    <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 2, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: '4px 12px', fontSize: 12, color: '#34d399', fontWeight: 600 }}>{t('ar_experience.3d_model_hazir', '✅ 3D Model Hazır')}</div>
                     {mvLoaded ? (
                       // @ts-ignore
                       <model-viewer src={aiModelUrl} camera-controls auto-rotate auto-rotate-delay="500" rotation-per-second="25deg" shadow-intensity="1" environment-image="neutral" exposure="1.1" style={{ width: '100%', height: '100%' }} />
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
                         <RefreshCw size={28} style={{ color: '#475569', animation: 'spin 1s linear infinite' }} />
-                        <p style={{ color: '#475569', fontSize: 13 }}>3D önizleme yükleniyor...</p>
+                        <p style={{ color: '#475569', fontSize: 13 }}>{t('ar_experience.3d_onizleme_yukleniyor', '3D önizleme yükleniyor...')}</p>
                       </div>
                     )}
                   </div>
@@ -670,10 +670,10 @@ export default function ARPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.95),rgba(15,15,30,0.9))', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 18, padding: 24 }}>
                       <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
-                      <h2 style={{ color: '#fff', fontSize: 18, fontWeight: 700, margin: '0 0 8px' }}>3D Model Oluşturuldu!</h2>
-                      <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 20px', lineHeight: 1.5 }}>AI fotoğraflarınızdan yüksek kaliteli bir 3D model oluşturdu. Önizleyin, beğendiyseniz kaydedin.</p>
+                      <h2 style={{ color: '#fff', fontSize: 18, fontWeight: 700, margin: '0 0 8px' }}>{t('ar_experience.3d_model_olusturuldu', '3D Model Oluşturuldu!')}</h2>
+                      <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 20px', lineHeight: 1.5 }}>{t('ar_experience.ai_fotograflarinizdan_yuk', 'AI fotoğraflarınızdan yüksek kaliteli bir 3D model oluşturdu. Önizleyin, beğendiyseniz kaydedin.')}</p>
                       <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 20, border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <p style={{ color: '#94a3b8', fontSize: 12, margin: '0 0 4px' }}>Ürün adı</p>
+                        <p style={{ color: '#94a3b8', fontSize: 12, margin: '0 0 4px' }}>{t('ar_experience.urun_adi', 'Ürün adı')}</p>
                         <p style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: 0 }}>{productName || 'AI Oluşturuldu'}</p>
                       </div>
                       <button onClick={saveGenerated} disabled={aiSaving}
@@ -698,7 +698,7 @@ export default function ARPage() {
       {tab === 'models' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.95),rgba(15,15,30,0.9))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: 20 }}>
-            <p style={{ color: '#94a3b8', fontSize: 12, fontWeight: 600, margin: '0 0 12px', letterSpacing: 1, textTransform: 'uppercase' }}>Lead Seç — AR gönderimi için</p>
+            <p style={{ color: '#94a3b8', fontSize: 12, fontWeight: 600, margin: '0 0 12px', letterSpacing: 1, textTransform: 'uppercase' }}>{t('ar_experience.lead_sec_ar_gonderimi_ici', 'Lead Seç — AR gönderimi için')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>Tek Lead</label>
@@ -732,7 +732,7 @@ export default function ARPage() {
           ) : models.length === 0 ? (
             <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.95),rgba(15,15,30,0.9))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 60, textAlign: 'center' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><Cube3D size={56} /></div>
-              <p style={{ color: '#475569', fontSize: 15, margin: '0 0 16px' }}>Henüz 3D model yok</p>
+              <p style={{ color: '#475569', fontSize: 15, margin: '0 0 16px' }}>{t('ar_experience.henuz_3d_model_yok', 'Henüz 3D model yok')}</p>
               <button onClick={() => setTab('upload')} style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#be185d,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 600, boxShadow: '0 4px 16px rgba(190,24,93,0.3)' }}>
                 İlk Modeli Yükle
               </button>

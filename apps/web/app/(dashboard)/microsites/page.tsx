@@ -270,10 +270,10 @@ export default function MicrositePage() {
             <QuantumOrb size={64} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Kişisel Katalog Sayfaları</h1>
+                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('microsites.kisisel_katalog_sayfalari', 'Kişisel Katalog Sayfaları')}</h1>
                 <span style={{ background: 'linear-gradient(135deg,#06b6d4,#8b5cf6)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: 0, maxWidth: 520 }}>Her müşteri için AI ile kişisel katalog sayfası — WhatsApp'tan link gönder, açtığında haber al</p>
+              <p style={{ color: '#64748b', fontSize: 14, margin: 0, maxWidth: 520 }}>{t('microsites.her_musteri_icin_ai_ile_k', 'Her müşteri için AI ile kişisel katalog sayfası — WhatsApp\'tan link gönder, açtığında haber al')}</p>
             </div>
           </div>
           <button onClick={() => setShowCreate(!showCreate)}
@@ -328,7 +328,7 @@ export default function MicrositePage() {
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}><QuantumOrb size={72} /></div>
               <h2 style={{ color: '#fff', fontSize: 20, fontWeight: 700, margin: '0 0 6px' }}>AI Katalog Oluşturuyor{'.'.repeat(dotCount)}</h2>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 32px' }}>Müşteriye özel içerik hazırlanıyor</p>
+              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 32px' }}>{t('microsites.musteriye_ozel_icerik_haz', 'Müşteriye özel içerik hazırlanıyor')}</p>
               <div style={{ maxWidth: 400, margin: '0 auto' }}>
                 {CREATION_STAGES.map(({ icon, label }, idx) => {
                   const isDone = idx < creatingStage
@@ -351,11 +351,11 @@ export default function MicrositePage() {
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
                 <Sparkles size={18} style={{ color: '#06b6d4' }} />
-                <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>Yeni Kişisel Katalog Oluştur</h2>
+                <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>{t('microsites.yeni_kisisel_katalog_olus', 'Yeni Kişisel Katalog Oluştur')}</h2>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>Müşteri *</label>
+                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('microsites.musteri', 'Müşteri *')}</label>
                   <div style={{ position: 'relative' }}>
                     <select value={form.leadId} onChange={e => setForm(p => ({ ...p, leadId: e.target.value }))}
                       style={{ width: '100%', background: '#070b1a', border: `1px solid ${form.leadId ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 10, padding: '10px 14px', color: form.leadId ? '#fff' : '#64748b', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer', boxSizing: 'border-box' }}>
@@ -366,9 +366,9 @@ export default function MicrositePage() {
                   </div>
                 </div>
                 <div>
-                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>Özel Mesaj (opsiyonel)</label>
+                  <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>{t('microsites.ozel_mesaj_opsiyonel', 'Özel Mesaj (opsiyonel)')}</label>
                   <input value={form.customMessage} onChange={e => setForm(p => ({ ...p, customMessage: e.target.value }))}
-                    placeholder="Sizin için özel fiyat hazırladık..."
+                    placeholder={t('microsites.sizin_icin_ozel_fiyat_haz', 'Sizin için özel fiyat hazırladık...')}
                     style={{ width: '100%', background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
@@ -391,7 +391,7 @@ export default function MicrositePage() {
                 </div>
                 {catalogItems.length === 0 && (
                   <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 12, textAlign: 'center' }}>
-                    <p style={{ color: '#334155', fontSize: 13, margin: '0 0 10px' }}>Ürün kataloğu opsiyonel — eklemezseniz AI içerik oluşturur</p>
+                    <p style={{ color: '#334155', fontSize: 13, margin: '0 0 10px' }}>{t('microsites.urun_katalogu_opsiyonel_e', 'Ürün kataloğu opsiyonel — eklemezseniz AI içerik oluşturur')}</p>
                     <button onClick={() => setCatalogItems([{ emoji: '📦', name: '', price: '', desc: '' }])}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 16px', borderRadius: 8, border: '1px solid rgba(6,182,212,0.25)', background: 'rgba(6,182,212,0.06)', color: '#67e8f9', fontSize: 12, cursor: 'pointer' }}>
                       <Plus size={12} /> İlk Ürünü Ekle
@@ -409,7 +409,7 @@ export default function MicrositePage() {
                     </div>
                     {/* Name */}
                     <input value={item.name} onChange={e => setCatalogItems(p => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
-                      placeholder="Ürün adı *"
+                      placeholder={t('microsites.urun_adi', 'Ürün adı *')}
                       style={{ background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', height: 38, boxSizing: 'border-box' as const }} />
                     {/* Price */}
                     <input value={item.price} onChange={e => setCatalogItems(p => p.map((x, j) => j === i ? { ...x, price: e.target.value } : x))}
@@ -417,7 +417,7 @@ export default function MicrositePage() {
                       style={{ background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', height: 38, boxSizing: 'border-box' as const }} />
                     {/* Description */}
                     <input value={item.desc} onChange={e => setCatalogItems(p => p.map((x, j) => j === i ? { ...x, desc: e.target.value } : x))}
-                      placeholder="Kısa açıklama"
+                      placeholder={t('microsites.kisa_aciklama', 'Kısa açıklama')}
                       style={{ background: '#070b1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', height: 38, boxSizing: 'border-box' as const }} />
                     {/* Remove */}
                     <button onClick={() => setCatalogItems(p => p.filter((_, j) => j !== i))}
@@ -451,7 +451,7 @@ export default function MicrositePage() {
       ) : microsites.length === 0 ? (
         <div style={{ background: 'linear-gradient(135deg,rgba(5,10,25,0.97),rgba(8,8,20,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><QuantumOrb size={56} /></div>
-          <p style={{ color: '#475569', fontSize: 15, margin: '0 0 20px' }}>Henüz katalog sayfası yok</p>
+          <p style={{ color: '#475569', fontSize: 15, margin: '0 0 20px' }}>{t('microsites.henuz_katalog_sayfasi_yok', 'Henüz katalog sayfası yok')}</p>
           <button onClick={() => setShowCreate(true)}
             style={{ padding: '11px 28px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 20px rgba(8,145,178,0.3)' }}>
             İlk Kataloğu Oluştur

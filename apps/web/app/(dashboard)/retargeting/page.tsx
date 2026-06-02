@@ -73,7 +73,7 @@ export default function RetargetingPage() {
             <Target size={24} className="text-purple-400" />
             Dynamic Retargeting
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Cevap vermeyen leadleri AI ile yeniden hedefle — doğru kanal, doğru mesaj, doğru zaman</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('retargeting.cevap_vermeyen_leadleri_a', 'Cevap vermeyen leadleri AI ile yeniden hedefle — doğru kanal, doğru mesaj, doğru zaman')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => runAll(true)} disabled={running || !leads.length}
@@ -141,7 +141,7 @@ export default function RetargetingPage() {
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-12 text-center">
           <Target size={40} className="text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400">Retarget edilecek lead yok</p>
-          <p className="text-slate-500 text-sm mt-1">3+ gündür cevap vermeyen leadler burada görünür</p>
+          <p className="text-slate-500 text-sm mt-1">{t('retargeting.3_gundur_cevap_vermeyen_l', '3+ gündür cevap vermeyen leadler burada görünür')}</p>
         </div>
       ) : (
         <div className="space-y-3">

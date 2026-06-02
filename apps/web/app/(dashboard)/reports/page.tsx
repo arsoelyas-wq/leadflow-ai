@@ -101,8 +101,8 @@ export default function ReportsPage() {
           <div style={{ display:'flex', alignItems:'center', gap:24 }}>
             <ReportPrism size={82} spinning={generating} />
             <div>
-              <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Performans Raporları</h1>
-              <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>Haftalık & aylık satış — karşılaştırmalı analiz</p>
+              <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('reports.performans_raporlari', 'Performans Raporları')}</h1>
+              <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('reports.haftalik_aylik_satis_kars', 'Haftalık & aylık satış — karşılaştırmalı analiz')}</p>
               <div style={{ display:'flex', gap:6 }}>
                 {(['weekly','monthly'] as const).map(v => (
                   <button key={v} onClick={() => setView(v)} style={{ padding:'6px 18px', borderRadius:20, border:`1px solid ${view===v?'rgba(124,58,237,0.5)':'rgba(255,255,255,0.08)'}`, background:view===v?'rgba(124,58,237,0.18)':'transparent', color:view===v?'#a78bfa':'#64748b', fontSize:12, fontWeight:600, cursor:'pointer' }}>
@@ -163,7 +163,7 @@ export default function ReportsPage() {
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <input type="number" value={g.goal} onChange={e=>g.setGoal(Number(e.target.value))}
                           style={{ width:70, background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, padding:'3px 7px', color:'#fff', fontSize:11, outline:'none' }} />
-                        {pct>=100 && <span style={{ color:'#34d399', fontSize:10, fontWeight:700 }}>✅ Aşıldı!</span>}
+                        {pct>=100 && <span style={{ color:'#34d399', fontSize:10, fontWeight:700 }}>{t('reports.asildi', '✅ Aşıldı!')}</span>}
                       </div>
                     </div>
                     <div style={{ height:7, background:'rgba(255,255,255,0.06)', borderRadius:3 }}>
@@ -176,7 +176,7 @@ export default function ReportsPage() {
             </div>
 
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 En İyi Kaynaklar</h3>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('reports.en_iyi_kaynaklar', '📊 En İyi Kaynaklar')}</h3>
               {sources.map(([src, cnt]: any, i: number) => {
                 const colors = ['#7c3aed','#4f46e5','#06b6d4','#10b981','#f59e0b']
                 const max = (sources[0] as any)?.[1] || 1
@@ -196,7 +196,7 @@ export default function ReportsPage() {
           </div>
 
           <div style={{ background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.06))', border:'1px solid rgba(124,58,237,0.2)', borderRadius:16, padding:18 }}>
-            <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 6px', textTransform:'uppercase', letterSpacing:1 }}>⚡ AI Özet</p>
+            <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 6px', textTransform:'uppercase', letterSpacing:1 }}>{t('reports.ai_ozet', '⚡ AI Özet')}</p>
             <p style={{ color:'#cbd5e1', fontSize:13, margin:0, lineHeight:1.6 }}>
               {view==='weekly' ? `Bu hafta ${d.newLeads} yeni lead eklendi, ${d.wonLeads} deal kazanıldı. Dönüşüm oranı %${d.conversionRate}${d.conversionRate>15?' — mükemmel!':d.conversionRate>8?' — iyi gidiyor':' — geliştirme gerekli'}. ${d.totalRevenue>0?`Toplam ${fmtCurrency(d.totalRevenue)} gelir gerçekleşti.`:'Fatura geliri henüz yok.'}` : `Bu ay ${d.newLeads} lead ve ${d.wonLeads} kazanım. Aylık hedeflerinizi gözden geçirin.`}
             </p>

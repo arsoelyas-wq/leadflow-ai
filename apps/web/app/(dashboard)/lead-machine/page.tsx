@@ -193,7 +193,7 @@ export default function LeadMachinePage() {
 
           {/* Sektör Seçimi */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-            <h3 className="text-white font-semibold text-sm mb-3">🎯 Sektör / Anahtar Kelime</h3>
+            <h3 className="text-white font-semibold text-sm mb-3">{t('lead_machine.sektor_anahtar_kelime', '🎯 Sektör / Anahtar Kelime')}</h3>
             <div className="flex flex-wrap gap-1.5 mb-3 max-h-40 overflow-y-auto">
               {SECTORS.map(s => (
                 <button key={s} onClick={()=>setKeyword(s)}
@@ -203,7 +203,7 @@ export default function LeadMachinePage() {
               ))}
             </div>
             <input value={customKeyword} onChange={e=>setCustomKeyword(e.target.value)}
-              placeholder="Veya özel kelime girin..."
+              placeholder={t('lead_machine.veya_ozel_kelime_girin', 'Veya özel kelime girin...')}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-emerald-500"/>
             {(keyword||customKeyword) && (
               <p className="text-emerald-400 text-xs mt-2">✓ Seçili: "{finalKeyword}"</p>
@@ -212,7 +212,7 @@ export default function LeadMachinePage() {
 
           {/* Şehir Seçimi */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-            <h3 className="text-white font-semibold text-sm mb-3">📍 Şehir Seç</h3>
+            <h3 className="text-white font-semibold text-sm mb-3">{t('lead_machine.sehir_sec', '📍 Şehir Seç')}</h3>
             <div className="flex flex-wrap gap-1.5">
               {CITIES.map(c => (
                 <button key={c} onClick={()=>toggleCity(c)}
@@ -250,7 +250,7 @@ export default function LeadMachinePage() {
               </div>
               <div className="text-center p-3 bg-slate-900 rounded-xl">
                 <p className="text-2xl font-bold text-blue-400">{selectedCities.length}</p>
-                <p className="text-slate-400 text-xs">Şehir</p>
+                <p className="text-slate-400 text-xs">{t('lead_machine.sehir', 'Şehir')}</p>
               </div>
               <div className="text-center p-3 bg-slate-900 rounded-xl">
                 <p className="text-2xl font-bold text-purple-400">
@@ -291,7 +291,7 @@ export default function LeadMachinePage() {
           {/* Sonuç */}
           {result && (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-              <h3 className="text-white font-semibold text-sm mb-3">📊 Sonuçlar</h3>
+              <h3 className="text-white font-semibold text-sm mb-3">{t('lead_machine.sonuclar', '📊 Sonuçlar')}</h3>
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="text-center p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                   <p className="text-3xl font-bold text-emerald-400">{result.totalAdded}</p>
@@ -331,16 +331,16 @@ export default function LeadMachinePage() {
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-400 text-xs mb-1 block">Referans Veren Müşteri</label>
+                  <label className="text-slate-400 text-xs mb-1 block">{t('lead_machine.referans_veren_musteri', 'Referans Veren Müşteri')}</label>
                   <select value={referralForm.referrerLeadId}
                     onChange={e=>setReferralForm(p=>({...p,referrerLeadId:e.target.value}))}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none">
-                    <option value="">Seçin (opsiyonel)</option>
+                    <option value="">{t('lead_machine.secin_opsiyonel', 'Seçin (opsiyonel)')}</option>
                     {leads.map(l=><option key={l.id} value={l.id}>{l.company_name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-slate-400 text-xs mb-1 block">Sektör</label>
+                  <label className="text-slate-400 text-xs mb-1 block">{t('lead_machine.sektor', 'Sektör')}</label>
                   <input value={referralForm.sector}
                     onChange={e=>setReferralForm(p=>({...p,sector:e.target.value}))}
                     placeholder="Mobilya, Tekstil..."

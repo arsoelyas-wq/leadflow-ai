@@ -253,8 +253,8 @@ export default function AgentPage() {
             <Bot className="w-6 h-6 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">AI Satış Ajanı</h1>
-            <p className="text-sm text-slate-400">7/24 otonom lead araştırma, iletişim ve dönüşüm</p>
+            <h1 className="text-xl font-semibold text-white">{t('agent.ai_satis_ajani', 'AI Satış Ajanı')}</h1>
+            <p className="text-sm text-slate-400">{t('agent.724_otonom_lead_arastirma', '7/24 otonom lead araştırma, iletişim ve dönüşüm')}</p>
           </div>
         </div>
 
@@ -336,43 +336,43 @@ export default function AgentPage() {
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Ürün / Hizmet Açıklaması *</label>
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t('agent.urun_hizmet_aciklamasi', 'Ürün / Hizmet Açıklaması *')}</label>
                 <textarea
                   value={form.product_description}
                   onChange={e => setForm(f => ({ ...f, product_description: e.target.value }))}
                   rows={3}
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-                  placeholder="Örn: Akustik duvar paneli — ofis, kafe ve okullarda ses yalıtımı sağlar"
+                  placeholder={t('agent.orn_akustik_duvar_paneli', 'Örn: Akustik duvar paneli — ofis, kafe ve okullarda ses yalıtımı sağlar')}
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Hedef Müşteri *</label>
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t('agent.hedef_musteri', 'Hedef Müşteri *')}</label>
                 <textarea
                   value={form.target_customer}
                   onChange={e => setForm(f => ({ ...f, target_customer: e.target.value }))}
                   rows={3}
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-                  placeholder="Örn: İnşaat firmaları, mimarlık ofisleri, kafe ve restoran işletmeleri"
+                  placeholder={t('agent.orn_insaat_firmalari_mima', 'Örn: İnşaat firmaları, mimarlık ofisleri, kafe ve restoran işletmeleri')}
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Çözdüğü Problem *</label>
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t('agent.cozdugu_problem', 'Çözdüğü Problem *')}</label>
                 <textarea
                   value={form.pain_solved}
                   onChange={e => setForm(f => ({ ...f, pain_solved: e.target.value }))}
                   rows={2}
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-                  placeholder="Örn: Gürültü kirliliği, ses sızıntısı, müşteri şikayetleri"
+                  placeholder={t('agent.orn_gurultu_kirliligi_ses', 'Örn: Gürültü kirliliği, ses sızıntısı, müşteri şikayetleri')}
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Değer Önerileri (her satıra bir tane)</label>
+                <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t('agent.deger_onerileri_her_satir', 'Değer Önerileri (her satıra bir tane)')}</label>
                 <textarea
                   value={form.value_props_raw}
                   onChange={e => setForm(f => ({ ...f, value_props_raw: e.target.value }))}
                   rows={2}
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-                  placeholder="Hızlı montaj&#10;10 yıl garanti&#10;Ücretsiz numune"
+                  placeholder={t('agent.hizli_montaj1010_yil_gara', 'Hızlı montaj&#10;10 yıl garanti&#10;Ücretsiz numune')}
                 />
               </div>
             </div>
@@ -442,27 +442,27 @@ export default function AgentPage() {
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                İnsan Devralma Tetikleyicileri <span className="normal-case text-slate-500">(virgülle ayır)</span>
+                İnsan Devralma Tetikleyicileri <span className="normal-case text-slate-500">{t('agent.virgulle_ayir', '(virgülle ayır)')}</span>
               </label>
               <input
                 value={form.escalation_triggers_raw}
                 onChange={e => setForm(f => ({ ...f, escalation_triggers_raw: e.target.value }))}
                 className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-                placeholder="görüşelim,fiyat ver,tamam,alalım"
+                placeholder={t('agent.goruselimfiyat_vertamamal', 'görüşelim,fiyat ver,tamam,alalım')}
               />
-              <p className="text-xs text-slate-500">Bu kelimeleri içeren mesajlar geldiğinde AI durup sizi uyarır</p>
+              <p className="text-xs text-slate-500">{t('agent.bu_kelimeleri_iceren_mesa', 'Bu kelimeleri içeren mesajlar geldiğinde AI durup sizi uyarır')}</p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Teklif Şablonu (isteğe bağlı)</label>
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">{t('agent.teklif_sablonu_istege_bag', 'Teklif Şablonu (isteğe bağlı)')}</label>
               <textarea
                 value={form.proposal_template}
                 onChange={e => setForm(f => ({ ...f, proposal_template: e.target.value }))}
                 rows={3}
                 className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-                placeholder="Merhaba {company}! Size özel fiyatımız {price_min}-{price_max} {currency} arasındadır..."
+                placeholder={t('agent.merhaba_company_size_ozel', 'Merhaba {company}! Size özel fiyatımız {price_min}-{price_max} {currency} arasındadır...')}
               />
-              <p className="text-xs text-slate-500">Kullanılabilir değişkenler: &#123;company&#125;, &#123;price_min&#125;, &#123;price_max&#125;, &#123;currency&#125;</p>
+              <p className="text-xs text-slate-500">{t('agent.kullanilabilir_degiskenle', 'Kullanılabilir değişkenler: &#123;company&#125;, &#123;price_min&#125;, &#123;price_max&#125;, &#123;currency&#125;')}</p>
             </div>
 
             <button
@@ -501,7 +501,7 @@ export default function AgentPage() {
           {filteredConvs.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Henüz konuşma yok</p>
+              <p className="text-sm">{t('agent.henuz_konusma_yok', 'Henüz konuşma yok')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -575,7 +575,7 @@ export default function AgentPage() {
           {runs.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <Activity className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Henüz aktivite yok</p>
+              <p className="text-sm">{t('agent.henuz_aktivite_yok', 'Henüz aktivite yok')}</p>
             </div>
           ) : (
             runs.map(run => {
@@ -609,7 +609,7 @@ export default function AgentPage() {
           {escalations.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Devralınacak konuşma yok — AI her şeyi hallediyor! 🎉</p>
+              <p className="text-sm">{t('agent.devralinacak_konusma_yok', 'Devralınacak konuşma yok — AI her şeyi hallediyor! 🎉')}</p>
             </div>
           ) : (
             escalations.map(conv => (

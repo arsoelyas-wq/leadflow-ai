@@ -298,9 +298,9 @@ export default function CompetitorPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                 <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Rakip Hijacking</h1>
                 <span style={{ background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>GLOBAL</span>
-                <span style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399', fontSize: 10, padding: '3px 10px', borderRadius: 20 }}>75 Ülke</span>
+                <span style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399', fontSize: 10, padding: '3px 10px', borderRadius: 20 }}>{t('competitor.75_ulke', '75 Ülke')}</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 480 }}>Rakiplerin müşterilerini tespit edin — Google yorumları, sosyal şikayetler, LinkedIn, B2B dizinler — 75 ülkede</p>
+              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 480 }}>{t('competitor.rakiplerin_musterilerini', 'Rakiplerin müşterilerini tespit edin — Google yorumları, sosyal şikayetler, LinkedIn, B2B dizinler — 75 ülkede')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {['⭐ Google Yorumları', '😤 Şikayet Avcısı', '💼 LinkedIn', '🌍 75 Ülke', '📡 Otomatik Tarama'].map(f => (
                   <span key={f} style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
@@ -356,24 +356,24 @@ export default function CompetitorPage() {
               <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Rakip Ekle</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Rakip firma adı *" style={inp} />
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('competitor.rakip_firma_adi', 'Rakip firma adı *')} style={inp} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="Şehir / Bölge" style={inp} />
-                <input value={newSector} onChange={e => setNewSector(e.target.value)} placeholder="Sektör" style={inp} />
+                <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder={t('competitor.sehir_bolge', 'Şehir / Bölge')} style={inp} />
+                <input value={newSector} onChange={e => setNewSector(e.target.value)} placeholder={t('competitor.sektor', 'Sektör')} style={inp} />
               </div>
               <div>
-                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Ülke</label>
+                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('competitor.ulke', 'Ülke')}</label>
                 <CountrySelect value={newCountry} onChange={setNewCountry} />
               </div>
               <div>
-                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 7 }}>Tarama Kanalları</label>
+                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 7 }}>{t('competitor.tarama_kanallari', 'Tarama Kanalları')}</label>
                 <ChannelPicker selected={newChannels} onToggle={id => toggleCh(newChannels, setNewChannels, id)} />
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <div onClick={() => setAutoScan(!autoScan)} style={{ width: 40, height: 22, borderRadius: 11, background: autoScan ? 'linear-gradient(135deg,#065f46,#10b981)' : 'rgba(255,255,255,0.1)', position: 'relative', transition: 'background 0.2s', flexShrink: 0, cursor: 'pointer' }}>
                   <div style={{ position: 'absolute', top: 3, left: autoScan ? 21 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
                 </div>
-                <span style={{ color: '#94a3b8', fontSize: 12 }}>Günlük otomatik tara</span>
+                <span style={{ color: '#94a3b8', fontSize: 12 }}>{t('competitor.gunluk_otomatik_tara', 'Günlük otomatik tara')}</span>
               </label>
               <button onClick={addCompetitor} disabled={adding || !newName}
                 style={{ padding: '11px', borderRadius: 11, border: 'none', cursor: adding || !newName ? 'not-allowed' : 'pointer', background: newName ? 'linear-gradient(135deg,#065f46,#10b981)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, opacity: !newName ? 0.4 : 1, boxShadow: newName ? '0 6px 20px rgba(16,185,129,0.3)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -391,7 +391,7 @@ export default function CompetitorPage() {
             ) : competitors.length === 0 ? (
               <div style={{ background: 'rgba(2,8,20,0.98)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 48, textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><RadarScanner size={80} /></div>
-                <p style={{ color: '#475569', fontSize: 14, margin: 0 }}>Henüz rakip eklenmedi</p>
+                <p style={{ color: '#475569', fontSize: 14, margin: 0 }}>{t('competitor.henuz_rakip_eklenmedi', 'Henüz rakip eklenmedi')}</p>
               </div>
             ) : competitors.map(comp => {
               const countryName = countries.find(c => c.code === (comp.country || 'TR'))?.name || comp.country || 'TR'
@@ -444,17 +444,17 @@ export default function CompetitorPage() {
           <div style={{ background: 'linear-gradient(135deg,rgba(2,8,20,0.98),rgba(4,8,18,0.99))', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 20, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <Zap size={16} style={{ color: '#10b981' }} />
-              <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Hızlı Hijack</h2>
+              <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('competitor.hizli_hijack', 'Hızlı Hijack')}</h2>
               <span style={{ color: '#475569', fontSize: 12 }}>listeye eklemeden tek seferlik</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <input value={hName} onChange={e => setHName(e.target.value)} placeholder="Rakip firma adı *" style={inp} />
+              <input value={hName} onChange={e => setHName(e.target.value)} placeholder={t('competitor.rakip_firma_adi', 'Rakip firma adı *')} style={inp} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <input value={hCity} onChange={e => setHCity(e.target.value)} placeholder="Şehir *" style={inp} />
-                <input value={hSector} onChange={e => setHSector(e.target.value)} placeholder="Sektör" style={inp} />
+                <input value={hCity} onChange={e => setHCity(e.target.value)} placeholder={t('competitor.sehir', 'Şehir *')} style={inp} />
+                <input value={hSector} onChange={e => setHSector(e.target.value)} placeholder={t('competitor.sektor', 'Sektör')} style={inp} />
               </div>
               <div>
-                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Ülke</label>
+                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('competitor.ulke', 'Ülke')}</label>
                 <CountrySelect value={hCountry} onChange={setHCountry} />
               </div>
               <div>
@@ -473,8 +473,8 @@ export default function CompetitorPage() {
             {hijacking ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 16 }}>
                 <RadarScanner size={100} scanning={true} />
-                <p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>Taranıyor...</p>
-                <p style={{ color: '#64748b', fontSize: 13 }}>Google, sosyal medya ve şikayet siteleri</p>
+                <p style={{ color: '#fff', fontSize: 16, fontWeight: 700, margin: 0 }}>{t('competitor.taraniyor', 'Taranıyor...')}</p>
+                <p style={{ color: '#64748b', fontSize: 13 }}>{t('competitor.google_sosyal_medya_ve_si', 'Google, sosyal medya ve şikayet siteleri')}</p>
               </div>
             ) : hijackResult ? (
               <>
@@ -492,7 +492,7 @@ export default function CompetitorPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
                 <RadarScanner size={90} />
-                <p style={{ color: '#475569', fontSize: 13, marginTop: 14, textAlign: 'center' }}>Formu doldurun ve taramayı başlatın</p>
+                <p style={{ color: '#475569', fontSize: 13, marginTop: 14, textAlign: 'center' }}>{t('competitor.formu_doldurun_ve_taramay', 'Formu doldurun ve taramayı başlatın')}</p>
               </div>
             )}
           </div>
@@ -517,7 +517,7 @@ export default function CompetitorPage() {
           {leads.length === 0 ? (
             <div style={{ background: 'rgba(2,8,20,0.98)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 48, textAlign: 'center' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><RadarScanner size={80} /></div>
-              <p style={{ color: '#475569', fontSize: 14 }}>Henüz lead bulunamadı</p>
+              <p style={{ color: '#475569', fontSize: 14 }}>{t('competitor.henuz_lead_bulunamadi', 'Henüz lead bulunamadı')}</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -536,10 +536,10 @@ export default function CompetitorPage() {
               <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>Rakip Analizi</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <input value={aName} onChange={e => setAName(e.target.value)} placeholder="Rakip firma adı *" style={inp} />
-              <input value={aCity} onChange={e => setACity(e.target.value)} placeholder="Şehir" style={inp} />
+              <input value={aName} onChange={e => setAName(e.target.value)} placeholder={t('competitor.rakip_firma_adi', 'Rakip firma adı *')} style={inp} />
+              <input value={aCity} onChange={e => setACity(e.target.value)} placeholder={t('competitor.sehir', 'Şehir')} style={inp} />
               <div>
-                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Ülke</label>
+                <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('competitor.ulke', 'Ülke')}</label>
                 <CountrySelect value={aCountry} onChange={setACountry} />
               </div>
               <button onClick={analyze} disabled={analyzing || !aName}
@@ -599,7 +599,7 @@ export default function CompetitorPage() {
                 )}
                 {analysis.analysis?.suggestedWhatsApp && (
                   <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 16 }}>
-                    <p style={{ color: '#34d399', fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>💬 WhatsApp Mesaj Taslağı</p>
+                    <p style={{ color: '#34d399', fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>{t('competitor.whatsapp_mesaj_taslagi', '💬 WhatsApp Mesaj Taslağı')}</p>
                     <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{analysis.analysis.suggestedWhatsApp}</p>
                     <button onClick={() => navigator.clipboard.writeText(analysis.analysis.suggestedWhatsApp)}
                       style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.3)', background: 'transparent', color: '#34d399', fontSize: 11, cursor: 'pointer' }}>
@@ -611,7 +611,7 @@ export default function CompetitorPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 12 }}>
                 <RadarScanner size={90} />
-                <p style={{ color: '#475569', fontSize: 13 }}>Rakip adını girin ve analiz başlatın</p>
+                <p style={{ color: '#475569', fontSize: 13 }}>{t('competitor.rakip_adini_girin_ve_anal', 'Rakip adını girin ve analiz başlatın')}</p>
               </div>
             )}
           </div>

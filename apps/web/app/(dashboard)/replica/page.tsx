@@ -252,8 +252,8 @@ export default function ReplicaPage() {
             <Brain className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">AI Video Replikası</h1>
-            <p className="text-slate-400 text-sm">Kendi sesiniz ve yüzünüzle kişiselleştirilmiş videolar</p>
+            <h1 className="text-2xl font-bold text-white">{t('replica.ai_video_replikasi', 'AI Video Replikası')}</h1>
+            <p className="text-slate-400 text-sm">{t('replica.kendi_sesiniz_ve_yuzunuzl', 'Kendi sesiniz ve yüzünüzle kişiselleştirilmiş videolar')}</p>
           </div>
         </div>
 
@@ -261,7 +261,7 @@ export default function ReplicaPage() {
         <div className="mt-4 flex items-start gap-3 bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
           <Info className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
           <p className="text-violet-200 text-sm leading-relaxed">
-            <strong>Nasıl çalışır:</strong> 3-5 dakikalık bir video kaydedin veya yükleyin. Sistem sesinizi klonlar
+            <strong>{t('replica.nasil_calisir', 'Nasıl çalışır:')}</strong> 3-5 dakikalık bir video kaydedin veya yükleyin. Sistem sesinizi klonlar
             ve yüz hareketlerinizi öğrenir. Artık her video mesajı sizin sesinizle, sizin yüzünüzle oluşturulur.
           </p>
         </div>
@@ -294,8 +294,8 @@ export default function ReplicaPage() {
           ) : replicas.length === 0 ? (
             <div className="text-center py-20 text-slate-500">
               <Brain className="w-12 h-12 mx-auto mb-4 opacity-30" />
-              <p className="text-lg mb-2">Henüz replika yok</p>
-              <p className="text-sm mb-6">İlk video replikasını oluşturun</p>
+              <p className="text-lg mb-2">{t('replica.henuz_replika_yok', 'Henüz replika yok')}</p>
+              <p className="text-sm mb-6">{t('replica.ilk_video_replikasini_olu', 'İlk video replikasını oluşturun')}</p>
               <button
                 onClick={() => setTab('create')}
                 className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 rounded-lg text-sm font-medium transition-colors"
@@ -411,11 +411,11 @@ export default function ReplicaPage() {
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Replika Adı</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">{t('replica.replika_adi', 'Replika Adı')}</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Örn: Ana Satış Replikası"
+                placeholder={t('replica.orn_ana_satis_replikasi', 'Örn: Ana Satış Replikası')}
                 className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:border-violet-500"
               />
             </div>
@@ -463,7 +463,7 @@ export default function ReplicaPage() {
 
             {/* Video source */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-3">Kaynak Video (3-5 dakika önerilir)</label>
+              <label className="block text-sm font-medium text-slate-300 mb-3">{t('replica.kaynak_video_35_dakika_on', 'Kaynak Video (3-5 dakika önerilir)')}</label>
 
               {/* Mode toggle */}
               <div className="flex gap-2 mb-4">
@@ -489,7 +489,7 @@ export default function ReplicaPage() {
                     className="w-full py-8 border-2 border-dashed border-slate-700 hover:border-violet-500/50 rounded-xl text-slate-400 hover:text-slate-300 transition-colors flex flex-col items-center gap-3"
                   >
                     <Upload className="w-8 h-8 opacity-60" />
-                    <span className="text-sm">MP4, WebM veya MOV seçin</span>
+                    <span className="text-sm">{t('replica.mp4_webm_veya_mov_secin', 'MP4, WebM veya MOV seçin')}</span>
                     <span className="text-xs text-slate-600">Maks 500 MB</span>
                   </button>
                 </div>
@@ -513,7 +513,7 @@ export default function ReplicaPage() {
                       recording ? 'bg-red-600 hover:bg-red-700' : 'bg-violet-600 hover:bg-violet-700'
                     }`}
                   >
-                    {recording ? <><StopCircle className="w-4 h-4" />Kaydı Durdur</> : <><Mic className="w-4 h-4" />Kaydı Başlat</>}
+                    {recording ? <><StopCircle className="w-4 h-4" />{t('replica.kaydi_durdur', 'Kaydı Durdur')}</> : <><Mic className="w-4 h-4" />{t('replica.kaydi_baslat', 'Kaydı Başlat')}</>}
                   </button>
                 </div>
               )}
@@ -542,7 +542,7 @@ export default function ReplicaPage() {
 
             {/* Tips */}
             <div className="bg-slate-800/60 rounded-xl p-4 space-y-2">
-              <p className="text-slate-300 text-xs font-semibold mb-1">En iyi kalite için:</p>
+              <p className="text-slate-300 text-xs font-semibold mb-1">{t('replica.en_iyi_kalite_icin', 'En iyi kalite için:')}</p>
               {[
                 'Düz arka plan, iyi aydınlatma',
                 'Yüzünüz kameraya tam karşı, göz hizasında',
@@ -573,7 +573,7 @@ export default function ReplicaPage() {
               {creating ? (
                 <><Loader2 className="w-4 h-4 animate-spin" />{createStep || 'Oluşturuluyor...'}</>
               ) : (
-                <><Brain className="w-4 h-4" />Replikayı Oluştur</>
+                <><Brain className="w-4 h-4" />{t('replica.replikayi_olustur', 'Replikayı Oluştur')}</>
               )}
             </button>
 
@@ -583,7 +583,7 @@ export default function ReplicaPage() {
                   <Clock className="w-4 h-4" />
                   Eğitim 2-10 dakika sürebilir
                 </div>
-                <p className="text-slate-500 text-xs">Bu sayfayı kapatabilirsiniz, işlem arka planda devam eder</p>
+                <p className="text-slate-500 text-xs">{t('replica.bu_sayfayi_kapatabilirsin', 'Bu sayfayı kapatabilirsiniz, işlem arka planda devam eder')}</p>
               </div>
             )}
           </div>

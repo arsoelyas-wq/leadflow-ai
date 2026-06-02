@@ -70,7 +70,7 @@ export default function InvoicesPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <FileText size={24} className="text-orange-400"/> Fatura Yönetimi
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">Otomatik fatura oluşturun, takip edin, PDF olarak gönderin</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('invoices.otomatik_fatura_olusturun', 'Otomatik fatura oluşturun, takip edin, PDF olarak gönderin')}</p>
         </div>
         <button onClick={()=>setShowCreate(!showCreate)}
           className="flex items-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-500 text-white text-sm rounded-xl transition">
@@ -115,10 +115,10 @@ export default function InvoicesPage() {
           <h2 className="text-white font-semibold">📄 Yeni Fatura</h2>
           <div className="grid lg:grid-cols-3 gap-3">
             <div>
-              <label className="text-slate-400 text-xs mb-1 block">Müşteri *</label>
+              <label className="text-slate-400 text-xs mb-1 block">{t('invoices.musteri', 'Müşteri *')}</label>
               <select value={form.leadId} onChange={e=>setForm(p=>({...p,leadId:e.target.value}))}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                <option value="">Seçin...</option>
+                <option value="">{t('invoices.secin', 'Seçin...')}</option>
                 {leads.map((l:any)=><option key={l.id} value={l.id}>{l.company_name}</option>)}
               </select>
             </div>
@@ -130,7 +130,7 @@ export default function InvoicesPage() {
             <div>
               <label className="text-slate-400 text-xs mb-1 block">Notlar</label>
               <input value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}
-                placeholder="Ödeme koşulları..."
+                placeholder={t('invoices.odeme_kosullari', 'Ödeme koşulları...')}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none"/>
             </div>
           </div>
@@ -142,7 +142,7 @@ export default function InvoicesPage() {
             <div className="space-y-2">
               {form.items.map((item,i)=>(
                 <div key={i} className="grid grid-cols-3 gap-2">
-                  <input value={item.name} onChange={e=>updateItem(i,'name',e.target.value)} placeholder="Hizmet adı"
+                  <input value={item.name} onChange={e=>updateItem(i,'name',e.target.value)} placeholder={t('invoices.hizmet_adi', 'Hizmet adı')}
                     className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none"/>
                   <input type="number" value={item.qty} onChange={e=>updateItem(i,'qty',parseInt(e.target.value)||1)} placeholder="Adet"
                     className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none"/>
@@ -158,7 +158,7 @@ export default function InvoicesPage() {
               className="px-4 py-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white text-sm rounded-lg transition">
               {creating?'Oluşturuluyor...':'Fatura Oluştur'}
             </button>
-            <button onClick={()=>setShowCreate(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">İptal</button>
+            <button onClick={()=>setShowCreate(false)} className="px-4 py-2 bg-slate-700 text-slate-300 text-sm rounded-lg">{t('invoices.iptal', 'İptal')}</button>
           </div>
         </div>
       )}
@@ -168,7 +168,7 @@ export default function InvoicesPage() {
         {invoices.length===0 ? (
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center">
             <FileText size={40} className="text-slate-600 mx-auto mb-2"/>
-            <p className="text-slate-400">Henüz fatura yok</p>
+            <p className="text-slate-400">{t('invoices.henuz_fatura_yok', 'Henüz fatura yok')}</p>
           </div>
         ) : invoices.map((inv:any)=>(
           <div key={inv.id} className="bg-slate-800/50 border border-slate-700 rounded-xl px-5 py-4 flex items-center gap-4">

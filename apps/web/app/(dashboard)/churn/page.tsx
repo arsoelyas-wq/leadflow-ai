@@ -35,7 +35,7 @@ export default function ChurnPage() {
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <TrendingDown size={24} className="text-red-400"/> Predictive Churn Engine
         </h1>
-        <p className="text-slate-400 mt-1 text-sm">AI ile müşteri kaybını önceden tahmin edin ve önlem alın</p>
+        <p className="text-slate-400 mt-1 text-sm">{t('churn.ai_ile_musteri_kaybini_on', 'AI ile müşteri kaybını önceden tahmin edin ve önlem alın')}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -78,11 +78,11 @@ export default function ChurnPage() {
       ) : predictions.length === 0 ? (
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center">
           <TrendingDown size={40} className="text-slate-600 mx-auto mb-2"/>
-          <p className="text-slate-400">Kazanılmış müşteri bulunamadı</p>
+          <p className="text-slate-400">{t('churn.kazanilmis_musteri_buluna', 'Kazanılmış müşteri bulunamadı')}</p>
         </div>
       ) : (
         <div className="space-y-2">
-          <h2 className="text-white font-semibold">Tüm Müşteri Risk Analizi</h2>
+          <h2 className="text-white font-semibold">{t('churn.tum_musteri_risk_analizi', 'Tüm Müşteri Risk Analizi')}</h2>
           {predictions.map((p:any)=>(
             <div key={p.lead.id} className={`border rounded-xl px-5 py-3 flex items-center gap-4 ${RISK_COLORS[p.risk]}`}>
               <span className="text-xl flex-shrink-0">{RISK_ICONS[p.risk]}</span>
@@ -91,7 +91,7 @@ export default function ChurnPage() {
                 <div className="flex gap-3 text-xs opacity-80 mt-0.5">
                   <span>{p.daysSinceContact === 999 ? 'İletişim yok' : `${p.daysSinceContact}g iletişimsiz`}</span>
                   {p.msgCount > 0 && <span>{p.msgCount} mesaj</span>}
-                  {p.lastInvoiceStatus === 'overdue' && <span>⚠️ Gecikmiş ödeme</span>}
+                  {p.lastInvoiceStatus === 'overdue' && <span>{t('churn.gecikmis_odeme', '⚠️ Gecikmiş ödeme')}</span>}
                 </div>
               </div>
               <div className="text-right flex-shrink-0">

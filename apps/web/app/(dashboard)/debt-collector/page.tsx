@@ -276,8 +276,8 @@ export default function DebtCollectorPage() {
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <VaultShield size={95} overduePct={overduePct} scanning={loading} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>Tahsilat Yönetimi</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Gecikmiş fatura takibi, otomatik hatırlatma ve yasal süreç yönetimi</p>
+            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('debt_collector.tahsilat_yonetimi', 'Tahsilat Yönetimi')}</h1>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('debt_collector.gecikmis_fatura_takibi_ot', 'Gecikmiş fatura takibi, otomatik hatırlatma ve yasal süreç yönetimi')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[
                 { label: 'Toplam Fatura', value: enriched.length, color: '#94a3b8' },
@@ -340,7 +340,7 @@ export default function DebtCollectorPage() {
       {activeTab === 'invoices' && (
         <>
           <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ color: '#64748b', fontSize: 12, flexShrink: 0 }}>Mesaj Şablonu:</span>
+            <span style={{ color: '#64748b', fontSize: 12, flexShrink: 0 }}>{t('debt_collector.mesaj_sablonu', 'Mesaj Şablonu:')}</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {Object.entries({ reminder: 'Nazik', urgent: 'Acil', legal: 'Yasal' }).map(([key, label]) => (
                 <button key={key} onClick={() => setMsgTemplate(key)}
@@ -381,7 +381,7 @@ export default function DebtCollectorPage() {
                     {/* Overdue gauge */}
                     <div style={{ width: 46, height: 46, borderRadius: 10, background: `${bucketDef.color}12`, border: `1px solid ${bucketDef.color}30`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <span style={{ color: bucketDef.color, fontSize: 13, fontWeight: 800, lineHeight: 1 }}>{inv.daysOverdue > 0 ? inv.daysOverdue : '—'}</span>
-                      <span style={{ color: '#475569', fontSize: 8 }}>gün</span>
+                      <span style={{ color: '#475569', fontSize: 8 }}>{t('debt_collector.gun', 'gün')}</span>
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -439,7 +439,7 @@ export default function DebtCollectorPage() {
 
       {activeTab === 'escalation' && (
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 18, padding: 22 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>⚡ Otomatik Eskalasyon Zaman Çizelgesi</h3>
+          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>{t('debt_collector.otomatik_eskalasyon_zaman', '⚡ Otomatik Eskalasyon Zaman Çizelgesi')}</h3>
           {[
             { day: 0, label: 'Fatura kesildi', color: '#10b981', desc: 'Otomatik WhatsApp bildirimi gönderildi' },
             { day: 7, label: 'Nazik hatırlatma', color: '#06b6d4', desc: 'Vade yaklaşıyor mesajı, ödeme linki eklendi' },
@@ -467,7 +467,7 @@ export default function DebtCollectorPage() {
 
       {activeTab === 'compliance' && (
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 18, padding: 22 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>🛡️ Uyum ve Yasal Güvence</h3>
+          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>{t('debt_collector.uyum_ve_yasal_guvence', '🛡️ Uyum ve Yasal Güvence')}</h3>
           {[
             { label: 'KVKK Uyumu', status: 'ok', desc: 'Tüm hatırlatmalar KVKK kapsamında gönderiliyor' },
             { label: 'Faiz Hesabı', status: 'ok', desc: 'Yasal gecikme faizi otomatik hesaplanıyor (%9.75 yıllık)' },

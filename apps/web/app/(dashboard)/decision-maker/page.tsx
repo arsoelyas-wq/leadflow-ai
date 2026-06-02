@@ -247,7 +247,7 @@ export default function DecisionMakerPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Şirket veya şehir ara..."
+            placeholder={t('decision_maker.sirket_veya_sehir_ara', 'Şirket veya şehir ara...')}
             className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition"
           />
           {search && (
@@ -368,7 +368,7 @@ export default function DecisionMakerPage() {
                   </span>
                 )}
                 {res?.done && res.employees.length === 0 && !res.error && (
-                  <span className="text-xs text-slate-500">Bulunamadı</span>
+                  <span className="text-xs text-slate-500">{t('decision_maker.bulunamadi', 'Bulunamadı')}</span>
                 )}
                 <span className="text-xs text-slate-600">Puan: {lead.score}</span>
               </div>
@@ -420,11 +420,11 @@ export default function DecisionMakerPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold text-sm">{r.company}</p>
                     {!r.done
-                      ? <p className="text-blue-400 text-xs flex items-center gap-1"><RefreshCw size={10} className="animate-spin" /> LinkedIn taranıyor...</p>
+                      ? <p className="text-blue-400 text-xs flex items-center gap-1"><RefreshCw size={10} className="animate-spin" />{t('decision_maker.linkedin_taraniyor', 'LinkedIn taranıyor...')}</p>
                       : r.error
                       ? <p className="text-red-400 text-xs">{r.error}</p>
                       : r.employees.length === 0
-                      ? <p className="text-slate-500 text-xs">LinkedIn'de çalışan bulunamadı</p>
+                      ? <p className="text-slate-500 text-xs">{t('decision_maker.linkedinde_calisan_buluna', 'LinkedIn\'de çalışan bulunamadı')}</p>
                       : <p className="text-slate-400 text-xs">
                           {r.employees.length} çalışan
                           {dms.length > 0 && <span className="text-violet-400 ml-1">· {dms.length} karar verici</span>}

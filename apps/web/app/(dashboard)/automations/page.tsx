@@ -291,7 +291,7 @@ export default function AutomationsPage() {
           <ZapOrb size={88} active={activeCount > 0} />
           <div style={{ flex: 1 }}>
             <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>Otomasyon Motoru</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>Zapier/Make olmadan kendi IF-THEN kurallarınızı oluşturun</p>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('automations.zapiermake_olmadan_kendi', 'Zapier/Make olmadan kendi IF-THEN kurallarınızı oluşturun')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[{l:'Toplam Kural',v:rules.length,c:'#94a3b8'},{l:'Aktif',v:activeCount,c:'#10b981'},{l:'Toplam Çalışma',v:totalRuns,c:'#f59e0b'},{l:'Webhook Logu',v:stats?.incoming||0,c:'#06b6d4'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -326,8 +326,8 @@ export default function AutomationsPage() {
           ) : rules.length === 0 ? (
             <div style={{ textAlign:'center', padding:56, background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.05)', borderRadius:18 }}>
               <div style={{ fontSize:48, margin:'0 0 16px' }}>⚡</div>
-              <h3 style={{ color:'#fff', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>Henüz kural yok</h3>
-              <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>İlk IF-THEN kuralınızı oluşturun — Zapier'e gerek yok</p>
+              <h3 style={{ color:'#fff', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>{t('automations.henuz_kural_yok', 'Henüz kural yok')}</h3>
+              <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>{t('automations.ilk_ifthen_kuralinizi_olu', 'İlk IF-THEN kuralınızı oluşturun — Zapier\'e gerek yok')}</p>
               <button onClick={() => setShowCreate(true)}
                 style={{ padding:'11px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#78350f,#f59e0b)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 <Plus size={14} style={{ display:'inline', marginRight:6 }} /> İlk Kuralı Oluştur
@@ -362,7 +362,7 @@ export default function AutomationsPage() {
                   {/* Stats */}
                   <div style={{ textAlign:'center', flexShrink:0 }}>
                     <p style={{ color:'#f59e0b', fontWeight:800, fontSize:16, margin:0 }}>{rule.run_count||0}</p>
-                    <p style={{ color:'#334155', fontSize:10, margin:0 }}>çalıştı</p>
+                    <p style={{ color:'#334155', fontSize:10, margin:0 }}>{t('automations.calisti', 'çalıştı')}</p>
                   </div>
 
                   {/* Actions */}
@@ -372,7 +372,7 @@ export default function AutomationsPage() {
                       {rule.active ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
                     </button>
                     <button onClick={() => testRule(rule.id)} disabled={testing === rule.id}
-                      title="Şimdi Çalıştır"
+                      title={t('automations.simdi_calistir', 'Şimdi Çalıştır')}
                       style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(6,182,212,0.3)', background:'rgba(6,182,212,0.08)', color:'#22d3ee', cursor:'pointer' }}>
                       {testing === rule.id ? <RefreshCw size={13} style={{ animation:'za-spin 1s linear infinite' }} /> : <Play size={13} />}
                     </button>
@@ -400,12 +400,12 @@ export default function AutomationsPage() {
       {activeTab === 'logs' && (
         <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, overflow:'hidden' }}>
           <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:0 }}>📋 Kural Yürütme Logları</h3>
+            <h3 style={{ color:'#fff', fontSize:13, fontWeight:700, margin:0 }}>{t('automations.kural_yurutme_loglari', '📋 Kural Yürütme Logları')}</h3>
           </div>
           {logs.length === 0 ? (
             <div style={{ padding:40, textAlign:'center', color:'#475569' }}>
               <p style={{ fontSize:24, margin:'0 0 10px' }}>📋</p>
-              <p style={{ fontSize:13, margin:0 }}>Henüz log yok — kurallar çalıştıkça burada görünür</p>
+              <p style={{ fontSize:13, margin:0 }}>{t('automations.henuz_log_yok_kurallar_ca', 'Henüz log yok — kurallar çalıştıkça burada görünür')}</p>
             </div>
           ) : (
             <div>
@@ -438,7 +438,7 @@ export default function AutomationsPage() {
           {/* Incoming Webhook */}
           <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(245,158,11,0.15)', borderRadius:18, padding:22 }}>
             <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 12px' }}>📥 Gelen Webhook URL'niz</h3>
-            <p style={{ color:'#64748b', fontSize:12, margin:'0 0 12px' }}>Bu URL'yi Zapier/Make/n8n'e yapıştırın — gelen veriler otomatik lead olarak eklenir</p>
+            <p style={{ color:'#64748b', fontSize:12, margin:'0 0 12px' }}>{t('automations.bu_urlyi_zapiermaken8ne_y', 'Bu URL\'yi Zapier/Make/n8n\'e yapıştırın — gelen veriler otomatik lead olarak eklenir')}</p>
             <div style={{ display:'flex', gap:8 }}>
               <code style={{ flex:1, background:'#060a1c', border:'1px solid rgba(245,158,11,0.2)', borderRadius:9, padding:'10px 14px', color:'#fbbf24', fontSize:11, fontFamily:'monospace', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {webhookUrl || 'Yükleniyor...'}
@@ -459,7 +459,7 @@ export default function AutomationsPage() {
 
           {/* Beklenen format */}
           <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, padding:22 }}>
-            <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 12px' }}>📦 Beklenen Webhook Formatı</h3>
+            <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 12px' }}>{t('automations.beklenen_webhook_formati', '📦 Beklenen Webhook Formatı')}</h3>
             <code style={{ display:'block', background:'#060a1c', borderRadius:10, padding:'14px 18px', color:'#34d399', fontSize:12, fontFamily:'monospace', lineHeight:1.8 }}>
               {`{\n  "name": "Mehmet Yılmaz",\n  "company": "ABC Ltd",\n  "phone": "+905551234567",\n  "email": "mehmet@abc.com",\n  "source": "zapier"\n}`}
             </code>

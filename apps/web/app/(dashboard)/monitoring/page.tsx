@@ -136,8 +136,8 @@ export default function MonitoringPage() {
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <SystemPulse size={90} health={health} scanning={loading} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>Sistem Monitörü</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>Gerçek zamanlı sistem sağlığı, hata takibi ve performans metrikleri</p>
+            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('monitoring.sistem_monitoru', 'Sistem Monitörü')}</h1>
+            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>{t('monitoring.gercek_zamanli_sistem_sag', 'Gerçek zamanlı sistem sağlığı, hata takibi ve performans metrikleri')}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#34d399', fontSize: 11, cursor: 'pointer' }}>
                 <RefreshCw size={12} style={{ animation: loading ? 'sp-spin 1s linear infinite' : 'none' }} /> Yenile
@@ -190,7 +190,7 @@ export default function MonitoringPage() {
           <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>📡 Son Kontroller</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
             {uptimeLogs.length === 0 ? (
-              <p style={{ color: '#334155', fontSize: 12 }}>Henüz kontrol yapılmadı</p>
+              <p style={{ color: '#334155', fontSize: 12 }}>{t('monitoring.henuz_kontrol_yapilmadi', 'Henüz kontrol yapılmadı')}</p>
             ) : uptimeLogs.slice(0, 12).map((log: any, i: number) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
                 {log.status === 'up' ? <CheckCircle size={12} color="#10b981" /> : <XCircle size={12} color="#ef4444" />}
@@ -225,7 +225,7 @@ export default function MonitoringPage() {
       <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 18, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <AlertCircle size={15} color="#ef4444" />
-          <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: 0 }}>Hata Logları</h3>
+          <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: 0 }}>{t('monitoring.hata_loglari', 'Hata Logları')}</h3>
           {errors.length > 0 && <span style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 700 }}>{errors.length}</span>}
         </div>
         {errors.length === 0 ? (

@@ -310,9 +310,9 @@ export default function AvatarLibraryPage() {
               <div className="w-10 h-10 bg-violet-600/20 rounded-2xl flex items-center justify-center">
                 <Users className="w-5 h-5 text-violet-400"/>
               </div>
-              <h1 className="text-2xl font-bold">Avatar Kütüphanesi</h1>
+              <h1 className="text-2xl font-bold">{t('avatar_library.avatar_kutuphanesi', 'Avatar Kütüphanesi')}</h1>
             </div>
-            <p className="text-slate-400">Hazır profesyonel avatarlar — HeyGen kredisi gerektirmez</p>
+            <p className="text-slate-400">{t('avatar_library.hazir_profesyonel_avatarl', 'Hazır profesyonel avatarlar — HeyGen kredisi gerektirmez')}</p>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-1.5 text-emerald-400 text-sm">
                 <Zap className="w-4 h-4"/>
@@ -350,7 +350,7 @@ export default function AvatarLibraryPage() {
             <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5"/>
             <div>
               <p className="text-amber-300 text-sm font-medium">{avatars.length - seedCount} avatar için seed video eksik</p>
-              <p className="text-amber-400/70 text-xs mt-0.5">Admin panelini açın → avatar seçin → Pexels URL yapıştırın veya dosya yükleyin</p>
+              <p className="text-amber-400/70 text-xs mt-0.5">{t('avatar_library.admin_panelini_acin_avata', 'Admin panelini açın → avatar seçin → Pexels URL yapıştırın veya dosya yükleyin')}</p>
             </div>
           </div>
         )}
@@ -364,17 +364,17 @@ export default function AvatarLibraryPage() {
           </div>
           <select value={filterGender} onChange={e => setFilterGender(e.target.value)}
             className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
-            <option value="">Tüm Cinsiyetler</option>
-            <option value="female">Kadın</option>
+            <option value="">{t('avatar_library.tum_cinsiyetler', 'Tüm Cinsiyetler')}</option>
+            <option value="female">{t('avatar_library.kadin', 'Kadın')}</option>
             <option value="male">Erkek</option>
-            <option value="neutral">Nötr</option>
+            <option value="neutral">{t('avatar_library.notr', 'Nötr')}</option>
           </select>
           <select value={filterStyle} onChange={e => setFilterStyle(e.target.value)}
             className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none">
-            <option value="">Tüm Stiller</option>
+            <option value="">{t('avatar_library.tum_stiller', 'Tüm Stiller')}</option>
             <option value="professional">Profesyonel</option>
-            <option value="executive">Yönetici</option>
-            <option value="warm">Sıcak</option>
+            <option value="executive">{t('avatar_library.yonetici', 'Yönetici')}</option>
+            <option value="warm">{t('avatar_library.sicak', 'Sıcak')}</option>
             <option value="casual">Rahat</option>
             <option value="energetic">Enerjik</option>
           </select>
@@ -388,7 +388,7 @@ export default function AvatarLibraryPage() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Star className="w-4 h-4 text-violet-400"/>
-                  <h2 className="text-white font-semibold">Önerilen Avatarlar</h2>
+                  <h2 className="text-white font-semibold">{t('avatar_library.onerilen_avatarlar', 'Önerilen Avatarlar')}</h2>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {featured.map(a => <AvatarCard key={a.id} avatar={a} selected={selectedAvatar} onSelect={setSelectedAvatar} onPreview={setPreviewAvatar}/>)}
@@ -397,7 +397,7 @@ export default function AvatarLibraryPage() {
             )}
             {rest.length > 0 && (
               <div>
-                <h2 className="text-white font-semibold mb-4">Tüm Avatarlar</h2>
+                <h2 className="text-white font-semibold mb-4">{t('avatar_library.tum_avatarlar', 'Tüm Avatarlar')}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {rest.map(a => <AvatarCard key={a.id} avatar={a} selected={selectedAvatar} onSelect={setSelectedAvatar} onPreview={setPreviewAvatar}/>)}
                 </div>
@@ -406,7 +406,7 @@ export default function AvatarLibraryPage() {
             {filtered.length === 0 && (
               <div className="text-center py-20 text-slate-500">
                 <Users className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-                <p>Avatar bulunamadı</p>
+                <p>{t('avatar_library.avatar_bulunamadi', 'Avatar bulunamadı')}</p>
               </div>
             )}
           </div>
@@ -425,7 +425,7 @@ export default function AvatarLibraryPage() {
               <p className="text-white font-semibold">{selectedAvatar.display_name}</p>
               <p className="text-slate-400 text-sm">LatentSync · ~$0.09/video · HeyGen kredisi yok</p>
             </div>
-            <button onClick={() => setSelectedAvatar(null)} className="px-4 py-2 text-slate-400 hover:text-white text-sm">İptal</button>
+            <button onClick={() => setSelectedAvatar(null)} className="px-4 py-2 text-slate-400 hover:text-white text-sm">{t('avatar_library.iptal', 'İptal')}</button>
             <button onClick={goToVideoOutreach}
               className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl flex items-center gap-2">
               Bu Avatar ile Video Oluştur <ChevronRight className="w-4 h-4"/>

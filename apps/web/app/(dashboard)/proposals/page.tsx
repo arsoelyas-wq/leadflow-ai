@@ -243,7 +243,7 @@ export default function ProposalsPage() {
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <FileText className="w-5 h-5 text-emerald-400" /> Teklif & Pazarlık
           </h1>
-          <p className="text-slate-400 text-sm mt-0.5">Online portal, dijital kabul, PDF, WhatsApp gönderimi</p>
+          <p className="text-slate-400 text-sm mt-0.5">{t('proposals.online_portal_dijital_kab', 'Online portal, dijital kabul, PDF, WhatsApp gönderimi')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={load} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition">
@@ -300,7 +300,7 @@ export default function ProposalsPage() {
           {proposals.length === 0 ? (
             <div className="text-center py-16 text-slate-500">
               <FileText className="w-10 h-10 mx-auto mb-3 opacity-25" />
-              <p>Henüz teklif yok</p>
+              <p>{t('proposals.henuz_teklif_yok', 'Henüz teklif yok')}</p>
               <button onClick={() => setTab('create')} className="mt-3 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm rounded-lg transition">
                 İlk Teklifi Oluştur
               </button>
@@ -345,7 +345,7 @@ export default function ProposalsPage() {
                   )}
                   {p.portal_link && (
                     <a href={`/portal/proposal/${p.view_token}`} target="_blank" rel="noopener noreferrer"
-                      className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition" title="Portali önizle">
+                      className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition" title={t('proposals.portali_onizle', 'Portali önizle')}>
                       <Eye className="w-4 h-4" />
                     </a>
                   )}
@@ -394,7 +394,7 @@ export default function ProposalsPage() {
                       </div>
                     )}
                     <div>
-                      <div className="text-slate-500 mb-1">Görüntüleme</div>
+                      <div className="text-slate-500 mb-1">{t('proposals.goruntuleme', 'Görüntüleme')}</div>
                       <div className="text-white">{p.view_count}x {p.first_viewed_at ? `(ilk: ${fmtTime(p.first_viewed_at)})` : '(henüz açılmadı)'}</div>
                     </div>
                     {p.accepted_at && (
@@ -426,10 +426,10 @@ export default function ProposalsPage() {
               <h2 className="font-semibold text-white">Teklif Bilgileri</h2>
 
               <div className="space-y-1">
-                <label className="text-xs text-slate-400 uppercase tracking-wide">Müşteri *</label>
+                <label className="text-xs text-slate-400 uppercase tracking-wide">{t('proposals.musteri', 'Müşteri *')}</label>
                 <select value={selectedLead} onChange={e => setSelectedLead(e.target.value)}
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-emerald-500">
-                  <option value="">Lead seçin...</option>
+                  <option value="">{t('proposals.lead_secin', 'Lead seçin...')}</option>
                   {leads.map(l => <option key={l.id} value={l.id}>{l.company_name}{l.contact_name ? ` — ${l.contact_name}` : ''}</option>)}
                 </select>
               </div>
@@ -451,12 +451,12 @@ export default function ProposalsPage() {
                 </div>
                 <div className="flex-1 grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">Gönderen Şirket</label>
+                    <label className="text-xs text-slate-400 uppercase tracking-wide">{t('proposals.gonderen_sirket', 'Gönderen Şirket')}</label>
                     <input value={senderCompany} onChange={e => setSenderCompany(e.target.value)}
-                      placeholder="Şirketiniz" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                      placeholder={t('proposals.sirketiniz', 'Şirketiniz')} className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-400 uppercase tracking-wide">Geçerlilik</label>
+                    <label className="text-xs text-slate-400 uppercase tracking-wide">{t('proposals.gecerlilik', 'Geçerlilik')}</label>
                     <select value={validUntil} onChange={e => setValidUntil(e.target.value)}
                       className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500">
                       {['7 gün', '15 gün', '30 gün', '45 gün', '60 gün'].map(v => <option key={v}>{v}</option>)}
@@ -474,10 +474,10 @@ export default function ProposalsPage() {
                   placeholder="https://example.com/logo.png"
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 font-mono" />
                 {companyLogoUrl && logoError && (
-                  <p className="text-xs text-red-400">Logo yüklenemedi — URL'yi kontrol edin</p>
+                  <p className="text-xs text-red-400">{t('proposals.logo_yuklenemedi_urlyi_ko', 'Logo yüklenemedi — URL\'yi kontrol edin')}</p>
                 )}
                 {companyLogoUrl && !logoError && (
-                  <p className="text-xs text-emerald-400">Logo hazır ✓</p>
+                  <p className="text-xs text-emerald-400">{t('proposals.logo_hazir', 'Logo hazır ✓')}</p>
                 )}
               </div>
 
@@ -492,7 +492,7 @@ export default function ProposalsPage() {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-400 uppercase tracking-wide">İskonto %</label>
+                  <label className="text-xs text-slate-400 uppercase tracking-wide">{t('proposals.iskonto', 'İskonto %')}</label>
                   <input type="number" min={0} max={99} value={discountPct} onChange={e => setDiscountPct(Number(e.target.value))}
                     className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
                 </div>
@@ -509,15 +509,15 @@ export default function ProposalsPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-slate-400 uppercase tracking-wide">Ödeme Koşulları</label>
+                <label className="text-xs text-slate-400 uppercase tracking-wide">{t('proposals.odeme_kosullari', 'Ödeme Koşulları')}</label>
                 <input value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)}
-                  placeholder="30 gün net" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                  placeholder={t('proposals.30_gun_net', '30 gün net')} className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs text-slate-400 uppercase tracking-wide">Notlar</label>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-                  placeholder="Özel şartlar, teslim süresi, garanti bilgisi..."
+                  placeholder={t('proposals.ozel_sartlar_teslim_sures', 'Özel şartlar, teslim süresi, garanti bilgisi...')}
                   className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 resize-none" />
               </div>
 
@@ -532,14 +532,14 @@ export default function ProposalsPage() {
               {showCompanyProfile && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2 space-y-1">
-                    <label className="text-xs text-slate-400">Şirket Adresi</label>
+                    <label className="text-xs text-slate-400">{t('proposals.sirket_adresi', 'Şirket Adresi')}</label>
                     <input value={companyAddress} onChange={e => setCompanyAddress(e.target.value)}
-                      placeholder="Atatürk Cad. No:1, İstanbul" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                      placeholder={t('proposals.ataturk_cad_no1_istanbul', 'Atatürk Cad. No:1, İstanbul')} className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-400">Banka Adı</label>
+                    <label className="text-xs text-slate-400">{t('proposals.banka_adi', 'Banka Adı')}</label>
                     <input value={bankName} onChange={e => setBankName(e.target.value)}
-                      placeholder="Garanti Bankası" className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
+                      placeholder={t('proposals.garanti_bankasi', 'Garanti Bankası')} className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-slate-400">IBAN</label>
@@ -563,7 +563,7 @@ export default function ProposalsPage() {
             {/* Right: items */}
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-white">Ürün / Hizmetler</h2>
+                <h2 className="font-semibold text-white">{t('proposals.urun_hizmetler', 'Ürün / Hizmetler')}</h2>
                 <button onClick={addItem}
                   className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs rounded-lg hover:bg-emerald-500/20 transition">
                   <Plus className="w-3 h-3" /> Satır Ekle
@@ -572,7 +572,7 @@ export default function ProposalsPage() {
 
               {/* Header */}
               <div className="grid grid-cols-12 gap-1 text-xs text-slate-500 px-1">
-                <span className="col-span-5">Ürün/Hizmet</span>
+                <span className="col-span-5">{t('proposals.urunhizmet', 'Ürün/Hizmet')}</span>
                 <span className="col-span-2">Birim</span>
                 <span className="col-span-1 text-center">Adet</span>
                 <span className="col-span-3 text-right">Fiyat</span>
@@ -583,7 +583,7 @@ export default function ProposalsPage() {
                 {items.map((item, i) => (
                   <div key={i} className="grid grid-cols-12 gap-1">
                     <input value={item.name} onChange={e => updateItem(i, 'name', e.target.value)}
-                      placeholder="Ürün adı" className="col-span-5 bg-slate-900/60 border border-slate-600/40 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-emerald-500" />
+                      placeholder={t('proposals.urun_adi', 'Ürün adı')} className="col-span-5 bg-slate-900/60 border border-slate-600/40 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-emerald-500" />
                     <select value={item.unit} onChange={e => updateItem(i, 'unit', e.target.value)}
                       className="col-span-2 bg-slate-900/60 border border-slate-600/40 rounded-lg px-1.5 py-2 text-white text-xs focus:outline-none">
                       {['adet', 'm²', 'm³', 'kg', 'ton', 'lt', 'saat', 'gün', 'ay'].map(u => <option key={u}>{u}</option>)}
@@ -651,7 +651,7 @@ export default function ProposalsPage() {
                 <Link className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                 <span className="text-xs text-blue-300 break-all">{createdResult.portalLink}</span>
               </div>
-              <p className="text-xs text-slate-500">Bu linki müşteriye gönderin. Müşteri linke tıklayıp teklifi görebilir, dijital olarak imzalayıp kabul/red edebilir. Siz her görüntüleme anında bildirim alırsınız.</p>
+              <p className="text-xs text-slate-500">{t('proposals.bu_linki_musteriye_gonder', 'Bu linki müşteriye gönderin. Müşteri linke tıklayıp teklifi görebilir, dijital olarak imzalayıp kabul/red edebilir. Siz her görüntüleme anında bildirim alırsınız.')}</p>
             </div>
           )}
         </div>
@@ -666,18 +666,18 @@ export default function ProposalsPage() {
             </h2>
             <select value={negLeadId} onChange={e => setNegLeadId(e.target.value)}
               className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500">
-              <option value="">Lead seçin</option>
+              <option value="">{t('proposals.lead_secin', 'Lead seçin')}</option>
               {leads.map(l => <option key={l.id} value={l.id}>{l.company_name}</option>)}
             </select>
             <select value={negProposalId} onChange={e => setNegProposalId(e.target.value)}
               className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500">
-              <option value="">Teklif seçin</option>
+              <option value="">{t('proposals.teklif_secin', 'Teklif seçin')}</option>
               {proposals.filter(p => ['sent', 'negotiating', 'draft'].includes(p.status)).map(p => (
                 <option key={p.id} value={p.id}>{p.leads?.company_name} — ₺{Number(p.total_price).toLocaleString('tr-TR')}</option>
               ))}
             </select>
             <textarea value={negMsg} onChange={e => setNegMsg(e.target.value)} rows={3}
-              placeholder="Müşterinin pazarlık mesajını buraya yapıştırın..."
+              placeholder={t('proposals.musterinin_pazarlik_mesaj', 'Müşterinin pazarlık mesajını buraya yapıştırın...')}
               className="w-full bg-slate-900/60 border border-slate-600/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500 resize-none" />
             <button onClick={negotiate} disabled={negotiating || !negLeadId || !negMsg || !negProposalId}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm rounded-xl transition">
@@ -689,14 +689,14 @@ export default function ProposalsPage() {
               <div className="p-4 bg-violet-500/5 border border-violet-500/20 rounded-xl space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-slate-400">Taktik:</span> <span className="text-violet-300 font-medium">{negResult.negotiation.tactic}</span></div>
-                  <div><span className="text-slate-400">İndirim:</span> <span className="text-amber-300 font-medium">%{negResult.negotiation.discountPercent}</span></div>
+                  <div><span className="text-slate-400">{t('proposals.indirim', 'İndirim:')}</span> <span className="text-amber-300 font-medium">%{negResult.negotiation.discountPercent}</span></div>
                   {negResult.negotiation.newPrice > 0 && (
                     <div className="col-span-2"><span className="text-slate-400">Yeni fiyat:</span> <span className="text-emerald-400 font-bold">₺{negResult.negotiation.newPrice?.toLocaleString('tr-TR')}</span></div>
                   )}
                 </div>
                 {negResult.negotiation.counterMessage && (
                   <div className="p-3 bg-slate-900/60 rounded-lg">
-                    <p className="text-xs text-slate-400 mb-1">Önerilen yanıt mesajı:</p>
+                    <p className="text-xs text-slate-400 mb-1">{t('proposals.onerilen_yanit_mesaji', 'Önerilen yanıt mesajı:')}</p>
                     <p className="text-sm text-white">{negResult.negotiation.counterMessage}</p>
                   </div>
                 )}
@@ -707,7 +707,7 @@ export default function ProposalsPage() {
           <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-5 flex items-center justify-center text-center text-slate-500">
             <div>
               <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Müşterinin yanıtı gelince AI size en iyi pazarlık stratejisini gösterir.</p>
+              <p className="text-sm">{t('proposals.musterinin_yaniti_gelince', 'Müşterinin yanıtı gelince AI size en iyi pazarlık stratejisini gösterir.')}</p>
             </div>
           </div>
         </div>

@@ -142,7 +142,7 @@ export default function SMSPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Smartphone size={24} className="text-green-400" /> SMS Kampanyası
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">NetGSM, Vonage, Twilio ve daha fazlasıyla toplu SMS</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('sms_campaigns.netgsm_vonage_twilio_ve_d', 'NetGSM, Vonage, Twilio ve daha fazlasıyla toplu SMS')}</p>
         </div>
       </div>
 
@@ -156,7 +156,7 @@ export default function SMSPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-white">{stats?.totalSent || 0}</p>
-          <p className="text-slate-400 text-xs mt-1">Gönderilen</p>
+          <p className="text-slate-400 text-xs mt-1">{t('sms_campaigns.gonderilen', 'Gönderilen')}</p>
         </div>
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-blue-400">{campaigns.length}</p>
@@ -166,7 +166,7 @@ export default function SMSPage() {
           <p className={`text-lg font-bold ${stats?.configured ? 'text-emerald-400' : 'text-red-400'}`}>
             {stats?.configured ? `✅ ${PROVIDERS.find(p => p.key === stats.provider)?.label || stats.provider}` : '❌ Bağlı Değil'}
           </p>
-          <p className="text-slate-400 text-xs mt-1">SMS Sağlayıcısı</p>
+          <p className="text-slate-400 text-xs mt-1">{t('sms_campaigns.sms_saglayicisi', 'SMS Sağlayıcısı')}</p>
         </div>
       </div>
 
@@ -190,8 +190,8 @@ export default function SMSPage() {
           {!stats?.configured && (
             <div className="bg-slate-800/50 border border-yellow-500/20 rounded-xl p-6 text-center">
               <p className="text-4xl mb-3">📱</p>
-              <p className="text-white font-medium mb-1">SMS Sağlayıcısı Bağlanmamış</p>
-              <p className="text-slate-400 text-sm mb-4">NetGSM, Vonage, Twilio veya diğer sağlayıcıları bağlayın</p>
+              <p className="text-white font-medium mb-1">{t('sms_campaigns.sms_saglayicisi_baglanmam', 'SMS Sağlayıcısı Bağlanmamış')}</p>
+              <p className="text-slate-400 text-sm mb-4">{t('sms_campaigns.netgsm_vonage_twilio_veya', 'NetGSM, Vonage, Twilio veya diğer sağlayıcıları bağlayın')}</p>
               <button onClick={() => setActiveTab('provider')}
                 className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm rounded-lg transition">
                 SMS Sağlayıcısı Ekle
@@ -205,7 +205,7 @@ export default function SMSPage() {
               <div className="space-y-4">
                 {/* Templates */}
                 <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-                  <p className="text-white font-semibold text-sm mb-3">Hazır Şablonlar</p>
+                  <p className="text-white font-semibold text-sm mb-3">{t('sms_campaigns.hazir_sablonlar', 'Hazır Şablonlar')}</p>
                   <div className="space-y-2">
                     {SMS_TEMPLATES.map(tpl => (
                       <button key={tpl.label} onClick={() => setMessage(tpl.text)}
@@ -295,7 +295,7 @@ export default function SMSPage() {
                     </label>
                   ))}
                   {filteredLeads.length === 0 && (
-                    <p className="text-slate-500 text-xs text-center py-4">Lead bulunamadı</p>
+                    <p className="text-slate-500 text-xs text-center py-4">{t('sms_campaigns.lead_bulunamadi', 'Lead bulunamadı')}</p>
                   )}
                 </div>
               </div>
@@ -308,7 +308,7 @@ export default function SMSPage() {
       {activeTab === 'provider' && (
         <div className="space-y-4">
           <div className="bg-slate-800/50 border border-green-500/30 rounded-xl p-5 space-y-4">
-            <h2 className="text-white font-semibold">SMS Sağlayıcısı Seç & Bağla</h2>
+            <h2 className="text-white font-semibold">{t('sms_campaigns.sms_saglayicisi_sec_bagla', 'SMS Sağlayıcısı Seç & Bağla')}</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               {PROVIDERS.map(p => (
                 <button key={p.key} onClick={() => setSelectedProvider(p.key)}
@@ -362,20 +362,20 @@ export default function SMSPage() {
 
             <div className="p-3 bg-slate-900 rounded-lg text-xs text-slate-400 space-y-1">
               {selectedProvider === 'netgsm' && <>
-                <p>📌 <strong className="text-white">NetGSM:</strong> netgsm.com.tr → Üye Ol → API Kullanıcı No ve Şifrenizi girin</p>
-                <p>📌 Gönderen başlığını NetGSM panelinden onaylatmanız gerekiyor</p>
+                <p>📌 <strong className="text-white">NetGSM:</strong>{t('sms_campaigns.netgsmcomtr_uye_ol_api_ku', 'netgsm.com.tr → Üye Ol → API Kullanıcı No ve Şifrenizi girin')}</p>
+                <p>{t('sms_campaigns.gonderen_basligini_netgsm', '📌 Gönderen başlığını NetGSM panelinden onaylatmanız gerekiyor')}</p>
               </>}
               {selectedProvider === 'vonage' && <p>📌 <strong className="text-white">Vonage:</strong> dashboard.nexmo.com → API Keys → API Key ve Secret girin</p>}
               {selectedProvider === 'twilio' && <>
                 <p>📌 <strong className="text-white">Twilio:</strong> console.twilio.com → Account SID ve Auth Token girin</p>
-                <p>📌 Phone Number: Twilio&apos;dan aldığınız numara (+1xxx formatında)</p>
+                <p>{t('sms_campaigns.phone_number_twilioaposda', '📌 Phone Number: Twilio&apos;dan aldığınız numara (+1xxx formatında)')}</p>
               </>}
               {selectedProvider === 'infobip' && <>
                 <p>📌 <strong className="text-white">Infobip:</strong> portal.infobip.com → API Key ve Base URL girin</p>
-                <p>📌 Base URL: xxxxx.api.infobip.com formatında</p>
+                <p>{t('sms_campaigns.base_url_xxxxxapiinfobipc', '📌 Base URL: xxxxx.api.infobip.com formatında')}</p>
               </>}
               {selectedProvider === 'aws_sns' && <>
-                <p>📌 <strong className="text-white">AWS SNS:</strong> IAM → Access Key oluşturun → SNS izni verin</p>
+                <p>📌 <strong className="text-white">AWS SNS:</strong>{t('sms_campaigns.iam_access_key_olusturun', 'IAM → Access Key oluşturun → SNS izni verin')}</p>
                 <p>📌 Region: us-east-1, eu-west-1 vb.</p>
               </>}
             </div>
@@ -389,7 +389,7 @@ export default function SMSPage() {
           {campaigns.length === 0 ? (
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-10 text-center">
               <Smartphone size={36} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-400">Henüz kampanya yok</p>
+              <p className="text-slate-400">{t('sms_campaigns.henuz_kampanya_yok', 'Henüz kampanya yok')}</p>
             </div>
           ) : campaigns.map((c: any) => (
             <div key={c.id} className="flex items-center gap-4 px-5 py-4 bg-slate-800/50 border border-slate-700 rounded-xl">

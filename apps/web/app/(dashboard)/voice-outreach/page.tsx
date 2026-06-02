@@ -931,7 +931,7 @@ export default function VoicePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">AI Sesli Arama</h1>
-              <p className="text-slate-400 text-sm mt-0.5">Kendi sesiniz · 16 dil · Kişiselleştirilmiş AI açılış</p>
+              <p className="text-slate-400 text-sm mt-0.5">{t('voice_outreach.kendi_sesiniz_16_dil_kisi', 'Kendi sesiniz · 16 dil · Kişiselleştirilmiş AI açılış')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1095,7 +1095,7 @@ export default function VoicePage() {
             {calls.length===0 && (
               <div className="text-center py-14 text-slate-600">
                 <div className="w-14 h-14 rounded-2xl bg-white/4 flex items-center justify-center mx-auto mb-3"><Phone className="w-6 h-6 opacity-30"/></div>
-                <p className="text-sm font-medium">Henüz arama yapılmamış</p>
+                <p className="text-sm font-medium">{t('voice_outreach.henuz_arama_yapilmamis', 'Henüz arama yapılmamış')}</p>
               </div>
             )}
           </div>

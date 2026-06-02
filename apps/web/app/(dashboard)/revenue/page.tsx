@@ -149,7 +149,7 @@ export default function RevenuePage() {
           <RevenueCandlestick size={100} data={actual} forecastData={forecast.slice(0,3)} />
           <div style={{ flex:1 }}>
             <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Gelir Tahmini</h1>
-            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>Gerçek fatura verisiyle 3 aylık projeksiyon</p>
+            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('revenue.gercek_fatura_verisiyle_3', 'Gerçek fatura verisiyle 3 aylık projeksiyon')}</p>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {(['base','best','worst'] as const).map(s => (
                 <button key={s} onClick={()=>setScenario(s)} style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${scenario===s?s==='best'?'rgba(16,185,129,0.5)':s==='worst'?'rgba(239,68,68,0.5)':'rgba(245,158,11,0.5)':'rgba(255,255,255,0.08)'}`, background:scenario===s?s==='best'?'rgba(16,185,129,0.15)':s==='worst'?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)':'transparent', color:scenario===s?s==='best'?'#34d399':s==='worst'?'#f87171':'#fbbf24':'#64748b', fontSize:11, fontWeight:600, cursor:'pointer' }}>
@@ -188,7 +188,7 @@ export default function RevenuePage() {
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
               <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>⚙️ Gelir Parametreleri</h3>
               <div style={{ marginBottom:14 }}>
-                <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Ortalama Deal Değeri (TL)</label>
+                <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('revenue.ortalama_deal_degeri_tl', 'Ortalama Deal Değeri (TL)')}</label>
                 <input value={customDealValue || rev?.avgDealValue || ''} onChange={e=>setCustomDealValue(e.target.value)} placeholder={`₺${rev?.avgDealValue||1000}`}
                   style={{ width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'9px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' }} />
                 <p style={{ color:'#334155', fontSize:10, margin:'4px 0 0' }}>Gerçek faturalardan: ₺{rev?.avgDealValue||0} ortalama</p>
@@ -198,8 +198,8 @@ export default function RevenuePage() {
                 <input type="range" min={7} max={180} value={cycleDays} onChange={e=>setCycleDays(Number(e.target.value))}
                   style={{ width:'100%', accentColor:'#d97706' }} />
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ color:'#334155', fontSize:10 }}>7 gün</span>
-                  <span style={{ color:'#334155', fontSize:10 }}>180 gün</span>
+                  <span style={{ color:'#334155', fontSize:10 }}>{t('revenue.7_gun', '7 gün')}</span>
+                  <span style={{ color:'#334155', fontSize:10 }}>{t('revenue.180_gun', '180 gün')}</span>
                 </div>
               </div>
               <button onClick={saveDealValue} style={{ width:'100%', padding:'9px', borderRadius:9, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#065f46,#10b981)', color:'#fff', fontSize:12, fontWeight:700 }}>
@@ -208,7 +208,7 @@ export default function RevenuePage() {
             </div>
 
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 3 Aylık Projeksiyon</h3>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('revenue.3_aylik_projeksiyon', '📊 3 Aylık Projeksiyon')}</h3>
               {(forecast||[]).map((rev2: number, i: number) => (
                 <div key={i} style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
@@ -225,7 +225,7 @@ export default function RevenuePage() {
 
           {data?.channelPerformance?.length > 0 && (
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📡 Kanal Gelir Dağılımı</h3>
+              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('revenue.kanal_gelir_dagilimi', '📡 Kanal Gelir Dağılımı')}</h3>
               <div style={{ display:'flex', gap:16 }}>
                 {data.channelPerformance.map((ch: any) => (
                   <div key={ch.channel} style={{ flex:1, textAlign:'center', padding:'12px', background:'rgba(0,0,0,0.2)', borderRadius:12, border:'1px solid rgba(255,255,255,0.05)' }}>

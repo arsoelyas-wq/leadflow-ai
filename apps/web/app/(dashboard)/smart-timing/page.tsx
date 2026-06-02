@@ -84,7 +84,7 @@ export default function SmartTimingPage() {
           <Clock size={24} className="text-blue-400" />
           Akıllı Gönderim Zamanlaması
         </h1>
-        <p className="text-slate-400 mt-1 text-sm">Veriye dayalı en iyi gönderim saati + otomatik zamanlama</p>
+        <p className="text-slate-400 mt-1 text-sm">{t('smart_timing.veriye_dayali_en_iyi_gond', 'Veriye dayalı en iyi gönderim saati + otomatik zamanlama')}</p>
       </div>
 
       {msg && (
@@ -174,11 +174,11 @@ export default function SmartTimingPage() {
               <h2 className="text-white font-semibold">📅 Mesaj Zamanla</h2>
               <select value={schedLead} onChange={e => setSchedLead(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500">
-                <option value="">Lead seçin</option>
+                <option value="">{t('smart_timing.lead_secin', 'Lead seçin')}</option>
                 {leads.map(l => <option key={l.id} value={l.id}>{l.company_name} {l.contact_name ? `— ${l.contact_name}` : ''}</option>)}
               </select>
               <textarea value={schedMessage} onChange={e => setSchedMessage(e.target.value)} rows={3}
-                placeholder="Gönderilecek mesaj..."
+                placeholder={t('smart_timing.gonderilecek_mesaj', 'Gönderilecek mesaj...')}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 resize-none" />
               <div className="flex gap-2">
                 <input type="datetime-local" value={schedTime} onChange={e => setSchedTime(e.target.value)}
@@ -201,7 +201,7 @@ export default function SmartTimingPage() {
               {scheduled.length === 0 ? (
                 <div className="text-center py-8">
                   <Clock size={32} className="text-slate-600 mx-auto mb-2" />
-                  <p className="text-slate-400 text-sm">Zamanlanmış mesaj yok</p>
+                  <p className="text-slate-400 text-sm">{t('smart_timing.zamanlanmis_mesaj_yok', 'Zamanlanmış mesaj yok')}</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto">

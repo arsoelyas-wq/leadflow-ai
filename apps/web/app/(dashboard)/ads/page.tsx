@@ -292,13 +292,13 @@ export default function AdsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Meta Ads</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Kampanya yönetimi ve lead otomasyonu</p>
+            <p className="text-slate-400 text-sm mt-0.5">{t('ads.kampanya_yonetimi_ve_lead', 'Kampanya yönetimi ve lead otomasyonu')}</p>
           </div>
           <div className="flex items-center gap-3">
             {connected ? (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/25 rounded-lg">
                 <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="text-emerald-400 text-xs font-medium">Meta Bağlı</span>
+                <span className="text-emerald-400 text-xs font-medium">{t('ads.meta_bagli', 'Meta Bağlı')}</span>
               </div>
             ) : (
               <button onClick={connectMeta} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition">
@@ -330,7 +330,7 @@ export default function AdsPage() {
               <Sparkles className="w-6 h-6 text-blue-400" />
             </div>
             <h3 className="text-white font-semibold text-lg">AI Kampanya</h3>
-            <p className="text-slate-400 text-sm mt-1 leading-relaxed">İşletmeni anlat, AI sana özel kampanya oluştursun</p>
+            <p className="text-slate-400 text-sm mt-1 leading-relaxed">{t('ads.isletmeni_anlat_ai_sana_o', 'İşletmeni anlat, AI sana özel kampanya oluştursun')}</p>
             <div className="mt-4 flex items-center gap-1 text-blue-400 text-xs font-medium">
               Oluştur <ChevronRight className="w-3.5 h-3.5" />
             </div>
@@ -344,7 +344,7 @@ export default function AdsPage() {
             <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition">
               {extracting ? <RefreshCw className="w-6 h-6 text-purple-400 animate-spin" /> : <Users className="w-6 h-6 text-purple-400" />}
             </div>
-            <h3 className="text-white font-semibold text-lg">Lead Çek</h3>
+            <h3 className="text-white font-semibold text-lg">{t('ads.lead_cek', 'Lead Çek')}</h3>
             <p className="text-slate-400 text-sm mt-1 leading-relaxed">
               {extracting ? "Meta'dan lead'ler çekiliyor..." : "Reklam formlarından lead'leri otomatik al"}
             </p>
@@ -363,7 +363,7 @@ export default function AdsPage() {
               <BarChart2 className="w-6 h-6 text-emerald-400" />
             </div>
             <h3 className="text-white font-semibold text-lg">Performans</h3>
-            <p className="text-slate-400 text-sm mt-1 leading-relaxed">ROI analizi, akıllı uyarılar ve optimizasyon</p>
+            <p className="text-slate-400 text-sm mt-1 leading-relaxed">{t('ads.roi_analizi_akilli_uyaril', 'ROI analizi, akıllı uyarılar ve optimizasyon')}</p>
             <div className="mt-4 flex items-center gap-1 text-emerald-400 text-xs font-medium">
               İncele <ChevronRight className="w-3.5 h-3.5" />
             </div>
@@ -379,7 +379,7 @@ export default function AdsPage() {
               </div>
               <div>
                 <span className="text-sm font-semibold text-white">Meta CAPI & Hedefleme</span>
-                <p className="text-xs text-slate-500">Conversion API ile leadleri hedef kitleye dönüştür</p>
+                <p className="text-xs text-slate-500">{t('ads.conversion_api_ile_leadle', 'Conversion API ile leadleri hedef kitleye dönüştür')}</p>
               </div>
             </div>
             <a href="/meta-intent"
@@ -391,14 +391,14 @@ export default function AdsPage() {
             <a href="/meta-intent"
               className="bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl p-3 transition group block">
               <div className="text-lg mb-1">📡</div>
-              <p className="text-white text-xs font-semibold">Event Gönder</p>
+              <p className="text-white text-xs font-semibold">{t('ads.event_gonder', 'Event Gönder')}</p>
               <p className="text-slate-500 text-xs">Leadleri CAPI ile bildir</p>
             </a>
             <a href="/meta-intent"
               className="bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 rounded-xl p-3 transition group block">
               <div className="text-lg mb-1">🎯</div>
               <p className="text-white text-xs font-semibold">Custom Audience</p>
-              <p className="text-slate-500 text-xs">Lead listenden kitle oluştur</p>
+              <p className="text-slate-500 text-xs">{t('ads.lead_listenden_kitle_olus', 'Lead listenden kitle oluştur')}</p>
             </a>
             <a href="/meta-intent"
               className="bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 rounded-xl p-3 transition group block">
@@ -472,8 +472,8 @@ export default function AdsPage() {
         {adSummary && (adSummary.totalLeads > 0 || adResults.length > 0) && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">Reklam Sonuçlarım</h2>
-              <span className="text-xs text-slate-500">Reklamlardan gelen leadlerin satışa dönüşüm takibi</span>
+              <h2 className="text-base font-semibold text-white">{t('ads.reklam_sonuclarim', 'Reklam Sonuçlarım')}</h2>
+              <span className="text-xs text-slate-500">{t('ads.reklamlardan_gelen_leadle', 'Reklamlardan gelen leadlerin satışa dönüşüm takibi')}</span>
             </div>
 
             {/* Summary row */}
@@ -484,13 +484,13 @@ export default function AdsPage() {
               </div>
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-400">{adSummary.totalWon}</p>
-                <p className="text-xs text-slate-400 mt-1">Müşteriye Dönen</p>
+                <p className="text-xs text-slate-400 mt-1">{t('ads.musteriye_donen', 'Müşteriye Dönen')}</p>
               </div>
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
                 <p className="text-2xl font-bold text-amber-400">
                   {adSummary.totalRevenue > 0 ? `₺${adSummary.totalRevenue.toLocaleString('tr-TR')}` : '—'}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">Toplam Kazanç</p>
+                <p className="text-xs text-slate-400 mt-1">{t('ads.toplam_kazanc', 'Toplam Kazanç')}</p>
               </div>
             </div>
 
@@ -498,7 +498,7 @@ export default function AdsPage() {
             {adResults.length > 0 && (
               <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-slate-700/50 flex items-center justify-between">
-                  <span className="text-sm font-medium text-white">Kampanya Bazında</span>
+                  <span className="text-sm font-medium text-white">{t('ads.kampanya_bazinda', 'Kampanya Bazında')}</span>
                   <button onClick={async () => {
                     const res = await fetch(`${API}/api/meta-capi/audience/won`, { headers: authH() })
                     const blob = await res.blob()
@@ -531,7 +531,7 @@ export default function AdsPage() {
                           </div>
                         )}
                         {row.won === 0 && (
-                          <span className="text-xs text-slate-600">Henüz müşteri yok</span>
+                          <span className="text-xs text-slate-600">{t('ads.henuz_musteri_yok', 'Henüz müşteri yok')}</span>
                         )}
                       </div>
                     </div>
@@ -567,7 +567,7 @@ export default function AdsPage() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-400" />
-                <span className="font-semibold text-white">AI Kampanya Oluştur</span>
+                <span className="font-semibold text-white">{t('ads.ai_kampanya_olustur', 'AI Kampanya Oluştur')}</span>
               </div>
               <button onClick={closeWizard} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition">
                 <X className="w-4 h-4" />
@@ -586,13 +586,13 @@ export default function AdsPage() {
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">İşletmeni Anlat</h2>
-                    <p className="text-sm text-slate-400 mt-1">Ne sattığını ve kime sattığını kısaca yaz</p>
+                    <h2 className="text-lg font-semibold text-white">{t('ads.isletmeni_anlat', 'İşletmeni Anlat')}</h2>
+                    <p className="text-sm text-slate-400 mt-1">{t('ads.ne_sattigini_ve_kime_satt', 'Ne sattığını ve kime sattığını kısaca yaz')}</p>
                   </div>
                   <textarea
                     value={desc}
                     onChange={e => setDesc(e.target.value)}
-                    placeholder="Örn: İstanbul'da mutfak dolabı satan bir firmayız. 30-55 yaş ev yenileyen müşterilere ulaşmak istiyoruz. Ortalama sipariş değerimiz 15.000 TL..."
+                    placeholder={t('ads.orn_istanbulda_mutfak_dol', 'Örn: İstanbul\'da mutfak dolabı satan bir firmayız. 30-55 yaş ev yenileyen müşterilere ulaşmak istiyoruz. Ortalama sipariş değerimiz 15.000 TL...')}
                     className="w-full h-36 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500 transition"
                   />
                   <button
@@ -635,12 +635,12 @@ export default function AdsPage() {
               {step === 3 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Bütçe ve Değer</h2>
-                    <p className="text-sm text-slate-400 mt-1">Günlük reklam bütçeni belirle</p>
+                    <h2 className="text-lg font-semibold text-white">{t('ads.butce_ve_deger', 'Bütçe ve Değer')}</h2>
+                    <p className="text-sm text-slate-400 mt-1">{t('ads.gunluk_reklam_butceni_bel', 'Günlük reklam bütçeni belirle')}</p>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-xs text-slate-400 mb-2 block">Günlük Bütçe (TRY)</label>
+                      <label className="text-xs text-slate-400 mb-2 block">{t('ads.gunluk_butce_try', 'Günlük Bütçe (TRY)')}</label>
                       <div className="grid grid-cols-4 gap-2 mb-2">
                         {['100', '200', '500', '1000'].map(v => (
                           <button
@@ -657,19 +657,19 @@ export default function AdsPage() {
                         value={budget}
                         onChange={e => setBudget(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition"
-                        placeholder="Özel tutar girebilirsin..."
+                        placeholder={t('ads.ozel_tutar_girebilirsin', 'Özel tutar girebilirsin...')}
                       />
                     </div>
                     <div>
                       <label className="text-xs text-slate-400 mb-2 block">
-                        Ortalama Müşteri Değeri (TRY) <span className="text-slate-600">— ROI hesabı için</span>
+                        Ortalama Müşteri Değeri (TRY) <span className="text-slate-600">{t('ads.roi_hesabi_icin', '— ROI hesabı için')}</span>
                       </label>
                       <input
                         type="number"
                         value={avgDeal}
                         onChange={e => setAvgDeal(e.target.value)}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition"
-                        placeholder="Örn: 5000"
+                        placeholder={t('ads.orn_5000', 'Örn: 5000')}
                       />
                     </div>
                   </div>
@@ -693,7 +693,7 @@ export default function AdsPage() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-white font-semibold text-lg">Kampanya Hazırlanıyor</p>
+                    <p className="text-white font-semibold text-lg">{t('ads.kampanya_hazirlaniyor', 'Kampanya Hazırlanıyor')}</p>
                     <p className="text-blue-400 text-sm mt-2 min-h-[20px]">{AI_MSGS[aiMsgIdx]}</p>
                   </div>
                   <div className="flex justify-center gap-1.5">
@@ -708,13 +708,13 @@ export default function AdsPage() {
               {step === 5 && draft && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Kampanya Önizleme</h2>
-                    <p className="text-sm text-slate-400 mt-1">AI planını incele ve yayınla</p>
+                    <h2 className="text-lg font-semibold text-white">{t('ads.kampanya_onizleme', 'Kampanya Önizleme')}</h2>
+                    <p className="text-sm text-slate-400 mt-1">{t('ads.ai_planini_incele_ve_yayi', 'AI planını incele ve yayınla')}</p>
                   </div>
 
                   <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl divide-y divide-slate-700/40 max-h-60 overflow-y-auto">
                     <div className="flex justify-between items-center px-4 py-2.5 text-xs">
-                      <span className="text-slate-400">Kampanya Adı</span>
+                      <span className="text-slate-400">{t('ads.kampanya_adi', 'Kampanya Adı')}</span>
                       <span className="text-white font-medium truncate ml-4 max-w-[60%] text-right">{draft.campaign_name || 'AI Kampanya'}</span>
                     </div>
                     {draft.target_audience && (
@@ -729,13 +729,13 @@ export default function AdsPage() {
                     )}
                     {draft.budget && (
                       <div className="flex justify-between items-center px-4 py-2.5 text-xs">
-                        <span className="text-slate-400">Günlük Bütçe</span>
+                        <span className="text-slate-400">{t('ads.gunluk_butce', 'Günlük Bütçe')}</span>
                         <span className="text-white">{typeof draft.budget === 'object' ? `₺${draft.budget.daily_budget || draft.budget.amount}` : `₺${draft.budget}`}</span>
                       </div>
                     )}
                     {draft.ad_copies?.[0] && (
                       <div className="px-4 py-3 space-y-2">
-                        <p className="text-xs text-slate-400">Reklam Metni Önizleme</p>
+                        <p className="text-xs text-slate-400">{t('ads.reklam_metni_onizleme', 'Reklam Metni Önizleme')}</p>
                         <div className="bg-slate-900/60 rounded-lg p-3">
                           <p className="text-sm font-medium text-white leading-snug">
                             {(draft.ad_copies[0].headline || draft.ad_copies[0].title || '').slice(0, 40)}
@@ -755,7 +755,7 @@ export default function AdsPage() {
                   {!connected && (
                     <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-xl">
                       <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="text-amber-300 text-xs">Yayınlamak için Meta hesabınızı bağlayın</span>
+                      <span className="text-amber-300 text-xs">{t('ads.yayinlamak_icin_meta_hesa', 'Yayınlamak için Meta hesabınızı bağlayın')}</span>
                     </div>
                   )}
 

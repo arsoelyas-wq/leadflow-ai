@@ -200,7 +200,7 @@ export default function DashboardPage() {
             {t('dashboard.greeting')}, {user?.name?.split(' ')[0]}
           </h1>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
-            <p style={{ color:'#475569', fontSize:13, margin:0 }}>İşte bugünkü özet</p>
+            <p style={{ color:'#475569', fontSize:13, margin:0 }}>{t('C:.iste_bugunku_ozet', 'İşte bugünkü özet')}</p>
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:20, background:realtimeConnected?'rgba(16,185,129,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${realtimeConnected?'rgba(16,185,129,0.25)':'rgba(100,116,139,0.2)'}` }}>
               <div style={{ width:6, height:6, borderRadius:'50%', background:realtimeConnected?'#10b981':'#475569', animation:realtimeConnected?'pulse-dot 2s infinite':'none' }}/>
               <span style={{ color:realtimeConnected?'#34d399':'#475569', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : t('dashboard.connecting', 'Bağlanıyor...')}</span>
@@ -342,7 +342,7 @@ export default function DashboardPage() {
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
             <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
-            <span style={{ color:'#334155', fontSize:12 }}>Son 7 gün</span>
+            <span style={{ color:'#334155', fontSize:12 }}>{t('C:.son_7_gun', 'Son 7 gün')}</span>
           </div>
           {loading ? (
             <Skeleton h={120} r={8}/>
@@ -363,7 +363,7 @@ export default function DashboardPage() {
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
             <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.funnel')}</h2>
-            <Link href="/pipeline" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>Tümü <ChevronRight size={12}/></Link>
+            <Link href="/pipeline" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('C:.tumu', 'Tümü')}<ChevronRight size={12}/></Link>
           </div>
           {loading ? (
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -401,7 +401,7 @@ export default function DashboardPage() {
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
             <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
-            <Link href="/campaigns" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>Tümü <ChevronRight size={12}/></Link>
+            <Link href="/campaigns" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('C:.tumu', 'Tümü')}<ChevronRight size={12}/></Link>
           </div>
           {loading ? (
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{[0,1,2].map(i => <Skeleton key={i} h={62} r={10}/>)}</div>
@@ -428,7 +428,7 @@ export default function DashboardPage() {
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
               <Megaphone size={26} color="#1e293b"/>
               <p style={{ color:'#334155', fontSize:13, margin:0 }}>Kampanya yok</p>
-              <Link href="/campaigns/new" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>Oluştur →</Link>
+              <Link href="/campaigns/new" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{t('C:.olustur', 'Oluştur →')}</Link>
             </div>
           )}
         </div>
@@ -460,7 +460,7 @@ export default function DashboardPage() {
           ) : (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'24px 0' }}>
               <Activity size={24} color="#1e293b"/>
-              <p style={{ color:'#334155', fontSize:12, margin:0 }}>Henüz aktivite yok</p>
+              <p style={{ color:'#334155', fontSize:12, margin:0 }}>{t('C:.henuz_aktivite_yok', 'Henüz aktivite yok')}</p>
             </div>
           )}
         </div>
@@ -521,7 +521,7 @@ export default function DashboardPage() {
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
             <Users size={28} color="#1e293b"/>
-            <p style={{ color:'#334155', fontSize:13, margin:0 }}>Henüz lead yok</p>
+            <p style={{ color:'#334155', fontSize:13, margin:0 }}>{t('C:.henuz_lead_yok', 'Henüz lead yok')}</p>
             <Link href="/lead-machine" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>Lead bul →</Link>
           </div>
         )}
