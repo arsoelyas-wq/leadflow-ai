@@ -228,16 +228,23 @@ export function getMarketUI(slug: string) {
   return MARKET_UI[slug] || MARKET_UI['tr']
 }
 
-// Fetch a published market page — used by ISR pages
+// Fetch a published market page — reads directly from Supabase (no Railway dependency)
 export async function fetchMarketPage(slug: string): Promise<MarketPage | null> {
-  const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
   try {
-    const res = await fetch(`${API}/api/market-pages/public/${slug}`, {
-      next: { revalidate: 60 },   // ISR: revalidate every 60 seconds
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.page || null
+    const { createClient } = await import('@supabase/supabase-js')
+    const sb = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sivrmewtljftzlwmppub.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_eaEn27Grc10pV9bD68qLXA_ZwBp4Hz2'
+    )
+    const { data, error } = await sb
+      .from('market_pages')
+      .select('*')
+      .eq('slug', slug)
+      .eq('is_published', true)
+      .single()
+
+    if (error || !data) return null
+    return data as MarketPage
   } catch {
     return null
   }
