@@ -72,19 +72,33 @@ router.get('/', async (req: any, res: any) => {
       dailyStats.push({ date: new Date(dayStart).toLocaleDateString('tr-TR', { weekday:'short' }), sent: daySent || 0 });
     }
 
-    // AI insights — simple rule-based
+    // Detect user language from cookie or header
+    const lang = (req.cookies?.lf_lang || req.headers['x-lang'] || 'tr').toLowerCase()
+
+    // Multilingual insight texts
+    const I: Record<string, Record<string, string>> = {
+      tr: { no_msg:`${totalLeads} leadiniz var ama henüz mesaj gönderilmedi.`, start_campaign:'İlk Kampanyayı Başlat', new_leads:`${statusCounts['new']} yeni lead iletişim bekliyor.`, view:'Görüntüle', low_credit:`Krediniz azalıyor: ${credits} kredi kaldı.`, buy_credit:'Kredi Al', won:`Bu ay ${statusCounts['won']} deal kazanıldı!`, see_pipeline:'Pipeline\'ı Gör' },
+      de: { no_msg:`Sie haben ${totalLeads} Leads, aber noch keine Nachricht gesendet.`, start_campaign:'Erste Kampagne starten', new_leads:`${statusCounts['new']} neue Leads warten auf Kontakt.`, view:'Anzeigen', low_credit:`Ihr Guthaben wird knapp: ${credits} Credits übrig.`, buy_credit:'Credits kaufen', won:`Diesen Monat ${statusCounts['won']} Deals gewonnen!`, see_pipeline:'Pipeline anzeigen' },
+      ru: { no_msg:`У вас ${totalLeads} лидов, но сообщения ещё не отправлялись.`, start_campaign:'Запустить первую кампанию', new_leads:`${statusCounts['new']} новых лидов ждут контакта.`, view:'Посмотреть', low_credit:`Баланс заканчивается: осталось ${credits} кредитов.`, buy_credit:'Купить кредиты', won:`В этом месяце выиграно ${statusCounts['won']} сделок!`, see_pipeline:'Просмотреть воронку' },
+      en: { no_msg:`You have ${totalLeads} leads but no messages sent yet.`, start_campaign:'Start First Campaign', new_leads:`${statusCounts['new']} new leads are waiting for contact.`, view:'View', low_credit:`Your credits are running low: ${credits} left.`, buy_credit:'Buy Credits', won:`${statusCounts['won']} deals won this month!`, see_pipeline:'View Pipeline' },
+      fr: { no_msg:`Vous avez ${totalLeads} leads mais aucun message envoyé.`, start_campaign:'Lancer première campagne', new_leads:`${statusCounts['new']} nouveaux leads attendent un contact.`, view:'Voir', low_credit:`Vos crédits diminuent: ${credits} restants.`, buy_credit:'Acheter des crédits', won:`${statusCounts['won']} deals gagnés ce mois!`, see_pipeline:'Voir le pipeline' },
+      ar: { no_msg:`لديك ${totalLeads} عميل محتمل ولم ترسل رسائل بعد.`, start_campaign:'بدء أول حملة', new_leads:`${statusCounts['new']} عميل جديد ينتظر التواصل.`, view:'عرض', low_credit:`رصيدك ينخفض: ${credits} متبقٍ.`, buy_credit:'شراء رصيد', won:`${statusCounts['won']} صفقة فائزة هذا الشهر!`, see_pipeline:'عرض قمع المبيعات' },
+    }
+    const T = I[lang] || I['tr']
+
+    // AI insights — multilingual rule-based
     const insights: { type: string; text: string; action: string; href: string }[] = [];
     if ((totalLeads || 0) > 0 && replyRate === 0 && totalSent === 0) {
-      insights.push({ type:'action', text:`${totalLeads} leadiniz var ama henüz mesaj gönderilmedi.`, action:'İlk Kampanyayı Başlat', href:'/campaigns/new' });
+      insights.push({ type:'action', text: T.no_msg, action: T.start_campaign, href:'/campaigns/new' });
     }
     if ((statusCounts['new'] || 0) > 10) {
-      insights.push({ type:'warning', text:`${statusCounts['new']} yeni lead iletişim bekliyor.`, action:'Görüntüle', href:'/leads?status=new' });
+      insights.push({ type:'warning', text: T.new_leads, action: T.view, href:'/leads?status=new' });
     }
     if (credits < 100) {
-      insights.push({ type:'credit', text:`Krediniz azalıyor: ${credits} kredi kaldı.`, action:'Kredi Al', href:'/billing' });
+      insights.push({ type:'credit', text: T.low_credit, action: T.buy_credit, href:'/billing' });
     }
     if ((statusCounts['won'] || 0) > 0) {
-      insights.push({ type:'success', text:`Bu ay ${statusCounts['won']} deal kazanıldı!`, action:'Pipeline\'ı Gör', href:'/pipeline' });
+      insights.push({ type:'success', text: T.won, action: T.see_pipeline, href:'/pipeline' });
     }
 
     res.json({

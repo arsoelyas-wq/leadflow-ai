@@ -769,7 +769,7 @@ addPageTranslations({
 addPageTranslations({
   tr: {
     'pipeline.title':'Pipeline & Satış Takibi', 'pipeline.subtitle':'Kartları sürükleyerek aşama değiştir',
-    'pipeline.stage.new':'Yeni Lead', 'pipeline.stage.contacted':'İletişimde',
+    'pipeline.stage.new':'Yeni Lead', 'pipeline.stage.contacted':'İletişimde', 'pipeline.stage.qualified':'Nitelikli',
     'pipeline.stage.replied':'Cevap Verdi', 'pipeline.stage.proposal':'Teklif',
     'pipeline.stage.negotiation':'Pazarlık', 'pipeline.stage.won':'Kazanıldı', 'pipeline.stage.lost':'Kaybedildi',
     'pipeline.stat_total':'Toplam Lead', 'pipeline.stat_active':'Aktif Deal',
@@ -785,7 +785,7 @@ addPageTranslations({
   },
   en: {
     'pipeline.title':'Pipeline & Sales Tracking', 'pipeline.subtitle':'Drag cards to change stage',
-    'pipeline.stage.new':'New Lead', 'pipeline.stage.contacted':'Contacted',
+    'pipeline.stage.new':'New Lead', 'pipeline.stage.contacted':'Contacted', 'pipeline.stage.qualified':'Qualified',
     'pipeline.stage.replied':'Replied', 'pipeline.stage.proposal':'Proposal',
     'pipeline.stage.negotiation':'Negotiation', 'pipeline.stage.won':'Won', 'pipeline.stage.lost':'Lost',
     'pipeline.stat_total':'Total Leads', 'pipeline.stat_active':'Active Deals',
@@ -801,7 +801,7 @@ addPageTranslations({
   },
   de: {
     'pipeline.title':'Pipeline & Vertrieb', 'pipeline.subtitle':'Karten ziehen zum Wechseln der Phase',
-    'pipeline.stage.new':'Neuer Lead', 'pipeline.stage.contacted':'Kontaktiert',
+    'pipeline.stage.new':'Neuer Lead', 'pipeline.stage.contacted':'Kontaktiert', 'pipeline.stage.qualified':'Qualifiziert',
     'pipeline.stage.replied':'Hat geantwortet', 'pipeline.stage.proposal':'Angebot',
     'pipeline.stage.negotiation':'Verhandlung', 'pipeline.stage.won':'Gewonnen', 'pipeline.stage.lost':'Verloren',
     'pipeline.stat_total':'Leads Gesamt', 'pipeline.stat_active':'Aktive Deals',
@@ -817,7 +817,7 @@ addPageTranslations({
   },
   fr: {
     'pipeline.title':'Pipeline & Suivi des ventes', 'pipeline.subtitle':'Glissez les cartes pour changer d\'étape',
-    'pipeline.stage.new':'Nouveau lead', 'pipeline.stage.contacted':'Contacté',
+    'pipeline.stage.new':'Nouveau lead', 'pipeline.stage.contacted':'Contacté', 'pipeline.stage.qualified':'Qualifié',
     'pipeline.stage.replied':'A répondu', 'pipeline.stage.proposal':'Proposition',
     'pipeline.stage.negotiation':'Négociation', 'pipeline.stage.won':'Gagné', 'pipeline.stage.lost':'Perdu',
     'pipeline.stat_total':'Total Leads', 'pipeline.stat_active':'Deals Actifs',
@@ -833,7 +833,7 @@ addPageTranslations({
   },
   ar: {
     'pipeline.title':'خط المبيعات والمتابعة', 'pipeline.subtitle':'اسحب البطاقات لتغيير المرحلة',
-    'pipeline.stage.new':'عميل جديد', 'pipeline.stage.contacted':'تم التواصل',
+    'pipeline.stage.new':'عميل جديد', 'pipeline.stage.contacted':'تم التواصل', 'pipeline.stage.qualified':'مؤهل',
     'pipeline.stage.replied':'رد', 'pipeline.stage.proposal':'عرض سعر',
     'pipeline.stage.negotiation':'تفاوض', 'pipeline.stage.won':'تم الفوز', 'pipeline.stage.lost':'مفقود',
     'pipeline.stat_total':'إجمالي العملاء', 'pipeline.stat_active':'الصفقات النشطة',
@@ -849,7 +849,7 @@ addPageTranslations({
   },
   ru: {
     'pipeline.title':'Воронка продаж', 'pipeline.subtitle':'Перетаскивайте карточки для смены этапа',
-    'pipeline.stage.new':'Новый лид', 'pipeline.stage.contacted':'Связались',
+    'pipeline.stage.new':'Новый лид', 'pipeline.stage.contacted':'Связались', 'pipeline.stage.qualified':'Квалифицирован',
     'pipeline.stage.replied':'Ответил', 'pipeline.stage.proposal':'Предложение',
     'pipeline.stage.negotiation':'Переговоры', 'pipeline.stage.won':'Выиграно', 'pipeline.stage.lost':'Проиграно',
     'pipeline.stat_total':'Всего лидов', 'pipeline.stat_active':'Активных сделок',

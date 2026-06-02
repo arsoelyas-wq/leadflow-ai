@@ -7,10 +7,12 @@ function getToken() {
 
 async function request(path: string, options: RequestInit = {}) {
   const token = getToken()
+  const lang = typeof localStorage !== 'undefined' ? (localStorage.getItem('lf_lang') || 'tr') : 'tr'
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'x-lang': lang,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
