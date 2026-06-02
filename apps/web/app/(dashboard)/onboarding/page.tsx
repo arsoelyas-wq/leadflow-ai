@@ -41,7 +41,22 @@ const OBJECTION_TEMPLATES = [
 ]
 
 export default function OnboardingPage() {
-  const { t } = useI18n()
+  const { lang } = useI18n()
+  const OB: Record<string, Record<string, string>> = {
+    tr: { wizard:'Kurulum sihirbazı', step_title:'Şirket Profili', step_desc:'Temel bilgilerinizi girin', company_name:'Şirket Adı *', sector:'Sektör *', city:'Şehir', phone:'Telefon', website:'Website', employees:'Çalışan Sayısı', select:'Seçin', next:'İleri →', save:'Kaydet & Başla', saving:'Kaydediliyor...' },
+    de: { wizard:'Einrichtungsassistent', step_title:'Unternehmensprofil', step_desc:'Geben Sie Ihre Grunddaten ein', company_name:'Firmenname *', sector:'Branche *', city:'Stadt', phone:'Telefon', website:'Website', employees:'Mitarbeiterzahl', select:'Auswählen', next:'Weiter →', save:'Speichern & Starten', saving:'Wird gespeichert...' },
+    ru: { wizard:'Мастер настройки', step_title:'Профиль компании', step_desc:'Введите основные данные', company_name:'Название компании *', sector:'Отрасль *', city:'Город', phone:'Телефон', website:'Сайт', employees:'Число сотрудников', select:'Выбрать', next:'Далее →', save:'Сохранить и начать', saving:'Сохранение...' },
+    en: { wizard:'Setup wizard', step_title:'Company Profile', step_desc:'Enter your basic information', company_name:'Company Name *', sector:'Sector *', city:'City', phone:'Phone', website:'Website', employees:'Number of Employees', select:'Select', next:'Next →', save:'Save & Get Started', saving:'Saving...' },
+    fr: { wizard:'Assistant configuration', step_title:'Profil entreprise', step_desc:'Entrez vos informations', company_name:'Nom de l\'entreprise *', sector:'Secteur *', city:'Ville', phone:'Téléphone', website:'Site web', employees:'Employés', select:'Sélectionner', next:'Suivant →', save:'Enregistrer et démarrer', saving:'Enregistrement...' },
+    ar: { wizard:'معالج الإعداد', step_title:'ملف الشركة', step_desc:'أدخل معلوماتك', company_name:'اسم الشركة *', sector:'القطاع *', city:'المدينة', phone:'الهاتف', website:'الموقع', employees:'الموظفون', select:'اختر', next:'التالي →', save:'حفظ والبدء', saving:'جارٍ الحفظ...' },
+  }
+  const L = OB[lang] || OB.tr
+  const t = (key: string, fallback: string) => ({
+    'onboarding.sirket_adi': L.company_name, 'onboarding.sektor': L.sector,
+    'onboarding.sehir': L.city, 'onboarding.calisan_sayisi': L.employees,
+    'onboarding.secin_opsiyonel': L.select, 'onboarding.secin': L.select,
+    'onboarding.orn_acme_teknoloji_as': lang==='de'?'z.B. Müller GmbH':lang==='ru'?'напр. ООО Пример':lang==='en'?'e.g. Acme Corp':fallback,
+  }[key] || fallback)
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -120,7 +135,7 @@ export default function OnboardingPage() {
             </div>
             <span className="text-white font-bold text-xl tracking-tight">LeadFlow AI</span>
           </div>
-          <p className="text-slate-500 text-sm">Kurulum sihirbazı • {step}/{STEPS.length}</p>
+          <p className="text-slate-500 text-sm">{L.wizard} • {step}/{STEPS.length}</p>
         </div>
 
         {/* Progress */}
@@ -456,7 +471,7 @@ export default function OnboardingPage() {
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                   : `bg-gradient-to-r ${STEPS[step-1].color} text-white hover:opacity-90`
               } disabled:opacity-50`}>
-              {saving ? 'Kaydediliyor...' : step === STEPS.length ? (
+              {saving ? L.saving : step === STEPS.length ? (
                 <><Sparkles className="w-4 h-4"/>{t('onboarding.dashboarda_gec', 'Dashboard\'a Geç')}</>
               ) : (
                 <>Devam Et <ArrowRight className="w-4 h-4"/></>

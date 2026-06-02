@@ -30,7 +30,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 
 const PUBLIC_PATHS = ['/login', '/register', '/onboarding']
-const PUBLIC_PREFIXES = ['/catalog/', '/ar-viewer', '/portal', '/privacy', '/terms']
+// Market pages are fully public — no auth or onboarding check
+const MARKET_SLUGS_LIST = ['/tr', '/de', '/ru', '/en', '/ar', '/fr', '/es', '/nl', '/pl', '/us']
+const PUBLIC_PREFIXES = ['/catalog/', '/ar-viewer', '/portal', '/privacy', '/terms', ...MARKET_SLUGS_LIST]
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
