@@ -239,7 +239,7 @@ export default function DecisionMakerPage() {
           <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
             <Crosshair size={18} className="text-violet-400" />
           </div>
-          Karar Verici Bulucu
+          {L.title}
         </h1>
         <p className="text-slate-400 mt-1 text-sm flex items-center gap-1.5">
           <Crosshair size={13} className="text-violet-400" />
