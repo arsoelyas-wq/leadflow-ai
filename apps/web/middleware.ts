@@ -46,5 +46,6 @@ function detectLocale(acceptLang: string): string {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon|icons|manifest).*)'],
+  // Exclude: API routes, Next.js internals, static files, AND all market slugs (tr, de, ru, en, ar, fr, es, nl, pl, us)
+  matcher: ['/((?!api|_next/static|_next/image|favicon|icons|manifest|tr|de|ru|en|ar|fr|es|nl|pl|us).*)'],
 }
