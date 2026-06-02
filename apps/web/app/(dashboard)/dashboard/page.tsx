@@ -113,7 +113,17 @@ function Skeleton({ h = 20, w = '100%', r = 6 }: { h?: number; w?: number|string
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  // Dashboard direct-language texts (bypasses translation system for reliability)
+  const DB: Record<string, Record<string, string>> = {
+    tr: { daily_summary:'İşte bugünkü özet', active_campaigns:'aktif kampanya', last7d:'Son 7 gün', see_all:'Tümünü gör', no_activity:'Henüz aktivite yok', no_leads:'Henüz lead yok' },
+    de: { daily_summary:'Ihre heutige Zusammenfassung', active_campaigns:'aktive Kampagnen', last7d:'Letzte 7 Tage', see_all:'Alle anzeigen', no_activity:'Noch keine Aktivität', no_leads:'Noch keine Leads' },
+    ru: { daily_summary:'Вот ваша сводка дня', active_campaigns:'активных кампаний', last7d:'Последние 7 дней', see_all:'Просмотреть все', no_activity:'Активности пока нет', no_leads:'Лидов пока нет' },
+    en: { daily_summary:'Here\'s your daily summary', active_campaigns:'active campaigns', last7d:'Last 7 days', see_all:'View all', no_activity:'No activity yet', no_leads:'No leads yet' },
+    fr: { daily_summary:'Voici votre résumé du jour', active_campaigns:'campagnes actives', last7d:'7 derniers jours', see_all:'Voir tout', no_activity:'Pas encore d\'activité', no_leads:'Pas encore de leads' },
+    ar: { daily_summary:'إليك ملخصك اليومي', active_campaigns:'حملات نشطة', last7d:'آخر 7 أيام', see_all:'عرض الكل', no_activity:'لا يوجد نشاط بعد', no_leads:'لا يوجد عملاء بعد' },
+  }
+  const D = DB[lang] || DB.tr
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -200,7 +210,7 @@ export default function DashboardPage() {
             {t('dashboard.greeting')}, {user?.name?.split(' ')[0]}
           </h1>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
-            <p style={{ color:'#475569', fontSize:13, margin:0 }}>{t('dashboard.daily_summary', 'İşte bugünkü özet')}</p>
+            <p style={{ color:'#475569', fontSize:13, margin:0 }}>{D.daily_summary}</p>
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:20, background:realtimeConnected?'rgba(16,185,129,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${realtimeConnected?'rgba(16,185,129,0.25)':'rgba(100,116,139,0.2)'}` }}>
               <div style={{ width:6, height:6, borderRadius:'50%', background:realtimeConnected?'#10b981':'#475569', animation:realtimeConnected?'pulse-dot 2s infinite':'none' }}/>
               <span style={{ color:realtimeConnected?'#34d399':'#475569', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : t('dashboard.connecting', 'Bağlanıyor...')}</span>
@@ -293,7 +303,7 @@ export default function DashboardPage() {
           {
             label: t('dashboard.pipeline'),
             value: `₺${((stats?.pipelineValue || 0)/1000).toFixed(0)}K`,
-            sub: `${stats?.activeCampaigns || 0} ${t('active','aktif')} kampanya`,
+            sub: `${stats?.activeCampaigns || 0} ${D.active_campaigns}`,
             trend: null, icon: DollarSign, color: '#10b981',
             sparkColor: '#10b981',
           },
@@ -342,7 +352,7 @@ export default function DashboardPage() {
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
             <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
-            <span style={{ color:'#334155', fontSize:12 }}>{t('dashboard.last7d', 'Son 7 gün')}</span>
+            <span style={{ color:'#334155', fontSize:12 }}>{D.last7d}</span>
           </div>
           {loading ? (
             <Skeleton h={120} r={8}/>
@@ -460,7 +470,7 @@ export default function DashboardPage() {
           ) : (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'24px 0' }}>
               <Activity size={24} color="#1e293b"/>
-              <p style={{ color:'#334155', fontSize:12, margin:0 }}>{t('dashboard.no_activity', 'Henüz aktivite yok')}</p>
+              <p style={{ color:'#334155', fontSize:12, margin:0 }}>{D.no_activity}</p>
             </div>
           )}
         </div>
@@ -471,7 +481,7 @@ export default function DashboardPage() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.leads')}</h2>
           <Link href="/leads" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>
-            {t('dashboard.see_all','Tümünü gör')} <ArrowRight size={12}/>
+            {D.see_all} <ArrowRight size={12}/>
           </Link>
         </div>
         {loading ? (
@@ -521,7 +531,7 @@ export default function DashboardPage() {
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
             <Users size={28} color="#1e293b"/>
-            <p style={{ color:'#334155', fontSize:13, margin:0 }}>{t('leads.no_leads', 'Henüz lead yok')}</p>
+            <p style={{ color:'#334155', fontSize:13, margin:0 }}>{D.no_leads}</p>
             <Link href="/lead-machine" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>Lead bul →</Link>
           </div>
         )}

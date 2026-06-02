@@ -2291,8 +2291,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const getShareUrl = useCallback((path?: string): string => {
     const base = typeof window !== 'undefined' ? window.location.origin : ''
-    const p    = path || (typeof window !== 'undefined' ? window.location.pathname : '/dashboard')
-    return `${base}${p}?locale=${locale}`
+    // Return the market page URL for the current locale (e.g. site.com/de, site.com/tr)
+    // These are the clean, shareable per-country marketing pages
+    const slug = locale.split('_')[0].toLowerCase()  // 'de_DE' → 'de', 'tr_TR' → 'tr'
+    if (path) return `${base}${path}?locale=${locale}`
+    return `${base}/${slug}`
   }, [locale])
 
   const info = LOCALE_MAP[locale] || LOCALE_MAP['tr_TR']
