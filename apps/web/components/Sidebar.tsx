@@ -221,7 +221,7 @@ export default function Sidebar() {
         <div style={{ margin: '10px 10px 0', padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ color: '#475569', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Wallet size={11} /> Kalan Kredi
+              <Wallet size={11} /> {t('billing.credits_remaining', 'Kalan Kredi')}
             </span>
             <span style={{ color: creditColor, fontSize: 11, fontWeight: 700 }}>
               {creditsLeft.toLocaleString('tr-TR')} / {user.creditsTotal?.toLocaleString('tr-TR')}
@@ -232,7 +232,7 @@ export default function Sidebar() {
           </div>
           {creditsPct < 20 && (
             <Link href="/billing" style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b', fontSize: 11, textDecoration: 'none' }}>
-              <Zap size={10} /> Kredi satın al
+              <Zap size={10} /> {t('billing.buy_credits', 'Kredi satın al')}
             </Link>
           )}
         </div>
@@ -253,7 +253,7 @@ export default function Sidebar() {
 
         {/* Özel Araçlar */}
         <div style={{ marginBottom: 8 }}>
-          <p style={{ color: '#1e293b', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '0 10px', marginBottom: 6 }}>ÖZEL ARAÇLAR</p>
+          <p style={{ color: '#1e293b', fontSize: 9, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: '0.1em', padding: '0 10px', marginBottom: 6 }}>{t('nav.special_tools', 'ÖZEL ARAÇLAR')}</p>
 
           {[
             { href: '/tenders', label: 'nav.tenders', subKey: 'nav.tenders_sub', icon: ScrollText, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.15)',  active: 'rgba(245,158,11,0.18)',  badge: 'PRO' },
@@ -352,7 +352,7 @@ export default function Sidebar() {
             style={{ position: 'absolute', top: 8, right: 8, zIndex: 1, width: 20, height: 20, borderRadius: 6, border: 'none', background: 'rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', transition: 'all 0.15s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.12)'; (e.currentTarget as HTMLElement).style.color = '#94a3b8' }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.color = '#475569' }}
-            title="Kapat">
+            title={t('page.cancel', 'Kapat')}>
             <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
               <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
@@ -379,7 +379,7 @@ export default function Sidebar() {
           <p style={{ color: '#e2e8f0', fontSize: 12, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</p>
           <p style={{ color: '#334155', fontSize: 10, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</p>
         </div>
-        <button onClick={() => { logout(); router.push('/login') }} title="Çıkış Yap"
+        <button onClick={() => { logout(); router.push('/login') }} title={t('nav.logout', 'Çıkış Yap')}
           style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#334155', borderRadius: 7, transition: 'all 0.15s', flexShrink: 0 }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f87171'; (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.08)' }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#334155'; (e.currentTarget as HTMLElement).style.background = 'none' }}>

@@ -333,7 +333,7 @@ export default function SettingsPage() {
         <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(59,130,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.02) 1px,transparent 1px)', backgroundSize:'38px 38px', zIndex:0 }} />
         <div style={{ position:'relative', zIndex:2 }}>
           <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>⚙️ {t('settings.title','Ayarlar')}</h1>
-          <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('C:.hesap_profili_kanal_baglanti', 'Hesap profili, kanal bağlantıları, güvenlik ve entegrasyon ayarları')}</p>
+          <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.hesap_profili_kanal_baglanti', 'Hesap profili, kanal bağlantıları, güvenlik ve entegrasyon ayarları')}</p>
         </div>
       </div>
 
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>WhatsApp</h2>
-                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('C:.qr_kod_ile_baglayin', 'QR kod ile bağlayın')}</p>
+                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.qr_kod_ile_baglayin', 'QR kod ile bağlayın')}</p>
                     </div>
                   </div>
                   <div style={waStatus === 'connected'
@@ -423,7 +423,7 @@ export default function SettingsPage() {
                       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                         <Bot size={16} color="#a78bfa" />
                         <div>
-                          <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>{t('C:.ai_otomatik_yanit', 'AI Otomatik Yanıt')}</p>
+                          <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>{t('settings.ai_otomatik_yanit', 'AI Otomatik Yanıt')}</p>
                           <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>Claude ile otomatik cevap</p>
                         </div>
                       </div>
@@ -446,7 +446,7 @@ export default function SettingsPage() {
                       <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> Bağlantı bekleniyor...
                     </p>
                     <button onClick={() => { stopPolling(); setQrCode(null); setWaConnecting(false) }}
-                      style={{ background:'none', border:'none', color:'#64748b', fontSize:13, cursor:'pointer' }}>{t('C:.iptal', 'İptal')}</button>
+                      style={{ background:'none', border:'none', color:'#64748b', fontSize:13, cursor:'pointer' }}>{t('settings.iptal', 'İptal')}</button>
                   </div>
                 ) : (
                   <button onClick={connectWhatsApp} disabled={waConnecting}
@@ -466,7 +466,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>AI Video Avatar</h2>
-                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('C:.kendi_yuzunuz_ve_sesinizle_k', 'Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları')}</p>
+                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.kendi_yuzunuz_ve_sesinizle_k', 'Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları')}</p>
                     </div>
                   </div>
                   {avatarStatus?.hasAvatar && (
@@ -486,7 +486,7 @@ export default function SettingsPage() {
                           <Video size={20} color="#f87171" />
                         </div>
                         <div>
-                          <p style={{ color:'#fff', fontWeight:500, fontSize:13, margin:0 }}>{t('C:.kisisel_avatar_aktif', 'Kişisel Avatar Aktif ✅')}</p>
+                          <p style={{ color:'#fff', fontWeight:500, fontSize:13, margin:0 }}>{t('settings.kisisel_avatar_aktif', 'Kişisel Avatar Aktif ✅')}</p>
                           <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>
                             {avatarStatus.avatarType === 'photo' ? '📸 Fotoğraf Avatar' : '📹 Video Avatar'}
                           </p>
@@ -518,8 +518,8 @@ export default function SettingsPage() {
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                       <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
                         <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>📹 Video Avatar</p>
-                        <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{t('C:.25_dk_video_yukle_ai_klonlar', '2-5 dk video yükle → AI klonlar')}</p>
-                        <p style={{ color:'#34d399', fontSize:11, margin:'0 0 10px' }}>{t('C:.en_gercekci_sonuc', 'En gerçekçi sonuç')}</p>
+                        <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{t('settings.25_dk_video_yukle_ai_klonlar', '2-5 dk video yükle → AI klonlar')}</p>
+                        <p style={{ color:'#34d399', fontSize:11, margin:'0 0 10px' }}>{t('settings.en_gercekci_sonuc', 'En gerçekçi sonuç')}</p>
                         <button onClick={() => avatarVideoRef.current?.click()} disabled={uploadingAvatar}
                           style={{ width:'100%', padding:'7px 0', background:'#dc2626', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:uploadingAvatar?0.5:1 }}>
                           {uploadingAvatar ? <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> : null}
@@ -527,9 +527,9 @@ export default function SettingsPage() {
                         </button>
                       </div>
                       <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
-                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>{t('C:.fotograf_avatar', '📸 Fotoğraf Avatar')}</p>
-                        <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{t('C:.fotograf_yukle_ai_animasyon', 'Fotoğraf yükle → AI animasyon')}</p>
-                        <p style={{ color:'#fbbf24', fontSize:11, margin:'0 0 10px' }}>{t('C:.hizli_ucretsiz', 'Hızlı & ücretsiz')}</p>
+                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>{t('settings.fotograf_avatar', '📸 Fotoğraf Avatar')}</p>
+                        <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{t('settings.fotograf_yukle_ai_animasyon', 'Fotoğraf yükle → AI animasyon')}</p>
+                        <p style={{ color:'#fbbf24', fontSize:11, margin:'0 0 10px' }}>{t('settings.hizli_ucretsiz', 'Hızlı & ücretsiz')}</p>
                         <button onClick={() => avatarPhotoRef.current?.click()} disabled={uploadingAvatar}
                           style={{ width:'100%', padding:'7px 0', background:'rgba(100,116,139,0.4)', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:uploadingAvatar?0.5:1 }}>
                           {uploadingAvatar ? <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> : null}
@@ -539,9 +539,9 @@ export default function SettingsPage() {
                     </div>
                     <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
                       <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>🎙️ Ses Klonlama</p>
-                      <p style={{ color:'#64748b', fontSize:11, margin:'0 0 10px' }}>{t('C:.30sn_3dk_ses_kaydi_ai_sesini', '30sn - 3dk ses kaydı → AI sesinizi klonlar')}</p>
+                      <p style={{ color:'#64748b', fontSize:11, margin:'0 0 10px' }}>{t('settings.30sn_3dk_ses_kaydi_ai_sesini', '30sn - 3dk ses kaydı → AI sesinizi klonlar')}</p>
                       <div style={{ display:'flex', gap:8 }}>
-                        <input value={voiceName} onChange={e => setVoiceName(e.target.value)} placeholder={t('C:.ses_adi', 'Ses adı')}
+                        <input value={voiceName} onChange={e => setVoiceName(e.target.value)} placeholder={t('settings.ses_adi', 'Ses adı')}
                           style={{ ...input, flex:1, width:'auto' }} />
                         <button onClick={() => voiceRef.current?.click()} disabled={uploadingVoice}
                           style={{ padding:'8px 12px', background:'#1d4ed8', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', gap:4, opacity:uploadingVoice?0.5:1, whiteSpace:'nowrap' }}>
@@ -570,7 +570,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>LinkedIn</h2>
-                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('C:.karar_verici_aramasi_icin_ba', 'Karar verici araması için bağlayın')}</p>
+                      <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.karar_verici_aramasi_icin_ba', 'Karar verici araması için bağlayın')}</p>
                     </div>
                   </div>
                   <span style={linkedinStatus === 'connected'
@@ -588,7 +588,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>{linkedinConnectedEmail}</p>
-                        <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>{t('C:.linkedin_bagli', 'LinkedIn bağlı')}</p>
+                        <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>{t('settings.linkedin_bagli', 'LinkedIn bağlı')}</p>
                       </div>
                     </div>
                     <button onClick={disconnectLinkedIn}
@@ -602,7 +602,7 @@ export default function SettingsPage() {
                       style={input} />
                     <div style={{ position:'relative' }}>
                       <input type={showLinkedinPass ? 'text' : 'password'} value={linkedinPassword}
-                        onChange={e => setLinkedinPassword(e.target.value)} placeholder={t('C:.linkedin_sifre', 'LinkedIn şifre')}
+                        onChange={e => setLinkedinPassword(e.target.value)} placeholder={t('settings.linkedin_sifre', 'LinkedIn şifre')}
                         style={{ ...input, paddingRight:36 }} />
                       <button onClick={() => setShowLinkedinPass(!showLinkedinPass)}
                         style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'#64748b', cursor:'pointer', padding:0 }}>
@@ -626,7 +626,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>Email (SMTP)</h2>
-                    <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('C:.gmail_veya_smtp_sunucunuzu_b', 'Gmail veya SMTP sunucunuzu bağlayın')}</p>
+                    <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.gmail_veya_smtp_sunucunuzu_b', 'Gmail veya SMTP sunucunuzu bağlayın')}</p>
                   </div>
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -649,7 +649,7 @@ export default function SettingsPage() {
                     style={input} />
                   <div style={{ position:'relative' }}>
                     <input type={showPass ? 'text' : 'password'} value={emailPass}
-                      onChange={e => setEmailPass(e.target.value)} placeholder={t('C:.sifre_uygulama_sifresi', 'Şifre / Uygulama Şifresi')}
+                      onChange={e => setEmailPass(e.target.value)} placeholder={t('settings.sifre_uygulama_sifresi', 'Şifre / Uygulama Şifresi')}
                       style={{ ...input, paddingRight:36 }} />
                     <button onClick={() => setShowPass(!showPass)}
                       style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'#64748b', cursor:'pointer', padding:0 }}>
@@ -676,7 +676,7 @@ export default function SettingsPage() {
           {/* BİLDİRİMLER */}
           {tab === 'notifications' && (
             <div style={card}>
-              <h2 style={{ ...cardTitle, fontSize:16 }}>{t('C:.bildirim_ayarlari', 'Bildirim Ayarları')}</h2>
+              <h2 style={{ ...cardTitle, fontSize:16 }}>{t('settings.bildirim_ayarlari', 'Bildirim Ayarları')}</h2>
               {notifItems.map(({ label }, idx) => (
                 <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', borderBottom: idx < notifItems.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                   <p style={{ color:'#fff', fontSize:13, margin:0 }}>{label}</p>
@@ -691,7 +691,7 @@ export default function SettingsPage() {
           {/* GÜVENLİK */}
           {tab === 'security' && (
             <div style={card}>
-              <h2 style={{ ...cardTitle, fontSize:16 }}>{t('C:.guvenlik', 'Güvenlik')}</h2>
+              <h2 style={{ ...cardTitle, fontSize:16 }}>{t('settings.guvenlik', 'Güvenlik')}</h2>
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                 {['Mevcut Şifre', 'Yeni Şifre', 'Yeni Şifre (Tekrar)'].map(label => (
                   <div key={label}>
@@ -710,8 +710,8 @@ export default function SettingsPage() {
           {tab === '2fa' && (
             <div style={card}>
               <div style={{ marginBottom:18 }}>
-                <h2 style={{ ...cardTitle, fontSize:16, margin:'0 0 4px' }}>{t('C:.iki_faktorlu_dogrulama_2fa', 'İki Faktörlü Doğrulama (2FA)')}</h2>
-                <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('C:.google_authenticator_ile_hes', 'Google Authenticator ile hesabınızı koruyun')}</p>
+                <h2 style={{ ...cardTitle, fontSize:16, margin:'0 0 4px' }}>{t('settings.iki_faktorlu_dogrulama_2fa', 'İki Faktörlü Doğrulama (2FA)')}</h2>
+                <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.google_authenticator_ile_hes', 'Google Authenticator ile hesabınızı koruyun')}</p>
               </div>
 
               <div style={{ display:'flex', alignItems:'center', gap:10, padding:14, borderRadius:12, border:'1px solid', ...(twoFAStatus ? { background:'rgba(16,185,129,0.1)', borderColor:'rgba(16,185,129,0.3)' } : { background:'rgba(6,10,28,0.5)', borderColor:'rgba(255,255,255,0.06)' }), marginBottom:18 }}>
@@ -737,7 +737,7 @@ export default function SettingsPage() {
                         </p>
                       </div>
                       <div>
-                        <label style={fieldLabel}>{t('C:.dogrulama_kodu_6_haneli', 'Doğrulama Kodu (6 haneli)')}</label>
+                        <label style={fieldLabel}>{t('settings.dogrulama_kodu_6_haneli', 'Doğrulama Kodu (6 haneli)')}</label>
                         <div style={{ display:'flex', gap:8 }}>
                           <input value={twoFACode} onChange={e => setTwoFACode(e.target.value.replace(/\D/g,'').slice(0,6))}
                             placeholder="000000" maxLength={6}
@@ -753,7 +753,7 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('C:.2faaposyi_devre_disi_birakma', '2FA&apos;yı devre dışı bırakmak için kodunuzu girin:')}</p>
+                  <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.2faaposyi_devre_disi_birakma', '2FA&apos;yı devre dışı bırakmak için kodunuzu girin:')}</p>
                   <div style={{ display:'flex', gap:8 }}>
                     <input value={twoFACode} onChange={e => setTwoFACode(e.target.value.replace(/\D/g,'').slice(0,6))}
                       placeholder="000000" maxLength={6}
@@ -773,17 +773,17 @@ export default function SettingsPage() {
             <div style={card}>
               <div style={{ marginBottom:18 }}>
                 <h2 style={{ ...cardTitle, fontSize:16, margin:'0 0 4px' }}>Google Sheets Sync</h2>
-                <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('C:.leadlerinizi_otomatik_olarak', 'Leadlerinizi otomatik olarak Google Sheets&apos;e aktarın')}</p>
+                <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.leadlerinizi_otomatik_olarak', 'Leadlerinizi otomatik olarak Google Sheets&apos;e aktarın')}</p>
               </div>
 
               <div style={{ background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:14, marginBottom:18 }}>
-                <p style={{ color:'#cbd5e1', fontSize:13, fontWeight:500, margin:'0 0 8px' }}>{t('C:.nasil_kullanilir', '📋 Nasıl Kullanılır?')}</p>
+                <p style={{ color:'#cbd5e1', fontSize:13, fontWeight:500, margin:'0 0 8px' }}>{t('settings.nasil_kullanilir', '📋 Nasıl Kullanılır?')}</p>
                 <ol style={{ color:'#64748b', fontSize:12, paddingLeft:18, margin:0, display:'flex', flexDirection:'column', gap:4 }}>
-                  <li>{t('C:.google_sheetsaposte_yeni_bir', 'Google Sheets&apos;te yeni bir sayfa oluşturun')}</li>
-                  <li>{t('C:.urlaposden_spreadsheet_idapo', 'URL&apos;den Spreadsheet ID&apos;yi kopyalayın')}</li>
+                  <li>{t('settings.google_sheetsaposte_yeni_bir', 'Google Sheets&apos;te yeni bir sayfa oluşturun')}</li>
+                  <li>{t('settings.urlaposden_spreadsheet_idapo', 'URL&apos;den Spreadsheet ID&apos;yi kopyalayın')}</li>
                   <li style={{ color:'#475569' }}>docs.google.com/spreadsheets/d/<span style={{ color:'#fff', fontFamily:'monospace' }}>ID_BURADA</span>/edit</li>
-                  <li>{t('C:.asagiya_yapistirin_ve_kaydet', 'Aşağıya yapıştırın ve Kaydet&apos;e tıklayın')}</li>
-                  <li>{t('C:.quotsimdi_aktarquot_ile_lead', '&quot;Şimdi Aktar&quot; ile leadleri aktarın')}</li>
+                  <li>{t('settings.asagiya_yapistirin_ve_kaydet', 'Aşağıya yapıştırın ve Kaydet&apos;e tıklayın')}</li>
+                  <li>{t('settings.quotsimdi_aktarquot_ile_lead', '&quot;Şimdi Aktar&quot; ile leadleri aktarın')}</li>
                 </ol>
               </div>
 
@@ -828,8 +828,8 @@ export default function SettingsPage() {
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
                   <div style={{ width:40, height:40, background:'#1d4ed8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>📊</div>
                   <div style={{ flex:1 }}>
-                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>{t('C:.reklam_donusum_takibi', 'Reklam Dönüşüm Takibi')}</h2>
-                    <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>{t('C:.hangi_reklamin_musteriye_don', 'Hangi reklamın müşteriye dönüştüğünü Meta&apos;ya otomatik bildir')}</p>
+                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>{t('settings.reklam_donusum_takibi', 'Reklam Dönüşüm Takibi')}</h2>
+                    <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>{t('settings.hangi_reklamin_musteriye_don', 'Hangi reklamın müşteriye dönüştüğünü Meta&apos;ya otomatik bildir')}</p>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <span style={{ width:8, height:8, borderRadius:'50%', background:(capi.enabled && capi.hasToken)?'#34d399':'#475569', display:'inline-block', boxShadow:(capi.enabled && capi.hasToken)?'0 0 6px #34d399':undefined }} />
@@ -846,7 +846,7 @@ export default function SettingsPage() {
 
               {/* Configuration */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('C:.baglanti_ayarlari', 'Bağlantı Ayarları')}</h3>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.baglanti_ayarlari', 'Bağlantı Ayarları')}</h3>
 
                 <div style={{ marginBottom:12 }}>
                   <label style={fieldLabel}>Pixel ID</label>
@@ -859,7 +859,7 @@ export default function SettingsPage() {
                 <div style={{ marginBottom:12 }}>
                   <label style={fieldLabel}>
                     Access Token{' '}
-                    {capi.hasToken && <span style={{ color:'#34d399', marginLeft:6 }}>{t('C:.kayitli', '✓ Kayıtlı')}</span>}
+                    {capi.hasToken && <span style={{ color:'#34d399', marginLeft:6 }}>{t('settings.kayitli', '✓ Kayıtlı')}</span>}
                   </label>
                   <input value={capiNewToken} onChange={e => setCapiNewToken(e.target.value)}
                     type="password"
@@ -920,7 +920,7 @@ export default function SettingsPage() {
 
               {/* How it works */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('C:.nasil_calisir', 'Nasıl Çalışır?')}</h3>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
                     { step: '1', label: 'Lead Geldi', desc: 'Yeni bir müşteri adayı oluştuğunda Meta\'ya bildirilir', dotColor: '#60a5fa' },
@@ -948,7 +948,7 @@ export default function SettingsPage() {
               {/* Audience export */}
               <div style={card}>
                 <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 6px' }}>Custom Audience Export</h3>
-                <p style={{ color:'#64748b', fontSize:13, margin:'0 0 14px' }}>{t('C:.sha256_hashli_csv_meta_ads_m', 'SHA-256 hashli CSV — Meta Ads Manager&apos;a direkt yükleyin')}</p>
+                <p style={{ color:'#64748b', fontSize:13, margin:'0 0 14px' }}>{t('settings.sha256_hashli_csv_meta_ads_m', 'SHA-256 hashli CSV — Meta Ads Manager&apos;a direkt yükleyin')}</p>
                 <div style={{ display:'flex', gap:10, marginBottom:12 }}>
                   {[
                     { path: '/api/meta-capi/audience/won',  label: 'Kazanıldı Listesi',  bg: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399' },
@@ -1003,8 +1003,8 @@ export default function SettingsPage() {
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
                   <div style={{ width:40, height:40, background:'#1d4ed8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🎯</div>
                   <div style={{ flex:1 }}>
-                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>{t('C:.google_reklam_donusum_takibi', 'Google Reklam Dönüşüm Takibi')}</h2>
-                    <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>{t('C:.hangi_google_reklaminin_must', 'Hangi Google reklamının müşteriye dönüştüğünü otomatik bildir')}</p>
+                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>{t('settings.google_reklam_donusum_takibi', 'Google Reklam Dönüşüm Takibi')}</h2>
+                    <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>{t('settings.hangi_google_reklaminin_must', 'Hangi Google reklamının müşteriye dönüştüğünü otomatik bildir')}</p>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                     <span style={{ width:8, height:8, borderRadius:'50%', background:(gcapi.enabled && gcapi.hasConnection)?'#34d399':'#475569', display:'inline-block', boxShadow:(gcapi.enabled && gcapi.hasConnection)?'0 0 6px #34d399':undefined }} />
@@ -1023,8 +1023,8 @@ export default function SettingsPage() {
               {!gcapi.hasConnection && (
                 <div style={{ background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:14, padding:'14px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <div>
-                    <p style={{ color:'#fbbf24', fontSize:13, fontWeight:500, margin:0 }}>{t('C:.google_ads_hesabi_bagli_degi', 'Google Ads Hesabı Bağlı Değil')}</p>
-                    <p style={{ color:'rgba(251,191,36,0.6)', fontSize:12, margin:'3px 0 0' }}>{t('C:.once_google_ads_sayfasindan', 'Önce Google Ads sayfasından hesabınızı bağlayın')}</p>
+                    <p style={{ color:'#fbbf24', fontSize:13, fontWeight:500, margin:0 }}>{t('settings.google_ads_hesabi_bagli_degi', 'Google Ads Hesabı Bağlı Değil')}</p>
+                    <p style={{ color:'rgba(251,191,36,0.6)', fontSize:12, margin:'3px 0 0' }}>{t('settings.once_google_ads_sayfasindan', 'Önce Google Ads sayfasından hesabınızı bağlayın')}</p>
                   </div>
                   <a href="/google-ads" style={{ padding:'8px 14px', background:'rgba(245,158,11,0.15)', border:'1px solid rgba(245,158,11,0.4)', color:'#fbbf24', fontSize:13, borderRadius:10, textDecoration:'none' }}>
                     Google Ads →
@@ -1034,22 +1034,22 @@ export default function SettingsPage() {
 
               {/* Configuration */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('C:.donusum_ayarlari', 'Dönüşüm Ayarları')}</h3>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.donusum_ayarlari', 'Dönüşüm Ayarları')}</h3>
 
                 <div style={{ marginBottom:12 }}>
-                  <label style={fieldLabel}>{t('C:.google_ads_musteri_kimligi_c', 'Google Ads Müşteri Kimliği (Customer ID)')}</label>
+                  <label style={fieldLabel}>{t('settings.google_ads_musteri_kimligi_c', 'Google Ads Müşteri Kimliği (Customer ID)')}</label>
                   <input value={gcapi.customerId} onChange={e => setGcapi(p => ({ ...p, customerId: e.target.value }))}
                     placeholder="123-456-7890"
                     style={{ ...input, fontFamily:'monospace' }} />
-                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>{t('C:.google_ads_hesap_ayarlari_mu', 'Google Ads → Hesap Ayarları → Müşteri Kimliği')}</p>
+                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>{t('settings.google_ads_hesap_ayarlari_mu', 'Google Ads → Hesap Ayarları → Müşteri Kimliği')}</p>
                 </div>
 
                 <div style={{ marginBottom:12 }}>
-                  <label style={fieldLabel}>{t('C:.donusum_islemi_kimligi_conve', 'Dönüşüm İşlemi Kimliği (Conversion Action ID)')}</label>
+                  <label style={fieldLabel}>{t('settings.donusum_islemi_kimligi_conve', 'Dönüşüm İşlemi Kimliği (Conversion Action ID)')}</label>
                   <input value={gcapi.conversionActionId} onChange={e => setGcapi(p => ({ ...p, conversionActionId: e.target.value }))}
                     placeholder="123456789"
                     style={{ ...input, fontFamily:'monospace' }} />
-                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>{t('C:.google_ads_araclar_donusumle', 'Google Ads → Araçlar → Dönüşümler → Dönüşüm İşlemi → Kimlik')}</p>
+                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>{t('settings.google_ads_araclar_donusumle', 'Google Ads → Araçlar → Dönüşümler → Dönüşüm İşlemi → Kimlik')}</p>
                 </div>
 
                 <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
@@ -1094,7 +1094,7 @@ export default function SettingsPage() {
 
               {/* How it works */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('C:.nasil_calisir', 'Nasıl Çalışır?')}</h3>
+                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
                     { step: '1', label: 'Lead Reklamdan Geldi', desc: 'Google reklamına tıklayan kişi LeadFlow\'a düşer (gclid otomatik yakalanır)', dotColor: '#60a5fa' },
@@ -1123,7 +1123,7 @@ export default function SettingsPage() {
               <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div>
                   <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 4px' }}>Customer Match Export</h3>
-                  <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('C:.kazanildi_listesi_google_ads', 'Kazanıldı listesi → Google Ads Customer Match olarak yükle')}</p>
+                  <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.kazanildi_listesi_google_ads', 'Kazanıldı listesi → Google Ads Customer Match olarak yükle')}</p>
                 </div>
                 <button onClick={async () => {
                   const token = localStorage.getItem('token')
@@ -1141,7 +1141,7 @@ export default function SettingsPage() {
               {/* Event log */}
               {gcapiEvents.length > 0 && (
                 <div style={card}>
-                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('C:.son_gonderilen_donusumler', 'Son Gönderilen Dönüşümler')}</h3>
+                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.son_gonderilen_donusumler', 'Son Gönderilen Dönüşümler')}</h3>
                   <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:256, overflowY:'auto' }}>
                     {gcapiEvents.slice(0, 20).map((ev: any) => (
                       <div key={ev.id || ev.fired_at} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>

@@ -70,6 +70,8 @@ const T: Record<string, Record<string, string>> = {
     'nav.team_sub':'Performans & koçluk',
     // Sidebar nav grupları
     'nav.dashboard':'Ana Sayfa',
+    'nav.special_tools':'ÖZEL ARAÇLAR',
+    'nav.logout':'Çıkış Yap',
     'nav.customers':'Müşteriler',
     'nav.sales':'Satış',
     'nav.communication':'İletişim',
@@ -171,7 +173,7 @@ const T: Record<string, Record<string, string>> = {
     'nav.tenders':'My Tender Radar', 'nav.tenders_sub':'Government & private tenders',
     'nav.export':'My Export AI', 'nav.export_sub':'Reach global buyers',
     'nav.team':'My Team Center', 'nav.team_sub':'Performance & coaching',
-    'nav.dashboard':'Home',
+    'nav.dashboard':'Home', 'nav.special_tools':'SPECIAL TOOLS', 'nav.logout':'Logout',
     'nav.customers':'Customers', 'nav.sales':'Sales',
     'nav.communication':'Communication', 'nav.marketing':'Marketing',
     'nav.market':'Market Analysis', 'nav.growth':'Growth & Finance', 'nav.system':'System',
@@ -245,7 +247,7 @@ const T: Record<string, Record<string, string>> = {
     'nav.tenders':'Mein Ausschreibungs-Radar', 'nav.tenders_sub':'Öffentliche & private Ausschreibungen',
     'nav.export':'Meine Export-KI', 'nav.export_sub':'Globale Käufer erreichen',
     'nav.team':'Mein Team-Center', 'nav.team_sub':'Leistung & Coaching',
-    'nav.dashboard':'Startseite',
+    'nav.dashboard':'Startseite', 'nav.special_tools':'SPEZIALWERKZEUGE', 'nav.logout':'Abmelden',
     'nav.customers':'Kunden', 'nav.sales':'Vertrieb',
     'nav.communication':'Kommunikation', 'nav.marketing':'Marketing',
     'nav.market':'Marktanalyse', 'nav.growth':'Wachstum & Finanzen', 'nav.system':'System',
@@ -319,7 +321,7 @@ const T: Record<string, Record<string, string>> = {
     'nav.tenders':'Mon Radar Appels', 'nav.tenders_sub':'Appels d\'offres publics & privés',
     'nav.export':'Mon IA Export', 'nav.export_sub':'Atteindre les acheteurs mondiaux',
     'nav.team':'Mon Centre Équipe', 'nav.team_sub':'Performance & coaching',
-    'nav.dashboard':'Accueil',
+    'nav.dashboard':'Accueil', 'nav.special_tools':'OUTILS SPÉCIAUX', 'nav.logout':'Déconnexion',
     'nav.customers':'Clients', 'nav.sales':'Ventes',
     'nav.communication':'Communication', 'nav.marketing':'Marketing',
     'nav.market':'Analyse de marché', 'nav.growth':'Croissance & Finance', 'nav.system':'Système',
@@ -393,7 +395,7 @@ const T: Record<string, Record<string, string>> = {
     'nav.tenders':'رادار المناقصات', 'nav.tenders_sub':'مناقصات حكومية وخاصة',
     'nav.export':'ذكاء التصدير', 'nav.export_sub':'الوصول إلى المشترين العالميين',
     'nav.team':'مركز الفريق', 'nav.team_sub':'الأداء والتدريب',
-    'nav.dashboard':'الرئيسية',
+    'nav.dashboard':'الرئيسية', 'nav.special_tools':'أدوات خاصة', 'nav.logout':'تسجيل الخروج',
     'nav.customers':'العملاء', 'nav.sales':'المبيعات',
     'nav.communication':'التواصل', 'nav.marketing':'التسويق',
     'nav.market':'تحليل السوق', 'nav.growth':'النمو والمالية', 'nav.system':'النظام',
@@ -467,7 +469,7 @@ const T: Record<string, Record<string, string>> = {
     'nav.tenders':'Мой радар тендеров', 'nav.tenders_sub':'Государственные и частные тендеры',
     'nav.export':'Мой ИИ экспорт', 'nav.export_sub':'Найти мировых покупателей',
     'nav.team':'Мой центр команды', 'nav.team_sub':'Производительность и коучинг',
-    'nav.dashboard':'Главная',
+    'nav.dashboard':'Главная', 'nav.special_tools':'СПЕЦИАЛЬНЫЕ ИНСТРУМЕНТЫ', 'nav.logout':'Выйти',
     'nav.customers':'Клиенты', 'nav.sales':'Продажи',
     'nav.communication':'Коммуникации', 'nav.marketing':'Маркетинг',
     'nav.market':'Анализ рынка', 'nav.growth':'Рост и финансы', 'nav.system':'Система',
@@ -1265,6 +1267,27 @@ const TX: Record<string, Record<string, string>> = {
     'Tüm':'All','Aktif Deal':'Active Deals','Win Rate':'Win Rate',
     'Detay':'Details',
     'Tabloya Aktar':'Export to Table','Veri bulunamadı':'Data not found',
+    // Dashboard
+    'İşte bugünkü özet':'Here\'s your daily summary','Son 7 gün':'Last 7 days',
+    'Henüz aktivite yok':'No activity yet','Henüz lead yok':'No leads yet',
+    'Oluştur →':'Create →',
+    // Analytics
+    'Satış Hunisi':'Sales Funnel',
+    'En İyi Kampanyalar':'Top Campaigns',
+    // Inbox
+    'Konuşma yok':'No conversation','Konuşma Seçin':'Select a Conversation',
+    'Soldaki listeden bir konuşma seçin':'Select a conversation from the left',
+    'Mesaj yaz... (Enter: Gönder, Shift+Enter: Satır)':'Type a message... (Enter: Send, Shift+Enter: New line)',
+    'Pipeline Aşaması':'Pipeline Stage','Lead Puanı':'Lead Score',
+    // Settings
+    'Hesap profili, kanal bağlantıları, güvenlik ve entegrasyon ayarları':'Account profile, channel connections, security and integration settings',
+    'QR kod ile bağlayın':'Connect via QR code',
+    'AI Otomatik Yanıt':'AI Auto Reply',
+    'Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları':'Personalized sales videos with your face and voice',
+    'Kişisel Avatar Aktif ✅':'Personal Avatar Active ✅',
+    '2-5 dk video yükle → AI klonlar':'Upload 2-5 min video → AI clones',
+    'En gerçekçi sonuç':'Most realistic result',
+
   },
   de: {
     'Yükleniyor...':'Lädt...','Yükleniyor':'Laden','İşleniyor...':'Verarbeitung...','Gönderiliyor...':'Wird gesendet...','Kaydediliyor...':'Speichert...',
@@ -1452,6 +1475,33 @@ const TX: Record<string, Record<string, string>> = {
     'Daha fazla yükle':'Загрузить ещё','Tümünü gör':'Просмотреть все',
     'Yeni ekle':'Добавить новый',
     'gelen mesaj':'входящих сообщений',
+    // Dashboard
+    'İşte bugünkü özet':'Вот ваша сводка дня','Son 7 gün':'Последние 7 дней',
+    'Henüz aktivite yok':'Активности пока нет','Henüz lead yok':'Лидов пока нет',
+    'Oluştur →':'Создать →',
+    // Analytics
+    'Satış Hunisi':'Воронка продаж','En İyi Kampanyalar':'Лучшие кампании',
+    // Inbox
+    'Konuşma yok':'Нет переписки','Konuşma Seçin':'Выберите переписку',
+    'Soldaki listeden bir konuşma seçin':'Выберите переписку из списка слева',
+    'Mesaj yaz... (Enter: Gönder, Shift+Enter: Satır)':'Введите сообщение... (Enter: Отправить, Shift+Enter: Новая строка)',
+    'Pipeline Aşaması':'Этап воронки','Lead Puanı':'Оценка лида',
+    // Settings
+    'Hesap profili, kanal bağlantıları, güvenlik ve entegrasyon ayarları':'Профиль аккаунта, каналы, безопасность и интеграции',
+    'QR kod ile bağlayın':'Подключить через QR-код',
+    'AI Otomatik Yanıt':'Автоответ ИИ',
+    'Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları':'Персональные видео с вашим лицом и голосом',
+    'Kişisel Avatar Aktif ✅':'Личный аватар активен ✅',
+    '2-5 dk video yükle → AI klonlar':'Загрузите 2-5 мин видео → ИИ клонирует',
+    'En gerçekçi sonuç':'Самый реалистичный результат',
+    // Sidebar missing
+    'Kredi satın al':'Купить кредиты',
+    'ÖZEL ARAÇLAR':'СПЕЦИАЛЬНЫЕ ИНСТРУМЕНТЫ',
+    'Çıkış Yap':'Выйти',
+    // Common missing
+    'Seçin':'Выбрать','Kayıt Ol':'Зарегистрироваться',
+    'gün önce':'дней назад','saat önce':'часов назад','dakika önce':'минут назад',
+    'Henüz mesaj yok':'Сообщений пока нет',
   }
 }
 

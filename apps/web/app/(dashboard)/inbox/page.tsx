@@ -184,7 +184,7 @@ export default function UnifiedInboxPage() {
           ) : filtered.length === 0 ? (
             <div className="text-center p-8">
               <MessageSquare size={32} className="text-slate-700 mx-auto mb-2" />
-              <p className="text-slate-500 text-xs">{t('C:.konusma_yok', 'Konuşma yok')}</p>
+              <p className="text-slate-500 text-xs">{t('inbox.konusma_yok', 'Konuşma yok')}</p>
             </div>
           ) : filtered.map(conv => {
             const initials = (conv.lead.company_name || '?').substring(0, 2).toUpperCase()
@@ -252,7 +252,7 @@ export default function UnifiedInboxPage() {
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <MessageSquare size={40} className="text-slate-700 mb-3" />
-                <p className="text-slate-500 text-sm">{t('C:.henuz_mesaj_yok', 'Henüz mesaj yok')}</p>
+                <p className="text-slate-500 text-sm">{t('inbox.henuz_mesaj_yok', 'Henüz mesaj yok')}</p>
               </div>
             ) : messages.map(m => {
               const ch = CHANNEL_CONFIG[m.channel]
@@ -301,7 +301,7 @@ export default function UnifiedInboxPage() {
             <div className="flex gap-2">
               <textarea value={newMessage} onChange={e => setNewMessage(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-                placeholder={t('C:.mesaj_yaz_enter_gonder_shift', 'Mesaj yaz... (Enter: Gönder, Shift+Enter: Satır)')}
+                placeholder={t('inbox.mesaj_yaz_enter_gonder_shift', 'Mesaj yaz... (Enter: Gönder, Shift+Enter: Satır)')}
                 rows={2}
                 className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 resize-none transition" />
               <button onClick={send} disabled={sending || !newMessage.trim()}
@@ -315,8 +315,8 @@ export default function UnifiedInboxPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <MessageSquare size={48} className="text-slate-700 mx-auto mb-3" />
-            <p className="text-white font-medium mb-1">{t('C:.konusma_secin', 'Konuşma Seçin')}</p>
-            <p className="text-slate-500 text-sm">{t('C:.soldaki_listeden_bir_konusma', 'Soldaki listeden bir konuşma seçin')}</p>
+            <p className="text-white font-medium mb-1">{t('inbox.konusma_secin', 'Konuşma Seçin')}</p>
+            <p className="text-slate-500 text-sm">{t('inbox.soldaki_listeden_bir_konusma', 'Soldaki listeden bir konuşma seçin')}</p>
           </div>
         </div>
       )}
@@ -340,7 +340,7 @@ export default function UnifiedInboxPage() {
 
               {leadDetail.status && (
                 <div className="bg-slate-800 rounded-lg p-3">
-                  <p className="text-slate-500 text-xs mb-1">{t('C:.pipeline_asamasi', 'Pipeline Aşaması')}</p>
+                  <p className="text-slate-500 text-xs mb-1">{t('inbox.pipeline_asamasi', 'Pipeline Aşaması')}</p>
                   <p className="text-white text-sm font-medium">{STAGE_LABELS[leadDetail.status] || leadDetail.status}</p>
                 </div>
               )}
@@ -348,7 +348,7 @@ export default function UnifiedInboxPage() {
               {leadDetail.score != null && (
                 <div className="bg-slate-800 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-slate-500 text-xs">{t('C:.lead_puani', 'Lead Puanı')}</p>
+                    <p className="text-slate-500 text-xs">{t('inbox.lead_puani', 'Lead Puanı')}</p>
                     <span className="text-white text-sm font-bold">{leadDetail.score}</span>
                   </div>
                   <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
