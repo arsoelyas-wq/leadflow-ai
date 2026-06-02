@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3001;
 app.set('trust proxy', 1);
 app.use(helmet());
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://leadflow-ai-web-kappa.vercel.app,http://localhost:3000').split(',');
-app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin) || (!!origin && origin.endsWith('.vercel.app'))), credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin) || (!!origin && origin.endsWith('.vercel.app'))), credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization','x-lang'] }));
 
 const generalLimiter  = rateLimit({ windowMs: 15*60*1000, max: 200, standardHeaders: true, legacyHeaders: false });
 const authLimiter     = rateLimit({ windowMs: 15*60*1000, max: 10 });
