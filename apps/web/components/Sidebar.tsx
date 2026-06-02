@@ -123,6 +123,7 @@ const groups: NavGroup[] = [
       { href: '/monitoring',         label: 'nav.monitoring',  icon: Activity },
       { href: '/billing',            label: 'nav.billing',     icon: CreditCard },
       { href: '/settings/platforms', label: 'nav.platforms',   icon: Globe2 },
+      { href: '/market-pages',       label: 'nav.market_pages', icon: Globe2 },
       { href: '/settings',           label: 'nav.settings',    icon: Settings },
     ],
   },
