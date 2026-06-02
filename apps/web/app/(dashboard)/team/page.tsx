@@ -66,11 +66,11 @@ function TeamOrb({ size = 110, members = [], scanning = false }: { size?: number
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const ROLES = [
-  { key:'admin',    label:'Yönetici',         color:'#ef4444', bg:'rgba(239,68,68,0.1)'   },
-  { key:'manager',  label:'Müdür',             color:'#8b5cf6', bg:'rgba(139,92,246,0.1)' },
-  { key:'sales',    label:'Satış Temsilcisi',  color:'#3b82f6', bg:'rgba(59,130,246,0.1)'  },
-  { key:'support',  label:'Destek',            color:'#10b981', bg:'rgba(16,185,129,0.1)'  },
-  { key:'readonly', label:'Görüntüleyici',     color:'#64748b', bg:'rgba(100,116,139,0.1)' },
+  { key:'admin',    label:'Yönetici',       color:'#ef4444', bg:'rgba(239,68,68,0.1)'   },
+  { key:'manager',  label:'Müdür',          color:'#8b5cf6', bg:'rgba(139,92,246,0.1)' },
+  { key:'sales',    label:'Satış Temsilcisi',color:'#3b82f6', bg:'rgba(59,130,246,0.1)'  },
+  { key:'support',  label:'Destek',         color:'#10b981', bg:'rgba(16,185,129,0.1)'  },
+  { key:'readonly', label:'Görüntüleyici',  color:'#64748b', bg:'rgba(100,116,139,0.1)' },
 ]
 const BADGE_DEFS: Record<string, string> = {
   top_seller:'🏆 En İyi Satıcı', speed_master:'⚡ Hız Ustası', streak_7:'🔥 7 Günlük Seri',
@@ -299,8 +299,8 @@ export default function TeamPage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:22 }}>
           <TeamOrb size={86} members={members} scanning={loading} />
           <div style={{ flex:1 }}>
-            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 5px' }}>{t('team.ekip_yonetimi', 'Ekip Yönetimi')}</h1>
-            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('team.ekibi_yonet_otomatik_lead', 'Ekibi yönet · Otomatik lead dağıt · AI koçluk · Performans takibi · Liderlik tablosu')}</p>
+            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 5px' }}>{t('team.title','Ekip Yönetimi')}</h1>
+            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('team.subtitle','Ekibi yönet · Otomatik lead dağıt · AI koçluk · Performans takibi · Liderlik tablosu')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
               {[
                 { l:'Toplam Üye', v:stats?.total||0, c:'#94a3b8' },

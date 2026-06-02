@@ -25,7 +25,7 @@ export default function HealthPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Heart size={24} className="text-pink-400" /> Müşteri Başarı Skoru
+          <Heart size={24} className="text-pink-400" /> t('hs.title','Müşteri Başarı Skoru')
         </h1>
         <p className="text-slate-400 mt-1 text-sm">{t('health_scores.her_lead_icin_saglik_skor', 'Her lead için sağlık skoru, churn riski ve öneriler')}</p>
       </div>
@@ -33,10 +33,10 @@ export default function HealthPage() {
       {/* Summary */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Ort. Skor', value: `${summary.avgScore || 0}/100`, color: 'text-white' },
+          { label: t('hs.avg_score','Ort. Skor'), value: `${summary.avgScore || 0}/100`, color: 'text-white' },
           { label: t('Sıcak Leadler','Sıcak Leadler'), value: summary.hotLeads || 0, color: 'text-emerald-400' },
           { label: t('Müşteriler','Müşteriler'), value: summary.customers || 0, color: 'text-blue-400' },
-          { label: 'Churn Riski', value: summary.highRisk || 0, color: 'text-red-400' },
+          { label: t('hs.churn_risk','Churn Riski'), value: summary.highRisk || 0, color: 'text-red-400' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
@@ -66,9 +66,9 @@ export default function HealthPage() {
                 <span className="text-xs text-slate-400">{stageLabel[lead.health.stage]}</span>
               </div>
               <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                <span>📨 {lead.health.metrics.outbound} gönderildi</span>
-                <span>💬 {lead.health.metrics.inbound} cevap</span>
-                <span>📅 {lead.health.metrics.daysSinceLastContact}g önce</span>
+                <span>📨 {lead.health.metrics.outbound} {t('hs.sent','gönderildi')}</span>
+                <span>💬 {lead.health.metrics.inbound} {t('hs.replied','cevap')}</span>
+                <span>📅 {lead.health.metrics.daysSinceLastContact}{t('hs.days_ago','g önce')}</span>
               </div>
             </div>
 
@@ -78,7 +78,7 @@ export default function HealthPage() {
                 lead.health.churnRisk === 'orta' ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300' :
                 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
               }`}>
-                {lead.health.churnRisk === 'yuksek' ? '⚠️ Yüksek Risk' : lead.health.churnRisk === 'orta' ? '⚡ Orta Risk' : '✅ Düşük Risk'}
+                {lead.health.churnRisk === 'yuksek' ? '⚠️ '+t('hs.high_risk','Yüksek Risk') : lead.health.churnRisk === 'orta' ? '⚡ '+t('hs.mid_risk','Orta Risk') : '✅ '+t('hs.low_risk','Düşük Risk')}
               </span>
               <p className="text-slate-500 text-xs mt-1">{lead.health.recommendation?.slice(0, 40)}</p>
             </div>

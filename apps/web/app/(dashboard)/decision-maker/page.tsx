@@ -203,7 +203,7 @@ export default function DecisionMakerPage() {
         </h1>
         <p className="text-slate-400 mt-1 text-sm flex items-center gap-1.5">
           <Crosshair size={13} className="text-violet-400" />
-          LinkdAPI + Claude AI ile karar vericileri otomatik bul ve kaydet
+          {t('dm.subtitle','LinkdAPI + Claude AI ile karar vericileri otomatik bul ve kaydet')}
         </p>
       </div>
 
@@ -223,9 +223,9 @@ export default function DecisionMakerPage() {
       {stats && (
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: 'Toplam Lead',     value: stats.totalLeads,         icon: Users,     color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
-            { label: 'Yetkili Bulunan', value: stats.withContact,        icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-            { label: 'Email Bulunan',   value: stats.withEmail,          icon: Mail,      color: 'text-purple-400',  bg: 'bg-purple-500/10'  },
+            { label: t('dm.total_lead','Toplam Lead'),     value: stats.totalLeads,         icon: Users,     color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
+            { label: t('dm.with_contact','Yetkili Bulunan'), value: stats.withContact,        icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+            { label: t('dm.with_email','Email Bulunan'),   value: stats.withEmail,          icon: Mail,      color: 'text-purple-400',  bg: 'bg-purple-500/10'  },
             { label: t('Kapsama Oranı','Kapsama Oranı'),   value: `%${stats.coverageRate}`, icon: BarChart3, color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
           ].map(s => (
             <div key={s.label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
@@ -261,8 +261,8 @@ export default function DecisionMakerPage() {
         <div className="flex gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1">
           {([
             { id: 'all',         label: t('Tümü','Tümü') },
-            { id: 'no-contact',  label: 'Yetkili Yok' },
-            { id: 'has-contact', label: 'Yetkili Var' },
+            { id: 'no-contact', label: t('dm.no_contact','Yetkili Yok') },
+            { id: 'has-contact', label: t('dm.has_contact','Yetkili Var') },
           ] as { id: Filter; label: string }[]).map(f => (
             <button key={f.id}
               onClick={() => setFilter(f.id)}
@@ -278,7 +278,7 @@ export default function DecisionMakerPage() {
         {filtered.length > 0 && (
           <button onClick={selectedIds.size === filtered.length ? clearAll : selectAll}
             className="px-3 py-2.5 text-xs text-slate-400 hover:text-white bg-slate-800 border border-slate-700 rounded-xl transition">
-            {selectedIds.size === filtered.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+            {selectedIds.size === filtered.length ? t('dm.deselect_all','Seçimi Kaldır') : t('dm.select_all','Tümünü Seç')}
           </button>
         )}
 
@@ -295,7 +295,7 @@ export default function DecisionMakerPage() {
             ? `${doneCount}/${results.length} Taranıyor...`
             : selectedIds.size > 0
             ? `${selectedIds.size} Şirketi Tara`
-            : 'Lead Seçin'}
+            : t('dm.select_lead','Lead Seçin')}
         </button>
       </div>
 

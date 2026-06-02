@@ -518,7 +518,7 @@ export default function TendersPage() {
             <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>{t('tenders.ihale_avcisi', 'İhale Avcısı')}</h1>
             <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('tenders.23_ulke_ekap_ted_europa_w', '23 ülke · EKAP · TED Europa · World Bank · Exa.ai · AI analiz · Teklif taslağı')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:10 }}>
-              {[{l:'Toplam',v:stats?.total||0,c:'#94a3b8'},{l:'Aktif',v:stats?.active||0,c:'#10b981'},{l:'Yüksek Skor',v:stats?.highScore||0,c:'#8b5cf6'},{l:'Başvuruldu',v:stats?.applied||0,c:'#3b82f6'},{l:'Kazanıldı',v:stats?.won||0,c:'#c084fc'},{l:'Tarama',v:stats?.totalScans||0,c:'#f59e0b'}].map(m => (
+              {[{l:t('tenders.total','Toplam'),v:stats?.total||0,c:'#94a3b8'},{l:t('tenders.active','Aktif'),v:stats?.active||0,c:'#10b981'},{l:t('tenders.high_score','Yüksek Skor'),v:stats?.highScore||0,c:'#8b5cf6'},{l:t('tenders.applied','Başvuruldu'),v:stats?.applied||0,c:'#3b82f6'},{l:t('tenders.won','Kazanıldı'),v:stats?.won||0,c:'#c084fc'},{l:t('tenders.scans','Tarama'),v:stats?.totalScans||0,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
                   <p style={{ color:m.c, fontSize:17, fontWeight:800, margin:0 }}>{m.v}</p>
                   <p style={{ color:'#334155', fontSize:10, margin:0 }}>{m.l}</p>
@@ -558,7 +558,7 @@ export default function TendersPage() {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:16, border:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
-        {[{id:'tenders',label:`📋 İhaleler (${tenders.length})`},{id:'alerts',label:`⏰ Vadesi Yaklaşan${alerts.length>0?` (${alerts.length})`:''}`,},{id:'analytics',label:'📊 Analitik'},{id:'prefs',label:`🔔 Otomatik (${prefs.length})`}].map(t => (
+        {[{id:'tenders',label:`📋 İhaleler (${tenders.length})`},{id:'alerts',label:`⏰ Vadesi Yaklaşan${alerts.length>0?` (${alerts.length})`:''}`,},{id:'analytics',label:'📊 '+t('tenders.analytics_tab','Analitik')},{id:'prefs',label:`🔔 Otomatik (${prefs.length})`}].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             style={{ padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap' }}>
             {t.label}
@@ -676,7 +676,7 @@ export default function TendersPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
             {[
-              { l:'Toplam Başvuru', v:analytics?.totalApplied||0, c:'#06b6d4' },
+              { l:t('tenders.total_applied','Toplam Başvuru'), v:analytics?.totalApplied||0, c:'#06b6d4' },
               { l:'Kazanılan', v:analytics?.wonCount||0, c:'#10b981' },
               { l:'Kazanma Oranı', v:`%${analytics?.winRate||0}`, c:'#8b5cf6' },
               { l:'Ort. Skor', v:analytics?.avgScore||0, c:'#f59e0b' },

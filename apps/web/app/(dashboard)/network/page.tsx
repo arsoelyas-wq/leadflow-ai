@@ -116,7 +116,7 @@ export default function NetworkPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Network size={22} className="text-cyan-400" /> Ağ Haritası
+              <Network size={22} className="text-cyan-400" /> t('network.title','Ağ Haritası')
             </h1>
             <p className="text-slate-400 text-sm mt-0.5">{nodes.length} firma · {edges.length} bağlantı</p>
           </div>
@@ -130,9 +130,9 @@ export default function NetworkPage() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Toplam Firma', value: nodes.length, color: 'text-white' },
+          { label: t('network.total_firms','Toplam Firma'), value: nodes.length, color: 'text-white' },
           { label: t('Bağlantı','Bağlantı'),    value: edges.length, color: 'text-cyan-400' },
-          { label: t('Sıcak Lead','Sıcak Lead'),  value: nodes.filter(n => n.hotScore >= 30).length, color: 'text-red-400' },
+          { label: t('network.hot_lead','Sıcak Lead'),  value: nodes.filter(n => n.hotScore >= 30).length, color: 'text-red-400' },
           { label: t('A Sınıfı','A Sınıfı'),    value: nodes.filter(n => n.grade === 'A').length, color: 'text-emerald-400' },
         ].map(s => (
           <div key={s.label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
@@ -165,7 +165,7 @@ export default function NetworkPage() {
           </p>
           <button onClick={() => setAddOpen(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition mx-auto">
-            <Plus size={16} /> İlk Bağlantıyı Ekle
+            <Plus size={16} /> {t('network.add_first','İlk Bağlantıyı Ekle')}
           </button>
         </div>
       ) : (
@@ -231,7 +231,7 @@ export default function NetworkPage() {
           {filteredNodes.filter(n => nodeEdges(n.id).length === 0).length > 0 && (
             <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4">
               <p className="text-slate-500 text-xs mb-3 flex items-center gap-1.5">
-                <Users size={12} /> Bağlantısız Firmalar ({filteredNodes.filter(n => nodeEdges(n.id).length === 0).length})
+                <Users size={12} /> {t('network.no_connections','Bağlantısız Firmalar')} ({filteredNodes.filter(n => nodeEdges(n.id).length === 0).length})
               </p>
               <div className="flex flex-wrap gap-2">
                 {filteredNodes.filter(n => nodeEdges(n.id).length === 0).slice(0, 20).map(n => (

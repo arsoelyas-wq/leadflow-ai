@@ -93,7 +93,7 @@ function FlagImg({ code, size = 32 }: { code: string; size?: number }) {
 }
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const REGIONS = ['Tümü', 'Avrupa', 'Körfez', 'Amerika', 'Orta Asya', 'Asya', 'Afrika']
+const REGIONS_TR = ['Tümü', 'Avrupa', 'Körfez', 'Amerika', 'Orta Asya', 'Asya', 'Afrika']
 const CHANNELS = [
   { key: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, color: '#10b981' },
   { key: 'email',    label: 'E-posta',  icon: Mail,          color: '#3b82f6' },
@@ -269,6 +269,7 @@ export default function ExportPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCountry, setSelectedCountry] = useState<any>(null)
   const [selectedRegion, setSelectedRegion] = useState('Tümü')
+  const REGIONS = REGIONS_TR
   const [sector, setSector] = useState('')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [selectedChannel, setSelectedChannel] = useState('whatsapp')
@@ -400,10 +401,10 @@ export default function ExportPage() {
             <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>{t('export.hedef_pazarda_dogrulanmis', 'Hedef pazarda doğrulanmış alıcılar · Karar verici isim ve iletişim · Yerel dilde kişiselleştirilmiş mesaj')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
               {[
-                { l: 'İletişimli Alıcı', v: leadsWithContact.length, c: '#10b981' },
-                { l: 'Toplam Alıcı', v: exportLeads.length, c: '#64748b' },
-                { l: 'Kampanya', v: campaigns.length, c: '#8b5cf6' },
-                { l: 'Hedef Pazar', v: countries.length, c: '#f59e0b' },
+                { l: t('export.buyers_with_contact','İletişimli Alıcı'), v: leadsWithContact.length, c: '#10b981' },
+                { l: t('export.total_buyers','Toplam Alıcı'), v: exportLeads.length, c: '#64748b' },
+                { l: t('export.campaign','Kampanya'), v: campaigns.length, c: '#8b5cf6' },
+                { l: t('export.target_market','Hedef Pazar'), v: countries.length, c: '#f59e0b' },
               ].map(m => (
                 <div key={m.l} style={{ textAlign: 'center' }}>
                   <p style={{ color: m.c, fontSize: 20, fontWeight: 800, margin: 0 }}>{m.v}</p>
@@ -431,11 +432,11 @@ export default function ExportPage() {
       {/* TABS */}
       <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.32)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 18, border: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
         {[
-          { id: 'find', label: t('🌍 Alıcı Keşfi','🌍 Alıcı Keşfi') },
-          { id: 'leads', label: `👥 Alıcı (${leadsWithContact.length}📞 / ${exportLeads.length})` },
-          { id: 'campaigns', label: `🚀 Kampanyalar (${campaigns.length})` },
-          { id: 'messages', label: `💬 İletişimler (${messages.length})` },
-          { id: 'analytics', label: '📊 Analitik' },
+          { id: 'find', label: '🌍 '+t('export.buyer_discovery','Alıcı Keşfi') },
+          { id: 'leads', label: `👥 ${t('export.buyers','Alıcı')} (${leadsWithContact.length}📞 / ${exportLeads.length})` },
+          { id: 'campaigns', label: `🚀 ${t('export.campaigns_tab','Kampanyalar')} (${campaigns.length})` },
+          { id: 'messages', label: `💬 ${t('export.messages_tab','İletişimler')} (${messages.length})` },
+          { id: 'analytics', label: '📊 '+t('export.analytics_tab','Analitik') },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             style={{ padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: tab === t.id ? 'linear-gradient(135deg,#065f46,#10b981)' : 'transparent', color: tab === t.id ? '#fff' : '#64748b', boxShadow: tab === t.id ? '0 3px 12px rgba(16,185,129,0.28)' : 'none', whiteSpace: 'nowrap' }}>
@@ -512,7 +513,7 @@ export default function ExportPage() {
                   {/* Opportunity bar */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: '#334155', fontSize: 9 }}>{t('export.firsat_skoru', 'Fırsat Skoru')}</span>
+                      <span style={{ color: '#334155', fontSize: 9 }}>{t('export.opportunity_score','Fırsat Skoru')}</span>
                       <span style={{ color: oppScore >= 75 ? '#10b981' : oppScore >= 55 ? '#f59e0b' : '#ef4444', fontSize: 9, fontWeight: 700 }}>{oppScore}</span>
                     </div>
                     <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
@@ -613,7 +614,7 @@ export default function ExportPage() {
             {/* Contact filter toggle */}
             <button onClick={() => setOnlyWithContact(!onlyWithContact)}
               style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 12px', borderRadius:8, border:`1px solid ${onlyWithContact?'rgba(16,185,129,0.45)':'rgba(255,255,255,0.1)'}`, background:onlyWithContact?'rgba(16,185,129,0.12)':'transparent', color:onlyWithContact?'#34d399':'#64748b', fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
-              📞 {onlyWithContact ? `İletişimli (${leadsWithContact.filter(l=>!filterCountry||l.country_code===filterCountry).length})` : 'Tümü'}
+              📞 {onlyWithContact ? `${t('export.buyers_contact','İletişimli')} (${leadsWithContact.filter(l=>!filterCountry||l.country_code===filterCountry).length})` : 'Tümü'}
             </button>
             <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} style={{ ...inp, height: 40, cursor: 'pointer' }}>
               <option value="">Tüm Pazarlar ({exportLeads.length})</option>
@@ -840,7 +841,7 @@ export default function ExportPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
             {[
-              { l: 'Toplam Alıcı', v: analytics?.totalLeads || 0, c: '#10b981', icon: '👥' },
+              { l: t('export.total_buyers','Toplam Alıcı'), v: analytics?.totalLeads || 0, c: '#10b981', icon: '👥' },
               { l: 'Kampanya', v: analytics?.totalCampaigns || 0, c: '#8b5cf6', icon: '🚀' },
               { l: 'Hazır İletişim', v: analytics?.totalMessages || 0, c: '#06b6d4', icon: '💬' },
               { l: 'Gönderilen', v: analytics?.sentMessages || 0, c: '#f59e0b', icon: '📤' },
@@ -884,7 +885,7 @@ export default function ExportPage() {
             <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>{t('export.platform_kapsami', 'Platform Kapsamı')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
               {[
-                { label: 'Hedef Pazar', value: `${countries.length} ülke`, icon: '🌍', c: '#10b981' },
+                { label: t('export.target_market','Hedef Pazar'), value: `${countries.length} ülke`, icon: '🌍', c: '#10b981' },
                 { label: 'Arama Kapasitesi', value: 'Sınırsız', icon: '🔍', c: '#8b5cf6' },
                 { label: t('Dil Desteği','Dil Desteği'), value: '11 dil', icon: '🌐', c: '#06b6d4' },
                 { label: t('Kişisel Mesaj','Kişisel Mesaj'), value: 'AI Destekli', icon: '✍️', c: '#f59e0b' },

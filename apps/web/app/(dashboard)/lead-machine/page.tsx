@@ -136,15 +136,15 @@ export default function LeadMachinePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Target size={24} className="text-emerald-400"/> Lead Makinesi
+            <Target size={24} className="text-emerald-400"/> {t('lead_machine.title','Lead Makinesi')}
           </h1>
           <p className="text-slate-400 mt-1 text-sm">
-            Tüm kanallardan otomatik lead — arka planda workflow çalışır
+            {t('lead_machine.subtitle','Tüm kanallardan otomatik lead — arka planda workflow çalışır')}
           </p>
         </div>
         <button onClick={()=>setShowReferral(!showReferral)}
           className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded-xl transition">
-          <Users size={14}/> Referans Ekle
+          <Users size={14}/> {t('lead_machine.referral_add','Referans Ekle')}
         </button>
       </div>
 
@@ -174,7 +174,7 @@ export default function LeadMachinePage() {
           {/* Kaynak Seçimi */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
             <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-              <Globe size={14} className="text-blue-400"/> Lead Kaynağı Seç
+              <Globe size={14} className="text-blue-400"/> {t('lead_machine.select_source','Lead Kaynağı Seç')}
             </h3>
             <div className="space-y-2">
               {SOURCES.map(s => (
@@ -184,7 +184,7 @@ export default function LeadMachinePage() {
                   <span className="text-lg">{s.icon}</span>
                   <div>
                     <p className="text-white text-xs font-medium">{s.label}</p>
-                    <p className="text-slate-500 text-xs">{s.desc}</p>
+                    <p className="text-slate-500 text-xs">{t('lead_machine.src_'+s.id, s.desc)}</p>
                   </div>
                 </label>
               ))}
@@ -241,12 +241,12 @@ export default function LeadMachinePage() {
           {/* Özet */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
             <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-              <TrendingUp size={14} className="text-yellow-400"/> Arama Özeti
+              <TrendingUp size={14} className="text-yellow-400"/> {t('lead_machine.search_summary','Arama Özeti')}
             </h3>
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className="text-center p-3 bg-slate-900 rounded-xl">
                 <p className="text-2xl font-bold text-emerald-400">{selectedSources.length}</p>
-                <p className="text-slate-400 text-xs">Kaynak</p>
+                <p className="text-slate-400 text-xs">{t('lead_machine.source','Kaynak')}</p>
               </div>
               <div className="text-center p-3 bg-slate-900 rounded-xl">
                 <p className="text-2xl font-bold text-blue-400">{selectedCities.length}</p>
@@ -268,7 +268,7 @@ export default function LeadMachinePage() {
               </div>
             ) : (
               <div className="p-3 bg-slate-900 rounded-xl text-sm text-slate-500 mb-4">
-                Sektör ve kaynak seçin
+                {t('lead_machine.select_sector_source','Sektör ve kaynak seçin')}
               </div>
             )}
 
@@ -277,13 +277,13 @@ export default function LeadMachinePage() {
                 disabled={loading || !finalKeyword || !selectedSources.length}
                 className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm rounded-xl transition font-medium">
                 {loading?<RefreshCw size={16} className="animate-spin"/>:<Search size={16}/>}
-                {loading?'Aranıyor...':'Hemen Ara'}
+                {loading ? t('lead_machine.searching','Aranıyor...') : t('lead_machine.search_now','Hemen Ara')}
               </button>
               <button onClick={batchScrape}
                 disabled={batchLoading || !finalKeyword || !selectedSources.length}
                 className="flex-1 flex items-center justify-center gap-2 py-3 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-40 text-white text-sm rounded-xl transition font-medium">
                 {batchLoading?<RefreshCw size={16} className="animate-spin"/>:<Zap size={16}/>}
-                {batchLoading?'Arka Planda...':'Arka Planda Çalıştır'}
+                {batchLoading ? t('lead_machine.running_bg','Arka Planda...') : t('lead_machine.run_bg','Arka Planda Çalıştır')}
               </button>
             </div>
           </div>
@@ -295,11 +295,11 @@ export default function LeadMachinePage() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="text-center p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                   <p className="text-3xl font-bold text-emerald-400">{result.totalAdded}</p>
-                  <p className="text-slate-400 text-xs">Lead Eklendi</p>
+                  <p className="text-slate-400 text-xs">{t("lead_machine.leads_added","Lead Eklendi")}</p>
                 </div>
                 <div className="text-center p-3 bg-slate-900 rounded-xl">
                   <p className="text-3xl font-bold text-slate-300">{result.totalFound}</p>
-                  <p className="text-slate-400 text-xs">Toplam Bulundu</p>
+                  <p className="text-slate-400 text-xs">{t("lead_machine.total_found","Toplam Bulundu")}</p>
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -307,8 +307,8 @@ export default function LeadMachinePage() {
                   <div key={i} className="flex items-center justify-between px-3 py-2 bg-slate-900 rounded-lg text-xs">
                     <span className="text-slate-300">{SOURCES.find(s=>s.id===r.source)?.icon} {r.source} / {r.city}</span>
                     <div className="flex gap-3">
-                      <span className="text-emerald-400">{r.added} eklendi</span>
-                      <span className="text-slate-500">{r.duplicate} tekrar</span>
+                      <span className="text-emerald-400">{r.added} {t("lead_machine.added","eklendi")}</span>
+                      <span className="text-slate-500">{r.duplicate} {t("lead_machine.duplicate","tekrar")}</span>
                     </div>
                   </div>
                 ))}
@@ -365,7 +365,7 @@ export default function LeadMachinePage() {
                 <button onClick={addReferral} disabled={referralLoading||!referralForm.companyName||!referralForm.phone}
                   className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs rounded-lg transition">
                   {referralLoading?<RefreshCw size={12} className="animate-spin"/>:<Plus size={12}/>}
-                  {referralLoading?'Ekleniyor...':'Lead Ekle'}
+                  {referralLoading ? t("lead_machine.adding","Ekleniyor...") : t("lead_machine.add_lead","Lead Ekle")}
                 </button>
                 <button onClick={()=>setShowReferral(false)}
                   className="px-4 py-2 bg-slate-700 text-slate-300 text-xs rounded-lg hover:bg-slate-600 transition">
