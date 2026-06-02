@@ -345,34 +345,34 @@ export default function ARPage() {
   const CATEGORIES = [
     { value: 'furniture',    label: '🛋️ Mobilya' },
     { value: 'decoration',   label: '🏺 Dekorasyon' },
-    { value: 'lighting',     label: '💡 Aydınlatma' },
+    { value: 'lighting',     label: t('💡 Aydınlatma','💡 Aydınlatma') },
     { value: 'electronics',  label: '📱 Elektronik' },
     { value: 'kitchen',      label: '🍳 Mutfak & Ev Aletleri' },
-    { value: 'garden',       label: '🌿 Bahçe & Dış Mekan' },
-    { value: 'office',       label: '🖥️ Ofis & İş' },
+    { value: 'garden',       label: t('🌿 Bahçe & Dış Mekan','🌿 Bahçe & Dış Mekan') },
+    { value: 'office',       label: t('🖥️ Ofis & İş','🖥️ Ofis & İş') },
     { value: 'sports',       label: '⚽ Spor & Outdoor' },
     { value: 'automotive',   label: '🚗 Otomotiv' },
-    { value: 'health',       label: '💊 Sağlık & Güzellik' },
+    { value: 'health',       label: t('💊 Sağlık & Güzellik','💊 Sağlık & Güzellik') },
     { value: 'art',          label: '🎨 Sanat & Koleksiyon' },
-    { value: 'construction', label: '🏗️ Yapı & İnşaat' },
+    { value: 'construction', label: t('🏗️ Yapı & İnşaat','🏗️ Yapı & İnşaat') },
     { value: 'toy',          label: '🧸 Oyun & Hobi' },
     { value: 'clothing',     label: '👗 Giyim & Aksesuar' },
-    { value: 'product',      label: '📦 Genel Ürün' },
-    { value: 'industrial',   label: '🏭 Endüstriyel' },
+    { value: 'product',      label: t('📦 Genel Ürün','📦 Genel Ürün') },
+    { value: 'industrial',   label: t('🏭 Endüstriyel','🏭 Endüstriyel') },
   ]
 
   const STAT_CONFIG = [
     { label: '3D Model', key: 'totalModels', color: '#ec4899', glow: 'rgba(236,72,153,0.3)', icon: '📦' },
-    { label: 'Görüntüleme', key: 'totalViews', color: '#3b82f6', glow: 'rgba(59,130,246,0.3)', icon: '👁️' },
-    { label: 'Gönderildi', key: 'totalSent', color: '#10b981', glow: 'rgba(16,185,129,0.3)', icon: '📤' },
+    { label: t('Görüntüleme','Görüntüleme'), key: 'totalViews', color: '#3b82f6', glow: 'rgba(59,130,246,0.3)', icon: '👁️' },
+    { label: t('Gönderildi','Gönderildi'), key: 'totalSent', color: '#10b981', glow: 'rgba(16,185,129,0.3)', icon: '📤' },
     { label: 'AR Oturumu', key: 'totalARSessions', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', icon: '🏠' },
   ]
 
   // Progress stages mapped to Tripo3D progress values
   const AI_STAGES = [
-    { label: 'Fotoğraflar yükleniyor', icon: '📤', from: 0,  to: 10  },
+    { label: t('Fotoğraflar yükleniyor','Fotoğraflar yükleniyor'), icon: '📤', from: 0,  to: 10  },
     { label: 'AI analiz ediyor',       icon: '🔍', from: 10, to: 40  },
-    { label: '3D mesh oluşturuluyor',  icon: '🔨', from: 40, to: 75  },
+    { label: t('3D mesh oluşturuluyor','3D mesh oluşturuluyor'),  icon: '🔨', from: 40, to: 75  },
     { label: 'Texture & renk ekleniyor', icon: '🎨', from: 75, to: 100 },
   ]
 
@@ -400,10 +400,10 @@ export default function ARPage() {
 
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
           {[
-            { icon: '📦', title: '3D Model Yükle', desc: '.glb / .usdz / AI ile', color: '#ec4899' },
-            { icon: '🔗', title: 'AR Link + QR', desc: 'Otomatik oluşur', color: '#8b5cf6' },
-            { icon: '📱', title: 'WhatsApp\'tan İlet', desc: '1 tıkla gönder', color: '#3b82f6' },
-            { icon: '🏠', title: 'Müşteri AR Görür', desc: 'Odada gerçek boyut', color: '#10b981' },
+            { icon: '📦', title: t('3D Model Yükle','3D Model Yükle'), desc: '.glb / .usdz / AI ile', color: '#ec4899' },
+            { icon: '🔗', title: 'AR Link + QR', desc: t('Otomatik oluşur','Otomatik oluşur'), color: '#8b5cf6' },
+            { icon: '📱', title: 'WhatsApp\'tan İlet', desc: t('1 tıkla gönder','1 tıkla gönder'), color: '#3b82f6' },
+            { icon: '🏠', title: t('Müşteri AR Görür','Müşteri AR Görür'), desc: t('Odada gerçek boyut','Odada gerçek boyut'), color: '#10b981' },
           ].map(({ icon, title, desc, color }, idx) => (
             <div key={title} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative' }}>
               {idx < 3 && <ChevronRight size={14} style={{ position: 'absolute', right: -7, top: '50%', transform: 'translateY(-50%)', color: '#334155', zIndex: 3 }} />}
@@ -438,7 +438,7 @@ export default function ARPage() {
 
       {/* ── MAIN TABS ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 20, border: '1px solid rgba(255,255,255,0.06)' }}>
-        {[{ id: 'models', label: `🎯 Modellerim (${models.length})` }, { id: 'upload', label: '➕ Model Yükle' }].map(t => (
+        {[{ id: 'models', label: `🎯 Modellerim (${models.length})` }, { id: 'upload', label: t('➕ Model Yükle','➕ Model Yükle') }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)} style={{ padding: '8px 20px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s', background: tab === t.id ? 'linear-gradient(135deg,#be185d,#7c3aed)' : 'transparent', color: tab === t.id ? '#fff' : '#64748b', boxShadow: tab === t.id ? '0 4px 16px rgba(190,24,93,0.3)' : 'none' }}>
             {t.label}
           </button>
@@ -451,8 +451,8 @@ export default function ARPage() {
           {/* Sub-tab switcher */}
           <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 20, border: '1px solid rgba(255,255,255,0.06)' }}>
             {[
-              { id: 'file', label: '📁 Dosya Yükle', sub: '.glb / .usdz' },
-              { id: 'ai',   label: '✨ AI ile Oluştur', sub: 'Fotoğraftan 3D' },
+              { id: 'file', label: t('📁 Dosya Yükle','📁 Dosya Yükle'), sub: '.glb / .usdz' },
+              { id: 'ai',   label: t('✨ AI ile Oluştur','✨ AI ile Oluştur'), sub: t('Fotoğraftan 3D','Fotoğraftan 3D') },
             ].map(m => (
               <button key={m.id} onClick={() => setUploadMode(m.id as any)} style={{ padding: '8px 20px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, lineHeight: 1.4, transition: 'all 0.2s', background: uploadMode === m.id ? (m.id === 'ai' ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'linear-gradient(135deg,#be185d,#7c3aed)') : 'transparent', color: uploadMode === m.id ? '#fff' : '#64748b', boxShadow: uploadMode === m.id ? '0 4px 16px rgba(124,58,237,0.3)' : 'none' }}>
                 {m.label}<br /><span style={{ fontSize: 10, opacity: 0.7 }}>{m.sub}</span>
@@ -507,7 +507,7 @@ export default function ARPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ background: 'linear-gradient(135deg,rgba(10,10,20,0.95),rgba(15,15,30,0.9))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: 20 }}>
                   <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}><Globe size={14} style={{ color: '#3b82f6' }} /> Desteklenen Formatlar</h3>
-                  {[{ ext: '.glb', desc: 'Android + Web AR (önerilen)', color: '#10b981' }, { ext: '.usdz', desc: 'iOS/iPhone AR', color: '#3b82f6' }].map(({ ext, desc, color }) => (
+                  {[{ ext: '.glb', desc: t('Android + Web AR (önerilen)','Android + Web AR (önerilen)'), color: '#10b981' }, { ext: '.usdz', desc: 'iOS/iPhone AR', color: '#3b82f6' }].map(({ ext, desc, color }) => (
                     <div key={ext} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                       <span style={{ fontFamily: 'monospace', fontWeight: 700, color, fontSize: 13, background: `${color}18`, padding: '3px 10px', borderRadius: 6 }}>{ext}</span>
                       <span style={{ color: '#64748b', fontSize: 13 }}>{desc}</span>
@@ -595,12 +595,12 @@ export default function ARPage() {
                     <div style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.1),rgba(79,70,229,0.08))', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 18, padding: 20 }}>
                       <h3 style={{ color: '#a78bfa', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>{t('ar_experience.en_iyi_sonuc_icin', '💡 En İyi Sonuç İçin')}</h3>
                       {[
-                        { icon: '⬜', text: 'Beyaz veya açık arka plan kullan' },
-                        { icon: '🎯', text: 'Ürünü ortaya al, kesilme olmasın' },
-                        { icon: '🔄', text: 'Ön, yan, arka — farklı açılardan çek' },
-                        { icon: '💡', text: 'İyi aydınlatma, gölge az olsun' },
-                        { icon: '📐', text: 'Min. 512×512 piksel çözünürlük' },
-                        { icon: '📱', text: 'Telefon veya DSLR fotoğraf tamam' },
+                        { icon: '⬜', text: t('Beyaz veya açık arka plan kullan','Beyaz veya açık arka plan kullan') },
+                        { icon: '🎯', text: t('Ürünü ortaya al, kesilme olmasın','Ürünü ortaya al, kesilme olmasın') },
+                        { icon: '🔄', text: t('Ön, yan, arka — farklı açılardan çek','Ön, yan, arka — farklı açılardan çek') },
+                        { icon: '💡', text: t('İyi aydınlatma, gölge az olsun','İyi aydınlatma, gölge az olsun') },
+                        { icon: '📐', text: t('Min. 512×512 piksel çözünürlük','Min. 512×512 piksel çözünürlük') },
+                        { icon: '📱', text: t('Telefon veya DSLR fotoğraf tamam','Telefon veya DSLR fotoğraf tamam') },
                       ].map(({ icon, text }) => (
                         <div key={text} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
                           <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>

@@ -86,7 +86,7 @@ export default function SalesCoachPage() {
           {[
             {label:'Toplam Analiz',value:stats.total,color:'text-white'},
             {label:'Ortalama Skor',value:`${stats.avgScore}/10`,color:'text-yellow-400'},
-            {label:'Başarılı',value:stats.positive,color:'text-emerald-400'},
+            {label: t('Başarılı','Başarılı'),value:stats.positive,color:'text-emerald-400'},
             {label:'Kaybedilen',value:stats.negative,color:'text-red-400'},
           ].map(({label,value,color})=>(
             <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">

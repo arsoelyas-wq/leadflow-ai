@@ -40,9 +40,9 @@ export default function ChurnPage() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          {label:'Yüksek Risk', value:highRisk.length, color:'text-red-400', bg:'bg-red-500/10 border-red-500/20'},
+          {label: t('Yüksek Risk','Yüksek Risk'), value:highRisk.length, color:'text-red-400', bg:'bg-red-500/10 border-red-500/20'},
           {label:'Orta Risk', value:mediumRisk.length, color:'text-yellow-400', bg:'bg-yellow-500/10 border-yellow-500/20'},
-          {label:'Düşük Risk', value:predictions.filter(p=>p.risk==='low').length, color:'text-emerald-400', bg:'bg-emerald-500/10 border-emerald-500/20'},
+          {label: t('Düşük Risk','Düşük Risk'), value:predictions.filter(p=>p.risk==='low').length, color:'text-emerald-400', bg:'bg-emerald-500/10 border-emerald-500/20'},
         ].map(({label,value,color,bg})=>(
           <div key={label} className={`border rounded-xl p-4 text-center ${bg}`}>
             <p className={`text-3xl font-bold ${color}`}>{value}</p>

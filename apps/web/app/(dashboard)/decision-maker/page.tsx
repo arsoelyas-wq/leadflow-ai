@@ -226,7 +226,7 @@ export default function DecisionMakerPage() {
             { label: 'Toplam Lead',     value: stats.totalLeads,         icon: Users,     color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
             { label: 'Yetkili Bulunan', value: stats.withContact,        icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
             { label: 'Email Bulunan',   value: stats.withEmail,          icon: Mail,      color: 'text-purple-400',  bg: 'bg-purple-500/10'  },
-            { label: 'Kapsama Oranı',   value: `%${stats.coverageRate}`, icon: BarChart3, color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
+            { label: t('Kapsama Oranı','Kapsama Oranı'),   value: `%${stats.coverageRate}`, icon: BarChart3, color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
           ].map(s => (
             <div key={s.label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
               <div className={`w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center mb-3`}>
@@ -260,7 +260,7 @@ export default function DecisionMakerPage() {
         {/* Filter chips */}
         <div className="flex gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1">
           {([
-            { id: 'all',         label: 'Tümü' },
+            { id: 'all',         label: t('Tümü','Tümü') },
             { id: 'no-contact',  label: 'Yetkili Yok' },
             { id: 'has-contact', label: 'Yetkili Var' },
           ] as { id: Filter; label: string }[]).map(f => (

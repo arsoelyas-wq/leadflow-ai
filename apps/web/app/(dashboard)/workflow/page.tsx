@@ -464,7 +464,7 @@ export default function WorkflowPage() {
       setEditorName('Yeni Workflow')
       setEditorTrigger('manual')
       setEditorNodes([
-        { id: gid(), type: 'message', label: 'İlk Mesaj', config: { channel: 'whatsapp', template: '' } },
+        { id: gid(), type: 'message', label: t('İlk Mesaj','İlk Mesaj'), config: { channel: 'whatsapp', template: '' } },
         { id: gid(), type: 'end', label: 'Bitti', config: {} },
       ])
       setEditWf(null)
@@ -1055,9 +1055,9 @@ export default function WorkflowPage() {
                       <div className="grid grid-cols-4 gap-3">
                         {[
                           { label: 'Aktif',       value: analytics.summary?.active    || 0, color: 'text-amber-400' },
-                          { label: 'Tamamlandı',  value: analytics.summary?.completed || 0, color: 'text-emerald-400' },
+                          { label: t('Tamamlandı','Tamamlandı'),  value: analytics.summary?.completed || 0, color: 'text-emerald-400' },
                           { label: 'Hata',        value: analytics.summary?.error     || 0, color: 'text-red-400' },
-                          { label: 'Mesaj Gönderildi', value: analytics.messagesSent  || 0, color: 'text-cyan-400' },
+                          { label: t('Mesaj Gönderildi','Mesaj Gönderildi'), value: analytics.messagesSent  || 0, color: 'text-cyan-400' },
                         ].map(s => (
                           <div key={s.label} className="bg-slate-900/50 rounded-xl p-3 text-center">
                             <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>

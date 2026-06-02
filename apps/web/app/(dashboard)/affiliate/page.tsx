@@ -62,9 +62,9 @@ export default function AffiliatePage() {
       {stats && (
         <div className="grid grid-cols-3 gap-4">
           {[
-            {label:'Toplam Tıklama', value:stats.totalClicks, color:'text-blue-400', icon:'👆'},
-            {label:'Dönüşüm', value:stats.totalConversions, color:'text-emerald-400', icon:'✅'},
-            {label:'Kazanç', value:`₺${stats.totalEarnings}`, color:'text-yellow-400', icon:'💰'},
+            {label: t('Toplam Tıklama','Toplam Tıklama'), value:stats.totalClicks, color:'text-blue-400', icon:'👆'},
+            {label: t('Dönüşüm','Dönüşüm'), value:stats.totalConversions, color:'text-emerald-400', icon:'✅'},
+            {label: t('Kazanç','Kazanç'), value:`₺${stats.totalEarnings}`, color:'text-yellow-400', icon:'💰'},
           ].map(({label,value,color,icon})=>(
             <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
               <p className="text-2xl mb-1">{icon}</p>
@@ -80,9 +80,9 @@ export default function AffiliatePage() {
         <h2 className="text-white font-semibold mb-3 flex items-center gap-2"><TrendingUp size={16} className="text-pink-400"/>{t('affiliate.komisyon_yapisi', 'Komisyon Yapısı')}</h2>
         <div className="grid grid-cols-3 gap-4">
           {[
-            {label:'Kayıt Başına', value:'₺50', desc:'Referansınız kayıt olursa'},
-            {label:'İlk Ödeme', value:'%20', desc:'İlk abonelik ödemesinden'},
-            {label:'Aylık Recurring', value:'%10', desc:'Devam eden aboneliklerden'},
+            {label: t('Kayıt Başına','Kayıt Başına'), value:'₺50', desc: t('Referansınız kayıt olursa','Referansınız kayıt olursa')},
+            {label: t('İlk Ödeme','İlk Ödeme'), value:'%20', desc: t('İlk abonelik ödemesinden','İlk abonelik ödemesinden')},
+            {label: t('Aylık Recurring','Aylık Recurring'), value:'%10', desc:'Devam eden aboneliklerden'},
           ].map(({label,value,desc})=>(
             <div key={label} className="bg-slate-900 rounded-xl p-3 text-center">
               <p className="text-pink-400 text-xl font-bold">{value}</p>

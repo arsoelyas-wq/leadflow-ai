@@ -423,10 +423,10 @@ export default function OnboardingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-left">
                   {[
-                    { icon: '📞', title: 'AI Sesli Arama', desc: 'Gerçek insan sesiyle müşteri arar' },
-                    { icon: '💬', title: 'WA Kampanya', desc: 'Kişiselleştirilmiş mesaj gönderir' },
-                    { icon: '🎯', title: 'Lead Analizi', desc: 'Şirketinize uygun leadleri bulur' },
-                    { icon: '📊', title: 'Performans', desc: 'Her konuşmayı analiz eder' },
+                    { icon: '📞', title: 'AI Sesli Arama', desc: t('Gerçek insan sesiyle müşteri arar','Gerçek insan sesiyle müşteri arar') },
+                    { icon: '💬', title: 'WA Kampanya', desc: t('Kişiselleştirilmiş mesaj gönderir','Kişiselleştirilmiş mesaj gönderir') },
+                    { icon: '🎯', title: 'Lead Analizi', desc: t('Şirketinize uygun leadleri bulur','Şirketinize uygun leadleri bulur') },
+                    { icon: '📊', title: 'Performans', desc: t('Her konuşmayı analiz eder','Her konuşmayı analiz eder') },
                   ].map(item => (
                     <div key={item.title} className="bg-slate-800 rounded-xl p-3 flex items-start gap-2.5">
                       <span className="text-2xl">{item.icon}</span>

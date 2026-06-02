@@ -338,11 +338,11 @@ export default function NewCampaignPage() {
             <h2 className="text-white font-semibold text-lg">{t('campaigns.kampanya_ozeti', 'Kampanya Özeti')}</h2>
             <div className="space-y-3">
               {[
-                { label: 'Kampanya Adı', value: name },
+                { label: t('Kampanya Adı','Kampanya Adı'), value: name },
                 { label: 'Kanal', value: CHANNELS.find(c => c.id === channel)?.label },
-                { label: 'Lead Sayısı', value: `${selectedLeads.length} lead` },
-                { label: 'Mesaj Uzunluğu', value: `${customMessage.length} karakter` },
-                { label: 'Gönderim', value: isScheduled && scheduleAt ? new Date(scheduleAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }) : 'Hemen' },
+                { label: t('Lead Sayısı','Lead Sayısı'), value: `${selectedLeads.length} lead` },
+                { label: t('Mesaj Uzunluğu','Mesaj Uzunluğu'), value: `${customMessage.length} karakter` },
+                { label: t('Gönderim','Gönderim'), value: isScheduled && scheduleAt ? new Date(scheduleAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }) : 'Hemen' },
               ].map(item => (
                 <div key={item.label} className="flex justify-between items-center py-3 border-b border-slate-700/50">
                   <span className="text-slate-400 text-sm">{item.label}</span>

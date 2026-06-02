@@ -164,8 +164,8 @@ export default function MonitoringPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
         {[
           { label: 'Uptime (24s)', value: `%${status?.uptime?.percent24h || 100}`, sub: status?.uptime?.formatted || '—', color: '#10b981', icon: <Activity size={15} />, data: uptimeLogs.map((l: any) => l.status === 'up' ? 100 : 0) },
-          { label: 'Yanıt Süresi', value: `${status?.uptime?.avgResponseMs || 0}ms`, sub: 'Son 24 saat', color: '#06b6d4', icon: <Clock size={15} />, data: responseTimes },
-          { label: 'Bellek Kullanımı', value: `${status?.memory?.heapUsed || 0}MB`, sub: `%${status?.memory?.percent || 0} doldu`, color: (status?.memory?.percent || 0) > 80 ? '#ef4444' : '#8b5cf6', icon: <HardDrive size={15} />, data: [] },
+          { label: t('Yanıt Süresi','Yanıt Süresi'), value: `${status?.uptime?.avgResponseMs || 0}ms`, sub: 'Son 24 saat', color: '#06b6d4', icon: <Clock size={15} />, data: responseTimes },
+          { label: t('Bellek Kullanımı','Bellek Kullanımı'), value: `${status?.memory?.heapUsed || 0}MB`, sub: `%${status?.memory?.percent || 0} doldu`, color: (status?.memory?.percent || 0) > 80 ? '#ef4444' : '#8b5cf6', icon: <HardDrive size={15} />, data: [] },
           { label: 'CPU / Sistem', value: status?.system?.cpuCount ? `${status.system.cpuCount} çekirdek` : '—', sub: status?.system?.nodeVersion || '—', color: '#f59e0b', icon: <Cpu size={15} />, data: [] },
         ].map(card => (
           <div key={card.label} style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: `1px solid ${card.color}18`, borderRadius: 16, padding: '18px 16px' }}>

@@ -131,9 +131,9 @@ export default function NetworkPage() {
       <div className="grid grid-cols-4 gap-4">
         {[
           { label: 'Toplam Firma', value: nodes.length, color: 'text-white' },
-          { label: 'Bağlantı',    value: edges.length, color: 'text-cyan-400' },
-          { label: 'Sıcak Lead',  value: nodes.filter(n => n.hotScore >= 30).length, color: 'text-red-400' },
-          { label: 'A Sınıfı',    value: nodes.filter(n => n.grade === 'A').length, color: 'text-emerald-400' },
+          { label: t('Bağlantı','Bağlantı'),    value: edges.length, color: 'text-cyan-400' },
+          { label: t('Sıcak Lead','Sıcak Lead'),  value: nodes.filter(n => n.hotScore >= 30).length, color: 'text-red-400' },
+          { label: t('A Sınıfı','A Sınıfı'),    value: nodes.filter(n => n.grade === 'A').length, color: 'text-emerald-400' },
         ].map(s => (
           <div key={s.label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>

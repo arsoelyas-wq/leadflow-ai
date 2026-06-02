@@ -431,7 +431,7 @@ export default function ExportPage() {
       {/* TABS */}
       <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.32)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 18, border: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
         {[
-          { id: 'find', label: '🌍 Alıcı Keşfi' },
+          { id: 'find', label: t('🌍 Alıcı Keşfi','🌍 Alıcı Keşfi') },
           { id: 'leads', label: `👥 Alıcı (${leadsWithContact.length}📞 / ${exportLeads.length})` },
           { id: 'campaigns', label: `🚀 Kampanyalar (${campaigns.length})` },
           { id: 'messages', label: `💬 İletişimler (${messages.length})` },
@@ -886,8 +886,8 @@ export default function ExportPage() {
               {[
                 { label: 'Hedef Pazar', value: `${countries.length} ülke`, icon: '🌍', c: '#10b981' },
                 { label: 'Arama Kapasitesi', value: 'Sınırsız', icon: '🔍', c: '#8b5cf6' },
-                { label: 'Dil Desteği', value: '11 dil', icon: '🌐', c: '#06b6d4' },
-                { label: 'Kişisel Mesaj', value: 'AI Destekli', icon: '✍️', c: '#f59e0b' },
+                { label: t('Dil Desteği','Dil Desteği'), value: '11 dil', icon: '🌐', c: '#06b6d4' },
+                { label: t('Kişisel Mesaj','Kişisel Mesaj'), value: 'AI Destekli', icon: '✍️', c: '#f59e0b' },
               ].map(item => (
                 <div key={item.label} style={{ background: `${item.c}07`, border: `1px solid ${item.c}18`, borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 22 }}>{item.icon}</span>

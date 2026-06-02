@@ -399,9 +399,9 @@ export default function ShadowPage() {
         {/* Stats */}
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
           {[
-            { label:'Rakip İzleniyor', value:competitors.length, color:'#7c3aed', icon:'👁️' },
-            { label:'Yüksek Tehdit',   value:highThreat,         color:'#ef4444', icon:'🚨' },
-            { label:'Değişiklik',      value:totalChanges,        color:'#f59e0b', icon:'⚡' },
+            { label: t('Rakip İzleniyor','Rakip İzleniyor'), value:competitors.length, color:'#7c3aed', icon:'👁️' },
+            { label: t('Yüksek Tehdit','Yüksek Tehdit'),   value:highThreat,         color:'#ef4444', icon:'🚨' },
+            { label: t('Değişiklik','Değişiklik'),      value:totalChanges,        color:'#f59e0b', icon:'⚡' },
             { label:'Ort. Tehdit',     value:avgThreat,           color:'#8b5cf6', icon:'🎯' },
           ].map(({ label, value, color, icon }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>

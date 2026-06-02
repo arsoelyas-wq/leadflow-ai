@@ -1115,10 +1115,10 @@ export default function VoicePage() {
           <div className="px-6 pb-6 pt-2 fade-in-up" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               {[
-                { key:'agent_name',label:'Temsilci Adı',ph:'Ahmet' },
-                { key:'company_name',label:'Şirket Adı',ph:'Şirketiniz' },
-                { key:'product_description',label:'Ürün / Hizmet',ph:'Ne sattığınızı açıklayın' },
-                { key:'transfer_number',label:'Transfer Numarası',ph:'İnsan temsilci no' },
+                { key:'agent_name',label: t('Temsilci Adı','Temsilci Adı'),ph:'Ahmet' },
+                { key:'company_name',label: t('Şirket Adı','Şirket Adı'),ph:'Şirketiniz' },
+                { key:'product_description',label: t('Ürün / Hizmet','Ürün / Hizmet'),ph:'Ne sattığınızı açıklayın' },
+                { key:'transfer_number',label: t('Transfer Numarası','Transfer Numarası'),ph:'İnsan temsilci no' },
               ].map(({ key, label, ph }) => (
                 <div key={key}>
                   <label className="text-xs text-slate-500 mb-1.5 block font-semibold uppercase tracking-wider">{label}</label>

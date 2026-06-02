@@ -144,7 +144,7 @@ export default function LoyaltyPage() {
             </div>
           </div>
           <div style={{ marginLeft:'auto', display:'flex', flexDirection:'column', gap:12 }}>
-            {[{label:'Ort. Skor',value:avgScore,color:'#10b981'},{label:'Sağlıklı',value:healthy,color:'#34d399'},{label:'Kritik',value:atRisk,color:'#ef4444'}].map(m => (
+            {[{label:'Ort. Skor',value:avgScore,color:'#10b981'},{label: t('Sağlıklı','Sağlıklı'),value:healthy,color:'#34d399'},{label:'Kritik',value:atRisk,color:'#ef4444'}].map(m => (
               <div key={m.label} style={{ textAlign:'center' }}>
                 <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>
                 <p style={{ color:'#475569', fontSize:10, margin:0 }}>{m.label}</p>

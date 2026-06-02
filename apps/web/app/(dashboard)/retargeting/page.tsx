@@ -98,9 +98,9 @@ export default function RetargetingPage() {
       {stats && (
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: 'Bu Hafta Gönderilen', value: stats.total, color: 'text-purple-400' },
-            { label: 'Değer Odaklı', value: stats.byStrategy?.['değer_odaklı'] || 0, color: 'text-blue-400' },
-            { label: 'Merak Uyandırıcı', value: stats.byStrategy?.['merak_uyandırıcı'] || 0, color: 'text-pink-400' },
+            { label: t('Bu Hafta Gönderilen','Bu Hafta Gönderilen'), value: stats.total, color: 'text-purple-400' },
+            { label: t('Değer Odaklı','Değer Odaklı'), value: stats.byStrategy?.['değer_odaklı'] || 0, color: 'text-blue-400' },
+            { label: t('Merak Uyandırıcı','Merak Uyandırıcı'), value: stats.byStrategy?.['merak_uyandırıcı'] || 0, color: 'text-pink-400' },
             { label: 'Bekleyen Lead', value: leads.length, color: 'text-yellow-400' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
@@ -118,10 +118,10 @@ export default function RetargetingPage() {
         </h2>
         <div className="grid grid-cols-4 gap-3 text-center text-xs">
           {[
-            { icon: '🎯', title: '3+ Gün Cevap Yok', desc: 'Lead tespit edilir' },
-            { icon: '🧠', title: 'AI Analiz', desc: 'Davranış + geçmiş incelenir' },
-            { icon: '✍️', title: 'Strateji Üretir', desc: 'Yeni mesaj + en iyi kanal' },
-            { icon: '📱', title: 'Otomatik Gönder', desc: 'Doğru saatte iletilir' },
+            { icon: '🎯', title: t('3+ Gün Cevap Yok','3+ Gün Cevap Yok'), desc: 'Lead tespit edilir' },
+            { icon: '🧠', title: 'AI Analiz', desc: t('Davranış + geçmiş incelenir','Davranış + geçmiş incelenir') },
+            { icon: '✍️', title: t('Strateji Üretir','Strateji Üretir'), desc: 'Yeni mesaj + en iyi kanal' },
+            { icon: '📱', title: t('Otomatik Gönder','Otomatik Gönder'), desc: t('Doğru saatte iletilir','Doğru saatte iletilir') },
           ].map(({ icon, title, desc }) => (
             <div key={title} className="bg-slate-900/50 rounded-lg p-3">
               <div className="text-2xl mb-1">{icon}</div>

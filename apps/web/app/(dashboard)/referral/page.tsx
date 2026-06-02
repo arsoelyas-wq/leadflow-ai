@@ -129,7 +129,7 @@ export default function ReferralPage() {
             <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Referral Loop</h1>
             <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('referral.kazanilan_musterilerden_o', 'Kazanılan müşterilerden otomatik referans kampanyası')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
-              {[{label:'Gönderilen',value:stats?.sent||0,color:'#06b6d4'},{label:'Referans',value:stats?.referralsReceived||0,color:'#d97706'},{label:'Kazanılan',value:stats?.referralsWon||0,color:'#10b981'}].map(m => (
+              {[{label: t('Gönderilen','Gönderilen'),value:stats?.sent||0,color:'#06b6d4'},{label:'Referans',value:stats?.referralsReceived||0,color:'#d97706'},{label: t('Kazanılan','Kazanılan'),value:stats?.referralsWon||0,color:'#10b981'}].map(m => (
                 <div key={m.label} style={{ textAlign:'center' }}>
                   <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>
                   <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.label}</p>
@@ -152,7 +152,7 @@ export default function ReferralPage() {
 
       {/* TABS */}
       <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>
-        {[{id:'main',label:'⚙️ Ayarlar'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'rewards',label:'🎁 Ödüller'}].map(t => (
+        {[{id:'main',label:'⚙️ Ayarlar'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'rewards',label: t('🎁 Ödüller','🎁 Ödüller')}].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#78350f,#d97706)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(217,119,6,0.3)':'none' }}>
             {t.label}
@@ -193,9 +193,9 @@ export default function ReferralPage() {
             <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
               <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 Performans</h3>
               {[
-                { label:'Referans Dönüşüm', value:`%${stats?.referralsReceived&&stats?.sent?Math.round((stats.referralsReceived/stats.sent)*100):0}`, color:'#d97706' },
-                { label:'Normal Dönüşüm', value:'%22', color:'#94a3b8' },
-                { label:'Kazanılan Referanslar', value:stats?.referralsWon||0, color:'#10b981' },
+                { label: t('Referans Dönüşüm','Referans Dönüşüm'), value:`%${stats?.referralsReceived&&stats?.sent?Math.round((stats.referralsReceived/stats.sent)*100):0}`, color:'#d97706' },
+                { label: t('Normal Dönüşüm','Normal Dönüşüm'), value:'%22', color:'#94a3b8' },
+                { label: t('Kazanılan Referanslar','Kazanılan Referanslar'), value:stats?.referralsWon||0, color:'#10b981' },
               ].map(m => (
                 <div key={m.label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
                   <span style={{ color:'#94a3b8', fontSize:12 }}>{m.label}</span>

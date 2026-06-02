@@ -247,7 +247,7 @@ export default function PlatformsPage() {
         ) : (
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
             {globalPlatforms.map(p => {
-              const tm = TYPE_META[p.type] || { label:'Diğer', color:'#64748b' }
+              const tm = TYPE_META[p.type] || { label: t('Diğer','Diğer'), color:'#64748b' }
               return (
                 <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', background:'rgba(16,185,129,0.05)', border:'1px solid rgba(16,185,129,0.1)', borderRadius:11 }}>
                   <div style={{ width:8, height:8, borderRadius:'50%', background:'#10b981', flexShrink:0, boxShadow:'0 0 6px #10b98166' }}/>
@@ -287,7 +287,7 @@ export default function PlatformsPage() {
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {localPlatforms.map(p => {
-              const tm = TYPE_META[p.type] || { label:'Diğer', color:'#64748b' }
+              const tm = TYPE_META[p.type] || { label: t('Diğer','Diğer'), color:'#64748b' }
               const isSaving = saving === p.id
               const isOk    = savedOk === p.id
               return (
@@ -332,7 +332,7 @@ export default function PlatformsPage() {
           {[
             { label:'Toplam Platform', value:platforms.length, color:'#94a3b8' },
             { label:'Aktif Platform',  value:platforms.filter(p=>p.enabled).length, color:'#10b981' },
-            { label:'Kapalı Platform', value:platforms.filter(p=>!p.enabled).length, color:'#f59e0b' },
+            { label: t('Kapalı Platform','Kapalı Platform'), value:platforms.filter(p=>!p.enabled).length, color:'#f59e0b' },
           ].map(m => (
             <div key={m.label} style={{ ...card, padding:'14px 18px', textAlign:'center' }}>
               <p style={{ color:m.color, fontSize:22, fontWeight:800, margin:0 }}>{m.value}</p>

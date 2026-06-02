@@ -96,10 +96,10 @@ export default function QualityV2Page() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[
             { label: 'Ortalama Skor', value: `${distribution.avgScore}/100`, color: 'text-white', bg: 'bg-slate-800/50' },
-            { label: 'A Sınıfı', value: distribution.distribution.A, color: 'text-emerald-400', bg: 'bg-emerald-500/5 border-emerald-500/20' },
-            { label: 'B Sınıfı', value: distribution.distribution.B, color: 'text-blue-400', bg: 'bg-blue-500/5 border-blue-500/20' },
-            { label: 'C Sınıfı', value: distribution.distribution.C, color: 'text-yellow-400', bg: 'bg-yellow-500/5 border-yellow-500/20' },
-            { label: 'Yüksek Öncelik', value: distribution.priorities.yuksek, color: 'text-red-400', bg: 'bg-red-500/5 border-red-500/20' },
+            { label: t('A Sınıfı','A Sınıfı'), value: distribution.distribution.A, color: 'text-emerald-400', bg: 'bg-emerald-500/5 border-emerald-500/20' },
+            { label: t('B Sınıfı','B Sınıfı'), value: distribution.distribution.B, color: 'text-blue-400', bg: 'bg-blue-500/5 border-blue-500/20' },
+            { label: t('C Sınıfı','C Sınıfı'), value: distribution.distribution.C, color: 'text-yellow-400', bg: 'bg-yellow-500/5 border-yellow-500/20' },
+            { label: t('Yüksek Öncelik','Yüksek Öncelik'), value: distribution.priorities.yuksek, color: 'text-red-400', bg: 'bg-red-500/5 border-red-500/20' },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className={`${bg} border border-slate-700 rounded-xl p-4 text-center`}>
               <p className={`text-2xl font-bold ${color}`}>{value}</p>

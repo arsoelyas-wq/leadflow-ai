@@ -285,11 +285,11 @@ export default function AgentPage() {
       {profile && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
-            { label: 'Lead İşlendi', value: profile.leads_processed, icon: User, color: 'text-blue-400' },
-            { label: 'Mesaj Gönderildi', value: profile.messages_sent, icon: Send, color: 'text-emerald-400' },
-            { label: 'Yanıt Alındı', value: profile.replies_received, icon: MessageCircle, color: 'text-violet-400' },
-            { label: 'Teklif Gönderildi', value: profile.proposals_sent, icon: BarChart3, color: 'text-amber-400' },
-            { label: 'Devralınan', value: profile.deals_escalated, icon: AlertTriangle, color: 'text-orange-400' },
+            { label: t('Lead İşlendi','Lead İşlendi'), value: profile.leads_processed, icon: User, color: 'text-blue-400' },
+            { label: t('Mesaj Gönderildi','Mesaj Gönderildi'), value: profile.messages_sent, icon: Send, color: 'text-emerald-400' },
+            { label: t('Yanıt Alındı','Yanıt Alındı'), value: profile.replies_received, icon: MessageCircle, color: 'text-violet-400' },
+            { label: t('Teklif Gönderildi','Teklif Gönderildi'), value: profile.proposals_sent, icon: BarChart3, color: 'text-amber-400' },
+            { label: t('Devralınan','Devralınan'), value: profile.deals_escalated, icon: AlertTriangle, color: 'text-orange-400' },
           ].map(s => (
             <div key={s.label} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex items-center gap-3">
               <s.icon className={`w-5 h-5 ${s.color} shrink-0`} />
@@ -306,9 +306,9 @@ export default function AgentPage() {
       <div className="flex gap-1 bg-slate-800/60 p-1 rounded-xl border border-slate-700/50 w-fit">
         {([
           { key: 'setup', label: 'Kurulum', icon: Settings },
-          { key: 'conversations', label: 'Konuşmalar', icon: MessageCircle, badge: convStats.active },
+          { key: 'conversations', label: t('Konuşmalar','Konuşmalar'), icon: MessageCircle, badge: convStats.active },
           { key: 'activity', label: 'Aktivite', icon: Activity },
-          { key: 'escalations', label: 'Devralınacaklar', icon: AlertTriangle, badge: escalations.length, badgeColor: 'bg-orange-500' },
+          { key: 'escalations', label: t('Devralınacaklar','Devralınacaklar'), icon: AlertTriangle, badge: escalations.length, badgeColor: 'bg-orange-500' },
         ] as const).map(t => (
           <button
             key={t.key}
@@ -420,10 +420,10 @@ export default function AgentPage() {
 
             <div className="grid md:grid-cols-2 gap-4">
               {([
-                { key: 'auto_reply_enabled', label: 'Otomatik Yanıt', desc: 'Gelen mesajlara AI otomatik cevap verir' },
-                { key: 'auto_proposal_enabled', label: 'Otomatik Teklif', desc: 'Fiyat sorusunda otomatik teklif şablonu gönderir' },
-                { key: 'voice_call_enabled', label: 'AI Sesli Arama', desc: 'Hazır lead için otomatik sesli arama başlatır' },
-                { key: 'video_msg_enabled', label: 'Video Mesaj', desc: 'Kişiselleştirilmiş AI video mesajı gönderir' },
+                { key: 'auto_reply_enabled', label: t('Otomatik Yanıt','Otomatik Yanıt'), desc: 'Gelen mesajlara AI otomatik cevap verir' },
+                { key: 'auto_proposal_enabled', label: 'Otomatik Teklif', desc: t('Fiyat sorusunda otomatik teklif şablonu gönderir','Fiyat sorusunda otomatik teklif şablonu gönderir') },
+                { key: 'voice_call_enabled', label: 'AI Sesli Arama', desc: t('Hazır lead için otomatik sesli arama başlatır','Hazır lead için otomatik sesli arama başlatır') },
+                { key: 'video_msg_enabled', label: 'Video Mesaj', desc: t('Kişiselleştirilmiş AI video mesajı gönderir','Kişiselleştirilmiş AI video mesajı gönderir') },
               ] as const).map(opt => (
                 <div key={opt.key} className="flex items-start gap-3 p-3 bg-slate-900/40 rounded-xl border border-slate-700/30">
                   <button

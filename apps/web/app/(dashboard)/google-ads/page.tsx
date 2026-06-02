@@ -789,10 +789,10 @@ export default function GoogleAdsPage() {
                   </div>
                   <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl divide-y divide-slate-700/40">
                     {[
-                      { label: 'Kampanya adı', value: draft?.campaign_name || 'AI Kampanya', ok: true },
+                      { label: t('Kampanya adı','Kampanya adı'), value: draft?.campaign_name || 'AI Kampanya', ok: true },
                       { label: 'Hedef', value: GOALS.find(g => g.id === goal)?.label || goal, ok: true },
-                      { label: 'Günlük bütçe', value: `₺${budget}`, ok: Number(budget) >= 10 },
-                      { label: 'Google hesabı', value: connected ? 'Bağlı' : 'Bağlı değil', ok: connected },
+                      { label: t('Günlük bütçe','Günlük bütçe'), value: `₺${budget}`, ok: Number(budget) >= 10 },
+                      { label: t('Google hesabı','Google hesabı'), value: connected ? 'Bağlı' : 'Bağlı değil', ok: connected },
                     ].map((item, i) => (
                       <div key={i} className="flex items-center justify-between px-4 py-2.5">
                         <span className="text-xs text-slate-400">{item.label}</span>

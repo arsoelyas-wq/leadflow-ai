@@ -439,8 +439,8 @@ export default function ReplicaPage() {
               <label className="block text-sm font-medium text-slate-300 mb-3">Video Motoru</label>
               <div className="grid grid-cols-2 gap-3">
                 {([
-                  { value: 'latentsync', label: 'LatentSync', sub: 'Hızlı · $0.09/video · Çok yüksek kalite', color: 'cyan', icon: Cpu },
-                  { value: 'gaussian',   label: '3D Gaussian', sub: 'Ultra yüksek · Kendi altyapın gerekli', color: 'purple', icon: Sparkles },
+                  { value: 'latentsync', label: 'LatentSync', sub: t('Hızlı · $0.09/video · Çok yüksek kalite','Hızlı · $0.09/video · Çok yüksek kalite'), color: 'cyan', icon: Cpu },
+                  { value: 'gaussian',   label: '3D Gaussian', sub: t('Ultra yüksek · Kendi altyapın gerekli','Ultra yüksek · Kendi altyapın gerekli'), color: 'purple', icon: Sparkles },
                 ] as const).map(opt => (
                   <button
                     key={opt.value}

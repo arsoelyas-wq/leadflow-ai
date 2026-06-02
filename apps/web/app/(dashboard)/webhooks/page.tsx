@@ -272,8 +272,8 @@ export default function WebhooksPage() {
         <h2 className="text-white font-semibold mb-4">{t('webhooks.populer_entegrasyonlar', 'Popüler Entegrasyonlar')}</h2>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { name: 'Zapier', desc: '5000+ app ile bağlan', url: 'zapier.com', color: 'text-orange-400' },
-            { name: 'Make (Integromat)', desc: 'Gelişmiş otomasyon', url: 'make.com', color: 'text-purple-400' },
+            { name: 'Zapier', desc: t('5000+ app ile bağlan','5000+ app ile bağlan'), url: 'zapier.com', color: 'text-orange-400' },
+            { name: 'Make (Integromat)', desc: t('Gelişmiş otomasyon','Gelişmiş otomasyon'), url: 'make.com', color: 'text-purple-400' },
             { name: 'n8n', desc: 'Self-hosted otomasyon', url: 'n8n.io', color: 'text-green-400' },
           ].map(({ name, desc, url, color }) => (
             <div key={name} className="p-3 bg-slate-900/50 border border-slate-700 rounded-xl">

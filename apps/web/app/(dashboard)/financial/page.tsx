@@ -160,7 +160,7 @@ export default function FinancialPage() {
         <>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
             {[
-              { label:'30 Gün Lead', value:data?.summary?.last30Leads||0, color:'#10b981', icon:'👥' },
+              { label: t('30 Gün Lead','30 Gün Lead'), value:data?.summary?.last30Leads||0, color:'#10b981', icon:'👥' },
               { label:'Churn Riski', value:churn.total||0, color:'#ef4444', icon:'⚠️' },
               { label:'Kredi Verimi', value:`%${data?.creditEfficiency||0}`, color:'#8b5cf6', icon:'⚡' },
               { label:'Deal Maliyeti', value:`${data?.costPerDeal||0} kr`, color:'#f59e0b', icon:'💰' },

@@ -638,7 +638,7 @@ export default function LeadFinderPage() {
               {[
                 { label: 'Telefon zorunlu', state: requirePhone, set: setRequirePhone, icon: '📞' },
                 { label: 'Web sitesi zorunlu', state: requireWebsite, set: setRequireWebsite, icon: '🌐' },
-                { label: 'Email keşfet', state: enrichEmail, set: setEnrichEmail, icon: '📧', slow: true },
+                { label: t('Email keşfet','Email keşfet'), state: enrichEmail, set: setEnrichEmail, icon: '📧', slow: true },
               ].map(({ label, state, set, icon, slow }) => (
                 <button
                   key={label}

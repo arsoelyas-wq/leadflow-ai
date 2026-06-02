@@ -185,7 +185,7 @@ export default function CampaignDetailPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {
-            label: 'Gönderilen',
+            label: t('Gönderilen','Gönderilen'),
             value: campaign.totalSent,
             icon: Send,
             color: 'text-blue-400',
@@ -201,7 +201,7 @@ export default function CampaignDetailPage() {
             sub: `%${replyRate} oran`
           },
           {
-            label: 'İletim Oranı',
+            label: t('İletim Oranı','İletim Oranı'),
             value: `%${deliveryRate}`,
             icon: CheckCircle,
             color: 'text-purple-400',
@@ -209,7 +209,7 @@ export default function CampaignDetailPage() {
             sub: `${failed.length} başarısız`
           },
           {
-            label: 'Lead Sayısı',
+            label: t('Lead Sayısı','Lead Sayısı'),
             value: totalLeads,
             icon: Users,
             color: 'text-amber-400',
@@ -244,8 +244,8 @@ export default function CampaignDetailPage() {
         </div>
         <div className="space-y-3">
           {[
-            { label: 'Gönderildi', value: campaign.totalSent, max: progressMax, color: 'bg-blue-500' },
-            { label: 'Cevap Aldı', value: campaign.totalReplied, max: progressMax, color: 'bg-emerald-500' },
+            { label: t('Gönderildi','Gönderildi'), value: campaign.totalSent, max: progressMax, color: 'bg-blue-500' },
+            { label: t('Cevap Aldı','Cevap Aldı'), value: campaign.totalReplied, max: progressMax, color: 'bg-emerald-500' },
           ].map((bar, i) => (
             <div key={i}>
               <div className="flex justify-between text-sm mb-1.5">
@@ -333,7 +333,7 @@ export default function CampaignDetailPage() {
         {[
           { label: 'Giden Mesaj', value: outbound.length, icon: Send, color: 'text-blue-400' },
           { label: 'Gelen Cevap', value: inbound.length, icon: MessageSquare, color: 'text-emerald-400' },
-          { label: 'Başarısız', value: failed.length, icon: XCircle, color: 'text-red-400' },
+          { label: t('Başarısız','Başarısız'), value: failed.length, icon: XCircle, color: 'text-red-400' },
         ].map((item, i) => {
           const Icon = item.icon
           return (

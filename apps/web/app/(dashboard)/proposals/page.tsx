@@ -266,10 +266,10 @@ export default function ProposalsPage() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Pipeline Değeri', value: `₺${(stats.totalPipeline || 0).toLocaleString()}`, color: 'text-white', sub: `${stats.total} teklif` },
+            { label: t('Pipeline Değeri','Pipeline Değeri'), value: `₺${(stats.totalPipeline || 0).toLocaleString()}`, color: 'text-white', sub: `${stats.total} teklif` },
             { label: 'Kabul Edilen', value: `₺${(stats.totalValue || 0).toLocaleString()}`, color: 'text-emerald-400', sub: `${stats.accepted} teklif` },
-            { label: 'Görüntülenme', value: stats.totalViews || 0, color: 'text-blue-400', sub: 'toplam açılma' },
-            { label: 'Dönüşüm', value: stats.total ? `%${Math.round((stats.accepted / stats.total) * 100)}` : '%0', color: 'text-violet-400', sub: `${stats.sent} gönderildi` },
+            { label: t('Görüntülenme','Görüntülenme'), value: stats.totalViews || 0, color: 'text-blue-400', sub: t('toplam açılma','toplam açılma') },
+            { label: t('Dönüşüm','Dönüşüm'), value: stats.total ? `%${Math.round((stats.accepted / stats.total) * 100)}` : '%0', color: 'text-violet-400', sub: `${stats.sent} gönderildi` },
           ].map(s => (
             <div key={s.label} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
               <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
@@ -285,7 +285,7 @@ export default function ProposalsPage() {
         {[
           { id: 'list',      label: `Teklifler (${proposals.length})` },
           { id: 'create',    label: 'Yeni Teklif' },
-          { id: 'negotiate', label: 'Pazarlık AI' },
+          { id: 'negotiate', label: t('Pazarlık AI','Pazarlık AI') },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === t.id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}>

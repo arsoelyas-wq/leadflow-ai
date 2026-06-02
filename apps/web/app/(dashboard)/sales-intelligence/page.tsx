@@ -246,8 +246,8 @@ export default function SalesIntelligencePage() {
                 {[
                   { label: 'Toplam Analiz', value: dashboard.total_analyses, icon: BarChart2, color: 'purple' },
                   { label: 'Ortalama Skor', value: dashboard.avg_score, icon: Star, color: dashboard.avg_score >= 70 ? 'emerald' : dashboard.avg_score >= 50 ? 'amber' : 'red' },
-                  { label: 'Mükemmel (%80+)', value: dashboard.score_distribution?.excellent || 0, icon: Award, color: 'emerald' },
-                  { label: 'Zayıf (<%40)', value: dashboard.score_distribution?.poor || 0, icon: AlertTriangle, color: 'red' },
+                  { label: t('Mükemmel (%80+)','Mükemmel (%80+)'), value: dashboard.score_distribution?.excellent || 0, icon: Award, color: 'emerald' },
+                  { label: t('Zayıf (<%40)','Zayıf (<%40)'), value: dashboard.score_distribution?.poor || 0, icon: AlertTriangle, color: 'red' },
                 ].map(({ label, value, icon: Icon, color }) => (
                   <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
                     <div className={`w-10 h-10 rounded-xl bg-${color}-500/10 flex items-center justify-center mb-3`}>
@@ -619,10 +619,10 @@ export default function SalesIntelligencePage() {
           {/* Özet */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
-              { label: 'Konuşma', value: agentReport.total_conversations },
+              { label: t('Konuşma','Konuşma'), value: agentReport.total_conversations },
               { label: 'Mesaj', value: agentReport.total_messages },
               { label: 'Genel Skor', value: agentReport.scores?.overall },
-              { label: 'Satış Tekniği', value: agentReport.scores?.sales_technique },
+              { label: t('Satış Tekniği','Satış Tekniği'), value: agentReport.scores?.sales_technique },
               { label: 'Empati', value: agentReport.scores?.empathy },
             ].map(({ label, value }) => (
               <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">

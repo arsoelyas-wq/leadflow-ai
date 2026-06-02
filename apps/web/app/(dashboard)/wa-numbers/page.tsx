@@ -276,10 +276,10 @@ export default function WANumbersPage() {
         <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>🛡️ Anti-Ban Stratejisi</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
           {[
-            { icon: '📊', text: 'Numara başına günde max 100-150 mesaj gönderin', color: '#06b6d4' },
-            { icon: '⏱️', text: 'Mesajlar arasında 10-30 saniye bekleme aktif', color: '#10b981' },
-            { icon: '🔄', text: 'Sistem otomatik round-robin rotasyon yapıyor', color: '#8b5cf6' },
-            { icon: '🎯', text: 'Kişiselleştirilmiş mesajlar toplu mesajdan 3x güvenli', color: '#f59e0b' },
+            { icon: '📊', text: t('Numara başına günde max 100-150 mesaj gönderin','Numara başına günde max 100-150 mesaj gönderin'), color: '#06b6d4' },
+            { icon: '⏱️', text: t('Mesajlar arasında 10-30 saniye bekleme aktif','Mesajlar arasında 10-30 saniye bekleme aktif'), color: '#10b981' },
+            { icon: '🔄', text: t('Sistem otomatik round-robin rotasyon yapıyor','Sistem otomatik round-robin rotasyon yapıyor'), color: '#8b5cf6' },
+            { icon: '🎯', text: t('Kişiselleştirilmiş mesajlar toplu mesajdan 3x güvenli','Kişiselleştirilmiş mesajlar toplu mesajdan 3x güvenli'), color: '#f59e0b' },
           ].map(tip => (
             <div key={tip.text} style={{ display: 'flex', gap: 10, padding: '10px 14px', background: `${tip.color}08`, border: `1px solid ${tip.color}18`, borderRadius: 10 }}>
               <span style={{ fontSize: 16 }}>{tip.icon}</span>

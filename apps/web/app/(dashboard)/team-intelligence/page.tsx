@@ -197,7 +197,7 @@ export default function TeamIntelligencePage() {
               {/* Stat kartlar */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: 'Ekip Üyesi', value: dashboard.total_members, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+                  { label: t('Ekip Üyesi','Ekip Üyesi'), value: dashboard.total_members, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                   { label: 'Toplam Analiz', value: dashboard.total_analyses, icon: BarChart2, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                   { label: 'WhatsApp', value: dashboard.whatsapp_analyses, icon: MessageSquare, color: 'text-teal-400', bg: 'bg-teal-500/10' },
                   { label: 'Telefon', value: dashboard.phone_analyses, icon: PhoneCall, color: 'text-amber-400', bg: 'bg-amber-500/10' },
@@ -655,7 +655,7 @@ export default function TeamIntelligencePage() {
               { label: 'WhatsApp', value: memberReport.whatsapp_count },
               { label: 'Telefon', value: memberReport.phone_count },
               { label: 'Genel Skor', value: memberReport.avg_score || '—' },
-              { label: 'Satış Tekniği', value: memberReport.scores?.sales_technique || '—' },
+              { label: t('Satış Tekniği','Satış Tekniği'), value: memberReport.scores?.sales_technique || '—' },
             ].map(({ label, value }) => (
               <div key={label} className="bg-white/3 border border-white/8 rounded-2xl p-4 text-center">
                 <div className="text-2xl font-bold">{value}</div>

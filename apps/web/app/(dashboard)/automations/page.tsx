@@ -310,7 +310,7 @@ export default function AutomationsPage() {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>
-        {[{id:'rules',label:'🤖 Kurallar'},{id:'logs',label:'📋 Çalışma Logları'},{id:'integrations',label:'🔗 Entegrasyonlar'}].map(t => (
+        {[{id:'rules',label:'🤖 Kurallar'},{id:'logs',label: t('📋 Çalışma Logları','📋 Çalışma Logları')},{id:'integrations',label:'🔗 Entegrasyonlar'}].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#78350f,#f59e0b)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(245,158,11,0.3)':'none' }}>
             {t.label}

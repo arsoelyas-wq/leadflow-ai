@@ -281,9 +281,9 @@ export default function DebtCollectorPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[
                 { label: 'Toplam Fatura', value: enriched.length, color: '#94a3b8' },
-                { label: 'Gecikmiş', value: overdueInvoices.length, color: '#ef4444' },
-                { label: 'Ödendi', value: paidInvoices.length, color: '#10b981' },
-                { label: 'Toplam Borç', value: `₺${totalOverdue.toLocaleString()}`, color: '#f97316' }
+                { label: t('Gecikmiş','Gecikmiş'), value: overdueInvoices.length, color: '#ef4444' },
+                { label: t('Ödendi','Ödendi'), value: paidInvoices.length, color: '#10b981' },
+                { label: t('Toplam Borç','Toplam Borç'), value: `₺${totalOverdue.toLocaleString()}`, color: '#f97316' }
               ].map(m => (
                 <div key={m.label} style={{ textAlign: 'center' }}>
                   <p style={{ color: m.color, fontSize: 18, fontWeight: 800, margin: 0 }}>{m.value}</p>
@@ -315,7 +315,7 @@ export default function DebtCollectorPage() {
       {/* Aging Buckets */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 20 }}>
         {[
-          { key: 'all', label: 'Tümü', color: '#8b5cf6', count: enriched.filter(i => i.status !== 'paid').length, amount: enriched.filter(i => i.status !== 'paid').reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) },
+          { key: 'all', label: t('Tümü','Tümü'), color: '#8b5cf6', count: enriched.filter(i => i.status !== 'paid').length, amount: enriched.filter(i => i.status !== 'paid').reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) },
           ...BUCKETS.map(b => ({ ...b, count: bucketCount(b.key), amount: bucketAmount(b.key) }))
         ].map(b => (
           <button key={b.key} onClick={() => setActiveBucket(b.key)}
@@ -367,7 +367,7 @@ export default function DebtCollectorPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {filtered.filter(i => i.status !== 'paid').slice(0, 30).map(inv => {
-                const bucketDef = BUCKETS.find(b => b.key === inv.bucket) || { color: '#10b981', label: 'Güncel' }
+                const bucketDef = BUCKETS.find(b => b.key === inv.bucket) || { color: '#10b981', label: t('Güncel','Güncel') }
                 const isSel = selected.includes(inv.id)
                 return (
                   <div key={inv.id}
@@ -441,12 +441,12 @@ export default function DebtCollectorPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 18, padding: 22 }}>
           <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>{t('debt_collector.otomatik_eskalasyon_zaman', '⚡ Otomatik Eskalasyon Zaman Çizelgesi')}</h3>
           {[
-            { day: 0, label: 'Fatura kesildi', color: '#10b981', desc: 'Otomatik WhatsApp bildirimi gönderildi' },
-            { day: 7, label: 'Nazik hatırlatma', color: '#06b6d4', desc: 'Vade yaklaşıyor mesajı, ödeme linki eklendi' },
-            { day: 15, label: 'Vade geldi', color: '#f59e0b', desc: 'Ödeme yapılmadı, acil bildirim' },
-            { day: 30, label: '1. Uyarı', color: '#f97316', desc: 'Gecikme faizi hesaplandı (%9.75), resmi uyarı' },
-            { day: 60, label: '2. Uyarı', color: '#ef4444', desc: 'Hesap askıya alma uyarısı gönderildi' },
-            { day: 90, label: 'Yasal süreç', color: '#7f1d1d', desc: 'Avukata iletildi, tahsilat ajansı devreye giriyor' },
+            { day: 0, label: 'Fatura kesildi', color: '#10b981', desc: t('Otomatik WhatsApp bildirimi gönderildi','Otomatik WhatsApp bildirimi gönderildi') },
+            { day: 7, label: t('Nazik hatırlatma','Nazik hatırlatma'), color: '#06b6d4', desc: t('Vade yaklaşıyor mesajı, ödeme linki eklendi','Vade yaklaşıyor mesajı, ödeme linki eklendi') },
+            { day: 15, label: 'Vade geldi', color: '#f59e0b', desc: t('Ödeme yapılmadı, acil bildirim','Ödeme yapılmadı, acil bildirim') },
+            { day: 30, label: t('1. Uyarı','1. Uyarı'), color: '#f97316', desc: t('Gecikme faizi hesaplandı (%9.75), resmi uyarı','Gecikme faizi hesaplandı (%9.75), resmi uyarı') },
+            { day: 60, label: t('2. Uyarı','2. Uyarı'), color: '#ef4444', desc: t('Hesap askıya alma uyarısı gönderildi','Hesap askıya alma uyarısı gönderildi') },
+            { day: 90, label: t('Yasal süreç','Yasal süreç'), color: '#7f1d1d', desc: t('Avukata iletildi, tahsilat ajansı devreye giriyor','Avukata iletildi, tahsilat ajansı devreye giriyor') },
           ].map((step, i, arr) => (
             <div key={i} style={{ display: 'flex', gap: 16, marginBottom: i < arr.length - 1 ? 0 : 0, position: 'relative' }}>
               {/* Timeline line */}
@@ -469,10 +469,10 @@ export default function DebtCollectorPage() {
         <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 18, padding: 22 }}>
           <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>{t('debt_collector.uyum_ve_yasal_guvence', '🛡️ Uyum ve Yasal Güvence')}</h3>
           {[
-            { label: 'KVKK Uyumu', status: 'ok', desc: 'Tüm hatırlatmalar KVKK kapsamında gönderiliyor' },
-            { label: 'Faiz Hesabı', status: 'ok', desc: 'Yasal gecikme faizi otomatik hesaplanıyor (%9.75 yıllık)' },
-            { label: 'AI Tahsilat Mesajı', status: 'ok', desc: 'Claude AI ile kişiselleştirilmiş, nazikten kararamlıya tonlama' },
-            { label: 'Resmi Uyarı Mektubu', status: 'info', desc: '90+ gün gecikmeli faturalar için PDF mektup hazırlanabilir' },
+            { label: 'KVKK Uyumu', status: 'ok', desc: t('Tüm hatırlatmalar KVKK kapsamında gönderiliyor','Tüm hatırlatmalar KVKK kapsamında gönderiliyor') },
+            { label: t('Faiz Hesabı','Faiz Hesabı'), status: 'ok', desc: t('Yasal gecikme faizi otomatik hesaplanıyor (%9.75 yıllık)','Yasal gecikme faizi otomatik hesaplanıyor (%9.75 yıllık)') },
+            { label: t('AI Tahsilat Mesajı','AI Tahsilat Mesajı'), status: 'ok', desc: t('Claude AI ile kişiselleştirilmiş, nazikten kararamlıya tonlama','Claude AI ile kişiselleştirilmiş, nazikten kararamlıya tonlama') },
+            { label: t('Resmi Uyarı Mektubu','Resmi Uyarı Mektubu'), status: 'info', desc: t('90+ gün gecikmeli faturalar için PDF mektup hazırlanabilir','90+ gün gecikmeli faturalar için PDF mektup hazırlanabilir') },
             { label: 'Avukat Transferi', status: enriched.filter(i => i.daysOverdue >= 90).length > 0 ? 'warn' : 'ok', desc: `${enriched.filter(i => i.daysOverdue >= 90).length} fatura yasal eşikte (90+ gün), manuel onay gerekli` },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>

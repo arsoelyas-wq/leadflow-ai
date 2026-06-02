@@ -104,10 +104,10 @@ export default function TradeFairPage() {
         <div className="grid grid-cols-5 gap-3">
           {[
             {label:'Fuarlar',value:stats.totalFairs},
-            {label:'Katılımcılar',value:stats.totalExhibitors},
-            {label:'Ön Mesaj',value:stats.preSent},
-            {label:'Görüşme',value:stats.meetings},
-            {label:'Teşekkür',value:stats.postSent},
+            {label: t('Katılımcılar','Katılımcılar'),value:stats.totalExhibitors},
+            {label: t('Ön Mesaj','Ön Mesaj'),value:stats.preSent},
+            {label: t('Görüşme','Görüşme'),value:stats.meetings},
+            {label: t('Teşekkür','Teşekkür'),value:stats.postSent},
           ].map(({label,value})=>(
             <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-3 text-center">
               <p className="text-xl font-bold text-cyan-400">{value}</p>
@@ -123,11 +123,11 @@ export default function TradeFairPage() {
           <h2 className="text-white font-semibold">Yeni Fuar</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
-              {key:'name',label:'Fuar Adı *',placeholder:'IDEX 2025'},
-              {key:'country',label:'Ülke',placeholder:'Türkiye'},
-              {key:'city',label:'Şehir',placeholder:'İstanbul'},
-              {key:'sector',label:'Sektör',placeholder:'Mobilya'},
-              {key:'venue',label:'Mekan',placeholder:'TÜYAP'},
+              {key:'name',label: t('Fuar Adı *','Fuar Adı *'),placeholder:'IDEX 2025'},
+              {key:'country',label: t('Ülke','Ülke'),placeholder: t('Türkiye','Türkiye')},
+              {key:'city',label: t('Şehir','Şehir'),placeholder: t('İstanbul','İstanbul')},
+              {key:'sector',label: t('Sektör','Sektör'),placeholder:'Mobilya'},
+              {key:'venue',label:'Mekan',placeholder: t('TÜYAP','TÜYAP')},
               {key:'stand_no',label:'Stand No',placeholder:'A-123'},
             ].map(({key,label,placeholder})=>(
               <div key={key}>
@@ -138,8 +138,8 @@ export default function TradeFairPage() {
               </div>
             ))}
             {[
-              {key:'start_date',label:'Başlangıç Tarihi *'},
-              {key:'end_date',label:'Bitiş Tarihi'},
+              {key:'start_date',label: t('Başlangıç Tarihi *','Başlangıç Tarihi *')},
+              {key:'end_date',label: t('Bitiş Tarihi','Bitiş Tarihi')},
             ].map(({key,label})=>(
               <div key={key}>
                 <label className="text-slate-400 text-xs mb-1 block">{label}</label>

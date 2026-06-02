@@ -277,7 +277,7 @@ export default function CompetitorPage() {
     { label: 'Takip Edilen',  value: competitors.length,                                                  color: '#10b981', icon: '🎯' },
     { label: 'Taranan',       value: competitors.filter(c => c.last_scanned_at).length,                  color: '#06b6d4', icon: '📡' },
     { label: 'Bulunan Lead',  value: leads.length,                                                        color: '#8b5cf6', icon: '👥' },
-    { label: 'Aktif Ülke',    value: [...new Set(competitors.map(c => c.country || 'TR'))].length,       color: '#f59e0b', icon: '🌍' },
+    { label: t('Aktif Ülke','Aktif Ülke'),    value: [...new Set(competitors.map(c => c.country || 'TR'))].length,       color: '#f59e0b', icon: '🌍' },
   ]
 
   return (
@@ -339,7 +339,7 @@ export default function CompetitorPage() {
       <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 22, border: '1px solid rgba(255,255,255,0.05)' }}>
         {[
           { id: 'list',    label: `🎯 Rakip Listesi (${competitors.length})` },
-          { id: 'hijack',  label: '⚡ Hızlı Tarama' },
+          { id: 'hijack',  label: t('⚡ Hızlı Tarama','⚡ Hızlı Tarama') },
           { id: 'leads',   label: `👥 Bulunan Leadler (${leads.length})` },
           { id: 'analyze', label: '🔬 Rakip Analizi' },
         ].map(t => (
@@ -571,7 +571,7 @@ export default function CompetitorPage() {
                   {[
                     { label: 'Google Maps', value: analysis.channels?.googleMaps?.rating ? `⭐ ${analysis.channels.googleMaps.rating}` : '—' },
                     { label: 'Trustpilot', value: analysis.channels?.trustpilot?.rating ? `⭐ ${analysis.channels.trustpilot.rating}` : '—' },
-                    { label: 'Şikayetvar', value: analysis.channels?.sikayetvar?.complaintCount ? `${analysis.channels.sikayetvar.complaintCount} şikayet` : '—' },
+                    { label: t('Şikayetvar','Şikayetvar'), value: analysis.channels?.sikayetvar?.complaintCount ? `${analysis.channels.sikayetvar.complaintCount} şikayet` : '—' },
                   ].map(({ label, value }) => (
                     <div key={label} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
                       <p style={{ color: '#64748b', fontSize: 10, margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>{label}</p>
@@ -582,8 +582,8 @@ export default function CompetitorPage() {
                 {analysis.analysis && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     {([
-                      { label: '🔴 Zayıf Yönleri', items: analysis.analysis.weaknesses, color: '#ef4444' },
-                      { label: '🟢 Fırsatlar', items: analysis.analysis.opportunities, color: '#10b981' },
+                      { label: t('🔴 Zayıf Yönleri','🔴 Zayıf Yönleri'), items: analysis.analysis.weaknesses, color: '#ef4444' },
+                      { label: t('🟢 Fırsatlar','🟢 Fırsatlar'), items: analysis.analysis.opportunities, color: '#10b981' },
                     ] as {label:string;items:string[];color:string}[]).map(({ label, items, color }) => (
                       <div key={label} style={{ background: `${color}06`, border: `1px solid ${color}20`, borderRadius: 12, padding: 14 }}>
                         <p style={{ color, fontSize: 12, fontWeight: 700, margin: '0 0 8px' }}>{label}</p>

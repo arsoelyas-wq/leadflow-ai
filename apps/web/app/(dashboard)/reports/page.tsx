@@ -133,8 +133,8 @@ export default function ReportsPage() {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
             {[
               { label:'Yeni Lead', value:d.newLeads, color:'#8b5cf6', icon:'👥', trend:d.prevNewLeads?Math.round(((d.newLeads-d.prevNewLeads)/(d.prevNewLeads||1))*100):0 },
-              { label:'Kazanılan', value:d.wonLeads, color:'#10b981', icon:'🏆', trend:0 },
-              { label:'Dönüşüm', value:`%${d.conversionRate}`, color:'#06b6d4', icon:'🎯' },
+              { label: t('Kazanılan','Kazanılan'), value:d.wonLeads, color:'#10b981', icon:'🏆', trend:0 },
+              { label: t('Dönüşüm','Dönüşüm'), value:`%${d.conversionRate}`, color:'#06b6d4', icon:'🎯' },
               { label:'Gelir', value:fmtCurrency(d.totalRevenue||0), color:'#f59e0b', icon:'💰' },
             ].map(m => (
               <div key={m.label} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px' }}>

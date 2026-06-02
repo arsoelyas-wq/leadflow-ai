@@ -502,8 +502,8 @@ export default function PriceTrackerPage() {
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
           {[
             { label: 'Takip Edilen', value: stats.total, color: '#06b6d4', icon: '👁️' },
-            { label: 'Fiyat Düşüşü', value: stats.priceDrops, color: '#10b981', icon: '📉' },
-            { label: 'Fiyat Artışı', value: stats.priceRises, color: '#ef4444', icon: '📈' },
+            { label: t('Fiyat Düşüşü','Fiyat Düşüşü'), value: stats.priceDrops, color: '#10b981', icon: '📉' },
+            { label: t('Fiyat Artışı','Fiyat Artışı'), value: stats.priceRises, color: '#ef4444', icon: '📈' },
             { label: 'Aktif Alarm', value: trackers.filter(t => t.target_price).length, color: '#f59e0b', icon: '🎯' },
           ].map(({ label, value, color, icon }) => (
             <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>

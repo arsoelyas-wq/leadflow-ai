@@ -34,8 +34,8 @@ export default function HealthPage() {
       <div className="grid grid-cols-4 gap-4">
         {[
           { label: 'Ort. Skor', value: `${summary.avgScore || 0}/100`, color: 'text-white' },
-          { label: 'Sıcak Leadler', value: summary.hotLeads || 0, color: 'text-emerald-400' },
-          { label: 'Müşteriler', value: summary.customers || 0, color: 'text-blue-400' },
+          { label: t('Sıcak Leadler','Sıcak Leadler'), value: summary.hotLeads || 0, color: 'text-emerald-400' },
+          { label: t('Müşteriler','Müşteriler'), value: summary.customers || 0, color: 'text-blue-400' },
           { label: 'Churn Riski', value: summary.highRisk || 0, color: 'text-red-400' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">

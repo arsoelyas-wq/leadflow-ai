@@ -542,10 +542,10 @@ export default function VisualTrendPage() {
           {activeTab === 'report' && report && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
               {[
-                { label: '📊 Özet', content: report.summary, color: '#8b5cf6' },
-                { label: '🎯 Pazar Fırsatı', content: report.marketOpportunity, color: '#10b981' },
+                { label: t('📊 Özet','📊 Özet'), content: report.summary, color: '#8b5cf6' },
+                { label: t('🎯 Pazar Fırsatı','🎯 Pazar Fırsatı'), content: report.marketOpportunity, color: '#10b981' },
                 { label: '👥 Hedef Kitle', content: report.targetAudience, color: '#06b6d4' },
-                { label: '⏰ En İyi Paylaşım', content: report.bestPostingTime, color: '#f59e0b' },
+                { label: t('⏰ En İyi Paylaşım','⏰ En İyi Paylaşım'), content: report.bestPostingTime, color: '#f59e0b' },
               ].map(({ label, content, color }) => content ? (
                 <div key={label} style={{ background: `${color}06`, border: `1px solid ${color}20`, borderRadius: 16, padding: 18 }}>
                   <p style={{ color, fontSize: 11, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</p>

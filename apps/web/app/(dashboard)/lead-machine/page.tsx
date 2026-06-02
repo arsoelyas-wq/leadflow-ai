@@ -347,8 +347,8 @@ export default function LeadMachinePage() {
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-purple-500"/>
                 </div>
                 {[
-                  {key:'companyName',label:'Şirket Adı *',ph:'ABC Ltd.'},
-                  {key:'contactName',label:'Kişi Adı',ph:'Ahmet Bey'},
+                  {key:'companyName',label: t('Şirket Adı *','Şirket Adı *'),ph:'ABC Ltd.'},
+                  {key:'contactName',label: t('Kişi Adı','Kişi Adı'),ph:'Ahmet Bey'},
                   {key:'phone',label:'Telefon *',ph:'05001234567'},
                   {key:'email',label:'Email',ph:'info@abc.com'},
                 ].map(({key,label,ph})=>(

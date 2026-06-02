@@ -168,9 +168,9 @@ export default function EmailCampaignsPage() {
       {/* Tabs */}
       <div className="flex gap-2">
         {[
-          { key: 'send', label: '📧 Email Gönder' },
-          { key: 'settings', label: '⚙️ SMTP Ayarları' },
-          { key: 'campaigns', label: '📋 Geçmiş' },
+          { key: 'send', label: t('📧 Email Gönder','📧 Email Gönder') },
+          { key: 'settings', label: t('⚙️ SMTP Ayarları','⚙️ SMTP Ayarları') },
+          { key: 'campaigns', label: t('📋 Geçmiş','📋 Geçmiş') },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setActiveTab(key as any)}
             className={`px-4 py-2 text-sm rounded-xl border transition ${activeTab === key ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-700 text-slate-400 hover:text-white'}`}>

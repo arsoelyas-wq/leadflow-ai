@@ -248,10 +248,10 @@ export default function MicrositePage() {
   ]
 
   const STAT_CONFIG = [
-    { label: 'Toplam Katalog', key: 'total',      color: '#06b6d4', glow: 'rgba(6,182,212,0.3)',   icon: '🌐' },
-    { label: 'Aktif',          key: 'active',     color: '#10b981', glow: 'rgba(16,185,129,0.3)',  icon: '✅' },
-    { label: 'Toplam Görüntüleme', key: 'totalViews', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', icon: '👁️' },
-    { label: 'Sıcak Lead',     key: 'hotLeads',   color: '#ef4444', glow: 'rgba(239,68,68,0.3)',   icon: '🔥' },
+    { label: t('Toplam Katalog','Toplam Katalog'), key: 'total',      color: '#06b6d4', glow: 'rgba(6,182,212,0.3)',   icon: '🌐' },
+    { label: t('Aktif','Aktif'),                   key: 'active',     color: '#10b981', glow: 'rgba(16,185,129,0.3)',  icon: '✅' },
+    { label: t('Toplam Görüntüleme','Toplam Görüntüleme'), key: 'totalViews', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', icon: '👁️' },
+    { label: t('Sıcak Lead','Sıcak Lead'),         key: 'hotLeads',   color: '#ef4444', glow: 'rgba(239,68,68,0.3)',   icon: '🔥' },
   ]
 
   return (
@@ -278,16 +278,16 @@ export default function MicrositePage() {
           </div>
           <button onClick={() => setShowCreate(!showCreate)}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 22px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 24px rgba(8,145,178,0.35)', flexShrink: 0, whiteSpace: 'nowrap' }}>
-            <Plus size={16} /> Yeni Katalog
+            <Plus size={16} /> {t('Yeni Katalog','Yeni Katalog')}
           </button>
         </div>
 
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
           {[
-            { icon: '🤖', title: 'AI İçerik', desc: 'Sektöre özel otomatik', color: '#06b6d4' },
-            { icon: '🔗', title: 'Kişisel Link', desc: 'Benzersiz slug oluşur', color: '#8b5cf6' },
-            { icon: '🔔', title: 'Anlık Bildirim', desc: 'Lead açınca WA gelir', color: '#10b981' },
-            { icon: '📊', title: 'Engagement Skoru', desc: '3+ görüntüleme = sıcak', color: '#ef4444' },
+            { icon: '🤖', title: t('AI İçerik','AI İçerik'), desc: t('Sektöre özel otomatik','Sektöre özel otomatik'), color: '#06b6d4' },
+            { icon: '🔗', title: t('Kişisel Link','Kişisel Link'), desc: t('Benzersiz slug oluşur','Benzersiz slug oluşur'), color: '#8b5cf6' },
+            { icon: '🔔', title: t('Anlık Bildirim','Anlık Bildirim'), desc: t('Lead açınca WA gelir','Lead açınca WA gelir'), color: '#10b981' },
+            { icon: '📊', title: t('Engagement Skoru','Engagement Skoru'), desc: t('3+ görüntüleme = sıcak','3+ görüntüleme = sıcak'), color: '#ef4444' },
           ].map(({ icon, title, desc, color }, idx) => (
             <div key={title} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative' }}>
               {idx < 3 && <ChevronRight size={14} style={{ position: 'absolute', right: -7, top: '50%', transform: 'translateY(-50%)', color: '#334155', zIndex: 3 }} />}

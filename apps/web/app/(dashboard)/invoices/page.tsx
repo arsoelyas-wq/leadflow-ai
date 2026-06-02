@@ -85,9 +85,9 @@ export default function InvoicesPage() {
         <div className="grid grid-cols-4 gap-3">
           {[
             {label:'Toplam', value:stats.total, color:'text-white'},
-            {label:'Ödendi', value:stats.paid, color:'text-emerald-400'},
+            {label: t('Ödendi','Ödendi'), value:stats.paid, color:'text-emerald-400'},
             {label:'Bekliyor', value:stats.pending, color:'text-blue-400'},
-            {label:'Gecikmiş', value:stats.overdue, color:'text-red-400'},
+            {label: t('Gecikmiş','Gecikmiş'), value:stats.overdue, color:'text-red-400'},
           ].map(({label,value,color})=>(
             <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
               <p className={`text-2xl font-bold ${color}`}>{value}</p>

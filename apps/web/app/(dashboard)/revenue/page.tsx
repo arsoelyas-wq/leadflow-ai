@@ -172,8 +172,8 @@ export default function RevenuePage() {
         <>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:20 }}>
             {[
-              { label:'Bu Dönem Potansiyel', value:fmtCurrency(baseMonthly*periodMultiplier), color:'#10b981', icon:'💰' },
-              { label:'Sonraki Dönem', value:fmtCurrency(Math.round((forecast[0]||0)*scenarioMultiplier*periodMultiplier)), color:'#d97706', icon:'📈' },
+              { label: t('Bu Dönem Potansiyel','Bu Dönem Potansiyel'), value:fmtCurrency(baseMonthly*periodMultiplier), color:'#10b981', icon:'💰' },
+              { label: t('Sonraki Dönem','Sonraki Dönem'), value:fmtCurrency(Math.round((forecast[0]||0)*scenarioMultiplier*periodMultiplier)), color:'#d97706', icon:'📈' },
               { label:'Win Rate', value:`%${data?.funnel?.winRate||0}`, color:'#8b5cf6', icon:'🎯' },
             ].map(m => (
               <div key={m.label} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>

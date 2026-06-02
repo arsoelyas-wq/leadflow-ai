@@ -155,7 +155,7 @@ export default function DeveloperPage() {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>
-        {[{id:'keys',label:'🔑 API Keys'},{id:'docs',label:'📖 Dokümantasyon'},{id:'usage',label:'📊 Kullanım'}].map(t => (
+        {[{id:'keys',label:'🔑 API Keys'},{id:'docs',label: t('📖 Dokümantasyon','📖 Dokümantasyon')},{id:'usage',label: t('📊 Kullanım','📊 Kullanım')}].map(t => (
           <button key={t.id} onClick={()=>setTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:tab===t.id?'linear-gradient(135deg,#164e63,#06b6d4)':'transparent', color:tab===t.id?'#fff':'#64748b', boxShadow:tab===t.id?'0 3px 12px rgba(6,182,212,0.25)':'none' }}>
             {t.label}

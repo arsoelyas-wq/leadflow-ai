@@ -173,9 +173,9 @@ export default function SMSPage() {
       {/* Tabs */}
       <div className="flex gap-2">
         {[
-          { key: 'send', label: '📱 SMS Gönder' },
-          { key: 'provider', label: '⚙️ Sağlayıcı' },
-          { key: 'history', label: '📋 Geçmiş' },
+          { key: 'send', label: t('📱 SMS Gönder','📱 SMS Gönder') },
+          { key: 'provider', label: t('⚙️ Sağlayıcı','⚙️ Sağlayıcı') },
+          { key: 'history', label: t('📋 Geçmiş','📋 Geçmiş') },
         ].map(({ key, label }) => (
           <button key={key} onClick={() => setActiveTab(key as any)}
             className={`px-4 py-2 text-sm rounded-xl border transition ${activeTab === key ? 'bg-green-600 border-green-500 text-white' : 'border-slate-700 text-slate-400 hover:text-white'}`}>

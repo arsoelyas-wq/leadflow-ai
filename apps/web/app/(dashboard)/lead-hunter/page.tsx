@@ -129,8 +129,8 @@ export default function HunterSettingsPage() {
       <div className="grid grid-cols-4 gap-4">
         {[
           { label: 'Durum', value: active ? '✅ Aktif' : '⏸️ Durduruldu', color: active ? 'text-emerald-400' : 'text-slate-400' },
-          { label: 'Tarama Aralığı', value: `Her ${interval} saat`, color: 'text-blue-400' },
-          { label: 'Kaynak Sayısı', value: sources.length + ' kaynak', color: 'text-purple-400' },
+          { label: t('Tarama Aralığı','Tarama Aralığı'), value: `Her ${interval} saat`, color: 'text-blue-400' },
+          { label: t('Kaynak Sayısı','Kaynak Sayısı'), value: sources.length + ' kaynak', color: 'text-purple-400' },
           { label: 'Toplam Log', value: logs.length + ' tarama', color: 'text-yellow-400' },
         ].map(({label,value,color}) => (
           <div key={label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">

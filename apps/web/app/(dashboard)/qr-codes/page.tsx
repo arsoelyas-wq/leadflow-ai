@@ -261,8 +261,8 @@ export default function QRPage() {
   const STAT_CONFIG = [
     { label: 'Toplam QR',   value: stats?.total || 0,      color: '#06b6d4', icon: '▦' },
     { label: 'Toplam Scan', value: stats?.totalScans || 0, color: '#10b981', icon: '📷' },
-    { label: 'En Çok Tip',  value: stats?.topType || '-',  color: '#8b5cf6', icon: '🏆' },
-    { label: 'Aktif Tür',   value: [...new Set(qrCodes.map(q => q.type))].length || 0, color: '#f59e0b', icon: '🎯' },
+    { label: t('En Çok Tip','En Çok Tip'),  value: stats?.topType || '-',  color: '#8b5cf6', icon: '🏆' },
+    { label: t('Aktif Tür','Aktif Tür'),   value: [...new Set(qrCodes.map(q => q.type))].length || 0, color: '#f59e0b', icon: '🎯' },
   ]
 
   return (

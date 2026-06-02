@@ -298,7 +298,7 @@ export default function ProductsPage() {
         {/* Stats row */}
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 22 }}>
           {[
-            { label: 'Toplam Ürün', value: products.length, color: '#6366f1', icon: '📦' },
+            { label: t('Toplam Ürün','Toplam Ürün'), value: products.length, color: '#6366f1', icon: '📦' },
             { label: 'Aktif', value: activeCount, color: '#10b981', icon: '✅' },
             { label: 'Kategori', value: cats.length, color: '#8b5cf6', icon: '🏷️' },
             { label: 'AI Bilgi Skoru', value: products.length >= 5 ? '⭐ Yüksek' : products.length >= 1 ? '🔶 Orta' : '❌ Yok', color: products.length >= 5 ? '#f59e0b' : '#ef4444', icon: '🤖' },

@@ -335,7 +335,7 @@ export default function TeamPage() {
 
       {/* TABS */}
       <div style={{ display:'flex', gap:3, background:'rgba(0,0,0,0.32)', padding:4, borderRadius:12, width:'fit-content', marginBottom:18, border:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
-        {[{id:'team',label:'👥 Ekip'},{id:'activity',label:'⚡ Aktivite'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'kpi',label:'🎯 KPI'},{id:'coaching',label:'🎓 Koçluk'},{id:'analytics',label:'📈 Analitik'}].map(t=>(
+        {[{id:'team',label:'👥 Ekip'},{id:'activity',label:'⚡ Aktivite'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'kpi',label:'🎯 KPI'},{id:'coaching',label: t('🎓 Koçluk','🎓 Koçluk')},{id:'analytics',label:'📈 Analitik'}].map(t=>(
           <button key={t.id} onClick={()=>setActiveTab(t.id as any)}
             style={{ padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(124,58,237,0.28)':'none', whiteSpace:'nowrap' }}>
             {t.label}
