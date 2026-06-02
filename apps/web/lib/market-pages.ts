@@ -228,13 +228,19 @@ export function getMarketUI(slug: string) {
   return MARKET_UI[slug] || MARKET_UI['tr']
 }
 
-// Fetch a published market page — reads directly from Supabase (no Railway dependency)
+// Fetch a published market page — server-side only, uses service key to bypass RLS
 export async function fetchMarketPage(slug: string): Promise<MarketPage | null> {
   try {
     const { createClient } = await import('@supabase/supabase-js')
+    // Use service key (server-side only — never exposed to browser)
+    // SUPABASE_SERVICE_KEY must be set in Vercel environment variables (Settings → Env Vars)
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY  // fallback to anon (needs RLS policy)
+
     const sb = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sivrmewtljftzlwmppub.supabase.co',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_eaEn27Grc10pV9bD68qLXA_ZwBp4Hz2'
+      serviceKey
     )
     const { data, error } = await sb
       .from('market_pages')
