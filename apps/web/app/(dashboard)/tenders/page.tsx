@@ -448,7 +448,66 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function TendersPage() {
-  const { t } = useI18n()
+  const { lang } = useI18n()
+  const t = (key: string, fallback: string) => {
+    const TND: Record<string, Record<string, string>> = {
+      de: {
+        'tenders.ihale_avcisi':'Ausschreibungs-Radar',
+        'tenders.23_ulke_ekap_ted_europa_w':'23 Länder · EKAP · TED Europa · Weltbank · KI-Analyse · Entwurf',
+        'tenders.total':'Gesamt','tenders.active':'Aktiv','tenders.high_score':'Hohe Bewertung',
+        'tenders.applied':'Beworben','tenders.won':'Gewonnen','tenders.scans':'Scans',
+        'tenders.analytics_tab':'Analytik','tenders.filter':'Filtern',
+        'tenders.tenders_tab':'Ausschreibungen','tenders.approaching':'Frist läuft ab',
+        'tenders.start_first_scan':'Ersten Scan starten','tenders.add_scan':'Neuen Scan',
+        'tenders.total_applied':'Bewerbungen gesamt','tenders.son_7_gun_icinde_kapaniyo':' läuft in 7 Tagen ab — sofort prüfen!',
+        'tenders.goruntule':'Anzeigen','tenders.status_active':'Aktiv','tenders.status_applied':'Beworben','tenders.status_won':'Gewonnen',
+        'tenders.tum_ulkeler':'Alle Länder','tenders.tum_skorlar':'Alle Scores',
+        'tenders.ihale_tara':'Ausschreibung suchen','tenders.yenile':'Aktualisieren',
+        'tenders.ihale_sec':'Ausschreibung auswählen','tenders.teklif_hazirla':'Angebot erstellen',
+      },
+      ru: {
+        'tenders.ihale_avcisi':'Охотник за тендерами',
+        'tenders.23_ulke_ekap_ted_europa_w':'23 страны · EKAP · TED Европа · Всемирный банк · ИИ-анализ · Черновик',
+        'tenders.total':'Итого','tenders.active':'Активных','tenders.high_score':'Высокий балл',
+        'tenders.applied':'Подана заявка','tenders.won':'Выиграно','tenders.scans':'Сканирований',
+        'tenders.analytics_tab':'Аналитика','tenders.filter':'Фильтр',
+        'tenders.tenders_tab':'Тендеры','tenders.approaching':'Срок истекает',
+        'tenders.son_7_gun_icinde_kapaniyo':' истекает через 7 дней — проверьте сейчас!',
+        'tenders.goruntule':'Посмотреть','tenders.status_active':'Активный','tenders.status_applied':'Подана заявка','tenders.status_won':'Выиграно',
+        'tenders.tum_ulkeler':'Все страны','tenders.tum_skorlar':'Все оценки',
+        'tenders.ihale_tara':'Искать тендеры','tenders.yenile':'Обновить',
+      },
+      en: {
+        'tenders.ihale_avcisi':'Tender Hunter',
+        'tenders.23_ulke_ekap_ted_europa_w':'23 countries · EKAP · TED Europe · World Bank · AI analysis · Draft bid',
+        'tenders.total':'Total','tenders.active':'Active','tenders.high_score':'High Score',
+        'tenders.applied':'Applied','tenders.won':'Won','tenders.scans':'Scans',
+        'tenders.analytics_tab':'Analytics','tenders.filter':'Filter',
+        'tenders.tenders_tab':'Tenders','tenders.approaching':'Deadline Approaching',
+        'tenders.son_7_gun_icinde_kapaniyo':' expires within 7 days — check immediately!',
+        'tenders.goruntule':'View','tenders.status_active':'Active','tenders.status_applied':'Applied','tenders.status_won':'Won',
+        'tenders.tum_ulkeler':'All Countries','tenders.tum_skorlar':'All Scores',
+        'tenders.ihale_tara':'Search Tenders','tenders.yenile':'Refresh',
+      },
+      fr: {
+        'tenders.ihale_avcisi':'Chasseur d\'appels d\'offres',
+        'tenders.total':'Total','tenders.active':'Actif','tenders.analytics_tab':'Analytique',
+        'tenders.filter':'Filtrer','tenders.tenders_tab':'Appels d\'offres',
+        'tenders.approaching':'Délai approche','tenders.goruntule':'Voir',
+        'tenders.tum_ulkeler':'Tous les pays','tenders.tum_skorlar':'Tous les scores',
+        'tenders.ihale_tara':'Chercher appels d\'offres','tenders.yenile':'Actualiser',
+      },
+      ar: {
+        'tenders.ihale_avcisi':'صياد العطاءات',
+        'tenders.total':'الإجمالي','tenders.active':'نشط','tenders.analytics_tab':'التحليلات',
+        'tenders.filter':'تصفية','tenders.tenders_tab':'المناقصات',
+        'tenders.approaching':'الموعد يقترب','tenders.goruntule':'عرض',
+        'tenders.tum_ulkeler':'جميع الدول','tenders.tum_skorlar':'جميع الدرجات',
+        'tenders.ihale_tara':'بحث عن مناقصات','tenders.yenile':'تحديث',
+      },
+    }
+    return (TND[lang] || {})[key] || fallback
+  }
   const [tenders, setTenders] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [prefs, setPrefs] = useState<any[]>([])
@@ -529,10 +588,10 @@ export default function TendersPage() {
           <div style={{ display:'flex', flexDirection:'column', gap:8, flexShrink:0 }}>
             <button onClick={() => setShowScan(true)}
               style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 18px rgba(124,58,237,0.4)' }}>
-              <Search size={15} /> İhale Tara
+              <Search size={15} /> {t('tenders.ihale_tara','İhale Tara')}
             </button>
             <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.04)', color:'#64748b', fontSize:12, cursor:'pointer' }}>
-              <RefreshCw size={13} style={{ animation:loading?'tender-spin 1s linear infinite':'none' }} /> Yenile
+              <RefreshCw size={13} style={{ animation:loading?'tender-spin 1s linear infinite':'none' }} /> {t('tenders.yenile','Yenile')}
             </button>
           </div>
         </div>
@@ -558,7 +617,7 @@ export default function TendersPage() {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:16, border:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
-        {[{id:'tenders',label:`📋 İhaleler (${tenders.length})`},{id:'alerts',label:`⏰ Vadesi Yaklaşan${alerts.length>0?` (${alerts.length})`:''}`,},{id:'analytics',label:'📊 '+t('tenders.analytics_tab','Analitik')},{id:'prefs',label:`🔔 Otomatik (${prefs.length})`}].map(t => (
+        {[{id:'tenders',label:`📋 ${t('tenders.tenders_tab','İhaleler')} (${tenders.length})`},{id:'alerts',label:`⏰ ${t('tenders.approaching','Vadesi Yaklaşan')}${alerts.length>0?` (${alerts.length})`:''}`},{id:'analytics',label:`📊 ${t('tenders.analytics_tab','Analitik')}`},{id:'prefs',label:`🔔 Otomatik (${prefs.length})`}].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             style={{ padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap' }}>
             {t.label}

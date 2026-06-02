@@ -5,6 +5,69 @@ import { api } from '@/lib/api'
 import Link from 'next/link'
 import { Network, RefreshCw, Plus, Trash2, Users, ArrowLeft, Search } from 'lucide-react'
 
+const NET: Record<string, Record<string, string>> = {
+  tr: {
+    title: 'Ağ Haritası', firms: 'firma', connections: 'bağlantı',
+    add_btn: 'Bağlantı Ekle', total_firms: 'Toplam Firma',
+    total_conn: 'Bağlantı', hot: 'Sıcak Lead', grade_a: 'A Sınıfı',
+    search: 'Firma adı, şehir veya sektör ara...',
+    empty_title: 'Henüz Ağ Bağlantısı Yok',
+    empty_desc: 'Leadleriniz arasında referans, tanışıklık veya ortak ağ bağlantıları ekleyin. Bu bağlantılar satışlarınızı hızlandırır.',
+    add_first: 'İlk Bağlantıyı Ekle', no_conn: 'Bağlantısız Firmalar',
+    confirm_delete: 'Bu bağlantıyı sil?',
+  },
+  de: {
+    title: 'Netzwerkkarte', firms: 'Firmen', connections: 'Verbindungen',
+    add_btn: 'Verbindung hinzufügen', total_firms: 'Firmen gesamt',
+    total_conn: 'Verbindungen', hot: 'Heißer Lead', grade_a: 'A-Klasse',
+    search: 'Firmenname, Stadt oder Branche suchen...',
+    empty_title: 'Noch keine Netzwerkverbindungen',
+    empty_desc: 'Fügen Sie Empfehlungen, Bekanntschaften oder gemeinsame Netzwerkverbindungen zwischen Ihren Leads hinzu. Diese Verbindungen beschleunigen Ihre Verkäufe.',
+    add_first: 'Erste Verbindung hinzufügen', no_conn: 'Firmen ohne Verbindung',
+    confirm_delete: 'Diese Verbindung löschen?',
+  },
+  ru: {
+    title: 'Сетевая карта', firms: 'компаний', connections: 'связей',
+    add_btn: 'Добавить связь', total_firms: 'Компаний всего',
+    total_conn: 'Связей', hot: 'Горячий лид', grade_a: 'Класс A',
+    search: 'Поиск по названию компании, городу или отрасли...',
+    empty_title: 'Пока нет сетевых связей',
+    empty_desc: 'Добавьте рекомендации, знакомства или общие сетевые связи между вашими лидами. Эти связи ускорят ваши продажи.',
+    add_first: 'Добавить первую связь', no_conn: 'Компании без связей',
+    confirm_delete: 'Удалить эту связь?',
+  },
+  en: {
+    title: 'Network Map', firms: 'companies', connections: 'connections',
+    add_btn: 'Add Connection', total_firms: 'Total Companies',
+    total_conn: 'Connections', hot: 'Hot Lead', grade_a: 'Grade A',
+    search: 'Search company name, city or sector...',
+    empty_title: 'No Network Connections Yet',
+    empty_desc: 'Add referrals, acquaintances or shared network connections between your leads. These connections will accelerate your sales.',
+    add_first: 'Add First Connection', no_conn: 'Companies without connections',
+    confirm_delete: 'Delete this connection?',
+  },
+  fr: {
+    title: 'Carte réseau', firms: 'entreprises', connections: 'connexions',
+    add_btn: 'Ajouter une connexion', total_firms: 'Entreprises totales',
+    total_conn: 'Connexions', hot: 'Lead chaud', grade_a: 'Classe A',
+    search: 'Rechercher par nom, ville ou secteur...',
+    empty_title: 'Pas encore de connexions réseau',
+    empty_desc: 'Ajoutez des références, connaissances ou connexions réseau communes entre vos leads.',
+    add_first: 'Ajouter la première connexion', no_conn: 'Entreprises sans connexions',
+    confirm_delete: 'Supprimer cette connexion?',
+  },
+  ar: {
+    title: 'خريطة الشبكة', firms: 'شركات', connections: 'اتصالات',
+    add_btn: 'إضافة اتصال', total_firms: 'إجمالي الشركات',
+    total_conn: 'الاتصالات', hot: 'عميل ساخن', grade_a: 'الدرجة A',
+    search: 'البحث باسم الشركة، المدينة أو القطاع...',
+    empty_title: 'لا توجد اتصالات شبكية بعد',
+    empty_desc: 'أضف الإحالات أو المعارف أو اتصالات الشبكة المشتركة بين عملائك.',
+    add_first: 'إضافة أول اتصال', no_conn: 'شركات بدون اتصالات',
+    confirm_delete: 'حذف هذا الاتصال؟',
+  },
+}
+
 interface Node {
   id:       string
   label:    string
@@ -40,7 +103,14 @@ const CONN_TYPE_COLOR: Record<string, string> = {
 }
 
 export default function NetworkPage() {
-  const { t } = useI18n()
+  const { lang } = useI18n()
+  const L = NET[lang] || NET.tr
+  const NT_MAP: Record<string, Record<string, string>> = {
+    de: { 'network.silinmis_lead':'Gelöschter Lead','network.firma_secin':'Firma wählen...','network.bagli_firma':'Verbundene Firma','network.baglanti_turu':'Verbindungstyp','network.taniyor':'Kennt sich','network.ortak_ag':'Gemeinsames Netzwerk','network.referans':'Empfehlung','network.musteri_ref':'Kundenempfehlung','network.notlar':'Notizen','network.kaydet':'Verbindung speichern','network.ekleniyor':'Wird gespeichert...' },
+    ru: { 'network.silinmis_lead':'Удалённый лид','network.firma_secin':'Выберите компанию...','network.bagli_firma':'Связанная компания','network.baglanti_turu':'Тип связи','network.taniyor':'Знакомы','network.ortak_ag':'Общая сеть','network.referans':'Рекомендация','network.kaydet':'Сохранить','network.ekleniyor':'Сохранение...' },
+    en: { 'network.silinmis_lead':'Deleted lead','network.firma_secin':'Select company...','network.bagli_firma':'Connected Company','network.baglanti_turu':'Connection Type','network.taniyor':'Knows each other','network.ortak_ag':'Same Network','network.referans':'Referral','network.kaydet':'Save','network.ekleniyor':'Saving...' },
+  }
+  const nt = (key: string, fb: string) => NT_MAP[lang]?.[key] || fb
   const [nodes, setNodes]         = useState<Node[]>([])
   const [edges, setEdges]         = useState<Edge[]>([])
   const [loading, setLoading]     = useState(true)
@@ -89,7 +159,7 @@ export default function NetworkPage() {
   }
 
   const removeEdge = async (id: string) => {
-    if (!confirm('Bu bağlantıyı sil?')) return
+    if (!confirm(L.confirm_delete)) return
     await api.delete(`/api/network/${id}`)
     load()
   }
@@ -116,24 +186,24 @@ export default function NetworkPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Network size={22} className="text-cyan-400" /> t('network.title','Ağ Haritası')
+              <Network size={22} className="text-cyan-400" /> {L.title}
             </h1>
-            <p className="text-slate-400 text-sm mt-0.5">{nodes.length} firma · {edges.length} bağlantı</p>
+            <p className="text-slate-400 text-sm mt-0.5">{nodes.length} {L.firms} · {edges.length} {L.connections}</p>
           </div>
         </div>
         <button onClick={() => setAddOpen(true)}
           className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">
-          <Plus size={16} /> Bağlantı Ekle
+          <Plus size={16} /> {L.add_btn}
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: t('network.total_firms','Toplam Firma'), value: nodes.length, color: 'text-white' },
-          { label: t('Bağlantı','Bağlantı'),    value: edges.length, color: 'text-cyan-400' },
-          { label: t('network.hot_lead','Sıcak Lead'),  value: nodes.filter(n => n.hotScore >= 30).length, color: 'text-red-400' },
-          { label: t('A Sınıfı','A Sınıfı'),    value: nodes.filter(n => n.grade === 'A').length, color: 'text-emerald-400' },
+          { label: L.total_firms, value: nodes.length, color: 'text-white' },
+          { label: L.total_conn,    value: edges.length, color: 'text-cyan-400' },
+          { label: L.hot,  value: nodes.filter(n => n.hotScore >= 30).length, color: 'text-red-400' },
+          { label: L.grade_a,    value: nodes.filter(n => n.grade === 'A').length, color: 'text-emerald-400' },
         ].map(s => (
           <div key={s.label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
             <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
@@ -146,7 +216,7 @@ export default function NetworkPage() {
       <div className="relative">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={t('network.firma_adi_sehir_veya_sekt', 'Firma adı, şehir veya sektör ara...')}
+          placeholder={L.search}
           className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500" />
       </div>
 
@@ -158,14 +228,14 @@ export default function NetworkPage() {
       ) : nodes.length === 0 ? (
         <div className="text-center py-16 bg-slate-800/30 border border-slate-700 rounded-xl">
           <Network size={48} className="text-slate-600 mx-auto mb-4" />
-          <h2 className="text-white font-semibold mb-2">{t('network.henuz_ag_baglantisi_yok', 'Henüz Ağ Bağlantısı Yok')}</h2>
+          <h2 className="text-white font-semibold mb-2">{L.empty_title}</h2>
           <p className="text-slate-400 text-sm mb-6">
             Leadleriniz arasında referans, tanışıklık veya ortak ağ bağlantıları ekleyin.<br />
             Bu bağlantılar satışlarınızı hızlandırır.
           </p>
           <button onClick={() => setAddOpen(true)}
             className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition mx-auto">
-            <Plus size={16} /> {t('network.add_first','İlk Bağlantıyı Ekle')}
+            <Plus size={16} /> {L.add_first}
           </button>
         </div>
       ) : (
@@ -210,7 +280,7 @@ export default function NetworkPage() {
                             {peer.label}
                           </Link>
                         ) : (
-                          <span className="text-slate-500 text-xs flex-1">{t('network.silinmis_lead', 'Silinmiş lead')}</span>
+                          <span className="text-slate-500 text-xs flex-1">{nt('network.silinmis_lead', 'Silinmiş lead')}</span>
                         )}
                         {edge.notes && (
                           <span className="text-slate-600 text-xs truncate max-w-32">{edge.notes}</span>
@@ -231,7 +301,7 @@ export default function NetworkPage() {
           {filteredNodes.filter(n => nodeEdges(n.id).length === 0).length > 0 && (
             <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4">
               <p className="text-slate-500 text-xs mb-3 flex items-center gap-1.5">
-                <Users size={12} /> {t('network.no_connections','Bağlantısız Firmalar')} ({filteredNodes.filter(n => nodeEdges(n.id).length === 0).length})
+                <Users size={12} /> {L.no_conn} ({filteredNodes.filter(n => nodeEdges(n.id).length === 0).length})
               </p>
               <div className="flex flex-wrap gap-2">
                 {filteredNodes.filter(n => nodeEdges(n.id).length === 0).slice(0, 20).map(n => (
@@ -261,7 +331,7 @@ export default function NetworkPage() {
                 <label className="text-slate-400 text-xs mb-1.5 block">Kaynak Firma</label>
                 <select value={form.leadId} onChange={e => setForm(f => ({ ...f, leadId: e.target.value }))}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500">
-                  <option value="">{t('network.firma_secin', 'Firma seçin...')}</option>
+                  <option value="">{nt('network.firma_secin', 'Firma seçin...')}</option>
                   {allLeads.map(l => (
                     <option key={l.id} value={l.id}>{l.company_name}</option>
                   ))}
@@ -269,10 +339,10 @@ export default function NetworkPage() {
               </div>
 
               <div>
-                <label className="text-slate-400 text-xs mb-1.5 block">{t('network.bagli_firma', 'Bağlı Firma')}</label>
+                <label className="text-slate-400 text-xs mb-1.5 block">{nt('network.bagli_firma', 'Bağlı Firma')}</label>
                 <select value={form.connectedTo} onChange={e => setForm(f => ({ ...f, connectedTo: e.target.value }))}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500">
-                  <option value="">{t('network.firma_secin', 'Firma seçin...')}</option>
+                  <option value="">{nt('network.firma_secin', 'Firma seçin...')}</option>
                   {allLeads.filter(l => l.id !== form.leadId).map(l => (
                     <option key={l.id} value={l.id}>{l.company_name}</option>
                   ))}
@@ -280,20 +350,20 @@ export default function NetworkPage() {
               </div>
 
               <div>
-                <label className="text-slate-400 text-xs mb-1.5 block">{t('network.baglanti_turu', 'Bağlantı Türü')}</label>
+                <label className="text-slate-400 text-xs mb-1.5 block">{nt('network.baglanti_turu', 'Bağlantı Türü')}</label>
                 <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500">
                   <option value="referral">Referans</option>
-                  <option value="knows">{t('network.taniyor', 'Tanıyor')}</option>
-                  <option value="same_network">{t('network.ortak_ag', 'Ortak Ağ')}</option>
-                  <option value="customer_ref">{t('network.musteri_referansi', 'Müşteri Referansı')}</option>
+                  <option value="knows">{nt('network.taniyor', 'Tanıyor')}</option>
+                  <option value="same_network">{nt('network.ortak_ag', 'Ortak Ağ')}</option>
+                  <option value="customer_ref">{nt('network.musteri_referansi', 'Müşteri Referansı')}</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-slate-400 text-xs mb-1.5 block">Not (opsiyonel)</label>
                 <input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  placeholder={t('network.orn_ayni_sanayi_sitesinde', 'Örn: Aynı sanayi sitesindeler')}
+                  placeholder={nt('network.orn_ayni_sanayi_sitesinde', 'Örn: Aynı sanayi sitesindeler')}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-500" />
               </div>
             </div>
