@@ -1,7 +1,6 @@
 -- Turkish Market Page Seed Data
--- STEP 1: Find your user ID:
---   SELECT id FROM users WHERE email = 'ecofriendlyhomegoods@gmail.com';
--- STEP 2: Replace 'YOUR_USER_ID_HERE' below with your actual UUID, then run.
+-- UUID'yi manuel değiştirmenize gerek yok — subquery ile otomatik bulunur.
+-- Sadece bu dosyanın tamamını Supabase SQL Editor'e yapıştırıp Run'a basın.
 
 INSERT INTO market_pages (
   user_id, locale, slug, is_published,
@@ -13,8 +12,9 @@ INSERT INTO market_pages (
   price_features,
   whatsapp_number, email_contact,
   meta_title, meta_description
-) VALUES (
-  'YOUR_USER_ID_HERE',
+)
+SELECT
+  u.id,
   'tr_TR', 'tr', true,
   '🇹🇷 Türkiye''ye Özel Platform',
   'B2B Satışlarınızı Yapay Zeka ile Otomatikleştirin',
@@ -48,7 +48,8 @@ INSERT INTO market_pages (
   'destek@leadflow.ai',
   'LeadFlow AI — Türkiye''nin #1 B2B Satış Otomasyon Platformu',
   'AI destekli B2B satış otomasyonu. WhatsApp, e-posta ve LinkedIn''de otomatik lead toplama ve müşteri iletişimi. 2.500+ Türk şirketi kullanıyor. 14 gün ücretsiz deneyin.'
-)
+FROM users u
+WHERE u.email = 'ecofriendlyhomegoods@gmail.com'
 ON CONFLICT (user_id, slug) DO UPDATE SET
   is_published = EXCLUDED.is_published,
   hero_badge = EXCLUDED.hero_badge,
@@ -73,5 +74,5 @@ ON CONFLICT (user_id, slug) DO UPDATE SET
   meta_description = EXCLUDED.meta_description,
   updated_at = now();
 
--- Verify:
--- SELECT slug, is_published, hero_headline FROM market_pages WHERE slug = 'tr';
+-- Verify — uncomment and run separately:
+-- SELECT slug, is_published, hero_headline, user_id FROM market_pages WHERE slug = 'tr';
