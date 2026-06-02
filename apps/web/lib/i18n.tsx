@@ -1971,9 +1971,13 @@ function resolveT(lang: string, key: string, fallback?: string): string {
   if (T[lang]?.[key]) return T[lang][key]
   // 2. Turkish key fallback (for keys defined in Turkish)
   if (T['tr']?.[key]) return T['tr'][key]
-  // 3. Look up Turkish text value directly in TX dictionary
+  // 3. *** CRITICAL: Look up Turkish fallback text as a KEY in T[lang] ***
+  //    This covers addPageTranslations({ de: { 'Türkçe metin': 'German text' } })
+  //    Called when page uses t('auto.generated_key', 'Türkçe metin')
+  if (fallback && lang !== 'tr' && T[lang]?.[fallback]) return T[lang][fallback]
+  // 4. Look up Turkish text in TX dictionary (inline word translations)
   if (fallback && lang !== 'tr' && TX[lang]?.[fallback]) return TX[lang][fallback]
-  // 4. Return Turkish fallback or key
+  // 5. Return Turkish fallback or key
   return fallback || key
 }
 
