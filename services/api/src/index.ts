@@ -235,6 +235,14 @@ app.use('/api/settings/business-profile', authMiddleware, require('./routes/busi
 // Market pages — public GET no auth, CRUD requires auth
 app.use('/api/market-pages/public', require('./routes/market-pages-public'));
 app.use('/api/market-pages',        authMiddleware, require('./routes/market-pages'));
+// ── ADMIN OS ─────────────────────────────────────────────────────────────────
+const { adminAuthMiddleware } = require('./middleware/adminAuth');
+const adminRouter = require('./routes/admin/index');
+app.use('/api/admin', (req: any, res: any, next: any) => {
+  // Login route doesn't need auth
+  if (req.path.startsWith('/auth/') || req.path.startsWith('/content/banners/active')) return next();
+  adminAuthMiddleware(req, res, next);
+}, adminRouter);
 const { router: dashboardRouter } = require('./routes/dashboard');
 app.use('/api/dashboard',  authMiddleware, dashboardRouter);
 const { router: monitoringRouter } = require('./routes/monitoring');
