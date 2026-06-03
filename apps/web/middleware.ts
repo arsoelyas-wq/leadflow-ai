@@ -8,6 +8,9 @@ export function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const url  = req.nextUrl
 
+  // Admin paths bypass locale/auth logic — they have their own auth
+  if (url.pathname.startsWith('/admin')) return res
+
   // 1. URL'den locale oku (?locale=de_DE)
   const urlLocale = url.searchParams.get('locale')
   if (urlLocale && LOCALES.includes(urlLocale)) {
