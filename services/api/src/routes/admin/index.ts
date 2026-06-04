@@ -344,10 +344,13 @@ router.post('/notifications/broadcast', async (req: any, res: any) => {
 
     if (!users?.length) return res.json({ ok: true, sent: 0 });
 
+    // Match actual notifications table schema: sent_at, body, url (not created_at, message, href, is_read)
     const notifications = users.map((u: any) => ({
-      user_id: u.id, type: 'admin', title, message,
-      href: href || '/dashboard', is_read: false,
-      created_at: new Date().toISOString(),
+      user_id: u.id,
+      title,
+      body: message,
+      url: href || '/dashboard',
+      sent_at: new Date().toISOString(),
     }));
 
     const { error } = await supabase.from('notifications').insert(notifications);
