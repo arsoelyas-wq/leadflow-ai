@@ -19,10 +19,14 @@ const NAV = [
   { href: '/admin/ai-costs', icon: '🤖', label: 'AI Maliyet Merkezi' },
   { group: 'SİSTEM' },
   { href: '/admin/churn', icon: '📉', label: 'Churn & Toplu İşlem' },
+  { href: '/admin/invoices', icon: '🧾', label: 'Fatura Yönetimi' },
+  { href: '/admin/usage', icon: '🗺️', label: 'Özellik Kullanım' },
   { href: '/admin/reports', icon: '📤', label: 'Raporlar & Export' },
+  { group: 'SİSTEM' },
   { href: '/admin/system', icon: '⚙️', label: 'Sistem & Config' },
   { href: '/admin/flags', icon: '🚩', label: 'Feature Flags' },
   { href: '/admin/partners', icon: '🤝', label: 'Affiliate & Reseller' },
+  { href: '/admin/2fa', icon: '🔒', label: '2FA Kurulumu' },
   { href: '/admin/security', icon: '🔐', label: 'Audit & Güvenlik' },
 ]
 

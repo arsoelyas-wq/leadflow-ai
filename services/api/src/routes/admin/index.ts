@@ -418,6 +418,116 @@ router.patch('/promo/:id', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── 2FA Setup & Verify ────────────────────────────────────────────────────────
+const ADMIN_2FA_SECRET = process.env.ADMIN_2FA_SECRET || '';
+
+router.post('/auth/2fa/setup', async (req: any, res: any) => {
+  try {
+    const { email } = req.body;
+    if (!ADMIN_EMAILS.includes(email?.toLowerCase())) {
+      return res.status(403).json({ error: 'Admin değil' });
+    }
+    const speakeasy = require('speakeasy');
+    const QRCode = require('qrcode');
+    const secret = speakeasy.generateSecret({ name: `LeadFlow Admin (${email})`, length: 20 });
+    const qrUrl = await QRCode.toDataURL(secret.otpauth_url);
+    // Store secret temporarily (in production, save to DB per admin)
+    res.json({ secret: secret.base32, qr_url: qrUrl, otpauth: secret.otpauth_url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/auth/2fa/verify', async (req: any, res: any) => {
+  try {
+    const { email, password, totp_code, totp_secret } = req.body;
+    if (!ADMIN_EMAILS.includes(email?.toLowerCase())) {
+      return res.status(403).json({ error: 'Admin değil' });
+    }
+    const adminPass = process.env.ADMIN_PASSWORD || 'leadflow-admin-2026';
+    if (password !== adminPass) return res.status(401).json({ error: 'Yanlış şifre' });
+
+    // If 2FA is configured, verify TOTP
+    const secret = totp_secret || ADMIN_2FA_SECRET;
+    if (secret && totp_code) {
+      const speakeasy = require('speakeasy');
+      const valid = speakeasy.totp.verify({ secret, encoding: 'base32', token: totp_code, window: 1 });
+      if (!valid) return res.status(401).json({ error: 'Geçersiz 2FA kodu' });
+    } else if (secret && !totp_code) {
+      return res.status(400).json({ error: '2FA kodu gerekli', requires_2fa: true });
+    }
+
+    const token = jwt.sign({ email, isAdmin: true }, ADMIN_SECRET, { expiresIn: '8h' });
+    await audit(email, 'auth.login_2fa', undefined, {}, req.ip);
+    res.json({ token, email });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Invoices (cross-user) ─────────────────────────────────────────────────────
+router.get('/invoices', async (req: any, res: any) => {
+  try {
+    const { page = '1', status, user_id } = req.query as any;
+    const offset = (parseInt(page) - 1) * 50;
+    let q = supabase.from('invoices')
+      .select('*, users!invoices_user_id_fkey(email, name, company)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + 49);
+    if (status) q = q.eq('status', status);
+    if (user_id) q = q.eq('user_id', user_id);
+    const { data, count, error } = await q;
+    if (error) throw error;
+    res.json({ invoices: data || [], total: count || 0 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/invoices/stats', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('invoices').select('total, status, created_at');
+    const total_revenue = (data||[]).filter((i:any)=>i.status==='paid').reduce((s:number,i:any)=>s+(i.total||0),0);
+    const pending = (data||[]).filter((i:any)=>i.status==='pending').length;
+    const paid = (data||[]).filter((i:any)=>i.status==='paid').length;
+    res.json({ total_revenue, pending, paid, total: data?.length || 0 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.patch('/invoices/:id', async (req: any, res: any) => {
+  try {
+    const { status } = req.body;
+    await supabase.from('invoices').update({ status, updated_at: new Date().toISOString() }).eq('id', req.params.id);
+    await audit(req.adminEmail, 'invoice.update', undefined, { id: req.params.id, status }, req.ip);
+    res.json({ ok: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Feature Usage Map ─────────────────────────────────────────────────────────
+router.get('/usage-map', async (req: any, res: any) => {
+  try {
+    const [leads, campaigns, messages, sequences, proposals, microsites, tenders, products, reports] = await Promise.allSettled([
+      supabase.from('leads').select('id', { count: 'exact', head: true }),
+      supabase.from('campaigns').select('id', { count: 'exact', head: true }),
+      supabase.from('messages').select('id', { count: 'exact', head: true }),
+      supabase.from('sequences').select('id', { count: 'exact', head: true }),
+      supabase.from('proposals').select('id', { count: 'exact', head: true }),
+      supabase.from('microsites').select('id', { count: 'exact', head: true }),
+      supabase.from('tenders').select('id', { count: 'exact', head: true }),
+      supabase.from('products').select('id', { count: 'exact', head: true }),
+      supabase.from('report_logs').select('id', { count: 'exact', head: true }),
+    ]);
+    const get = (r: any) => r.status === 'fulfilled' ? (r.value?.count || 0) : 0;
+    res.json({
+      features: [
+        { name: '🎯 Lead Toplama', key: 'leads', count: get(leads), category: 'core' },
+        { name: '📢 Kampanyalar', key: 'campaigns', count: get(campaigns), category: 'core' },
+        { name: '💬 Mesajlar', key: 'messages', count: get(messages), category: 'core' },
+        { name: '🔄 Sekanslar', key: 'sequences', count: get(sequences), category: 'sales' },
+        { name: '📋 Teklifler', key: 'proposals', count: get(proposals), category: 'sales' },
+        { name: '🌐 Microsites', key: 'microsites', count: get(microsites), category: 'marketing' },
+        { name: '📜 İhaleler', key: 'tenders', count: get(tenders), category: 'advanced' },
+        { name: '📦 Ürünler', key: 'products', count: get(products), category: 'advanced' },
+        { name: '📊 Raporlar', key: 'reports', count: get(reports), category: 'analytics' },
+      ].sort((a, b) => b.count - a.count)
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Feature Flags ─────────────────────────────────────────────────────────────
 router.get('/flags', async (req: any, res: any) => {
   try {
