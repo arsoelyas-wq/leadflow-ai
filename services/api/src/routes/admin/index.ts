@@ -87,7 +87,7 @@ router.get('/users', async (req: any, res: any) => {
 
     let query = supabase
       .from('users')
-      .select('id, email, name, company, plan_type, credits_total, credits_used, created_at, country_code, language_code, onboarding_done, is_suspended', { count: 'exact' })
+      .select('id, email, name, company, plan_type, credits_total, credits_used, created_at, country_code, language_code, onboarding_done', { count: 'exact' })
       .order(sort, { ascending: false })
       .range(offset, offset + parseInt(limit) - 1);
 
@@ -129,7 +129,7 @@ router.get('/users/:id', async (req: any, res: any) => {
 // ── PATCH /api/admin/users/:id ────────────────────────────────────────────────
 router.patch('/users/:id', async (req: any, res: any) => {
   try {
-    const allowed = ['plan_type', 'credits_total', 'credits_used', 'name', 'company', 'is_suspended'];
+    const allowed = ['plan_type', 'credits_total', 'credits_used', 'name', 'company'];
     const updates: any = { updated_at: new Date().toISOString() };
     for (const key of allowed) {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
