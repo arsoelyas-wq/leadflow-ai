@@ -45,27 +45,35 @@ router.post('/auth/login', async (req: any, res: any) => {
 router.get('/overview', async (req: any, res: any) => {
   try {
     const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
-    const dayAgo = new Date(Date.now() - 864e5).toISOString();
+    const dayAgo  = new Date(Date.now() - 864e5).toISOString();
 
-    const [users, leads, campaigns, messages, newUsers, errors] = await Promise.all([
+    // Use Promise.allSettled so one failing table doesn't crash everything
+    const [usersR, leadsR, campaignsR, messagesR, newUsersR, errorsR] = await Promise.allSettled([
       supabase.from('users').select('id, plan_type, credits_total, credits_used, created_at', { count: 'exact' }),
       supabase.from('leads').select('id', { count: 'exact', head: true }),
       supabase.from('campaigns').select('id', { count: 'exact', head: true }),
       supabase.from('messages').select('id', { count: 'exact', head: true }),
       supabase.from('users').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
-      supabase.from('error_logs').select('id', { count: 'exact', head: true }).gte('created_at', dayAgo).catch(() => ({ count: 0 })),
+      supabase.from('error_logs').select('id', { count: 'exact', head: true }).gte('created_at', dayAgo),
     ]);
 
+    const users     = usersR.status     === 'fulfilled' ? usersR.value     : { data: [], count: 0 };
+    const leads     = leadsR.status     === 'fulfilled' ? leadsR.value     : { count: 0 };
+    const campaigns = campaignsR.status === 'fulfilled' ? campaignsR.value : { count: 0 };
+    const messages  = messagesR.status  === 'fulfilled' ? messagesR.value  : { count: 0 };
+    const newUsers  = newUsersR.status  === 'fulfilled' ? newUsersR.value  : { count: 0 };
+    const errors    = errorsR.status    === 'fulfilled' ? errorsR.value    : { count: 0 };
+
     const planCounts: Record<string, number> = {};
-    (users.data || []).forEach((u: any) => {
+    ((users as any).data || []).forEach((u: any) => {
       planCounts[u.plan_type] = (planCounts[u.plan_type] || 0) + 1;
     });
 
     res.json({
-      users: { total: users.count || 0, new_this_week: newUsers.count || 0, by_plan: planCounts },
-      leads: { total: leads.count || 0 },
-      campaigns: { total: campaigns.count || 0 },
-      messages: { total: messages.count || 0 },
+      users:    { total: (users as any).count || 0, new_this_week: (newUsers as any).count || 0, by_plan: planCounts },
+      leads:    { total: (leads as any).count || 0 },
+      campaigns:{ total: (campaigns as any).count || 0 },
+      messages: { total: (messages as any).count || 0 },
       errors_24h: (errors as any).count || 0,
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -103,7 +111,7 @@ router.get('/users/:id', async (req: any, res: any) => {
       supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('user_id', req.params.id),
       supabase.from('messages').select('id', { count: 'exact', head: true }).eq('user_id', req.params.id),
       supabase.from('credit_logs').select('amount, action, created_at').eq('user_id', req.params.id)
-        .order('created_at', { ascending: false }).limit(20).catch(() => ({ data: [] })),
+        .order('created_at', { ascending: false }).limit(20),
     ]);
 
     res.json({
@@ -255,7 +263,7 @@ router.get('/system/config', async (req: any, res: any) => {
   try {
     const dayAgo = new Date(Date.now() - 864e5).toISOString();
     const { count: errCount } = await supabase.from('error_logs').select('id', { count: 'exact', head: true })
-      .gte('created_at', dayAgo).catch(() => ({ count: 0 }));
+      .gte('created_at', dayAgo);
 
     res.json({
       plans: {
@@ -287,7 +295,7 @@ router.get('/system/errors', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('error_logs').select('*')
       .order('created_at', { ascending: false }).limit(100)
-      .catch(() => ({ data: [] }));
+      ;
     res.json({ errors: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -296,7 +304,7 @@ router.get('/system/uptime', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('uptime_logs').select('*')
       .order('checked_at', { ascending: false }).limit(50)
-      .catch(() => ({ data: [] }));
+      ;
     res.json({ logs: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -355,7 +363,7 @@ router.get('/audit', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('admin_audit_logs').select('*')
       .order('created_at', { ascending: false }).limit(200)
-      .catch(() => ({ data: [] }));
+      ;
     res.json({ logs: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -389,7 +397,7 @@ router.get('/revenue', async (req: any, res: any) => {
 // ── Promo codes ───────────────────────────────────────────────────────────────
 router.get('/promo', async (req: any, res: any) => {
   try {
-    const { data } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false }).catch(() => ({ data: [] }));
+    const { data } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false });
     res.json({ codes: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
