@@ -453,4 +453,93 @@ router.get('/export/users', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Banner click/dismiss tracking (public — no admin auth needed) ─────────────
+router.post('/content/banners/:id/click', async (req: any, res: any) => {
+  try {
+    await supabase.from('admin_banners').update({ click_count: supabase.rpc ? undefined : 0 })
+      .eq('id', req.params.id);
+    // Simple increment via raw update
+    const { data } = await supabase.from('admin_banners').select('click_count').eq('id', req.params.id).single();
+    await supabase.from('admin_banners').update({ click_count: ((data as any)?.click_count || 0) + 1 }).eq('id', req.params.id);
+    res.json({ ok: true });
+  } catch { res.json({ ok: true }); } // non-critical
+});
+
+router.post('/content/banners/:id/view', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('admin_banners').select('view_count').eq('id', req.params.id).single();
+    await supabase.from('admin_banners').update({ view_count: ((data as any)?.view_count || 0) + 1 }).eq('id', req.params.id);
+    res.json({ ok: true });
+  } catch { res.json({ ok: true }); }
+});
+
+// ── POST /api/admin/users/bulk — Bulk credit update ───────────────────────────
+router.post('/users/bulk', async (req: any, res: any) => {
+  try {
+    const { plan_filter, action, value, reason } = req.body;
+    if (!action || !value) return res.status(400).json({ error: 'action ve value gerekli' });
+
+    let query = supabase.from('users').select('id, credits_total');
+    if (plan_filter && plan_filter !== 'all') query = query.eq('plan_type', plan_filter);
+    const { data: users } = await query;
+    if (!users?.length) return res.json({ ok: true, updated: 0 });
+
+    let updated = 0;
+    for (const u of users) {
+      if (action === 'add_credits') {
+        await supabase.from('users').update({ credits_total: (u.credits_total || 0) + parseInt(value) }).eq('id', u.id);
+        updated++;
+      }
+    }
+    await audit(req.adminEmail, 'users.bulk', undefined, { action, value, plan_filter, count: updated, reason }, req.ip);
+    res.json({ ok: true, updated });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/admin/churn — Churn analysis ─────────────────────────────────────
+router.get('/churn', async (req: any, res: any) => {
+  try {
+    const { data: users } = await supabase.from('users')
+      .select('id, email, name, plan_type, credits_total, credits_used, created_at, country_code');
+
+    // Simple churn risk: users with <10% credits left
+    const highRisk = (users||[]).filter((u: any) => {
+      const left = (u.credits_total||0) - (u.credits_used||0);
+      const pct = u.credits_total ? (left/u.credits_total)*100 : 100;
+      return pct < 10;
+    });
+    const medRisk = (users||[]).filter((u: any) => {
+      const left = (u.credits_total||0) - (u.credits_used||0);
+      const pct = u.credits_total ? (left/u.credits_total)*100 : 100;
+      return pct >= 10 && pct < 30;
+    });
+
+    res.json({ high_risk: highRisk, medium_risk: medRisk, total: users?.length || 0 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/admin/promo/redeem — User redeems promo code ────────────────────
+router.post('/promo/redeem', async (req: any, res: any) => {
+  try {
+    const { code } = req.body;
+    const userId = req.userId; // from user auth (not admin)
+    if (!code || !userId) return res.status(400).json({ error: 'Kod ve kullanıcı gerekli' });
+
+    const { data: promo } = await supabase.from('promo_codes').select('*').eq('code', code.toUpperCase()).eq('is_active', true).single();
+    if (!promo) return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş promo kodu' });
+    if (promo.max_uses && promo.uses_count >= promo.max_uses) return res.status(400).json({ error: 'Bu kod kullanım limitine ulaştı' });
+
+    // Apply the promo
+    if (promo.type === 'credits') {
+      const { data: user } = await supabase.from('users').select('credits_total').eq('id', userId).single();
+      await supabase.from('users').update({ credits_total: ((user as any)?.credits_total || 0) + promo.value }).eq('id', userId);
+    }
+    await supabase.from('promo_codes').update({ uses_count: (promo.uses_count || 0) + 1 }).eq('id', promo.id);
+
+    res.json({ ok: true, type: promo.type, value: promo.value, message: `${promo.value} kredi hesabınıza eklendi!` });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
+
+// ── Banner click/dismiss tracking (public — no admin auth) ─────────────────────

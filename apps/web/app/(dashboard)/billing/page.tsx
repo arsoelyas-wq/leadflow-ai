@@ -89,7 +89,30 @@ export default function BillingPage() {
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [credits, setCredits] = useState<{ total: number; used: number } | null>(null)
   const [history, setHistory] = useState<any[]>([])
-  const [activeTab, setActiveTab] = useState<'plans'|'usage'|'history'>('plans')
+  const [activeTab, setActiveTab] = useState<'plans'|'usage'|'history'|'promo'>('plans')
+  const [promoCode, setPromoCode] = useState('')
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [promoResult, setPromoResult] = useState<{type:'ok'|'err';text:string}|null>(null)
+
+  const redeemPromo = async () => {
+    if (!promoCode.trim()) return
+    setPromoLoading(true); setPromoResult(null)
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+      const token = localStorage.getItem('token') || ''
+      const r = await fetch(`${API_URL}/api/admin/promo/redeem`, {
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+        body: JSON.stringify({code:promoCode.toUpperCase()})
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error)
+      setPromoResult({type:'ok',text:d.message||'Promo kodu uygulandı!'})
+      setPromoCode('')
+      // Refresh credits
+      setTimeout(() => window.location.reload(), 1500)
+    } catch(e:any) { setPromoResult({type:'err',text:e.message}) }
+    finally { setPromoLoading(false) }
+  }
 
   useEffect(() => {
     const payment = searchParams.get('payment'), success = searchParams.get('success')
@@ -143,7 +166,7 @@ export default function BillingPage() {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>
-        {[{id:'plans',label:'💎 Paketler'},{id:'usage',label:'📊 Kullanım'},{id:'history',label:'🧾 Geçmiş'}].map(t => (
+        {[{id:'plans',label:'💎 Paketler'},{id:'usage',label:'📊 Kullanım'},{id:'history',label:'🧾 Geçmiş'},{id:'promo',label:'🎁 Promo Kodu'}].map(t => (
           <button key={t.id} onClick={()=>setActiveTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#14532d,#10b981)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(16,185,129,0.25)':'none' }}>
             {t.label}
@@ -245,6 +268,31 @@ export default function BillingPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeTab === 'promo' && (
+        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 18, padding: '28px 24px', maxWidth: 500 }}>
+          <h3 style={{ color:'#fff', fontSize:16, fontWeight:800, margin:'0 0 8px' }}>🎁 Promo Kodu Kullan</h3>
+          <p style={{ color:'#64748b', fontSize:13, margin:'0 0 20px' }}>Promo kodunuzu girin ve kredinizi anında alın</p>
+
+          {promoResult && (
+            <div style={{ padding:'12px 16px', borderRadius:10, marginBottom:16, background:promoResult.type==='ok'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border:`1px solid ${promoResult.type==='ok'?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`, color:promoResult.type==='ok'?'#34d399':'#f87171', fontSize:13 }}>
+              {promoResult.text}
+            </div>
+          )}
+
+          <div style={{ display:'flex', gap:10 }}>
+            <input value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())}
+              placeholder="LAUNCH50, BONUS100..." maxLength={30}
+              onKeyDown={e=>e.key==='Enter'&&redeemPromo()}
+              style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'13px 16px', color:'#fff', fontSize:15, outline:'none', fontFamily:'inherit', letterSpacing:'0.05em', fontWeight:600 }} />
+            <button onClick={redeemPromo} disabled={promoLoading||!promoCode.trim()}
+              style={{ padding:'13px 22px', borderRadius:12, border:'none', background:promoLoading?'rgba(245,158,11,0.4)':'linear-gradient(135deg,#f59e0b,#f97316)', color:'#fff', cursor:promoLoading||!promoCode.trim()?'not-allowed':'pointer', fontSize:14, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap' as const }}>
+              {promoLoading ? '⏳' : '✓ Uygula'}
+            </button>
+          </div>
+          <p style={{ color:'#334155', fontSize:11, marginTop:12 }}>Promo kodları tek kullanımlık veya sınırlı kullanım hakkına sahip olabilir.</p>
         </div>
       )}
 

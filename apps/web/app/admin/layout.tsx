@@ -18,6 +18,8 @@ const NAV = [
   { href: '/admin/analytics', icon: '📊', label: 'Platform Analitik' },
   { href: '/admin/ai-costs', icon: '🤖', label: 'AI Maliyet Merkezi' },
   { group: 'SİSTEM' },
+  { href: '/admin/churn', icon: '📉', label: 'Churn & Toplu İşlem' },
+  { href: '/admin/reports', icon: '📤', label: 'Raporlar & Export' },
   { href: '/admin/system', icon: '⚙️', label: 'Sistem & Config' },
   { href: '/admin/flags', icon: '🚩', label: 'Feature Flags' },
   { href: '/admin/partners', icon: '🤝', label: 'Affiliate & Reseller' },

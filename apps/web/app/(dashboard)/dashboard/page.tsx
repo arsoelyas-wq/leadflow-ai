@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { createClient } from '@supabase/supabase-js'
+import AdminBanner from '@/components/AdminBanner'
 import {
   Users, Megaphone, MessageSquare, Zap, TrendingUp, TrendingDown,
   ArrowRight, BarChart2, Bell, Wifi, WifiOff, Plus, ChevronRight,
@@ -202,6 +203,9 @@ export default function DashboardPage() {
         @keyframes fadeIn    { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
         @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
       `}</style>
+
+      {/* ── ADMIN BANNERS ── */}
+      <AdminBanner type="dashboard" />
 
       {/* ── HEADER ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>

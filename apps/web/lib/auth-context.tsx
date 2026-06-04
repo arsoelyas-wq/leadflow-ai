@@ -41,6 +41,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   useEffect(() => {
+    // Handle admin impersonation token from URL
+    const urlParams = new URLSearchParams(window.location.search)
+    const impersonateToken = urlParams.get('impersonate_token')
+    if (impersonateToken) {
+      localStorage.setItem('token', impersonateToken)
+      localStorage.setItem('is_impersonating', 'true')
+      // Clean URL and redirect to dashboard
+      window.history.replaceState({}, '', '/dashboard')
+    }
+
     const token = localStorage.getItem('token')
     if (token) {
       api.get('/api/auth/me')

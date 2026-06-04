@@ -1,5 +1,5 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
@@ -11,6 +11,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, loading } = useAuth()
   const { lang } = useI18n()
   const router = useRouter()
+  const [isImpersonating, setIsImpersonating] = useState(false)
+
+  useEffect(() => {
+    setIsImpersonating(localStorage.getItem('is_impersonating') === 'true')
+  }, [])
 
   useEffect(() => {
     if (!loading && !user) router.push('/login')
@@ -32,6 +37,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
 
       <div style={{ flex:1, marginLeft:248, display:'flex', flexDirection:'column', minHeight:'100vh' }}>
+
+        {/* ── ADMIN IMPERSONATION BANNER ── */}
+        {isImpersonating && (
+          <div style={{ background:'rgba(239,68,68,0.15)', borderBottom:'1px solid rgba(239,68,68,0.3)', padding:'8px 28px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <span style={{ color:'#fca5a5', fontSize:13, fontWeight:600 }}>
+              🔴 ADMIN MOD: {user?.email} olarak giriş yapıldı (Admin tarafından)
+            </span>
+            <button onClick={() => { localStorage.removeItem('is_impersonating'); localStorage.removeItem('token'); window.location.href='/admin/users' }}
+              style={{ padding:'4px 12px', borderRadius:7, border:'1px solid rgba(239,68,68,0.4)', background:'rgba(239,68,68,0.15)', color:'#f87171', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>
+              Admin'e Dön
+            </button>
+          </div>
+        )}
 
         {/* ── ÜSTTEKI BAR: Ülke & Dil ── */}
         <div style={{

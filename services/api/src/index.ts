@@ -239,8 +239,21 @@ app.use('/api/market-pages',        authMiddleware, require('./routes/market-pag
 const { adminAuthMiddleware } = require('./middleware/adminAuth');
 const adminRouter = require('./routes/admin/index');
 app.use('/api/admin', (req: any, res: any, next: any) => {
-  // Login route doesn't need auth
-  if (req.path.startsWith('/auth/') || req.path.startsWith('/content/banners/active')) return next();
+  // Public routes — no admin auth needed
+  if (req.path.startsWith('/auth/') || req.path.startsWith('/content/banners/active') || req.path.startsWith('/content/banners/') && (req.path.endsWith('/click') || req.path.endsWith('/view'))) return next();
+  // Promo redemption uses regular user auth (handled inside the route)
+  if (req.path === '/promo/redeem') {
+    // Extract user from JWT if present (but don't block if no admin token)
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded: any = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'leadflow-super-secret-jwt-key-2026');
+        req.userId = decoded.userId;
+      } catch {}
+    }
+    return next();
+  }
   adminAuthMiddleware(req, res, next);
 }, adminRouter);
 const { router: dashboardRouter } = require('./routes/dashboard');
