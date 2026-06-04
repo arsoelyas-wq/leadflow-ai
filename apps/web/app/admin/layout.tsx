@@ -10,6 +10,7 @@ const NAV = [
   { href: '/admin/support', icon: '🎧', label: 'Destek & İletişim' },
   { href: '/admin/revenue', icon: '💰', label: 'Gelir & Finans' },
   { group: 'İÇERİK & UI' },
+  { href: '/admin/landing', icon: '🏠', label: 'Ana Sayfa Editörü' },
   { href: '/admin/content', icon: '🌍', label: 'Pazar Sayfaları' },
   { href: '/admin/content/banners', icon: '🎬', label: 'Banner & Video' },
   { href: '/admin/notifications', icon: '📢', label: 'Duyuru Gönder' },
