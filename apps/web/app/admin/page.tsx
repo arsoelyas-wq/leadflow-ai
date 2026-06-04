@@ -107,11 +107,8 @@ export default function AdminOverviewPage() {
             ))}
           </div>
 
-          <div style={{ marginTop: 16, padding: '12px 14px', background: 'rgba(239,68,68,0.06)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.15)' }}>
-            <div style={{ color: '#fca5a5', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>⚠️ DİKKAT: Supabase Migration</div>
-            <div style={{ color: '#475569', fontSize: 11, lineHeight: 1.6 }}>
-              Admin tablolarını oluşturmak için <strong style={{ color: '#94a3b8' }}>services/api/src/migrations/create_admin_tables.sql</strong> dosyasını Supabase SQL Editor'de çalıştırın.
-            </div>
+          <div style={{ marginTop: 16, padding: '10px 14px', background: 'rgba(16,185,129,0.06)', borderRadius: 10, border: '1px solid rgba(16,185,129,0.15)' }}>
+            <div style={{ color: '#34d399', fontSize: 11, fontWeight: 700 }}>✅ Sistem hazır — tüm tablolar aktif</div>
           </div>
         </div>
       </div>

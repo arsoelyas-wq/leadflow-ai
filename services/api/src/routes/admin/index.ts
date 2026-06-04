@@ -418,4 +418,39 @@ router.patch('/promo/:id', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Feature Flags ─────────────────────────────────────────────────────────────
+router.get('/flags', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('feature_flags').select('*').order('flag_key');
+    res.json({ flags: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/flags', async (req: any, res: any) => {
+  try {
+    const { flag_key, is_enabled, description, enabled_for_plans, rollout_percent } = req.body;
+    const { data, error } = await supabase.from('feature_flags')
+      .upsert([{ flag_key, is_enabled, description: description || '', enabled_for_plans: enabled_for_plans || [], rollout_percent: rollout_percent || 0, updated_at: new Date().toISOString() }], { onConflict: 'flag_key' })
+      .select().single();
+    if (error) throw error;
+    await audit(req.adminEmail, `flag.${is_enabled?'enable':'disable'}`, undefined, { flag_key }, req.ip);
+    res.json({ flag: data });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Export all users (CSV) ────────────────────────────────────────────────────
+router.get('/export/users', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('users')
+      .select('id, email, name, company, plan_type, credits_total, credits_used, created_at, country_code, language_code');
+    const header = 'id,email,name,company,plan_type,credits_total,credits_used,created_at,country_code,language_code';
+    const rows = (data||[]).map((u: any) =>
+      [u.id,u.email,u.name||'',u.company||'',u.plan_type,u.credits_total,u.credits_used,u.created_at,u.country_code||'',u.language_code||''].join(',')
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=leadflow-users.csv');
+    res.send([header, ...rows].join('\n'));
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
