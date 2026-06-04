@@ -9,13 +9,15 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 // ── Helper: audit log ─────────────────────────────────────────────────────────
 async function audit(email: string, action: string, targetId?: string, details?: object, ip?: string) {
-  await supabase.from('admin_audit_logs').insert([{
-    admin_email: email,
-    action,
-    target_user_id: targetId || null,
-    details: details || {},
-    ip_address: ip || null,
-  }]).catch(() => {});
+  try {
+    await supabase.from('admin_audit_logs').insert([{
+      admin_email: email,
+      action,
+      target_user_id: targetId || null,
+      details: details || {},
+      ip_address: ip || null,
+    }])
+  } catch { /* audit failure should never block main action */ }
 }
 
 // ── POST /api/admin/auth/login ────────────────────────────────────────────────
@@ -160,10 +162,12 @@ router.post('/users/:id/credits', async (req: any, res: any) => {
     await supabase.from('users').update({ credits_total: newTotal, updated_at: new Date().toISOString() }).eq('id', req.params.id);
 
     // Log to credit_logs if table exists
-    await supabase.from('credit_logs').insert([{
-      user_id: req.params.id, amount: parseInt(amount),
-      action: `admin: ${reason}`, created_at: new Date().toISOString()
-    }]).catch(() => {});
+    try {
+      await supabase.from('credit_logs').insert([{
+        user_id: req.params.id, amount: parseInt(amount),
+        action: `admin: ${reason}`, created_at: new Date().toISOString()
+      }])
+    } catch { /* table may not exist */ }
 
     await audit(req.adminEmail, 'user.credits_adjust', req.params.id, { amount, reason, new_total: newTotal }, req.ip);
     res.json({ ok: true, new_total: newTotal });
