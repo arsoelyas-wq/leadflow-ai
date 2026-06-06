@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
@@ -127,10 +127,10 @@ const SECTORS = [
 ]
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  active:    { label:'Aktif',        color:'#34d399', bg:'rgba(16,185,129,0.12)' },
+  active:    { label:'Aktif',        color:'#047857', bg:'rgba(16,185,129,0.12)' },
   applied:   { label:'Başvuruldu',   color:'#60a5fa', bg:'rgba(59,130,246,0.12)' },
   won:       { label:'Kazanıldı',    color:'#c084fc', bg:'rgba(139,92,246,0.12)' },
-  lost:      { label:'Kaybedildi',   color:'#f87171', bg:'rgba(239,68,68,0.12)'  },
+  lost:      { label:'Kaybedildi',   color:'#dc2626', bg:'rgba(239,68,68,0.12)'  },
   dismissed: { label:'Reddedildi',   color:'#64748b', bg:'rgba(100,116,139,0.12)' },
 }
 
@@ -153,7 +153,7 @@ function ScanModal({ onClose, onStarted }: { onClose: () => void; onStarted: (sc
   const [error, setError] = useState('')
 
   const grouped = COUNTRIES.reduce((acc, c) => { if (!acc[c.group]) acc[c.group] = []; acc[c.group].push(c); return acc }, {} as Record<string, typeof COUNTRIES>)
-  const inp = { width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as const }
+  const inp = { width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'10px 12px', color:'#0f172a', fontSize:13, outline:'none', boxSizing:'border-box' as const }
 
   const start = async () => {
     if (!form.keyword.trim()) { setError('Anahtar kelime zorunlu'); return }
@@ -166,12 +166,12 @@ function ScanModal({ onClose, onStarted }: { onClose: () => void; onStarted: (sc
   }
 
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}
+    <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background:'linear-gradient(135deg,#0a0c14,#0d1120)', border:'1px solid rgba(139,92,246,0.3)', borderRadius:22, padding:30, width:520, maxWidth:'94vw', maxHeight:'90vh', overflowY:'auto' }}>
+      <div style={{ background:'#ffffff', border:'1px solid rgba(139,92,246,0.3)', borderRadius:22, padding:30, width:520, maxWidth:'94vw', maxHeight:'90vh', overflowY:'auto' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
           <div>
-            <h2 style={{ color:'#fff', fontSize:17, fontWeight:800, margin:0 }}>🔍 İhale Tarama Başlat</h2>
+            <h2 style={{ color:'#0f172a', fontSize:17, fontWeight:800, margin:0 }}>🔍 İhale Tarama Başlat</h2>
             <p style={{ color:'#475569', fontSize:12, margin:'4px 0 0' }}>EKAP · TED Europa · World Bank · Exa.ai · Tavily</p>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'#64748b', cursor:'pointer' }}><X size={18} /></button>
@@ -215,11 +215,11 @@ function ScanModal({ onClose, onStarted }: { onClose: () => void; onStarted: (sc
               <div style={{ position:'absolute', top:2, left:form.save_pref?18:2, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
             </div>
             <div>
-              <p style={{ color:'#fff', fontSize:13, margin:0 }}>Her gün otomatik tara</p>
+              <p style={{ color:'#0f172a', fontSize:13, margin:0 }}>Her gün otomatik tara</p>
               <p style={{ color:'#475569', fontSize:11, margin:0 }}>Yeni ihaleler bulunduğunda bildirim al</p>
             </div>
           </label>
-          {error && <p style={{ color:'#f87171', fontSize:12, background:'rgba(239,68,68,0.08)', padding:'8px 12px', borderRadius:8, margin:0 }}>{error}</p>}
+          {error && <p style={{ color:'#dc2626', fontSize:12, background:'rgba(239,68,68,0.08)', padding:'8px 12px', borderRadius:8, margin:0 }}>{error}</p>}
           <button onClick={start} disabled={scanning || !form.keyword}
             style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'13px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:14, fontWeight:700, cursor:scanning||!form.keyword?'not-allowed':'pointer', boxShadow:'0 4px 20px rgba(124,58,237,0.4)' }}>
             {scanning ? <RefreshCw size={15} style={{ animation:'tender-spin 1s linear infinite' }} /> : <Search size={15} />}
@@ -256,12 +256,12 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
   if (status === 'completed') return (
     <div style={{ padding:'14px 20px', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:12 }}>
       <CheckCircle size={16} color="#10b981" />
-      <p style={{ color:'#34d399', fontSize:13, margin:0, fontWeight:600 }}>✅ Tarama tamamlandı — {found} yeni ihale bulundu! Sayfayı yeniliyorum...</p>
+      <p style={{ color:'#047857', fontSize:13, margin:0, fontWeight:600 }}>✅ Tarama tamamlandı — {found} yeni ihale bulundu! Sayfayı yeniliyorum...</p>
     </div>
   )
   if (status === 'failed') return (
     <div style={{ padding:'14px 20px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12 }}>
-      <p style={{ color:'#f87171', fontSize:13, margin:0 }}>❌ Tarama başarısız oldu</p>
+      <p style={{ color:'#dc2626', fontSize:13, margin:0 }}>❌ Tarama başarısız oldu</p>
     </div>
   )
 
@@ -270,9 +270,9 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <RefreshCw size={14} color="#a78bfa" style={{ animation:'tender-spin 1s linear infinite' }} />
-          <p style={{ color:'#a78bfa', fontSize:13, margin:0, fontWeight:600 }}>İhale taraması devam ediyor...</p>
+          <p style={{ color:'#7c3aed', fontSize:13, margin:0, fontWeight:600 }}>İhale taraması devam ediyor...</p>
         </div>
-        <span style={{ color:'#a78bfa', fontSize:12, fontWeight:700 }}>{progress}%</span>
+        <span style={{ color:'#7c3aed', fontSize:12, fontWeight:700 }}>{progress}%</span>
       </div>
       <div style={{ height:5, background:'rgba(255,255,255,0.06)', borderRadius:3 }}>
         <div style={{ height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#7c3aed,#a78bfa)', borderRadius:3, transition:'width 0.5s', boxShadow:'0 0 10px rgba(124,58,237,0.5)' }} />
@@ -303,35 +303,35 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
 
   const copyProposal = () => { if (proposal) { navigator.clipboard?.writeText(proposal); setCopied(true); setTimeout(() => setCopied(false), 2000) } }
 
-  const inp = { width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as const }
+  const inp = { width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'10px 12px', color:'#0f172a', fontSize:13, outline:'none', boxSizing:'border-box' as const }
   const statusMeta = STATUS_META[tender.status] || STATUS_META.active
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'linear-gradient(135deg,rgba(3,6,22,0.98),rgba(5,5,20,0.99))', borderLeft:'1px solid rgba(255,255,255,0.06)' }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:'#ffffff', borderLeft:'1px solid #e2e8f0' }}>
       {/* Header */}
-      <div style={{ padding:'18px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)', position:'relative' }}>
+      <div style={{ padding:'18px 20px', borderBottom:'1px solid #e2e8f0', position:'relative' }}>
         <button onClick={onClose} style={{ position:'absolute', top:16, right:16, background:'rgba(255,255,255,0.06)', border:'none', color:'#64748b', cursor:'pointer', width:28, height:28, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}><X size={14} /></button>
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
           <div style={{ width:44, height:44, borderRadius:11, background:`${scoreColor(sc)}20`, border:`1px solid ${scoreColor(sc)}40`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <span style={{ color:scoreColor(sc), fontSize:15, fontWeight:900 }}>{sc}</span>
           </div>
           <div style={{ flex:1, minWidth:0, paddingRight:32 }}>
-            <p style={{ color:'#fff', fontWeight:700, fontSize:13, margin:'0 0 4px', lineHeight:1.4 }}>{tender.title}</p>
+            <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:'0 0 4px', lineHeight:1.4 }}>{tender.title}</p>
             <p style={{ color:'#64748b', fontSize:11, margin:0 }}>{tender.institution}</p>
           </div>
         </div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
           <span style={{ background:statusMeta.bg, border:`1px solid ${statusMeta.color}30`, color:statusMeta.color, fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>{statusMeta.label}</span>
-          <span style={{ background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.25)', color:'#a78bfa', fontSize:10, padding:'2px 8px', borderRadius:20 }}>{tender.source}</span>
+          <span style={{ background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.25)', color:'#7c3aed', fontSize:10, padding:'2px 8px', borderRadius:20 }}>{tender.source}</span>
           <span style={{ background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.2)', color:'#22d3ee', fontSize:10, padding:'2px 8px', borderRadius:20 }}>{tender.country}</span>
           {tender.budget_text && <span style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.25)', color:'#fbbf24', fontSize:10, padding:'2px 8px', borderRadius:20 }}>💰 {tender.budget_text}</span>}
-          {tender.deadline && <span style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#f87171', fontSize:10, padding:'2px 8px', borderRadius:20 }}><DaysLeft deadline={tender.deadline} /></span>}
+          {tender.deadline && <span style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#dc2626', fontSize:10, padding:'2px 8px', borderRadius:20 }}><DaysLeft deadline={tender.deadline} /></span>}
           {tender.risk_level && <span style={{ background:`${riskColor(tender.risk_level)}12`, border:`1px solid ${riskColor(tender.risk_level)}30`, color:riskColor(tender.risk_level), fontSize:10, padding:'2px 8px', borderRadius:20 }}>⚡ Risk: {tender.risk_level}</span>}
         </div>
       </div>
 
       {/* Status actions */}
-      <div style={{ padding:'10px 20px', borderBottom:'1px solid rgba(255,255,255,0.04)', display:'flex', gap:6, flexWrap:'wrap' }}>
+      <div style={{ padding:'10px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', gap:6, flexWrap:'wrap' }}>
         {['applied','won','lost','dismissed'].map(s => (
           <button key={s} onClick={() => onUpdate(tender.id, s)} disabled={tender.status === s}
             style={{ padding:'5px 10px', borderRadius:7, border:`1px solid ${STATUS_META[s]?.color}30`, background:tender.status===s?`${STATUS_META[s]?.color}20`:'transparent', color:STATUS_META[s]?.color, fontSize:10, fontWeight:600, cursor:tender.status===s?'default':'pointer', opacity:tender.status===s?1:0.7 }}>
@@ -347,7 +347,7 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:2, padding:'10px 20px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+      <div style={{ display:'flex', gap:2, padding:'10px 20px 0', borderBottom:'1px solid #f1f5f9' }}>
         {[{id:'info',label:'📋 Bilgi'},{id:'requirements',label:'✅ Şartlar'},{id:'proposal',label:'✍️ Teklif'}].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             style={{ padding:'6px 14px', borderRadius:'8px 8px 0 0', border:'none', cursor:'pointer', fontSize:11, fontWeight:600, background:activeTab===t.id?'rgba(139,92,246,0.15)':'transparent', color:activeTab===t.id?'#a78bfa':'#64748b', borderBottom:activeTab===t.id?'2px solid #7c3aed':'2px solid transparent' }}>
@@ -362,13 +362,13 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {tender.ai_summary && (
               <div style={{ background:'rgba(139,92,246,0.08)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:11, padding:'12px 14px' }}>
-                <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}>AI Özet</p>
-                <p style={{ color:'#e2e8f0', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.ai_summary}</p>
+                <p style={{ color:'#7c3aed', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}>AI Özet</p>
+                <p style={{ color:'#334155', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.ai_summary}</p>
               </div>
             )}
             {tender.ai_recommendation && (
               <div style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:11, padding:'12px 14px' }}>
-                <p style={{ color:'#34d399', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}>Öneri</p>
+                <p style={{ color:'#047857', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}>Öneri</p>
                 <p style={{ color:'#94a3b8', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.ai_recommendation}</p>
               </div>
             )}
@@ -379,7 +379,7 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
               </div>
             )}
             {tender.notes && (
-              <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:11, padding:'12px 14px' }}>
+              <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:11, padding:'12px 14px' }}>
                 <p style={{ color:'#64748b', fontSize:11, fontWeight:700, margin:'0 0 5px' }}>NOTLAR</p>
                 <p style={{ color:'#94a3b8', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.notes}</p>
               </div>
@@ -410,7 +410,7 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
             {!proposal ? (
               <>
                 <div style={{ background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:11, padding:'12px 14px' }}>
-                  <p style={{ color:'#a78bfa', fontSize:12, margin:0, lineHeight:1.6 }}>
+                  <p style={{ color:'#7c3aed', fontSize:12, margin:0, lineHeight:1.6 }}>
                     🤖 Claude Opus ile profesyonel ihale teklif mektubu oluşturun. Firma bilgilerinizi girin, teklif hazır olsun.
                   </p>
                 </div>
@@ -429,13 +429,13 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
             ) : (
               <>
                 <div style={{ display:'flex', justifyContent:'flex-end', gap:6 }}>
-                  <button onClick={copyProposal} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.08)', color:'#34d399', fontSize:11, cursor:'pointer' }}>
+                  <button onClick={copyProposal} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.3)', background:'rgba(16,185,129,0.08)', color:'#047857', fontSize:11, cursor:'pointer' }}>
                     {copied ? <CheckCircle size={12} /> : <Copy size={12} />} {copied ? 'Kopyalandı' : 'Kopyala'}
                   </button>
-                  <button onClick={() => setProposal(null)} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.08)', background:'transparent', color:'#64748b', fontSize:11, cursor:'pointer' }}>Yeniden Yaz</button>
+                  <button onClick={() => setProposal(null)} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'transparent', color:'#64748b', fontSize:11, cursor:'pointer' }}>Yeniden Yaz</button>
                 </div>
-                <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:11, padding:'16px 18px', maxHeight:400, overflowY:'auto' }}>
-                  <pre style={{ color:'#e2e8f0', fontSize:12, margin:0, whiteSpace:'pre-wrap', lineHeight:1.8, fontFamily:'inherit' }}>{proposal}</pre>
+                <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:11, padding:'16px 18px', maxHeight:400, overflowY:'auto' }}>
+                  <pre style={{ color:'#334155', fontSize:12, margin:0, whiteSpace:'pre-wrap', lineHeight:1.8, fontFamily:'inherit' }}>{proposal}</pre>
                 </div>
               </>
             )}
@@ -562,19 +562,19 @@ export default function TendersPage() {
   }
 
   const scoreColors = { bg: (s: number) => `${scoreColor(s)}20`, border: (s: number) => `${scoreColor(s)}40` }
-  const card = { background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16 }
+  const card = { background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:16 }
 
   return (
     <div style={{ padding:0, display:'flex', flexDirection:'column', height:'100%' }}>
       {showScan && <ScanModal onClose={() => setShowScan(false)} onStarted={id => { setActiveScanId(id); setShowScan(false) }} />}
 
       {/* Hero */}
-      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(8,3,22,0.98),rgba(3,8,22,0.99))', borderRadius:20, padding:'28px 28px', marginBottom:20, border:'1px solid rgba(139,92,246,0.2)', flexShrink:0 }}>
+      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#f5f3ff,#eff6ff)', borderRadius:20, padding:'28px 28px', marginBottom:20, border:'1px solid rgba(139,92,246,0.2)', flexShrink:0 }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(139,92,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.02) 1px,transparent 1px)', backgroundSize:'40px 40px', zIndex:0 }} />
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:22 }}>
           <TenderOrb size={85} scanning={!!activeScanId} tenderCount={tenders.length} />
           <div style={{ flex:1 }}>
-            <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>{t('tenders.ihale_avcisi', 'İhale Avcısı')}</h1>
+            <h1 style={{ color:'#0f172a', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>{t('tenders.ihale_avcisi', 'İhale Avcısı')}</h1>
             <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('tenders.23_ulke_ekap_ted_europa_w', '23 ülke · EKAP · TED Europa · World Bank · Exa.ai · AI analiz · Teklif taslağı')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:10 }}>
               {[{l:t('tenders.total','Toplam'),v:stats?.total||0,c:'#94a3b8'},{l:t('tenders.active','Aktif'),v:stats?.active||0,c:'#10b981'},{l:t('tenders.high_score','Yüksek Skor'),v:stats?.highScore||0,c:'#8b5cf6'},{l:t('tenders.applied','Başvuruldu'),v:stats?.applied||0,c:'#3b82f6'},{l:t('tenders.won','Kazanıldı'),v:stats?.won||0,c:'#c084fc'},{l:t('tenders.scans','Tarama'),v:stats?.totalScans||0,c:'#f59e0b'}].map(m => (
@@ -590,7 +590,7 @@ export default function TendersPage() {
               style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 18px rgba(124,58,237,0.4)' }}>
               <Search size={15} /> {t('tenders.ihale_tara','İhale Tara')}
             </button>
-            <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.04)', color:'#64748b', fontSize:12, cursor:'pointer' }}>
+            <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:10, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#64748b', fontSize:12, cursor:'pointer' }}>
               <RefreshCw size={13} style={{ animation:loading?'tender-spin 1s linear infinite':'none' }} /> {t('tenders.yenile','Yenile')}
             </button>
           </div>
@@ -608,15 +608,15 @@ export default function TendersPage() {
       {alerts.length > 0 && activeTab === 'tenders' && (
         <div style={{ marginBottom:14, padding:'12px 18px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
           <AlertTriangle size={15} color="#ef4444" />
-          <p style={{ color:'#f87171', fontSize:13, margin:0 }}><strong>{alerts.length} ihale</strong>{t('tenders.son_7_gun_icinde_kapaniyo', 'son 7 gün içinde kapanıyor — hemen kontrol edin!')}</p>
-          <button onClick={() => setActiveTab('alerts')} style={{ marginLeft:'auto', padding:'4px 10px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#f87171', fontSize:11, cursor:'pointer' }}>{t('tenders.goruntule', 'Görüntüle')}</button>
+          <p style={{ color:'#dc2626', fontSize:13, margin:0 }}><strong>{alerts.length} ihale</strong>{t('tenders.son_7_gun_icinde_kapaniyo', 'son 7 gün içinde kapanıyor — hemen kontrol edin!')}</p>
+          <button onClick={() => setActiveTab('alerts')} style={{ marginLeft:'auto', padding:'4px 10px', borderRadius:7, border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.1)', color:'#dc2626', fontSize:11, cursor:'pointer' }}>{t('tenders.goruntule', 'Görüntüle')}</button>
         </div>
       )}
 
       {msg && <div style={{ marginBottom:12, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10, flexShrink:0 }}><p style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:16, border:'1px solid rgba(255,255,255,0.05)', flexShrink:0 }}>
+      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:16, border:'1px solid #e2e8f0', flexShrink:0 }}>
         {[{id:'tenders',label:`📋 ${t('tenders.tenders_tab','İhaleler')} (${tenders.length})`},{id:'alerts',label:`⏰ ${t('tenders.approaching','Vadesi Yaklaşan')}${alerts.length>0?` (${alerts.length})`:''}`},{id:'analytics',label:`📊 ${t('tenders.analytics_tab','Analitik')}`},{id:'prefs',label:`🔔 Otomatik (${prefs.length})`}].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             style={{ padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap' }}>
@@ -633,19 +633,19 @@ export default function TendersPage() {
             {/* Filters */}
             <div style={{ display:'flex', gap:8, marginBottom:14, flexShrink:0, flexWrap:'wrap' }}>
               <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
-                style={{ background:'rgba(3,8,22,0.9)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'7px 12px', color:'#fff', fontSize:12, outline:'none', cursor:'pointer' }}>
+                style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'7px 12px', color:'#0f172a', fontSize:12, outline:'none', cursor:'pointer' }}>
                 <option value="">{t('tenders.tum_ulkeler', 'Tüm Ülkeler')}</option>
                 {COUNTRIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
               <select value={filterScore} onChange={e => setFilterScore(e.target.value)}
-                style={{ background:'rgba(3,8,22,0.9)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'7px 12px', color:'#fff', fontSize:12, outline:'none', cursor:'pointer' }}>
+                style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'7px 12px', color:'#0f172a', fontSize:12, outline:'none', cursor:'pointer' }}>
                 <option value="">{t('tenders.tum_skorlar', 'Tüm Skorlar')}</option>
                 <option value="80">{t('tenders.80_yuksek', '80+ (Yüksek)')}</option>
                 <option value="65">{t('tenders.65_iyi', '65+ (İyi)')}</option>
                 <option value="50">50+ (Orta)</option>
               </select>
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                style={{ background:'rgba(3,8,22,0.9)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'7px 12px', color:'#fff', fontSize:12, outline:'none', cursor:'pointer' }}>
+                style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'7px 12px', color:'#0f172a', fontSize:12, outline:'none', cursor:'pointer' }}>
                 <option value="">{t('tenders.tum_durumlar', 'Tüm Durumlar')}</option>
                 {Object.entries(STATUS_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
@@ -659,7 +659,7 @@ export default function TendersPage() {
             ) : tenders.length === 0 ? (
               <div style={{ textAlign:'center', padding:56, ...card }}>
                 <div style={{ fontSize:44, marginBottom:14 }}>📋</div>
-                <h3 style={{ color:'#fff', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>{t('tenders.henuz_ihale_yok', 'Henüz ihale yok')}</h3>
+                <h3 style={{ color:'#0f172a', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>{t('tenders.henuz_ihale_yok', 'Henüz ihale yok')}</h3>
                 <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>{t('tenders.anahtar_kelimenizi_girin', 'Anahtar kelimenizi girin, tarama başlatın')}</p>
                 <button onClick={() => setShowScan(true)}
                   style={{ padding:'11px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
@@ -681,11 +681,11 @@ export default function TendersPage() {
                         <span style={{ color:'#334155', fontSize:8 }}>puan</span>
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ color:'#fff', fontWeight:700, fontSize:13, margin:'0 0 5px', lineHeight:1.3, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as any }}>{tender.title}</p>
+                        <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:'0 0 5px', lineHeight:1.3, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as any }}>{tender.title}</p>
                         <p style={{ color:'#475569', fontSize:11, margin:'0 0 6px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{tender.institution}</p>
                         <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
                           <span style={{ background:sm.bg, border:`1px solid ${sm.color}30`, color:sm.color, fontSize:10, padding:'2px 7px', borderRadius:20, fontWeight:600 }}>{sm.label}</span>
-                          <span style={{ background:'rgba(139,92,246,0.1)', color:'#a78bfa', fontSize:10, padding:'2px 6px', borderRadius:6 }}>{tender.source}</span>
+                          <span style={{ background:'rgba(139,92,246,0.1)', color:'#7c3aed', fontSize:10, padding:'2px 6px', borderRadius:6 }}>{tender.source}</span>
                           {tender.budget_text && <span style={{ color:'#fbbf24', fontSize:10 }}>💰 {tender.budget_text}</span>}
                           <DaysLeft deadline={tender.deadline} />
                         </div>
@@ -712,7 +712,7 @@ export default function TendersPage() {
           {alerts.length === 0 ? (
             <div style={{ textAlign:'center', padding:48, ...card }}>
               <CheckCircle size={32} color="#10b981" style={{ margin:'0 auto 12px', display:'block' }} />
-              <p style={{ color:'#34d399', fontSize:14, margin:0 }}>{t('tenders.vadesi_yaklasan_ihale_yok', 'Vadesi yaklaşan ihale yok — tüm ihaleler güvende')}</p>
+              <p style={{ color:'#047857', fontSize:14, margin:0 }}>{t('tenders.vadesi_yaklasan_ihale_yok', 'Vadesi yaklaşan ihale yok — tüm ihaleler güvende')}</p>
             </div>
           ) : alerts.map((t: any) => (
             <div key={t.id} onClick={() => { setSelectedTender(t); setActiveTab('tenders') }}
@@ -721,7 +721,7 @@ export default function TendersPage() {
                 <Clock size={18} color="#ef4444" />
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ color:'#fff', fontWeight:700, fontSize:13, margin:'0 0 3px' }}>{t.title}</p>
+                <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:'0 0 3px' }}>{t.title}</p>
                 <p style={{ color:'#475569', fontSize:11, margin:0 }}>{t.country} · Skor: {t.ai_score}</p>
               </div>
               <DaysLeft deadline={t.deadline} />
@@ -748,14 +748,14 @@ export default function TendersPage() {
           </div>
           {analytics?.byCountry?.length > 0 && (
             <div style={{ ...card, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('tenders.ulke_bazli_kazanma_orani', '🌍 Ülke Bazlı Kazanma Oranı')}</h3>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('tenders.ulke_bazli_kazanma_orani', '🌍 Ülke Bazlı Kazanma Oranı')}</h3>
               {analytics.byCountry.map((r: any) => (
                 <div key={r.country} style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                     <span style={{ color:'#94a3b8', fontSize:12 }}>{r.country}</span>
                     <span style={{ color:'#10b981', fontSize:12, fontWeight:700 }}>%{r.rate} ({r.won}/{r.applied})</span>
                   </div>
-                  <div style={{ height:5, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
+                  <div style={{ height:5, background:'#f1f5f9', borderRadius:3 }}>
                     <div style={{ height:'100%', width:`${r.rate}%`, background:`linear-gradient(90deg,#10b981,#34d399)`, borderRadius:3 }} />
                   </div>
                 </div>
@@ -787,14 +787,14 @@ export default function TendersPage() {
                 <Bell size={16} color="#8b5cf6" />
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ color:'#fff', fontWeight:700, fontSize:13, margin:'0 0 2px' }}>{pref.keyword}</p>
+                <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:'0 0 2px' }}>{pref.keyword}</p>
                 <div style={{ display:'flex', gap:8, fontSize:11, color:'#475569' }}>
                   <span>{COUNTRIES.find(c => c.id === pref.country)?.name || pref.country}</span>
                   {pref.sector && <span>· {pref.sector}</span>}
                   <span style={{ color:'#10b981' }}>{t('tenders.gunluk_aktif', '· Günlük aktif')}</span>
                 </div>
               </div>
-              <button onClick={() => deletePref(pref.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#f87171', cursor:'pointer' }}>
+              <button onClick={() => deletePref(pref.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#dc2626', cursor:'pointer' }}>
                 <Trash2 size={13} />
               </button>
             </div>

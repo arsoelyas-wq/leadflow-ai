@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
@@ -131,11 +131,11 @@ export default function FinancialPage() {
           <div style={{ display:'flex', alignItems:'center', gap:24 }}>
             <NeuralConstellation size={95} analyzing={analyzing} metrics={metrics} />
             <div>
-              <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('financial.buyume_zekasi', 'Büyüme Zekası')}</h1>
+              <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('financial.buyume_zekasi', 'Büyüme Zekası')}</h1>
               <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('financial.6_aylik_trend_churn_tespi', '6 aylık trend, churn tespiti, AI büyüme önerileri')}</p>
               <div style={{ display:'flex', gap:8 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, background:growth>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border:`1px solid ${growth>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:20, padding:'4px 12px' }}>
-                  {growth >= 0 ? <TrendingUp size={13} style={{ color:'#34d399' }} /> : <TrendingDown size={13} style={{ color:'#f87171' }} />}
+                  {growth >= 0 ? <TrendingUp size={13} style={{ color:'#047857' }} /> : <TrendingDown size={13} style={{ color:'#dc2626' }} />}
                   <span style={{ color:growth>=0?'#34d399':'#f87171', fontSize:12, fontWeight:700 }}>{growth>=0?'+':''}{growth.toFixed(1)}% büyüme</span>
                 </div>
                 {churn.total > 0 && (
@@ -165,7 +165,7 @@ export default function FinancialPage() {
               { label:'Kredi Verimi', value:`%${data?.creditEfficiency||0}`, color:'#8b5cf6', icon:'⚡' },
               { label:'Deal Maliyeti', value:`${data?.costPerDeal||0} kr`, color:'#f59e0b', icon:'💰' },
             ].map(m => (
-              <div key={m.label} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>
+              <div key={m.label} style={{ background:'#ffffff', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>
                 <div style={{ fontSize:22, marginBottom:8 }}>{m.icon}</div>
                 <p style={{ color:m.color, fontSize:22, fontWeight:800, margin:'0 0 4px' }}>{m.value}</p>
                 <p style={{ color:'#64748b', fontSize:12, margin:0 }}>{m.label}</p>
@@ -175,8 +175,8 @@ export default function FinancialPage() {
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
             {/* Source ROI — real % */}
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.kaynak_roi_gercek', '📊 Kaynak ROI (Gerçek %)')}</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.kaynak_roi_gercek', '📊 Kaynak ROI (Gerçek %)')}</h3>
               {sourcePerf.slice(0,5).map((s: any, i: number) => {
                 const colors = ['#10b981','#06b6d4','#8b5cf6','#f59e0b','#ec4899']
                 return (
@@ -188,7 +188,7 @@ export default function FinancialPage() {
                         <span style={{ color:'#334155', fontSize:11 }}>{s.total} lead</span>
                       </div>
                     </div>
-                    <div style={{ height:5, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
+                    <div style={{ height:5, background:'#f1f5f9', borderRadius:3 }}>
                       <div style={{ height:'100%', width:`${parseInt(s.roi||'0')}%`, background:colors[i], borderRadius:3, maxWidth:'100%' }} />
                     </div>
                   </div>
@@ -197,8 +197,8 @@ export default function FinancialPage() {
             </div>
 
             {/* Monthly target */}
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.aylik_lead_hedefi', '🎯 Aylık Lead Hedefi')}</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.aylik_lead_hedefi', '🎯 Aylık Lead Hedefi')}</h3>
               {(() => {
                 const current = data?.summary?.last30Leads||0
                 const pct = Math.min(100, Math.round((current/monthlyTarget)*100))
@@ -206,7 +206,7 @@ export default function FinancialPage() {
                   <>
                     <div style={{ position:'relative', width:120, height:120, margin:'0 auto 16px' }}>
                       <svg width={120} height={120}>
-                        <circle cx={60} cy={60} r={50} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={8} />
+                        <circle cx={60} cy={60} r={50} fill="none" stroke="#f1f5f9" strokeWidth={8} />
                         <circle cx={60} cy={60} r={50} fill="none" stroke={pct>=100?'#10b981':'#d97706'} strokeWidth={8}
                           strokeDasharray={2*Math.PI*50} strokeDashoffset={2*Math.PI*50*(1-pct/100)}
                           strokeLinecap="round" transform="rotate(-90 60 60)"
@@ -219,7 +219,7 @@ export default function FinancialPage() {
                     </div>
                     <div style={{ display:'flex', gap:8 }}>
                       <input type="number" value={monthlyTarget} onChange={e=>setMonthlyTarget(Number(e.target.value))} min={1}
-                        style={{ flex:1, background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'8px 12px', color:'#fff', fontSize:13, outline:'none' }} />
+                        style={{ flex:1, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'8px 12px', color:'#0f172a', fontSize:13, outline:'none' }} />
                       <button onClick={saveTarget} style={{ padding:'8px 14px', borderRadius:9, border:'none', cursor:'pointer', background:'rgba(217,119,6,0.2)', color:'#fbbf24', fontSize:12 }}>Kaydet</button>
                     </div>
                   </>
@@ -231,7 +231,7 @@ export default function FinancialPage() {
           {/* AI Recommendations */}
           {aiAdvice.length > 0 && (
             <div style={{ background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.06))', border:'1px solid rgba(124,58,237,0.2)', borderRadius:16, padding:20 }}>
-              <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 12px', textTransform:'uppercase', letterSpacing:1 }}>{t('financial.ai_onerileri', '🤖 AI Önerileri')}</p>
+              <p style={{ color:'#7c3aed', fontSize:11, fontWeight:700, margin:'0 0 12px', textTransform:'uppercase', letterSpacing:1 }}>{t('financial.ai_onerileri', '🤖 AI Önerileri')}</p>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {aiAdvice.slice(0,3).map((rec: string, i: number) => (
                   <div key={i} style={{ display:'flex', gap:8, padding:'10px 12px', background:'rgba(0,0,0,0.2)', borderRadius:10 }}>

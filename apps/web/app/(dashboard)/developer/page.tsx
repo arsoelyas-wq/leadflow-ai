@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
@@ -154,7 +154,7 @@ export default function DeveloperPage() {
       {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
         {[{id:'keys',label:'🔑 API Keys'},{id:'docs',label: t('📖 Dokümantasyon','📖 Dokümantasyon')},{id:'usage',label: t('📊 Kullanım','📊 Kullanım')}].map(t => (
           <button key={t.id} onClick={()=>setTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:tab===t.id?'linear-gradient(135deg,#164e63,#06b6d4)':'transparent', color:tab===t.id?'#fff':'#64748b', boxShadow:tab===t.id?'0 3px 12px rgba(6,182,212,0.25)':'none' }}>
@@ -166,8 +166,8 @@ export default function DeveloperPage() {
       {tab === 'keys' && (
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
           {/* Create new key */}
-          <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(6,182,212,0.15)', borderRadius:18, padding:22 }}>
-            <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>➕ Yeni API Key</h3>
+          <div style={{ background:'#ffffff', border:'1px solid rgba(6,182,212,0.15)', borderRadius:18, padding:22 }}>
+            <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>➕ Yeni API Key</h3>
             <div style={{ marginBottom:14 }}>
               <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('developer.key_adi', 'Key Adı')}</label>
               <input value={newKeyName} onChange={e=>setNewKeyName(e.target.value)} placeholder={t('developer.orn_webhook_entegrasyonu', 'örn: Webhook Entegrasyonu')} style={inputStyle} />
@@ -179,7 +179,7 @@ export default function DeveloperPage() {
                   <label key={scope.id} onClick={()=>toggleScope(scope.id)}
                     style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'10px 12px', borderRadius:10, border:`1px solid ${selectedScopes.includes(scope.id)?'rgba(6,182,212,0.4)':'rgba(255,255,255,0.06)'}`, background:selectedScopes.includes(scope.id)?'rgba(6,182,212,0.08)':'transparent', cursor:'pointer' }}>
                     <input type="checkbox" checked={selectedScopes.includes(scope.id)} readOnly style={{ accentColor:'#06b6d4', marginTop:1 }} />
-                    <div><p style={{ color:'#fff', fontSize:11, fontWeight:600, margin:0 }}>{scope.label}</p><p style={{ color:'#475569', fontSize:10, margin:0 }}>{scope.desc}</p></div>
+                    <div><p style={{ color:'#0f172a', fontSize:11, fontWeight:600, margin:0 }}>{scope.label}</p><p style={{ color:'#475569', fontSize:10, margin:0 }}>{scope.desc}</p></div>
                   </label>
                 ))}
               </div>
@@ -194,7 +194,7 @@ export default function DeveloperPage() {
             <div style={{ background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:14, padding:18 }}>
               <p style={{ color:'#fbbf24', fontWeight:700, fontSize:13, margin:'0 0 8px' }}>{t('developer.bu_key_sadece_bir_kez_gos', '⚠️ Bu key sadece bir kez gösterilir — kaydedin!')}</p>
               <div style={{ display:'flex', gap:8 }}>
-                <code style={{ flex:1, background:'#060a1c', borderRadius:8, padding:'10px 14px', color:'#34d399', fontSize:12, fontFamily:'monospace', wordBreak:'break-all' }}>{newKey}</code>
+                <code style={{ flex:1, background:'#f8fafc', borderRadius:8, padding:'10px 14px', color:'#047857', fontSize:12, fontFamily:'monospace', wordBreak:'break-all' }}>{newKey}</code>
                 <button onClick={()=>copy(newKey)} style={{ padding:'10px 14px', borderRadius:8, border:'none', background:'rgba(6,182,212,0.15)', color:'#22d3ee', cursor:'pointer' }}>
                   {copied?<CheckCircle size={14} />:<Copy size={14} />}
                 </button>
@@ -205,17 +205,17 @@ export default function DeveloperPage() {
           {/* Key list */}
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {keys.map(key => (
-              <div key={key.id} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:13 }}>
+              <div key={key.id} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:13 }}>
                 <Key size={16} color="#06b6d4" style={{ flexShrink:0 }} />
                 <div style={{ flex:1 }}>
-                  <p style={{ color:'#fff', fontWeight:700, fontSize:13, margin:0 }}>{key.name}</p>
+                  <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:0 }}>{key.name}</p>
                   <p style={{ color:'#334155', fontSize:11, margin:'2px 0 0', fontFamily:'monospace' }}>{key.key_preview}</p>
                 </div>
                 <span style={{ color:'#475569', fontSize:11 }}>{key.requests_count||0} istek</span>
                 <span style={{ background:key.is_active?'rgba(16,185,129,0.12)':'rgba(100,116,139,0.12)', border:`1px solid ${key.is_active?'rgba(16,185,129,0.3)':'rgba(100,116,139,0.2)'}`, color:key.is_active?'#34d399':'#64748b', fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:600 }}>
                   {key.is_active?'Aktif':'Pasif'}
                 </span>
-                <button onClick={()=>deleteKey(key.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#f87171', cursor:'pointer' }}><Trash2 size={13} /></button>
+                <button onClick={()=>deleteKey(key.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#dc2626', cursor:'pointer' }}><Trash2 size={13} /></button>
               </div>
             ))}
             {keys.length === 0 && !loading && <p style={{ color:'#334155', textAlign:'center', padding:24, fontSize:13 }}>{t('developer.henuz_api_key_yok', 'Henüz API key yok')}</p>}
@@ -226,18 +226,18 @@ export default function DeveloperPage() {
       {tab === 'docs' && docs && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(6,182,212,0.15)', borderRadius:14, padding:16 }}>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(6,182,212,0.15)', borderRadius:14, padding:16 }}>
               <p style={{ color:'#64748b', fontSize:11, margin:'0 0 6px' }}>Base URL</p>
               <code style={{ color:'#22d3ee', fontSize:12, fontFamily:'monospace' }}>{(docs as any).baseUrl}</code>
             </div>
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(6,182,212,0.15)', borderRadius:14, padding:16 }}>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(6,182,212,0.15)', borderRadius:14, padding:16 }}>
               <p style={{ color:'#64748b', fontSize:11, margin:'0 0 6px' }}>Authentication</p>
               <code style={{ color:'#22d3ee', fontSize:12, fontFamily:'monospace' }}>Authorization: Bearer YOUR_KEY</code>
             </div>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             {((docs as any).endpoints||[]).map((ep: any, i: number) => (
-              <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.05)', borderRadius:11 }}>
+              <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:11 }}>
                 <span style={{ padding:'3px 8px', borderRadius:6, fontSize:10, fontWeight:700, background:ep.method==='GET'?'rgba(6,182,212,0.15)':'rgba(16,185,129,0.15)', color:ep.method==='GET'?'#22d3ee':'#34d399', flexShrink:0 }}>{ep.method}</span>
                 <div><code style={{ color:'#fff', fontSize:12 }}>{ep.path}</code><p style={{ color:'#475569', fontSize:11, margin:'3px 0 0' }}>{ep.description}</p></div>
               </div>
@@ -247,8 +247,8 @@ export default function DeveloperPage() {
       )}
 
       {tab === 'usage' && (
-        <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(6,182,212,0.12)', borderRadius:18, padding:22 }}>
-          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 20px' }}>{t('developer.api_kullanim_istatistikle', '📊 API Kullanım İstatistikleri')}</h3>
+        <div style={{ background:'#ffffff', border:'1px solid rgba(6,182,212,0.12)', borderRadius:18, padding:22 }}>
+          <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 20px' }}>{t('developer.api_kullanim_istatistikle', '📊 API Kullanım İstatistikleri')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
             {[{l:'Toplam İstek',v:usage?.totalRequests||0,c:'#06b6d4'},{l:'Başarılı',v:Math.round((usage?.totalRequests||0)*0.97),c:'#10b981'},{l:'Hatalı',v:Math.round((usage?.totalRequests||0)*0.03),c:'#ef4444'}].map(m => (
               <div key={m.l} style={{ textAlign:'center', padding:'16px', background:`${m.c}08`, border:`1px solid ${m.c}18`, borderRadius:12 }}>

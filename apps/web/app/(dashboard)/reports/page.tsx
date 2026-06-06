@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
@@ -101,7 +101,7 @@ export default function ReportsPage() {
           <div style={{ display:'flex', alignItems:'center', gap:24 }}>
             <ReportPrism size={82} spinning={generating} />
             <div>
-              <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('reports.performans_raporlari', 'Performans Raporları')}</h1>
+              <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('reports.performans_raporlari', 'Performans Raporları')}</h1>
               <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('reports.haftalik_aylik_satis_kars', 'Haftalık & aylık satış — karşılaştırmalı analiz')}</p>
               <div style={{ display:'flex', gap:6 }}>
                 {(['weekly','monthly'] as const).map(v => (
@@ -117,7 +117,7 @@ export default function ReportsPage() {
               style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:11, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:700 }}>
               <RefreshCw size={13} style={{ animation:generating?'rp-spin 1s linear infinite':'none' }} />{generating?'Oluşturuluyor...':'Rapor Oluştur'}
             </button>
-            <button onClick={exportCSV} style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:11, border:'1px solid rgba(124,58,237,0.3)', background:'rgba(124,58,237,0.08)', color:'#a78bfa', fontSize:12, cursor:'pointer' }}>
+            <button onClick={exportCSV} style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:11, border:'1px solid rgba(124,58,237,0.3)', background:'rgba(124,58,237,0.08)', color:'#7c3aed', fontSize:12, cursor:'pointer' }}>
               <Download size={13} /> CSV
             </button>
           </div>
@@ -137,11 +137,11 @@ export default function ReportsPage() {
               { label: t('Dönüşüm','Dönüşüm'), value:`%${d.conversionRate}`, color:'#06b6d4', icon:'🎯' },
               { label:'Gelir', value:fmtCurrency(d.totalRevenue||0), color:'#f59e0b', icon:'💰' },
             ].map(m => (
-              <div key={m.label} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px' }}>
+              <div key={m.label} style={{ background:'#ffffff', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px' }}>
                 <div style={{ fontSize:22, marginBottom:8 }}>{m.icon}</div>
                 <p style={{ color:m.color, fontSize:24, fontWeight:800, margin:'0 0 4px' }}>{m.value}</p>
                 <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <p style={{ color:'#fff', fontSize:12, fontWeight:600, margin:0 }}>{m.label}</p>
+                  <p style={{ color:'#0f172a', fontSize:12, fontWeight:600, margin:0 }}>{m.label}</p>
                   {(m as any).trend !== undefined && (m as any).trend !== 0 && <ChangeBadge value={(m as any).trend} />}
                 </div>
               </div>
@@ -149,8 +149,8 @@ export default function ReportsPage() {
           </div>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(245,158,11,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>🎯 Hedef Takibi</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(245,158,11,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>🎯 Hedef Takibi</h3>
               {[
                 { label:'Lead Hedefi', current:d.newLeads, goal:goalLeads, setGoal:setGoalLeads, color:'#8b5cf6' },
                 { label:'Gelir Hedefi (TL)', current:d.totalRevenue||0, goal:goalRevenue, setGoal:setGoalRevenue, color:'#f59e0b' },
@@ -162,8 +162,8 @@ export default function ReportsPage() {
                       <span style={{ color:'#94a3b8', fontSize:12 }}>{g.label}</span>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <input type="number" value={g.goal} onChange={e=>g.setGoal(Number(e.target.value))}
-                          style={{ width:70, background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, padding:'3px 7px', color:'#fff', fontSize:11, outline:'none' }} />
-                        {pct>=100 && <span style={{ color:'#34d399', fontSize:10, fontWeight:700 }}>{t('reports.asildi', '✅ Aşıldı!')}</span>}
+                          style={{ width:70, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:7, padding:'3px 7px', color:'#fff', fontSize:11, outline:'none' }} />
+                        {pct>=100 && <span style={{ color:'#047857', fontSize:10, fontWeight:700 }}>{t('reports.asildi', '✅ Aşıldı!')}</span>}
                       </div>
                     </div>
                     <div style={{ height:7, background:'rgba(255,255,255,0.06)', borderRadius:3 }}>
@@ -175,8 +175,8 @@ export default function ReportsPage() {
               })}
             </div>
 
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('reports.en_iyi_kaynaklar', '📊 En İyi Kaynaklar')}</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('reports.en_iyi_kaynaklar', '📊 En İyi Kaynaklar')}</h3>
               {sources.map(([src, cnt]: any, i: number) => {
                 const colors = ['#7c3aed','#4f46e5','#06b6d4','#10b981','#f59e0b']
                 const max = (sources[0] as any)?.[1] || 1
@@ -186,7 +186,7 @@ export default function ReportsPage() {
                       <span style={{ color:'#94a3b8', fontSize:12 }}>{src}</span>
                       <span style={{ color:colors[i], fontSize:12, fontWeight:700 }}>{cnt}</span>
                     </div>
-                    <div style={{ height:5, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
+                    <div style={{ height:5, background:'#f1f5f9', borderRadius:3 }}>
                       <div style={{ height:'100%', width:`${Math.round((cnt/max)*100)}%`, background:colors[i], borderRadius:3 }} />
                     </div>
                   </div>
@@ -196,7 +196,7 @@ export default function ReportsPage() {
           </div>
 
           <div style={{ background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.06))', border:'1px solid rgba(124,58,237,0.2)', borderRadius:16, padding:18 }}>
-            <p style={{ color:'#a78bfa', fontSize:11, fontWeight:700, margin:'0 0 6px', textTransform:'uppercase', letterSpacing:1 }}>{t('reports.ai_ozet', '⚡ AI Özet')}</p>
+            <p style={{ color:'#7c3aed', fontSize:11, fontWeight:700, margin:'0 0 6px', textTransform:'uppercase', letterSpacing:1 }}>{t('reports.ai_ozet', '⚡ AI Özet')}</p>
             <p style={{ color:'#cbd5e1', fontSize:13, margin:0, lineHeight:1.6 }}>
               {view==='weekly' ? `Bu hafta ${d.newLeads} yeni lead eklendi, ${d.wonLeads} deal kazanıldı. Dönüşüm oranı %${d.conversionRate}${d.conversionRate>15?' — mükemmel!':d.conversionRate>8?' — iyi gidiyor':' — geliştirme gerekli'}. ${d.totalRevenue>0?`Toplam ${fmtCurrency(d.totalRevenue)} gelir gerçekleşti.`:'Fatura geliri henüz yok.'}` : `Bu ay ${d.newLeads} lead ve ${d.wonLeads} kazanım. Aylık hedeflerinizi gözden geçirin.`}
             </p>

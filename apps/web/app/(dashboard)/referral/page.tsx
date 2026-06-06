@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
@@ -126,7 +126,7 @@ export default function ReferralPage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
           <NetworkWeb size={95} expanding={running} />
           <div style={{ flex:1 }}>
-            <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Referral Loop</h1>
+            <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Referral Loop</h1>
             <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('referral.kazanilan_musterilerden_o', 'Kazanılan müşterilerden otomatik referans kampanyası')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
               {[{label: t('Gönderilen','Gönderilen'),value:stats?.sent||0,color:'#06b6d4'},{label:'Referans',value:stats?.referralsReceived||0,color:'#d97706'},{label: t('Kazanılan','Kazanılan'),value:stats?.referralsWon||0,color:'#10b981'}].map(m => (
@@ -151,7 +151,7 @@ export default function ReferralPage() {
       </div>
 
       {/* TABS */}
-      <div style={{ display:'flex', gap:4, background:'rgba(0,0,0,0.3)', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
         {[{id:'main',label:'⚙️ Ayarlar'},{id:'leaderboard',label:'🏆 Liderlik'},{id:'rewards',label: t('🎁 Ödüller','🎁 Ödüller')}].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id as any)}
             style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#78350f,#d97706)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(217,119,6,0.3)':'none' }}>
@@ -162,8 +162,8 @@ export default function ReferralPage() {
 
       {activeTab === 'main' && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
-          <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
-            <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.kampanya_ayarlari', '⚙️ Kampanya Ayarları')}</h3>
+          <div style={{ background:'#ffffff', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
+            <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.kampanya_ayarlari', '⚙️ Kampanya Ayarları')}</h3>
             <div style={{ marginBottom:14 }}>
               <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Satış Sonrası Bekleme: {delay} gün</label>
               <input type="range" min={1} max={30} value={delay} onChange={e=>setDelay(Number(e.target.value))} style={{ width:'100%', accentColor:'#d97706' }} />
@@ -171,7 +171,7 @@ export default function ReferralPage() {
             </div>
             <div style={{ marginBottom:14 }}>
               <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('referral.odul_teklifi', 'Ödül Teklifi')}</label>
-              <input value={reward} onChange={e=>setReward(e.target.value)} style={{ width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'9px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' }} />
+              <input value={reward} onChange={e=>setReward(e.target.value)} style={{ width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'9px 12px', color:'#0f172a', fontSize:13, outline:'none', boxSizing:'border-box' }} />
             </div>
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={saveSettings} style={{ flex:1, padding:'9px', borderRadius:9, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#78350f,#d97706)', color:'#fff', fontSize:12, fontWeight:700 }}>Kaydet</button>
@@ -182,22 +182,22 @@ export default function ReferralPage() {
           </div>
 
           {preview ? (
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(37,211,102,0.2)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.whatsapp_onizleme', '💬 WhatsApp Önizleme')}</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(37,211,102,0.2)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.whatsapp_onizleme', '💬 WhatsApp Önizleme')}</h3>
               <div style={{ background:'rgba(37,211,102,0.08)', border:'1px solid rgba(37,211,102,0.2)', borderRadius:14, padding:16 }}>
-                <p style={{ color:'#e2e8f0', fontSize:13, lineHeight:1.6, margin:0 }}>{previewMsg}</p>
+                <p style={{ color:'#334155', fontSize:13, lineHeight:1.6, margin:0 }}>{previewMsg}</p>
               </div>
               <p style={{ color:'#334155', fontSize:11, margin:'10px 0 0' }}>Gönderilecek müşteri: satış sonrası {delay}. günde</p>
             </div>
           ) : (
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 Performans</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>📊 Performans</h3>
               {[
                 { label: t('Referans Dönüşüm','Referans Dönüşüm'), value:`%${stats?.referralsReceived&&stats?.sent?Math.round((stats.referralsReceived/stats.sent)*100):0}`, color:'#d97706' },
                 { label: t('Normal Dönüşüm','Normal Dönüşüm'), value:'%22', color:'#94a3b8' },
                 { label: t('Kazanılan Referanslar','Kazanılan Referanslar'), value:stats?.referralsWon||0, color:'#10b981' },
               ].map(m => (
-                <div key={m.label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                <div key={m.label} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f1f5f9' }}>
                   <span style={{ color:'#94a3b8', fontSize:12 }}>{m.label}</span>
                   <span style={{ color:m.color, fontWeight:700, fontSize:13 }}>{m.value}</span>
                 </div>
@@ -208,17 +208,17 @@ export default function ReferralPage() {
       )}
 
       {activeTab === 'leaderboard' && (
-        <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
-          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.en_cok_tavsiye_edenler', '🏆 En Çok Tavsiye Edenler')}</h3>
+        <div style={{ background:'#ffffff', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
+          <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.en_cok_tavsiye_edenler', '🏆 En Çok Tavsiye Edenler')}</h3>
           <p style={{ color:'#475569', fontSize:13, textAlign:'center', padding:24 }}>{t('referral.referans_kampanyasi_basla', 'Referans kampanyası başlatıldıkça liderlik tablosu oluşacak')}</p>
         </div>
       )}
 
       {activeTab === 'rewards' && (
-        <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(139,92,246,0.18)', borderRadius:18, padding:22 }}>
-          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.odul_takibi', '🎁 Ödül Takibi')}</h3>
+        <div style={{ background:'#ffffff', border:'1px solid rgba(139,92,246,0.18)', borderRadius:18, padding:22 }}>
+          <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('referral.odul_takibi', '🎁 Ödül Takibi')}</h3>
           <div style={{ background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.15)', borderRadius:12, padding:16 }}>
-            <p style={{ color:'#a78bfa', fontSize:12, margin:0 }}>{t('referral.mevcut_odul', '💡 Mevcut ödül:')}<strong>{reward}</strong></p>
+            <p style={{ color:'#7c3aed', fontSize:12, margin:0 }}>{t('referral.mevcut_odul', '💡 Mevcut ödül:')}<strong>{reward}</strong></p>
             <p style={{ color:'#475569', fontSize:11, margin:'6px 0 0' }}>{t('referral.odul_vaat_edilen_musteril', 'Ödül vaat edilen müşterileri buradan takip edin ve yerine getirin')}</p>
           </div>
         </div>

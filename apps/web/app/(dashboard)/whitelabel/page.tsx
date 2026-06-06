@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
@@ -154,8 +154,8 @@ export default function WhitelabelPage() {
 
       {/* New brand form */}
       {showForm && (
-        <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(139,92,246,0.25)', borderRadius:18, padding:24, marginBottom:20 }}>
-          <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 18px' }}>{t('whitelabel.yeni_bayi_olustur', '🏢 Yeni Bayi Oluştur')}</h3>
+        <div style={{ background:'#ffffff', border:'1px solid rgba(139,92,246,0.25)', borderRadius:18, padding:24, marginBottom:20 }}>
+          <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 18px' }}>{t('whitelabel.yeni_bayi_olustur', '🏢 Yeni Bayi Oluştur')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('whitelabel.marka_adi', 'Marka Adı *')}</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t('whitelabel.orn_abc_crm', 'örn: ABC CRM')} style={inputStyle} /></div>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Domain (opsiyonel)</label><input value={form.domain} onChange={e=>setForm({...form,domain:e.target.value})} placeholder="crm.firmam.com" style={inputStyle} /></div>
@@ -167,7 +167,7 @@ export default function WhitelabelPage() {
             </div>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Ana Renk</label>
               <div style={{ display:'flex', gap:8 }}>
-                <input type="color" value={form.primary_color} onChange={e=>setForm({...form,primary_color:e.target.value})} style={{ width:44, height:44, borderRadius:8, border:'1px solid rgba(255,255,255,0.1)', background:'transparent', cursor:'pointer' }} />
+                <input type="color" value={form.primary_color} onChange={e=>setForm({...form,primary_color:e.target.value})} style={{ width:44, height:44, borderRadius:8, border:'1px solid #e2e8f0', background:'transparent', cursor:'pointer' }} />
                 <input value={form.primary_color} onChange={e=>setForm({...form,primary_color:e.target.value})} style={{ ...inputStyle, flex:1 }} />
               </div>
             </div>
@@ -178,7 +178,7 @@ export default function WhitelabelPage() {
               style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 22px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#3b0764,#8b5cf6)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               {creating?<RefreshCw size={13} style={{ animation:'bg-spin 1s linear infinite' }} />:<Building2 size={13} />} {creating?'Oluşturuluyor...':'Bayi Oluştur'}
             </button>
-            <button onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:11, border:'1px solid rgba(255,255,255,0.08)', background:'transparent', color:'#64748b', fontSize:13, cursor:'pointer' }}>{t('whitelabel.iptal', 'İptal')}</button>
+            <button onClick={()=>setShowForm(false)} style={{ padding:'10px 18px', borderRadius:11, border:'1px solid #e2e8f0', background:'transparent', color:'#64748b', fontSize:13, cursor:'pointer' }}>{t('whitelabel.iptal', 'İptal')}</button>
           </div>
         </div>
       )}
@@ -186,10 +186,10 @@ export default function WhitelabelPage() {
       {/* New brand credentials */}
       {newBrandResult && (
         <div style={{ marginBottom:16, background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:14, padding:20 }}>
-          <h3 style={{ color:'#34d399', fontWeight:700, fontSize:14, margin:'0 0 12px' }}>{t('whitelabel.bayi_olusturuldu', '✅ Bayi Oluşturuldu!')}</h3>
+          <h3 style={{ color:'#047857', fontWeight:700, fontSize:14, margin:'0 0 12px' }}>{t('whitelabel.bayi_olusturuldu', '✅ Bayi Oluşturuldu!')}</h3>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
             {[{l:'Admin Email',v:newBrandResult.adminEmail},{l:'Geçici Şifre',v:newBrandResult.tempPassword}].map(f => (
-              <div key={f.l} style={{ background:'#060a1c', borderRadius:10, padding:'10px 14px' }}>
+              <div key={f.l} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px' }}>
                 <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{f.l}</p>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <code style={{ color:'#fff', fontSize:12, fontFamily:'monospace', flex:1 }}>{f.v}</code>
@@ -213,14 +213,14 @@ export default function WhitelabelPage() {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {brands.map(brand => (
-            <div key={brand.id} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:'18px 20px' }}>
+            <div key={brand.id} style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:16, padding:'18px 20px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-                <div style={{ width:44, height:44, borderRadius:11, border:'1px solid rgba(255,255,255,0.1)', background:brand.primary_color||'#3b82f6', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ width:44, height:44, borderRadius:11, border:'1px solid #e2e8f0', background:brand.primary_color||'#3b82f6', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                   {brand.logo_url ? <img src={brand.logo_url} alt="" style={{ width:36, height:36, borderRadius:8, objectFit:'cover' }} /> : <span style={{ color:'#fff', fontSize:16, fontWeight:800 }}>{brand.name?.[0]}</span>}
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <p style={{ color:'#fff', fontWeight:700, fontSize:14, margin:0 }}>{brand.name}</p>
+                    <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:0 }}>{brand.name}</p>
                     <span style={{ background:`${planColors[brand.plan_type]||'#64748b'}18`, border:`1px solid ${planColors[brand.plan_type]||'#64748b'}30`, color:planColors[brand.plan_type]||'#64748b', fontSize:10, padding:'2px 7px', borderRadius:20, fontWeight:600 }}>{brand.plan_type}</span>
                     <span style={{ background:brand.status==='active'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)', border:`1px solid ${brand.status==='active'?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.2)'}`, color:brand.status==='active'?'#34d399':'#f87171', fontSize:10, padding:'2px 7px', borderRadius:20 }}>
                       {brand.status==='active'?'Aktif':'Pasif'}
@@ -234,7 +234,7 @@ export default function WhitelabelPage() {
                 </div>
                 <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                   <button onClick={()=>loadBrandStats(brand.id)}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:9, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', color:'#94a3b8', fontSize:11, cursor:'pointer' }}>
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:9, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#94a3b8', fontSize:11, cursor:'pointer' }}>
                     <BarChart3 size={12} /> İstatistik
                   </button>
                   <button onClick={()=>updateStatus(brand.id,brand.status==='active'?'inactive':'active')}
@@ -247,7 +247,7 @@ export default function WhitelabelPage() {
                 <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid rgba(255,255,255,0.05)', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
                   {[{l:'Kullanıcı',v:brandStats.stats?.totalUsers},{l:'Lead',v:brandStats.stats?.totalLeads},{l:'Mesaj',v:brandStats.stats?.totalMessages},{l:'Video',v:brandStats.stats?.totalVideos},{l:'Aylık Gelir',v:`₺${(brandStats.stats?.monthlyRevenue||0).toLocaleString()}`}].map(st => (
                     <div key={st.l} style={{ textAlign:'center', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:9 }}>
-                      <p style={{ color:'#fff', fontWeight:800, fontSize:14, margin:0 }}>{st.v}</p>
+                      <p style={{ color:'#0f172a', fontWeight:800, fontSize:14, margin:0 }}>{st.v}</p>
                       <p style={{ color:'#475569', fontSize:10, margin:0 }}>{st.l}</p>
                     </div>
                   ))}

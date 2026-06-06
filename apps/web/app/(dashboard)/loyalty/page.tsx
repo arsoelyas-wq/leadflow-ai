@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
@@ -132,7 +132,7 @@ export default function LoyaltyPage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
           <HealthOrb size={95} score={avgScore} scanning={loading} />
           <div>
-            <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('loyalty.musteri_sagligi', 'Müşteri Sağlığı')}</h1>
+            <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('loyalty.musteri_sagligi', 'Müşteri Sağlığı')}</h1>
             <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('loyalty.agirlikli_saglik_skoru_re', 'Ağırlıklı sağlık skoru: Recency %30 + Satın Alma %30 + Etkileşim %20 + Büyüme %20')}</p>
             <div style={{ display:'flex', gap:6 }}>
               {(['all','healthy','risk','critical'] as const).map(s => (
@@ -144,7 +144,7 @@ export default function LoyaltyPage() {
             </div>
           </div>
           <div style={{ marginLeft:'auto', display:'flex', flexDirection:'column', gap:12 }}>
-            {[{label:'Ort. Skor',value:avgScore,color:'#10b981'},{label: t('Sağlıklı','Sağlıklı'),value:healthy,color:'#34d399'},{label:'Kritik',value:atRisk,color:'#ef4444'}].map(m => (
+            {[{label:'Ort. Skor',value:avgScore,color:'#10b981'},{label: t('Sağlıklı','Sağlıklı'),value:healthy,color:'#047857'},{label:'Kritik',value:atRisk,color:'#ef4444'}].map(m => (
               <div key={m.label} style={{ textAlign:'center' }}>
                 <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>
                 <p style={{ color:'#475569', fontSize:10, margin:0 }}>{m.label}</p>
@@ -157,7 +157,7 @@ export default function LoyaltyPage() {
       {/* At-risk alert */}
       {atRisk > 0 && (
         <div style={{ marginBottom:16, padding:'12px 18px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
-          <AlertTriangle size={16} style={{ color:'#f87171', flexShrink:0 }} />
+          <AlertTriangle size={16} style={{ color:'#dc2626', flexShrink:0 }} />
           <p style={{ color:'#fca5a5', fontSize:13, margin:0 }}><strong>{atRisk} müşteri kritik eşiğin altında</strong>{t('loyalty.hemen_iletisime_gecin', '— hemen iletişime geçin!')}</p>
         </div>
       )}
@@ -170,11 +170,11 @@ export default function LoyaltyPage() {
             const color = c.healthScore >= 70 ? '#10b981' : c.healthScore >= 40 ? '#f59e0b' : '#ef4444'
             const label = c.healthScore >= 70 ? '✅ Sağlıklı' : c.healthScore >= 40 ? '⚠️ Risk' : '🔴 Kritik'
             return (
-              <div key={c.id} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${color}18`, borderRadius:14, padding:'14px 18px', display:'flex', alignItems:'center', gap:14 }}>
+              <div key={c.id} style={{ background:'#ffffff', border:`1px solid ${color}18`, borderRadius:14, padding:'14px 18px', display:'flex', alignItems:'center', gap:14 }}>
                 {/* Score gauge */}
                 <div style={{ position:'relative', width:52, height:52, flexShrink:0 }}>
                   <svg width={52} height={52}>
-                    <circle cx={26} cy={26} r={22} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={5} />
+                    <circle cx={26} cy={26} r={22} fill="none" stroke="#f1f5f9" strokeWidth={5} />
                     <circle cx={26} cy={26} r={22} fill="none" stroke={color} strokeWidth={5}
                       strokeDasharray={2*Math.PI*22} strokeDashoffset={2*Math.PI*22*(1-c.healthScore/100)}
                       strokeLinecap="round" transform="rotate(-90 26 26)"
@@ -186,7 +186,7 @@ export default function LoyaltyPage() {
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
-                    <p style={{ color:'#fff', fontWeight:700, fontSize:14, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.company_name}</p>
+                    <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.company_name}</p>
                     <span style={{ color, fontSize:10, background:`${color}15`, border:`1px solid ${color}30`, borderRadius:20, padding:'1px 7px', flexShrink:0 }}>{label}</span>
                   </div>
                   <div style={{ display:'flex', gap:12, fontSize:11, color:'#475569' }}>
@@ -197,7 +197,7 @@ export default function LoyaltyPage() {
                 </div>
                 {c.healthScore < 50 && (
                   <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:9, padding:'6px 12px', flexShrink:0 }}>
-                    <p style={{ color:'#f87171', fontSize:11, margin:0, fontWeight:600 }}>{t('loyalty.acil_iletisim', 'Acil İletişim!')}</p>
+                    <p style={{ color:'#dc2626', fontSize:11, margin:0, fontWeight:600 }}>{t('loyalty.acil_iletisim', 'Acil İletişim!')}</p>
                   </div>
                 )}
               </div>

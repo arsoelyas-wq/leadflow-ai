@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
@@ -320,19 +320,19 @@ export default function SettingsPage() {
     { id: 'google-capi', label: 'Google Dönüşüm', icon: TrendingUp, color: '#f97316' },
   ]
 
-  const card = { background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:'20px 22px' } as const
-  const cardTitle = { color:'#fff', fontSize:14, fontWeight:800, margin:'0 0 16px' } as const
+  const card = { background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:16, padding:'20px 22px' } as const
+  const cardTitle = { color:'#0f172a', fontSize:14, fontWeight:800, margin:'0 0 16px' } as const
   const fieldLabel = { color:'#64748b', fontSize:11, display:'block' as const, marginBottom:5 }
-  const input = { width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, padding:'10px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' as const }
+  const input = { width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'10px 12px', color:'#0f172a', fontSize:13, outline:'none', boxSizing:'border-box' as const }
   const btn = (bg: string) => ({ display:'flex', alignItems:'center', gap:8, padding:'9px 18px', borderRadius:10, border:'none', background:bg, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' } as const)
 
   return (
     <div style={{ padding: 0 }}>
       {/* Hero header */}
-      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(3,5,18,0.98),rgba(5,8,22,0.99))', borderRadius:20, padding:'24px 28px', marginBottom:24, border:'1px solid rgba(59,130,246,0.18)' }}>
+      <div style={{ position:'relative', overflow:'hidden', background:'#ffffff', borderRadius:20, padding:'24px 28px', marginBottom:24, border:'1px solid rgba(59,130,246,0.18)' }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(59,130,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.02) 1px,transparent 1px)', backgroundSize:'38px 38px', zIndex:0 }} />
         <div style={{ position:'relative', zIndex:2 }}>
-          <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>⚙️ {t('settings.title','Ayarlar')}</h1>
+          <h1 style={{ color:'#0f172a', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>⚙️ {t('settings.title','Ayarlar')}</h1>
           <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.hesap_profili_kanal_baglanti', 'Hesap profili, kanal bağlantıları, güvenlik ve entegrasyon ayarları')}</p>
         </div>
       </div>
@@ -347,7 +347,7 @@ export default function SettingsPage() {
       <div style={{ display:'flex', gap:20 }}>
         {/* Sidebar nav */}
         <div style={{ width:200, flexShrink:0 }}>
-          <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:8, display:'flex', flexDirection:'column', gap:3 }}>
+          <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:16, padding:8, display:'flex', flexDirection:'column', gap:3 }}>
             {tabs.map(({ id, label, icon: Icon, color }) => (
               <button key={id} onClick={() => setTab(id as any)}
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', cursor:'pointer', background:tab===id?`${color}15`:'transparent', color:tab===id?color:'#64748b', fontSize:12, fontWeight:tab===id?700:500, textAlign:'left', transition:'all 0.15s', boxShadow:tab===id?`inset 0 0 0 1px ${color}30`:'none', width:'100%' }}>
@@ -364,12 +364,12 @@ export default function SettingsPage() {
           {tab === 'profile' && (
             <div style={card}>
               <h2 style={cardTitle}>👤 Profil Bilgileri</h2>
-              <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20, paddingBottom:20, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20, paddingBottom:20, borderBottom:'1px solid #e2e8f0' }}>
                 <div style={{ width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:22, fontWeight:900, flexShrink:0 }}>
                   {user?.name?.[0]?.toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <p style={{ color:'#fff', fontWeight:700, fontSize:14, margin:0 }}>{user?.name}</p>
+                  <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:0 }}>{user?.name}</p>
                   <p style={{ color:'#475569', fontSize:12, margin:'3px 0 0' }}>{user?.email}</p>
                 </div>
               </div>
@@ -398,12 +398,12 @@ export default function SettingsPage() {
                       <MessageSquare size={18} color="#34d399" />
                     </div>
                     <div>
-                      <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>WhatsApp</h2>
+                      <h2 style={{ color:'#0f172a', fontWeight:600, fontSize:14, margin:0 }}>WhatsApp</h2>
                       <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.qr_kod_ile_baglayin', 'QR kod ile bağlayın')}</p>
                     </div>
                   </div>
                   <div style={waStatus === 'connected'
-                    ? { display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:20, background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', fontSize:12, fontWeight:500 }
+                    ? { display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:20, background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', color:'#047857', fontSize:12, fontWeight:500 }
                     : { display:'flex', alignItems:'center', gap:6, padding:'5px 12px', borderRadius:20, background:'rgba(100,116,139,0.12)', border:'1px solid rgba(100,116,139,0.2)', color:'#64748b', fontSize:12, fontWeight:500 }}>
                     {waStatus === 'connected' ? <Wifi size={11} /> : <WifiOff size={11} />}
                     {waStatus === 'connected' ? 'Bağlı' : 'Bağlı Değil'}
@@ -415,7 +415,7 @@ export default function SettingsPage() {
                     <div style={{ display:'flex', alignItems:'center', gap:12, padding:14, background:'rgba(16,185,129,0.05)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:12 }}>
                       <Smartphone size={18} color="#34d399" />
                       <div>
-                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>+{settings.whatsapp_number}</p>
+                        <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:0 }}>+{settings.whatsapp_number}</p>
                         <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>WhatsApp aktif</p>
                       </div>
                     </div>
@@ -423,7 +423,7 @@ export default function SettingsPage() {
                       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                         <Bot size={16} color="#a78bfa" />
                         <div>
-                          <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>{t('settings.ai_otomatik_yanit', 'AI Otomatik Yanıt')}</p>
+                          <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:0 }}>{t('settings.ai_otomatik_yanit', 'AI Otomatik Yanıt')}</p>
                           <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>Claude ile otomatik cevap</p>
                         </div>
                       </div>
@@ -432,16 +432,16 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <button onClick={disconnectWhatsApp}
-                      style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:10, fontSize:13, cursor:'pointer', alignSelf:'flex-start' }}>
+                      style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#dc2626', borderRadius:10, fontSize:13, cursor:'pointer', alignSelf:'flex-start' }}>
                       Bağlantıyı Kes
                     </button>
                   </div>
                 ) : qrCode ? (
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:16, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
-                    <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0, display:'flex', alignItems:'center', gap:8 }}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:14, padding:16, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12 }}>
+                    <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:0, display:'flex', alignItems:'center', gap:8 }}>
                       <QrCode size={16} color="#34d399" /> QR kodu WhatsApp ile okutun
                     </p>
-                    <img src={qrCode} alt="WA QR" style={{ width:208, height:208, borderRadius:12, border:'1px solid rgba(255,255,255,0.1)' }} />
+                    <img src={qrCode} alt="WA QR" style={{ width:208, height:208, borderRadius:12, border:'1px solid #e2e8f0' }} />
                     <p style={{ color:'#475569', fontSize:11, margin:0, display:'flex', alignItems:'center', gap:4 }}>
                       <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> Bağlantı bekleniyor...
                     </p>
@@ -450,7 +450,7 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <button onClick={connectWhatsApp} disabled={waConnecting}
-                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 0', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', borderRadius:12, fontSize:13, fontWeight:500, cursor:'pointer', opacity:waConnecting?0.6:1 }}>
+                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 0', background:'rgba(16,185,129,0.15)', border:'1px solid rgba(16,185,129,0.3)', color:'#047857', borderRadius:12, fontSize:13, fontWeight:500, cursor:'pointer', opacity:waConnecting?0.6:1 }}>
                     {waConnecting ? <RefreshCw size={15} style={{ animation:'settings-spin 1s linear infinite' }} /> : <QrCode size={15} />}
                     {waConnecting ? 'QR oluşturuluyor...' : 'WhatsApp Bağla'}
                   </button>
@@ -465,13 +465,13 @@ export default function SettingsPage() {
                       <Video size={18} color="#f87171" />
                     </div>
                     <div>
-                      <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>AI Video Avatar</h2>
+                      <h2 style={{ color:'#0f172a', fontWeight:600, fontSize:14, margin:0 }}>AI Video Avatar</h2>
                       <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.kendi_yuzunuz_ve_sesinizle_k', 'Kendi yüzünüz ve sesinizle kişiselleştirilmiş satış videoları')}</p>
                     </div>
                   </div>
                   {avatarStatus?.hasAvatar && (
                     <span style={avatarStatus.avatarStatus === 'completed'
-                      ? { background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', fontSize:11, padding:'3px 10px', borderRadius:20 }
+                      ? { background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', color:'#047857', fontSize:11, padding:'3px 10px', borderRadius:20 }
                       : { background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)', color:'#fbbf24', fontSize:11, padding:'3px 10px', borderRadius:20 }}>
                       {avatarStatus.avatarStatus === 'completed' ? '✓ Avatar Hazır' : '⏳ İşleniyor'}
                     </span>
@@ -486,29 +486,29 @@ export default function SettingsPage() {
                           <Video size={20} color="#f87171" />
                         </div>
                         <div>
-                          <p style={{ color:'#fff', fontWeight:500, fontSize:13, margin:0 }}>{t('settings.kisisel_avatar_aktif', 'Kişisel Avatar Aktif ✅')}</p>
+                          <p style={{ color:'#0f172a', fontWeight:500, fontSize:13, margin:0 }}>{t('settings.kisisel_avatar_aktif', 'Kişisel Avatar Aktif ✅')}</p>
                           <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>
                             {avatarStatus.avatarType === 'photo' ? '📸 Fotoğraf Avatar' : '📹 Video Avatar'}
                           </p>
                         </div>
                       </div>
                       {avatarStatus.hasVoice && (
-                        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', background:'rgba(6,10,28,0.5)', borderRadius:8, marginTop:8 }}>
-                          <span style={{ color:'#34d399' }}>🎙️</span>
-                          <p style={{ color:'#fff', fontSize:13, margin:0 }}>{avatarStatus.voiceName} — Ses klonu aktif</p>
+                        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 12px', background:'#f8fafc', borderRadius:8, marginTop:8 }}>
+                          <span style={{ color:'#047857' }}>🎙️</span>
+                          <p style={{ color:'#0f172a', fontSize:13, margin:0 }}>{avatarStatus.voiceName} — Ses klonu aktif</p>
                         </div>
                       )}
                     </div>
                     <div style={{ display:'flex', gap:8 }}>
                       <button onClick={() => avatarVideoRef.current?.click()}
-                        style={{ flex:1, padding:'8px 0', background:'rgba(100,116,139,0.2)', border:'1px solid rgba(255,255,255,0.06)', color:'#fff', fontSize:13, borderRadius:10, cursor:'pointer' }}>
+                        style={{ flex:1, padding:'8px 0', background:'#f8fafc', border:'1px solid #e2e8f0', color:'#475569', fontSize:13, borderRadius:10, cursor:'pointer' }}>
                         Avatar Değiştir
                       </button>
                       <button onClick={async () => {
                         await api.delete('/api/avatar/avatar')
                         setAvatarStatus({ hasAvatar: false })
                         showMsg('success', 'Avatar silindi')
-                      }} style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', fontSize:13, borderRadius:10, cursor:'pointer' }}>
+                      }} style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#dc2626', fontSize:13, borderRadius:10, cursor:'pointer' }}>
                         Sil
                       </button>
                     </div>
@@ -516,29 +516,29 @@ export default function SettingsPage() {
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                      <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
-                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>📹 Video Avatar</p>
+                      <div style={{ padding:14, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12 }}>
+                        <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>📹 Video Avatar</p>
                         <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{t('settings.25_dk_video_yukle_ai_klonlar', '2-5 dk video yükle → AI klonlar')}</p>
-                        <p style={{ color:'#34d399', fontSize:11, margin:'0 0 10px' }}>{t('settings.en_gercekci_sonuc', 'En gerçekçi sonuç')}</p>
+                        <p style={{ color:'#047857', fontSize:11, margin:'0 0 10px' }}>{t('settings.en_gercekci_sonuc', 'En gerçekçi sonuç')}</p>
                         <button onClick={() => avatarVideoRef.current?.click()} disabled={uploadingAvatar}
                           style={{ width:'100%', padding:'7px 0', background:'#dc2626', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:uploadingAvatar?0.5:1 }}>
                           {uploadingAvatar ? <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> : null}
                           {uploadingAvatar ? 'Yükleniyor...' : 'Video Yükle'}
                         </button>
                       </div>
-                      <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
-                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>{t('settings.fotograf_avatar', '📸 Fotoğraf Avatar')}</p>
+                      <div style={{ padding:14, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12 }}>
+                        <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>{t('settings.fotograf_avatar', '📸 Fotoğraf Avatar')}</p>
                         <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{t('settings.fotograf_yukle_ai_animasyon', 'Fotoğraf yükle → AI animasyon')}</p>
                         <p style={{ color:'#fbbf24', fontSize:11, margin:'0 0 10px' }}>{t('settings.hizli_ucretsiz', 'Hızlı & ücretsiz')}</p>
                         <button onClick={() => avatarPhotoRef.current?.click()} disabled={uploadingAvatar}
-                          style={{ width:'100%', padding:'7px 0', background:'rgba(100,116,139,0.4)', border:'none', color:'#fff', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:uploadingAvatar?0.5:1 }}>
+                          style={{ width:'100%', padding:'7px 0', background:'#f1f5f9', border:'1px solid #e2e8f0', color:'#475569', fontSize:12, borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:uploadingAvatar?0.5:1 }}>
                           {uploadingAvatar ? <RefreshCw size={11} style={{ animation:'settings-spin 1s linear infinite' }} /> : null}
                           {uploadingAvatar ? 'Yükleniyor...' : 'Fotoğraf Yükle'}
                         </button>
                       </div>
                     </div>
-                    <div style={{ padding:14, background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
-                      <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>🎙️ Ses Klonlama</p>
+                    <div style={{ padding:14, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12 }}>
+                      <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>🎙️ Ses Klonlama</p>
                       <p style={{ color:'#64748b', fontSize:11, margin:'0 0 10px' }}>{t('settings.30sn_3dk_ses_kaydi_ai_sesini', '30sn - 3dk ses kaydı → AI sesinizi klonlar')}</p>
                       <div style={{ display:'flex', gap:8 }}>
                         <input value={voiceName} onChange={e => setVoiceName(e.target.value)} placeholder={t('settings.ses_adi', 'Ses adı')}
@@ -569,7 +569,7 @@ export default function SettingsPage() {
                       <Linkedin size={18} color="#60a5fa" />
                     </div>
                     <div>
-                      <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>LinkedIn</h2>
+                      <h2 style={{ color:'#0f172a', fontWeight:600, fontSize:14, margin:0 }}>LinkedIn</h2>
                       <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.karar_verici_aramasi_icin_ba', 'Karar verici araması için bağlayın')}</p>
                     </div>
                   </div>
@@ -587,12 +587,12 @@ export default function SettingsPage() {
                         {linkedinConnectedEmail?.[0]?.toUpperCase() || 'L'}
                       </div>
                       <div>
-                        <p style={{ color:'#fff', fontSize:13, fontWeight:500, margin:0 }}>{linkedinConnectedEmail}</p>
+                        <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:0 }}>{linkedinConnectedEmail}</p>
                         <p style={{ color:'#64748b', fontSize:11, margin:'2px 0 0' }}>{t('settings.linkedin_bagli', 'LinkedIn bağlı')}</p>
                       </div>
                     </div>
                     <button onClick={disconnectLinkedIn}
-                      style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171', borderRadius:10, fontSize:13, cursor:'pointer', alignSelf:'flex-start' }}>
+                      style={{ padding:'8px 14px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', color:'#dc2626', borderRadius:10, fontSize:13, cursor:'pointer', alignSelf:'flex-start' }}>
                       Bağlantıyı Kes
                     </button>
                   </div>
@@ -625,7 +625,7 @@ export default function SettingsPage() {
                     <Mail size={18} color="#60a5fa" />
                   </div>
                   <div>
-                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>Email (SMTP)</h2>
+                    <h2 style={{ color:'#0f172a', fontWeight:600, fontSize:14, margin:0 }}>Email (SMTP)</h2>
                     <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{t('settings.gmail_veya_smtp_sunucunuzu_b', 'Gmail veya SMTP sunucunuzu bağlayın')}</p>
                   </div>
                 </div>
@@ -663,7 +663,7 @@ export default function SettingsPage() {
                       Test Et
                     </button>
                     <button onClick={saveSettings} disabled={settingsSaving}
-                      style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'rgba(100,116,139,0.2)', border:'1px solid rgba(255,255,255,0.06)', color:'#fff', borderRadius:10, fontSize:13, cursor:'pointer' }}>
+                      style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'#f8fafc', border:'1px solid #e2e8f0', color:'#475569', borderRadius:10, fontSize:13, cursor:'pointer' }}>
                       {settingsSaving ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <Save size={14} />}
                       Kaydet
                     </button>
@@ -679,7 +679,7 @@ export default function SettingsPage() {
               <h2 style={{ ...cardTitle, fontSize:16 }}>{t('settings.bildirim_ayarlari', 'Bildirim Ayarları')}</h2>
               {notifItems.map(({ label }, idx) => (
                 <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', borderBottom: idx < notifItems.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                  <p style={{ color:'#fff', fontSize:13, margin:0 }}>{label}</p>
+                  <p style={{ color:'#0f172a', fontSize:13, margin:0 }}>{label}</p>
                   <div onClick={() => setNotifToggles(prev => prev.map((v, i) => i === idx ? !v : v))} style={{ width:40, height:22, borderRadius:11, background:notifToggles[idx]?'#3b82f6':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
                     <div style={{ position:'absolute', top:3, left:notifToggles[idx]?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
                   </div>
@@ -714,9 +714,9 @@ export default function SettingsPage() {
                 <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.google_authenticator_ile_hes', 'Google Authenticator ile hesabınızı koruyun')}</p>
               </div>
 
-              <div style={{ display:'flex', alignItems:'center', gap:10, padding:14, borderRadius:12, border:'1px solid', ...(twoFAStatus ? { background:'rgba(16,185,129,0.1)', borderColor:'rgba(16,185,129,0.3)' } : { background:'rgba(6,10,28,0.5)', borderColor:'rgba(255,255,255,0.06)' }), marginBottom:18 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:14, borderRadius:12, border:'1px solid', ...(twoFAStatus ? { background:'rgba(16,185,129,0.1)', borderColor:'rgba(16,185,129,0.3)' } : { background:'#f8fafc', borderColor:'rgba(255,255,255,0.06)' }), marginBottom:18 }}>
                 <div style={{ width:12, height:12, borderRadius:'50%', flexShrink:0, background:twoFAStatus?'#34d399':'#475569' }} />
-                <p style={{ color:'#fff', fontSize:13, margin:0 }}>{twoFAStatus ? '✅ 2FA Aktif — Hesabınız korunuyor' : '❌ 2FA Pasif — Hesabınız korumasız'}</p>
+                <p style={{ color:'#0f172a', fontSize:13, margin:0 }}>{twoFAStatus ? '✅ 2FA Aktif — Hesabınız korunuyor' : '❌ 2FA Pasif — Hesabınız korumasız'}</p>
               </div>
 
               {!twoFAStatus ? (
@@ -729,11 +729,11 @@ export default function SettingsPage() {
                     </button>
                   ) : (
                     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                      <div style={{ background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:18, textAlign:'center' }}>
+                      <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12, padding:18, textAlign:'center' }}>
                         <p style={{ color:'#64748b', fontSize:13, marginBottom:12 }}>Google Authenticator ile bu QR kodu okutun</p>
                         <img src={twoFASetup.qrImageUrl} alt="2FA QR" style={{ width:160, height:160, borderRadius:12, background:'#fff', padding:8, margin:'0 auto', display:'block' }} />
                         <p style={{ color:'#475569', fontSize:11, marginTop:12 }}>
-                          Manuel giriş: <code style={{ color:'#fff', background:'rgba(255,255,255,0.08)', padding:'2px 6px', borderRadius:4 }}>{twoFASetup.secret}</code>
+                          Manuel giriş: <code style={{ color:'#1e40af', background:'#eff6ff', padding:'2px 6px', borderRadius:4 }}>{twoFASetup.secret}</code>
                         </p>
                       </div>
                       <div>
@@ -776,12 +776,12 @@ export default function SettingsPage() {
                 <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.leadlerinizi_otomatik_olarak', 'Leadlerinizi otomatik olarak Google Sheets&apos;e aktarın')}</p>
               </div>
 
-              <div style={{ background:'rgba(6,10,28,0.5)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, padding:14, marginBottom:18 }}>
+              <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12, padding:14, marginBottom:18 }}>
                 <p style={{ color:'#cbd5e1', fontSize:13, fontWeight:500, margin:'0 0 8px' }}>{t('settings.nasil_kullanilir', '📋 Nasıl Kullanılır?')}</p>
                 <ol style={{ color:'#64748b', fontSize:12, paddingLeft:18, margin:0, display:'flex', flexDirection:'column', gap:4 }}>
                   <li>{t('settings.google_sheetsaposte_yeni_bir', 'Google Sheets&apos;te yeni bir sayfa oluşturun')}</li>
                   <li>{t('settings.urlaposden_spreadsheet_idapo', 'URL&apos;den Spreadsheet ID&apos;yi kopyalayın')}</li>
-                  <li style={{ color:'#475569' }}>docs.google.com/spreadsheets/d/<span style={{ color:'#fff', fontFamily:'monospace' }}>ID_BURADA</span>/edit</li>
+                  <li style={{ color:'#475569' }}>docs.google.com/spreadsheets/d/<span style={{ color:'#1e40af', fontFamily:'monospace' }}>ID_BURADA</span>/edit</li>
                   <li>{t('settings.asagiya_yapistirin_ve_kaydet', 'Aşağıya yapıştırın ve Kaydet&apos;e tıklayın')}</li>
                   <li>{t('settings.quotsimdi_aktarquot_ile_lead', '&quot;Şimdi Aktar&quot; ile leadleri aktarın')}</li>
                 </ol>
@@ -828,7 +828,7 @@ export default function SettingsPage() {
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
                   <div style={{ width:40, height:40, background:'#1d4ed8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>📊</div>
                   <div style={{ flex:1 }}>
-                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>{t('settings.reklam_donusum_takibi', 'Reklam Dönüşüm Takibi')}</h2>
+                    <h2 style={{ color:'#0f172a', fontWeight:600, fontSize:14, margin:0 }}>{t('settings.reklam_donusum_takibi', 'Reklam Dönüşüm Takibi')}</h2>
                     <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>{t('settings.hangi_reklamin_musteriye_don', 'Hangi reklamın müşteriye dönüştüğünü Meta&apos;ya otomatik bildir')}</p>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -846,7 +846,7 @@ export default function SettingsPage() {
 
               {/* Configuration */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.baglanti_ayarlari', 'Bağlantı Ayarları')}</h3>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.baglanti_ayarlari', 'Bağlantı Ayarları')}</h3>
 
                 <div style={{ marginBottom:12 }}>
                   <label style={fieldLabel}>Pixel ID</label>
@@ -859,7 +859,7 @@ export default function SettingsPage() {
                 <div style={{ marginBottom:12 }}>
                   <label style={fieldLabel}>
                     Access Token{' '}
-                    {capi.hasToken && <span style={{ color:'#34d399', marginLeft:6 }}>{t('settings.kayitli', '✓ Kayıtlı')}</span>}
+                    {capi.hasToken && <span style={{ color:'#047857', marginLeft:6 }}>{t('settings.kayitli', '✓ Kayıtlı')}</span>}
                   </label>
                   <input value={capiNewToken} onChange={e => setCapiNewToken(e.target.value)}
                     type="password"
@@ -911,7 +911,7 @@ export default function SettingsPage() {
                     } catch (e: any) { showMsg('error', e.message) }
                     finally { setCapiTesting(false) }
                   }} disabled={capiTesting || !capi.hasToken}
-                    style={{ ...btn('rgba(100,116,139,0.25)'), border:'1px solid rgba(255,255,255,0.06)', opacity:(capiTesting || !capi.hasToken)?0.4:1 }}>
+                    style={{ ...btn('rgba(100,116,139,0.25)'), border:'1px solid #e2e8f0', opacity:(capiTesting || !capi.hasToken)?0.4:1 }}>
                     {capiTesting ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <FlaskConical size={14} />}
                     Test Gönder
                   </button>
@@ -920,7 +920,7 @@ export default function SettingsPage() {
 
               {/* How it works */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
                     { step: '1', label: 'Lead Geldi', desc: 'Yeni bir müşteri adayı oluştuğunda Meta\'ya bildirilir', dotColor: '#60a5fa' },
@@ -930,15 +930,15 @@ export default function SettingsPage() {
                     { step: '5', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olarak işaretlendiğinde — en önemli sinyal', dotColor: '#34d399' },
                   ].map(({ step, label, desc, dotColor }) => (
                     <div key={step} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-                      <div style={{ width:20, height:20, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, marginTop:1 }}>{step}</div>
+                      <div style={{ width:20, height:20, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#ffffff', flexShrink:0, marginTop:1 }}>{step}</div>
                       <div>
-                        <span style={{ fontSize:13, fontWeight:500, color:'#fff' }}>{label}</span>
+                        <span style={{ fontSize:13, fontWeight:500, color:'#0f172a' }}>{label}</span>
                         <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div style={{ marginTop:14, padding:'10px 12px', background:'rgba(6,10,28,0.6)', borderRadius:10 }}>
+                <div style={{ marginTop:14, padding:'10px 12px', background:'#f8fafc', borderRadius:10 }}>
                   <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
                     Tüm veriler güvenli şekilde şifrelenerek Meta&apos;ya iletilir. Kişisel bilgiler (isim, telefon, e-posta) şifrelenmeden gönderilmez.
                   </p>
@@ -947,7 +947,7 @@ export default function SettingsPage() {
 
               {/* Audience export */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 6px' }}>Custom Audience Export</h3>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 6px' }}>Custom Audience Export</h3>
                 <p style={{ color:'#64748b', fontSize:13, margin:'0 0 14px' }}>{t('settings.sha256_hashli_csv_meta_ads_m', 'SHA-256 hashli CSV — Meta Ads Manager&apos;a direkt yükleyin')}</p>
                 <div style={{ display:'flex', gap:10, marginBottom:12 }}>
                   {[
@@ -979,10 +979,10 @@ export default function SettingsPage() {
               {/* Recent event log */}
               {capiEvents.length > 0 && (
                 <div style={card}>
-                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Son CAPI Eventleri</h3>
+                  <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>Son CAPI Eventleri</h3>
                   <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:256, overflowY:'auto' }}>
                     {capiEvents.slice(0, 20).map((ev: any) => (
-                      <div key={ev.id || ev.fired_at} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                      <div key={ev.id || ev.fired_at} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, padding:'6px 0', borderBottom:'1px solid #f1f5f9' }}>
                         <span style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:ev.success?'#34d399':'#f87171', display:'inline-block' }} />
                         <span style={{ color:'#64748b', width:128, flexShrink:0, fontFamily:'monospace' }}>{ev.event_name}</span>
                         <span style={{ color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.leads?.company_name || ev.lead_id}</span>
@@ -1003,7 +1003,7 @@ export default function SettingsPage() {
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
                   <div style={{ width:40, height:40, background:'#1d4ed8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🎯</div>
                   <div style={{ flex:1 }}>
-                    <h2 style={{ color:'#fff', fontWeight:600, fontSize:14, margin:0 }}>{t('settings.google_reklam_donusum_takibi', 'Google Reklam Dönüşüm Takibi')}</h2>
+                    <h2 style={{ color:'#0f172a', fontWeight:600, fontSize:14, margin:0 }}>{t('settings.google_reklam_donusum_takibi', 'Google Reklam Dönüşüm Takibi')}</h2>
                     <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>{t('settings.hangi_google_reklaminin_must', 'Hangi Google reklamının müşteriye dönüştüğünü otomatik bildir')}</p>
                   </div>
                   <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -1034,7 +1034,7 @@ export default function SettingsPage() {
 
               {/* Configuration */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.donusum_ayarlari', 'Dönüşüm Ayarları')}</h3>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.donusum_ayarlari', 'Dönüşüm Ayarları')}</h3>
 
                 <div style={{ marginBottom:12 }}>
                   <label style={fieldLabel}>{t('settings.google_ads_musteri_kimligi_c', 'Google Ads Müşteri Kimliği (Customer ID)')}</label>
@@ -1085,7 +1085,7 @@ export default function SettingsPage() {
                     } catch (e: any) { showMsg('error', e.message) }
                     finally { setGcapiTesting(false) }
                   }} disabled={gcapiTesting || !gcapi.hasConnection || !gcapi.enabled}
-                    style={{ ...btn('rgba(100,116,139,0.25)'), border:'1px solid rgba(255,255,255,0.06)', opacity:(gcapiTesting || !gcapi.hasConnection || !gcapi.enabled)?0.4:1 }}>
+                    style={{ ...btn('rgba(100,116,139,0.25)'), border:'1px solid #e2e8f0', opacity:(gcapiTesting || !gcapi.hasConnection || !gcapi.enabled)?0.4:1 }}>
                     {gcapiTesting ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <FlaskConical size={14} />}
                     Test Gönder
                   </button>
@@ -1094,7 +1094,7 @@ export default function SettingsPage() {
 
               {/* How it works */}
               <div style={card}>
-                <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
                     { step: '1', label: 'Lead Reklamdan Geldi', desc: 'Google reklamına tıklayan kişi LeadFlow\'a düşer (gclid otomatik yakalanır)', dotColor: '#60a5fa' },
@@ -1103,15 +1103,15 @@ export default function SettingsPage() {
                     { step: '4', label: 'Smart Bidding Öğrenir', desc: 'Google algoritması hangi aramalar/hedef kitleler müşteri getirdi, sonraki reklamlarda daha iyi hedefleme yapar', dotColor: '#fbbf24' },
                   ].map(({ step, label, desc, dotColor }) => (
                     <div key={step} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-                      <div style={{ width:20, height:20, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0, marginTop:1 }}>{step}</div>
+                      <div style={{ width:20, height:20, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#ffffff', flexShrink:0, marginTop:1 }}>{step}</div>
                       <div>
-                        <span style={{ fontSize:13, fontWeight:500, color:'#fff' }}>{label}</span>
+                        <span style={{ fontSize:13, fontWeight:500, color:'#0f172a' }}>{label}</span>
                         <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div style={{ marginTop:14, padding:'10px 12px', background:'rgba(6,10,28,0.6)', borderRadius:10 }}>
+                <div style={{ marginTop:14, padding:'10px 12px', background:'#f8fafc', borderRadius:10 }}>
                   <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
                     Tüm veriler şifrelenerek (SHA-256) Google&apos;a iletilir. İsim, telefon ve e-posta şifrelenmeden gönderilmez.
                     Customer Match için Kazanıldı listesini Google Ads&apos;e yükleyebilirsiniz.
@@ -1122,7 +1122,7 @@ export default function SettingsPage() {
               {/* Customer Match export */}
               <div style={{ ...card, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div>
-                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 4px' }}>Customer Match Export</h3>
+                  <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 4px' }}>Customer Match Export</h3>
                   <p style={{ color:'#64748b', fontSize:13, margin:0 }}>{t('settings.kazanildi_listesi_google_ads', 'Kazanıldı listesi → Google Ads Customer Match olarak yükle')}</p>
                 </div>
                 <button onClick={async () => {
@@ -1133,7 +1133,7 @@ export default function SettingsPage() {
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a'); a.href = url; a.download = 'google-customer-match.csv'; a.click()
                   URL.revokeObjectURL(url)
-                }} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.3)', color:'#34d399', borderRadius:10, fontSize:13, cursor:'pointer' }}>
+                }} style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 16px', background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.3)', color:'#047857', borderRadius:10, fontSize:13, cursor:'pointer' }}>
                   <Download size={14} /> İndir
                 </button>
               </div>
@@ -1141,10 +1141,10 @@ export default function SettingsPage() {
               {/* Event log */}
               {gcapiEvents.length > 0 && (
                 <div style={card}>
-                  <h3 style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.son_gonderilen_donusumler', 'Son Gönderilen Dönüşümler')}</h3>
+                  <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.son_gonderilen_donusumler', 'Son Gönderilen Dönüşümler')}</h3>
                   <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:256, overflowY:'auto' }}>
                     {gcapiEvents.slice(0, 20).map((ev: any) => (
-                      <div key={ev.id || ev.fired_at} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                      <div key={ev.id || ev.fired_at} style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, padding:'6px 0', borderBottom:'1px solid #f1f5f9' }}>
                         <span style={{ width:8, height:8, borderRadius:'50%', flexShrink:0, background:ev.success?'#34d399':'#f87171', display:'inline-block' }} />
                         <span style={{ color:'#64748b', width:128, flexShrink:0, fontFamily:'monospace' }}>{ev.event_name}</span>
                         <span style={{ color:'#cbd5e1', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.leads?.company_name || ev.lead_id}</span>

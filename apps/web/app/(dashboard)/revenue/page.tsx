@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
@@ -42,7 +42,7 @@ function RevenueCandlestick({ size = 110, data = [], forecastData = [] }: { size
         <rect x={0} y={0} width={W} height={H} fill="url(#rcGlow)" rx={12} />
         {/* Grid lines */}
         {[0.25,0.5,0.75,1].map(r => (
-          <line key={r} x1={10} y1={H - 30 - r * (H-60)} x2={W-10} y2={H - 30 - r * (H-60)} stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="3 5" />
+          <line key={r} x1={10} y1={H - 30 - r * (H-60)} x2={W-10} y2={H - 30 - r * (H-60)} stroke="#f1f5f9" strokeWidth={1} strokeDasharray="3 5" />
         ))}
         {/* Ground line */}
         <line x1={10} y1={H-30} x2={W-10} y2={H-30} stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
@@ -148,7 +148,7 @@ export default function RevenuePage() {
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
           <RevenueCandlestick size={100} data={actual} forecastData={forecast.slice(0,3)} />
           <div style={{ flex:1 }}>
-            <h1 style={{ color:'#fff', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Gelir Tahmini</h1>
+            <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Gelir Tahmini</h1>
             <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('revenue.gercek_fatura_verisiyle_3', 'Gerçek fatura verisiyle 3 aylık projeksiyon')}</p>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
               {(['base','best','worst'] as const).map(s => (
@@ -176,7 +176,7 @@ export default function RevenuePage() {
               { label: t('Sonraki Dönem','Sonraki Dönem'), value:fmtCurrency(Math.round((forecast[0]||0)*scenarioMultiplier*periodMultiplier)), color:'#d97706', icon:'📈' },
               { label:'Win Rate', value:`%${data?.funnel?.winRate||0}`, color:'#8b5cf6', icon:'🎯' },
             ].map(m => (
-              <div key={m.label} style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>
+              <div key={m.label} style={{ background:'#ffffff', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>
                 <div style={{ fontSize:22, marginBottom:8 }}>{m.icon}</div>
                 <p style={{ color:m.color, fontSize:22, fontWeight:800, margin:'0 0 4px' }}>{m.value}</p>
                 <p style={{ color:'#64748b', fontSize:12, margin:0 }}>{m.label}</p>
@@ -185,12 +185,12 @@ export default function RevenuePage() {
           </div>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>⚙️ Gelir Parametreleri</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>⚙️ Gelir Parametreleri</h3>
               <div style={{ marginBottom:14 }}>
                 <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('revenue.ortalama_deal_degeri_tl', 'Ortalama Deal Değeri (TL)')}</label>
                 <input value={customDealValue || rev?.avgDealValue || ''} onChange={e=>setCustomDealValue(e.target.value)} placeholder={`₺${rev?.avgDealValue||1000}`}
-                  style={{ width:'100%', background:'#060a1c', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'9px 12px', color:'#fff', fontSize:13, outline:'none', boxSizing:'border-box' }} />
+                  style={{ width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'9px 12px', color:'#0f172a', fontSize:13, outline:'none', boxSizing:'border-box' }} />
                 <p style={{ color:'#334155', fontSize:10, margin:'4px 0 0' }}>Gerçek faturalardan: ₺{rev?.avgDealValue||0} ortalama</p>
               </div>
               <div style={{ marginBottom:14 }}>
@@ -207,15 +207,15 @@ export default function RevenuePage() {
               </button>
             </div>
 
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('revenue.3_aylik_projeksiyon', '📊 3 Aylık Projeksiyon')}</h3>
+            <div style={{ background:'#ffffff', border:'1px solid rgba(16,185,129,0.18)', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('revenue.3_aylik_projeksiyon', '📊 3 Aylık Projeksiyon')}</h3>
               {(forecast||[]).map((rev2: number, i: number) => (
                 <div key={i} style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                     <span style={{ color:'#94a3b8', fontSize:12 }}>{i+1}. Ay</span>
                     <span style={{ color:'#d97706', fontWeight:700, fontSize:13 }}>{fmtCurrency(Math.round(rev2*scenarioMultiplier))}</span>
                   </div>
-                  <div style={{ height:6, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
+                  <div style={{ height:6, background:'#f1f5f9', borderRadius:3 }}>
                     <div style={{ height:'100%', width:`${Math.min(100,Math.round((rev2/((forecast[2]||1)*1.1))*100))}%`, background:'linear-gradient(90deg,#d97706,#10b981)', borderRadius:3 }} />
                   </div>
                 </div>
@@ -224,11 +224,11 @@ export default function RevenuePage() {
           </div>
 
           {data?.channelPerformance?.length > 0 && (
-            <div style={{ background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('revenue.kanal_gelir_dagilimi', '📡 Kanal Gelir Dağılımı')}</h3>
+            <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18, padding:22 }}>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('revenue.kanal_gelir_dagilimi', '📡 Kanal Gelir Dağılımı')}</h3>
               <div style={{ display:'flex', gap:16 }}>
                 {data.channelPerformance.map((ch: any) => (
-                  <div key={ch.channel} style={{ flex:1, textAlign:'center', padding:'12px', background:'rgba(0,0,0,0.2)', borderRadius:12, border:'1px solid rgba(255,255,255,0.05)' }}>
+                  <div key={ch.channel} style={{ flex:1, textAlign:'center', padding:'12px', background:'rgba(0,0,0,0.2)', borderRadius:12, border:'1px solid #e2e8f0' }}>
                     <p style={{ color:ch.color, fontSize:18, fontWeight:800, margin:'0 0 4px' }}>%{ch.replyRate}</p>
                     <p style={{ color:'#94a3b8', fontSize:12, margin:'0 0 2px' }}>{ch.channel}</p>
                     <p style={{ color:'#475569', fontSize:11, margin:0 }}>{ch.sent.toLocaleString()} gönderim</p>
