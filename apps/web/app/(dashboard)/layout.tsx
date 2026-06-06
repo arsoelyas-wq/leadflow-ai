@@ -35,9 +35,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!user) return null
 
-  const dashBg = theme === 'light' ? '#f1f5f9' : '#060a14'
-  const topBarBg = theme === 'light' ? 'rgba(241,245,249,0.9)' : 'rgba(6,10,20,0.85)'
-  const topBarBorder = theme === 'light' ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.05)'
+  const isDark = theme === 'dark'
+  const dashBg = isDark ? '#060a14' : '#f1f5f9'
+  const topBarBg = isDark ? 'rgba(6,10,20,0.88)' : 'rgba(241,245,249,0.92)'
+  const topBarBorder = isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e2e8f0'
 
   return (
     <div style={{ minHeight:'100vh', background: dashBg, display:'flex' }}>

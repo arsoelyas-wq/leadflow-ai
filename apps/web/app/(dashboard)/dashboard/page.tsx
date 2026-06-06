@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { api } from '@/lib/api'
+import { useTheme } from '@/lib/theme-context'
 import { createClient } from '@supabase/supabase-js'
 import AdminBanner from '@/components/AdminBanner'
 import {
@@ -115,6 +116,8 @@ function Skeleton({ h = 20, w = '100%', r = 6 }: { h?: number; w?: number|string
 export default function DashboardPage() {
   const { user } = useAuth()
   const { t, lang } = useI18n()
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   // Dashboard direct-language texts (bypasses translation system for reliability)
   const DB: Record<string, Record<string, string>> = {
     tr: { daily_summary:'İşte bugünkü özet', active_campaigns:'aktif kampanya', last7d:'Son 7 gün', see_all:'Tümünü gör', no_activity:'Henüz aktivite yok', no_leads:'Henüz lead yok' },
@@ -175,7 +178,23 @@ export default function DashboardPage() {
   const maxSent   = Math.max(...(data?.dailyStats?.map((d: any) => d.sent) || [1]), 1)
   const sparkData = data?.dailyStats?.map((d: any) => d.sent) || []
 
-  const card = { background:'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16 } as const
+  const card = {
+    background: isDark ? 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))' : '#ffffff',
+    border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
+    borderRadius: 16,
+    boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+  } as const
+
+  // Theme color shortcuts
+  const tx1 = isDark ? '#fff' : '#0f172a'
+  const tx2 = isDark ? '#94a3b8' : '#64748b'
+  const tx3 = isDark ? '#475569' : '#94a3b8'
+  const tx4 = isDark ? '#334155' : '#cbd5e1'
+  const surf = isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc'
+  const surfBd = isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #f1f5f9'
+  const divBd = isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #f1f5f9'
+  const notifBg = isDark ? 'linear-gradient(135deg,#0d111f,#090d1a)' : '#ffffff'
+  const notifBd = isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0'
 
   // Insight icon/color map
   const insightMeta: Record<string,{ color:string; bg:string; Icon:any }> = {
@@ -210,14 +229,14 @@ export default function DashboardPage() {
       {/* ── HEADER ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>
         <div>
-          <h1 style={{ color:'#fff', fontSize:24, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>
+          <h1 style={{ color:tx1, fontSize:24, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>
             {t('dashboard.greeting')}, {user?.name?.split(' ')[0]}
           </h1>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
-            <p style={{ color:'#475569', fontSize:13, margin:0 }}>{D.daily_summary}</p>
+            <p style={{ color:tx3, fontSize:13, margin:0 }}>{D.daily_summary}</p>
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:20, background:realtimeConnected?'rgba(16,185,129,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${realtimeConnected?'rgba(16,185,129,0.25)':'rgba(100,116,139,0.2)'}` }}>
-              <div style={{ width:6, height:6, borderRadius:'50%', background:realtimeConnected?'#10b981':'#475569', animation:realtimeConnected?'pulse-dot 2s infinite':'none' }}/>
-              <span style={{ color:realtimeConnected?'#34d399':'#475569', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : t('dashboard.connecting', 'Bağlanıyor...')}</span>
+              <div style={{ width:6, height:6, borderRadius:'50%', background:realtimeConnected?'#10b981':'#64748b', animation:realtimeConnected?'pulse-dot 2s infinite':'none' }}/>
+              <span style={{ color:realtimeConnected?'#34d399':'#64748b', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : t('dashboard.connecting', 'Bağlanıyor...')}</span>
             </div>
           </div>
         </div>
@@ -225,33 +244,33 @@ export default function DashboardPage() {
           {/* Notification Bell */}
           <div ref={notifRef} style={{ position:'relative' }}>
             <button onClick={() => { setShowNotifs(!showNotifs); setNewCount(0) }}
-              style={{ width:40, height:40, borderRadius:11, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', transition:'all 0.15s' }}>
-              <Bell size={16} color="#64748b"/>
+              style={{ width:40, height:40, borderRadius:11, background:surf, border:surfBd, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', transition:'all 0.15s' }}>
+              <Bell size={16} color={tx3}/>
               {newCount > 0 && (
                 <span style={{ position:'absolute', top:-5, right:-5, width:18, height:18, background:'#3b82f6', borderRadius:'50%', color:'#fff', fontSize:10, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #060a14' }}>{newCount}</span>
               )}
             </button>
             {showNotifs && (
-              <div style={{ position:'absolute', right:0, top:46, width:320, background:'linear-gradient(135deg,#0d111f,#090d1a)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, boxShadow:'0 24px 60px rgba(0,0,0,0.6)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
-                <div style={{ padding:'12px 16px', borderBottom:'1px solid rgba(255,255,255,0.06)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <span style={{ color:'#fff', fontWeight:700, fontSize:13 }}>{t('dashboard.notifications','Bildirimler')}</span>
-                  <button onClick={() => setNotifications([])} style={{ background:'none', border:'none', color:'#334155', cursor:'pointer', fontSize:11, padding:0 }}>{t('dashboard.clear','Temizle')}</button>
+              <div style={{ position:'absolute', right:0, top:46, width:320, background:notifBg, border:notifBd, borderRadius:16, boxShadow: isDark ? '0 24px 60px rgba(0,0,0,0.6)' : '0 8px 32px rgba(0,0,0,0.12)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
+                <div style={{ padding:'12px 16px', borderBottom:divBd, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ color:tx1, fontWeight:700, fontSize:13 }}>{t('dashboard.notifications','Bildirimler')}</span>
+                  <button onClick={() => setNotifications([])} style={{ background:'none', border:'none', color:tx3, cursor:'pointer', fontSize:11, padding:0, fontFamily:'inherit' }}>{t('dashboard.clear','Temizle')}</button>
                 </div>
                 {notifications.length === 0 ? (
-                  <div style={{ padding:'28px 16px', textAlign:'center', color:'#334155', fontSize:13 }}>{t('dashboard.no_notifs','Henüz bildirim yok')}</div>
+                  <div style={{ padding:'28px 16px', textAlign:'center', color:tx3, fontSize:13 }}>{t('dashboard.no_notifs','Henüz bildirim yok')}</div>
                 ) : (
                   <div style={{ maxHeight:280, overflowY:'auto' }}>
                     {notifications.map(n => {
                       const NIcon = notifIconMap[n.type] || Bell
                       const nc = notifColorMap[n.type] || '#64748b'
                       return (
-                        <div key={n.id} style={{ display:'flex', gap:10, padding:'10px 14px', borderBottom:'1px solid rgba(255,255,255,0.04)', alignItems:'flex-start' }}>
+                        <div key={n.id} style={{ display:'flex', gap:10, padding:'10px 14px', borderBottom:divBd, alignItems:'flex-start' }}>
                           <div style={{ width:28, height:28, borderRadius:8, background:`${nc}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                             <NIcon size={13} color={nc}/>
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
-                            <p style={{ color:'#e2e8f0', fontSize:12, margin:0, lineHeight:1.5 }}>{n.text}</p>
-                            <p style={{ color:'#334155', fontSize:10, margin:'3px 0 0' }}>{n.time.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</p>
+                            <p style={{ color:tx1, fontSize:12, margin:0, lineHeight:1.5 }}>{n.text}</p>
+                            <p style={{ color:tx3, fontSize:10, margin:'3px 0 0' }}>{n.time.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</p>
                           </div>
                         </div>
                       )
@@ -326,14 +345,14 @@ export default function DashboardPage() {
         ].map(({ label, value, sub, trend, icon: Icon, color, sparkColor }) => (
           <div key={label} style={{ ...card, padding:'18px 20px' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-              <span style={{ color:'#475569', fontSize:12, fontWeight:600 }}>{label}</span>
+              <span style={{ color:tx2, fontSize:12, fontWeight:600 }}>{label}</span>
               <div style={{ width:34, height:34, borderRadius:9, background:`${color}14`, border:`1px solid ${color}22`, display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <Icon size={15} color={color}/>
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:8 }}>
               <div>
-                <p style={{ color:'#fff', fontSize:26, fontWeight:900, margin:0, letterSpacing:'-1px' }}>{value}</p>
+                <p style={{ color:tx1, fontSize:26, fontWeight:900, margin:0, letterSpacing:'-1px' }}>{value}</p>
                 <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
                   {trend !== null && trend !== undefined && (
                     <span style={{ display:'flex', alignItems:'center', gap:2, color: trend >= 0 ? '#34d399' : '#f87171', fontSize:11, fontWeight:700 }}>
@@ -341,7 +360,7 @@ export default function DashboardPage() {
                       {trend >= 0 ? '+' : ''}{trend}%
                     </span>
                   )}
-                  <span style={{ color:'#334155', fontSize:11 }}>{sub}</span>
+                  <span style={{ color:tx4, fontSize:11 }}>{sub}</span>
                 </div>
               </div>
               <Sparkline data={sparkData} color={sparkColor}/>
