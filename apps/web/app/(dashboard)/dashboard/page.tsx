@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { api } from '@/lib/api'
-import { useTheme } from '@/lib/theme-context'
 import { createClient } from '@supabase/supabase-js'
 import AdminBanner from '@/components/AdminBanner'
 import {
@@ -116,8 +115,6 @@ function Skeleton({ h = 20, w = '100%', r = 6 }: { h?: number; w?: number|string
 export default function DashboardPage() {
   const { user } = useAuth()
   const { t, lang } = useI18n()
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   // Dashboard direct-language texts (bypasses translation system for reliability)
   const DB: Record<string, Record<string, string>> = {
     tr: { daily_summary:'İşte bugünkü özet', active_campaigns:'aktif kampanya', last7d:'Son 7 gün', see_all:'Tümünü gör', no_activity:'Henüz aktivite yok', no_leads:'Henüz lead yok' },
@@ -179,22 +176,22 @@ export default function DashboardPage() {
   const sparkData = data?.dailyStats?.map((d: any) => d.sent) || []
 
   const card = {
-    background: isDark ? 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))' : '#ffffff',
-    border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0',
+    background: '#ffffff',
+    border: '1px solid #e2e8f0',
     borderRadius: 16,
-    boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   } as const
 
-  // Theme color shortcuts
-  const tx1 = isDark ? '#fff' : '#0f172a'
-  const tx2 = isDark ? '#94a3b8' : '#64748b'
-  const tx3 = isDark ? '#475569' : '#94a3b8'
-  const tx4 = isDark ? '#334155' : '#cbd5e1'
-  const surf = isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc'
-  const surfBd = isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #f1f5f9'
-  const divBd = isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid #f1f5f9'
-  const notifBg = isDark ? 'linear-gradient(135deg,#0d111f,#090d1a)' : '#ffffff'
-  const notifBd = isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0'
+  // Light mode color tokens
+  const tx1 = '#0f172a'
+  const tx2 = '#64748b'
+  const tx3 = '#94a3b8'
+  const tx4 = '#cbd5e1'
+  const surf = '#f8fafc'
+  const surfBd = '1px solid #f1f5f9'
+  const divBd = '1px solid #f1f5f9'
+  const notifBg = '#ffffff'
+  const notifBd = '1px solid #e2e8f0'
 
   // Insight icon/color map
   const insightMeta: Record<string,{ color:string; bg:string; Icon:any }> = {
@@ -251,7 +248,7 @@ export default function DashboardPage() {
               )}
             </button>
             {showNotifs && (
-              <div style={{ position:'absolute', right:0, top:46, width:320, background:notifBg, border:notifBd, borderRadius:16, boxShadow: isDark ? '0 24px 60px rgba(0,0,0,0.6)' : '0 8px 32px rgba(0,0,0,0.12)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
+              <div style={{ position:'absolute', right:0, top:46, width:320, background:notifBg, border:notifBd, borderRadius:16, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
                 <div style={{ padding:'12px 16px', borderBottom:divBd, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <span style={{ color:tx1, fontWeight:700, fontSize:13 }}>{t('dashboard.notifications','Bildirimler')}</span>
                   <button onClick={() => setNotifications([])} style={{ background:'none', border:'none', color:tx3, cursor:'pointer', fontSize:11, padding:0, fontFamily:'inherit' }}>{t('dashboard.clear','Temizle')}</button>
