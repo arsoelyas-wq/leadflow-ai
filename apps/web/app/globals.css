@@ -1,26 +1,259 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════
+   LEADFLOW AI — GLOBAL STYLES
+   Landing: light mode | Dashboard: dark + light toggle
+═══════════════════════════════════════════════════════════════ */
+
+/* ── BASE ──────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── DASHBOARD THEME VARIABLES ─────────────────────────────── */
+[data-theme="dark"] {
+  --dash-bg:         #060a14;
+  --dash-surface:    #0d111f;
+  --dash-surface-2:  rgba(255,255,255,0.03);
+  --dash-border:     rgba(255,255,255,0.06);
+  --dash-border-2:   rgba(255,255,255,0.04);
+  --dash-text:       #e2e8f0;
+  --dash-text-2:     #94a3b8;
+  --dash-text-muted: #475569;
+  --dash-text-dim:   #334155;
+  --dash-ring:       rgba(59,130,246,0.3);
+}
+
+[data-theme="light"] {
+  --dash-bg:         #f1f5f9;
+  --dash-surface:    #ffffff;
+  --dash-surface-2:  rgba(0,0,0,0.02);
+  --dash-border:     #e2e8f0;
+  --dash-border-2:   #f1f5f9;
+  --dash-text:       #0f172a;
+  --dash-text-2:     #334155;
+  --dash-text-muted: #64748b;
+  --dash-text-dim:   #94a3b8;
+  --dash-ring:       rgba(37,99,235,0.2);
+}
+
+/* ── KEYFRAME ANIMATIONS ───────────────────────────────────── */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marquee-reverse {
+  0%   { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-6px) rotate(0.5deg); }
+  66%       { transform: translateY(-10px) rotate(-0.5deg); }
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-3px); }
+}
+
+/* ── ANIMATION UTILITY CLASSES ─────────────────────────────── */
+.animate-marquee {
+  animation: marquee 35s linear infinite;
+}
+
+.animate-marquee-reverse {
+  animation: marquee-reverse 35s linear infinite;
+}
+
+.animate-float {
+  animation: float 5s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 4s ease-in-out infinite 0.7s;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 4s ease infinite;
+}
+
+.animate-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 2s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+/* ── LANDING GRADIENT TEXT ─────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #0f172a 0%, #1e40af 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-blue {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-brand {
+  background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── GLASS EFFECT ──────────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-dark {
+  background: rgba(6, 10, 20, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ── LANDING DOT GRID BACKGROUND ───────────────────────────── */
+.dot-grid {
+  background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ── CARD HOVER EFFECTS ────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.12);
+}
+
+/* ── BUTTON GLOW ───────────────────────────────────────────── */
+.btn-glow {
+  box-shadow: 0 8px 24px -6px rgba(37, 99, 235, 0.5);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.btn-glow:hover {
+  box-shadow: 0 12px 32px -6px rgba(37, 99, 235, 0.65);
+  transform: translateY(-1px);
+}
+
+/* ── ACCORDION ─────────────────────────────────────────────── */
+.accordion-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+
+/* ── SCROLLBAR (dashboard) ─────────────────────────────────── */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── SKELETON ANIMATION ────────────────────────────────────── */
+@keyframes sk-shine {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── SELECTION ─────────────────────────────────────────────── */
+::selection {
+  background: rgba(37, 99, 235, 0.15);
+  color: #1e40af;
+}
+
+/* ── FOCUS RING ────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── REDUCED MOTION ────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-reverse,
+  .animate-float,
+  .animate-float-delayed,
+  .animate-pulse-dot,
+  .animate-gradient-x,
+  .animate-shimmer,
+  .animate-spin-slow,
+  .animate-bounce-subtle {
+    animation: none !important;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -59,7 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
-      <body className={`${inter.className} bg-slate-950 text-white`}>
+      <body className={inter.className}>
         <AuthProvider>
           <I18nProvider>
             <MetaTrackingInit />
