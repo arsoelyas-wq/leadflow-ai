@@ -10,6 +10,14 @@ import {
   TrendingUp, FileText, Globe2, Workflow, ScrollText,
   Inbox, Kanban, FileBarChart, Target, Network,
   ChevronDown, UsersRound, Crown, Sparkle, ChevronRight,
+  Sparkles, Crosshair, UserCheck, Activity, Star, Share2, Link2,
+  LayoutTemplate, QrCode, Bot, ListOrdered, MessageSquare, Mail,
+  MessageCircle, Phone, Video, Images, UserCircle, FlaskConical,
+  Clock, RefreshCw, CalendarDays, Image, Search, Rocket, Brain,
+  Swords, Eye, Tag, LineChart, Radar, Languages, Heart, PieChart,
+  DollarSign, Banknote, Award, TrendingDown, Receipt, FileSpreadsheet,
+  ClipboardList, GraduationCap, Lightbulb, Cog, Webhook, Code,
+  CreditCard, Coins, Shield, Box,
 } from 'lucide-react'
 
 interface NavItem {
@@ -42,29 +50,116 @@ const CORE_ITEMS: NavItem[] = [
 
 const GROUPS: NavGroup[] = [
   {
-    id: 'sales', label: 'nav.sales',
+    id: 'discovery', label: 'nav.group_discovery',
     items: [
-      { href: '/network',   label: 'nav.network',   icon: Network },
-      { href: '/proposals', label: 'nav.proposals', icon: FileText },
-      { href: '/workflow',  label: 'nav.workflow',  icon: Workflow, plan: 'growth', badge: 'Yeni' },
-      { href: '/products',  label: 'nav.products',  icon: Package,  badge: 'AI' },
+      { href: '/lead-machine',   label: 'nav.lead_machine',     icon: Sparkles,   badge: 'AI' },
+      { href: '/lead-hunter',    label: 'nav.lead_hunter',      icon: Crosshair },
+      { href: '/decision-maker', label: 'nav.decision_maker',   icon: UserCheck },
+      { href: '/health-scores',  label: 'nav.health_scores',    icon: Activity },
+      { href: '/lead-quality',   label: 'nav.lead_quality',     icon: Star },
+      { href: '/referral',       label: 'nav.referral',         icon: Share2 },
+      { href: '/affiliate',      label: 'nav.affiliate',        icon: Link2 },
     ],
   },
   {
-    id: 'intelligence', label: 'nav.intelligence',
+    id: 'sales', label: 'nav.sales',
     items: [
-      { href: '/lead-machine', label: 'nav.lead_machine', icon: Target,       badge: 'AI' },
-      { href: '/analytics',    label: 'nav.analytics',    icon: BarChart3 },
-      { href: '/reports',      label: 'nav.reports',      icon: FileBarChart },
-      { href: '/financial',    label: 'nav.financial',    icon: TrendingUp,   plan: 'pro', badge: 'AI' },
+      { href: '/network',    label: 'nav.network',    icon: Network },
+      { href: '/proposals',  label: 'nav.proposals',  icon: FileText },
+      { href: '/products',   label: 'nav.products',   icon: Package,        badge: 'AI' },
+      { href: '/microsites', label: 'nav.microsites', icon: LayoutTemplate },
+      { href: '/qr-codes',   label: 'nav.qr_codes',   icon: QrCode },
+      { href: '/workflow',   label: 'nav.workflow',   icon: Workflow,       plan: 'growth', badge: 'Yeni' },
+      { href: '/agent',      label: 'nav.agent',      icon: Bot },
+      { href: '/sequences',  label: 'nav.sequences',  icon: ListOrdered },
+    ],
+  },
+  {
+    id: 'outreach', label: 'nav.communication',
+    items: [
+      { href: '/messages',        label: 'nav.messages',        icon: MessageSquare },
+      { href: '/email-campaigns', label: 'nav.email',           icon: Mail },
+      { href: '/sms-campaigns',   label: 'nav.sms',             icon: MessageCircle },
+      { href: '/voice-outreach',  label: 'nav.voice',           icon: Phone,        badge: 'AI' },
+      { href: '/video-outreach',  label: 'nav.video',           icon: Video,        badge: 'AI' },
+      { href: '/avatar-library',  label: 'nav.avatar_library',  icon: Images },
+      { href: '/replica',         label: 'nav.replica',         icon: UserCircle },
+      { href: '/ab-testing',      label: 'nav.ab_testing',      icon: FlaskConical },
+      { href: '/smart-timing',    label: 'nav.smart_timing',    icon: Clock },
+      { href: '/retargeting',     label: 'nav.retargeting',     icon: RefreshCw },
+      { href: '/trade-fair',      label: 'nav.trade_fair',      icon: CalendarDays },
+    ],
+  },
+  {
+    id: 'marketing', label: 'nav.marketing',
+    items: [
+      { href: '/ads',          label: 'nav.ads',          icon: Image },
+      { href: '/google-ads',   label: 'nav.google_ads',   icon: Search },
+      { href: '/ads-advanced', label: 'nav.ads_advanced', icon: Rocket,  plan: 'pro', badge: 'AI' },
+      { href: '/meta-intent',  label: 'nav.meta_intent',  icon: Brain },
+    ],
+  },
+  {
+    id: 'market-intel', label: 'nav.group_market_intel',
+    items: [
+      { href: '/competitor',     label: 'nav.competitor',     icon: Swords },
+      { href: '/shadow',         label: 'nav.shadow',         icon: Eye },
+      { href: '/price-tracker',  label: 'nav.price_tracker',  icon: Tag },
+      { href: '/visual-trends',  label: 'nav.visual_trends',  icon: LineChart },
+      { href: '/crisis-radar',   label: 'nav.crisis_radar',   icon: Radar,     badge: 'AI' },
+      { href: '/cultural',       label: 'nav.cultural',       icon: Languages },
+      { href: '/emotional-iq',   label: 'nav.emotional_iq',   icon: Heart },
+    ],
+  },
+  {
+    id: 'growth', label: 'nav.growth',
+    items: [
+      { href: '/analytics',      label: 'nav.analytics',      icon: PieChart },
+      { href: '/reports',        label: 'nav.reports',        icon: FileBarChart },
+      { href: '/revenue',        label: 'nav.revenue',        icon: DollarSign },
+      { href: '/financial',      label: 'nav.financial',      icon: Banknote,        plan: 'pro', badge: 'AI' },
+      { href: '/loyalty',        label: 'nav.loyalty',        icon: Award },
+      { href: '/churn',          label: 'nav.churn',          icon: TrendingDown },
+      { href: '/debt-collector', label: 'nav.debt_collector', icon: Receipt },
+      { href: '/invoices',       label: 'nav.invoices',       icon: FileSpreadsheet },
+    ],
+  },
+  {
+    id: 'team', label: 'nav.group_team',
+    items: [
+      { href: '/team',                label: 'nav.team',                icon: UsersRound, plan: 'pro', badge: 'PRO' },
+      { href: '/team-intelligence',   label: 'nav.team_intelligence',   icon: Brain },
+      { href: '/team-reports',        label: 'nav.team_reports',        icon: ClipboardList },
+      { href: '/sales-coach',         label: 'nav.sales_coach',         icon: GraduationCap },
+      { href: '/sales-intelligence',  label: 'nav.sales_intelligence',  icon: Lightbulb },
+    ],
+  },
+  {
+    id: 'automation', label: 'nav.group_automation',
+    items: [
+      { href: '/automations', label: 'nav.automations', icon: Cog },
+      { href: '/webhooks',    label: 'nav.webhooks',    icon: Webhook },
+      { href: '/developer',   label: 'nav.developer',   icon: Code },
+      { href: '/wa-numbers',  label: 'nav.wa_numbers',  icon: Phone },
+    ],
+  },
+  {
+    id: 'system', label: 'nav.system',
+    items: [
+      { href: '/billing',      label: 'nav.billing',      icon: CreditCard },
+      { href: '/credits',      label: 'nav.credits',      icon: Coins },
+      { href: '/kvkk',         label: 'nav.kvkk',         icon: Shield },
+      { href: '/monitoring',   label: 'nav.monitoring',   icon: Activity },
+      { href: '/market-pages', label: 'nav.market_pages', icon: Globe2 },
     ],
   },
 ]
 
 const SPECIAL_TOOLS = [
-  { href: '/tenders', label: 'nav.tenders', icon: ScrollText, color: '#d97706', badge: 'PRO' },
-  { href: '/export',  label: 'nav.export',  icon: Globe2,     color: '#059669', badge: 'ENT' },
-  { href: '/team',    label: 'nav.team',    icon: UsersRound, color: '#2563eb', badge: 'PRO' },
+  { href: '/tenders',       label: 'nav.tenders',       icon: ScrollText, color: '#d97706', badge: 'PRO' },
+  { href: '/export',        label: 'nav.export',        icon: Globe2,     color: '#059669', badge: 'ENT' },
+  { href: '/ar-experience', label: 'nav.ar_experience', icon: Box,        color: '#7c3aed', badge: 'AI' },
+  { href: '/whitelabel',    label: 'nav.whitelabel',    icon: Crown,      color: '#2563eb', badge: 'ENT' },
 ]
 
 export default function Sidebar() {
@@ -228,7 +323,7 @@ export default function Sidebar() {
 
         {/* ÖZEL ARAÇLAR — kompakt pill */}
         {SPECIAL_TOOLS.map(({ href, label, icon: Icon, color, badge }) => {
-          const active = pathname === href || (href === '/team' && pathname === '/team-intelligence')
+          const active = pathname === href
           return (
             <Link key={href} href={href} style={itemStyle(active, color)}>
               <div style={{
