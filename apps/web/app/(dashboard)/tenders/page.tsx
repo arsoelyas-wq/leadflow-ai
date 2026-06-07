@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { FileText, Search, RefreshCw, Globe, CheckCircle, Clock, Star, ExternalLink, Bell, Trash2, X, Play, ChevronDown, BarChart2, AlertTriangle, TrendingUp, Copy, Download, Zap } from 'lucide-react'
+import { FileText, Search, RefreshCw, Globe, CheckCircle, Clock, Star, ExternalLink, Bell, Trash2, X, Play, ChevronDown, BarChart2, AlertTriangle, TrendingUp, Copy, Download, Zap, Calendar, XCircle, ClipboardCheck, PenLine, FileCheck, Wallet, ShieldAlert, Sparkles, Users } from 'lucide-react'
 
 // ── TENDER ORB — global sphere with orbiting tender nodes ─────────────────────
 function TenderOrb({ size = 110, scanning = false, tenderCount = 0 }: { size?: number; scanning?: boolean; tenderCount?: number }) {
@@ -88,8 +88,6 @@ function TenderOrb({ size = 110, scanning = false, tenderCount = 0 }: { size?: n
         )}
         {/* Highlight */}
         <ellipse cx={cx - s * 0.08} cy={cx - s * 0.16} rx={s * 0.1} ry={s * 0.06} fill="rgba(255,255,255,0.18)" style={{ filter: 'blur(3px)' }} />
-        {/* Globe text */}
-        <text x={cx} y={cx + 3} fill="white" fontSize={s * 0.1} textAnchor="middle" dominantBaseline="middle" fontWeight="900">🌍</text>
         {/* Orbiting tender nodes */}
         {nodes.map((node, i) => (
           <g key={i}>
@@ -97,7 +95,7 @@ function TenderOrb({ size = 110, scanning = false, tenderCount = 0 }: { size?: n
             <circle cx={node.x} cy={node.y} r={node.active ? 11 : 7}
               fill={`${node.color}${node.active ? '25' : '12'}`} stroke={`${node.color}${node.active ? '70' : '30'}`} strokeWidth={1.5}
               style={{ filter: node.active ? `drop-shadow(0 0 5px ${node.color}80)` : 'none' }} />
-            {node.active && <text x={node.x} y={node.y} fill={node.color} fontSize={7} textAnchor="middle" dominantBaseline="middle" fontWeight="800">📄</text>}
+            {node.active && <circle cx={node.x} cy={node.y} r={2.5} fill={node.color} />}
           </g>
         ))}
       </svg>
@@ -128,22 +126,27 @@ const SECTORS = [
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   active:    { label:'Aktif',        color:'#047857', bg:'rgba(16,185,129,0.12)' },
-  applied:   { label:'Başvuruldu',   color:'#60a5fa', bg:'rgba(59,130,246,0.12)' },
-  won:       { label:'Kazanıldı',    color:'#c084fc', bg:'rgba(139,92,246,0.12)' },
+  applied:   { label:'Başvuruldu',   color:'#2563eb', bg:'rgba(59,130,246,0.12)' },
+  won:       { label:'Kazanıldı',    color:'#9333ea', bg:'rgba(139,92,246,0.12)' },
   lost:      { label:'Kaybedildi',   color:'#dc2626', bg:'rgba(239,68,68,0.12)'  },
   dismissed: { label:'Reddedildi',   color:'#64748b', bg:'rgba(100,116,139,0.12)' },
 }
 
-function scoreColor(s: number) { return s >= 80 ? '#10b981' : s >= 65 ? '#f59e0b' : '#ef4444' }
-function riskColor(r: string) { return r === 'Düşük' ? '#10b981' : r === 'Orta' ? '#f59e0b' : '#ef4444' }
+function scoreColor(s: number) { return s >= 80 ? '#059669' : s >= 65 ? '#b45309' : '#dc2626' }
+function riskColor(r: string) { return r === 'Düşük' ? '#059669' : r === 'Orta' ? '#b45309' : '#dc2626' }
 
 function DaysLeft({ deadline }: { deadline: string | null }) {
   if (!deadline) return null
   const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 864e5)
-  if (days < 0) return <span style={{ color:'#ef4444', fontSize:10, fontWeight:700 }}>⏰ Süresi doldu</span>
-  if (days <= 3) return <span style={{ color:'#ef4444', fontSize:10, fontWeight:700, animation:'tender-pulse 1s ease-in-out infinite' }}>⚠️ {days} gün kaldı!</span>
-  if (days <= 7) return <span style={{ color:'#f59e0b', fontSize:10, fontWeight:700 }}>⏰ {days} gün</span>
-  return <span style={{ color:'#64748b', fontSize:10 }}>📅 {days} gün</span>
+  const wrap = (Icon: typeof Clock, color: string, text: string, pulse?: boolean) => (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, color, fontSize:10, fontWeight:700, animation: pulse ? 'tender-pulse 1s ease-in-out infinite' : undefined }}>
+      <Icon size={10} /> {text}
+    </span>
+  )
+  if (days < 0) return wrap(Clock, '#dc2626', 'Süresi doldu')
+  if (days <= 3) return wrap(AlertTriangle, '#dc2626', `${days} gün kaldı!`, true)
+  if (days <= 7) return wrap(Clock, '#b45309', `${days} gün`)
+  return wrap(Calendar, '#64748b', `${days} gün`)
 }
 
 // ── SCAN MODAL ────────────────────────────────────────────────────────────────
@@ -171,7 +174,7 @@ function ScanModal({ onClose, onStarted }: { onClose: () => void; onStarted: (sc
       <div style={{ background:'#ffffff', border:'1px solid rgba(139,92,246,0.3)', borderRadius:22, padding:30, width:520, maxWidth:'94vw', maxHeight:'90vh', overflowY:'auto' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
           <div>
-            <h2 style={{ color:'#0f172a', fontSize:17, fontWeight:800, margin:0 }}>🔍 İhale Tarama Başlat</h2>
+            <h2 style={{ color:'#0f172a', fontSize:17, fontWeight:800, margin:0, display:'flex', alignItems:'center', gap:8 }}><Search size={16} style={{ color:'#7c3aed' }} /> İhale Tarama Başlat</h2>
             <p style={{ color:'#475569', fontSize:12, margin:'4px 0 0' }}>EKAP · TED Europa · World Bank · Exa.ai · Tavily</p>
           </div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'#64748b', cursor:'pointer' }}><X size={18} /></button>
@@ -209,16 +212,18 @@ function ScanModal({ onClose, onStarted }: { onClose: () => void; onStarted: (sc
               placeholder="örn: 50 kişilik tekstil ihracatçısı, AB kalite belgelerimiz var, yıllık 3M EUR ihracat kapasitesi"
               rows={2} style={{ ...inp, resize:'vertical' as const }} />
           </div>
-          <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}>
-            <div onClick={() => setForm(p => ({ ...p, save_pref:!p.save_pref }))}
-              style={{ width:38, height:20, borderRadius:10, background:form.save_pref?'#7c3aed':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <div role="switch" aria-checked={form.save_pref} tabIndex={0}
+              onClick={() => setForm(p => ({ ...p, save_pref:!p.save_pref }))}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setForm(p => ({ ...p, save_pref:!p.save_pref })) } }}
+              style={{ width:38, height:20, borderRadius:10, background:form.save_pref?'#7c3aed':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0, outline:'none' }}>
               <div style={{ position:'absolute', top:2, left:form.save_pref?18:2, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
             </div>
-            <div>
+            <div onClick={() => setForm(p => ({ ...p, save_pref:!p.save_pref }))} style={{ cursor:'pointer' }}>
               <p style={{ color:'#0f172a', fontSize:13, margin:0 }}>Her gün otomatik tara</p>
               <p style={{ color:'#475569', fontSize:11, margin:0 }}>Yeni ihaleler bulunduğunda bildirim al</p>
             </div>
-          </label>
+          </div>
           {error && <p style={{ color:'#dc2626', fontSize:12, background:'rgba(239,68,68,0.08)', padding:'8px 12px', borderRadius:8, margin:0 }}>{error}</p>}
           <button onClick={start} disabled={scanning || !form.keyword}
             style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'13px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:14, fontWeight:700, cursor:scanning||!form.keyword?'not-allowed':'pointer', boxShadow:'0 4px 20px rgba(124,58,237,0.4)' }}>
@@ -255,13 +260,14 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
 
   if (status === 'completed') return (
     <div style={{ padding:'14px 20px', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:12 }}>
-      <CheckCircle size={16} color="#10b981" />
-      <p style={{ color:'#047857', fontSize:13, margin:0, fontWeight:600 }}>✅ Tarama tamamlandı — {found} yeni ihale bulundu! Sayfayı yeniliyorum...</p>
+      <CheckCircle size={16} color="#059669" />
+      <p style={{ color:'#047857', fontSize:13, margin:0, fontWeight:600 }}>Tarama tamamlandı — {found} yeni ihale bulundu! Sayfayı yeniliyorum...</p>
     </div>
   )
   if (status === 'failed') return (
-    <div style={{ padding:'14px 20px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12 }}>
-      <p style={{ color:'#dc2626', fontSize:13, margin:0 }}>❌ Tarama başarısız oldu</p>
+    <div style={{ padding:'14px 20px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:12 }}>
+      <XCircle size={16} color="#dc2626" />
+      <p style={{ color:'#dc2626', fontSize:13, margin:0 }}>Tarama başarısız oldu</p>
     </div>
   )
 
@@ -274,7 +280,7 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
         </div>
         <span style={{ color:'#7c3aed', fontSize:12, fontWeight:700 }}>{progress}%</span>
       </div>
-      <div style={{ height:5, background:'rgba(255,255,255,0.06)', borderRadius:3 }}>
+      <div style={{ height:5, background:'rgba(124,58,237,0.12)', borderRadius:3 }}>
         <div style={{ height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#7c3aed,#a78bfa)', borderRadius:3, transition:'width 0.5s', boxShadow:'0 0 10px rgba(124,58,237,0.5)' }} />
       </div>
       <p style={{ color:'#475569', fontSize:11, margin:'8px 0 0' }}>EKAP · TED Europa · World Bank · Exa.ai · Tavily — ~60 saniye</p>
@@ -323,10 +329,10 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
         <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
           <span style={{ background:statusMeta.bg, border:`1px solid ${statusMeta.color}30`, color:statusMeta.color, fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:700 }}>{statusMeta.label}</span>
           <span style={{ background:'rgba(139,92,246,0.12)', border:'1px solid rgba(139,92,246,0.25)', color:'#7c3aed', fontSize:10, padding:'2px 8px', borderRadius:20 }}>{tender.source}</span>
-          <span style={{ background:'rgba(6,182,212,0.1)', border:'1px solid rgba(6,182,212,0.2)', color:'#22d3ee', fontSize:10, padding:'2px 8px', borderRadius:20 }}>{tender.country}</span>
-          {tender.budget_text && <span style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.25)', color:'#fbbf24', fontSize:10, padding:'2px 8px', borderRadius:20 }}>💰 {tender.budget_text}</span>}
+          <span style={{ background:'rgba(13,148,136,0.1)', border:'1px solid rgba(13,148,136,0.2)', color:'#0f766e', fontSize:10, padding:'2px 8px', borderRadius:20 }}>{tender.country}</span>
+          {tender.budget_text && <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(180,83,9,0.12)', border:'1px solid rgba(180,83,9,0.25)', color:'#b45309', fontSize:10, padding:'2px 8px', borderRadius:20 }}><Wallet size={10} /> {tender.budget_text}</span>}
           {tender.deadline && <span style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#dc2626', fontSize:10, padding:'2px 8px', borderRadius:20 }}><DaysLeft deadline={tender.deadline} /></span>}
-          {tender.risk_level && <span style={{ background:`${riskColor(tender.risk_level)}12`, border:`1px solid ${riskColor(tender.risk_level)}30`, color:riskColor(tender.risk_level), fontSize:10, padding:'2px 8px', borderRadius:20 }}>⚡ Risk: {tender.risk_level}</span>}
+          {tender.risk_level && <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:`${riskColor(tender.risk_level)}12`, border:`1px solid ${riskColor(tender.risk_level)}30`, color:riskColor(tender.risk_level), fontSize:10, padding:'2px 8px', borderRadius:20 }}><ShieldAlert size={10} /> Risk: {tender.risk_level}</span>}
         </div>
       </div>
 
@@ -340,7 +346,7 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
         ))}
         {tender.source_url && (
           <a href={tender.source_url} target="_blank" rel="noopener noreferrer"
-            style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:4, padding:'5px 10px', borderRadius:7, border:'1px solid rgba(6,182,212,0.3)', color:'#22d3ee', fontSize:10, textDecoration:'none' }}>
+            style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:4, padding:'5px 10px', borderRadius:7, border:'1px solid rgba(13,148,136,0.3)', color:'#0f766e', fontSize:10, textDecoration:'none' }}>
             <ExternalLink size={11} /> Kaynağa Git
           </a>
         )}
@@ -348,10 +354,10 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:2, padding:'10px 20px 0', borderBottom:'1px solid #f1f5f9' }}>
-        {[{id:'info',label:'📋 Bilgi'},{id:'requirements',label:'✅ Şartlar'},{id:'proposal',label:'✍️ Teklif'}].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-            style={{ padding:'6px 14px', borderRadius:'8px 8px 0 0', border:'none', cursor:'pointer', fontSize:11, fontWeight:600, background:activeTab===t.id?'rgba(139,92,246,0.15)':'transparent', color:activeTab===t.id?'#a78bfa':'#64748b', borderBottom:activeTab===t.id?'2px solid #7c3aed':'2px solid transparent' }}>
-            {t.label}
+        {[{id:'info',label:'Bilgi',Icon:FileText},{id:'requirements',label:'Şartlar',Icon:ClipboardCheck},{id:'proposal',label:'Teklif',Icon:PenLine}].map(tb => (
+          <button key={tb.id} onClick={() => setActiveTab(tb.id as any)}
+            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:'8px 8px 0 0', border:'none', cursor:'pointer', fontSize:11, fontWeight:600, background:activeTab===tb.id?'rgba(139,92,246,0.15)':'transparent', color:activeTab===tb.id?'#7c3aed':'#64748b', borderBottom:activeTab===tb.id?'2px solid #7c3aed':'2px solid transparent' }}>
+            <tb.Icon size={12} /> {tb.label}
           </button>
         ))}
       </div>
@@ -369,19 +375,19 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
             {tender.ai_recommendation && (
               <div style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:11, padding:'12px 14px' }}>
                 <p style={{ color:'#047857', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}>Öneri</p>
-                <p style={{ color:'#94a3b8', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.ai_recommendation}</p>
+                <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.ai_recommendation}</p>
               </div>
             )}
             {tender.match_reason && (
               <div style={{ background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.15)', borderRadius:11, padding:'12px 14px' }}>
-                <p style={{ color:'#fbbf24', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}>Firma Uyumu</p>
-                <p style={{ color:'#94a3b8', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.match_reason}</p>
+                <p style={{ color:'#b45309', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}>Firma Uyumu</p>
+                <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.match_reason}</p>
               </div>
             )}
             {tender.notes && (
               <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:11, padding:'12px 14px' }}>
                 <p style={{ color:'#64748b', fontSize:11, fontWeight:700, margin:'0 0 5px' }}>NOTLAR</p>
-                <p style={{ color:'#94a3b8', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.notes}</p>
+                <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.notes}</p>
               </div>
             )}
           </div>
@@ -390,13 +396,13 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
         {activeTab === 'requirements' && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {[
-              { title:'Katılım Şartları', content:tender.requirements, color:'#06b6d4', icon:'📋' },
-              { title:'Kimler Başvurabilir', content:tender.eligibility, color:'#10b981', icon:'👥' },
-              { title:'Gerekli Belgeler', content:tender.documents, color:'#f59e0b', icon:'📄' },
+              { title:'Katılım Şartları', content:tender.requirements, color:'#0f766e', Icon:FileText },
+              { title:'Kimler Başvurabilir', content:tender.eligibility, color:'#059669', Icon:Users },
+              { title:'Gerekli Belgeler', content:tender.documents, color:'#b45309', Icon:FileCheck },
             ].filter(s => s.content).map(section => (
               <div key={section.title} style={{ background:`${section.color}08`, border:`1px solid ${section.color}20`, borderRadius:11, padding:'12px 14px' }}>
-                <p style={{ color:section.color, fontSize:11, fontWeight:700, margin:'0 0 6px' }}>{section.icon} {section.title}</p>
-                <p style={{ color:'#94a3b8', fontSize:12, margin:0, lineHeight:1.7 }}>{section.content}</p>
+                <p style={{ display:'flex', alignItems:'center', gap:6, color:section.color, fontSize:11, fontWeight:700, margin:'0 0 6px' }}><section.Icon size={12} /> {section.title}</p>
+                <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.7 }}>{section.content}</p>
               </div>
             ))}
             {!tender.requirements && !tender.eligibility && !tender.documents && (
@@ -409,9 +415,10 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {!proposal ? (
               <>
-                <div style={{ background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:11, padding:'12px 14px' }}>
+                <div style={{ background:'rgba(139,92,246,0.06)', border:'1px solid rgba(139,92,246,0.2)', borderRadius:11, padding:'12px 14px', display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <Sparkles size={14} style={{ color:'#7c3aed', flexShrink:0, marginTop:2 }} />
                   <p style={{ color:'#7c3aed', fontSize:12, margin:0, lineHeight:1.6 }}>
-                    🤖 Claude Opus ile profesyonel ihale teklif mektubu oluşturun. Firma bilgilerinizi girin, teklif hazır olsun.
+                    Claude Opus ile profesyonel ihale teklif mektubu oluşturun. Firma bilgilerinizi girin, teklif hazır olsun.
                   </p>
                 </div>
                 <div>
@@ -577,7 +584,7 @@ export default function TendersPage() {
             <h1 style={{ color:'#0f172a', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>{t('tenders.ihale_avcisi', 'İhale Avcısı')}</h1>
             <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('tenders.23_ulke_ekap_ted_europa_w', '23 ülke · EKAP · TED Europa · World Bank · Exa.ai · AI analiz · Teklif taslağı')}</p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:10 }}>
-              {[{l:t('tenders.total','Toplam'),v:stats?.total||0,c:'#94a3b8'},{l:t('tenders.active','Aktif'),v:stats?.active||0,c:'#10b981'},{l:t('tenders.high_score','Yüksek Skor'),v:stats?.highScore||0,c:'#8b5cf6'},{l:t('tenders.applied','Başvuruldu'),v:stats?.applied||0,c:'#3b82f6'},{l:t('tenders.won','Kazanıldı'),v:stats?.won||0,c:'#c084fc'},{l:t('tenders.scans','Tarama'),v:stats?.totalScans||0,c:'#f59e0b'}].map(m => (
+              {[{l:t('tenders.total','Toplam'),v:stats?.total||0,c:'#475569'},{l:t('tenders.active','Aktif'),v:stats?.active||0,c:'#059669'},{l:t('tenders.high_score','Yüksek Skor'),v:stats?.highScore||0,c:'#7c3aed'},{l:t('tenders.applied','Başvuruldu'),v:stats?.applied||0,c:'#2563eb'},{l:t('tenders.won','Kazanıldı'),v:stats?.won||0,c:'#9333ea'},{l:t('tenders.scans','Tarama'),v:stats?.totalScans||0,c:'#b45309'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
                   <p style={{ color:m.c, fontSize:17, fontWeight:800, margin:0 }}>{m.v}</p>
                   <p style={{ color:'#334155', fontSize:10, margin:0 }}>{m.l}</p>
@@ -613,14 +620,14 @@ export default function TendersPage() {
         </div>
       )}
 
-      {msg && <div style={{ marginBottom:12, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10, flexShrink:0 }}><p style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, margin:0 }}>{msg.text}</p></div>}
+      {msg && <div style={{ marginBottom:12, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10, flexShrink:0 }}><p style={{ color:msg.type==='success'?'#059669':'#dc2626', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:16, border:'1px solid #e2e8f0', flexShrink:0 }}>
-        {[{id:'tenders',label:`📋 ${t('tenders.tenders_tab','İhaleler')} (${tenders.length})`},{id:'alerts',label:`⏰ ${t('tenders.approaching','Vadesi Yaklaşan')}${alerts.length>0?` (${alerts.length})`:''}`},{id:'analytics',label:`📊 ${t('tenders.analytics_tab','Analitik')}`},{id:'prefs',label:`🔔 Otomatik (${prefs.length})`}].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-            style={{ padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap' }}>
-            {t.label}
+        {[{id:'tenders',label:`${t('tenders.tenders_tab','İhaleler')} (${tenders.length})`,Icon:FileText},{id:'alerts',label:`${t('tenders.approaching','Vadesi Yaklaşan')}${alerts.length>0?` (${alerts.length})`:''}`,Icon:Clock},{id:'analytics',label:`${t('tenders.analytics_tab','Analitik')}`,Icon:BarChart2},{id:'prefs',label:`Otomatik (${prefs.length})`,Icon:Bell}].map(tb => (
+          <button key={tb.id} onClick={() => setActiveTab(tb.id as any)}
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tb.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===tb.id?'#fff':'#64748b', boxShadow:activeTab===tb.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap' }}>
+            <tb.Icon size={13} /> {tb.label}
           </button>
         ))}
       </div>
@@ -658,7 +665,7 @@ export default function TendersPage() {
               <div style={{ display:'flex', justifyContent:'center', height:120, alignItems:'center' }}><RefreshCw size={24} style={{ color:'#475569', animation:'tender-spin 1s linear infinite' }} /></div>
             ) : tenders.length === 0 ? (
               <div style={{ textAlign:'center', padding:56, ...card }}>
-                <div style={{ fontSize:44, marginBottom:14 }}>📋</div>
+                <div style={{ display:'flex', justifyContent:'center', marginBottom:14 }}><FileText size={40} style={{ color:'#cbd5e1' }} /></div>
                 <h3 style={{ color:'#0f172a', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>{t('tenders.henuz_ihale_yok', 'Henüz ihale yok')}</h3>
                 <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>{t('tenders.anahtar_kelimenizi_girin', 'Anahtar kelimenizi girin, tarama başlatın')}</p>
                 <button onClick={() => setShowScan(true)}
@@ -674,7 +681,7 @@ export default function TendersPage() {
                   const isSelected = selectedTender?.id === tender.id
                   return (
                     <div key={tender.id} onClick={() => setSelectedTender(isSelected ? null : tender)}
-                      style={{ ...card, padding:'14px 16px', cursor:'pointer', border:`1px solid ${isSelected ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.06)'}`, background:isSelected?'rgba(139,92,246,0.06)':'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', display:'flex', alignItems:'flex-start', gap:12, transition:'all 0.15s' }}>
+                      style={{ ...card, padding:'14px 16px', cursor:'pointer', border:`1px solid ${isSelected ? 'rgba(139,92,246,0.4)' : '#e2e8f0'}`, background: isSelected ? 'rgba(139,92,246,0.06)' : '#ffffff', display:'flex', alignItems:'flex-start', gap:12, transition:'all 0.15s' }}>
                       {/* Score circle */}
                       <div style={{ width:44, height:44, borderRadius:11, background:scoreColors.bg(sc), border:`1px solid ${scoreColors.border(sc)}`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                         <span style={{ color:scoreColor(sc), fontSize:14, fontWeight:900, lineHeight:1 }}>{sc}</span>
@@ -686,7 +693,7 @@ export default function TendersPage() {
                         <div style={{ display:'flex', gap:5, flexWrap:'wrap', alignItems:'center' }}>
                           <span style={{ background:sm.bg, border:`1px solid ${sm.color}30`, color:sm.color, fontSize:10, padding:'2px 7px', borderRadius:20, fontWeight:600 }}>{sm.label}</span>
                           <span style={{ background:'rgba(139,92,246,0.1)', color:'#7c3aed', fontSize:10, padding:'2px 6px', borderRadius:6 }}>{tender.source}</span>
-                          {tender.budget_text && <span style={{ color:'#fbbf24', fontSize:10 }}>💰 {tender.budget_text}</span>}
+                          {tender.budget_text && <span style={{ display:'inline-flex', alignItems:'center', gap:3, color:'#b45309', fontSize:10 }}><Wallet size={10} /> {tender.budget_text}</span>}
                           <DaysLeft deadline={tender.deadline} />
                         </div>
                       </div>
@@ -714,17 +721,17 @@ export default function TendersPage() {
               <CheckCircle size={32} color="#10b981" style={{ margin:'0 auto 12px', display:'block' }} />
               <p style={{ color:'#047857', fontSize:14, margin:0 }}>{t('tenders.vadesi_yaklasan_ihale_yok', 'Vadesi yaklaşan ihale yok — tüm ihaleler güvende')}</p>
             </div>
-          ) : alerts.map((t: any) => (
-            <div key={t.id} onClick={() => { setSelectedTender(t); setActiveTab('tenders') }}
+          ) : alerts.map((al: any) => (
+            <div key={al.id} onClick={() => { setSelectedTender(al); setActiveTab('tenders') }}
               style={{ ...card, padding:'16px 20px', cursor:'pointer', display:'flex', alignItems:'center', gap:14, border:'1px solid rgba(239,68,68,0.2)' }}>
               <div style={{ width:42, height:42, borderRadius:10, background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <Clock size={18} color="#ef4444" />
+                <Clock size={18} color="#dc2626" />
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:'0 0 3px' }}>{t.title}</p>
-                <p style={{ color:'#475569', fontSize:11, margin:0 }}>{t.country} · Skor: {t.ai_score}</p>
+                <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:'0 0 3px' }}>{al.title}</p>
+                <p style={{ color:'#475569', fontSize:11, margin:0 }}>{al.country} · Skor: {al.ai_score}</p>
               </div>
-              <DaysLeft deadline={t.deadline} />
+              <DaysLeft deadline={al.deadline} />
             </div>
           ))}
         </div>
@@ -735,10 +742,10 @@ export default function TendersPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
             {[
-              { l:t('tenders.total_applied','Toplam Başvuru'), v:analytics?.totalApplied||0, c:'#06b6d4' },
-              { l:'Kazanılan', v:analytics?.wonCount||0, c:'#10b981' },
-              { l:'Kazanma Oranı', v:`%${analytics?.winRate||0}`, c:'#8b5cf6' },
-              { l:'Ort. Skor', v:analytics?.avgScore||0, c:'#f59e0b' },
+              { l:t('tenders.total_applied','Toplam Başvuru'), v:analytics?.totalApplied||0, c:'#0f766e' },
+              { l:'Kazanılan', v:analytics?.wonCount||0, c:'#059669' },
+              { l:'Kazanma Oranı', v:`%${analytics?.winRate||0}`, c:'#9333ea' },
+              { l:'Ort. Skor', v:analytics?.avgScore||0, c:'#b45309' },
             ].map(m => (
               <div key={m.l} style={{ ...card, padding:'18px 16px', textAlign:'center' }}>
                 <p style={{ color:m.c, fontSize:26, fontWeight:900, margin:0 }}>{m.v}</p>
@@ -748,15 +755,15 @@ export default function TendersPage() {
           </div>
           {analytics?.byCountry?.length > 0 && (
             <div style={{ ...card, padding:22 }}>
-              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('tenders.ulke_bazli_kazanma_orani', '🌍 Ülke Bazlı Kazanma Oranı')}</h3>
+              <h3 style={{ display:'flex', alignItems:'center', gap:7, color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}><Globe size={14} /> {t('tenders.ulke_bazli_kazanma_orani', 'Ülke Bazlı Kazanma Oranı')}</h3>
               {analytics.byCountry.map((r: any) => (
                 <div key={r.country} style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                    <span style={{ color:'#94a3b8', fontSize:12 }}>{r.country}</span>
-                    <span style={{ color:'#10b981', fontSize:12, fontWeight:700 }}>%{r.rate} ({r.won}/{r.applied})</span>
+                    <span style={{ color:'#475569', fontSize:12 }}>{r.country}</span>
+                    <span style={{ color:'#059669', fontSize:12, fontWeight:700 }}>%{r.rate} ({r.won}/{r.applied})</span>
                   </div>
                   <div style={{ height:5, background:'#f1f5f9', borderRadius:3 }}>
-                    <div style={{ height:'100%', width:`${r.rate}%`, background:`linear-gradient(90deg,#10b981,#34d399)`, borderRadius:3 }} />
+                    <div style={{ height:'100%', width:`${r.rate}%`, background:`linear-gradient(90deg,#059669,#10b981)`, borderRadius:3 }} />
                   </div>
                 </div>
               ))}
@@ -777,7 +784,7 @@ export default function TendersPage() {
           {prefs.length === 0 ? (
             <div style={{ ...card, padding:40, textAlign:'center', color:'#475569' }}>
               <Bell size={28} style={{ margin:'0 auto 12px', display:'block', color:'#334155' }} />
-              <p style={{ fontSize:14, margin:'0 0 8px', color:'#94a3b8' }}>{t('tenders.otomatik_tarama_kaydi_yok', 'Otomatik tarama kaydı yok')}</p>
+              <p style={{ fontSize:14, margin:'0 0 8px', color:'#475569' }}>{t('tenders.otomatik_tarama_kaydi_yok', 'Otomatik tarama kaydı yok')}</p>
               <p style={{ fontSize:12, margin:'0 0 16px' }}>{t('tenders.tarama_baslatirken_her_gu', 'Tarama başlatırken "Her gün otomatik tara" seçeneğini işaretleyin')}</p>
               <button onClick={() => setShowScan(true)} style={{ padding:'9px 20px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>Yeni Tarama Ekle</button>
             </div>
@@ -794,7 +801,7 @@ export default function TendersPage() {
                   <span style={{ color:'#10b981' }}>{t('tenders.gunluk_aktif', '· Günlük aktif')}</span>
                 </div>
               </div>
-              <button onClick={() => deletePref(pref.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#dc2626', cursor:'pointer' }}>
+              <button onClick={() => deletePref(pref.id)} aria-label={`${pref.keyword} taramasını sil`} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#dc2626', cursor:'pointer' }}>
                 <Trash2 size={13} />
               </button>
             </div>
