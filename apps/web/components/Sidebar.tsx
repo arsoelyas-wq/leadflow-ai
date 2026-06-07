@@ -442,29 +442,24 @@ export default function Sidebar() {
                 onClick={() => toggle(group.id)}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center',
-                  justifyContent: 'space-between',
+                  justifyContent: 'space-between', gap: 8,
                   padding: '6px 10px 6px 9px', borderRadius: 7, border: 'none',
                   cursor: 'pointer', transition: 'color 0.15s', fontFamily: 'inherit',
                   background: 'transparent',
                   color: hasActive ? '#475569' : '#94a3b8',
                 }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                    {t(group.label, group.label)}
-                  </span>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
-                    background: hasActive ? '#eff6ff' : '#f1f5f9',
-                    color: hasActive ? '#2563eb' : '#94a3b8',
-                    minWidth: 16, textAlign: 'center',
-                  }}>
-                    {group.items.length}
-                  </span>
+                <span style={{
+                  fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  flex: 1, minWidth: 0, textAlign: 'left',
+                }}>
+                  {t(group.label, group.label)}
                 </span>
                 <ChevronDown
                   size={11}
                   style={{
+                    flexShrink: 0,
                     transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
                     transition: 'transform 0.2s',
                   }}
