@@ -104,6 +104,27 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
   )
 }
 
+// ── GÖRELİ ZAMAN (güven mikro-sinyali: "3 saat önce") ────────────────────────
+function timeAgo(dateStr: string, lang: string): string {
+  if (!dateStr) return ''
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  const min = Math.floor(diffMs / 60000)
+  const L: Record<string, { now:string; min:string; hr:string; day:string }> = {
+    tr: { now:'az önce', min:'dk önce', hr:'sa önce', day:'gün önce' },
+    en: { now:'just now', min:'min ago', hr:'h ago', day:'d ago' },
+    de: { now:'gerade eben', min:'Min. her', hr:'Std. her', day:'Tg. her' },
+    ru: { now:'только что', min:'мин назад', hr:'ч назад', day:'дн назад' },
+    fr: { now:'à l\'instant', min:'min', hr:'h', day:'j' },
+    ar: { now:'الآن', min:'د', hr:'سا', day:'يوم' },
+  }
+  const l = L[lang] || L.tr
+  if (min < 1) return l.now
+  if (min < 60) return `${min} ${l.min}`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr} ${l.hr}`
+  return `${Math.floor(hr / 24)} ${l.day}`
+}
+
 // ── SKELETON ──────────────────────────────────────────────────────────────────
 function Skeleton({ h = 20, w = '100%', r = 6 }: { h?: number; w?: number|string; r?: number }) {
   return (
@@ -178,7 +199,7 @@ export default function DashboardPage() {
   const card = {
     background: '#ffffff',
     border: '1px solid #e2e8f0',
-    borderRadius: 16,
+    borderRadius: 12,
     boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   } as const
 
@@ -283,87 +304,106 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── AI INSIGHTS ── */}
-      {!loading && insights.length > 0 && (
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {insights.slice(0,2).map((ins: any, i: number) => {
-            const m = insightMeta[ins.type] || insightMeta.action
-            const InsIcon = m.Icon
-            return (
-              <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:m.bg, border:`1px solid ${m.color}22`, borderRadius:12, animation:'fadeIn 0.3s ease' }}>
-                <InsIcon size={16} color={m.color} style={{ flexShrink:0 }}/>
-                <p style={{ color:'#334155', fontSize:13, margin:0, flex:1 }}>{ins.text}</p>
-                <Link href={ins.href} style={{ display:'flex', alignItems:'center', gap:4, color:m.color, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', padding:'5px 12px', borderRadius:8, background:`${m.color}15`, border:`1px solid ${m.color}25` }}>
-                  {ins.action} <ChevronRight size={12}/>
-                </Link>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      {/* ── ÖNERİLEN SONRAKİ ADIM — alarm değil rehberlik tonu, tek ve sakin panel ── */}
+      {!loading && insights.length > 0 && (() => {
+        const ins = insights[0]
+        const m = insightMeta[ins.type] || insightMeta.action
+        const InsIcon = m.Icon
+        return (
+          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:12, animation:'fadeIn 0.3s ease' }}>
+            <div style={{ width:34, height:34, borderRadius:10, background:m.bg, border:`1px solid ${m.color}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <InsIcon size={15} color={m.color}/>
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <span style={{ display:'block', color:tx3, fontSize:10.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:2 }}>
+                {t('dashboard.next_step', 'Önerilen sonraki adım')}
+              </span>
+              <p style={{ color:'#334155', fontSize:13, margin:0, lineHeight:1.5 }}>{ins.text}</p>
+            </div>
+            <Link href={ins.href} style={{ display:'flex', alignItems:'center', gap:4, color:m.color, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', padding:'7px 14px', borderRadius:9, background:m.bg, border:`1px solid ${m.color}25`, flexShrink:0 }}>
+              {ins.action} <ChevronRight size={12}/>
+            </Link>
+          </div>
+        )
+      })()}
 
-      {/* ── STAT CARDS ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
+      {/* ── STAT CARDS — hero + ikincil hiyerarşi ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr 1fr 1fr', gap:14 }}>
         {loading ? (
           [0,1,2,3].map(i => (
             <div key={i} style={{ ...card, padding:20 }}>
               <Skeleton h={12} w={80} r={4}/><div style={{ marginTop:12 }}/>
               <Skeleton h={28} w={100} r={6}/><div style={{ marginTop:8 }}/>
-              <Skeleton h={10} w={60} r={4}/><div style={{ marginTop:12 }}/>
-              <Skeleton h={28} w="100%" r={4}/>
+              <Skeleton h={10} w={60} r={4}/>
             </div>
           ))
-        ) : [
-          {
+        ) : (() => {
+          const hero = {
             label: t('dashboard.total_leads'), value: stats?.totalLeads?.toLocaleString() || '0',
             sub: `+${stats?.weekLeads || 0} ${t('this_week','bu hafta')}`,
             trend: stats?.weekGrowth || 0, icon: Users, color: '#3b82f6',
-            sparkColor: '#3b82f6',
-          },
-          {
-            label: t('dashboard.pipeline'),
-            value: `₺${((stats?.pipelineValue || 0)/1000).toFixed(0)}K`,
-            sub: `${stats?.activeCampaigns || 0} ${D.active_campaigns}`,
-            trend: null, icon: DollarSign, color: '#10b981',
-            sparkColor: '#10b981',
-          },
-          {
-            label: t('dashboard.reply_rate'), value: `%${stats?.replyRate || 0}`,
-            sub: `${stats?.totalSent || 0} ${t('sent','gönderildi')}`,
-            trend: null, icon: TrendingUp, color: '#8b5cf6',
-            sparkColor: '#8b5cf6',
-          },
-          {
-            label: t('dashboard.credits'), value: (stats?.credits || 0).toLocaleString(),
-            sub: stats?.planType || 'starter',
-            trend: null, icon: Zap, color: '#f59e0b',
-            sparkColor: '#f59e0b',
-          },
-        ].map(({ label, value, sub, trend, icon: Icon, color, sparkColor }) => (
-          <div key={label} style={{ ...card, padding:'18px 20px' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-              <span style={{ color:tx2, fontSize:12, fontWeight:600 }}>{label}</span>
-              <div style={{ width:34, height:34, borderRadius:9, background:`${color}14`, border:`1px solid ${color}22`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <Icon size={15} color={color}/>
-              </div>
-            </div>
-            <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:8 }}>
-              <div>
-                <p style={{ color:tx1, fontSize:30, fontWeight:800, margin:0, letterSpacing:'-1px' }}>{value}</p>
-                <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
-                  {trend !== null && trend !== undefined && (
-                    <span style={{ display:'flex', alignItems:'center', gap:2, color: trend >= 0 ? '#34d399' : '#f87171', fontSize:11, fontWeight:700 }}>
-                      {trend >= 0 ? <TrendingUp size={11}/> : <TrendingDown size={11}/>}
-                      {trend >= 0 ? '+' : ''}{trend}%
-                    </span>
-                  )}
-                  <span style={{ color:tx4, fontSize:11 }}>{sub}</span>
+          }
+          const secondary = [
+            {
+              label: t('dashboard.pipeline'),
+              value: `₺${((stats?.pipelineValue || 0)/1000).toFixed(0)}K`,
+              sub: `${stats?.activeCampaigns || 0} ${D.active_campaigns}`,
+              icon: DollarSign, color: '#10b981',
+            },
+            {
+              label: t('dashboard.reply_rate'), value: `%${stats?.replyRate || 0}`,
+              sub: `${stats?.totalSent || 0} ${t('sent','gönderildi')}`,
+              icon: TrendingUp, color: '#8b5cf6',
+            },
+            {
+              label: t('dashboard.credits'), value: (stats?.credits || 0).toLocaleString(),
+              sub: stats?.planType || 'starter',
+              icon: Zap, color: '#f59e0b',
+            },
+          ]
+          return (
+            <>
+              {/* Hero kart — birincil metrik, vurgulu */}
+              <div style={{ ...card, padding:'20px 22px', background:`linear-gradient(135deg, ${hero.color}0d, #ffffff)`, border:`1px solid ${hero.color}26` }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                  <span style={{ color:tx2, fontSize:12, fontWeight:600 }}>{hero.label}</span>
+                  <div style={{ width:36, height:36, borderRadius:10, background:`${hero.color}16`, border:`1px solid ${hero.color}28`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <hero.icon size={16} color={hero.color}/>
+                  </div>
+                </div>
+                <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
+                  <div>
+                    <p style={{ color:tx1, fontSize:36, fontWeight:800, margin:0, letterSpacing:'-1.2px' }}>{hero.value}</p>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
+                      <span style={{ display:'flex', alignItems:'center', gap:2, color: hero.trend >= 0 ? '#059669' : '#dc2626', fontSize:12, fontWeight:700 }}>
+                        {hero.trend >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
+                        {hero.trend >= 0 ? '+' : ''}{hero.trend}%
+                      </span>
+                      <span style={{ color:tx3, fontSize:12 }}>{hero.sub}</span>
+                    </div>
+                  </div>
+                  <Sparkline data={sparkData} color={hero.color}/>
                 </div>
               </div>
-              <Sparkline data={sparkData} color={sparkColor}/>
-            </div>
-          </div>
-        ))}
+
+              {/* İkincil kartlar — sade, tek satırlı */}
+              {secondary.map(({ label, value, sub, icon: Icon, color }) => (
+                <div key={label} style={{ ...card, padding:'16px 18px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <span style={{ color:tx3, fontSize:11, fontWeight:600 }}>{label}</span>
+                    <div style={{ width:28, height:28, borderRadius:8, background:`${color}12`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <Icon size={13} color={color}/>
+                    </div>
+                  </div>
+                  <div style={{ marginTop:14 }}>
+                    <p style={{ color:tx1, fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.6px' }}>{value}</p>
+                    <span style={{ color:tx4, fontSize:11 }}>{sub}</span>
+                  </div>
+                </div>
+              ))}
+            </>
+          )
+        })()}
       </div>
 
       {/* ── CHART + FUNNEL ── */}
@@ -533,7 +573,12 @@ export default function DashboardPage() {
                         <p style={{ color:tx3, fontSize:11, margin:'1px 0 0' }}>{lead.city||'—'}</p>
                       </div>
                     </div>
-                    <span style={{ color:tx2, fontSize:12 }}>{lead.source||'—'}</span>
+                    <div style={{ minWidth:0 }}>
+                      <span style={{ color:tx2, fontSize:12, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.source||'—'}</span>
+                      {lead.created_at && (
+                        <span style={{ color:tx4, fontSize:10.5 }}>{timeAgo(lead.created_at, lang)}</span>
+                      )}
+                    </div>
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       <div style={{ flex:1, height:4, background:'#f1f5f9', borderRadius:2 }}>
                         <div style={{ height:'100%', width:`${score}%`, background:scoreColor, borderRadius:2 }}/>
