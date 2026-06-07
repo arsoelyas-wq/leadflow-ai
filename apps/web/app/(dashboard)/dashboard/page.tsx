@@ -68,7 +68,7 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
         {/* Grid lines */}
         {[0,33,66,100].map(pct => {
           const y = PY + (1 - pct/100) * (H - PY*2)
-          return <line key={pct} x1={PX} y1={y} x2={W-PX} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth={1}/>
+          return <line key={pct} x1={PX} y1={y} x2={W-PX} y2={y} stroke="#f1f5f9" strokeWidth={1}/>
         })}
         {/* Area fill */}
         <path d={areaPath} fill="url(#areaGrad)"/>
@@ -80,7 +80,7 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
           <g key={i} onMouseEnter={() => setHoverIdx(i)}>
             <rect x={p.x - (W/data.length)/2} y={0} width={W/data.length} height={H} fill="transparent"/>
             <circle cx={p.x} cy={p.y} r={hoverIdx===i ? 5 : 3.5} fill={hoverIdx===i?'#fff':'#3b82f6'}
-              stroke="#060a14" strokeWidth={2}
+              stroke="#ffffff" strokeWidth={2}
               style={{ filter:hoverIdx===i?'drop-shadow(0 0 6px #3b82f6)':'none', transition:'all 0.15s' }}/>
           </g>
         ))}
@@ -88,7 +88,7 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
       {/* X labels */}
       <div style={{ display:'flex', justifyContent:'space-between', paddingLeft:PX, paddingRight:PX, marginTop:4 }}>
         {pts.map((p, i) => (
-          <span key={i} style={{ color: hoverIdx===i ? '#93c5fd' : '#334155', fontSize:11, fontWeight: hoverIdx===i ? 700 : 400, transition:'color 0.15s' }}>
+          <span key={i} style={{ color: hoverIdx===i ? '#2563eb' : '#94a3b8', fontSize:11, fontWeight: hoverIdx===i ? 700 : 400, transition:'color 0.15s' }}>
             {p.date}
           </span>
         ))}
@@ -107,7 +107,7 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
 // ── SKELETON ──────────────────────────────────────────────────────────────────
 function Skeleton({ h = 20, w = '100%', r = 6 }: { h?: number; w?: number|string; r?: number }) {
   return (
-    <div style={{ height:h, width:w, borderRadius:r, background:'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%)', backgroundSize:'200% 100%', animation:'sk-shine 1.5s infinite' }}/>
+    <div style={{ height:h, width:w, borderRadius:r, background:'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)', backgroundSize:'200% 100%', animation:'sk-shine 1.5s infinite' }}/>
   )
 }
 
@@ -195,20 +195,20 @@ export default function DashboardPage() {
 
   // Insight icon/color map
   const insightMeta: Record<string,{ color:string; bg:string; Icon:any }> = {
-    action:  { color:'#60a5fa', bg:'rgba(59,130,246,0.08)',  Icon:Target },
-    warning: { color:'#fbbf24', bg:'rgba(245,158,11,0.08)',  Icon:AlertCircle },
-    credit:  { color:'#f87171', bg:'rgba(239,68,68,0.08)',   Icon:Zap },
-    success: { color:'#34d399', bg:'rgba(16,185,129,0.08)',  Icon:CheckCircle },
+    action:  { color:'#2563eb', bg:'#eff6ff', Icon:Target },
+    warning: { color:'#b45309', bg:'#fffbeb', Icon:AlertCircle },
+    credit:  { color:'#dc2626', bg:'#fef2f2', Icon:Zap },
+    success: { color:'#059669', bg:'#ecfdf5', Icon:CheckCircle },
   }
 
-  const notifColorMap: Record<string,string> = { message:'#3b82f6', lead:'#10b981', campaign:'#8b5cf6' }
+  const notifColorMap: Record<string,string> = { message:'#2563eb', lead:'#059669', campaign:'#7c3aed' }
   const notifIconMap: Record<string,any>     = { message:MessageSquare, lead:Users, campaign:Megaphone }
 
   const statusStyle: Record<string,{ color:string; bg:string }> = {
-    active:    { color:'#34d399', bg:'rgba(16,185,129,0.12)'  },
-    paused:    { color:'#fbbf24', bg:'rgba(245,158,11,0.12)'  },
-    completed: { color:'#60a5fa', bg:'rgba(59,130,246,0.12)'  },
-    draft:     { color:'#64748b', bg:'rgba(100,116,139,0.12)' },
+    active:    { color:'#059669', bg:'#ecfdf5' },
+    paused:    { color:'#b45309', bg:'#fffbeb' },
+    completed: { color:'#2563eb', bg:'#eff6ff' },
+    draft:     { color:'#64748b', bg:'#f1f5f9' },
   }
   const statusLabel = (s: string) => t(`status.${s}`, s)
 
@@ -244,7 +244,7 @@ export default function DashboardPage() {
               style={{ width:40, height:40, borderRadius:11, background:surf, border:surfBd, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', transition:'all 0.15s' }}>
               <Bell size={16} color={tx3}/>
               {newCount > 0 && (
-                <span style={{ position:'absolute', top:-5, right:-5, width:18, height:18, background:'#3b82f6', borderRadius:'50%', color:'#fff', fontSize:10, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #060a14' }}>{newCount}</span>
+                <span style={{ position:'absolute', top:-5, right:-5, width:18, height:18, background:'#2563eb', borderRadius:'50%', color:'#fff', fontSize:10, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #ffffff' }}>{newCount}</span>
               )}
             </button>
             {showNotifs && (
@@ -292,7 +292,7 @@ export default function DashboardPage() {
             return (
               <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:m.bg, border:`1px solid ${m.color}22`, borderRadius:12, animation:'fadeIn 0.3s ease' }}>
                 <InsIcon size={16} color={m.color} style={{ flexShrink:0 }}/>
-                <p style={{ color:'#94a3b8', fontSize:13, margin:0, flex:1 }}>{ins.text}</p>
+                <p style={{ color:'#334155', fontSize:13, margin:0, flex:1 }}>{ins.text}</p>
                 <Link href={ins.href} style={{ display:'flex', alignItems:'center', gap:4, color:m.color, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', padding:'5px 12px', borderRadius:8, background:`${m.color}15`, border:`1px solid ${m.color}25` }}>
                   {ins.action} <ChevronRight size={12}/>
                 </Link>
@@ -349,7 +349,7 @@ export default function DashboardPage() {
             </div>
             <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:8 }}>
               <div>
-                <p style={{ color:tx1, fontSize:26, fontWeight:900, margin:0, letterSpacing:'-1px' }}>{value}</p>
+                <p style={{ color:tx1, fontSize:30, fontWeight:800, margin:0, letterSpacing:'-1px' }}>{value}</p>
                 <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:4 }}>
                   {trend !== null && trend !== undefined && (
                     <span style={{ display:'flex', alignItems:'center', gap:2, color: trend >= 0 ? '#34d399' : '#f87171', fontSize:11, fontWeight:700 }}>
@@ -371,8 +371,8 @@ export default function DashboardPage() {
         {/* Area Chart */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
-            <span style={{ color:'#334155', fontSize:12 }}>{D.last7d}</span>
+            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
+            <span style={{ color:'#94a3b8', fontSize:12 }}>{D.last7d}</span>
           </div>
           {loading ? (
             <Skeleton h={120} r={8}/>
@@ -380,8 +380,8 @@ export default function DashboardPage() {
             <AreaChart data={data.dailyStats}/>
           ) : (
             <div style={{ height:120, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10 }}>
-              <BarChart2 size={28} color="#1e293b"/>
-              <p style={{ color:'#334155', fontSize:13, margin:0 }}>{t('dashboard.no_messages')}</p>
+              <BarChart2 size={28} color="#cbd5e1"/>
+              <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{t('dashboard.no_messages')}</p>
               <Link href="/campaigns/new" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
                 {t('dashboard.start_campaign')} <ArrowRight size={12}/>
               </Link>
@@ -392,7 +392,7 @@ export default function DashboardPage() {
         {/* Lead Funnel */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.funnel')}</h2>
+            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.funnel')}</h2>
             <Link href="/pipeline" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
           </div>
           {loading ? (
@@ -411,14 +411,14 @@ export default function DashboardPage() {
                       <span style={{ color:'#94a3b8', fontSize:12 }}>{t(`pipeline.stage.${f.key}`, f.label)}</span>
                       <span style={{ color, fontSize:12, fontWeight:700 }}>{f.count.toLocaleString()}</span>
                     </div>
-                    <div style={{ height:6, background:'rgba(255,255,255,0.05)', borderRadius:3 }}>
+                    <div style={{ height:6, background:'#f1f5f9', borderRadius:3 }}>
                       <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:3, boxShadow:`0 0 8px ${color}40`, transition:'width 0.8s ease' }}/>
                     </div>
                   </div>
                 )
               })}
               {!funnel.length && (
-                <p style={{ color:'#334155', fontSize:12, textAlign:'center', padding:'20px 0' }}>Lead ekleyin</p>
+                <p style={{ color:'#94a3b8', fontSize:12, textAlign:'center', padding:'20px 0' }}>Lead ekleyin</p>
               )}
             </div>
           )}
@@ -430,7 +430,7 @@ export default function DashboardPage() {
         {/* Campaigns */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
+            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
             <Link href="/campaigns" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
           </div>
           {loading ? (
@@ -441,13 +441,13 @@ export default function DashboardPage() {
                 const ss = statusStyle[c.status] || statusStyle.draft
                 const replyRate = c.total_sent > 0 ? Math.round((c.total_replied||0)/c.total_sent*100) : 0
                 return (
-                  <Link key={c.id} href={`/campaigns/${c.id}`} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:12, textDecoration:'none', transition:'all 0.15s' }}>
+                  <Link key={c.id} href={`/campaigns/${c.id}`} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:surf, border:surfBd, borderRadius:12, textDecoration:'none', transition:'all 0.15s' }}>
                     <div style={{ width:36, height:36, borderRadius:9, background:`${ss.color}12`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       {c.channel==='whatsapp' ? <MessageSquare size={15} color={ss.color}/> : <Megaphone size={15} color={ss.color}/>}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ color:'#fff', fontSize:13, fontWeight:600, margin:'0 0 3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</p>
-                      <p style={{ color:'#475569', fontSize:11, margin:0 }}>{c.total_sent||0} {t('campaigns.sent','gönderildi')} · {replyRate}% {t('campaigns.replied','cevap')}</p>
+                      <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:'0 0 3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</p>
+                      <p style={{ color:tx2, fontSize:11, margin:0 }}>{c.total_sent||0} {t('campaigns.sent','gönderildi')} · {replyRate}% {t('campaigns.replied','cevap')}</p>
                     </div>
                     <span style={{ color:ss.color, background:ss.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, flexShrink:0 }}>{statusLabel(c.status)}</span>
                   </Link>
@@ -456,8 +456,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
-              <Megaphone size={26} color="#1e293b"/>
-              <p style={{ color:'#334155', fontSize:13, margin:0 }}>Kampanya yok</p>
+              <Megaphone size={26} color="#cbd5e1"/>
+              <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>Kampanya yok</p>
               <Link href="/campaigns/new" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{t('page.create', 'Oluştur') + ' →'}</Link>
             </div>
           )}
@@ -466,21 +466,21 @@ export default function DashboardPage() {
         {/* Activity Feed */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.activity')}</h2>
-            <Activity size={14} color="#475569"/>
+            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.activity')}</h2>
+            <Activity size={14} color="#94a3b8"/>
           </div>
           {loading ? (
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>{[0,1,2,3].map(i=><Skeleton key={i} h={38} r={8}/>)}</div>
           ) : (data?.recentMessages||[]).length ? (
             <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
               {data.recentMessages.slice(0,6).map((m: any, i: number) => (
-                <div key={m.id||i} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom: i < 5 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems:'flex-start' }}>
-                  <div style={{ width:7, height:7, borderRadius:'50%', background:'#3b82f6', marginTop:5, flexShrink:0, boxShadow:'0 0 6px #3b82f666' }}/>
+                <div key={m.id||i} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom: i < 5 ? divBd : 'none', alignItems:'flex-start' }}>
+                  <div style={{ width:7, height:7, borderRadius:'50%', background:'#3b82f6', marginTop:5, flexShrink:0 }}/>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ color:'#94a3b8', fontSize:12, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.4 }}>
+                    <p style={{ color:tx2, fontSize:12, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.4 }}>
                       {(m.content||'').slice(0,55)}{(m.content||'').length>55?'...':''}
                     </p>
-                    <p style={{ color:'#334155', fontSize:10, margin:'2px 0 0', display:'flex', alignItems:'center', gap:3 }}>
+                    <p style={{ color:tx3, fontSize:10, margin:'2px 0 0', display:'flex', alignItems:'center', gap:3 }}>
                       <Clock size={9}/> {new Date(m.sent_at).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}
                     </p>
                   </div>
@@ -489,8 +489,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'24px 0' }}>
-              <Activity size={24} color="#1e293b"/>
-              <p style={{ color:'#334155', fontSize:12, margin:0 }}>{D.no_activity}</p>
+              <Activity size={24} color="#cbd5e1"/>
+              <p style={{ color:'#94a3b8', fontSize:12, margin:0 }}>{D.no_activity}</p>
             </div>
           )}
         </div>
@@ -499,7 +499,7 @@ export default function DashboardPage() {
       {/* ── RECENT LEADS ── */}
       <div style={{ ...card, padding:'20px 22px' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <h2 style={{ color:'#fff', fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.leads')}</h2>
+          <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.leads')}</h2>
           <Link href="/leads" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>
             {D.see_all} <ArrowRight size={12}/>
           </Link>
@@ -509,33 +509,33 @@ export default function DashboardPage() {
         ) : data?.recentLeads?.length ? (
           <div>
             {/* Table header */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:divBd }}>
               {[t('leads.col_company','Şirket / Kişi'),t('leads.col_source','Kaynak'),t('leads.col_score','Puan'),t('leads.col_status','Durum')].map(h => (
-                <span key={h} style={{ color:'#334155', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</span>
+                <span key={h} style={{ color:tx3, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</span>
               ))}
             </div>
             <div style={{ display:'flex', flexDirection:'column' }}>
               {data.recentLeads.map((lead: any, i: number) => {
                 const score = lead.score || 0
-                const scoreColor = score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#64748b'
+                const scoreColor = score >= 70 ? '#059669' : score >= 40 ? '#b45309' : '#94a3b8'
                 const ls = statusStyle[lead.status] || statusStyle.draft
                 return (
                   <Link key={lead.id} href={`/leads/${lead.id}`}
-                    style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'10px', borderBottom: i < data.recentLeads.length-1 ? '1px solid rgba(255,255,255,0.04)' : 'none', alignItems:'center', textDecoration:'none', borderRadius:8, transition:'background 0.12s' }}>
+                    style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'10px', borderBottom: i < data.recentLeads.length-1 ? divBd : 'none', alignItems:'center', textDecoration:'none', borderRadius:8, transition:'background 0.12s' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:32, height:32, borderRadius:9, background:'rgba(59,130,246,0.15)', display:'flex', alignItems:'center', justifyContent:'center', color:'#93c5fd', fontSize:13, fontWeight:700, flexShrink:0 }}>
+                      <div style={{ width:32, height:32, borderRadius:9, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563eb', fontSize:13, fontWeight:700, flexShrink:0 }}>
                         {((lead.company_name||lead.contact_name||'?')[0]).toUpperCase()}
                       </div>
                       <div style={{ minWidth:0 }}>
-                        <p style={{ color:'#e2e8f0', fontSize:13, fontWeight:600, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                           {lead.company_name || lead.contact_name}
                         </p>
-                        <p style={{ color:'#334155', fontSize:11, margin:'1px 0 0' }}>{lead.city||'—'}</p>
+                        <p style={{ color:tx3, fontSize:11, margin:'1px 0 0' }}>{lead.city||'—'}</p>
                       </div>
                     </div>
-                    <span style={{ color:'#475569', fontSize:12 }}>{lead.source||'—'}</span>
+                    <span style={{ color:tx2, fontSize:12 }}>{lead.source||'—'}</span>
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <div style={{ flex:1, height:4, background:'rgba(255,255,255,0.06)', borderRadius:2 }}>
+                      <div style={{ flex:1, height:4, background:'#f1f5f9', borderRadius:2 }}>
                         <div style={{ height:'100%', width:`${score}%`, background:scoreColor, borderRadius:2 }}/>
                       </div>
                       <span style={{ color:scoreColor, fontSize:11, fontWeight:700, width:24, flexShrink:0 }}>{score}</span>
@@ -550,8 +550,8 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
-            <Users size={28} color="#1e293b"/>
-            <p style={{ color:'#334155', fontSize:13, margin:0 }}>{D.no_leads}</p>
+            <Users size={28} color="#cbd5e1"/>
+            <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{D.no_leads}</p>
             <Link href="/lead-machine" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>Lead bul →</Link>
           </div>
         )}

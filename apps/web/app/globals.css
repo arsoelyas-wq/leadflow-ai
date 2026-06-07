@@ -411,3 +411,24 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ENTERPRISE DASHBOARD UTILITIES
+   Section labels, accent cards, spacing scale
+   ═══════════════════════════════════════════════════════════ */
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 12px;
+}
+
+.dash-section-gap { gap: 28px; }
+
+.card-primary { border-left: 3px solid #2563eb; }
+.card-warn    { border-left: 3px solid #f59e0b; }
+.card-danger  { border-left: 3px solid #dc2626; }
+.card-success { border-left: 3px solid #059669; }

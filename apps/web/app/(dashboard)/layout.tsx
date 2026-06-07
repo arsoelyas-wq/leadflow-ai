@@ -54,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div style={{
         flex: 1,
-        marginLeft: 248,
+        marginLeft: 232,
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
@@ -65,7 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div style={{
             background: 'rgba(239,68,68,0.08)',
             borderBottom: '1px solid rgba(239,68,68,0.2)',
-            padding: '8px 28px',
+            padding: '8px 32px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -100,7 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
-          padding: '10px 28px',
+          padding: '10px 32px',
           background: 'rgba(248,250,252,0.92)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Main content */}
         <main
           className="dash-main"
-          style={{ flex: 1, padding: '24px 28px', overflowX: 'hidden' }}
+          style={{ flex: 1, padding: '28px 32px', overflowX: 'hidden' }}
           lang={lang}
         >
           {children}

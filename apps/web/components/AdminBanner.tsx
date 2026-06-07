@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { useTheme } from '@/lib/theme-context'
-import { X, Info, Zap, Bell } from 'lucide-react'
+import { X, Bell } from 'lucide-react'
 
 interface Banner {
   id: string
@@ -23,8 +22,6 @@ const MIN_MESSAGE_LEN = 20
 
 export default function AdminBanner({ type = 'dashboard', slug }: { type?: string; slug?: string }) {
   const { user } = useAuth()
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   const [banners, setBanners] = useState<Banner[]>([])
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
 
@@ -46,9 +43,9 @@ export default function AdminBanner({ type = 'dashboard', slug }: { type?: strin
   }, [user, type, slug])
 
   const dismiss = (id: string) => {
-    const newDismissed = new Set([...dismissed, id])
-    setDismissed(newDismissed)
-    localStorage.setItem('dismissed_banners', JSON.stringify([...newDismissed]))
+    const next = new Set([...dismissed, id])
+    setDismissed(next)
+    localStorage.setItem('dismissed_banners', JSON.stringify([...next]))
     fetch(`${API}/api/admin/content/banners/${id}/dismiss`, { method: 'POST' }).catch(() => {})
   }
 
@@ -62,81 +59,79 @@ export default function AdminBanner({ type = 'dashboard', slug }: { type?: strin
     b.message.trim().length >= MIN_MESSAGE_LEN
   )
 
-  if (visible.length === 0) return null
-
-  const bgColor  = isDark ? 'rgba(59,130,246,0.07)' : '#eff6ff'
-  const bdColor  = isDark ? 'rgba(59,130,246,0.18)' : '#bfdbfe'
-  const titleClr = isDark ? '#f1f5f9' : '#1e40af'
-  const msgClr   = isDark ? '#94a3b8' : '#3b82f6'
-  const closeClr = isDark ? '#475569' : '#93c5fd'
+  // Enterprise banners stay quiet — show only the single most relevant one
+  const b = visible[0]
+  if (!b) return null
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      {visible.map(b => (
-        <div key={b.id} style={{
-          background: bgColor,
-          border: `1px solid ${bdColor}`,
-          borderRadius: 14,
-          padding: '14px 18px',
-          marginBottom: 8,
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 12,
-          position: 'relative',
-        }}>
-          {b.image_url ? (
-            <img
-              src={b.image_url}
-              alt={b.title}
-              style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
-            />
-          ) : (
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: isDark ? 'rgba(59,130,246,0.15)' : '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Bell size={16} color="#3b82f6" />
-            </div>
-          )}
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      height: 44,
+      padding: '0 14px',
+      marginBottom: 16,
+      background: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: 10,
+    }}>
+      <div style={{
+        width: 26, height: 26, borderRadius: 7,
+        background: '#f8fafc', border: '1px solid #f1f5f9',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Bell size={13} color="#64748b" />
+      </div>
 
-          <div style={{ flex: 1, minWidth: 0, paddingRight: 24 }}>
-            {b.title && (
-              <div style={{ color: titleClr, fontSize: 14, fontWeight: 700, marginBottom: 3 }}>
-                {b.title}
-              </div>
-            )}
-            {b.message && (
-              <div style={{ color: msgClr, fontSize: 13, lineHeight: 1.5 }}>
-                {b.message}
-              </div>
-            )}
-          </div>
+      <p style={{
+        flex: 1,
+        minWidth: 0,
+        margin: 0,
+        color: '#0f172a',
+        fontSize: 13,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {b.title && <strong style={{ fontWeight: 700, marginRight: 6 }}>{b.title}</strong>}
+        <span style={{ color: '#64748b' }}>{b.message}</span>
+      </p>
 
-          {b.cta_text && b.cta_url && (
-            <a
-              href={b.cta_url}
-              onClick={() => trackClick(b.id)}
-              style={{
-                padding: '8px 16px', borderRadius: 9,
-                background: 'linear-gradient(135deg,#3b82f6,#6366f1)',
-                color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600,
-                flexShrink: 0, whiteSpace: 'nowrap',
-              }}
-            >
-              {b.cta_text}
-            </a>
-          )}
+      {b.cta_text && b.cta_url && (
+        <a
+          href={b.cta_url}
+          onClick={() => trackClick(b.id)}
+          style={{
+            padding: '6px 14px',
+            borderRadius: 7,
+            background: '#0f172a',
+            color: '#fff',
+            textDecoration: 'none',
+            fontSize: 12,
+            fontWeight: 600,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {b.cta_text}
+        </a>
+      )}
 
-          <button
-            onClick={() => dismiss(b.id)}
-            style={{
-              position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: 7,
-              background: 'none', border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: closeClr, transition: 'all 0.15s', padding: 0,
-            }}
-          >
-            <X size={13} />
-          </button>
-        </div>
-      ))}
+      <button
+        onClick={() => dismiss(b.id)}
+        style={{
+          width: 26, height: 26, borderRadius: 7,
+          background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#94a3b8', transition: 'all 0.15s', padding: 0, flexShrink: 0,
+          fontFamily: 'inherit',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f1f5f9'; (e.currentTarget as HTMLElement).style.color = '#475569' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = '#94a3b8' }}
+      >
+        <X size={13} />
+      </button>
     </div>
   )
 }
