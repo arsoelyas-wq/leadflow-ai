@@ -41,8 +41,9 @@ const PLAN_META: Record<string, { label: string; color: string; bg: string; bord
 }
 
 const CORE_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'nav.dashboard', icon: LayoutDashboard },
-  { href: '/leads',     label: 'nav.leads',     icon: Users },
+  { href: '/dashboard',    label: 'nav.dashboard',    icon: LayoutDashboard },
+  { href: '/lead-machine', label: 'nav.lead_machine', icon: Sparkles, badge: 'AI' },
+  { href: '/leads',        label: 'nav.leads',        icon: Users },
   { href: '/campaigns', label: 'nav.campaigns', icon: Megaphone },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
   { href: '/pipeline',  label: 'nav.pipeline',  icon: Kanban },
@@ -52,7 +53,6 @@ const GROUPS: NavGroup[] = [
   {
     id: 'discovery', label: 'nav.group_discovery',
     items: [
-      { href: '/lead-machine',   label: 'nav.lead_machine',     icon: Sparkles,   badge: 'AI' },
       { href: '/lead-hunter',    label: 'nav.lead_hunter',      icon: Crosshair },
       { href: '/decision-maker', label: 'nav.decision_maker',   icon: UserCheck },
       { href: '/health-scores',  label: 'nav.health_scores',    icon: Activity },
@@ -307,14 +307,22 @@ export default function Sidebar() {
       <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 4px', scrollbarWidth: 'none' }}>
 
         {/* CORE — her zaman görünür */}
-        {CORE_ITEMS.map(({ href, label, icon: Icon }) => {
+        {CORE_ITEMS.map(({ href, label, icon: Icon, badge }) => {
           const active = pathname === href
           return (
             <Link key={href} href={href} style={itemStyle(active)}>
               <Icon size={14} style={{ flexShrink: 0 }} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t(label, label)}
               </span>
+              {badge && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+                  background: '#ecfdf5', color: '#10b981', flexShrink: 0,
+                }}>
+                  {badge}
+                </span>
+              )}
             </Link>
           )
         })}
