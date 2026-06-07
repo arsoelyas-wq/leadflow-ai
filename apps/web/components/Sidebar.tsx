@@ -46,7 +46,6 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/leads',        label: 'nav.leads',        icon: Users },
   { href: '/campaigns', label: 'nav.campaigns', icon: Megaphone },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
-  { href: '/pipeline',  label: 'nav.pipeline',  icon: Kanban },
 ]
 
 const GROUPS: NavGroup[] = [
@@ -64,6 +63,8 @@ const GROUPS: NavGroup[] = [
   {
     id: 'sales', label: 'nav.sales',
     items: [
+      { href: '/pipeline',      label: 'nav.pipeline',      icon: Kanban },
+      { href: '/ar-experience', label: 'nav.ar_experience', icon: Box,     badge: 'AI' },
       { href: '/network',    label: 'nav.network',    icon: Network },
       { href: '/proposals',  label: 'nav.proposals',  icon: FileText },
       { href: '/products',   label: 'nav.products',   icon: Package,        badge: 'AI' },
@@ -127,7 +128,6 @@ const GROUPS: NavGroup[] = [
   {
     id: 'team', label: 'nav.group_team',
     items: [
-      { href: '/team',                label: 'nav.team',                icon: UsersRound, plan: 'pro', badge: 'PRO' },
       { href: '/team-intelligence',   label: 'nav.team_intelligence',   icon: Brain },
       { href: '/team-reports',        label: 'nav.team_reports',        icon: ClipboardList },
       { href: '/sales-coach',         label: 'nav.sales_coach',         icon: GraduationCap },
@@ -146,6 +146,7 @@ const GROUPS: NavGroup[] = [
   {
     id: 'system', label: 'nav.system',
     items: [
+      { href: '/whitelabel',   label: 'nav.whitelabel',   icon: Crown,      badge: 'ENT' },
       { href: '/billing',      label: 'nav.billing',      icon: CreditCard },
       { href: '/credits',      label: 'nav.credits',      icon: Coins },
       { href: '/kvkk',         label: 'nav.kvkk',         icon: Shield },
@@ -156,10 +157,9 @@ const GROUPS: NavGroup[] = [
 ]
 
 const SPECIAL_TOOLS = [
-  { href: '/tenders',       label: 'nav.tenders',       icon: ScrollText, color: '#d97706', badge: 'PRO' },
-  { href: '/export',        label: 'nav.export',        icon: Globe2,     color: '#059669', badge: 'ENT' },
-  { href: '/ar-experience', label: 'nav.ar_experience', icon: Box,        color: '#7c3aed', badge: 'AI' },
-  { href: '/whitelabel',    label: 'nav.whitelabel',    icon: Crown,      color: '#2563eb', badge: 'ENT' },
+  { href: '/tenders', label: 'nav.tenders', icon: ScrollText,  color: '#d97706', badge: 'PRO' },
+  { href: '/export',  label: 'nav.export',  icon: Globe2,      color: '#059669', badge: 'ENT' },
+  { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
 ]
 
 export default function Sidebar() {
