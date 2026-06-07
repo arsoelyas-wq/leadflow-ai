@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -17,7 +17,7 @@ import {
   Swords, Eye, Tag, LineChart, Radar, Languages, Heart, PieChart,
   DollarSign, Banknote, Award, TrendingDown, Receipt, FileSpreadsheet,
   ClipboardList, GraduationCap, Lightbulb, Cog, Webhook, Code,
-  CreditCard, Coins, Shield, Box,
+  CreditCard, Coins, Shield, Box, X, Command,
 } from 'lucide-react'
 
 interface NavItem {
@@ -44,6 +44,7 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/dashboard',    label: 'nav.dashboard',    icon: LayoutDashboard },
   { href: '/lead-machine', label: 'nav.lead_machine', icon: Sparkles, badge: 'AI' },
   { href: '/leads',        label: 'nav.leads',        icon: Users },
+  { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
   { href: '/campaigns', label: 'nav.campaigns', icon: Megaphone },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
 ]
@@ -63,7 +64,6 @@ const GROUPS: NavGroup[] = [
   {
     id: 'sales', label: 'nav.sales',
     items: [
-      { href: '/pipeline',      label: 'nav.pipeline',      icon: Kanban },
       { href: '/ar-experience', label: 'nav.ar_experience', icon: Box,     badge: 'AI' },
       { href: '/network',    label: 'nav.network',    icon: Network },
       { href: '/proposals',  label: 'nav.proposals',  icon: FileText },
@@ -81,7 +81,6 @@ const GROUPS: NavGroup[] = [
       { href: '/messages',        label: 'nav.messages',        icon: MessageSquare },
       { href: '/email-campaigns', label: 'nav.email',           icon: Mail },
       { href: '/sms-campaigns',   label: 'nav.sms',             icon: MessageCircle },
-      { href: '/voice-outreach',  label: 'nav.voice',           icon: Phone,        badge: 'AI' },
       { href: '/video-outreach',  label: 'nav.video',           icon: Video,        badge: 'AI' },
       { href: '/avatar-library',  label: 'nav.avatar_library',  icon: Images },
       { href: '/replica',         label: 'nav.replica',         icon: UserCircle },
@@ -103,7 +102,6 @@ const GROUPS: NavGroup[] = [
   {
     id: 'market-intel', label: 'nav.group_market_intel',
     items: [
-      { href: '/competitor',     label: 'nav.competitor',     icon: Swords },
       { href: '/shadow',         label: 'nav.shadow',         icon: Eye },
       { href: '/price-tracker',  label: 'nav.price_tracker',  icon: Tag },
       { href: '/visual-trends',  label: 'nav.visual_trends',  icon: LineChart },
@@ -157,9 +155,18 @@ const GROUPS: NavGroup[] = [
 ]
 
 const SPECIAL_TOOLS = [
+  { href: '/voice-outreach', label: 'nav.voice',      icon: Phone,      color: '#7c3aed', badge: 'AI' },
+  { href: '/competitor',     label: 'nav.competitor', icon: Swords,     color: '#e11d48', badge: 'AI' },
   { href: '/tenders', label: 'nav.tenders', icon: ScrollText,  color: '#d97706', badge: 'PRO' },
   { href: '/export',  label: 'nav.export',  icon: Globe2,      color: '#059669', badge: 'ENT' },
   { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
+]
+
+// Komut paleti için düzleştirilmiş arama indeksi — tüm öğeler tek listede
+const ALL_NAV_ITEMS: { href: string; label: string; icon: any; groupLabel?: string }[] = [
+  ...CORE_ITEMS.map(i => ({ href: i.href, label: i.label, icon: i.icon })),
+  ...SPECIAL_TOOLS.map(i => ({ href: i.href, label: i.label, icon: i.icon })),
+  ...GROUPS.flatMap(g => g.items.map(i => ({ href: i.href, label: i.label, icon: i.icon, groupLabel: g.label }))),
 ]
 
 export default function Sidebar() {
@@ -170,12 +177,42 @@ export default function Sidebar() {
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [ctaDismissed, setCtaDismissed] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setCtaDismissed(localStorage.getItem('cta_dismissed') === '1')
     }
   }, [])
+
+  // Ctrl/Cmd+K — komut paletini aç/kapat; Esc — kapat
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen(o => !o)
+      } else if (e.key === 'Escape') {
+        setPaletteOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  useEffect(() => {
+    if (paletteOpen) {
+      setQuery('')
+      const id = setTimeout(() => searchInputRef.current?.focus(), 50)
+      return () => clearTimeout(id)
+    }
+  }, [paletteOpen])
+
+  const goTo = (href: string) => {
+    setPaletteOpen(false)
+    router.push(href)
+  }
 
   // Auto-open the group containing the active route
   useEffect(() => {
@@ -217,7 +254,12 @@ export default function Sidebar() {
     fontWeight: active ? 600 : 400,
   })
 
+  const searchResults = query.trim()
+    ? ALL_NAV_ITEMS.filter(i => t(i.label, i.label).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
+    : []
+
   return (
+    <>
     <aside style={{
       width: 232,
       background: '#ffffff',
@@ -303,6 +345,38 @@ export default function Sidebar() {
         </div>
       )}
 
+      {/* ── ARAMA / KOMUT PALETİ TETİKLEYİCİ ── */}
+      <div style={{ padding: '10px 12px 0', flexShrink: 0 }}>
+        <button
+          onClick={() => setPaletteOpen(true)}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 10px', borderRadius: 8,
+            border: '1px solid #e2e8f0', background: '#f8fafc',
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            color: '#94a3b8', fontSize: 12,
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1'
+            ;(e.currentTarget as HTMLElement).style.background = '#f1f5f9'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'
+            ;(e.currentTarget as HTMLElement).style.background = '#f8fafc'
+          }}
+        >
+          <Search size={13} />
+          <span style={{ flex: 1, textAlign: 'left' }}>{t('nav.search_placeholder', 'Özellik ara...')}</span>
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: 2,
+            fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 5,
+            background: '#fff', border: '1px solid #e2e8f0', color: '#94a3b8',
+          }}>
+            <Command size={9} />K
+          </span>
+        </button>
+      </div>
+
       {/* ── NAVİGASYON ── */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 4px', scrollbarWidth: 'none' }}>
 
@@ -375,8 +449,18 @@ export default function Sidebar() {
                   color: hasActive ? '#475569' : '#94a3b8',
                 }}
               >
-                <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                  {t(group.label, group.label)}
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    {t(group.label, group.label)}
+                  </span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                    background: hasActive ? '#eff6ff' : '#f1f5f9',
+                    color: hasActive ? '#2563eb' : '#94a3b8',
+                    minWidth: 16, textAlign: 'center',
+                  }}>
+                    {group.items.length}
+                  </span>
                 </span>
                 <ChevronDown
                   size={11}
@@ -529,5 +613,98 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+
+    {/* ── KOMUT PALETİ (Ctrl/Cmd+K) — 70+ özellik arasında anında arama ── */}
+    {paletteOpen && (
+      <div
+        onClick={() => setPaletteOpen(false)}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(15,23,42,0.45)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          paddingTop: '12vh',
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: '100%', maxWidth: 480, margin: '0 16px',
+            background: '#fff', borderRadius: 14,
+            boxShadow: '0 20px 60px rgba(15,23,42,0.35)',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: '1px solid #f1f5f9' }}>
+            <Search size={15} color="#94a3b8" />
+            <input
+              ref={searchInputRef}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={t('nav.search_input_placeholder', 'Özellik ara… (örn. video, rakip, fatura)')}
+              style={{
+                flex: 1, border: 'none', outline: 'none', fontSize: 14,
+                color: '#0f172a', fontFamily: 'inherit', background: 'transparent',
+              }}
+            />
+            <button onClick={() => setPaletteOpen(false)} style={{
+              border: 'none', background: '#f1f5f9', borderRadius: 6,
+              width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: '#94a3b8', flexShrink: 0,
+            }}>
+              <X size={12} />
+            </button>
+          </div>
+
+          <div style={{ maxHeight: 360, overflowY: 'auto', padding: 6 }}>
+            {query.trim() === '' && (
+              <p style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '24px 12px', margin: 0 }}>
+                {t('nav.search_hint', '70+ özellik arasında anında ara — modül adı veya işlev yazmanız yeterli')}
+              </p>
+            )}
+            {query.trim() !== '' && searchResults.length === 0 && (
+              <p style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '24px 12px', margin: 0 }}>
+                {t('nav.search_empty', 'Sonuç bulunamadı — farklı bir kelime deneyin')}
+              </p>
+            )}
+            {searchResults.map(({ href, label, icon: Icon, groupLabel }) => (
+              <button
+                key={href}
+                onClick={() => goTo(href)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 10px', borderRadius: 9, border: 'none',
+                  background: pathname === href ? '#f0f6ff' : 'transparent',
+                  cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => { if (pathname !== href) (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                onMouseLeave={e => { if (pathname !== href) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: 7,
+                  background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <Icon size={14} color="#2563eb" />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {t(label, label)}
+                  </p>
+                  {groupLabel && (
+                    <p style={{ margin: 0, fontSize: 10.5, color: '#94a3b8' }}>
+                      {t(groupLabel, groupLabel)}
+                    </p>
+                  )}
+                </div>
+                <ChevronRight size={13} color="#cbd5e1" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
