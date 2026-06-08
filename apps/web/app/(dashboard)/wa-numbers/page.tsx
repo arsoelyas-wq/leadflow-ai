@@ -130,18 +130,18 @@ export default function WANumbersPage() {
 
   const numbers = stats?.numbers || []
   const connected = numbers.filter((n: any) => n.status === 'connected').length
-  const inputStyle = { background: '#060a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none' }
+  const inputStyle = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', color: '#0f172a', fontSize: 13, outline: 'none' }
 
   return (
     <div style={{ padding: 0 }}>
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(0,14,5,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(34,197,94,0.2)' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(34,197,94,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f0fdf4 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #bbf7d0' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(34,197,94,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <PhoneConstellation size={90} connected={connected} total={numbers.length} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>WhatsApp Numaralar</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('wa_numbers.coklu_numara_yonetimi_ban', 'Çoklu numara yönetimi — ban riskini dağıt, kapasiteyi artır')}</p>
+            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>WhatsApp Numaralar</h1>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('wa_numbers.coklu_numara_yonetimi_ban', 'Çoklu numara yönetimi — ban riskini dağıt, kapasiteyi artır')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[{l:'Toplam',v:numbers.length,c:'#94a3b8'},{l:'Bağlı',v:connected,c:'#22c55e'},{l:'Günlük Kapasite',v:stats?.totalCapacity||0,c:'#06b6d4'},{l:'Bugün Gönderilen',v:stats?.usedToday||0,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -160,8 +160,8 @@ export default function WANumbersPage() {
 
       {/* Add Form */}
       {showAdd && (
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 18, padding: 22, marginBottom: 20 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>{t('wa_numbers.yeni_numara_bagla', '➕ Yeni Numara Bağla')}</h3>
+        <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: 18, padding: 22, marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>{t('wa_numbers.yeni_numara_bagla', '➕ Yeni Numara Bağla')}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
               <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('wa_numbers.isim_opsiyonel', 'İsim (opsiyonel)')}</label>
@@ -173,14 +173,14 @@ export default function WANumbersPage() {
             </div>
           </div>
           {qrCode ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '20px', background: 'rgba(255,255,255,0.02)', borderRadius: 14, border: '1px solid rgba(34,197,94,0.15)' }}>
-              <p style={{ color: '#fff', fontWeight: 700, margin: 0 }}>{t('wa_numbers.whatsapp_ile_qri_okutun', '📱 WhatsApp ile QR\'ı okutun')}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '20px', background: '#f0fdf4', borderRadius: 14, border: '1px solid #bbf7d0' }}>
+              <p style={{ color: '#0f172a', fontWeight: 700, margin: 0 }}>{t('wa_numbers.whatsapp_ile_qri_okutun', '📱 WhatsApp ile QR\'ı okutun')}</p>
               <img src={qrCode} alt="QR" style={{ width: 200, height: 200, borderRadius: 12 }} />
               <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>{t('wa_numbers.baglanti_bekleniyor', 'Bağlantı bekleniyor...')}</p>
             </div>
           ) : (
             <button onClick={connectNumber} disabled={connecting}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 11, border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.08)', color: '#4ade80', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 11, border: '1px solid #86efac', background: '#dcfce7', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               {connecting ? <RefreshCw size={14} style={{ animation: 'wa-spin 1s linear infinite' }} /> : <QrCode size={14} />}
               {connecting ? 'QR oluşturuluyor...' : 'QR Oluştur & Bağla'}
             </button>
@@ -203,7 +203,7 @@ export default function WANumbersPage() {
             const healthColor = getHealthColor(num.sent_today || 0, num.daily_limit || 100)
             const pct = Math.min(((num.sent_today || 0) / (num.daily_limit || 100)) * 100, 100)
             return (
-              <div key={num.id} style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: `1px solid ${num.is_primary ? 'rgba(34,197,94,0.35)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 16, padding: '18px 20px' }}>
+              <div key={num.id} style={{ background: '#ffffff', border: `1px solid ${num.is_primary ? '#86efac' : '#e2e8f0'}`, borderRadius: 16, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                   {/* Status indicator */}
                   <div style={{ width: 48, height: 48, borderRadius: 12, background: num.status === 'connected' ? 'rgba(34,197,94,0.12)' : 'rgba(100,116,139,0.12)', border: `1px solid ${num.status === 'connected' ? 'rgba(34,197,94,0.3)' : 'rgba(100,116,139,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -211,15 +211,15 @@ export default function WANumbersPage() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <p style={{ color: '#fff', fontWeight: 700, fontSize: 14, margin: 0 }}>{num.display_name || 'WhatsApp Hattı'}</p>
-                      {num.is_primary && <span style={{ background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.3)', color: '#fbbf24', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>⭐ Birincil</span>}
+                      <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 14, margin: 0 }}>{num.display_name || 'WhatsApp Hattı'}</p>
+                      {num.is_primary && <span style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>⭐ Birincil</span>}
                       <span style={{ background: `${banRisk.color}12`, border: `1px solid ${banRisk.color}30`, color: banRisk.color, fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>
                         <ShieldCheck size={9} style={{ display: 'inline', marginRight: 3 }} />{banRisk.label}
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#475569' }}>
                       {num.phone_number && <span>{num.phone_number}</span>}
-                      <span style={{ color: num.status === 'connected' ? '#4ade80' : '#64748b' }}>{num.status === 'connected' ? '🟢 Bağlı' : '⚫ Bağlı Değil'}</span>
+                      <span style={{ color: num.status === 'connected' ? '#059669' : '#64748b' }}>{num.status === 'connected' ? '🟢 Bağlı' : '⚫ Bağlı Değil'}</span>
                     </div>
                   </div>
                   {/* Usage bar */}
@@ -228,7 +228,7 @@ export default function WANumbersPage() {
                       <span style={{ color: '#475569', fontSize: 10 }}>{t('wa_numbers.bugun', 'Bugün')}</span>
                       <span style={{ color: healthColor, fontSize: 10, fontWeight: 700 }}>{num.sent_today || 0}/{num.daily_limit || 100}</span>
                     </div>
-                    <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+                    <div style={{ height: 6, background: '#e2e8f0', borderRadius: 3 }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: healthColor, borderRadius: 3, boxShadow: `0 0 6px ${healthColor}60`, transition: 'width 0.6s' }} />
                     </div>
                   </div>
@@ -239,7 +239,7 @@ export default function WANumbersPage() {
                         <Star size={13} />
                       </button>
                     )}
-                    <button onClick={() => setEditId(editId === num.id ? null : num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', cursor: 'pointer' }}>
+                    <button onClick={() => setEditId(editId === num.id ? null : num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer' }}>
                       <Settings2 size={13} />
                     </button>
                     {num.status === 'connected' ? (
@@ -255,7 +255,7 @@ export default function WANumbersPage() {
                 </div>
                 {/* Edit limit */}
                 {editId === num.id && (
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ color: '#64748b', fontSize: 12 }}>{t('wa_numbers.gunluk_limit', 'Günlük limit:')}</span>
                     <input type="number" defaultValue={num.daily_limit} id={`lim-${num.id}`} min={10} max={500}
                       style={{ width: 80, ...inputStyle }} />
@@ -272,8 +272,8 @@ export default function WANumbersPage() {
       )}
 
       {/* Anti-ban guide */}
-      <div style={{ marginTop: 20, background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(34,197,94,0.12)', borderRadius: 18, padding: 20 }}>
-        <h3 style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>🛡️ Anti-Ban Stratejisi</h3>
+      <div style={{ marginTop: 20, background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: 18, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>🛡️ Anti-Ban Stratejisi</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
           {[
             { icon: '📊', text: t('Numara başına günde max 100-150 mesaj gönderin','Numara başına günde max 100-150 mesaj gönderin'), color: '#06b6d4' },
@@ -283,7 +283,7 @@ export default function WANumbersPage() {
           ].map(tip => (
             <div key={tip.text} style={{ display: 'flex', gap: 10, padding: '10px 14px', background: `${tip.color}08`, border: `1px solid ${tip.color}18`, borderRadius: 10 }}>
               <span style={{ fontSize: 16 }}>{tip.icon}</span>
-              <p style={{ color: '#94a3b8', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{tip.text}</p>
+              <p style={{ color: '#0f172a', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{tip.text}</p>
             </div>
           ))}
         </div>

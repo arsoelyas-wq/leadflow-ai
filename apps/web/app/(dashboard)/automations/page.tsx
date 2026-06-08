@@ -114,35 +114,35 @@ function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreate
     setSaving(false)
   }
 
-  const selectedTrigger = TRIGGERS.find(t => t.value === form.trigger)
+  const selectedTrigger = TRIGGERS.find(trig => trig.value === form.trigger)
   const selectedAction = ACTIONS.find(a => a.value === form.action)
-  const inputStyle = { width: '100%', background: '#060a1c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: 'linear-gradient(135deg,#0a0c14,#0d1120)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 20, padding: 28, width: 520, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: '#ffffff', border: '1px solid #fde68a', borderRadius: 20, padding: 28, width: 520, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 800, margin: 0 }}>⚡ Yeni Otomasyon Kuralı</h2>
+          <h2 style={{ color: '#0f172a', fontSize: 16, fontWeight: 800, margin: 0 }}>⚡ Yeni Otomasyon Kuralı</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}><X size={18} /></button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Name */}
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Kural Adı *</label>
+            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Kural Adı *</label>
             <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="örn: 2 Gün Cevap Vermeyene Hatırlatma" style={inputStyle} />
           </div>
 
           {/* Trigger */}
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 8 }}>🎯 Tetikleyici (EĞER)</label>
+            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 8 }}>🎯 Tetikleyici (EĞER)</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {TRIGGERS.map(t => (
-                <button key={t.value} onClick={() => setForm(p => ({ ...p, trigger: t.value }))}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${form.trigger === t.value ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.06)'}`, background: form.trigger === t.value ? 'rgba(245,158,11,0.1)' : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-                  <p style={{ color: '#fff', fontSize: 12, fontWeight: 600, margin: 0 }}>{t.label}</p>
-                  <p style={{ color: '#475569', fontSize: 10, margin: '2px 0 0' }}>{t.desc}</p>
+              {TRIGGERS.map(trig => (
+                <button key={trig.value} onClick={() => setForm(p => ({ ...p, trigger: trig.value }))}
+                  style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${form.trigger === trig.value ? '#fde68a' : '#e2e8f0'}`, background: form.trigger === trig.value ? '#fffbeb' : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                  <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 600, margin: 0 }}>{trig.label}</p>
+                  <p style={{ color: '#475569', fontSize: 10, margin: '2px 0 0' }}>{trig.desc}</p>
                 </button>
               ))}
             </div>
@@ -151,22 +151,22 @@ function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreate
           {/* Days (if trigger supports it) */}
           {selectedTrigger?.hasDays && (
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Kaç Gün Sonra? ({form.trigger_days} gün)</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Kaç Gün Sonra? ({form.trigger_days} gün)</label>
               <input type="range" min={1} max={14} value={form.trigger_days} onChange={e => setForm(p => ({ ...p, trigger_days: e.target.value }))} style={{ width: '100%', accentColor: '#f59e0b' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                <span style={{ color: '#334155', fontSize: 10 }}>1 gün</span><span style={{ color: '#334155', fontSize: 10 }}>14 gün</span>
+                <span style={{ color: '#475569', fontSize: 10 }}>1 gün</span><span style={{ color: '#475569', fontSize: 10 }}>14 gün</span>
               </div>
             </div>
           )}
 
           {/* Action */}
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 8 }}>⚡ Aksiyon (O ZAMAN)</label>
+            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 8 }}>⚡ Aksiyon (O ZAMAN)</label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {ACTIONS.map(a => (
                 <button key={a.value} onClick={() => setForm(p => ({ ...p, action: a.value }))}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${form.action === a.value ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.06)'}`, background: form.action === a.value ? 'rgba(16,185,129,0.1)' : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-                  <p style={{ color: '#fff', fontSize: 12, fontWeight: 600, margin: 0 }}>{a.label}</p>
+                  style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${form.action === a.value ? '#a7f3d0' : '#e2e8f0'}`, background: form.action === a.value ? '#ecfdf5' : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+                  <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 600, margin: 0 }}>{a.label}</p>
                   <p style={{ color: '#475569', fontSize: 10, margin: '2px 0 0' }}>{a.desc}</p>
                 </button>
               ))}
@@ -176,9 +176,9 @@ function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreate
           {/* Action config */}
           {selectedAction?.hasMessage && (
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>
                 Mesaj İçeriği
-                <span style={{ color: '#334155', marginLeft: 8 }}>Değişkenler: {MESSAGE_VARIABLES.join(' ')}</span>
+                <span style={{ color: '#475569', marginLeft: 8 }}>Değişkenler: {MESSAGE_VARIABLES.join(' ')}</span>
               </label>
               <textarea value={form.action_message} onChange={e => setForm(p => ({ ...p, action_message: e.target.value }))}
                 placeholder="Merhaba {ad}, sizi aramak istedik. {firma} ile ilgili..."
@@ -188,7 +188,7 @@ function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
           {selectedAction?.hasValue && (
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Yeni Durum</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Yeni Durum</label>
               <select value={form.action_value} onChange={e => setForm(p => ({ ...p, action_value: e.target.value }))} style={{ ...inputStyle, height: 42 }}>
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
@@ -197,7 +197,7 @@ function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
           {selectedAction?.hasCampaign && (
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Kampanya Seç</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Kampanya Seç</label>
               <select value={form.action_campaign_id} onChange={e => setForm(p => ({ ...p, action_campaign_id: e.target.value }))} style={{ ...inputStyle, height: 42 }}>
                 <option value="">Kampanya seçin...</option>
                 {campaigns.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -205,7 +205,7 @@ function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreate
             </div>
           )}
 
-          {error && <p style={{ color: '#f87171', fontSize: 12, margin: 0, background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: 8 }}>{error}</p>}
+          {error && <p style={{ color: '#dc2626', fontSize: 12, margin: 0, background: '#fef2f2', padding: '8px 12px', borderRadius: 8 }}>{error}</p>}
 
           <button onClick={submit} disabled={saving}
             style={{ padding: '12px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#78350f,#f59e0b)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -267,9 +267,9 @@ export default function AutomationsPage() {
   const copy = (text: string) => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }
 
   const getTriggerLabel = (rule: any) => {
-    const t = TRIGGERS.find(tr => tr.value === rule.trigger)
-    if (!t) return rule.trigger
-    return t.hasDays ? `${t.label} (${rule.trigger_days} gün)` : t.label
+    const trig = TRIGGERS.find(tr => tr.value === rule.trigger)
+    if (!trig) return rule.trigger
+    return trig.hasDays ? `${trig.label} (${rule.trigger_days} gün)` : trig.label
   }
 
   const getActionLabel = (rule: any) => {
@@ -285,13 +285,13 @@ export default function AutomationsPage() {
       {showCreate && <CreateRuleModal onClose={() => setShowCreate(false)} onCreated={loadData} />}
 
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(20,12,0,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(245,158,11,0.2)' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(245,158,11,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fffbeb 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fde68a' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(245,158,11,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <ZapOrb size={88} active={activeCount > 0} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>Otomasyon Motoru</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('automations.zapiermake_olmadan_kendi', 'Zapier/Make olmadan kendi IF-THEN kurallarınızı oluşturun')}</p>
+            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>Otomasyon Motoru</h1>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('automations.zapiermake_olmadan_kendi', 'Zapier/Make olmadan kendi IF-THEN kurallarınızı oluşturun')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[{l:'Toplam Kural',v:rules.length,c:'#94a3b8'},{l:'Aktif',v:activeCount,c:'#10b981'},{l:'Toplam Çalışma',v:totalRuns,c:'#f59e0b'},{l:'Webhook Logu',v:stats?.incoming||0,c:'#06b6d4'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -310,10 +310,10 @@ export default function AutomationsPage() {
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
-        {[{id:'rules',label:'🤖 Kurallar'},{id:'logs',label: t('📋 Çalışma Logları','📋 Çalışma Logları')},{id:'integrations',label:'🔗 Entegrasyonlar'}].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id as any)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#78350f,#f59e0b)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(245,158,11,0.3)':'none' }}>
-            {t.label}
+        {[{id:'rules',label:'🤖 Kurallar'},{id:'logs',label: t('📋 Çalışma Logları','📋 Çalışma Logları')},{id:'integrations',label:'🔗 Entegrasyonlar'}].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
+            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tab.id?'linear-gradient(135deg,#78350f,#f59e0b)':'transparent', color:activeTab===tab.id?'#fff':'#64748b', boxShadow:activeTab===tab.id?'0 3px 12px rgba(245,158,11,0.3)':'none' }}>
+            {tab.label}
           </button>
         ))}
       </div>
@@ -335,7 +335,7 @@ export default function AutomationsPage() {
             </div>
           ) : (
             rules.map(rule => (
-              <div key={rule.id} style={{ background:'#ffffff', border:`1px solid ${rule.active?'rgba(245,158,11,0.2)':'rgba(255,255,255,0.05)'}`, borderRadius:16, padding:'16px 20px' }}>
+              <div key={rule.id} style={{ background:'#ffffff', border:`1px solid ${rule.active?'#fde68a':'#e2e8f0'}`, borderRadius:16, padding:'16px 20px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:14 }}>
                   {/* Active indicator */}
                   <div style={{ width:10, height:10, borderRadius:'50%', background:rule.active?'#10b981':'#475569', flexShrink:0, boxShadow:rule.active?'0 0 8px #10b98166':'none' }} />
@@ -344,11 +344,11 @@ export default function AutomationsPage() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:'0 0 6px' }}>{rule.name}</p>
                     <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                      <span style={{ background:'rgba(245,158,11,0.12)', border:'1px solid rgba(245,158,11,0.25)', color:'#fbbf24', fontSize:11, padding:'3px 9px', borderRadius:20 }}>
+                      <span style={{ background:'#fffbeb', border:'1px solid #fde68a', color:'#b45309', fontSize:11, padding:'3px 9px', borderRadius:20 }}>
                         EĞER: {getTriggerLabel(rule)}
                       </span>
-                      <span style={{ color:'#334155', fontSize:11 }}>→</span>
-                      <span style={{ background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.25)', color:'#047857', fontSize:11, padding:'3px 9px', borderRadius:20 }}>
+                      <span style={{ color:'#475569', fontSize:11 }}>→</span>
+                      <span style={{ background:'#ecfdf5', border:'1px solid #a7f3d0', color:'#059669', fontSize:11, padding:'3px 9px', borderRadius:20 }}>
                         O ZAMAN: {getActionLabel(rule)}
                       </span>
                     </div>
@@ -361,19 +361,19 @@ export default function AutomationsPage() {
 
                   {/* Stats */}
                   <div style={{ textAlign:'center', flexShrink:0 }}>
-                    <p style={{ color:'#f59e0b', fontWeight:800, fontSize:16, margin:0 }}>{rule.run_count||0}</p>
-                    <p style={{ color:'#334155', fontSize:10, margin:0 }}>{t('automations.calisti', 'çalıştı')}</p>
+                    <p style={{ color:'#b45309', fontWeight:800, fontSize:16, margin:0 }}>{rule.run_count||0}</p>
+                    <p style={{ color:'#475569', fontSize:10, margin:0 }}>{t('automations.calisti', 'çalıştı')}</p>
                   </div>
 
                   {/* Actions */}
                   <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                     <button onClick={() => toggleRule(rule.id)}
-                      style={{ padding:'6px 10px', borderRadius:8, border:`1px solid ${rule.active?'rgba(16,185,129,0.3)':'rgba(100,116,139,0.2)'}`, background:'transparent', color:rule.active?'#34d399':'#64748b', cursor:'pointer' }}>
+                      style={{ padding:'6px 10px', borderRadius:8, border:`1px solid ${rule.active?'#a7f3d0':'rgba(100,116,139,0.2)'}`, background:'transparent', color:rule.active?'#059669':'#64748b', cursor:'pointer' }}>
                       {rule.active ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
                     </button>
                     <button onClick={() => testRule(rule.id)} disabled={testing === rule.id}
                       title={t('automations.simdi_calistir', 'Şimdi Çalıştır')}
-                      style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(6,182,212,0.3)', background:'rgba(6,182,212,0.08)', color:'#22d3ee', cursor:'pointer' }}>
+                      style={{ padding:'6px 10px', borderRadius:8, border:'1px solid #a5f3fc', background:'#ecfeff', color:'#0d9488', cursor:'pointer' }}>
                       {testing === rule.id ? <RefreshCw size={13} style={{ animation:'za-spin 1s linear infinite' }} /> : <Play size={13} />}
                     </button>
                     <button onClick={() => deleteRule(rule.id)}
@@ -386,8 +386,8 @@ export default function AutomationsPage() {
                 {/* Last run info */}
                 {rule.last_run_at && (
                   <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:6 }}>
-                    <Clock size={11} color="#334155" />
-                    <span style={{ color:'#334155', fontSize:11 }}>Son çalışma: {new Date(rule.last_run_at).toLocaleString()}</span>
+                    <Clock size={11} color="#475569" />
+                    <span style={{ color:'#475569', fontSize:11 }}>Son çalışma: {new Date(rule.last_run_at).toLocaleString()}</span>
                   </div>
                 )}
               </div>
@@ -399,7 +399,7 @@ export default function AutomationsPage() {
       {/* LOGS TAB */}
       {activeTab === 'logs' && (
         <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid #e2e8f0' }}>
             <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0 }}>{t('automations.kural_yurutme_loglari', '📋 Kural Yürütme Logları')}</h3>
           </div>
           {logs.length === 0 ? (
@@ -410,14 +410,14 @@ export default function AutomationsPage() {
           ) : (
             <div>
               {logs.slice(0,30).map((log: any, i: number) => (
-                <div key={i} style={{ padding:'12px 20px', borderBottom:'1px solid rgba(255,255,255,0.03)', display:'flex', alignItems:'center', gap:12 }}>
-                  <div style={{ width:8, height:8, borderRadius:'50%', background:'#10b981', flexShrink:0 }} />
+                <div key={i} style={{ padding:'12px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:8, height:8, borderRadius:'50%', background:'#059669', flexShrink:0 }} />
                   <div style={{ flex:1 }}>
                     <p style={{ color:'#0f172a', fontSize:12, fontWeight:600, margin:0 }}>{log.source || 'Otomasyon'}</p>
                     <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0' }}>{log.destination || 'Aksiyon gerçekleşti'}</p>
                   </div>
-                  <span style={{ color:'#1e293b', fontSize:10 }}>{new Date(log.received_at).toLocaleString()}</span>
-                  <button onClick={() => setExpandLog(expandLog === `${i}` ? null : `${i}`)} style={{ background:'none', border:'none', color:'#334155', cursor:'pointer', padding:2 }}>
+                  <span style={{ color:'#475569', fontSize:10 }}>{new Date(log.received_at).toLocaleString()}</span>
+                  <button onClick={() => setExpandLog(expandLog === `${i}` ? null : `${i}`)} style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', padding:2 }}>
                     <ChevronDown size={14} style={{ transform:expandLog===`${i}`?'rotate(180deg)':'none', transition:'transform 0.2s' }} />
                   </button>
                   {expandLog === `${i}` && log.payload && (
@@ -440,10 +440,10 @@ export default function AutomationsPage() {
             <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 12px' }}>📥 Gelen Webhook URL'niz</h3>
             <p style={{ color:'#64748b', fontSize:12, margin:'0 0 12px' }}>{t('automations.bu_urlyi_zapiermaken8ne_y', 'Bu URL\'yi Zapier/Make/n8n\'e yapıştırın — gelen veriler otomatik lead olarak eklenir')}</p>
             <div style={{ display:'flex', gap:8 }}>
-              <code style={{ flex:1, background:'#f8fafc', border:'1px solid rgba(245,158,11,0.2)', borderRadius:9, padding:'10px 14px', color:'#fbbf24', fontSize:11, fontFamily:'monospace', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              <code style={{ flex:1, background:'#f8fafc', border:'1px solid #fde68a', borderRadius:9, padding:'10px 14px', color:'#b45309', fontSize:11, fontFamily:'monospace', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {webhookUrl || 'Yükleniyor...'}
               </code>
-              <button onClick={() => copy(webhookUrl)} style={{ padding:'10px 14px', borderRadius:9, border:'none', background:'rgba(245,158,11,0.15)', color:'#f59e0b', cursor:'pointer' }}>
+              <button onClick={() => copy(webhookUrl)} style={{ padding:'10px 14px', borderRadius:9, border:'none', background:'#fffbeb', color:'#b45309', cursor:'pointer' }}>
                 {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
               </button>
             </div>
@@ -451,7 +451,7 @@ export default function AutomationsPage() {
               {[{n:'Zapier',l:'Z',c:'#ef4444',d:'hooks.zapier.com'},{n:'Make',l:'M',c:'#8b5cf6',d:'hook.eu1.make.com'},{n:'n8n',l:'N',c:'#10b981',d:'n8n.io/webhook'}].map(p => (
                 <div key={p.n} style={{ background:`${p.c}08`, border:`1px solid ${p.c}20`, borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
                   <div style={{ width:28, height:28, borderRadius:7, background:`${p.c}20`, border:`1px solid ${p.c}40`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:11, color:p.c, flexShrink:0 }}>{p.l}</div>
-                  <div><p style={{ color:'#0f172a', fontSize:12, fontWeight:600, margin:0 }}>{p.n}</p><p style={{ color:'#334155', fontSize:10, margin:0 }}>{p.d}</p></div>
+                  <div><p style={{ color:'#0f172a', fontSize:12, fontWeight:600, margin:0 }}>{p.n}</p><p style={{ color:'#475569', fontSize:10, margin:0 }}>{p.d}</p></div>
                 </div>
               ))}
             </div>

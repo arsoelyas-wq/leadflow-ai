@@ -127,18 +127,18 @@ export default function DeveloperPage() {
   const copy = (text: string) => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }
   const toggleScope = (s: string) => setSelectedScopes(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
 
-  const inputStyle = { width: '100%', background: '#060a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={{ padding: 0 }}>
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(0,8,18,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(6,182,212,0.2)' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfeff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #cffafe' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <KeyVault size={88} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('developer.api_erisimi', 'API Erişimi')}</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('developer.kendi_uygulamalarinizi_le', 'Kendi uygulamalarınızı LeadFlow AI ile entegre edin — güvenli, kapsamlı')}</p>
+            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('developer.api_erisimi', 'API Erişimi')}</h1>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('developer.kendi_uygulamalarinizi_le', 'Kendi uygulamalarınızı LeadFlow AI ile entegre edin — güvenli, kapsamlı')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {[{l:'Toplam İstek',v:usage?.totalRequests||0,c:'#06b6d4'},{l:'Kalan Limit',v:usage?.remaining||0,c:'#10b981'},{l:'Aktif Key',v:keys.filter(k=>k.is_active).length,c:'#8b5cf6'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -151,14 +151,14 @@ export default function DeveloperPage() {
         </div>
       </div>
 
-      {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, margin:0 }}>{msg.text}</p></div>}
+      {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'#ecfdf5':'#fef2f2', border:`1px solid ${msg.type==='success'?'#a7f3d0':'#fca5a5'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#059669':'#dc2626', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
-        {[{id:'keys',label:'🔑 API Keys'},{id:'docs',label: t('📖 Dokümantasyon','📖 Dokümantasyon')},{id:'usage',label: t('📊 Kullanım','📊 Kullanım')}].map(t => (
-          <button key={t.id} onClick={()=>setTab(t.id as any)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:tab===t.id?'linear-gradient(135deg,#164e63,#06b6d4)':'transparent', color:tab===t.id?'#fff':'#64748b', boxShadow:tab===t.id?'0 3px 12px rgba(6,182,212,0.25)':'none' }}>
-            {t.label}
+        {[{id:'keys',label:'🔑 API Keys'},{id:'docs',label: t('📖 Dokümantasyon','📖 Dokümantasyon')},{id:'usage',label: t('📊 Kullanım','📊 Kullanım')}].map(tabItem => (
+          <button key={tabItem.id} onClick={()=>setTab(tabItem.id as any)}
+            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:tab===tabItem.id?'linear-gradient(135deg,#164e63,#06b6d4)':'transparent', color:tab===tabItem.id?'#fff':'#64748b', boxShadow:tab===tabItem.id?'0 3px 12px rgba(6,182,212,0.25)':'none' }}>
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -177,7 +177,7 @@ export default function DeveloperPage() {
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
                 {SCOPE_OPTIONS.map(scope => (
                   <label key={scope.id} onClick={()=>toggleScope(scope.id)}
-                    style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'10px 12px', borderRadius:10, border:`1px solid ${selectedScopes.includes(scope.id)?'rgba(6,182,212,0.4)':'rgba(255,255,255,0.06)'}`, background:selectedScopes.includes(scope.id)?'rgba(6,182,212,0.08)':'transparent', cursor:'pointer' }}>
+                    style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'10px 12px', borderRadius:10, border:`1px solid ${selectedScopes.includes(scope.id)?'#a5f3fc':'#e2e8f0'}`, background:selectedScopes.includes(scope.id)?'#ecfeff':'transparent', cursor:'pointer' }}>
                     <input type="checkbox" checked={selectedScopes.includes(scope.id)} readOnly style={{ accentColor:'#06b6d4', marginTop:1 }} />
                     <div><p style={{ color:'#0f172a', fontSize:11, fontWeight:600, margin:0 }}>{scope.label}</p><p style={{ color:'#475569', fontSize:10, margin:0 }}>{scope.desc}</p></div>
                   </label>
@@ -195,7 +195,7 @@ export default function DeveloperPage() {
               <p style={{ color:'#fbbf24', fontWeight:700, fontSize:13, margin:'0 0 8px' }}>{t('developer.bu_key_sadece_bir_kez_gos', '⚠️ Bu key sadece bir kez gösterilir — kaydedin!')}</p>
               <div style={{ display:'flex', gap:8 }}>
                 <code style={{ flex:1, background:'#f8fafc', borderRadius:8, padding:'10px 14px', color:'#047857', fontSize:12, fontFamily:'monospace', wordBreak:'break-all' }}>{newKey}</code>
-                <button onClick={()=>copy(newKey)} style={{ padding:'10px 14px', borderRadius:8, border:'none', background:'rgba(6,182,212,0.15)', color:'#22d3ee', cursor:'pointer' }}>
+                <button onClick={()=>copy(newKey)} style={{ padding:'10px 14px', borderRadius:8, border:'none', background:'#ecfeff', color:'#0d9488', cursor:'pointer' }}>
                   {copied?<CheckCircle size={14} />:<Copy size={14} />}
                 </button>
               </div>
@@ -209,16 +209,16 @@ export default function DeveloperPage() {
                 <Key size={16} color="#06b6d4" style={{ flexShrink:0 }} />
                 <div style={{ flex:1 }}>
                   <p style={{ color:'#0f172a', fontWeight:700, fontSize:13, margin:0 }}>{key.name}</p>
-                  <p style={{ color:'#334155', fontSize:11, margin:'2px 0 0', fontFamily:'monospace' }}>{key.key_preview}</p>
+                  <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0', fontFamily:'monospace' }}>{key.key_preview}</p>
                 </div>
                 <span style={{ color:'#475569', fontSize:11 }}>{key.requests_count||0} istek</span>
-                <span style={{ background:key.is_active?'rgba(16,185,129,0.12)':'rgba(100,116,139,0.12)', border:`1px solid ${key.is_active?'rgba(16,185,129,0.3)':'rgba(100,116,139,0.2)'}`, color:key.is_active?'#34d399':'#64748b', fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:600 }}>
+                <span style={{ background:key.is_active?'rgba(16,185,129,0.12)':'rgba(100,116,139,0.12)', border:`1px solid ${key.is_active?'rgba(16,185,129,0.3)':'rgba(100,116,139,0.2)'}`, color:key.is_active?'#059669':'#64748b', fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:600 }}>
                   {key.is_active?'Aktif':'Pasif'}
                 </span>
                 <button onClick={()=>deleteKey(key.id)} style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#dc2626', cursor:'pointer' }}><Trash2 size={13} /></button>
               </div>
             ))}
-            {keys.length === 0 && !loading && <p style={{ color:'#334155', textAlign:'center', padding:24, fontSize:13 }}>{t('developer.henuz_api_key_yok', 'Henüz API key yok')}</p>}
+            {keys.length === 0 && !loading && <p style={{ color:'#475569', textAlign:'center', padding:24, fontSize:13 }}>{t('developer.henuz_api_key_yok', 'Henüz API key yok')}</p>}
           </div>
         </div>
       )}
@@ -238,8 +238,8 @@ export default function DeveloperPage() {
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             {((docs as any).endpoints||[]).map((ep: any, i: number) => (
               <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:11 }}>
-                <span style={{ padding:'3px 8px', borderRadius:6, fontSize:10, fontWeight:700, background:ep.method==='GET'?'rgba(6,182,212,0.15)':'rgba(16,185,129,0.15)', color:ep.method==='GET'?'#22d3ee':'#34d399', flexShrink:0 }}>{ep.method}</span>
-                <div><code style={{ color:'#fff', fontSize:12 }}>{ep.path}</code><p style={{ color:'#475569', fontSize:11, margin:'3px 0 0' }}>{ep.description}</p></div>
+                <span style={{ padding:'3px 8px', borderRadius:6, fontSize:10, fontWeight:700, background:ep.method==='GET'?'#ecfeff':'#ecfdf5', color:ep.method==='GET'?'#0d9488':'#059669', flexShrink:0 }}>{ep.method}</span>
+                <div><code style={{ color:'#0f172a', fontSize:12 }}>{ep.path}</code><p style={{ color:'#475569', fontSize:11, margin:'3px 0 0' }}>{ep.description}</p></div>
               </div>
             ))}
           </div>
@@ -257,8 +257,8 @@ export default function DeveloperPage() {
               </div>
             ))}
           </div>
-          <div style={{ padding:'14px 16px', background:'rgba(6,182,212,0.06)', border:'1px solid rgba(6,182,212,0.15)', borderRadius:10 }}>
-            <p style={{ color:'#22d3ee', fontSize:12, margin:0 }}>{t('developer.rate_limit_dakikada_60_is', '📍 Rate limit: dakikada 60 istek · Limit aşılırsa 429 Too Many Requests döner')}</p>
+          <div style={{ padding:'14px 16px', background:'#ecfeff', border:'1px solid #a5f3fc', borderRadius:10 }}>
+            <p style={{ color:'#0d9488', fontSize:12, margin:0 }}>{t('developer.rate_limit_dakikada_60_is', '📍 Rate limit: dakikada 60 istek · Limit aşılırsa 429 Too Many Requests döner')}</p>
           </div>
         </div>
       )}

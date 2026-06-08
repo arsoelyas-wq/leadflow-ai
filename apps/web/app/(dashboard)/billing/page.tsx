@@ -139,13 +139,13 @@ export default function BillingPage() {
   return (
     <div style={{ padding: 0 }}>
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(0,12,5,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(16,185,129,0.18)' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #d1fae5' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <CreditOrb size={90} pct={pct} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('billing.title','Abonelik & Kredi')}</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('billing.credits','Kredinizi yönetin, geçmişinizi takip edin, yeni paket satın alın')}</p>
+            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('billing.title','Abonelik & Kredi')}</h1>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('billing.credits','Kredinizi yönetin, geçmişinizi takip edin, yeni paket satın alın')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
               {[{l:t('billing.credits','Toplam Kredi'),v:creditsTotal,c:'#94a3b8'},{l:t('billing.credits_remaining','Kalan Kredi'),v:creditsLeft,c:pctColor},{l:t('billing.credits_used','Kullanılan'),v:creditsUsed,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -156,20 +156,20 @@ export default function BillingPage() {
             </div>
           </div>
         </div>
-        <div style={{ position: 'relative', zIndex: 2, marginTop: 20, height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+        <div style={{ position: 'relative', zIndex: 2, marginTop: 20, height: 6, background: '#d1fae5', borderRadius: 3 }}>
           <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 3, boxShadow: `0 0 10px ${pctColor}60`, transition: 'width 0.8s' }} />
         </div>
-        {pct <= 20 && <p style={{ position: 'relative', zIndex: 2, color: '#f87171', fontSize: 12, margin: '8px 0 0' }}>{t('billing.krediniz_azaliyor_paket_s', '⚠️ Krediniz azalıyor — paket satın almayı düşünün!')}</p>}
+        {pct <= 20 && <p style={{ position: 'relative', zIndex: 2, color: '#dc2626', fontSize: 12, margin: '8px 0 0' }}>{t('billing.krediniz_azaliyor_paket_s', '⚠️ Krediniz azalıyor — paket satın almayı düşünün!')}</p>}
       </div>
 
-      {msg && <div style={{ marginBottom: 16, padding: '12px 18px', background: msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border: `1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius: 12 }}><p style={{ color: msg.type==='success'?'#34d399':'#f87171', fontSize: 13, margin: 0 }}>{msg.text}</p></div>}
+      {msg && <div style={{ marginBottom: 16, padding: '12px 18px', background: msg.type==='success'?'#ecfdf5':'#fef2f2', border: `1px solid ${msg.type==='success'?'#a7f3d0':'#fca5a5'}`, borderRadius: 12 }}><p style={{ color: msg.type==='success'?'#059669':'#dc2626', fontSize: 13, margin: 0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
-        {[{id:'plans',label:'💎 Paketler'},{id:'usage',label:'📊 Kullanım'},{id:'history',label:'🧾 Geçmiş'},{id:'promo',label:'🎁 Promo Kodu'}].map(t => (
-          <button key={t.id} onClick={()=>setActiveTab(t.id as any)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===t.id?'linear-gradient(135deg,#14532d,#10b981)':'transparent', color:activeTab===t.id?'#fff':'#64748b', boxShadow:activeTab===t.id?'0 3px 12px rgba(16,185,129,0.25)':'none' }}>
-            {t.label}
+        {[{id:'plans',label:'💎 Paketler'},{id:'usage',label:'📊 Kullanım'},{id:'history',label:'🧾 Geçmiş'},{id:'promo',label:'🎁 Promo Kodu'}].map(tabItem => (
+          <button key={tabItem.id} onClick={()=>setActiveTab(tabItem.id as any)}
+            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tabItem.id?'linear-gradient(135deg,#14532d,#10b981)':'transparent', color:activeTab===tabItem.id?'#fff':'#64748b', boxShadow:activeTab===tabItem.id?'0 3px 12px rgba(16,185,129,0.25)':'none' }}>
+            {tabItem.label}
           </button>
         ))}
       </div>
@@ -195,7 +195,7 @@ export default function BillingPage() {
                 {plan.features.map(f => (
                   <div key={f} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:7 }}>
                     <CheckCircle size={13} color={plan.color} />
-                    <span style={{ color:'#94a3b8', fontSize:12 }}>{f}</span>
+                    <span style={{ color:'#475569', fontSize:12 }}>{f}</span>
                   </div>
                 ))}
               </div>
@@ -231,7 +231,7 @@ export default function BillingPage() {
                   <div style={{ height:5, background:'#f1f5f9', borderRadius:3 }}>
                     <div style={{ height:'100%', width:`${ip}%`, background:item.color, borderRadius:3 }} />
                   </div>
-                  <p style={{ color:'#334155', fontSize:10, margin:'4px 0 0' }}>Toplam kullanımın %{ip}'i</p>
+                  <p style={{ color:'#475569', fontSize:10, margin:'4px 0 0' }}>Toplam kullanımın %{ip}'i</p>
                 </div>
               )
             })}
@@ -244,7 +244,7 @@ export default function BillingPage() {
 
       {activeTab === 'history' && (
         <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(255,255,255,0.05)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0 }}>{t('billing.odeme_gecmisi', '🧾 Ödeme Geçmişi')}</h3>
             {history.length>0 && <button style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.25)', background:'rgba(16,185,129,0.06)', color:'#047857', fontSize:11, cursor:'pointer' }}><Download size={12} />{t('billing.csv_indir', 'CSV İndir')}</button>}
           </div>
@@ -254,12 +254,12 @@ export default function BillingPage() {
               <p style={{ fontSize:13, margin:0 }}>{t('billing.henuz_odeme_gecmisi_yok', 'Henüz ödeme geçmişi yok')}</p>
             </div>
           ) : history.map((p: any, i: number) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid rgba(255,255,255,0.03)' }}>
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid #f1f5f9' }}>
               <div style={{ width:38, height:38, borderRadius:10, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <TrendingUp size={16} color="#10b981" />
               </div>
               <div style={{ flex:1 }}>
-                <p style={{ color:'#fff', fontWeight:600, fontSize:13, margin:0 }}>{p.package_name||'Kredi Paketi'}</p>
+                <p style={{ color:'#0f172a', fontWeight:600, fontSize:13, margin:0 }}>{p.package_name||'Kredi Paketi'}</p>
                 <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0' }}>{new Date(p.created_at).toLocaleDateString()} · {p.credits||0} kredi</p>
               </div>
               <div style={{ textAlign:'right' }}>
@@ -272,12 +272,12 @@ export default function BillingPage() {
       )}
 
       {activeTab === 'promo' && (
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 18, padding: '28px 24px', maxWidth: 500 }}>
+        <div style={{ background: '#ffffff', border: '1px solid #fde68a', borderRadius: 18, padding: '28px 24px', maxWidth: 500, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <h3 style={{ color:'#0f172a', fontSize:16, fontWeight:800, margin:'0 0 8px' }}>🎁 Promo Kodu Kullan</h3>
-          <p style={{ color:'#64748b', fontSize:13, margin:'0 0 20px' }}>Promo kodunuzu girin ve kredinizi anında alın</p>
+          <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>Promo kodunuzu girin ve kredinizi anında alın</p>
 
           {promoResult && (
-            <div style={{ padding:'12px 16px', borderRadius:10, marginBottom:16, background:promoResult.type==='ok'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border:`1px solid ${promoResult.type==='ok'?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`, color:promoResult.type==='ok'?'#34d399':'#f87171', fontSize:13 }}>
+            <div style={{ padding:'12px 16px', borderRadius:10, marginBottom:16, background:promoResult.type==='ok'?'#ecfdf5':'#fef2f2', border:`1px solid ${promoResult.type==='ok'?'#a7f3d0':'#fca5a5'}`, color:promoResult.type==='ok'?'#059669':'#dc2626', fontSize:13 }}>
               {promoResult.text}
             </div>
           )}
@@ -286,13 +286,13 @@ export default function BillingPage() {
             <input value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())}
               placeholder="LAUNCH50, BONUS100..." maxLength={30}
               onKeyDown={e=>e.key==='Enter'&&redeemPromo()}
-              style={{ flex:1, background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:12, padding:'13px 16px', color:'#fff', fontSize:15, outline:'none', fontFamily:'inherit', letterSpacing:'0.05em', fontWeight:600 }} />
+              style={{ flex:1, background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:12, padding:'13px 16px', color:'#0f172a', fontSize:15, outline:'none', fontFamily:'inherit', letterSpacing:'0.05em', fontWeight:600 }} />
             <button onClick={redeemPromo} disabled={promoLoading||!promoCode.trim()}
               style={{ padding:'13px 22px', borderRadius:12, border:'none', background:promoLoading?'rgba(245,158,11,0.4)':'linear-gradient(135deg,#f59e0b,#f97316)', color:'#fff', cursor:promoLoading||!promoCode.trim()?'not-allowed':'pointer', fontSize:14, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap' as const }}>
               {promoLoading ? '⏳' : '✓ Uygula'}
             </button>
           </div>
-          <p style={{ color:'#334155', fontSize:11, marginTop:12 }}>Promo kodları tek kullanımlık veya sınırlı kullanım hakkına sahip olabilir.</p>
+          <p style={{ color:'#475569', fontSize:11, marginTop:12 }}>Promo kodları tek kullanımlık veya sınırlı kullanım hakkına sahip olabilir.</p>
         </div>
       )}
 

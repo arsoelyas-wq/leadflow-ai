@@ -115,19 +115,19 @@ export default function WhitelabelPage() {
   }
 
   const copy = (text: string) => navigator.clipboard?.writeText(text)
-  const inputStyle = { width: '100%', background: '#060a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
   const planColors: Record<string, string> = { basic:'#64748b', pro:'#06b6d4', enterprise:'#8b5cf6' }
 
   return (
     <div style={{ padding: 0 }}>
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(8,0,20,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(139,92,246,0.2)' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(139,92,246,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #ede9fe' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(139,92,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <BrandGalaxy size={88} brandCount={brands.length} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>White-Label / Bayi Sistemi</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('whitelabel.kendi_markanizla_bayiler', 'Kendi markanızla bayiler oluşturun — özel domain, logo, renk ve gelir paylaşımı')}</p>
+            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>White-Label / Bayi Sistemi</h1>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('whitelabel.kendi_markanizla_bayiler', 'Kendi markanızla bayiler oluşturun — özel domain, logo, renk ve gelir paylaşımı')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {[{l:'Toplam Bayi',v:summary?.totalBrands||0,c:'#8b5cf6'},{l:'Aktif Bayi',v:summary?.activeBrands||0,c:'#10b981'},{l:'Aylık Gelir',v:`₺${(summary?.estimatedMonthlyRevenue||0).toLocaleString()}`,c:'#f59e0b'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
@@ -150,7 +150,7 @@ export default function WhitelabelPage() {
         <p style={{ color:'#fbbf24', fontSize:12, margin:0 }}><strong>{t('whitelabel.enterprise_ozelligi', 'Enterprise özelliği:')}</strong>{t('whitelabel.her_bayinin_kendi_izole_o', 'Her bayinin kendi izole ortamı vardır. Domain DNS kaydını bayiye ait sunucuya yönlendirmeniz gerekir.')}</p>
       </div>
 
-      {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#34d399':'#f87171', fontSize:12, margin:0 }}>{msg.text}</p></div>}
+      {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'#ecfdf5':'#fef2f2', border:`1px solid ${msg.type==='success'?'#a7f3d0':'#fca5a5'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#059669':'#dc2626', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* New brand form */}
       {showForm && (
@@ -192,13 +192,13 @@ export default function WhitelabelPage() {
               <div key={f.l} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px' }}>
                 <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{f.l}</p>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <code style={{ color:'#fff', fontSize:12, fontFamily:'monospace', flex:1 }}>{f.v}</code>
+                  <code style={{ color:'#0f172a', fontSize:12, fontFamily:'monospace', flex:1 }}>{f.v}</code>
                   <button onClick={()=>copy(f.v||'')} style={{ background:'none', border:'none', color:'#64748b', cursor:'pointer', padding:2 }}><Copy size={12} /></button>
                 </div>
               </div>
             ))}
           </div>
-          <p style={{ color:'#f59e0b', fontSize:11, margin:'10px 0 0' }}>{t('whitelabel.bu_bilgileri_kaydedin_sif', '⚠️ Bu bilgileri kaydedin — şifre bir daha gösterilmeyecek!')}</p>
+          <p style={{ color:'#b45309', fontSize:11, margin:'10px 0 0' }}>{t('whitelabel.bu_bilgileri_kaydedin_sif', '⚠️ Bu bilgileri kaydedin — şifre bir daha gösterilmeyecek!')}</p>
         </div>
       )}
 
@@ -222,7 +222,7 @@ export default function WhitelabelPage() {
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                     <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:0 }}>{brand.name}</p>
                     <span style={{ background:`${planColors[brand.plan_type]||'#64748b'}18`, border:`1px solid ${planColors[brand.plan_type]||'#64748b'}30`, color:planColors[brand.plan_type]||'#64748b', fontSize:10, padding:'2px 7px', borderRadius:20, fontWeight:600 }}>{brand.plan_type}</span>
-                    <span style={{ background:brand.status==='active'?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.1)', border:`1px solid ${brand.status==='active'?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.2)'}`, color:brand.status==='active'?'#34d399':'#f87171', fontSize:10, padding:'2px 7px', borderRadius:20 }}>
+                    <span style={{ background:brand.status==='active'?'#ecfdf5':'#fef2f2', border:`1px solid ${brand.status==='active'?'#a7f3d0':'#fca5a5'}`, color:brand.status==='active'?'#059669':'#dc2626', fontSize:10, padding:'2px 7px', borderRadius:20 }}>
                       {brand.status==='active'?'Aktif':'Pasif'}
                     </span>
                   </div>
@@ -234,19 +234,19 @@ export default function WhitelabelPage() {
                 </div>
                 <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                   <button onClick={()=>loadBrandStats(brand.id)}
-                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:9, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#94a3b8', fontSize:11, cursor:'pointer' }}>
+                    style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:9, border:'1px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontSize:11, cursor:'pointer' }}>
                     <BarChart3 size={12} /> İstatistik
                   </button>
                   <button onClick={()=>updateStatus(brand.id,brand.status==='active'?'inactive':'active')}
-                    style={{ padding:'6px 12px', borderRadius:9, border:`1px solid ${brand.status==='active'?'rgba(239,68,68,0.2)':'rgba(16,185,129,0.2)'}`, background:brand.status==='active'?'rgba(239,68,68,0.06)':'rgba(16,185,129,0.06)', color:brand.status==='active'?'#f87171':'#34d399', fontSize:11, cursor:'pointer' }}>
+                    style={{ padding:'6px 12px', borderRadius:9, border:`1px solid ${brand.status==='active'?'rgba(239,68,68,0.2)':'rgba(16,185,129,0.2)'}`, background:brand.status==='active'?'rgba(239,68,68,0.06)':'rgba(16,185,129,0.06)', color:brand.status==='active'?'#dc2626':'#059669', fontSize:11, cursor:'pointer' }}>
                     {brand.status==='active'?'Durdur':'Aktifleştir'}
                   </button>
                 </div>
               </div>
               {selectedBrand === brand.id && brandStats && (
-                <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid rgba(255,255,255,0.05)', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
+                <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #e2e8f0', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
                   {[{l:'Kullanıcı',v:brandStats.stats?.totalUsers},{l:'Lead',v:brandStats.stats?.totalLeads},{l:'Mesaj',v:brandStats.stats?.totalMessages},{l:'Video',v:brandStats.stats?.totalVideos},{l:'Aylık Gelir',v:`₺${(brandStats.stats?.monthlyRevenue||0).toLocaleString()}`}].map(st => (
-                    <div key={st.l} style={{ textAlign:'center', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:9 }}>
+                    <div key={st.l} style={{ textAlign:'center', padding:'10px', background:'#f8fafc', borderRadius:9 }}>
                       <p style={{ color:'#0f172a', fontWeight:800, fontSize:14, margin:0 }}>{st.v}</p>
                       <p style={{ color:'#475569', fontSize:10, margin:0 }}>{st.l}</p>
                     </div>
