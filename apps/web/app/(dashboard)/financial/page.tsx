@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, AlertTriangle, Zap, TrendingUp, TrendingDown, Brain } from 'lucide-react'
+import { RefreshCw, AlertTriangle, Zap, TrendingUp, TrendingDown, Brain, Users, DollarSign, BarChart3, Target, Bot } from 'lucide-react'
 
 // ── NEURAL CONSTELLATION — connected nodes representing business metrics ───────
 function NeuralConstellation({ size = 110, analyzing = false, metrics = {} as Record<string,number> }: { size?: number; analyzing?: boolean; metrics?: Record<string,number> }) {
@@ -109,15 +109,17 @@ export default function FinancialPage() {
   const saveTarget = () => localStorage.setItem('lf_monthly_target', String(monthlyTarget))
 
   const churn = data?.churnRisk || {}
-  const growth = data?.growthRate || 0
+  const growth = data?.growth?.rate || 0
   const sourcePerf = data?.sourcePerformance || []
   const cities = data?.topCities || []
-  const aiAdvice = data?.aiRecommendations || []
+  const aiAdvice = data?.financialAdvice?.advice || []
+  const last30Leads = data?.growth?.thisMonth || 0
+  const last30Messages = data?.monthlyTrend?.[data.monthlyTrend.length - 1]?.messages || 0
 
   const metrics: Record<string,number> = {
-    leads: data?.summary?.last30Leads || 0,
-    won: data?.creditEfficiency || 0,
-    messages: data?.summary?.last30Messages || 0,
+    leads: last30Leads,
+    won: data?.creditEfficiency?.efficiency || 0,
+    messages: last30Messages,
     churn: churn.total || 0,
     roi: Number((sourcePerf[0]?.conversionRate || '0').replace('%','')),
     growth: Math.abs(growth),
@@ -125,8 +127,8 @@ export default function FinancialPage() {
 
   return (
     <div style={{ padding: 0 }}>
-      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(5,3,22,0.98),rgba(8,5,22,0.99))', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid rgba(139,92,246,0.2)' }}>
-        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(139,92,246,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,70,229,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
+      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid #ede9fe' }}>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(139,92,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(79,70,229,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', justifyContent:'space-between', gap:24 }}>
           <div style={{ display:'flex', alignItems:'center', gap:24 }}>
             <NeuralConstellation size={95} analyzing={analyzing} metrics={metrics} />
@@ -136,12 +138,12 @@ export default function FinancialPage() {
               <div style={{ display:'flex', gap:8 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, background:growth>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border:`1px solid ${growth>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:20, padding:'4px 12px' }}>
                   {growth >= 0 ? <TrendingUp size={13} style={{ color:'#047857' }} /> : <TrendingDown size={13} style={{ color:'#dc2626' }} />}
-                  <span style={{ color:growth>=0?'#34d399':'#f87171', fontSize:12, fontWeight:700 }}>{growth>=0?'+':''}{growth.toFixed(1)}% büyüme</span>
+                  <span style={{ color:growth>=0?'#047857':'#dc2626', fontSize:12, fontWeight:700 }}>{growth>=0?'+':''}{growth.toFixed(1)}% büyüme</span>
                 </div>
                 {churn.total > 0 && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)', borderRadius:20, padding:'4px 12px' }}>
-                    <AlertTriangle size={13} style={{ color:'#fbbf24' }} />
-                    <span style={{ color:'#fbbf24', fontSize:12, fontWeight:700 }}>{churn.total} churn riski</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(180,83,9,0.1)', border:'1px solid rgba(180,83,9,0.3)', borderRadius:20, padding:'4px 12px' }}>
+                    <AlertTriangle size={13} style={{ color:'#b45309' }} />
+                    <span style={{ color:'#b45309', fontSize:12, fontWeight:700 }}>{churn.total} churn riski</span>
                   </div>
                 )}
               </div>
@@ -160,15 +162,15 @@ export default function FinancialPage() {
         <>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
             {[
-              { label: t('30 Gün Lead','30 Gün Lead'), value:data?.summary?.last30Leads||0, color:'#10b981', icon:'👥' },
-              { label:'Churn Riski', value:churn.total||0, color:'#ef4444', icon:'⚠️' },
-              { label:'Kredi Verimi', value:`%${data?.creditEfficiency||0}`, color:'#8b5cf6', icon:'⚡' },
-              { label:'Deal Maliyeti', value:`${data?.costPerDeal||0} kr`, color:'#f59e0b', icon:'💰' },
+              { label: t('30 Gün Lead','30 Gün Lead'), value:last30Leads, color:'#059669', Icon: Users },
+              { label:'Churn Riski', value:churn.total||0, color:'#dc2626', Icon: AlertTriangle },
+              { label:'Kredi Verimi', value:`%${data?.creditEfficiency?.efficiency||0}`, color:'#7c3aed', Icon: Zap },
+              { label:'Deal Maliyeti', value:`${data?.creditEfficiency?.costPerWin||0} kr`, color:'#b45309', Icon: DollarSign },
             ].map(m => (
               <div key={m.label} style={{ background:'#ffffff', border:`1px solid ${m.color}20`, borderRadius:16, padding:'18px 16px', textAlign:'center' }}>
-                <div style={{ fontSize:22, marginBottom:8 }}>{m.icon}</div>
+                <div style={{ display:'flex', justifyContent:'center', marginBottom:8 }}><m.Icon size={20} style={{ color: m.color }} /></div>
                 <p style={{ color:m.color, fontSize:22, fontWeight:800, margin:'0 0 4px' }}>{m.value}</p>
-                <p style={{ color:'#64748b', fontSize:12, margin:0 }}>{m.label}</p>
+                <p style={{ color:'#475569', fontSize:12, margin:0 }}>{m.label}</p>
               </div>
             ))}
           </div>
@@ -176,16 +178,16 @@ export default function FinancialPage() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
             {/* Source ROI — real % */}
             <div style={{ background:'#ffffff', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.kaynak_roi_gercek', '📊 Kaynak ROI (Gerçek %)')}</h3>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px', display:'flex', alignItems:'center', gap:6 }}><BarChart3 size={15} style={{ color:'#4f46e5' }} /> {t('financial.kaynak_roi_gercek', 'Kaynak ROI (Gerçek %)')}</h3>
               {sourcePerf.slice(0,5).map((s: any, i: number) => {
-                const colors = ['#10b981','#06b6d4','#8b5cf6','#f59e0b','#ec4899']
+                const colors = ['#059669','#0d9488','#7c3aed','#b45309','#db2777']
                 return (
                   <div key={s.source} style={{ marginBottom:10 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ color:'#94a3b8', fontSize:12 }}>{s.source}</span>
+                      <span style={{ color:'#475569', fontSize:12 }}>{s.source}</span>
                       <div style={{ display:'flex', gap:8 }}>
                         <span style={{ color:colors[i], fontSize:12, fontWeight:700 }}>{s.roi}</span>
-                        <span style={{ color:'#334155', fontSize:11 }}>{s.total} lead</span>
+                        <span style={{ color:'#64748b', fontSize:11 }}>{s.total} lead</span>
                       </div>
                     </div>
                     <div style={{ height:5, background:'#f1f5f9', borderRadius:3 }}>
@@ -198,29 +200,29 @@ export default function FinancialPage() {
 
             {/* Monthly target */}
             <div style={{ background:'#ffffff', border:'1px solid rgba(217,119,6,0.18)', borderRadius:18, padding:22 }}>
-              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}>{t('financial.aylik_lead_hedefi', '🎯 Aylık Lead Hedefi')}</h3>
+              <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px', display:'flex', alignItems:'center', gap:6 }}><Target size={15} style={{ color:'#b45309' }} /> {t('financial.aylik_lead_hedefi', 'Aylık Lead Hedefi')}</h3>
               {(() => {
-                const current = data?.summary?.last30Leads||0
+                const current = last30Leads
                 const pct = Math.min(100, Math.round((current/monthlyTarget)*100))
                 return (
                   <>
                     <div style={{ position:'relative', width:120, height:120, margin:'0 auto 16px' }}>
                       <svg width={120} height={120}>
                         <circle cx={60} cy={60} r={50} fill="none" stroke="#f1f5f9" strokeWidth={8} />
-                        <circle cx={60} cy={60} r={50} fill="none" stroke={pct>=100?'#10b981':'#d97706'} strokeWidth={8}
+                        <circle cx={60} cy={60} r={50} fill="none" stroke={pct>=100?'#059669':'#d97706'} strokeWidth={8}
                           strokeDasharray={2*Math.PI*50} strokeDashoffset={2*Math.PI*50*(1-pct/100)}
                           strokeLinecap="round" transform="rotate(-90 60 60)"
-                          style={{ filter:`drop-shadow(0 0 6px ${pct>=100?'#10b981':'#d97706'}66)`, transition:'stroke-dashoffset 1s' }} />
+                          style={{ filter:`drop-shadow(0 0 6px ${pct>=100?'#059669':'#d97706'}66)`, transition:'stroke-dashoffset 1s' }} />
                       </svg>
                       <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-                        <span style={{ color:pct>=100?'#34d399':'#fbbf24', fontWeight:800, fontSize:22 }}>{pct}%</span>
+                        <span style={{ color:pct>=100?'#047857':'#b45309', fontWeight:800, fontSize:22 }}>{pct}%</span>
                         <span style={{ color:'#475569', fontSize:11 }}>{current}/{monthlyTarget}</span>
                       </div>
                     </div>
                     <div style={{ display:'flex', gap:8 }}>
                       <input type="number" value={monthlyTarget} onChange={e=>setMonthlyTarget(Number(e.target.value))} min={1}
                         style={{ flex:1, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:9, padding:'8px 12px', color:'#0f172a', fontSize:13, outline:'none' }} />
-                      <button onClick={saveTarget} style={{ padding:'8px 14px', borderRadius:9, border:'none', cursor:'pointer', background:'rgba(217,119,6,0.2)', color:'#fbbf24', fontSize:12 }}>Kaydet</button>
+                      <button onClick={saveTarget} style={{ padding:'8px 14px', borderRadius:9, border:'none', cursor:'pointer', background:'rgba(180,83,9,0.15)', color:'#b45309', fontSize:12 }}>Kaydet</button>
                     </div>
                   </>
                 )
@@ -231,12 +233,12 @@ export default function FinancialPage() {
           {/* AI Recommendations */}
           {aiAdvice.length > 0 && (
             <div style={{ background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.06))', border:'1px solid rgba(124,58,237,0.2)', borderRadius:16, padding:20 }}>
-              <p style={{ color:'#7c3aed', fontSize:11, fontWeight:700, margin:'0 0 12px', textTransform:'uppercase', letterSpacing:1 }}>{t('financial.ai_onerileri', '🤖 AI Önerileri')}</p>
+              <p style={{ display:'flex', alignItems:'center', gap:6, color:'#7c3aed', fontSize:11, fontWeight:700, margin:'0 0 12px', textTransform:'uppercase', letterSpacing:1 }}><Bot size={12} /> {t('financial.ai_onerileri', 'AI Önerileri')}</p>
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {aiAdvice.slice(0,3).map((rec: string, i: number) => (
-                  <div key={i} style={{ display:'flex', gap:8, padding:'10px 12px', background:'rgba(0,0,0,0.2)', borderRadius:10 }}>
+                  <div key={i} style={{ display:'flex', gap:8, padding:'10px 12px', background:'#f8fafc', borderRadius:10 }}>
                     <span style={{ color:'#7c3aed', fontSize:13, flexShrink:0 }}>{i+1}.</span>
-                    <p style={{ color:'#cbd5e1', fontSize:13, margin:0, lineHeight:1.5 }}>{rec}</p>
+                    <p style={{ color:'#0f172a', fontSize:13, margin:0, lineHeight:1.5 }}>{rec}</p>
                   </div>
                 ))}
               </div>

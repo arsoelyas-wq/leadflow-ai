@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Send, Download, AlertTriangle, CheckCircle, Shield, Plus, X } from 'lucide-react'
+import { RefreshCw, Send, Download, AlertTriangle, CheckCircle, Shield, Plus, X, FileText, Zap, Link2, Mail } from 'lucide-react'
 
 // ── VAULT SHIELD ──────────────────────────────────────────────────────────────
 function VaultShield({ size = 100, overduePct = 0, scanning = false }: { size?: number; overduePct?: number; scanning?: boolean }) {
@@ -104,20 +104,20 @@ function AddInvoiceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
     setSaving(false)
   }
 
-  const inputStyle = { width: '100%', background: '#060a1c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, padding: '10px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: 'linear-gradient(135deg,#0a0c14,#0d1120)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 20, padding: 28, width: 460, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: '#ffffff', border: '1px solid #fee2e2', borderRadius: 20, padding: 28, width: 460, maxWidth: '90vw', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <h2 style={{ color: '#fff', fontSize: 16, fontWeight: 800, margin: 0 }}>📄 Yeni Fatura Ekle</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontSize: 16, fontWeight: 800, margin: 0 }}><FileText size={17} style={{ color: '#dc2626' }} /> Yeni Fatura Ekle</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}><X size={18} /></button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Müşteri *</label>
+            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Müşteri *</label>
             <select value={form.lead_id} onChange={e => setForm(p => ({ ...p, lead_id: e.target.value }))} style={{ ...inputStyle, height: 42 }}>
               <option value="">Müşteri seçin...</option>
               {leads.map((l: any) => <option key={l.id} value={l.id}>{l.company_name || l.contact_name || l.phone}</option>)}
@@ -126,11 +126,11 @@ function AddInvoiceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Tutar *</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Tutar *</label>
               <input type="number" placeholder="5000" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={inputStyle} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Para Birimi</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Para Birimi</label>
               <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} style={{ ...inputStyle, height: 42 }}>
                 {['TL', 'USD', 'EUR', 'GBP'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -139,21 +139,21 @@ function AddInvoiceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Vade Tarihi *</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Vade Tarihi *</label>
               <input type="date" value={form.due_date} onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))} style={inputStyle} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Fatura No</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Fatura No</label>
               <input placeholder="INV-2026-001" value={form.invoice_no} onChange={e => setForm(p => ({ ...p, invoice_no: e.target.value }))} style={inputStyle} />
             </div>
           </div>
 
           <div>
-            <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Açıklama</label>
+            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Açıklama</label>
             <input placeholder="Hizmet bedeli..." value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} style={inputStyle} />
           </div>
 
-          {error && <p style={{ color: '#f87171', fontSize: 12, margin: 0, background: 'rgba(239,68,68,0.1)', padding: '8px 12px', borderRadius: 8 }}>{error}</p>}
+          {error && <p style={{ color: '#dc2626', fontSize: 12, margin: 0, background: 'rgba(220,38,38,0.08)', padding: '8px 12px', borderRadius: 8 }}>{error}</p>}
 
           <button onClick={submit} disabled={saving}
             style={{ padding: '12px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#7f1d1d,#ef4444)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -167,10 +167,10 @@ function AddInvoiceModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
 }
 
 const BUCKETS = [
-  { key: 'current', label: 'Güncel', color: '#10b981' },
-  { key: '30', label: '30+ Gün', color: '#f59e0b' },
-  { key: '60', label: '60+ Gün', color: '#f97316' },
-  { key: '90', label: '90+ Gün', color: '#ef4444' },
+  { key: 'current', label: 'Güncel', color: '#059669' },
+  { key: '30', label: '30+ Gün', color: '#b45309' },
+  { key: '60', label: '60+ Gün', color: '#c2410c' },
+  { key: '90', label: '90+ Gün', color: '#dc2626' },
 ]
 
 export default function DebtCollectorPage() {
@@ -271,19 +271,19 @@ export default function DebtCollectorPage() {
       {showAddModal && <AddInvoiceModal onClose={() => setShowAddModal(false)} onAdded={loadInvoices} />}
 
       {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(8,2,2,0.98),rgba(20,5,5,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(239,68,68,0.2)' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(239,68,68,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(239,68,68,0.02) 1px,transparent 1px)', backgroundSize: '40px 40px', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fef2f2 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fee2e2' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(220,38,38,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(220,38,38,0.02) 1px,transparent 1px)', backgroundSize: '40px 40px', zIndex: 0 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
           <VaultShield size={95} overduePct={overduePct} scanning={loading} />
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('debt_collector.tahsilat_yonetimi', 'Tahsilat Yönetimi')}</h1>
+            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('debt_collector.tahsilat_yonetimi', 'Tahsilat Yönetimi')}</h1>
             <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('debt_collector.gecikmis_fatura_takibi_ot', 'Gecikmiş fatura takibi, otomatik hatırlatma ve yasal süreç yönetimi')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[
-                { label: 'Toplam Fatura', value: enriched.length, color: '#94a3b8' },
-                { label: t('Gecikmiş','Gecikmiş'), value: overdueInvoices.length, color: '#ef4444' },
-                { label: t('Ödendi','Ödendi'), value: paidInvoices.length, color: '#10b981' },
-                { label: t('Toplam Borç','Toplam Borç'), value: `₺${totalOverdue.toLocaleString()}`, color: '#f97316' }
+                { label: 'Toplam Fatura', value: enriched.length, color: '#475569' },
+                { label: t('Gecikmiş','Gecikmiş'), value: overdueInvoices.length, color: '#dc2626' },
+                { label: t('Ödendi','Ödendi'), value: paidInvoices.length, color: '#059669' },
+                { label: t('Toplam Borç','Toplam Borç'), value: `₺${totalOverdue.toLocaleString()}`, color: '#c2410c' }
               ].map(m => (
                 <div key={m.label} style={{ textAlign: 'center' }}>
                   <p style={{ color: m.color, fontSize: 18, fontWeight: 800, margin: 0 }}>{m.value}</p>
@@ -298,7 +298,7 @@ export default function DebtCollectorPage() {
               <Plus size={13} /> Fatura Ekle
             </button>
             <button onClick={exportOverdue}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: 12, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(220,38,38,0.3)', background: 'rgba(220,38,38,0.08)', color: '#dc2626', fontSize: 12, cursor: 'pointer' }}>
               <Download size={13} /> CSV
             </button>
             {selected.length > 0 && (
@@ -315,41 +315,41 @@ export default function DebtCollectorPage() {
       {/* Aging Buckets */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 20 }}>
         {[
-          { key: 'all', label: t('Tümü','Tümü'), color: '#8b5cf6', count: enriched.filter(i => i.status !== 'paid').length, amount: enriched.filter(i => i.status !== 'paid').reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) },
+          { key: 'all', label: t('Tümü','Tümü'), color: '#7c3aed', count: enriched.filter(i => i.status !== 'paid').length, amount: enriched.filter(i => i.status !== 'paid').reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) },
           ...BUCKETS.map(b => ({ ...b, count: bucketCount(b.key), amount: bucketAmount(b.key) }))
         ].map(b => (
           <button key={b.key} onClick={() => setActiveBucket(b.key)}
-            style={{ padding: '12px 10px', borderRadius: 13, border: `1px solid ${activeBucket === b.key ? b.color + '60' : 'rgba(255,255,255,0.06)'}`, background: activeBucket === b.key ? `${b.color}10` : 'rgba(3,8,22,0.7)', cursor: 'pointer', textAlign: 'left' }}>
+            style={{ padding: '12px 10px', borderRadius: 13, border: `1px solid ${activeBucket === b.key ? b.color + '60' : '#e2e8f0'}`, background: activeBucket === b.key ? `${b.color}10` : '#f8fafc', cursor: 'pointer', textAlign: 'left' }}>
             <p style={{ color: b.color, fontSize: 18, fontWeight: 800, margin: 0 }}>{b.count}</p>
-            <p style={{ color: '#94a3b8', fontSize: 11, margin: '2px 0 0', fontWeight: 600 }}>{b.label}</p>
+            <p style={{ color: '#475569', fontSize: 11, margin: '2px 0 0', fontWeight: 600 }}>{b.label}</p>
             <p style={{ color: '#475569', fontSize: 10, margin: '1px 0 0' }}>₺{b.amount.toLocaleString()}</p>
           </button>
         ))}
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 20, border: '1px solid rgba(255,255,255,0.05)' }}>
-        {[{ id: 'invoices', label: '📄 Faturalar' }, { id: 'escalation', label: '⚡ Eskalasyon' }, { id: 'compliance', label: '🛡️ Uyum' }].map(t => (
-          <button key={t.id} onClick={() => setActiveTab(t.id as 'invoices' | 'escalation' | 'compliance')}
-            style={{ padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeTab === t.id ? 'linear-gradient(135deg,#7f1d1d,#ef4444)' : 'transparent', color: activeTab === t.id ? '#fff' : '#64748b', boxShadow: activeTab === t.id ? '0 3px 12px rgba(239,68,68,0.3)' : 'none' }}>
-            {t.label}
+      <div style={{ display: 'flex', gap: 4, background: '#f8fafc', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 20, border: '1px solid #e2e8f0' }}>
+        {[{ id: 'invoices', label: 'Faturalar', Icon: FileText }, { id: 'escalation', label: 'Eskalasyon', Icon: Zap }, { id: 'compliance', label: 'Uyum', Icon: Shield }].map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as 'invoices' | 'escalation' | 'compliance')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeTab === tab.id ? 'linear-gradient(135deg,#7f1d1d,#ef4444)' : 'transparent', color: activeTab === tab.id ? '#fff' : '#475569', boxShadow: activeTab === tab.id ? '0 3px 12px rgba(239,68,68,0.3)' : 'none' }}>
+            <tab.Icon size={13} /> {tab.label}
           </button>
         ))}
       </div>
 
       {activeTab === 'invoices' && (
         <>
-          <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ color: '#64748b', fontSize: 12, flexShrink: 0 }}>{t('debt_collector.mesaj_sablonu', 'Mesaj Şablonu:')}</span>
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ color: '#475569', fontSize: 12, flexShrink: 0 }}>{t('debt_collector.mesaj_sablonu', 'Mesaj Şablonu:')}</span>
             <div style={{ display: 'flex', gap: 6 }}>
               {Object.entries({ reminder: 'Nazik', urgent: 'Acil', legal: 'Yasal' }).map(([key, label]) => (
                 <button key={key} onClick={() => setMsgTemplate(key)}
-                  style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${msgTemplate === key ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)'}`, background: msgTemplate === key ? 'rgba(239,68,68,0.12)' : 'transparent', color: msgTemplate === key ? '#f87171' : '#64748b', fontSize: 11, cursor: 'pointer' }}>
+                  style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${msgTemplate === key ? 'rgba(220,38,38,0.4)' : '#e2e8f0'}`, background: msgTemplate === key ? 'rgba(220,38,38,0.1)' : 'transparent', color: msgTemplate === key ? '#dc2626' : '#475569', fontSize: 11, cursor: 'pointer' }}>
                   {label}
                 </button>
               ))}
             </div>
-            <p style={{ color: '#334155', fontSize: 11, margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{templates[msgTemplate]}</p>
+            <p style={{ color: '#64748b', fontSize: 11, margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{templates[msgTemplate]}</p>
           </div>
 
           {loading ? (
@@ -358,7 +358,7 @@ export default function DebtCollectorPage() {
             </div>
           ) : filtered.filter(i => i.status !== 'paid').length === 0 ? (
             <div style={{ textAlign: 'center', padding: 48, color: '#475569' }}>
-              <p style={{ fontSize: 32, margin: '0 0 12px' }}>✅</p>
+              <CheckCircle size={32} style={{ color: '#059669', marginBottom: 12 }} />
               <p style={{ fontSize: 14, margin: 0 }}>Bu kategoride bekleyen fatura yok</p>
               <button onClick={() => setShowAddModal(true)} style={{ marginTop: 16, padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#7f1d1d,#ef4444)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                 + İlk Faturayı Ekle
@@ -367,15 +367,15 @@ export default function DebtCollectorPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {filtered.filter(i => i.status !== 'paid').slice(0, 30).map(inv => {
-                const bucketDef = BUCKETS.find(b => b.key === inv.bucket) || { color: '#10b981', label: t('Güncel','Güncel') }
+                const bucketDef = BUCKETS.find(b => b.key === inv.bucket) || { color: '#059669', label: t('Güncel','Güncel') }
                 const isSel = selected.includes(inv.id)
                 return (
                   <div key={inv.id}
-                    style={{ background: isSel ? 'rgba(239,68,68,0.06)' : 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: `1px solid ${isSel ? 'rgba(239,68,68,0.3)' : bucketDef.color + '18'}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                    style={{ background: isSel ? 'rgba(220,38,38,0.05)' : '#ffffff', border: `1px solid ${isSel ? 'rgba(220,38,38,0.3)' : bucketDef.color + '18'}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
                     {/* Checkbox */}
                     <div onClick={() => setSelected(p => isSel ? p.filter(x => x !== inv.id) : [...p, inv.id])}
-                      style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${isSel ? '#ef4444' : 'rgba(255,255,255,0.15)'}`, background: isSel ? 'rgba(239,68,68,0.2)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                      {isSel && <CheckCircle size={12} color="#ef4444" />}
+                      style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${isSel ? '#dc2626' : '#cbd5e1'}`, background: isSel ? 'rgba(220,38,38,0.15)' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      {isSel && <CheckCircle size={12} color="#dc2626" />}
                     </div>
 
                     {/* Overdue gauge */}
@@ -386,36 +386,36 @@ export default function DebtCollectorPage() {
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                        <p style={{ color: '#fff', fontWeight: 700, fontSize: 14, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.companyName}</p>
+                        <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 14, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.companyName}</p>
                         <span style={{ color: bucketDef.color, fontSize: 10, background: `${bucketDef.color}15`, border: `1px solid ${bucketDef.color}30`, borderRadius: 20, padding: '1px 7px', flexShrink: 0 }}>{bucketDef.label}</span>
-                        {inv.invoice_no && <span style={{ color: '#334155', fontSize: 10, flexShrink: 0 }}>{inv.invoice_no}</span>}
+                        {inv.invoice_no && <span style={{ color: '#64748b', fontSize: 10, flexShrink: 0 }}>{inv.invoice_no}</span>}
                       </div>
                       <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#475569', flexWrap: 'wrap' }}>
                         {inv.daysOverdue > 0 && <span style={{ color: bucketDef.color }}>{inv.daysOverdue} gün gecikmiş</span>}
                         {inv.due_date && <span>Vade: {new Date(inv.due_date).toLocaleDateString()}</span>}
                         {inv.description && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>{inv.description}</span>}
-                        {(inv.collection_attempts || 0) > 0 && <span style={{ color: '#f59e0b' }}>{inv.collection_attempts} hatırlatma gönderildi</span>}
+                        {(inv.collection_attempts || 0) > 0 && <span style={{ color: '#b45309' }}>{inv.collection_attempts} hatırlatma gönderildi</span>}
                       </div>
                     </div>
 
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ color: inv.daysOverdue > 0 ? '#ef4444' : '#10b981', fontWeight: 800, fontSize: 16, margin: '0 0 8px' }}>
+                      <p style={{ color: inv.daysOverdue > 0 ? '#dc2626' : '#059669', fontWeight: 800, fontSize: 16, margin: '0 0 8px' }}>
                         {inv.currency || 'TL'} {parseFloat(inv.amount || 0).toLocaleString()}
                       </p>
                       <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button onClick={() => generatePaymentLink(inv)}
-                          style={{ padding: '4px 8px', borderRadius: 7, border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.08)', color: '#22d3ee', fontSize: 10, cursor: 'pointer' }}>
-                          🔗 Link
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 7, border: '1px solid rgba(13,148,136,0.3)', background: 'rgba(13,148,136,0.08)', color: '#0d9488', fontSize: 10, cursor: 'pointer' }}>
+                          <Link2 size={10} /> Link
                         </button>
                         {inv.daysOverdue > 0 && (
                           <button onClick={() => sendReminder(inv.id)} disabled={sending === inv.id}
-                            style={{ padding: '4px 8px', borderRadius: 7, border: 'none', background: 'linear-gradient(135deg,#7f1d1d,#ef4444)', color: '#fff', fontSize: 10, cursor: sending === inv.id ? 'not-allowed' : 'pointer' }}>
-                            {sending === inv.id ? <RefreshCw size={10} style={{ animation: 'dc-spin 1s linear infinite', display: 'inline' }} /> : '📨 Hatırlat'}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 7, border: 'none', background: 'linear-gradient(135deg,#7f1d1d,#ef4444)', color: '#fff', fontSize: 10, cursor: sending === inv.id ? 'not-allowed' : 'pointer' }}>
+                            {sending === inv.id ? <RefreshCw size={10} style={{ animation: 'dc-spin 1s linear infinite', display: 'inline' }} /> : <><Mail size={10} /> Hatırlat</>}
                           </button>
                         )}
                         <button onClick={() => markPaid(inv.id)} disabled={markingPaid === inv.id}
-                          style={{ padding: '4px 8px', borderRadius: 7, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#34d399', fontSize: 10, cursor: markingPaid === inv.id ? 'not-allowed' : 'pointer' }}>
-                          {markingPaid === inv.id ? '...' : '✅ Ödendi'}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 7, border: '1px solid rgba(5,150,105,0.3)', background: 'rgba(5,150,105,0.08)', color: '#047857', fontSize: 10, cursor: markingPaid === inv.id ? 'not-allowed' : 'pointer' }}>
+                          {markingPaid === inv.id ? '...' : <><CheckCircle size={10} /> Ödendi</>}
                         </button>
                       </div>
                     </div>
@@ -428,8 +428,8 @@ export default function DebtCollectorPage() {
           {/* Paid invoices summary */}
           {paidInvoices.length > 0 && (
             <div style={{ marginTop: 16, padding: '12px 18px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <CheckCircle size={15} color="#10b981" />
-              <p style={{ color: '#34d399', fontSize: 13, margin: 0 }}>
+              <CheckCircle size={15} color="#059669" />
+              <p style={{ color: '#047857', fontSize: 13, margin: 0 }}>
                 <strong>{paidInvoices.length} fatura ödenmiş</strong> — toplam ₺{paidInvoices.reduce((s, i) => s + parseFloat(i.amount || 0), 0).toLocaleString()} tahsil edildi
               </p>
             </div>
@@ -438,14 +438,14 @@ export default function DebtCollectorPage() {
       )}
 
       {activeTab === 'escalation' && (
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 18, padding: 22 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>{t('debt_collector.otomatik_eskalasyon_zaman', '⚡ Otomatik Eskalasyon Zaman Çizelgesi')}</h3>
+        <div style={{ background: '#ffffff', border: '1px solid #fee2e2', borderRadius: 18, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}><Zap size={15} style={{ color: '#dc2626' }} /> {t('debt_collector.otomatik_eskalasyon_zaman', 'Otomatik Eskalasyon Zaman Çizelgesi')}</h3>
           {[
-            { day: 0, label: 'Fatura kesildi', color: '#10b981', desc: t('Otomatik WhatsApp bildirimi gönderildi','Otomatik WhatsApp bildirimi gönderildi') },
-            { day: 7, label: t('Nazik hatırlatma','Nazik hatırlatma'), color: '#06b6d4', desc: t('Vade yaklaşıyor mesajı, ödeme linki eklendi','Vade yaklaşıyor mesajı, ödeme linki eklendi') },
-            { day: 15, label: 'Vade geldi', color: '#f59e0b', desc: t('Ödeme yapılmadı, acil bildirim','Ödeme yapılmadı, acil bildirim') },
-            { day: 30, label: t('1. Uyarı','1. Uyarı'), color: '#f97316', desc: t('Gecikme faizi hesaplandı (%9.75), resmi uyarı','Gecikme faizi hesaplandı (%9.75), resmi uyarı') },
-            { day: 60, label: t('2. Uyarı','2. Uyarı'), color: '#ef4444', desc: t('Hesap askıya alma uyarısı gönderildi','Hesap askıya alma uyarısı gönderildi') },
+            { day: 0, label: 'Fatura kesildi', color: '#059669', desc: t('Otomatik WhatsApp bildirimi gönderildi','Otomatik WhatsApp bildirimi gönderildi') },
+            { day: 7, label: t('Nazik hatırlatma','Nazik hatırlatma'), color: '#0d9488', desc: t('Vade yaklaşıyor mesajı, ödeme linki eklendi','Vade yaklaşıyor mesajı, ödeme linki eklendi') },
+            { day: 15, label: 'Vade geldi', color: '#b45309', desc: t('Ödeme yapılmadı, acil bildirim','Ödeme yapılmadı, acil bildirim') },
+            { day: 30, label: t('1. Uyarı','1. Uyarı'), color: '#c2410c', desc: t('Gecikme faizi hesaplandı (%9.75), resmi uyarı','Gecikme faizi hesaplandı (%9.75), resmi uyarı') },
+            { day: 60, label: t('2. Uyarı','2. Uyarı'), color: '#dc2626', desc: t('Hesap askıya alma uyarısı gönderildi','Hesap askıya alma uyarısı gönderildi') },
             { day: 90, label: t('Yasal süreç','Yasal süreç'), color: '#7f1d1d', desc: t('Avukata iletildi, tahsilat ajansı devreye giriyor','Avukata iletildi, tahsilat ajansı devreye giriyor') },
           ].map((step, i, arr) => (
             <div key={i} style={{ display: 'flex', gap: 16, marginBottom: i < arr.length - 1 ? 0 : 0, position: 'relative' }}>
@@ -457,7 +457,7 @@ export default function DebtCollectorPage() {
                 <span style={{ color: step.color, fontSize: 11, fontWeight: 800 }}>+{step.day}g</span>
               </div>
               <div style={{ paddingBottom: 20 }}>
-                <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, margin: '0 0 3px' }}>{step.label}</p>
+                <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 13, margin: '0 0 3px' }}>{step.label}</p>
                 <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{step.desc}</p>
               </div>
             </div>
@@ -466,8 +466,8 @@ export default function DebtCollectorPage() {
       )}
 
       {activeTab === 'compliance' && (
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 18, padding: 22 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}>{t('debt_collector.uyum_ve_yasal_guvence', '🛡️ Uyum ve Yasal Güvence')}</h3>
+        <div style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 18, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 20px' }}><Shield size={15} style={{ color: '#7c3aed' }} /> {t('debt_collector.uyum_ve_yasal_guvence', 'Uyum ve Yasal Güvence')}</h3>
           {[
             { label: 'KVKK Uyumu', status: 'ok', desc: t('Tüm hatırlatmalar KVKK kapsamında gönderiliyor','Tüm hatırlatmalar KVKK kapsamında gönderiliyor') },
             { label: t('Faiz Hesabı','Faiz Hesabı'), status: 'ok', desc: t('Yasal gecikme faizi otomatik hesaplanıyor (%9.75 yıllık)','Yasal gecikme faizi otomatik hesaplanıyor (%9.75 yıllık)') },
@@ -475,12 +475,12 @@ export default function DebtCollectorPage() {
             { label: t('Resmi Uyarı Mektubu','Resmi Uyarı Mektubu'), status: 'info', desc: t('90+ gün gecikmeli faturalar için PDF mektup hazırlanabilir','90+ gün gecikmeli faturalar için PDF mektup hazırlanabilir') },
             { label: 'Avukat Transferi', status: enriched.filter(i => i.daysOverdue >= 90).length > 0 ? 'warn' : 'ok', desc: `${enriched.filter(i => i.daysOverdue >= 90).length} fatura yasal eşikte (90+ gün), manuel onay gerekli` },
           ].map(item => (
-            <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+            <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 0', borderBottom: '1px solid #f1f5f9' }}>
               <div style={{ marginTop: 1 }}>
-                {item.status === 'ok' ? <CheckCircle size={16} color="#10b981" /> : item.status === 'warn' ? <AlertTriangle size={16} color="#f59e0b" /> : <Shield size={16} color="#06b6d4" />}
+                {item.status === 'ok' ? <CheckCircle size={16} color="#059669" /> : item.status === 'warn' ? <AlertTriangle size={16} color="#b45309" /> : <Shield size={16} color="#0d9488" />}
               </div>
               <div>
-                <p style={{ color: '#fff', fontWeight: 700, fontSize: 13, margin: '0 0 3px' }}>{item.label}</p>
+                <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 13, margin: '0 0 3px' }}>{item.label}</p>
                 <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{item.desc}</p>
               </div>
             </div>

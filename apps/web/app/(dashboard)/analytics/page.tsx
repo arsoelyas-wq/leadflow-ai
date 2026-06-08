@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Download, TrendingUp, TrendingDown, Users, MessageSquare, Target, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { RefreshCw, Download, TrendingUp, TrendingDown, Users, MessageSquare, Target, Zap, ArrowUpRight, ArrowDownRight, Megaphone, Smartphone, Trophy, Mail } from 'lucide-react'
 
 // ── DATA FLOW SPHERE — animated data streams from center ─────────────────────
 function DataFlowSphere({ size = 110, active = false }: { size?: number; active?: boolean }) {
@@ -106,22 +106,22 @@ function Sparkline({ data, color, width = 60, height = 24 }: any) {
 }
 
 // ── STAT CARD ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, color, icon, trend, sparkData }: any) {
+function StatCard({ label, value, sub, color, Icon, trend, sparkData }: any) {
   const up = trend > 0
   return (
-    <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: `1px solid ${color}22`, borderRadius: 16, padding: '18px 16px', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: -20, right: -10, width: 70, height: 70, background: `radial-gradient(circle,${color}25 0%,transparent 70%)` }} />
+    <div style={{ background: '#ffffff', border: `1px solid ${color}22`, borderRadius: 16, padding: '18px 16px', position: 'relative', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+      <div style={{ position: 'absolute', top: -20, right: -10, width: 70, height: 70, background: `radial-gradient(circle,${color}18 0%,transparent 70%)` }} />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ fontSize: 22 }}>{icon}</div>
+        <div><Icon size={20} style={{ color }} /></div>
         {trend !== undefined && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: up ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${up?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius: 20, padding: '2px 8px' }}>
-            {up ? <ArrowUpRight size={11} style={{ color: '#34d399' }} /> : <ArrowDownRight size={11} style={{ color: '#f87171' }} />}
-            <span style={{ color: up ? '#34d399' : '#f87171', fontSize: 11, fontWeight: 700 }}>{Math.abs(trend)}%</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: up ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', border: `1px solid ${up?'rgba(5,150,105,0.3)':'rgba(220,38,38,0.3)'}`, borderRadius: 20, padding: '2px 8px' }}>
+            {up ? <ArrowUpRight size={11} style={{ color: '#059669' }} /> : <ArrowDownRight size={11} style={{ color: '#dc2626' }} />}
+            <span style={{ color: up ? '#059669' : '#dc2626', fontSize: 11, fontWeight: 700 }}>{Math.abs(trend)}%</span>
           </div>
         )}
       </div>
       <p style={{ color, fontSize: 26, fontWeight: 800, margin: '0 0 4px', lineHeight: 1 }}>{value}</p>
-      <p style={{ color: '#fff', fontSize: 13, fontWeight: 600, margin: '0 0 2px' }}>{label}</p>
+      <p style={{ color: '#0f172a', fontSize: 13, fontWeight: 600, margin: '0 0 2px' }}>{label}</p>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {sub && <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{sub}</p>}
         {sparkData && <Sparkline data={sparkData} color={color} />}
@@ -167,36 +167,36 @@ export default function AnalyticsPage() {
   const statuses = data?.statusBreakdown || {}
   const total = data?.totalLeads || 1
   const funnelSteps = [
-    { label: 'Yeni Lead', key: 'new', color: '#06b6d4' },
-    { label: 'İletişim', key: 'contacted', color: '#8b5cf6' },
-    { label: 'Nitelikli', key: 'qualified', color: '#f59e0b' },
-    { label: 'Kazanılan', key: 'won', color: '#10b981' },
+    { label: 'Yeni Lead', key: 'new', color: '#0d9488' },
+    { label: 'İletişim', key: 'contacted', color: '#7c3aed' },
+    { label: 'Nitelikli', key: 'qualified', color: '#b45309' },
+    { label: 'Kazanılan', key: 'won', color: '#059669' },
   ]
 
   return (
     <div style={{ padding: 0 }}>
       {/* ── HERO */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(0,12,4,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(16,185,129,0.18)' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.03) 1px,transparent 1px)', backgroundSize: '36px 36px', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #d1fae5' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.025) 1px,transparent 1px)', backgroundSize: '36px 36px', zIndex: 0 }} />
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <DataFlowSphere size={90} active={loading} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0 }}>{t('analytics.title','Analitik Dashboard')}</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: '3px 10px' }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'df-ping 2s ease-in-out infinite' }} />
-                  <span style={{ color: '#34d399', fontSize: 11, fontWeight: 600 }}>{t('analytics.canli', 'Canlı')}</span>
+                <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: 0 }}>{t('analytics.title','Analitik Dashboard')}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', borderRadius: 20, padding: '3px 10px' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#059669', animation: 'df-ping 2s ease-in-out infinite' }} />
+                  <span style={{ color: '#047857', fontSize: 11, fontWeight: 600 }}>{t('analytics.canli', 'Canlı')}</span>
                 </div>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>
+              <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px' }}>
                 {lastRefresh ? `Son güncelleme: ${lastRefresh.toLocaleTimeString()}` : 'Veriler yükleniyor...'}
               </p>
               {/* Period selector */}
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['7d','30d','90d'] as const).map(p => (
                   <button key={p} onClick={() => setPeriod(p)}
-                    style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${period===p?'rgba(16,185,129,0.5)':'rgba(255,255,255,0.08)'}`, background: period===p?'rgba(16,185,129,0.15)':'transparent', color: period===p?'#34d399':'#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${period===p?'rgba(5,150,105,0.5)':'#e2e8f0'}`, background: period===p?'rgba(5,150,105,0.12)':'transparent', color: period===p?'#047857':'#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     {p === '7d' ? t('analytics.last7d','Son 7 Gün') : p === '30d' ? t('analytics.last30d','Son 30 Gün') : t('analytics.last90d','Son 90 Gün')}
                   </button>
                 ))}
@@ -204,10 +204,10 @@ export default function AnalyticsPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 11, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#34d399', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 11, border: '1px solid rgba(5,150,105,0.3)', background: 'rgba(5,150,105,0.08)', color: '#047857', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               <Download size={13} /> CSV İndir
             </button>
-            <button onClick={load} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#64748b', fontSize: 12, cursor: 'pointer' }}>
+            <button onClick={load} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 11, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: 12, cursor: 'pointer' }}>
               <RefreshCw size={13} style={{ animation: loading ? 'df-spin 1s linear infinite' : 'none' }} /> Yenile
             </button>
           </div>
@@ -217,10 +217,10 @@ export default function AnalyticsPage() {
       {/* ── STAT CARDS */}
       {data && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
-          <StatCard label={t('analytics.total_leads','Toplam Lead')} value={data.totalLeads} sub={`+${data.newLeads} ${t('analytics.new_leads','yeni')}`} color="#10b981" icon="👥" trend={12} />
-          <StatCard label={t('analytics.conversion','Cevap Oranı')} value={`${data.replyRate}%`} sub={t('analytics.campaigns','kampanya bazlı')} color="#8b5cf6" icon="💬" trend={data.replyRate > 10 ? 5 : -8} />
-          <StatCard label={t('analytics.campaigns','Aktif Kampanya')} value={data.activeCampaigns} sub={t('analytics.overview','devam eden')} color="#06b6d4" icon="📢" />
-          <StatCard label={t('billing.credits_remaining','Kalan Kredi')} value={data.credits} sub={t('analytics.export','kullanılabilir')} color="#f59e0b" icon="⚡" />
+          <StatCard label={t('analytics.total_leads','Toplam Lead')} value={data.totalLeads} sub={`+${data.newLeads} ${t('analytics.new_leads','yeni')}`} color="#059669" Icon={Users} trend={12} />
+          <StatCard label={t('analytics.conversion','Cevap Oranı')} value={`${data.replyRate}%`} sub={t('analytics.campaigns','kampanya bazlı')} color="#7c3aed" Icon={MessageSquare} trend={data.replyRate > 10 ? 5 : -8} />
+          <StatCard label={t('analytics.campaigns','Aktif Kampanya')} value={data.activeCampaigns} sub={t('analytics.overview','devam eden')} color="#0d9488" Icon={Megaphone} />
+          <StatCard label={t('billing.credits_remaining','Kalan Kredi')} value={data.credits} sub={t('analytics.export','kullanılabilir')} color="#b45309" Icon={Zap} />
         </div>
       )}
 
@@ -228,21 +228,21 @@ export default function AnalyticsPage() {
       {data && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
           {/* Channel comparison */}
-          <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 18, padding: 22 }}>
-            <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}>{t('analytics.kanal_karsilastirmasi', '📱 Kanal Karşılaştırması')}</h3>
+          <div style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 18, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}><Smartphone size={15} style={{ color: '#7c3aed' }} /> {t('analytics.kanal_karsilastirmasi', 'Kanal Karşılaştırması')}</h3>
             {[
-              { label: 'WhatsApp', value: data.channelStats?.whatsapp || 0, color: '#25d366', icon: '💬' },
-              { label: 'Email', value: data.channelStats?.email || 0, color: '#3b82f6', icon: '✉️' },
+              { label: 'WhatsApp', value: data.channelStats?.whatsapp || 0, color: '#25d366', Icon: MessageSquare },
+              { label: 'Email', value: data.channelStats?.email || 0, color: '#2563eb', Icon: Mail },
             ].map(ch => {
               const total2 = (data.channelStats?.whatsapp || 0) + (data.channelStats?.email || 0) || 1
               const pct = Math.round((ch.value / total2) * 100)
               return (
                 <div key={ch.label} style={{ marginBottom: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ color: '#e2e8f0', fontSize: 13 }}>{ch.icon} {ch.label}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#0f172a', fontSize: 13 }}><ch.Icon size={13} style={{ color: ch.color }} /> {ch.label}</span>
                     <span style={{ color: ch.color, fontWeight: 700, fontSize: 13 }}>{ch.value.toLocaleString()} ({pct}%)</span>
                   </div>
-                  <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+                  <div style={{ height: 6, background: '#e2e8f0', borderRadius: 3 }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: ch.color, borderRadius: 3, transition: 'width 0.8s ease', boxShadow: `0 0 8px ${ch.color}60` }} />
                   </div>
                 </div>
@@ -251,8 +251,8 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Funnel */}
-          <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(16,185,129,0.18)', borderRadius: 18, padding: 22 }}>
-            <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}>{t('analytics.satis_hunisi', '🎯 Satış Hunisi')}</h3>
+          <div style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 18, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}><Target size={15} style={{ color: '#059669' }} /> {t('analytics.satis_hunisi', 'Satış Hunisi')}</h3>
             {funnelSteps.map((step, i) => {
               const count = statuses[step.key] || 0
               const pct = Math.round((count / total) * 100)
@@ -260,10 +260,10 @@ export default function AnalyticsPage() {
               return (
                 <div key={step.key} style={{ marginBottom: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ color: '#94a3b8', fontSize: 12 }}>{step.label}</span>
+                    <span style={{ color: '#475569', fontSize: 12 }}>{step.label}</span>
                     <span style={{ color: step.color, fontSize: 12, fontWeight: 700 }}>{count} (%{pct})</span>
                   </div>
-                  <div style={{ height: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ height: 8, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${width}%`, background: `linear-gradient(90deg,${step.color}80,${step.color})`, borderRadius: 4, transition: 'width 1s ease' }} />
                   </div>
                 </div>
@@ -275,15 +275,15 @@ export default function AnalyticsPage() {
 
       {/* ── TOP CAMPAIGNS */}
       {data?.topCampaigns?.length > 0 && (
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.97),rgba(5,6,18,0.98))', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 22 }}>
-          <h3 style={{ color: '#fff', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>{t('analytics.en_iyi_kampanyalar', '🏆 En İyi Kampanyalar')}</h3>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}><Trophy size={15} style={{ color: '#b45309' }} /> {t('analytics.en_iyi_kampanyalar', 'En İyi Kampanyalar')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {data.topCampaigns.map((c: any, i: number) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'rgba(0,0,0,0.2)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.04)' }}>
-                <span style={{ color: '#334155', fontWeight: 700, fontSize: 13, width: 20 }}>#{i+1}</span>
-                <span style={{ color: '#e2e8f0', fontSize: 13, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                <span style={{ color: '#64748b', fontWeight: 700, fontSize: 13, width: 20 }}>#{i+1}</span>
+                <span style={{ color: '#0f172a', fontSize: 13, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
                 <span style={{ color: '#64748b', fontSize: 11 }}>{c.total_sent?.toLocaleString()} gönderim</span>
-                <span style={{ color: '#10b981', fontSize: 11, fontWeight: 700 }}>%{c.total_sent ? Math.round((c.total_replied||0)/c.total_sent*100) : 0} yanıt</span>
+                <span style={{ color: '#059669', fontSize: 11, fontWeight: 700 }}>%{c.total_sent ? Math.round((c.total_replied||0)/c.total_sent*100) : 0} yanıt</span>
               </div>
             ))}
           </div>

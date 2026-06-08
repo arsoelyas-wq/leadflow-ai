@@ -378,8 +378,8 @@ export default function VisualTrendPage() {
   const allImages = result?.images || []
 
   const tabBtn = (id: string, label: string, count?: number) => (
-    <button onClick={() => setActiveTab(id as any)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: activeTab === id ? 'linear-gradient(135deg,#4c1d95,#7c3aed)' : 'rgba(255,255,255,0.04)', color: activeTab === id ? '#fff' : '#64748b', boxShadow: activeTab === id ? '0 4px 16px rgba(124,58,237,0.3)' : 'none' }}>
-      {label} {count !== undefined && count > 0 && <span style={{ background: activeTab === id ? 'rgba(255,255,255,0.2)' : 'rgba(139,92,246,0.2)', color: activeTab === id ? '#fff' : '#a78bfa', fontSize: 10, padding: '1px 6px', borderRadius: 10 }}>{count}</span>}
+    <button onClick={() => setActiveTab(id as any)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: activeTab === id ? 'linear-gradient(135deg,#4c1d95,#7c3aed)' : '#f8fafc', color: activeTab === id ? '#fff' : '#475569', boxShadow: activeTab === id ? '0 4px 16px rgba(124,58,237,0.3)' : 'none' }}>
+      {label} {count !== undefined && count > 0 && <span style={{ background: activeTab === id ? 'rgba(255,255,255,0.2)' : '#ede9fe', color: activeTab === id ? '#fff' : '#7c3aed', fontSize: 10, padding: '1px 6px', borderRadius: 10 }}>{count}</span>}
     </button>
   )
 
@@ -387,18 +387,18 @@ export default function VisualTrendPage() {
     <div style={{ padding: 0 }}>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(3,0,20,0.98),rgba(10,5,30,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(139,92,246,0.2)' }}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(139,92,246,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(236,72,153,0.03) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div style={{ position: 'absolute', top: -60, right: -20, width: 300, height: 300, background: 'radial-gradient(circle,rgba(139,92,246,0.1) 0%,rgba(236,72,153,0.06) 50%,transparent 70%)', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #ede9fe' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(139,92,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(236,72,153,0.02) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div style={{ position: 'absolute', top: -60, right: -20, width: 300, height: 300, background: 'radial-gradient(circle,rgba(139,92,246,0.05) 0%,rgba(236,72,153,0.03) 50%,transparent 70%)', zIndex: 0 }} />
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 28 }}>
           <ChromaScope size={100} scanning={loading} colors={report?.dominantColors?.slice(0,6)} />
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <h1 style={{ color: '#fff', fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>Visual Trend Catcher</h1>
+              <h1 style={{ color: '#0f172a', fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>Visual Trend Catcher</h1>
               <span style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('visual_trends.pinterest_instagramdan_tr', 'Pinterest & Instagram\'dan trend sinyalleri yakala — AI ile kampanya fikirleri üret')}</p>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('visual_trends.pinterest_instagramdan_tr', 'Pinterest & Instagram\'dan trend sinyalleri yakala — AI ile kampanya fikirleri üret')}</p>
 
             {/* Search bar */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
@@ -407,19 +407,19 @@ export default function VisualTrendPage() {
                   onKeyDown={e => e.key === 'Enter' && !loading && analyze()}
                   placeholder={t('visual_trends.trend_arama_kelimesi_orn', 'Trend arama kelimesi (örn: duvar panel, dekorasyon...)')}
                   maxLength={100}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: `1px solid ${keyword ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 12, padding: '12px 16px 12px 44px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
+                  style={{ width: '100%', background: '#ffffff', border: `1px solid ${keyword ? '#c4b5fd' : '#e2e8f0'}`, borderRadius: 12, padding: '12px 16px 12px 44px', color: '#0f172a', fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
                 <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
               </div>
               <div style={{ position: 'relative', minWidth: 160 }}>
                 <select value={sector} onChange={e => setSector(e.target.value)}
-                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 32px 12px 14px', color: sector ? '#fff' : '#64748b', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer' }}>
+                  style={{ width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 32px 12px 14px', color: sector ? '#0f172a' : '#94a3b8', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer' }}>
                   <option value="">{t('visual_trends.sektor_opsiyonel', 'Sektör (opsiyonel)')}</option>
                   {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', fontSize: 12 }}>▾</span>
               </div>
               <button onClick={analyze} disabled={loading || !keyword}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, border: 'none', cursor: loading || !keyword ? 'not-allowed' : 'pointer', background: keyword && !loading ? 'linear-gradient(135deg,#5b21b6,#7c3aed,#ec4899)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, opacity: !keyword ? 0.4 : 1, boxShadow: keyword && !loading ? '0 6px 24px rgba(124,58,237,0.4)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, border: 'none', cursor: loading || !keyword ? 'not-allowed' : 'pointer', background: keyword && !loading ? 'linear-gradient(135deg,#5b21b6,#7c3aed,#ec4899)' : '#f1f5f9', color: keyword && !loading ? '#fff' : '#94a3b8', fontSize: 14, fontWeight: 700, opacity: !keyword ? 0.4 : 1, boxShadow: keyword && !loading ? '0 6px 24px rgba(124,58,237,0.4)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {loading ? <RefreshCw size={16} style={{ animation: 'vt-spin 1s linear infinite' }} /> : <Zap size={16} />}
                 {loading ? 'Taranıyor...' : 'Trend Analiz Et'}
               </button>
@@ -429,7 +429,7 @@ export default function VisualTrendPage() {
             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
               {QUICK_KEYWORDS.map(kw => (
                 <button key={kw} onClick={() => setKeyword(kw)}
-                  style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(139,92,246,0.25)', background: keyword === kw ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.03)', color: keyword === kw ? '#a78bfa' : '#64748b', fontSize: 11, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid #ddd6fe', background: keyword === kw ? '#f5f3ff' : '#f8fafc', color: keyword === kw ? '#7c3aed' : '#475569', fontSize: 11, cursor: 'pointer', transition: 'all 0.15s' }}>
                   {kw}
                 </button>
               ))}
@@ -448,7 +448,7 @@ export default function VisualTrendPage() {
 
       {/* ── TOAST ─────────────────────────────────────────────────────────── */}
       {msg && (
-        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type === 'success' ? 'rgba(139,92,246,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${msg.type === 'success' ? 'rgba(139,92,246,0.3)' : 'rgba(239,68,68,0.3)'}`, color: msg.type === 'success' ? '#a78bfa' : '#f87171' }}>
+        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type === 'success' ? '#f5f3ff' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#ddd6fe' : '#fecaca'}`, color: msg.type === 'success' ? '#7c3aed' : '#dc2626' }}>
           {msg.text}
         </div>
       )}
@@ -457,7 +457,7 @@ export default function VisualTrendPage() {
       {result && (
         <div>
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 22, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 22, border: '1px solid #e2e8f0' }}>
             {tabBtn('trends', '📌 Trend Sinyalleri', allImages.length)}
             {tabBtn('report', '📊 Trend Raporu')}
             {tabBtn('campaigns', '⚡ Kampanya Fikirleri', report?.campaignIdeas?.length)}
@@ -468,10 +468,10 @@ export default function VisualTrendPage() {
             <div>
               {/* Summary banner */}
               {report && (
-                <div style={{ marginBottom: 20, padding: '16px 20px', background: 'linear-gradient(135deg,rgba(124,58,237,0.1),rgba(236,72,153,0.08))', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 16, display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                  <Zap size={18} style={{ color: '#a78bfa', flexShrink: 0, marginTop: 2 }} />
+                <div style={{ marginBottom: 20, padding: '16px 20px', background: 'linear-gradient(135deg,rgba(124,58,237,0.1),rgba(236,72,153,0.08))', border: '1px solid #ede9fe', borderRadius: 16, display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                  <Zap size={18} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 2 }} />
                   <div>
-                    <p style={{ color: '#e2e8f0', fontSize: 14, margin: '0 0 8px', lineHeight: 1.5 }}>{report.summary}</p>
+                    <p style={{ color: '#0f172a', fontSize: 14, margin: '0 0 8px', lineHeight: 1.5 }}>{report.summary}</p>
                     {report.dominantColors?.length > 0 && (
                       <div style={{ marginTop: 8 }}>
                         <p style={{ color: '#475569', fontSize: 10, margin: '0 0 5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Dominant Renkler</p>
@@ -485,13 +485,13 @@ export default function VisualTrendPage() {
               {/* Top trends */}
               {report?.topTrends?.length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
-                  {report.topTrends.map((t: string, i: number) => {
+                  {report.topTrends.map((kw: string, i: number) => {
                     const colors = ['#ec4899','#8b5cf6','#06b6d4','#10b981','#f59e0b']
                     const c = colors[i % colors.length]
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: `${c}12`, border: `1px solid ${c}28`, borderRadius: 20 }}>
                         <TrendingUp size={12} style={{ color: c }} />
-                        <span style={{ color: c, fontSize: 12, fontWeight: 600 }}>{t}</span>
+                        <span style={{ color: c, fontSize: 12, fontWeight: 600 }}>{kw}</span>
                       </div>
                     )
                   })}
@@ -504,10 +504,10 @@ export default function VisualTrendPage() {
                   {allImages.map((item: any, i: number) => <TrendItem key={i} item={item} />)}
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: 48, color: '#334155' }}>
+                <div style={{ textAlign: 'center', padding: 48, color: '#0f172a' }}>
                   <ChromaScope size={56} />
                   <p style={{ marginTop: 16 }}>{t('visual_trends.trend_sinyali_bulunamadi', 'Trend sinyali bulunamadı — farklı bir keyword deneyin')}</p>
-                  <p style={{ fontSize: 12, color: '#1e293b', marginTop: 8 }}>
+                  <p style={{ fontSize: 12, color: '#475569', marginTop: 8 }}>
                     {!result.sourcesAvailable?.exa && !result.sourcesAvailable?.tavily
                       ? 'EXA_API_KEY veya TAVILY_API_KEY Railway\'e eklenmemiş'
                       : ''}
@@ -521,13 +521,13 @@ export default function VisualTrendPage() {
                   <h3 style={{ color: '#475569', fontSize: 12, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('visual_trends.web_trend_kaynaklari', '🌐 Web Trend Kaynakları')}</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {result.webResults.slice(0, 4).map((w: any, i: number) => (
-                      <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 14px', background: 'rgba(3,5,18,0.6)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 11 }}>
+                      <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 14px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 11 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ color: '#e2e8f0', fontSize: 13, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</p>
+                          <p style={{ color: '#0f172a', fontSize: 13, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.title}</p>
                           <p style={{ color: '#475569', fontSize: 11, margin: 0, lineHeight: 1.4 }}>{w.snippet?.slice(0, 120)}</p>
                         </div>
                         <a href={w.url} target="_blank" rel="noopener noreferrer"
-                          style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', flexShrink: 0 }}>
+                          style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', flexShrink: 0 }}>
                           <ExternalLink size={11} />
                         </a>
                       </div>
@@ -542,23 +542,23 @@ export default function VisualTrendPage() {
           {activeTab === 'report' && report && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
               {[
-                { label: t('📊 Özet','📊 Özet'), content: report.summary, color: '#8b5cf6' },
-                { label: t('🎯 Pazar Fırsatı','🎯 Pazar Fırsatı'), content: report.marketOpportunity, color: '#10b981' },
-                { label: '👥 Hedef Kitle', content: report.targetAudience, color: '#06b6d4' },
-                { label: t('⏰ En İyi Paylaşım','⏰ En İyi Paylaşım'), content: report.bestPostingTime, color: '#f59e0b' },
+                { label: t('📊 Özet','📊 Özet'), content: report.summary, color: '#7c3aed' },
+                { label: t('🎯 Pazar Fırsatı','🎯 Pazar Fırsatı'), content: report.marketOpportunity, color: '#059669' },
+                { label: '👥 Hedef Kitle', content: report.targetAudience, color: '#0d9488' },
+                { label: t('⏰ En İyi Paylaşım','⏰ En İyi Paylaşım'), content: report.bestPostingTime, color: '#b45309' },
               ].map(({ label, content, color }) => content ? (
                 <div key={label} style={{ background: `${color}06`, border: `1px solid ${color}20`, borderRadius: 16, padding: 18 }}>
                   <p style={{ color, fontSize: 11, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>{label}</p>
-                  <p style={{ color: '#cbd5e1', fontSize: 13, margin: 0, lineHeight: 1.5 }}>{content}</p>
+                  <p style={{ color: '#0f172a', fontSize: 13, margin: 0, lineHeight: 1.5 }}>{content}</p>
                 </div>
               ) : null)}
 
               {report.dominantStyles?.length > 0 && (
                 <div style={{ background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.2)', borderRadius: 16, padding: 18 }}>
-                  <p style={{ color: '#f9a8d4', fontSize: 11, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>🎨 Dominant Stiller</p>
+                  <p style={{ color: '#db2777', fontSize: 11, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>🎨 Dominant Stiller</p>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {report.dominantStyles.map((s: string, i: number) => (
-                      <span key={i} style={{ background: 'rgba(236,72,153,0.12)', color: '#f9a8d4', fontSize: 12, padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(236,72,153,0.2)' }}>{s}</span>
+                      <span key={i} style={{ background: 'rgba(236,72,153,0.12)', color: '#db2777', fontSize: 12, padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(236,72,153,0.2)' }}>{s}</span>
                     ))}
                   </div>
                 </div>
@@ -566,11 +566,11 @@ export default function VisualTrendPage() {
 
               {report.actionPlan?.length > 0 && (
                 <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 16, padding: 18 }}>
-                  <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('visual_trends.aksiyon_plani', '📋 Aksiyon Planı')}</p>
+                  <p style={{ color: '#b45309', fontSize: 11, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('visual_trends.aksiyon_plani', '📋 Aksiyon Planı')}</p>
                   {report.actionPlan.map((a: string, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 7 }}>
-                      <span style={{ color: '#fbbf24', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{i + 1}.</span>
-                      <p style={{ color: '#94a3b8', fontSize: 13, margin: 0, lineHeight: 1.4 }}>{a}</p>
+                      <span style={{ color: '#b45309', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{i + 1}.</span>
+                      <p style={{ color: '#0f172a', fontSize: 13, margin: 0, lineHeight: 1.4 }}>{a}</p>
                     </div>
                   ))}
                 </div>
@@ -578,10 +578,10 @@ export default function VisualTrendPage() {
 
               {report.hashtags?.length > 0 && (
                 <div style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 16, padding: 18 }}>
-                  <p style={{ color: '#67e8f9', fontSize: 11, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}><Hash size={11} style={{ display: 'inline' }} /> Hashtag'ler</p>
+                  <p style={{ color: '#0d9488', fontSize: 11, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}><Hash size={11} style={{ display: 'inline' }} /> Hashtag'ler</p>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {report.hashtags.map((h: string, i: number) => (
-                      <span key={i} style={{ background: 'rgba(6,182,212,0.1)', color: '#67e8f9', fontSize: 12, padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(6,182,212,0.2)' }}>{h}</span>
+                      <span key={i} style={{ background: 'rgba(6,182,212,0.1)', color: '#0d9488', fontSize: 12, padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(6,182,212,0.2)' }}>{h}</span>
                     ))}
                   </div>
                 </div>
@@ -592,7 +592,7 @@ export default function VisualTrendPage() {
           {/* ── TAB: CAMPAIGNS ──────────────────────────────────────────── */}
           {activeTab === 'campaigns' && report?.campaignIdeas?.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>
+              <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>
                 AI {report.campaignIdeas.length} kampanya fikri oluşturdu — kopyalayıp hemen kullanabilirsin
               </p>
               {report.campaignIdeas.map((idea: any, i: number) => <CampaignCard key={i} idea={idea} />)}
@@ -608,9 +608,9 @@ export default function VisualTrendPage() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {history.map(h => (
               <button key={h.id} onClick={() => setKeyword(h.keyword)}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 22, color: '#a78bfa', fontSize: 12, cursor: 'pointer' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 22, color: '#7c3aed', fontSize: 12, cursor: 'pointer' }}>
                 🔮 {h.keyword}
-                <span style={{ color: '#334155', fontSize: 10 }}>{new Date(h.analyzed_at).toLocaleDateString()}</span>
+                <span style={{ color: '#475569', fontSize: 10 }}>{new Date(h.analyzed_at).toLocaleDateString()}</span>
               </button>
             ))}
           </div>
@@ -623,8 +623,8 @@ export default function VisualTrendPage() {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <ChromaScope size={70} scanning={false} />
           </div>
-          <p style={{ color: '#334155', fontSize: 14, margin: '0 0 6px' }}>{t('visual_trends.bir_trend_keywordu_girin', 'Bir trend keywordü girin ve analizi başlatın')}</p>
-          <p style={{ color: '#1e293b', fontSize: 12 }}>Pinterest + Instagram sinyalleri + AI kampanya fikirleri</p>
+          <p style={{ color: '#0f172a', fontSize: 14, margin: '0 0 6px' }}>{t('visual_trends.bir_trend_keywordu_girin', 'Bir trend keywordü girin ve analizi başlatın')}</p>
+          <p style={{ color: '#475569', fontSize: 12 }}>Pinterest + Instagram sinyalleri + AI kampanya fikirleri</p>
         </div>
       )}
 

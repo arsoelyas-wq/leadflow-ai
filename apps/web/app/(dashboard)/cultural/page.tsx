@@ -244,40 +244,40 @@ function CountrySelector({ selected, onSelect, multi = false, label = 'Ülke Se�
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button onClick={() => setOpen(!open)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: '#060a1c', border: `1px solid ${open ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 11, color: selectedArr.length > 0 ? '#fff' : '#64748b', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: '#ffffff', border: `1px solid ${open ? '#a5f3fc' : '#e2e8f0'}`, borderRadius: 11, color: selectedArr.length > 0 ? '#0f172a' : '#94a3b8', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
         <span>{displayText}</span>
         <ChevronDown size={14} style={{ color: '#475569', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 50, background: '#070a1c', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', maxHeight: 340, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ position: 'absolute', top: '110%', left: 0, right: 0, zIndex: 50, background: '#ffffff', border: '1px solid #a5f3fc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)', maxHeight: 340, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ position: 'relative' }}>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ülke ara..."
-                style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 10px 7px 32px', color: '#fff', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 10px 7px 32px', color: '#0f172a', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
               <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
             </div>
           </div>
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {Object.entries(grouped).map(([region, cs]: any) => (
               <div key={region}>
-                <div style={{ padding: '6px 12px 3px', color: '#334155', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
+                <div style={{ padding: '6px 12px 3px', color: '#475569', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
                   {REGION_LABELS[region] || region}
                 </div>
                 {cs.map((c: any) => {
                   const isSelected = selectedArr.includes(c.code)
                   return (
                     <div key={c.code} onClick={() => toggle(c.code)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: isSelected ? 'rgba(6,182,212,0.12)' : 'transparent', transition: 'background 0.1s' }}
-                      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? 'rgba(6,182,212,0.12)' : 'transparent' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: isSelected ? '#ecfeff' : 'transparent', transition: 'background 0.1s' }}
+                      onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = '#f1f5f9' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? '#ecfeff' : 'transparent' }}>
                       {multi && (
-                        <div style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${isSelected ? '#06b6d4' : 'rgba(255,255,255,0.2)'}`, background: isSelected ? '#06b6d4' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${isSelected ? '#0d9488' : '#e2e8f0'}`, background: isSelected ? '#0d9488' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {isSelected && <span style={{ color: '#000', fontSize: 10, fontWeight: 800 }}>✓</span>}
                         </div>
                       )}
-                      <span style={{ color: isSelected ? '#67e8f9' : '#94a3b8', fontSize: 12, flex: 1 }}>{c.name}</span>
-                      {c.hasDetailedProfile && <span style={{ color: '#334155', fontSize: 9 }}>★</span>}
-                      <span style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace' }}>{c.code}</span>
+                      <span style={{ color: isSelected ? '#0d9488' : '#475569', fontSize: 12, flex: 1 }}>{c.name}</span>
+                      {c.hasDetailedProfile && <span style={{ color: '#475569', fontSize: 9 }}>★</span>}
+                      <span style={{ color: '#475569', fontSize: 10, fontFamily: 'monospace' }}>{c.code}</span>
                     </div>
                   )
                 })}
@@ -300,40 +300,40 @@ function CulturalCard({ profile, countryCode }: { profile: any; countryCode: str
           {profile.emoji || '🌍'}
         </div>
         <div>
-          <p style={{ color: '#fff', fontWeight: 700, fontSize: 14, margin: 0 }}>{profile.language}</p>
+          <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 14, margin: 0 }}>{profile.language}</p>
           <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>"{profile.greetingFormal || profile.greeting}"</p>
         </div>
         <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-          <div style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#67e8f9' }}>
+          <div style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#0d9488' }}>
             <Clock size={10} style={{ display: 'inline', marginRight: 4 }} />{profile.businessHours}
           </div>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-        <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 9, padding: '8px 12px' }}>
+        <div style={{ background: '#f8fafc', borderRadius: 9, padding: '8px 12px' }}>
           <p style={{ color: '#475569', fontSize: 9, fontWeight: 700, margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: 1 }}>İletişim</p>
-          <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>{profile.communication}</p>
+          <p style={{ color: '#0f172a', fontSize: 12, margin: 0 }}>{profile.communication}</p>
         </div>
-        <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 9, padding: '8px 12px' }}>
+        <div style={{ background: '#f8fafc', borderRadius: 9, padding: '8px 12px' }}>
           <p style={{ color: '#475569', fontSize: 9, fontWeight: 700, margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: 1 }}>Karar Stili</p>
-          <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>{profile.decisionStyle}</p>
+          <p style={{ color: '#0f172a', fontSize: 12, margin: 0 }}>{profile.decisionStyle}</p>
         </div>
       </div>
       {profile.tips?.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <p style={{ color: '#475569', fontSize: 9, fontWeight: 700, margin: '0 0 7px', textTransform: 'uppercase', letterSpacing: 1 }}>✅ İpuçları</p>
-          {profile.tips.slice(0, 3).map((t: string, i: number) => (
+          {profile.tips.slice(0, 3).map((tip: string, i: number) => (
             <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 5 }}>
-              <span style={{ color: '#06b6d4', fontSize: 10, flexShrink: 0 }}>▸</span>
-              <p style={{ color: '#94a3b8', fontSize: 12, margin: 0, lineHeight: 1.4 }}>{t}</p>
+              <span style={{ color: '#0d9488', fontSize: 10, flexShrink: 0 }}>▸</span>
+              <p style={{ color: '#0f172a', fontSize: 12, margin: 0, lineHeight: 1.4 }}>{tip}</p>
             </div>
           ))}
         </div>
       )}
       {profile.avoidTopics?.length > 0 && (
         <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 9, padding: '8px 12px' }}>
-          <p style={{ color: '#f87171', fontSize: 10, fontWeight: 700, margin: '0 0 4px' }}>⚠️ Kaçın</p>
-          <p style={{ color: '#fca5a5', fontSize: 11, margin: 0 }}>{profile.avoidTopics.join(' · ')}</p>
+          <p style={{ color: '#dc2626', fontSize: 10, fontWeight: 700, margin: '0 0 4px' }}>⚠️ Kaçın</p>
+          <p style={{ color: '#dc2626', fontSize: 11, margin: 0 }}>{profile.avoidTopics.join(' · ')}</p>
         </div>
       )}
     </div>
@@ -438,7 +438,7 @@ export default function CulturalPage() {
     setCopiedField(field); setTimeout(() => setCopiedField(null), 2500)
   }
 
-  const inp = { width: '100%', background: '#060a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 11, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const inp = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 11, padding: '10px 14px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   const allSelectedCountries = [...(selectedCountry ? [selectedCountry] : []), ...campaignCountries]
 
@@ -446,21 +446,21 @@ export default function CulturalPage() {
     <div style={{ padding: 0 }}>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(0,8,24,0.98),rgba(3,8,22,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(6,182,212,0.18)' }}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.03) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div style={{ position: 'absolute', top: -50, right: -20, width: 280, height: 280, background: 'radial-gradient(circle,rgba(6,182,212,0.1) 0%,rgba(139,92,246,0.06) 50%,transparent 70%)', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfeff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #cffafe' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.025) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div style={{ position: 'absolute', top: -50, right: -20, width: 280, height: 280, background: 'radial-gradient(circle,rgba(6,182,212,0.05) 0%,rgba(139,92,246,0.03) 50%,transparent 70%)', zIndex: 0 }} />
 
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 28 }}>
           <CulturalGlobe size={100} activeCountries={allSelectedCountries} rotating={adapting || translating} />
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>{t('cultural.kulturel_uyum_ceviri', 'Kültürel Uyum & Çeviri')}</h1>
+              <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>{t('cultural.kulturel_uyum_ceviri', 'Kültürel Uyum & Çeviri')}</h1>
               <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>{t('cultural.75_ulke', '75 ÜLKE')}</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px' }}>{t('cultural.50_dil_kulturel_uyum_glob', '50+ dil, kültürel uyum, global kampanya çevirisi — AI ile saniyeler içinde')}</p>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px' }}>{t('cultural.50_dil_kulturel_uyum_glob', '50+ dil, kültürel uyum, global kampanya çevirisi — AI ile saniyeler içinde')}</p>
             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
               {['🌍 75 Ülke', '🤖 AI Profil', '💬 Mesaj Uyarla', '📱 Kampanya Çevir', '⚡ Anında'].map(f => (
-                <span key={f} style={{ background: 'rgba(6,182,212,0.07)', border: '1px solid rgba(6,182,212,0.18)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
+                <span key={f} style={{ background: '#ecfeff', border: '1px solid #a5f3fc', color: '#0d9488', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
               ))}
             </div>
           </div>
@@ -469,7 +469,7 @@ export default function CulturalPage() {
 
       {/* ── TOAST ─────────────────────────────────────────────────────────── */}
       {msg && (
-        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type === 'success' ? 'rgba(6,182,212,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${msg.type === 'success' ? 'rgba(6,182,212,0.3)' : 'rgba(239,68,68,0.3)'}`, color: msg.type === 'success' ? '#67e8f9' : '#f87171' }}>
+        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type === 'success' ? '#ecfeff' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#a5f3fc' : '#fecaca'}`, color: msg.type === 'success' ? '#0d9488' : '#dc2626' }}>
           {msg.text}
         </div>
       )}
@@ -478,37 +478,37 @@ export default function CulturalPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
 
         {/* LEFT: Lead Cultural Adaptation */}
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(6,182,212,0.18)', borderRadius: 20, padding: 24 }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <Globe size={16} style={{ color: '#06b6d4' }} />
-            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('cultural.lead_icin_kulturel_uyarla', 'Lead İçin Kültürel Uyarlama')}</h2>
+            <Globe size={16} style={{ color: '#0d9488' }} />
+            <h2 style={{ color: '#0f172a', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('cultural.lead_icin_kulturel_uyarla', 'Lead İçin Kültürel Uyarlama')}</h2>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Multi-lead selector with search */}
             <div ref={leadListRef}>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>
                 Lead Seç * ({leads.length} toplam)
-                {selectedLeads.length > 1 && <span style={{ color: '#06b6d4', marginLeft: 8, fontWeight: 700 }}>{selectedLeads.length} lead seçili — toplu işlem</span>}
+                {selectedLeads.length > 1 && <span style={{ color: '#0d9488', marginLeft: 8, fontWeight: 700 }}>{selectedLeads.length} lead seçili — toplu işlem</span>}
               </label>
               <button onClick={() => setLeadListOpen(!leadListOpen)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: '#060a1c', border: `1px solid ${selectedLeads.length > 0 ? 'rgba(6,182,212,0.4)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 11, color: selectedLeads.length > 0 ? '#fff' : '#64748b', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: '#ffffff', border: `1px solid ${selectedLeads.length > 0 ? '#a5f3fc' : '#e2e8f0'}`, borderRadius: 11, color: selectedLeads.length > 0 ? '#0f172a' : '#94a3b8', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}>
                 <span>{selectedLeads.length === 0 ? 'Lead seçin' : selectedLeads.length === 1 ? (leads.find(l => l.id === selectedLeads[0])?.company_name || '1 lead seçili') : `${selectedLeads.length} lead seçili`}</span>
                 <ChevronDown size={14} style={{ color: '#475569', transform: leadListOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
               </button>
               {leadListOpen && (
-                <div style={{ position: 'relative', zIndex: 50, background: '#070a1c', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.6)', maxHeight: 320, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ position: 'relative', zIndex: 50, background: '#ffffff', border: '1px solid #a5f3fc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.12)', maxHeight: 320, display: 'flex', flexDirection: 'column' }}>
                   {/* Search */}
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 8, alignItems: 'center' }}>
                     <div style={{ position: 'relative', flex: 1 }}>
                       <input value={leadSearch} onChange={e => setLeadSearch(e.target.value)}
                         placeholder={`${leads.length} lead içinde ara...`}
-                        style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '6px 10px 6px 30px', color: '#fff', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px 6px 30px', color: '#0f172a', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
                       <Search size={12} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
                     </div>
                     {selectedLeads.length > 0 && (
                       <button onClick={() => setSelectedLeads([])}
-                        style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(239,68,68,0.3)', background: 'transparent', color: '#f87171', fontSize: 11, cursor: 'pointer' }}>
+                        style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid #fecaca', background: 'transparent', color: '#dc2626', fontSize: 11, cursor: 'pointer' }}>
                         Temizle
                       </button>
                     )}
@@ -519,22 +519,22 @@ export default function CulturalPage() {
                       const isSelected = selectedLeads.includes(l.id)
                       return (
                         <div key={l.id} onClick={() => setSelectedLeads(prev => isSelected ? prev.filter(x => x !== l.id) : [...prev, l.id])}
-                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: isSelected ? 'rgba(6,182,212,0.1)' : 'transparent' }}
-                          onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)' }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? 'rgba(6,182,212,0.1)' : 'transparent' }}>
-                          <div style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${isSelected ? '#06b6d4' : 'rgba(255,255,255,0.2)'}`, background: isSelected ? '#06b6d4' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: isSelected ? '#ecfeff' : 'transparent' }}
+                          onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = '#f1f5f9' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? '#ecfeff' : 'transparent' }}>
+                          <div style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${isSelected ? '#0d9488' : '#e2e8f0'}`, background: isSelected ? '#0d9488' : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {isSelected && <span style={{ color: '#000', fontSize: 9, fontWeight: 900 }}>✓</span>}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ color: isSelected ? '#67e8f9' : '#e2e8f0', fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.company_name}</p>
+                            <p style={{ color: isSelected ? '#0d9488' : '#0f172a', fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.company_name}</p>
                             {(l.city || l.sector) && <p style={{ color: '#475569', fontSize: 10, margin: 0 }}>{l.city}{l.sector ? ` · ${l.sector}` : ''}</p>}
                           </div>
-                          {l.country && <span style={{ color: '#334155', fontSize: 10, fontFamily: 'monospace', flexShrink: 0 }}>{l.country}</span>}
+                          {l.country && <span style={{ color: '#475569', fontSize: 10, fontFamily: 'monospace', flexShrink: 0 }}>{l.country}</span>}
                         </div>
                       )
                     })}
                     {leads.filter(l => !leadSearch || l.company_name?.toLowerCase().includes(leadSearch.toLowerCase())).length > 100 && (
-                      <p style={{ color: '#334155', fontSize: 11, textAlign: 'center', padding: 10 }}>
+                      <p style={{ color: '#475569', fontSize: 11, textAlign: 'center', padding: 10 }}>
                         {leads.filter(l => !leadSearch || l.company_name?.toLowerCase().includes(leadSearch.toLowerCase())).length - 100} daha var — aramayı daralt
                       </p>
                     )}
@@ -548,7 +548,7 @@ export default function CulturalPage() {
                     const l = leads.find(x => x.id === id)
                     return l ? (
                       <span key={id} onClick={() => setSelectedLeads(prev => prev.filter(x => x !== id))}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', color: '#67e8f9', fontSize: 10, padding: '2px 8px', borderRadius: 20, cursor: 'pointer' }}>
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ecfeff', border: '1px solid #a5f3fc', color: '#0d9488', fontSize: 10, padding: '2px 8px', borderRadius: 20, cursor: 'pointer' }}>
                         {l.company_name.slice(0, 20)} ✕
                       </span>
                     ) : null
@@ -560,21 +560,21 @@ export default function CulturalPage() {
 
             {/* Country selector */}
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('cultural.hedef_ulke', 'Hedef Ülke *')}</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('cultural.hedef_ulke', 'Hedef Ülke *')}</label>
               <CountrySelector selected={selectedCountry} onSelect={setSelectedCountry} label="Ülke seçin" />
             </div>
 
             {/* Message */}
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>Uyarlanacak Mesaj *</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Uyarlanacak Mesaj *</label>
               <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4}
                 placeholder={t('cultural.turkce_mesajinizi_buraya', 'Türkçe mesajınızı buraya yazın, AI kültüre uyarlar...')}
                 style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
-              <p style={{ color: '#334155', fontSize: 10, margin: '4px 0 0', textAlign: 'right' }}>{message.length}/2000</p>
+              <p style={{ color: '#475569', fontSize: 10, margin: '4px 0 0', textAlign: 'right' }}>{message.length}/2000</p>
             </div>
 
             <button onClick={adapt} disabled={adapting || selectedLeads.length === 0 || !selectedCountry || !message}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 12, border: 'none', cursor: adapting || selectedLeads.length === 0 || !message ? 'not-allowed' : 'pointer', background: selectedLeads.length > 0 && message ? 'linear-gradient(135deg,#0891b2,#7c3aed)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, opacity: selectedLeads.length === 0 || !message ? 0.4 : 1, boxShadow: selectedLeads.length > 0 && message ? '0 6px 20px rgba(8,145,178,0.35)' : 'none' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 12, border: 'none', cursor: adapting || selectedLeads.length === 0 || !message ? 'not-allowed' : 'pointer', background: selectedLeads.length > 0 && message ? 'linear-gradient(135deg,#0891b2,#7c3aed)' : '#f1f5f9', color: selectedLeads.length > 0 && message ? '#fff' : '#94a3b8', fontSize: 14, fontWeight: 700, opacity: selectedLeads.length === 0 || !message ? 0.4 : 1, boxShadow: selectedLeads.length > 0 && message ? '0 6px 20px rgba(8,145,178,0.35)' : 'none' }}>
               {adapting ? <RefreshCw size={15} style={{ animation: 'cg-spin 1s linear infinite' }} /> : <Zap size={15} />}
               {adapting ? (selectedLeads.length > 1 ? `${selectedLeads.length} Lead Uyarlanıyor...` : 'Kültüre Uyarlanıyor...') : selectedLeads.length > 1 ? `${selectedLeads.length} Lead İçin Uyarla` : 'Kültüre Uyarla'}
             </button>
@@ -582,17 +582,17 @@ export default function CulturalPage() {
 
           {/* Result */}
           {result?.adapted && (
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(6,182,212,0.1)' }}>
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #e2e8f0' }}>
               {/* Adapted message */}
               <div style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 14, padding: 16, marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ color: '#67e8f9', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{t('cultural.uyarlanmis_mesaj', '✅ Uyarlanmış Mesaj')}</span>
+                  <span style={{ color: '#0d9488', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{t('cultural.uyarlanmis_mesaj', '✅ Uyarlanmış Mesaj')}</span>
                   <button onClick={() => copy(result.adapted.adaptedMessage, 'adapted')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px solid rgba(6,182,212,0.3)', background: 'transparent', color: '#67e8f9', fontSize: 11, cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 7, border: '1px solid #a5f3fc', background: 'transparent', color: '#0d9488', fontSize: 11, cursor: 'pointer' }}>
                     {copiedField === 'adapted' ? <CheckCircle size={11} /> : <Copy size={11} />} Kopyala
                   </button>
                 </div>
-                <p style={{ color: '#e2e8f0', fontSize: 13, margin: 0, lineHeight: 1.6 }}>{result.adapted.adaptedMessage}</p>
+                <p style={{ color: '#0f172a', fontSize: 13, margin: 0, lineHeight: 1.6 }}>{result.adapted.adaptedMessage}</p>
                 {result.adapted.translatedMessage && (
                   <p style={{ color: '#475569', fontSize: 11, margin: '8px 0 0', fontStyle: 'italic' }}>TR: {result.adapted.translatedMessage}</p>
                 )}
@@ -601,11 +601,11 @@ export default function CulturalPage() {
               {/* Best send time */}
               {result.adapted.bestSendTime && (
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <span style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24', fontSize: 11, padding: '4px 12px', borderRadius: 20 }}>
+                  <span style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', color: '#b45309', fontSize: 11, padding: '4px 12px', borderRadius: 20 }}>
                     <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />{result.adapted.bestSendTime}
                   </span>
                   {result.adapted.greetingStyle && (
-                    <span style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: 11, padding: '4px 12px', borderRadius: 20 }}>
+                    <span style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)', color: '#7c3aed', fontSize: 11, padding: '4px 12px', borderRadius: 20 }}>
                       {result.adapted.greetingStyle}
                     </span>
                   )}
@@ -615,11 +615,11 @@ export default function CulturalPage() {
               {/* Cultural tips */}
               {result.adapted.culturalTips?.length > 0 && (
                 <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, padding: 12 }}>
-                  <p style={{ color: '#34d399', fontSize: 10, fontWeight: 700, margin: '0 0 7px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('cultural.kulturel_ipuclari', '💡 Kültürel İpuçları')}</p>
-                  {result.adapted.culturalTips.map((t: string, i: number) => (
+                  <p style={{ color: '#059669', fontSize: 10, fontWeight: 700, margin: '0 0 7px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('cultural.kulturel_ipuclari', '💡 Kültürel İpuçları')}</p>
+                  {result.adapted.culturalTips.map((tip: string, i: number) => (
                     <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-                      <span style={{ color: '#34d399', fontSize: 10 }}>▸</span>
-                      <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>{t}</p>
+                      <span style={{ color: '#059669', fontSize: 10 }}>▸</span>
+                      <p style={{ color: '#0f172a', fontSize: 12, margin: 0 }}>{tip}</p>
                     </div>
                   ))}
                 </div>
@@ -629,24 +629,24 @@ export default function CulturalPage() {
 
           {/* Batch results */}
           {batchResults.length > 0 && (
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(6,182,212,0.1)' }}>
-              <p style={{ color: '#67e8f9', fontSize: 12, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>✅ Toplu Uyarlama Sonuçları ({batchResults.length} lead)</p>
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #e2e8f0' }}>
+              <p style={{ color: '#0d9488', fontSize: 12, fontWeight: 700, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>✅ Toplu Uyarlama Sonuçları ({batchResults.length} lead)</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 400, overflowY: 'auto' }}>
                 {batchResults.map((r: any, i: number) => (
                   <div key={i} style={{ background: r.success ? 'rgba(6,182,212,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${r.success ? 'rgba(6,182,212,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 12, padding: 14 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ color: r.success ? '#67e8f9' : '#f87171', fontWeight: 700, fontSize: 12 }}>{r.leadName}</span>
+                      <span style={{ color: r.success ? '#0d9488' : '#dc2626', fontWeight: 700, fontSize: 12 }}>{r.leadName}</span>
                       {r.success && (
                         <button onClick={() => copy(r.adapted?.adaptedMessage || '', `batch_${i}`)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(6,182,212,0.3)', background: 'transparent', color: '#67e8f9', fontSize: 10, cursor: 'pointer' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, border: '1px solid #a5f3fc', background: 'transparent', color: '#0d9488', fontSize: 10, cursor: 'pointer' }}>
                           {copiedField === `batch_${i}` ? <CheckCircle size={10} /> : <Copy size={10} />} Kopyala
                         </button>
                       )}
                     </div>
                     {r.success ? (
-                      <p style={{ color: '#e2e8f0', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{r.adapted?.adaptedMessage}</p>
+                      <p style={{ color: '#0f172a', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{r.adapted?.adaptedMessage}</p>
                     ) : (
-                      <p style={{ color: '#f87171', fontSize: 11, margin: 0 }}>Hata: {r.error}</p>
+                      <p style={{ color: '#dc2626', fontSize: 11, margin: 0 }}>Hata: {r.error}</p>
                     )}
                   </div>
                 ))}
@@ -659,23 +659,23 @@ export default function CulturalPage() {
         </div>
 
         {/* RIGHT: Campaign Translation */}
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,22,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 20, padding: 24 }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <Languages size={16} style={{ color: '#8b5cf6' }} />
-            <h2 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('cultural.kampanya_cevirisi', 'Kampanya Çevirisi')}</h2>
+            <Languages size={16} style={{ color: '#7c3aed' }} />
+            <h2 style={{ color: '#0f172a', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('cultural.kampanya_cevirisi', 'Kampanya Çevirisi')}</h2>
             <span style={{ color: '#475569', fontSize: 12 }}>{t('cultural.tek_mesaji_10_dile_cevir', '— tek mesajı 10 dile çevir')}</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('cultural.kampanya_mesaji', 'Kampanya Mesajı *')}</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('cultural.kampanya_mesaji', 'Kampanya Mesajı *')}</label>
               <textarea value={campaignMsg} onChange={e => setCampaignMsg(e.target.value)} rows={4}
                 placeholder={t('cultural.cevrilecek_kampanya_mesaj', 'Çevrilecek kampanya mesajını yazın...')}
                 style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }} />
             </div>
 
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>
                 Hedef Ülkeler ({campaignCountries.length} seçili, max 10)
               </label>
               <CountrySelector selected={campaignCountries} onSelect={setCampaignCountries} multi label="Ülke seçin (çoklu)" />
@@ -685,7 +685,7 @@ export default function CulturalPage() {
             {campaignCountries.length > 0 && (
               <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                 {campaignCountries.slice(0, 8).map(code => (
-                  <span key={code} style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#a78bfa', fontSize: 11, padding: '3px 10px', borderRadius: 20, cursor: 'pointer' }}
+                  <span key={code} style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: '#7c3aed', fontSize: 11, padding: '3px 10px', borderRadius: 20, cursor: 'pointer' }}
                     onClick={() => setCampaignCountries(prev => prev.filter(c => c !== code))}>
                     {code} ✕
                   </span>
@@ -694,7 +694,7 @@ export default function CulturalPage() {
             )}
 
             <button onClick={translateCampaign} disabled={translating || !campaignMsg || campaignCountries.length === 0}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 12, border: 'none', cursor: translating || !campaignMsg || campaignCountries.length === 0 ? 'not-allowed' : 'pointer', background: campaignMsg && campaignCountries.length > 0 ? 'linear-gradient(135deg,#4c1d95,#7c3aed)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 14, fontWeight: 700, opacity: !campaignMsg || campaignCountries.length === 0 ? 0.4 : 1, boxShadow: campaignMsg && campaignCountries.length > 0 ? '0 6px 20px rgba(124,58,237,0.35)' : 'none' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 12, border: 'none', cursor: translating || !campaignMsg || campaignCountries.length === 0 ? 'not-allowed' : 'pointer', background: campaignMsg && campaignCountries.length > 0 ? 'linear-gradient(135deg,#4c1d95,#7c3aed)' : '#f1f5f9', color: campaignMsg && campaignCountries.length > 0 ? '#fff' : '#94a3b8', fontSize: 14, fontWeight: 700, opacity: !campaignMsg || campaignCountries.length === 0 ? 0.4 : 1, boxShadow: campaignMsg && campaignCountries.length > 0 ? '0 6px 20px rgba(124,58,237,0.35)' : 'none' }}>
               {translating ? <RefreshCw size={15} style={{ animation: 'cg-spin 1s linear infinite' }} /> : <Languages size={15} />}
               {translating ? 'Çevriliyor...' : `${campaignCountries.length} Dile Çevir`}
             </button>
@@ -702,21 +702,21 @@ export default function CulturalPage() {
 
           {/* Translation results */}
           {translations && (
-            <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(139,92,246,0.1)', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 420, overflowY: 'auto' }}>
-              {Object.entries(translations).map(([code, t]: [string, any]) => (
+            <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 420, overflowY: 'auto' }}>
+              {Object.entries(translations).map(([code, tr]: [string, any]) => (
                 <div key={code} style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 12, padding: 14 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <span style={{ color: '#a78bfa', fontWeight: 700, fontSize: 12 }}>{code}</span>
-                      <span style={{ color: '#334155', fontSize: 11 }}>{t.language}</span>
-                      {t.greeting && <span style={{ background: 'rgba(255,255,255,0.05)', color: '#64748b', fontSize: 10, padding: '2px 8px', borderRadius: 12 }}>{t.greeting}</span>}
+                      <span style={{ color: '#7c3aed', fontWeight: 700, fontSize: 12 }}>{code}</span>
+                      <span style={{ color: '#475569', fontSize: 11 }}>{tr.language}</span>
+                      {tr.greeting && <span style={{ background: '#f8fafc', color: '#475569', fontSize: 10, padding: '2px 8px', borderRadius: 12 }}>{tr.greeting}</span>}
                     </div>
-                    <button onClick={() => copy(t.message, `tr_${code}`)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 7, border: '1px solid rgba(139,92,246,0.3)', background: 'transparent', color: copiedField === `tr_${code}` ? '#34d399' : '#a78bfa', fontSize: 11, cursor: 'pointer' }}>
+                    <button onClick={() => copy(tr.message, `tr_${code}`)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 7, border: '1px solid #ddd6fe', background: 'transparent', color: copiedField === `tr_${code}` ? '#059669' : '#7c3aed', fontSize: 11, cursor: 'pointer' }}>
                       {copiedField === `tr_${code}` ? <CheckCircle size={10} /> : <Copy size={10} />}
                     </button>
                   </div>
-                  <p style={{ color: '#e2e8f0', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{t.message}</p>
+                  <p style={{ color: '#0f172a', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{tr.message}</p>
                 </div>
               ))}
             </div>

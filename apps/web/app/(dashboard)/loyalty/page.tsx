@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Heart, AlertTriangle, TrendingUp, Users, MessageSquare } from 'lucide-react'
+import { RefreshCw, Heart, AlertTriangle, TrendingUp, Users, MessageSquare, CheckCircle, Circle, MapPin, BarChart3, DollarSign } from 'lucide-react'
 
 // ── HEALTH ORB — vital signs style with ECG and satellite nodes ───────────────
 function HealthOrb({ size = 110, score = 0, scanning = false }: { size?: number; score?: number; scanning?: boolean }) {
@@ -123,12 +123,12 @@ export default function LoyaltyPage() {
   const atRisk = customers.filter(c => c.healthScore < 40).length
   const healthy = customers.filter(c => c.healthScore >= 70).length
 
-  const segColors = { all:'#8b5cf6', healthy:'#10b981', risk:'#f59e0b', critical:'#ef4444' }
+  const segColors = { all:'#7c3aed', healthy:'#059669', risk:'#b45309', critical:'#dc2626' }
 
   return (
     <div style={{ padding:0 }}>
-      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,rgba(2,8,4,0.98),rgba(3,8,22,0.99))', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid rgba(16,185,129,0.18)' }}>
-        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(16,185,129,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.03) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
+      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid #d1fae5' }}>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.025) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
         <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
           <HealthOrb size={95} score={avgScore} scanning={loading} />
           <div>
@@ -137,14 +137,14 @@ export default function LoyaltyPage() {
             <div style={{ display:'flex', gap:6 }}>
               {(['all','healthy','risk','critical'] as const).map(s => (
                 <button key={s} onClick={()=>setSegment(s)}
-                  style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${segment===s?segColors[s]+'80':'rgba(255,255,255,0.08)'}`, background:segment===s?`${segColors[s]}18`:'transparent', color:segment===s?segColors[s]:'#64748b', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                  style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${segment===s?segColors[s]+'80':'#e2e8f0'}`, background:segment===s?`${segColors[s]}15`:'transparent', color:segment===s?segColors[s]:'#475569', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                   {s==='all'?`Tümü (${customers.length})`:s==='healthy'?`Sağlıklı (${healthy})`:s==='risk'?`Risk (${customers.filter(c=>c.healthScore>=40&&c.healthScore<70).length})`:`Kritik (${atRisk})`}
                 </button>
               ))}
             </div>
           </div>
           <div style={{ marginLeft:'auto', display:'flex', flexDirection:'column', gap:12 }}>
-            {[{label:'Ort. Skor',value:avgScore,color:'#10b981'},{label: t('Sağlıklı','Sağlıklı'),value:healthy,color:'#047857'},{label:'Kritik',value:atRisk,color:'#ef4444'}].map(m => (
+            {[{label:'Ort. Skor',value:avgScore,color:'#059669'},{label: t('Sağlıklı','Sağlıklı'),value:healthy,color:'#047857'},{label:'Kritik',value:atRisk,color:'#dc2626'}].map(m => (
               <div key={m.label} style={{ textAlign:'center' }}>
                 <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>
                 <p style={{ color:'#475569', fontSize:10, margin:0 }}>{m.label}</p>
@@ -158,7 +158,7 @@ export default function LoyaltyPage() {
       {atRisk > 0 && (
         <div style={{ marginBottom:16, padding:'12px 18px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
           <AlertTriangle size={16} style={{ color:'#dc2626', flexShrink:0 }} />
-          <p style={{ color:'#fca5a5', fontSize:13, margin:0 }}><strong>{atRisk} müşteri kritik eşiğin altında</strong>{t('loyalty.hemen_iletisime_gecin', '— hemen iletişime geçin!')}</p>
+          <p style={{ color:'#dc2626', fontSize:13, margin:0 }}><strong>{atRisk} müşteri kritik eşiğin altında</strong>{t('loyalty.hemen_iletisime_gecin', '— hemen iletişime geçin!')}</p>
         </div>
       )}
 
@@ -167,8 +167,9 @@ export default function LoyaltyPage() {
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {filtered.slice(0,20).map(c => {
-            const color = c.healthScore >= 70 ? '#10b981' : c.healthScore >= 40 ? '#f59e0b' : '#ef4444'
-            const label = c.healthScore >= 70 ? '✅ Sağlıklı' : c.healthScore >= 40 ? '⚠️ Risk' : '🔴 Kritik'
+            const color = c.healthScore >= 70 ? '#059669' : c.healthScore >= 40 ? '#b45309' : '#dc2626'
+            const LabelIcon = c.healthScore >= 70 ? CheckCircle : c.healthScore >= 40 ? AlertTriangle : Circle
+            const labelText = c.healthScore >= 70 ? 'Sağlıklı' : c.healthScore >= 40 ? 'Risk' : 'Kritik'
             return (
               <div key={c.id} style={{ background:'#ffffff', border:`1px solid ${color}18`, borderRadius:14, padding:'14px 18px', display:'flex', alignItems:'center', gap:14 }}>
                 {/* Score gauge */}
@@ -187,12 +188,12 @@ export default function LoyaltyPage() {
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
                     <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.company_name}</p>
-                    <span style={{ color, fontSize:10, background:`${color}15`, border:`1px solid ${color}30`, borderRadius:20, padding:'1px 7px', flexShrink:0 }}>{label}</span>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:3, color, fontSize:10, background:`${color}15`, border:`1px solid ${color}30`, borderRadius:20, padding:'1px 7px', flexShrink:0 }}><LabelIcon size={10} /> {labelText}</span>
                   </div>
                   <div style={{ display:'flex', gap:12, fontSize:11, color:'#475569' }}>
-                    {c.city && <span>📍 {c.city}</span>}
-                    {c.status && <span>📊 {c.status}</span>}
-                    {c.total_paid > 0 && <span style={{ color:'#f59e0b' }}>💰 ₺{c.total_paid.toLocaleString()}</span>}
+                    {c.city && <span style={{ display:'inline-flex', alignItems:'center', gap:3 }}><MapPin size={11} /> {c.city}</span>}
+                    {c.status && <span style={{ display:'inline-flex', alignItems:'center', gap:3 }}><BarChart3 size={11} /> {c.status}</span>}
+                    {c.total_paid > 0 && <span style={{ display:'inline-flex', alignItems:'center', gap:3, color:'#b45309' }}><DollarSign size={11} /> ₺{c.total_paid.toLocaleString()}</span>}
                   </div>
                 </div>
                 {c.healthScore < 50 && (

@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Plus, ExternalLink, Trash2, Target, TrendingDown, TrendingUp, Bell, CheckCircle, X } from 'lucide-react'
+import { RefreshCw, Plus, ExternalLink, Trash2, Target, TrendingDown, TrendingUp, Bell, CheckCircle, X, Eye, Radio, Lightbulb } from 'lucide-react'
 
 // ── PRICE SPHERE — Luxury Gold Financial Orb (Bloomberg/Wall Street aesthetic) ─
 // Gold metallic sphere + 3 orbital rings + candlestick elements + holographic glow
@@ -248,7 +248,7 @@ function PriceCard({ tracker, onCheck, onDelete, onTargetUpdate, checking }: any
   const changePct = tracker.change_pct || 0
   const isDown = changePct < -0.5
   const isUp = changePct > 0.5
-  const color = isDown ? '#10b981' : isUp ? '#ef4444' : '#f59e0b'
+  const color = isDown ? '#059669' : isUp ? '#dc2626' : '#b45309'
   const currency = tracker.currency || 'TRY'
   const history = tracker.price_history || []
 
@@ -273,7 +273,7 @@ function PriceCard({ tracker, onCheck, onDelete, onTargetUpdate, checking }: any
       {/* Holographic border */}
       <div style={{ position: 'absolute', inset: -1.5, borderRadius: 19, zIndex: 0, background: hovered ? `linear-gradient(135deg,${color},${color}88,${color}44,${color}88,${color})` : `linear-gradient(135deg,${color}33,${color}11)`, backgroundSize: '300% 300%', animation: hovered ? 'pt-border 2s linear infinite' : 'none', boxShadow: hovered ? `0 0 28px ${color}25` : 'none' }} />
 
-      <div style={{ position: 'relative', zIndex: 1, background: 'linear-gradient(135deg,rgba(3,8,20,0.97),rgba(5,6,18,0.98))', borderRadius: 18, padding: '18px 20px' }}>
+      <div style={{ position: 'relative', zIndex: 1, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Price change indicator */}
           <div style={{ width: 52, height: 52, borderRadius: 14, flexShrink: 0, background: `${color}12`, border: `1px solid ${color}28`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -288,22 +288,22 @@ function PriceCard({ tracker, onCheck, onDelete, onTargetUpdate, checking }: any
           {/* Info */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 14, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tracker.name}</p>
+              <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 14, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tracker.name}</p>
               {tracker.competitor_name && <span style={{ color: '#475569', fontSize: 11 }}>· {tracker.competitor_name}</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ color, fontWeight: 800, fontSize: 18 }}>{formatPrice(tracker.current_price)} {currency}</span>
               {tracker.initial_price && tracker.initial_price !== tracker.current_price && (
-                <span style={{ color: '#334155', fontSize: 11, textDecoration: 'line-through' }}>{formatPrice(tracker.initial_price)}</span>
+                <span style={{ color: '#94a3b8', fontSize: 11, textDecoration: 'line-through' }}>{formatPrice(tracker.initial_price)}</span>
               )}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 4, flexWrap: 'wrap', fontSize: 11, color: '#475569' }}>
               {tracker.target_price && (
-                <span style={{ color: targetGap !== null && targetGap <= 0 ? '#10b981' : '#f59e0b' }}>
-                  🎯 Hedef: {formatPrice(tracker.target_price)} {targetGap !== null && targetGap > 0 ? `(%${targetGap.toFixed(1)} uzak)` : targetGap !== null && targetGap <= 0 ? '✅ TUTTURULDU!' : ''}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: targetGap !== null && targetGap <= 0 ? '#059669' : '#b45309' }}>
+                  <Target size={12} /> Hedef: {formatPrice(tracker.target_price)} {targetGap !== null && targetGap > 0 ? `(%${targetGap.toFixed(1)} uzak)` : targetGap !== null && targetGap <= 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><CheckCircle size={11} /> TUTTURULDU!</span> : ''}
                 </span>
               )}
-              {tracker.last_checked && <span>📡 {new Date(tracker.last_checked).toLocaleDateString()}</span>}
+              {tracker.last_checked && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Radio size={12} /> {new Date(tracker.last_checked).toLocaleDateString()}</span>}
             </div>
           </div>
 
@@ -319,35 +319,35 @@ function PriceCard({ tracker, onCheck, onDelete, onTargetUpdate, checking }: any
               {checking === tracker.id ? <RefreshCw size={13} style={{ animation: 'pt-spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
             </button>
             <button onClick={() => setShowTargetEdit(!showTargetEdit)}
-              style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: 'rgba(245,158,11,0.12)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: '#fffbeb', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Target size={13} />
             </button>
             <a href={tracker.url} target="_blank" rel="noopener noreferrer"
-              style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+              style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
               <ExternalLink size={13} />
             </a>
             {!confirm ? (
               <button onClick={() => setConfirm(true)}
-                style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: 'rgba(127,29,29,0.25)', color: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Trash2 size={13} />
               </button>
             ) : (
               <button onClick={() => onDelete(tracker.id)}
-                style={{ padding: '5px 10px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'rgba(239,68,68,0.2)', color: '#f87171', fontSize: 11, fontWeight: 700 }}>Sil?</button>
+                style={{ padding: '5px 10px', borderRadius: 9, border: 'none', cursor: 'pointer', background: '#fee2e2', color: '#dc2626', fontSize: 11, fontWeight: 700 }}>Sil?</button>
             )}
           </div>
         </div>
 
         {/* Target price edit */}
         {showTargetEdit && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid #e2e8f0' }}>
             <input value={targetInput} onChange={e => setTargetInput(e.target.value)} placeholder="Hedef fiyat (alarm için)"
-              style={{ flex: 1, background: '#07091c', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 8, padding: '7px 11px', color: '#fff', fontSize: 12, outline: 'none' }} />
+              style={{ flex: 1, background: '#ffffff', border: '1px solid #fde68a', borderRadius: 8, padding: '7px 11px', color: '#0f172a', fontSize: 12, outline: 'none' }} />
             <button onClick={() => { onTargetUpdate(tracker.id, targetInput); setShowTargetEdit(false) }}
-              style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(245,158,11,0.2)', color: '#fbbf24', fontSize: 12, fontWeight: 600 }}>
+              style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#fffbeb', color: '#b45309', fontSize: 12, fontWeight: 600 }}>
               <Bell size={12} style={{ display: 'inline', marginRight: 4 }} />Kaydet
             </button>
-            <button onClick={() => setShowTargetEdit(false)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.05)', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={() => setShowTargetEdit(false)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={12} />
             </button>
           </div>
@@ -357,10 +357,10 @@ function PriceCard({ tracker, onCheck, onDelete, onTargetUpdate, checking }: any
         {tracker.target_price && tracker.current_price && targetGap !== null && targetGap > 0 && (
           <div style={{ marginTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 10, color: '#475569' }}>
-              <span>Hedefe uzaklık</span><span style={{ color: '#f59e0b' }}>{targetGap.toFixed(1)}%</span>
+              <span>Hedefe uzaklık</span><span style={{ color: '#b45309' }}>{targetGap.toFixed(1)}%</span>
             </div>
-            <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
-              <div style={{ height: '100%', width: `${Math.min(100, 100 - targetGap)}%`, background: `linear-gradient(90deg,#10b981,#f59e0b)`, borderRadius: 3, transition: 'width 0.5s ease' }} />
+            <div style={{ height: 3, background: '#e2e8f0', borderRadius: 3 }}>
+              <div style={{ height: '100%', width: `${Math.min(100, 100 - targetGap)}%`, background: `linear-gradient(90deg,#059669,#b45309)`, borderRadius: 3, transition: 'width 0.5s ease' }} />
             </div>
           </div>
         )}
@@ -388,20 +388,20 @@ export default function PriceTrackerPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const [t, a, s] = await Promise.allSettled([
+      const [trackersRes, alertsRes, statsRes] = await Promise.allSettled([
         api.get('/api/price-tracker/list'),
         api.get('/api/price-tracker/alerts'),
         api.get('/api/price-tracker/stats'),
       ])
-      if (t.status === 'fulfilled') { setTrackers(t.value.trackers || []); updateSphereDir(t.value.trackers || []) }
-      if (a.status === 'fulfilled') setAlerts(a.value.alerts || [])
-      if (s.status === 'fulfilled') setStats(s.value)
+      if (trackersRes.status === 'fulfilled') { setTrackers(trackersRes.value.trackers || []); updateSphereDir(trackersRes.value.trackers || []) }
+      if (alertsRes.status === 'fulfilled') setAlerts(alertsRes.value.alerts || [])
+      if (statsRes.status === 'fulfilled') setStats(statsRes.value)
     } catch {} finally { setLoading(false) }
   }
 
   const updateSphereDir = (trs: any[]) => {
-    const drops = trs.filter(t => (t.change_pct || 0) < -0.5).length
-    const rises = trs.filter(t => (t.change_pct || 0) > 0.5).length
+    const drops = trs.filter(tracker => (tracker.change_pct || 0) < -0.5).length
+    const rises = trs.filter(tracker => (tracker.change_pct || 0) > 0.5).length
     setSphereDir(drops > rises ? 'down' : rises > drops ? 'up' : 'flat')
   }
 
@@ -441,7 +441,7 @@ export default function PriceTrackerPage() {
   }
 
   const deleteTracker = async (id: string) => {
-    try { await api.delete(`/api/price-tracker/${id}`); setTrackers(prev => prev.filter(t => t.id !== id)); showMsg('success', 'Silindi') }
+    try { await api.delete(`/api/price-tracker/${id}`); setTrackers(prev => prev.filter(tracker => tracker.id !== id)); showMsg('success', 'Silindi') }
     catch (e: any) { showMsg('error', e.message) }
   }
 
@@ -453,18 +453,18 @@ export default function PriceTrackerPage() {
     } catch (e: any) { showMsg('error', e.message) }
   }
 
-  const drops = trackers.filter(t => (t.change_pct || 0) < -0.5)
-  const rises = trackers.filter(t => (t.change_pct || 0) > 0.5)
+  const drops = trackers.filter(tracker => (tracker.change_pct || 0) < -0.5)
+  const rises = trackers.filter(tracker => (tracker.change_pct || 0) > 0.5)
 
-  const inp = { width: '100%', background: '#070a1c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 13px', color: '#fff' as const, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const inp = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 13px', color: '#0f172a' as const, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={{ padding: 0 }}>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(2,8,20,0.98),rgba(5,6,18,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(16,185,129,0.15)' }}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.03) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
-        <div style={{ position: 'absolute', top: -50, right: -20, width: 280, height: 280, background: 'radial-gradient(circle,rgba(16,185,129,0.09) 0%,transparent 70%)', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fffbeb 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fde68a' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.025) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
+        <div style={{ position: 'absolute', top: -50, right: -20, width: 280, height: 280, background: 'radial-gradient(circle,rgba(16,185,129,0.05) 0%,transparent 70%)', zIndex: 0 }} />
         <div style={{ position: 'absolute', top: 22, right: 210, zIndex: 1, opacity: 0.5 }}><FloatTicker size={14} delay="0s" color="#10b981" /></div>
         <div style={{ position: 'absolute', top: 65, right: 270, zIndex: 1, opacity: 0.4 }}><FloatTicker size={10} delay="0.8s" color="#f59e0b" /></div>
         <div style={{ position: 'absolute', bottom: 28, right: 225, zIndex: 1, opacity: 0.4 }}><FloatTicker size={12} delay="1.6s" color="#ef4444" /></div>
@@ -474,20 +474,20 @@ export default function PriceTrackerPage() {
             <PriceSphere size={100} direction={sphereDir} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Rakip Fiyat Takibi</h1>
+                <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Rakip Fiyat Takibi</h1>
                 <span style={{ background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>7/24</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('price_tracker.rakiplerin_fiyatlarini_72', 'Rakiplerin fiyatlarını 7/24 izle — hedef fiyata düşünce WhatsApp\'a alarm al')}</p>
+              <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('price_tracker.rakiplerin_fiyatlarini_72', 'Rakiplerin fiyatlarını 7/24 izle — hedef fiyata düşünce WhatsApp\'a alarm al')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {['📉 Fiyat Düşüş Alarmı', '🎯 Hedef Fiyat', '📊 Trend Grafiği', '⚡ WhatsApp Bildirim', '🌍 Her Site'].map(f => (
-                  <span key={f} style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
+                  <span key={f} style={{ background: '#ecfdf5', border: '1px solid #d1fae5', color: '#059669', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
                 ))}
               </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
             <button onClick={checkAll} disabled={checking === 'all' || !trackers.length}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(16,185,129,0.25)', cursor: checking === 'all' || !trackers.length ? 'not-allowed' : 'pointer', background: 'rgba(16,185,129,0.08)', color: '#34d399', fontSize: 13, fontWeight: 600, opacity: !trackers.length ? 0.4 : 1 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid #a7f3d0', cursor: checking === 'all' || !trackers.length ? 'not-allowed' : 'pointer', background: '#ecfdf5', color: '#059669', fontSize: 13, fontWeight: 600, opacity: !trackers.length ? 0.4 : 1 }}>
               {checking === 'all' ? <RefreshCw size={13} style={{ animation: 'pt-spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
               Tümünü Kontrol Et
             </button>
@@ -501,16 +501,16 @@ export default function PriceTrackerPage() {
         {/* Stats */}
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
           {[
-            { label: 'Takip Edilen', value: stats.total, color: '#06b6d4', icon: '👁️' },
-            { label: t('Fiyat Düşüşü','Fiyat Düşüşü'), value: stats.priceDrops, color: '#10b981', icon: '📉' },
-            { label: t('Fiyat Artışı','Fiyat Artışı'), value: stats.priceRises, color: '#ef4444', icon: '📈' },
-            { label: 'Aktif Alarm', value: trackers.filter(t => t.target_price).length, color: '#f59e0b', icon: '🎯' },
-          ].map(({ label, value, color, icon }) => (
-            <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', width: 56, height: 56, background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
-              <p style={{ color, fontSize: 24, fontWeight: 800, margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
-              <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{label}</p>
+            { label: 'Takip Edilen', value: stats.total, color: '#0d9488', Icon: Eye },
+            { label: t('Fiyat Düşüşü','Fiyat Düşüşü'), value: stats.priceDrops, color: '#059669', Icon: TrendingDown },
+            { label: t('Fiyat Artışı','Fiyat Artışı'), value: stats.priceRises, color: '#dc2626', Icon: TrendingUp },
+            { label: 'Aktif Alarm', value: trackers.filter(tracker => tracker.target_price).length, color: '#b45309', Icon: Target },
+          ].map((m) => (
+            <div key={m.label} style={{ background: '#ffffff', borderRadius: 12, padding: '14px 12px', border: `1px solid ${m.color}22`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', width: 56, height: 56, background: `radial-gradient(circle,${m.color}20 0%,transparent 70%)` }} />
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}><m.Icon size={20} style={{ color: m.color }} /></div>
+              <p style={{ color: m.color, fontSize: 24, fontWeight: 800, margin: '0 0 2px', lineHeight: 1 }}>{m.value}</p>
+              <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{m.label}</p>
             </div>
           ))}
         </div>
@@ -518,57 +518,57 @@ export default function PriceTrackerPage() {
 
       {/* ── TOAST ─────────────────────────────────────────────────────────── */}
       {msg && (
-        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${msg.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, color: msg.type === 'success' ? '#34d399' : '#f87171' }}>
+        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: msg.type === 'success' ? '#059669' : '#dc2626' }}>
           {msg.text}
         </div>
       )}
 
       {/* ── ADD FORM ──────────────────────────────────────────────────────── */}
       {showAdd && (
-        <div style={{ marginBottom: 22, background: 'linear-gradient(135deg,rgba(3,8,20,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 18, padding: 24 }}>
+        <div style={{ marginBottom: 22, background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 18, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <Plus size={15} style={{ color: '#10b981' }} />
-            <h3 style={{ color: '#fff', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('price_tracker.yeni_urun_fiyati_takip_et', 'Yeni Ürün Fiyatı Takip Et')}</h3>
+            <Plus size={15} style={{ color: '#059669' }} />
+            <h3 style={{ color: '#0f172a', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('price_tracker.yeni_urun_fiyati_takip_et', 'Yeni Ürün Fiyatı Takip Et')}</h3>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.urun_url_trendyol_amazon', 'Ürün URL * (Trendyol, Amazon, rakip site...)')}</label>
-              <input value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} placeholder="https://www.trendyol.com/..." style={{ ...inp, border: `1px solid ${form.url ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'}` }} />
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.urun_url_trendyol_amazon', 'Ürün URL * (Trendyol, Amazon, rakip site...)')}</label>
+              <input value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} placeholder="https://www.trendyol.com/..." style={{ ...inp, border: `1px solid ${form.url ? '#6ee7b7' : '#e2e8f0'}` }} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.urun_adi', 'Ürün Adı')}</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.urun_adi', 'Ürün Adı')}</label>
               <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder={t('price_tracker.koltuk_takimi_31', 'Koltuk Takımı 3+1')} style={inp} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.rakip_adi', 'Rakip Adı')}</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.rakip_adi', 'Rakip Adı')}</label>
               <input value={form.competitorName} onChange={e => setForm(p => ({ ...p, competitorName: e.target.value }))} placeholder="Trendyol, Dekonil..." style={inp} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>🎯 Hedef Fiyat (alarm)</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}><Target size={11} /> Hedef Fiyat (alarm)</label>
               <input value={form.targetPrice} onChange={e => setForm(p => ({ ...p, targetPrice: e.target.value }))} placeholder="₺4.500" style={inp} type="number" />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={addTracker} disabled={adding || !form.url}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px', borderRadius: 11, border: 'none', cursor: adding || !form.url ? 'not-allowed' : 'pointer', background: form.url ? 'linear-gradient(135deg,#065f46,#10b981)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, fontWeight: 700, opacity: !form.url ? 0.4 : 1 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px', borderRadius: 11, border: 'none', cursor: adding || !form.url ? 'not-allowed' : 'pointer', background: form.url ? 'linear-gradient(135deg,#065f46,#10b981)' : '#f1f5f9', color: form.url ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 700, opacity: !form.url ? 0.4 : 1 }}>
               {adding ? <RefreshCw size={13} style={{ animation: 'pt-spin 1s linear infinite' }} /> : <Plus size={13} />}
               {adding ? 'Fiyat tespit ediliyor...' : 'Takibe Al'}
             </button>
-            <button onClick={() => setShowAdd(false)} style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>{t('price_tracker.iptal', 'İptal')}</button>
+            <button onClick={() => setShowAdd(false)} style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#475569', fontSize: 13, cursor: 'pointer' }}>{t('price_tracker.iptal', 'İptal')}</button>
           </div>
-          <p style={{ color: '#334155', fontSize: 11, marginTop: 10 }}>{t('price_tracker.url_ekledikten_sonra_otom', '💡 URL ekledikten sonra otomatik fiyat tespit edilir. Hedef fiyat girersen, o fiyata düştüğünde WhatsApp\'a anında bildirim gelir.')}</p>
+          <p style={{ color: '#475569', fontSize: 11, marginTop: 10 }}>{t('price_tracker.url_ekledikten_sonra_otom', '💡 URL ekledikten sonra otomatik fiyat tespit edilir. Hedef fiyat girersen, o fiyata düştüğünde WhatsApp\'a anında bildirim gelir.')}</p>
         </div>
       )}
 
       {/* ── PRICE DROPS HIGHLIGHT ─────────────────────────────────────────── */}
       {drops.length > 0 && (
-        <div style={{ marginBottom: 16, padding: '12px 18px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 18 }}>📉</span>
-          <span style={{ color: '#34d399', fontSize: 13, fontWeight: 600 }}>{drops.length} üründe fiyat düştü — rakiplerden ucuz fırsat!</span>
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <TrendingDown size={18} style={{ color: '#059669' }} />
+          <span style={{ color: '#059669', fontSize: 13, fontWeight: 600 }}>{drops.length} üründe fiyat düştü — rakiplerden ucuz fırsat!</span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginLeft: 'auto' }}>
-            {drops.slice(0, 3).map((t: any) => (
-              <span key={t.id} style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399', fontSize: 11, padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(16,185,129,0.25)' }}>
-                {t.name.slice(0, 20)}: {t.change_pct?.toFixed(1)}%
+            {drops.slice(0, 3).map((tr: any) => (
+              <span key={tr.id} style={{ background: '#d1fae5', color: '#047857', fontSize: 11, padding: '3px 10px', borderRadius: 20, border: '1px solid #a7f3d0' }}>
+                {tr.name.slice(0, 20)}: {tr.change_pct?.toFixed(1)}%
               </span>
             ))}
           </div>
@@ -581,7 +581,7 @@ export default function PriceTrackerPage() {
           <RefreshCw size={22} style={{ color: '#475569', animation: 'pt-spin 1s linear infinite' }} />
         </div>
       ) : trackers.length === 0 ? (
-        <div style={{ background: 'linear-gradient(135deg,rgba(3,8,20,0.98),rgba(5,6,18,0.99))', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 60, textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><PriceSphere size={60} direction="flat" /></div>
           <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('price_tracker.henuz_takip_edilen_urun_y', 'Henüz takip edilen ürün yok')}</p>
           <button onClick={() => setShowAdd(true)} style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 14, fontWeight: 700 }}>
@@ -591,8 +591,8 @@ export default function PriceTrackerPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Sort: drops first, then flats, then rises */}
-          {[...trackers].sort((a, b) => (a.change_pct || 0) - (b.change_pct || 0)).map((t: any) => (
-            <PriceCard key={t.id} tracker={t} onCheck={checkOne} onDelete={deleteTracker} onTargetUpdate={updateTarget} checking={checking} />
+          {[...trackers].sort((a, b) => (a.change_pct || 0) - (b.change_pct || 0)).map((tr: any) => (
+            <PriceCard key={tr.id} tracker={tr} onCheck={checkOne} onDelete={deleteTracker} onTargetUpdate={updateTarget} checking={checking} />
           ))}
         </div>
       )}
@@ -600,18 +600,18 @@ export default function PriceTrackerPage() {
       {/* ── RECENT ALERTS ─────────────────────────────────────────────────── */}
       {alerts.length > 0 && (
         <div style={{ marginTop: 28 }}>
-          <h3 style={{ color: '#94a3b8', fontSize: 13, fontWeight: 600, margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('price_tracker.son_fiyat_degisimleri', 'Son Fiyat Değişimleri')}</h3>
+          <h3 style={{ color: '#475569', fontSize: 13, fontWeight: 600, margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 1 }}>{t('price_tracker.son_fiyat_degisimleri', 'Son Fiyat Değişimleri')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {alerts.slice(0, 10).map((a: any) => {
               const isDown = a.direction === 'down'
-              const color = isDown ? '#10b981' : '#ef4444'
+              const color = isDown ? '#059669' : '#dc2626'
               const pct = a.old_price ? Math.abs((a.new_price - a.old_price) / a.old_price * 100).toFixed(1) : '0'
               const curr = a.price_trackers?.currency || 'TRY'
               return (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: `${color}06`, border: `1px solid ${color}18`, borderRadius: 11 }}>
-                  <span style={{ fontSize: 18 }}>{isDown ? '📉' : '📈'}</span>
+                  {isDown ? <TrendingDown size={18} style={{ color }} /> : <TrendingUp size={18} style={{ color }} />}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 600 }}>{a.price_trackers?.name || '?'}</span>
+                    <span style={{ color: '#0f172a', fontSize: 13, fontWeight: 600 }}>{a.price_trackers?.name || '?'}</span>
                     <span style={{ color: '#475569', fontSize: 11, marginLeft: 8 }}>{a.price_trackers?.competitor_name}</span>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -619,7 +619,7 @@ export default function PriceTrackerPage() {
                       {a.old_price?.toLocaleString()} → {a.new_price?.toLocaleString()} {curr}
                       <span style={{ fontSize: 11, marginLeft: 6, opacity: 0.7 }}>({isDown ? '-' : '+'}{pct}%)</span>
                     </div>
-                    <div style={{ color: '#334155', fontSize: 11 }}>{new Date(a.checked_at).toLocaleString()}</div>
+                    <div style={{ color: '#475569', fontSize: 11 }}>{new Date(a.checked_at).toLocaleString()}</div>
                   </div>
                 </div>
               )

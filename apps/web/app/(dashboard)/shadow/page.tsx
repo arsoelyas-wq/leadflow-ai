@@ -2,7 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Eye, Copy, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { RefreshCw, Eye, Copy, CheckCircle, ChevronDown, ChevronUp, AlertTriangle, Zap, Target, MapPin, Factory, Star, Wrench, Radio, DollarSign, Package, Instagram, Facebook, Settings, Briefcase, BarChart3, TrendingUp, AlertCircle } from 'lucide-react'
 
 // ── SHADOW ORB — Covert surveillance 3D animation ─────────────────────────────
 function ShadowOrb({ size = 100, scanning = false }: { size?: number; scanning?: boolean }) {
@@ -115,13 +115,13 @@ function FloatOrb({ size = 14, delay = '0s', color = '#7c3aed' }: any) {
 
 // ── THREAT GAUGE ──────────────────────────────────────────────────────────────
 function ThreatGauge({ score }: { score: number }) {
-  const color = score >= 70 ? '#ef4444' : score >= 40 ? '#f59e0b' : '#10b981'
+  const color = score >= 70 ? '#dc2626' : score >= 40 ? '#b45309' : '#059669'
   const label = score >= 70 ? 'Yüksek' : score >= 40 ? 'Orta' : 'Düşük'
   const circ = 2 * Math.PI * 28
   return (
     <div style={{ position: 'relative', width: 70, height: 70, flexShrink: 0 }}>
       <svg width={70} height={70}>
-        <circle cx={35} cy={35} r={28} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={5} />
+        <circle cx={35} cy={35} r={28} fill="none" stroke="#e2e8f0" strokeWidth={5} />
         <circle cx={35} cy={35} r={28} fill="none" stroke={color} strokeWidth={5}
           strokeDasharray={circ} strokeDashoffset={circ * (1 - score / 100)}
           strokeLinecap="round" transform="rotate(-90 35 35)"
@@ -163,7 +163,7 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
     setTilt({ x: ((e.clientY - rect.top - rect.height/2) / (rect.height/2)) * 3.5, y: (-(e.clientX - rect.left - rect.width/2) / (rect.width/2)) * 3.5 })
   }
 
-  const sev: Record<string, string> = { danger: '#ef4444', warning: '#f59e0b', info: '#8b5cf6' }
+  const sev: Record<string, string> = { danger: '#dc2626', warning: '#b45309', info: '#7c3aed' }
 
   return (
     <div ref={cardRef}
@@ -172,28 +172,28 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
       onMouseMove={handleMouseMove}
       style={{ position: 'relative', transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`, transition: hovered ? 'transform 0.05s ease' : 'transform 0.4s ease' }}>
       <div style={{ position: 'absolute', inset: -1.5, borderRadius: 19, zIndex: 0, background: hovered ? 'linear-gradient(135deg,#7c3aed,#a78bfa,#4f46e5,#7c3aed)' : `linear-gradient(135deg,${threatScore>=70?'#ef444430':'#7c3aed28'},#4f46e520)`, backgroundSize: '300% 300%', animation: hovered ? 'sh-border 2s linear infinite' : 'none' }} />
-      <div style={{ position: 'relative', zIndex: 1, background: 'linear-gradient(135deg,rgba(5,0,20,0.97),rgba(8,2,24,0.98))', borderRadius: 18, overflow: 'hidden' }}>
+      <div style={{ position: 'relative', zIndex: 1, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
 
         {/* Header row */}
         <div style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
           <ThreatGauge score={threatScore} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-              <p style={{ color: '#fff', fontWeight: 700, fontSize: 15, margin: 0 }}>{comp.name}</p>
-              {changes.length > 0 && <span style={{ background: 'rgba(245,158,11,0.14)', color: '#fbbf24', fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, border: '1px solid rgba(245,158,11,0.28)' }}>{changes.length} değişiklik</span>}
-              {threatScore >= 70 && <span style={{ background: 'rgba(239,68,68,0.14)', color: '#f87171', fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, border: '1px solid rgba(239,68,68,0.28)' }}>⚠️ Yüksek Tehdit</span>}
+              <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 15, margin: 0 }}>{comp.name}</p>
+              {changes.length > 0 && <span style={{ background: '#fffbeb', color: '#b45309', fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, border: '1px solid #fde68a' }}>{changes.length} değişiklik</span>}
+              {threatScore >= 70 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fef2f2', color: '#dc2626', fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, border: '1px solid #fecaca' }}><AlertTriangle size={11} /> Yüksek Tehdit</span>}
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11, color: '#475569' }}>
-              {comp.city && <span>📍 {comp.city}</span>}
-              {comp.sector && <span>🏭 {comp.sector}</span>}
-              {shadowData.reviews?.avg ? <span style={{ color: '#f59e0b' }}>⭐ {shadowData.reviews.avg}/5 ({shadowData.reviews.count})</span> : null}
-              {shadowData.techStack?.length ? <span>🔧 {shadowData.techStack.slice(0,2).join(', ')}</span> : null}
-              {comp.last_scanned_at && <span>📡 {new Date(comp.last_scanned_at).toLocaleDateString()}</span>}
+              {comp.city && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><MapPin size={12} /> {comp.city}</span>}
+              {comp.sector && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Factory size={12} /> {comp.sector}</span>}
+              {shadowData.reviews?.avg ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#b45309' }}><Star size={12} /> {shadowData.reviews.avg}/5 ({shadowData.reviews.count})</span> : null}
+              {shadowData.techStack?.length ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Wrench size={12} /> {shadowData.techStack.slice(0,2).join(', ')}</span> : null}
+              {comp.last_scanned_at && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Radio size={12} /> {new Date(comp.last_scanned_at).toLocaleDateString()}</span>}
             </div>
             {changes.length > 0 && (
               <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap' }}>
                 {changes.slice(0,3).map((c: any, i: number) => (
-                  <span key={i} style={{ background: `${sev[c.severity]||'#8b5cf6'}18`, color: sev[c.severity]||'#a78bfa', fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${sev[c.severity]||'#8b5cf6'}28` }}>
+                  <span key={i} style={{ background: `${sev[c.severity]||'#7c3aed'}18`, color: sev[c.severity]||'#7c3aed', fontSize: 10, padding: '2px 8px', borderRadius: 20, border: `1px solid ${sev[c.severity]||'#7c3aed'}28` }}>
                     {c.label.slice(0,42)}{c.label.length>42?'…':''}
                   </span>
                 ))}
@@ -202,12 +202,12 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
           </div>
           <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
             <button onClick={() => onScan(comp.id)} disabled={isScanning}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1px solid rgba(124,58,237,0.35)', cursor: isScanning?'not-allowed':'pointer', background: 'rgba(124,58,237,0.1)', color: '#a78bfa', fontSize: 12, fontWeight: 600 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1px solid #ddd6fe', cursor: isScanning?'not-allowed':'pointer', background: '#f5f3ff', color: '#7c3aed', fontSize: 12, fontWeight: 600 }}>
               {isScanning ? <RefreshCw size={12} style={{ animation: 'sh-spin 1s linear infinite' }} /> : <Eye size={12} />}
               {isScanning ? 'Taranıyor...' : 'Tara'}
             </button>
             <button onClick={() => setExpanded(!expanded)}
-              style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.04)', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ width: 32, height: 32, borderRadius: 9, border: 'none', cursor: 'pointer', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
           </div>
@@ -215,63 +215,63 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
 
         {/* Expanded */}
         {expanded && (
-          <div style={{ borderTop: '1px solid rgba(124,58,237,0.1)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ borderTop: '1px solid #ede9fe', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {!comp.website && (
               <div style={{ display: 'flex', gap: 8 }}>
                 <input value={webInput} onChange={e => setWebInput(e.target.value)} placeholder="Website ekle (daha iyi analiz için)"
-                  style={{ flex: 1, background: '#07091c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '8px 12px', color: '#fff', fontSize: 12, outline: 'none' }} />
+                  style={{ flex: 1, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '8px 12px', color: '#0f172a', fontSize: 12, outline: 'none' }} />
                 <button onClick={async () => { await api.post(`/api/shadow/add-website/${comp.id}`, { website: webInput }); window.location.reload() }} disabled={!webInput}
-                  style={{ padding: '8px 14px', borderRadius: 9, border: 'none', cursor: !webInput?'not-allowed':'pointer', background: 'rgba(124,58,237,0.2)', color: '#a78bfa', fontSize: 12, fontWeight: 600 }}>Ekle</button>
+                  style={{ padding: '8px 14px', borderRadius: 9, border: 'none', cursor: !webInput?'not-allowed':'pointer', background: '#ede9fe', color: '#7c3aed', fontSize: 12, fontWeight: 600 }}>Ekle</button>
               </div>
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(175px,1fr))', gap: 10 }}>
               {shadowData.pricing?.length > 0 && (
-                <div style={{ background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)', borderRadius: 12, padding: 13 }}>
-                  <p style={{ color: '#a78bfa', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>💰 Fiyatlar</p>
-                  {shadowData.pricing.slice(0,6).map((p: string, i: number) => <p key={i} style={{ color: '#e2e8f0', fontSize: 12, margin: '0 0 3px' }}>{p}</p>)}
+                <div style={{ background: '#f5f3ff', border: '1px solid #ede9fe', borderRadius: 12, padding: 13 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#7c3aed', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}><DollarSign size={12} /> Fiyatlar</p>
+                  {shadowData.pricing.slice(0,6).map((p: string, i: number) => <p key={i} style={{ color: '#0f172a', fontSize: 12, margin: '0 0 3px' }}>{p}</p>)}
                 </div>
               )}
               {shadowData.products?.length > 0 && (
-                <div style={{ background: 'rgba(79,70,229,0.06)', border: '1px solid rgba(79,70,229,0.15)', borderRadius: 12, padding: 13 }}>
-                  <p style={{ color: '#818cf8', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>📦 Ürünler</p>
-                  {shadowData.products.slice(0,6).map((p: string, i: number) => <p key={i} style={{ color: '#e2e8f0', fontSize: 12, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</p>)}
+                <div style={{ background: '#eef2ff', border: '1px solid #e0e7ff', borderRadius: 12, padding: 13 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#4f46e5', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}><Package size={12} /> Ürünler</p>
+                  {shadowData.products.slice(0,6).map((p: string, i: number) => <p key={i} style={{ color: '#0f172a', fontSize: 12, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</p>)}
                 </div>
               )}
               {shadowData.complaints?.length > 0 && (
-                <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 12, padding: 13 }}>
-                  <p style={{ color: '#f87171', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>⚠️ Şikayetler — Fırsat!</p>
-                  {shadowData.complaints.slice(0,4).map((c: string, i: number) => <p key={i} style={{ color: '#fca5a5', fontSize: 11, margin: '0 0 4px', lineHeight: 1.4 }}>• {c.slice(0,62)}{c.length>62?'…':''}</p>)}
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: 13 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#dc2626', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}><AlertTriangle size={12} /> Şikayetler — Fırsat!</p>
+                  {shadowData.complaints.slice(0,4).map((c: string, i: number) => <p key={i} style={{ color: '#b91c1c', fontSize: 11, margin: '0 0 4px', lineHeight: 1.4 }}>• {c.slice(0,62)}{c.length>62?'…':''}</p>)}
                 </div>
               )}
               {((shadowData.social?.instagram || shadowData.social?.facebook || (shadowData.techStack?.length||0)>0 || (shadowData.jobPostings?.length||0)>0)) && (
-                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: 13 }}>
-                  <p style={{ color: '#94a3b8', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}>🔧 Dijital Varlık</p>
-                  {shadowData.social?.instagram && <p style={{ color: '#e2e8f0', fontSize: 11, margin: '0 0 3px' }}>📸 Instagram</p>}
-                  {shadowData.social?.facebook && <p style={{ color: '#e2e8f0', fontSize: 11, margin: '0 0 3px' }}>📘 Facebook</p>}
-                  {(shadowData.techStack||[]).slice(0,4).map((t: string, i: number) => <p key={i} style={{ color: '#64748b', fontSize: 11, margin: '0 0 2px' }}>⚙️ {t}</p>)}
-                  {(shadowData.jobPostings?.length||0)>0 && <p style={{ color: '#fbbf24', fontSize: 11, marginTop: 6 }}>📋 {shadowData.jobPostings.length} iş ilanı — büyüme sinyali!</p>}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 13 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#475569', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}><Wrench size={12} /> Dijital Varlık</p>
+                  {shadowData.social?.instagram && <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#0f172a', fontSize: 11, margin: '0 0 3px' }}><Instagram size={12} /> Instagram</p>}
+                  {shadowData.social?.facebook && <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#0f172a', fontSize: 11, margin: '0 0 3px' }}><Facebook size={12} /> Facebook</p>}
+                  {(shadowData.techStack||[]).slice(0,4).map((t: string, i: number) => <p key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#475569', fontSize: 11, margin: '0 0 2px' }}><Settings size={12} /> {t}</p>)}
+                  {(shadowData.jobPostings?.length||0)>0 && <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#b45309', fontSize: 11, marginTop: 6 }}><Briefcase size={12} /> {shadowData.jobPostings.length} iş ilanı — büyüme sinyali!</p>}
                 </div>
               )}
             </div>
 
             {/* AI Insight */}
             {aiInsight && (
-              <div style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.06))', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 14, padding: 16 }}>
-                <p style={{ color: '#a78bfa', fontSize: 10, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}>⚡ AI Stratejik Analiz</p>
+              <div style={{ background: 'linear-gradient(135deg,#f5f3ff,#eef2ff)', border: '1px solid #ede9fe', borderRadius: 14, padding: 16 }}>
+                <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#7c3aed', fontSize: 10, fontWeight: 700, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}><Zap size={12} /> AI Stratejik Analiz</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {[{ key:'insight',label:'📊 Gözlem',color:'#a78bfa'},{key:'opportunity',label:'✅ Fırsat',color:'#34d399'},{key:'threat',label:'🔴 Tehdit',color:'#f87171'},{key:'action',label:'⚡ Aksiyon',color:'#fbbf24'}].map(({ key,label,color }) => aiInsight[key] ? (
-                    <div key={key} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 9, padding: '10px 12px' }}>
-                      <p style={{ color, fontSize: 9, fontWeight: 700, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</p>
-                      <p style={{ color: '#cbd5e1', fontSize: 12, margin: 0, lineHeight: 1.4 }}>{aiInsight[key]}</p>
+                  {[{ key:'insight',label:'Gözlem',Icon:BarChart3,color:'#7c3aed'},{key:'opportunity',label:'Fırsat',Icon:CheckCircle,color:'#059669'},{key:'threat',label:'Tehdit',Icon:AlertCircle,color:'#dc2626'},{key:'action',label:'Aksiyon',Icon:Zap,color:'#b45309'}].map(({ key,label,Icon,color }) => aiInsight[key] ? (
+                    <div key={key} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px' }}>
+                      <p style={{ display: 'flex', alignItems: 'center', gap: 5, color, fontSize: 9, fontWeight: 700, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}><Icon size={11} /> {label}</p>
+                      <p style={{ color: '#0f172a', fontSize: 12, margin: 0, lineHeight: 1.4 }}>{aiInsight[key]}</p>
                     </div>
                   ) : null)}
                 </div>
                 {aiInsight.action && (
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
                     <button onClick={() => { navigator.clipboard.writeText(aiInsight.action); setCopied(true); setTimeout(()=>setCopied(false),2000) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.3)', background: 'transparent', color: '#a78bfa', fontSize: 11, cursor: 'pointer' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: '1px solid #ddd6fe', background: '#ffffff', color: '#7c3aed', fontSize: 11, cursor: 'pointer' }}>
                       {copied ? <CheckCircle size={11} /> : <Copy size={11} />} Aksiyonu Kopyala
                     </button>
                   </div>
@@ -281,17 +281,17 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
 
             {/* Price history chart */}
             {priceHistory.length > 1 && (
-              <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: 12, padding: 14 }}>
-                <p style={{ color: '#334155', fontSize: 10, fontWeight: 600, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}>📈 Tehdit Skoru Geçmişi (son 14 gün)</p>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
+                <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#475569', fontSize: 10, fontWeight: 600, margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: 1 }}><TrendingUp size={12} /> Tehdit Skoru Geçmişi (son 14 gün)</p>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 44 }}>
                   {priceHistory.slice(-14).map((h: any, i: number) => {
-                    const c = (h.score||0)>=70?'#ef4444':(h.score||0)>=40?'#f59e0b':'#10b981'
-                    return <div key={i} title={`${h.date}: ${h.score}`} style={{ flex: 1, background: c, height: `${Math.max(4,(h.score||0))}%`, borderRadius: 3, opacity: 0.7 }} />
+                    const c = (h.score||0)>=70?'#dc2626':(h.score||0)>=40?'#b45309':'#059669'
+                    return <div key={i} title={`${h.date}: ${h.score}`} style={{ flex: 1, background: c, height: `${Math.max(4,(h.score||0))}%`, borderRadius: 3, opacity: 0.85 }} />
                   })}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ color: '#1e293b', fontSize: 9 }}>{priceHistory.slice(-14)[0]?.date}</span>
-                  <span style={{ color: '#1e293b', fontSize: 9 }}>{priceHistory[priceHistory.length-1]?.date}</span>
+                  <span style={{ color: '#475569', fontSize: 9 }}>{priceHistory.slice(-14)[0]?.date}</span>
+                  <span style={{ color: '#475569', fontSize: 9 }}>{priceHistory[priceHistory.length-1]?.date}</span>
                 </div>
               </div>
             )}
@@ -360,9 +360,9 @@ export default function ShadowPage() {
     <div style={{ padding: 0 }}>
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,rgba(5,0,20,0.98),rgba(8,2,25,0.99))', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid rgba(124,58,237,0.18)' }}>
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(124,58,237,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.04) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
-        <div style={{ position: 'absolute', top: -50, right: -30, width: 280, height: 280, background: 'radial-gradient(circle,rgba(124,58,237,0.1) 0%,transparent 70%)', zIndex: 0 }} />
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #ede9fe' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(124,58,237,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.025) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 280, height: 280, background: 'radial-gradient(circle,rgba(124,58,237,0.06) 0%,transparent 70%)', zIndex: 0 }} />
         <div style={{ position: 'absolute', top: 22, right: 200, zIndex: 1, opacity: 0.5 }}><FloatOrb size={16} delay="0s" color="#7c3aed" /></div>
         <div style={{ position: 'absolute', top: 65, right: 260, zIndex: 1, opacity: 0.4 }}><FloatOrb size={10} delay="1.2s" color="#a78bfa" /></div>
         <div style={{ position: 'absolute', bottom: 28, right: 215, zIndex: 1, opacity: 0.4 }}><FloatOrb size={12} delay="2s" color="#4f46e5" /></div>
@@ -372,24 +372,24 @@ export default function ShadowPage() {
             <ShadowOrb size={100} scanning={scanning !== null} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Shadow Competitor Monitoring</h1>
+                <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Shadow Competitor Monitoring</h1>
                 <span style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>PRO</span>
               </div>
-              <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('shadow.rakiplerinizi_surekli_izl', 'Rakiplerinizi sürekli izleyin — fiyat, ürün, yorum ve strateji değişikliklerini anında fark edin')}</p>
+              <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('shadow.rakiplerinizi_surekli_izl', 'Rakiplerinizi sürekli izleyin — fiyat, ürün, yorum ve strateji değişikliklerini anında fark edin')}</p>
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 {['🎯 Tehdit Skoru','💰 Fiyat Takibi','📊 Trend Grafik','⚡ WhatsApp Alarm','🤖 AI Strateji','🌍 75 Ülke'].map(f => (
-                  <span key={f} style={{ background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.18)', color: '#94a3b8', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
+                  <span key={f} style={{ background: '#f5f3ff', border: '1px solid #ede9fe', color: '#7c3aed', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
                 ))}
               </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
             <button onClick={() => setAddForm(!addForm)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(124,58,237,0.4)', cursor: 'pointer', background: 'linear-gradient(135deg,rgba(124,58,237,0.2),rgba(79,70,229,0.15))', color: '#c4b5fd', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 16px rgba(124,58,237,0.2)' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid #ddd6fe', cursor: 'pointer', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#ffffff', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(124,58,237,0.25)' }}>
               + Rakip Ekle
             </button>
             <button onClick={scanAll} disabled={scanning==='all'||!competitors.length}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(124,58,237,0.25)', cursor: scanning==='all'||!competitors.length?'not-allowed':'pointer', background: 'rgba(124,58,237,0.08)', color: '#a78bfa', fontSize: 13, fontWeight: 600, opacity: !competitors.length?0.4:1 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 12, border: '1px solid #ddd6fe', cursor: scanning==='all'||!competitors.length?'not-allowed':'pointer', background: '#f5f3ff', color: '#7c3aed', fontSize: 13, fontWeight: 600, opacity: !competitors.length?0.4:1 }}>
               {scanning==='all' ? <RefreshCw size={13} style={{ animation: 'sh-spin 1s linear infinite' }} /> : <Eye size={13} />}
               Tümünü Tara
             </button>
@@ -399,14 +399,14 @@ export default function ShadowPage() {
         {/* Stats */}
         <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
           {[
-            { label: t('Rakip İzleniyor','Rakip İzleniyor'), value:competitors.length, color:'#7c3aed', icon:'👁️' },
-            { label: t('Yüksek Tehdit','Yüksek Tehdit'),   value:highThreat,         color:'#ef4444', icon:'🚨' },
-            { label: t('Değişiklik','Değişiklik'),      value:totalChanges,        color:'#f59e0b', icon:'⚡' },
-            { label:'Ort. Tehdit',     value:avgThreat,           color:'#8b5cf6', icon:'🎯' },
-          ].map(({ label, value, color, icon }) => (
-            <div key={label} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', width: 56, height: 56, background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+            { label: t('Rakip İzleniyor','Rakip İzleniyor'), value:competitors.length, color:'#7c3aed', Icon:Eye },
+            { label: t('Yüksek Tehdit','Yüksek Tehdit'),   value:highThreat,         color:'#dc2626', Icon:AlertTriangle },
+            { label: t('Değişiklik','Değişiklik'),      value:totalChanges,        color:'#b45309', Icon:Zap },
+            { label:'Ort. Tehdit',     value:avgThreat,           color:'#7c3aed', Icon:Target },
+          ].map(({ label, value, color, Icon }) => (
+            <div key={label} style={{ background: '#ffffff', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', width: 56, height: 56, background: `radial-gradient(circle,${color}18 0%,transparent 70%)` }} />
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}><Icon size={20} style={{ color }} /></div>
               <p style={{ color, fontSize: 24, fontWeight: 800, margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
               <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{label}</p>
             </div>
@@ -416,43 +416,43 @@ export default function ShadowPage() {
 
       {/* ── TOAST ─────────────────────────────────────────────────────────── */}
       {msg && (
-        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type==='success'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border: `1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, color: msg.type==='success'?'#34d399':'#f87171' }}>
+        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type==='success'?'#ecfdf5':'#fef2f2', border: `1px solid ${msg.type==='success'?'#a7f3d0':'#fecaca'}`, color: msg.type==='success'?'#059669':'#dc2626' }}>
           {msg.text}
         </div>
       )}
 
       {/* ── ADD FORM ──────────────────────────────────────────────────────── */}
       {addForm && (
-        <div style={{ marginBottom: 20, background: 'linear-gradient(135deg,rgba(5,0,20,0.98),rgba(8,2,25,0.99))', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 16, padding: 22 }}>
-          <p style={{ color: '#a78bfa', fontWeight: 700, fontSize: 14, margin: '0 0 16px' }}>+ Yeni Rakip Ekle</p>
+        <div style={{ marginBottom: 20, background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <p style={{ color: '#7c3aed', fontWeight: 700, fontSize: 14, margin: '0 0 16px' }}>+ Yeni Rakip Ekle</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('shadow.rakip_firma_adi', 'Rakip Firma Adı *')}</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('shadow.rakip_firma_adi', 'Rakip Firma Adı *')}</label>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('shadow.orn_dekonil', 'örn: Dekonil')}
-                style={{ width: '100%', background: '#07091c', border: `1px solid ${newName ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 9, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', background: '#ffffff', border: `1px solid ${newName ? '#c4b5fd' : '#e2e8f0'}`, borderRadius: 9, padding: '9px 12px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('shadow.sehir_opsiyonel', 'Şehir (opsiyonel)')}</label>
+              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('shadow.sehir_opsiyonel', 'Şehir (opsiyonel)')}</label>
               <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder={t('shadow.istanbul', 'İstanbul')}
-                style={{ width: '100%', background: '#07091c', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 9, padding: '9px 12px', color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '9px 12px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={addCompetitor} disabled={adding || !newName}
-              style={{ padding: '9px 22px', borderRadius: 10, border: 'none', cursor: adding||!newName?'not-allowed':'pointer', background: newName ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 13, fontWeight: 700, opacity: !newName?0.4:1, display: 'flex', alignItems: 'center', gap: 7 }}>
+              style={{ padding: '9px 22px', borderRadius: 10, border: 'none', cursor: adding||!newName?'not-allowed':'pointer', background: newName ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : '#f1f5f9', color: newName ? '#ffffff' : '#94a3b8', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
               {adding ? <RefreshCw size={13} style={{ animation: 'sh-spin 1s linear infinite' }} /> : null}
               {adding ? 'Ekleniyor...' : 'Ekle ve İzlemeye Başla'}
             </button>
-            <button onClick={() => setAddForm(false)} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>{t('shadow.iptal', 'İptal')}</button>
+            <button onClick={() => setAddForm(false)} style={{ padding: '9px 16px', borderRadius: 10, border: '1px solid #e2e8f0', background: 'transparent', color: '#475569', fontSize: 13, cursor: 'pointer' }}>{t('shadow.iptal', 'İptal')}</button>
           </div>
         </div>
       )}
 
       {/* ── MIGRATION WARNING ─────────────────────────────────────────────── */}
       {migrationNeeded && (
-        <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 12, fontSize: 12, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: '#fbbf24', lineHeight: 1.7 }}>
-          ⚠️ <strong>Supabase migration gerekli</strong> — SQL Editor aç ve şunu çalıştır:
-          <div style={{ marginTop: 8, background: 'rgba(0,0,0,0.4)', padding: '10px 14px', borderRadius: 8, fontFamily: 'monospace', fontSize: 11, color: '#94a3b8', whiteSpace: 'pre-wrap' }}>
+        <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 12, fontSize: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', lineHeight: 1.7 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={14} /> <strong>Supabase migration gerekli</strong></span> — SQL Editor aç ve şunu çalıştır:
+          <div style={{ marginTop: 8, background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px 14px', borderRadius: 8, fontFamily: 'monospace', fontSize: 11, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
 {`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_data JSONB;
 ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_changes JSONB;
 ALTER TABLE competitors ADD COLUMN IF NOT EXISTS shadow_price_history JSONB DEFAULT '[]';
@@ -467,11 +467,11 @@ ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;
           <RefreshCw size={22} style={{ color: '#475569', animation: 'sh-spin 1s linear infinite' }} />
         </div>
       ) : competitors.length === 0 ? (
-        <div style={{ background: 'linear-gradient(135deg,rgba(5,0,20,0.98),rgba(8,2,25,0.99))', border: '1px solid rgba(124,58,237,0.1)', borderRadius: 20, padding: 60, textAlign: 'center' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 20, padding: 60, textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}><ShadowOrb size={60} /></div>
           <p style={{ color: '#475569', fontSize: 14, margin: '0 0 12px' }}>{t('shadow.henuz_izlenen_rakip_yok', 'Henüz izlenen rakip yok')}</p>
           <button onClick={() => setAddForm(true)}
-            style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 20px rgba(124,58,237,0.35)' }}>
+            style={{ padding: '10px 24px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#ffffff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 20px rgba(124,58,237,0.25)' }}>
             + İlk Rakibi Ekle
           </button>
         </div>
