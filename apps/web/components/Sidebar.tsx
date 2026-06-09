@@ -5,19 +5,19 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import {
-  LayoutDashboard, Users, Megaphone, BarChart3,
+  LayoutDashboard, Users, Megaphone,
   Settings, LogOut, Zap, Wallet, Package,
-  TrendingUp, FileText, Globe2, Workflow, ScrollText,
-  Inbox, Kanban, FileBarChart, Target, Network,
+  FileText, Globe2, Workflow, ScrollText,
+  Inbox, Kanban, FileBarChart,
   ChevronDown, UsersRound, Crown, Sparkle, ChevronRight,
   Sparkles, Crosshair, UserCheck, Activity, Star, Share2, Link2,
   LayoutTemplate, QrCode, Bot, ListOrdered, MessageSquare, Mail,
-  MessageCircle, Phone, Video, Images, UserCircle, FlaskConical,
-  Clock, RefreshCw, CalendarDays, Image, Search, Rocket, Brain,
-  Swords, Eye, Tag, LineChart, Radar, Languages, Heart, PieChart,
+  MessageCircle, Phone, Video,
+  CalendarDays, Image, Search, Rocket, Brain,
+  Swords, Eye, Tag, LineChart, Radar, Languages, PieChart,
   DollarSign, Banknote, Award, TrendingDown, Receipt, FileSpreadsheet,
   ClipboardList, GraduationCap, Lightbulb, Cog, Webhook, Code,
-  CreditCard, Coins, Shield, Box, X, Command,
+  CreditCard, Shield, Box, X, Command,
 } from 'lucide-react'
 
 interface NavItem {
@@ -55,7 +55,6 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/lead-hunter',    label: 'nav.lead_hunter',    icon: Crosshair },
       { href: '/decision-maker', label: 'nav.decision_maker', icon: UserCheck },
-      { href: '/health-scores',  label: 'nav.health_scores',  icon: Activity },
       { href: '/lead-quality',   label: 'nav.lead_quality',   icon: Star },
       { href: '/trade-fair',     label: 'nav.trade_fair',     icon: CalendarDays },
       { href: '/referral',       label: 'nav.referral',       icon: Share2 },
@@ -65,7 +64,6 @@ const GROUPS: NavGroup[] = [
   {
     id: 'sales', label: 'nav.sales',
     items: [
-      { href: '/network',   label: 'nav.network',   icon: Network },
       { href: '/proposals', label: 'nav.proposals', icon: FileText },
       { href: '/products',  label: 'nav.products',  icon: Package,  badge: 'AI' },
       { href: '/workflow',  label: 'nav.workflow',  icon: Workflow, plan: 'growth', badge: 'Yeni' },
@@ -76,15 +74,10 @@ const GROUPS: NavGroup[] = [
   {
     id: 'outreach', label: 'nav.communication',
     items: [
-      { href: '/messages',        label: 'nav.messages',       icon: MessageSquare },
-      { href: '/email-campaigns', label: 'nav.email',          icon: Mail },
-      { href: '/sms-campaigns',   label: 'nav.sms',            icon: MessageCircle },
-      { href: '/video-outreach',  label: 'nav.video',          icon: Video,       badge: 'AI' },
-      { href: '/avatar-library',  label: 'nav.avatar_library', icon: Images },
-      { href: '/replica',         label: 'nav.replica',        icon: UserCircle },
-      { href: '/ab-testing',      label: 'nav.ab_testing',     icon: FlaskConical },
-      { href: '/smart-timing',    label: 'nav.smart_timing',   icon: Clock },
-      { href: '/retargeting',     label: 'nav.retargeting',    icon: RefreshCw },
+      { href: '/messages',        label: 'nav.messages', icon: MessageSquare },
+      { href: '/email-campaigns', label: 'nav.email',    icon: Mail },
+      { href: '/sms-campaigns',   label: 'nav.sms',      icon: MessageCircle },
+      { href: '/video-outreach',  label: 'nav.video',    icon: Video, badge: 'AI' },
     ],
   },
   {
@@ -108,12 +101,11 @@ const GROUPS: NavGroup[] = [
   {
     id: 'market-intel', label: 'nav.group_market_intel',
     items: [
-      { href: '/shadow',         label: 'nav.shadow',         icon: Eye },
-      { href: '/price-tracker',  label: 'nav.price_tracker',  icon: Tag },
-      { href: '/visual-trends',  label: 'nav.visual_trends',  icon: LineChart },
-      { href: '/crisis-radar',   label: 'nav.crisis_radar',   icon: Radar,     badge: 'AI' },
-      { href: '/cultural',       label: 'nav.cultural',       icon: Languages },
-      { href: '/emotional-iq',   label: 'nav.emotional_iq',   icon: Heart },
+      { href: '/shadow',        label: 'nav.shadow',        icon: Eye },
+      { href: '/price-tracker', label: 'nav.price_tracker', icon: Tag },
+      { href: '/visual-trends', label: 'nav.visual_trends', icon: LineChart },
+      { href: '/crisis-radar',  label: 'nav.crisis_radar',  icon: Radar,    badge: 'AI' },
+      { href: '/cultural',      label: 'nav.cultural',      icon: Languages },
     ],
   },
   {
@@ -157,7 +149,6 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/whitelabel', label: 'nav.whitelabel', icon: Crown,      badge: 'ENT' },
       { href: '/billing',    label: 'nav.billing',    icon: CreditCard },
-      { href: '/credits',    label: 'nav.credits',    icon: Coins },
       { href: '/export',     label: 'nav.export',     icon: Globe2,     badge: 'ENT' },
       { href: '/kvkk',       label: 'nav.kvkk',       icon: Shield },
       { href: '/monitoring', label: 'nav.monitoring', icon: Activity },
@@ -664,7 +655,7 @@ export default function Sidebar() {
           <div style={{ maxHeight: 360, overflowY: 'auto', padding: 6 }}>
             {query.trim() === '' && (
               <p style={{ color: '#94a3b8', fontSize: 12, textAlign: 'center', padding: '24px 12px', margin: 0 }}>
-                {t('nav.search_hint', '70+ özellik arasında anında ara — modül adı veya işlev yazmanız yeterli')}
+                {t('nav.search_hint', 'Özellik ara — modül adı veya işlev yazmanız yeterli')}
               </p>
             )}
             {query.trim() !== '' && searchResults.length === 0 && (
