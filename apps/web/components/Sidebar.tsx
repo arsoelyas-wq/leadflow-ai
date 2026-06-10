@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Megaphone,
   Settings, LogOut, Zap, Wallet, Package,
   FileText, Globe2, Workflow, ScrollText,
-  Inbox, Kanban, FileBarChart,
+  Inbox, Kanban,
   ChevronDown, UsersRound, Crown, Sparkle, ChevronRight,
   Sparkles, Crosshair, UserCheck, Activity, Share2,
   LayoutTemplate, QrCode, Bot, ListOrdered, Mail,
@@ -108,7 +108,6 @@ const GROUPS: NavGroup[] = [
     id: 'analytics', label: 'nav.group_analytics',
     items: [
       { href: '/analytics', label: 'nav.analytics', icon: PieChart },
-      { href: '/reports',   label: 'nav.reports',   icon: FileBarChart },
       { href: '/revenue',   label: 'nav.revenue',   icon: DollarSign },
       { href: '/financial', label: 'nav.financial', icon: Banknote, plan: 'pro', badge: 'AI' },
     ],
