@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
-import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw, Download, Tag, Flame } from 'lucide-react'
+import { Search, Plus, Trash2, Mail, Phone, Instagram, ExternalLink, Crosshair, RefreshCw, Download, Tag, Flame, Star } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -51,6 +51,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [sector, setSector] = useState('')
+  const [grade, setGrade] = useState('')
   const [sectors, setSectors] = useState<string[]>([])
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<string[]>([])
@@ -75,6 +76,7 @@ export default function LeadsPage() {
       if (search) params.set('search', search)
       if (status) params.set('status', status)
       if (sector) params.set('sector', sector)
+      if (grade)  params.set('grade', grade)
       if (list)   params.set('list', list)
       const data = await api.get(`/api/leads?${params}`)
       setLeads(data.leads)
@@ -101,7 +103,7 @@ export default function LeadsPage() {
   }
 
   useEffect(() => { loadSectors(); loadLists() }, [])
-  useEffect(() => { load() }, [page, status, sector, list])
+  useEffect(() => { load() }, [page, status, sector, grade, list])
   useEffect(() => {
     const t = setTimeout(load, 400)
     return () => clearTimeout(t)
@@ -158,6 +160,7 @@ export default function LeadsPage() {
         if (search) params.set('search', search)
         if (status) params.set('status', status)
         if (sector) params.set('sector', sector)
+        if (grade)  params.set('grade', grade)
       }
       const token = localStorage.getItem('token') || ''
       const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -285,6 +288,16 @@ export default function LeadsPage() {
             </select>
           </div>
         )}
+        <div className="relative">
+          <Star size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <select value={grade} onChange={e => { setGrade(e.target.value); setPage(1) }}
+            className="bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
+            <option value="">{t('leads.all_grades','Tüm Kaliteler')}</option>
+            {['A','B','C','D'].map(g => (
+              <option key={g} value={g}>{t('leads.grade_label','{g} Kalite').replace('{g}', g)}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Saved lists filter */}

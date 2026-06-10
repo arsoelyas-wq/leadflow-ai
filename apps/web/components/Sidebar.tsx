@@ -10,13 +10,13 @@ import {
   FileText, Globe2, Workflow, ScrollText,
   Inbox, Kanban, FileBarChart,
   ChevronDown, UsersRound, Crown, Sparkle, ChevronRight,
-  Sparkles, Crosshair, UserCheck, Activity, Star, Share2, Link2,
-  LayoutTemplate, QrCode, Bot, ListOrdered, MessageSquare, Mail,
+  Sparkles, Crosshair, UserCheck, Activity, Share2,
+  LayoutTemplate, QrCode, Bot, ListOrdered, Mail,
   MessageCircle, Phone, Video,
   CalendarDays, Image, Search, Rocket, Brain,
-  Swords, Eye, Tag, LineChart, Radar, Languages, PieChart,
+  Swords, Eye, Tag, LineChart, Languages, PieChart,
   DollarSign, Banknote, Award, TrendingDown, Receipt, FileSpreadsheet,
-  ClipboardList, GraduationCap, Lightbulb, Cog, Webhook, Code,
+  ClipboardList, GraduationCap, Cog, Webhook, Code,
   CreditCard, Shield, Box, X, Command,
 } from 'lucide-react'
 
@@ -55,10 +55,8 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/lead-hunter',    label: 'nav.lead_hunter',    icon: Crosshair },
       { href: '/decision-maker', label: 'nav.decision_maker', icon: UserCheck },
-      { href: '/lead-quality',   label: 'nav.lead_quality',   icon: Star },
       { href: '/trade-fair',     label: 'nav.trade_fair',     icon: CalendarDays },
       { href: '/referral',       label: 'nav.referral',       icon: Share2 },
-      { href: '/affiliate',      label: 'nav.affiliate',      icon: Link2 },
     ],
   },
   {
@@ -74,7 +72,6 @@ const GROUPS: NavGroup[] = [
   {
     id: 'outreach', label: 'nav.communication',
     items: [
-      { href: '/messages',        label: 'nav.messages', icon: MessageSquare },
       { href: '/email-campaigns', label: 'nav.email',    icon: Mail },
       { href: '/sms-campaigns',   label: 'nav.sms',      icon: MessageCircle },
       { href: '/video-outreach',  label: 'nav.video',    icon: Video, badge: 'AI' },
@@ -104,7 +101,6 @@ const GROUPS: NavGroup[] = [
       { href: '/shadow',        label: 'nav.shadow',        icon: Eye },
       { href: '/price-tracker', label: 'nav.price_tracker', icon: Tag },
       { href: '/visual-trends', label: 'nav.visual_trends', icon: LineChart },
-      { href: '/crisis-radar',  label: 'nav.crisis_radar',  icon: Radar,    badge: 'AI' },
       { href: '/cultural',      label: 'nav.cultural',      icon: Languages },
     ],
   },
@@ -132,7 +128,6 @@ const GROUPS: NavGroup[] = [
       { href: '/team-intelligence',   label: 'nav.team_intelligence',   icon: Brain },
       { href: '/team-reports',        label: 'nav.team_reports',        icon: ClipboardList },
       { href: '/sales-coach',         label: 'nav.sales_coach',         icon: GraduationCap },
-      { href: '/sales-intelligence',  label: 'nav.sales_intelligence',  icon: Lightbulb },
     ],
   },
   {

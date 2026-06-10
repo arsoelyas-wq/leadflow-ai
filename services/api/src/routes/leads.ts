@@ -14,7 +14,7 @@ const supabase = createClient(
 // GET /api/leads — Liste (filtre + sayfalama)
 router.get('/', authMiddleware, async (req: any, res: any) => {
   try {
-    const { status, source, city, search, sector, ids, list, page = 1, limit = 20 } = req.query;
+    const { status, source, city, search, sector, grade, ids, list, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
 
     let query = supabase
@@ -28,6 +28,7 @@ router.get('/', authMiddleware, async (req: any, res: any) => {
     if (source) query = query.eq('source', source);
     if (city)   query = query.ilike('city', `%${city}%`);
     if (sector) query = query.ilike('sector', `%${sector}%`);
+    if (grade)  query = query.eq('ai_grade', grade);
     if (search) query = query.ilike('company_name', `%${search}%`);
     if (ids) {
       const idList = String(ids).split(',').filter(Boolean);
@@ -82,7 +83,7 @@ router.get('/sectors', authMiddleware, async (req: any, res: any) => {
 // GET /api/leads/export — Excel/CSV download
 router.get('/export', authMiddleware, async (req: any, res: any) => {
   try {
-    const { status, sector, search, ids } = req.query;
+    const { status, sector, search, grade, ids } = req.query;
 
     let query = supabase
       .from('leads')
@@ -97,6 +98,7 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
     } else {
       if (status) query = query.eq('status', status);
       if (sector) query = query.ilike('sector', `%${sector}%`);
+      if (grade)  query = query.eq('ai_grade', grade);
       if (search) query = query.ilike('company_name', `%${search}%`);
     }
 

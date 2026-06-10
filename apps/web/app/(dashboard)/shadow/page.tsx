@@ -2,7 +2,9 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Eye, Copy, CheckCircle, ChevronDown, ChevronUp, AlertTriangle, Zap, Target, MapPin, Factory, Star, Wrench, Radio, DollarSign, Package, Instagram, Facebook, Settings, Briefcase, BarChart3, TrendingUp, AlertCircle } from 'lucide-react'
+import { RefreshCw, Eye, Copy, CheckCircle, ChevronDown, ChevronUp, AlertTriangle, Zap, Target, MapPin, Factory, Star, Wrench, Radio, DollarSign, Package, Instagram, Facebook, Settings, Briefcase, BarChart3, TrendingUp, AlertCircle, Radar, Search, Activity, Info } from 'lucide-react'
+
+const CRISIS_SECTORS = ['Mobilya','Tekstil','İnşaat','Gıda','Elektronik','Otomotiv','Turizm','Tarım']
 
 // ── SHADOW ORB — Covert surveillance 3D animation ─────────────────────────────
 function ShadowOrb({ size = 100, scanning = false }: { size?: number; scanning?: boolean }) {
@@ -305,6 +307,7 @@ function CompetitorCard({ comp, onScan, scanning }: any) {
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function ShadowPage() {
   const { t } = useI18n()
+  const [tab, setTab] = useState<'monitor' | 'crisis'>('monitor')
   const [competitors, setCompetitors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [scanning, setScanning] = useState<string | null>(null)
@@ -314,6 +317,15 @@ export default function ShadowPage() {
   const [newName, setNewName] = useState('')
   const [newCity, setNewCity] = useState('')
   const [adding, setAdding] = useState(false)
+
+  // ── Sektör & Kriz Radarı state ──
+  const [alerts, setAlerts] = useState<any[]>([])
+  const [crisisStats, setCrisisStats] = useState<any>(null)
+  const [analysis, setAnalysis] = useState('')
+  const [crisisSector, setCrisisSector] = useState('Mobilya')
+  const [crisisLoading, setCrisisLoading] = useState(false)
+  const [crisisScanning, setCrisisScanning] = useState(false)
+  const [autoSectors, setAutoSectors] = useState<string[]>(['Mobilya'])
 
   const showMsg = (type: 'success'|'error', text: string) => { setMsg({ type, text }); setTimeout(()=>setMsg(null),6000) }
   const load = async () => {
@@ -336,7 +348,36 @@ export default function ShadowPage() {
     } catch (e: any) { showMsg('error', e.message) }
     finally { setAdding(false) }
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadCrisis() }, [])
+
+  // ── Sektör & Kriz Radarı ──
+  const loadCrisis = async () => {
+    setCrisisLoading(true)
+    try {
+      const [a, s] = await Promise.allSettled([api.get('/api/crisis/alerts'), api.get('/api/crisis/stats')])
+      if (a.status === 'fulfilled') setAlerts(a.value.alerts || [])
+      if (s.status === 'fulfilled') setCrisisStats(s.value)
+    } catch {} finally { setCrisisLoading(false) }
+  }
+
+  const scanCrisis = async () => {
+    setCrisisScanning(true)
+    setAnalysis('')
+    try {
+      const data = await api.get(`/api/crisis/scan?sector=${encodeURIComponent(crisisSector)}`)
+      setAlerts(prev => [...(data.alerts || []), ...prev].slice(0, 30))
+      setAnalysis(data.analysis || '')
+      showMsg('success', `${data.total} gelişme tespit edildi`)
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setCrisisScanning(false) }
+  }
+
+  const saveAutoScan = async () => {
+    try {
+      await api.post('/api/crisis/auto-scan', { sectors: autoSectors, active: true })
+      showMsg('success', 'Otomatik tarama kaydedildi!')
+    } catch (e: any) { showMsg('error', e.message) }
+  }
 
   const scan = async (id: string) => {
     setScanning(id)
@@ -414,6 +455,18 @@ export default function ShadowPage() {
         </div>
       </div>
 
+      {/* ── TABS ──────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <button onClick={() => setTab('monitor')}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, border: tab==='monitor' ? '1px solid #ddd6fe' : '1px solid #e2e8f0', cursor: 'pointer', background: tab==='monitor' ? '#f5f3ff' : '#ffffff', color: tab==='monitor' ? '#7c3aed' : '#475569', fontSize: 13, fontWeight: tab==='monitor' ? 700 : 500, transition: 'all 0.15s' }}>
+          <Eye size={14} /> Rakip İzle
+        </button>
+        <button onClick={() => setTab('crisis')}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, border: tab==='crisis' ? '1px solid #ddd6fe' : '1px solid #e2e8f0', cursor: 'pointer', background: tab==='crisis' ? '#f5f3ff' : '#ffffff', color: tab==='crisis' ? '#7c3aed' : '#475569', fontSize: 13, fontWeight: tab==='crisis' ? 700 : 500, transition: 'all 0.15s' }}>
+          <Radar size={14} /> Sektör & Kriz
+        </button>
+      </div>
+
       {/* ── TOAST ─────────────────────────────────────────────────────────── */}
       {msg && (
         <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type==='success'?'#ecfdf5':'#fef2f2', border: `1px solid ${msg.type==='success'?'#a7f3d0':'#fecaca'}`, color: msg.type==='success'?'#059669':'#dc2626' }}>
@@ -421,6 +474,7 @@ export default function ShadowPage() {
         </div>
       )}
 
+      {tab === 'monitor' && (<>
       {/* ── ADD FORM ──────────────────────────────────────────────────────── */}
       {addForm && (
         <div style={{ marginBottom: 20, background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
@@ -482,6 +536,115 @@ ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;
           ))}
         </div>
       )}
+      </>)}
+
+      {tab === 'crisis' && (<>
+      {/* ── KRİZ İSTATİSTİKLERİ ─────────────────────────────────────────────── */}
+      {crisisStats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+          {[
+            { label: 'Toplam Gelişme', value: crisisStats.total, color: '#7c3aed', Icon: Activity },
+            { label: 'Fırsatlar', value: crisisStats.opportunities, color: '#059669', Icon: TrendingUp },
+            { label: 'Riskler', value: crisisStats.crises, color: '#dc2626', Icon: AlertTriangle },
+          ].map(({ label, value, color, Icon }) => (
+            <div key={label} style={{ background: '#ffffff', borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)', width: 56, height: 56, background: `radial-gradient(circle,${color}18 0%,transparent 70%)` }} />
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}><Icon size={20} style={{ color }} /></div>
+              <p style={{ color, fontSize: 24, fontWeight: 800, margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
+              <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 16, marginBottom: 20 }}>
+        {/* Manuel Tarama */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#0f172a', fontWeight: 700, fontSize: 14, margin: '0 0 14px' }}>
+            <Search size={15} style={{ color: '#7c3aed' }} /> Manuel Tarama
+          </h3>
+          <p style={{ color: '#475569', fontSize: 11, margin: '0 0 8px' }}>{t('crisis_radar.sektor', 'Sektör')}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            {CRISIS_SECTORS.map(s => (
+              <button key={s} onClick={() => setCrisisSector(s)}
+                style={{ padding: '5px 12px', fontSize: 12, borderRadius: 8, border: crisisSector===s ? '1px solid #ddd6fe' : '1px solid #e2e8f0', background: crisisSector===s ? '#7c3aed' : '#ffffff', color: crisisSector===s ? '#ffffff' : '#475569', cursor: 'pointer', fontWeight: crisisSector===s ? 600 : 400 }}>
+                {s}
+              </button>
+            ))}
+          </div>
+          <button onClick={scanCrisis} disabled={crisisScanning}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', borderRadius: 10, border: 'none', cursor: crisisScanning ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#ffffff', fontSize: 13, fontWeight: 700, opacity: crisisScanning ? 0.6 : 1 }}>
+            {crisisScanning ? <RefreshCw size={14} style={{ animation: 'sh-spin 1s linear infinite' }} /> : <Search size={14} />}
+            {crisisScanning ? 'Taranıyor...' : 'Şimdi Tara'}
+          </button>
+          {analysis && (
+            <div style={{ marginTop: 14, padding: 14, background: '#f5f3ff', border: '1px solid #ede9fe', borderRadius: 12 }}>
+              <p style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#7c3aed', fontSize: 10, fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 1 }}><Zap size={12} /> {t('crisis_radar.ai_strateji_onerisi', 'AI Strateji Önerisi')}</p>
+              <p style={{ color: '#0f172a', fontSize: 13, margin: 0, lineHeight: 1.5 }}>{analysis}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Otomatik Tarama */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#0f172a', fontWeight: 700, fontSize: 14, margin: '0 0 14px' }}>
+            <Zap size={15} style={{ color: '#b45309' }} /> Otomatik Tarama (Her 6 Saat)
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+            {CRISIS_SECTORS.map(s => (
+              <button key={s} onClick={() => setAutoSectors(prev => prev.includes(s) ? prev.filter(x => x!==s) : [...prev,s])}
+                style={{ padding: '5px 12px', fontSize: 12, borderRadius: 8, border: autoSectors.includes(s) ? '1px solid #bfdbfe' : '1px solid #e2e8f0', background: autoSectors.includes(s) ? '#2563eb' : '#ffffff', color: autoSectors.includes(s) ? '#ffffff' : '#475569', cursor: 'pointer', fontWeight: autoSectors.includes(s) ? 600 : 400 }}>
+                {s}
+              </button>
+            ))}
+          </div>
+          <button onClick={saveAutoScan}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', borderRadius: 10, border: '1px solid #bfdbfe', cursor: 'pointer', background: '#eff6ff', color: '#2563eb', fontSize: 13, fontWeight: 700 }}>
+            <Zap size={14} /> Otomatik Taramayı Kaydet
+          </button>
+        </div>
+      </div>
+
+      {/* ── SON GELİŞMELER ──────────────────────────────────────────────────── */}
+      <div>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#0f172a', fontWeight: 700, fontSize: 14, margin: '0 0 12px' }}>
+          <Radar size={15} style={{ color: '#7c3aed' }} /> Son Gelişmeler ({alerts.length})
+        </h3>
+        {crisisLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 80 }}>
+            <RefreshCw size={20} style={{ color: '#475569', animation: 'sh-spin 1s linear infinite' }} />
+          </div>
+        ) : alerts.length === 0 ? (
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 40, textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}><Radar size={32} style={{ color: '#cbd5e1' }} /></div>
+            <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>{t('crisis_radar.henuz_gelisme_tespit_edil', 'Henüz gelişme tespit edilmedi')}</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {alerts.map((alert, i) => {
+              const conf = alert.type === 'opportunity' ? { Icon: TrendingUp, color: '#059669' }
+                : alert.type === 'crisis' ? { Icon: AlertTriangle, color: '#dc2626' }
+                : { Icon: Info, color: '#2563eb' }
+              return (
+                <div key={i} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <conf.Icon size={16} style={{ color: conf.color, flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ color: '#0f172a', fontSize: 13, fontWeight: 600, margin: 0 }}>{alert.title}</p>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                      <span>{alert.sector}</span>
+                      {alert.scanned_at && <span>{new Date(alert.scanned_at).toLocaleDateString()}</span>}
+                    </div>
+                  </div>
+                  {alert.link && (
+                    <a href={alert.link} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontSize: 11, fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}>Habere Git →</a>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      </>)}
 
       <style>{`
         @keyframes sh-border { 0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%} }
