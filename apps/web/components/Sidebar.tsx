@@ -15,7 +15,7 @@ import {
   MessageCircle, Phone, Video,
   CalendarDays, Image, Search, Rocket, Brain,
   Swords, Eye, Tag, LineChart, Languages, PieChart,
-  DollarSign, Banknote, Award, Receipt, FileSpreadsheet,
+  Banknote, Award, Receipt, FileSpreadsheet,
   ClipboardList, GraduationCap, Cog, Webhook, Code,
   CreditCard, Shield, Box, X, Command,
 } from 'lucide-react'
@@ -108,7 +108,6 @@ const GROUPS: NavGroup[] = [
     id: 'analytics', label: 'nav.group_analytics',
     items: [
       { href: '/analytics', label: 'nav.analytics', icon: PieChart },
-      { href: '/revenue',   label: 'nav.revenue',   icon: DollarSign },
       { href: '/financial', label: 'nav.financial', icon: Banknote, plan: 'pro', badge: 'AI' },
     ],
   },
