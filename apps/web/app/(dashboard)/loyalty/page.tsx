@@ -2,7 +2,14 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Heart, AlertTriangle, TrendingUp, Users, MessageSquare, CheckCircle, Circle, MapPin, BarChart3, DollarSign } from 'lucide-react'
+import { RefreshCw, Heart, AlertTriangle, TrendingUp, TrendingDown, Users, MessageSquare, CheckCircle, Circle, MapPin, BarChart3, DollarSign } from 'lucide-react'
+
+const RISK_STYLES: Record<string, { bg: string; border: string; color: string }> = {
+  high: { bg: '#fef2f2', border: '#fecaca', color: '#dc2626' },
+  medium: { bg: '#fffbeb', border: '#fde68a', color: '#b45309' },
+  low: { bg: '#ecfdf5', border: '#a7f3d0', color: '#059669' },
+}
+const RISK_ICONS: Record<string, string> = { high: '🚨', medium: '⚠️', low: '✅' }
 
 // ── HEALTH ORB — vital signs style with ECG and satellite nodes ───────────────
 function HealthOrb({ size = 110, score = 0, scanning = false }: { size?: number; score?: number; scanning?: boolean }) {
@@ -95,11 +102,18 @@ function calcHealthScore(customer: any): number {
 
 export default function LoyaltyPage() {
   const { t } = useI18n()
+  const [tab, setTab] = useState<'health' | 'predictions'>('health')
   const [customers, setCustomers] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [segment, setSegment] = useState<'all'|'healthy'|'risk'|'critical'>('all')
   const [selected, setSelected] = useState<string[]>([])
+
+  // ── Risk Tahminleri (churn) state ──
+  const [churnPredictions, setChurnPredictions] = useState<any[]>([])
+  const [churnStats, setChurnStats] = useState<any>(null)
+  const [churnLoading, setChurnLoading] = useState(false)
+  const [churnLoaded, setChurnLoaded] = useState(false)
 
   useEffect(() => {
     Promise.allSettled([api.get('/api/loyalty/scores'), api.get('/api/loyalty/stats')]).then(([c, s]) => {
@@ -111,6 +125,20 @@ export default function LoyaltyPage() {
       setLoading(false)
     })
   }, [])
+
+  const loadChurn = () => {
+    setChurnLoading(true)
+    setChurnLoaded(true)
+    Promise.allSettled([api.get('/api/churn/predictions'), api.get('/api/churn/stats')])
+      .then(([p, s]) => {
+        if (p.status === 'fulfilled') setChurnPredictions(p.value.predictions || [])
+        if (s.status === 'fulfilled') setChurnStats(s.value)
+      }).finally(() => setChurnLoading(false))
+  }
+
+  useEffect(() => {
+    if (tab === 'predictions' && !churnLoaded) loadChurn()
+  }, [tab, churnLoaded])
 
   const filtered = customers.filter(c => {
     if (segment === 'healthy') return c.healthScore >= 70
@@ -124,6 +152,10 @@ export default function LoyaltyPage() {
   const healthy = customers.filter(c => c.healthScore >= 70).length
 
   const segColors = { all:'#7c3aed', healthy:'#059669', risk:'#b45309', critical:'#dc2626' }
+
+  const churnHighRisk = churnPredictions.filter(p => p.risk === 'high')
+  const churnMediumRisk = churnPredictions.filter(p => p.risk === 'medium')
+  const churnLowRisk = churnPredictions.filter(p => p.risk === 'low')
 
   return (
     <div style={{ padding:0 }}>
@@ -154,6 +186,19 @@ export default function LoyaltyPage() {
         </div>
       </div>
 
+      {/* ── TABS ──────────────────────────────────────────────────────────── */}
+      <div style={{ display:'flex', gap:8, marginBottom:20 }}>
+        <button onClick={()=>setTab('health')}
+          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border: tab==='health' ? '1px solid #a7f3d0' : '1px solid #e2e8f0', cursor:'pointer', background: tab==='health' ? '#ecfdf5' : '#ffffff', color: tab==='health' ? '#059669' : '#475569', fontSize:13, fontWeight: tab==='health' ? 700 : 500, transition:'all 0.15s' }}>
+          <Heart size={14}/> {t('loyalty.tab_health','Müşteri Sağlığı')}
+        </button>
+        <button onClick={()=>setTab('predictions')}
+          style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, border: tab==='predictions' ? '1px solid #a7f3d0' : '1px solid #e2e8f0', cursor:'pointer', background: tab==='predictions' ? '#ecfdf5' : '#ffffff', color: tab==='predictions' ? '#059669' : '#475569', fontSize:13, fontWeight: tab==='predictions' ? 700 : 500, transition:'all 0.15s' }}>
+          <TrendingDown size={14}/> {t('loyalty.tab_predictions','Risk Tahminleri')}
+        </button>
+      </div>
+
+      {tab === 'health' && (<>
       {/* At-risk alert */}
       {atRisk > 0 && (
         <div style={{ marginBottom:16, padding:'12px 18px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:10 }}>
@@ -206,6 +251,84 @@ export default function LoyaltyPage() {
           })}
         </div>
       )}
+      </>)}
+
+      {tab === 'predictions' && (<>
+      {churnLoading ? (
+        <div style={{ display:'flex', justifyContent:'center', height:100, alignItems:'center' }}><RefreshCw size={22} style={{ color:'#475569', animation:'ho-spin 1s linear infinite' }} /></div>
+      ) : (
+        <>
+          {/* 3-card risk grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
+            {[
+              { label: t('Yüksek Risk','Yüksek Risk'), value: churnHighRisk.length, ...RISK_STYLES.high },
+              { label: 'Orta Risk', value: churnMediumRisk.length, ...RISK_STYLES.medium },
+              { label: t('Düşük Risk','Düşük Risk'), value: churnLowRisk.length, ...RISK_STYLES.low },
+            ].map(({ label, value, color, bg, border }) => (
+              <div key={label} style={{ background:bg, border:`1px solid ${border}`, borderRadius:12, padding:16, textAlign:'center' }}>
+                <p style={{ color, fontSize:28, fontWeight:800, margin:'0 0 4px' }}>{value}</p>
+                <p style={{ color:'#475569', fontSize:11, margin:0 }}>{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* High-risk alert */}
+          {churnHighRisk.length > 0 && (
+            <div style={{ marginBottom:20, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:16, padding:18 }}>
+              <h2 style={{ display:'flex', alignItems:'center', gap:8, color:'#dc2626', fontWeight:700, fontSize:14, margin:'0 0 12px' }}>
+                <AlertTriangle size={16}/> {t('loyalty.acil_aksiyon_gereken', 'Acil Aksiyon Gereken Müşteriler')}
+              </h2>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {churnHighRisk.slice(0,3).map((p:any)=>(
+                  <div key={p.lead.id} style={{ display:'flex', alignItems:'center', gap:12, background:'#ffffff', borderRadius:10, padding:'10px 16px' }}>
+                    <span style={{ fontSize:20 }}>🚨</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ color:'#0f172a', fontWeight:600, fontSize:13, margin:0 }}>{p.lead.company_name}</p>
+                      <p style={{ color:'#dc2626', fontSize:11, margin:0 }}>{p.daysSinceContact === 999 ? 'Hiç iletişim yok' : `${p.daysSinceContact} gündür iletişim yok`}</p>
+                    </div>
+                    <button style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'#2563eb', color:'#fff', border:'none', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                      <MessageSquare size={11}/> {t('loyalty.mesaj_gonder', 'Mesaj Gönder')}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Customer risk list */}
+          {churnPredictions.length === 0 ? (
+            <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:16, padding:48, textAlign:'center' }}>
+              <TrendingDown size={40} style={{ color:'#cbd5e1', margin:'0 auto 8px' }}/>
+              <p style={{ color:'#64748b', fontSize:14, margin:0 }}>{t('churn.kazanilmis_musteri_buluna', 'Kazanılmış müşteri bulunamadı')}</p>
+            </div>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              <h2 style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:'0 0 4px' }}>{t('churn.tum_musteri_risk_analizi', 'Tüm Müşteri Risk Analizi')}</h2>
+              {churnPredictions.map((p:any)=>{
+                const rs = RISK_STYLES[p.risk]
+                return (
+                  <div key={p.lead.id} style={{ background:rs.bg, border:`1px solid ${rs.border}`, borderRadius:12, padding:'12px 18px', display:'flex', alignItems:'center', gap:14 }}>
+                    <span style={{ fontSize:20, flexShrink:0 }}>{RISK_ICONS[p.risk]}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ color:'#0f172a', fontWeight:600, fontSize:13, margin:0 }}>{p.lead.company_name}</p>
+                      <div style={{ display:'flex', gap:10, fontSize:11, color:'#64748b', marginTop:2 }}>
+                        <span>{p.daysSinceContact === 999 ? 'İletişim yok' : `${p.daysSinceContact}g iletişimsiz`}</span>
+                        {p.msgCount > 0 && <span>{p.msgCount} mesaj</span>}
+                        {p.lastInvoiceStatus === 'overdue' && <span style={{ color:'#dc2626' }}>{t('churn.gecikmis_odeme', '⚠️ Gecikmiş ödeme')}</span>}
+                      </div>
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <p style={{ color:rs.color, fontSize:18, fontWeight:800, margin:0 }}>{p.churnScore}</p>
+                      <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>risk skoru</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+      </>)}
       <style>{`@keyframes ho-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
