@@ -15,7 +15,7 @@ import {
   MessageCircle, Phone, Video,
   CalendarDays, Image, Search, Rocket, Brain,
   Swords, Eye, Tag, LineChart, Languages, PieChart,
-  Banknote, Award, Receipt, FileSpreadsheet,
+  Banknote, Award, FileSpreadsheet,
   ClipboardList, GraduationCap, Cog, Webhook, Code,
   CreditCard, Shield, Box, X, Command,
 } from 'lucide-react'
@@ -115,7 +115,6 @@ const GROUPS: NavGroup[] = [
     id: 'customer', label: 'nav.group_customer',
     items: [
       { href: '/loyalty',        label: 'nav.loyalty',        icon: Award },
-      { href: '/debt-collector', label: 'nav.debt_collector', icon: Receipt },
       { href: '/invoices',       label: 'nav.invoices',       icon: FileSpreadsheet },
     ],
   },
