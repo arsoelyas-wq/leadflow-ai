@@ -83,7 +83,6 @@ const GROUPS: NavGroup[] = [
       { href: '/ads',          label: 'nav.ads',          icon: Image },
       { href: '/google-ads',   label: 'nav.google_ads',   icon: Search },
       { href: '/ads-advanced', label: 'nav.ads_advanced', icon: Rocket,  plan: 'pro', badge: 'AI' },
-      { href: '/meta-intent',  label: 'nav.meta_intent',  icon: Brain },
     ],
   },
   {
