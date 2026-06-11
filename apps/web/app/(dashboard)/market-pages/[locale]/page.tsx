@@ -210,7 +210,7 @@ export default function MarketEditorPage() {
       {/* ── Top header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/market-pages" style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontSize: 13, fontWeight: 500, padding: '6px 0' }}>
+          <Link href="/digital-tools" style={{ color: '#475569', display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', fontSize: 13, fontWeight: 500, padding: '6px 0' }}>
             <ArrowLeft size={15} /> Geri
           </Link>
           <span style={{ fontSize: 36 }}>{market?.flag || '🌍'}</span>

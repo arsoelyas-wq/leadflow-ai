@@ -11,7 +11,7 @@ import {
   Inbox, Kanban,
   ChevronDown, UsersRound, Crown, Sparkle, ChevronRight,
   Sparkles, Crosshair, UserCheck, Activity, Share2,
-  LayoutTemplate, QrCode, Bot, ListOrdered, Mail,
+  Bot, ListOrdered, Mail,
   MessageCircle, Phone, Video,
   CalendarDays, Image, Search, Rocket, Brain,
   Swords, Eye, Tag, LineChart, Languages, PieChart,
@@ -88,10 +88,7 @@ const GROUPS: NavGroup[] = [
   {
     id: 'digital', label: 'nav.group_digital',
     items: [
-      { href: '/ar-experience', label: 'nav.ar_experience', icon: Box,            badge: 'AI' },
-      { href: '/microsites',    label: 'nav.microsites',    icon: LayoutTemplate },
-      { href: '/qr-codes',      label: 'nav.qr_codes',      icon: QrCode },
-      { href: '/market-pages',  label: 'nav.market_pages',  icon: Globe2 },
+      { href: '/digital-tools', label: 'nav.digital_tools', icon: Box, badge: 'AI' },
     ],
   },
   {
