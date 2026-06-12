@@ -1,5 +1,6 @@
 'use client'
 import { Puzzle } from 'lucide-react'
+import Reveal from './Reveal'
 
 const INTEGRATIONS = [
   { name: 'Google Maps', color: '#4285F4', icon: '📍' },
@@ -33,19 +34,21 @@ export default function LandingIntegrations() {
   return (
     <section id="entegrasyonlar" className="py-24 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-12">
-        <div className="text-center max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[13px] font-semibold mb-6">
-            <Puzzle size={13} />
-            Entegrasyonlar
+        <Reveal>
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[13px] font-semibold mb-6">
+              <Puzzle size={13} />
+              Entegrasyonlar
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              Kullandığınız araçlarla{' '}
+              <span className="gradient-text-blue">tam uyum</span>
+            </h2>
+            <p className="text-[17px] text-slate-500 leading-relaxed">
+              Mevcut iş akışınıza hemen dahil olur. Sıfırdan başlamak yok.
+            </p>
           </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            Kullandığınız araçlarla{' '}
-            <span className="gradient-text-blue">tam uyum</span>
-          </h2>
-          <p className="text-[17px] text-slate-500 leading-relaxed">
-            Mevcut iş akışınıza hemen dahil olur. Sıfırdan başlamak yok.
-          </p>
-        </div>
+        </Reveal>
       </div>
 
       {/* Row 1 — left to right */}

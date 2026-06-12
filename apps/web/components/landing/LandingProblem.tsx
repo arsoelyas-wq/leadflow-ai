@@ -1,6 +1,7 @@
 'use client'
 import { X, CheckCircle, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import Reveal from './Reveal'
 
 const PROBLEMS = [
   'Günde 8+ saat manuel lead araması',
@@ -25,18 +26,20 @@ export default function LandingProblem() {
     <section className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="text-center mb-16 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 border border-rose-100 text-rose-700 text-[13px] font-semibold mb-6">
-            Neden Değiştirmelisiniz?
+        <Reveal>
+          <div className="text-center mb-16 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 border border-rose-100 text-rose-700 text-[13px] font-semibold mb-6">
+              Neden Değiştirmelisiniz?
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              Manuel satış artık{' '}
+              <span className="gradient-text-blue">rekabetçi değil</span>
+            </h2>
+            <p className="text-[17px] text-slate-500 leading-relaxed">
+              Rakipleriniz AI ile otomatik büyürken siz hâlâ saatler harcıyorsanız, fark her geçen gün açılıyor.
+            </p>
           </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            Manuel satış artık{' '}
-            <span className="gradient-text-blue">rekabetçi değil</span>
-          </h2>
-          <p className="text-[17px] text-slate-500 leading-relaxed">
-            Rakipleriniz AI ile otomatik büyürken siz hâlâ saatler harcıyorsanız, fark her geçen gün açılıyor.
-          </p>
-        </div>
+        </Reveal>
 
         {/* Comparison */}
         <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">

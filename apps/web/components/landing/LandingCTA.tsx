@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle, Zap } from 'lucide-react'
+import Reveal from './Reveal'
 
 const TRUST_POINTS = [
   '14 gün ücretsiz deneme',
@@ -40,33 +41,35 @@ export default function LandingCTA() {
       />
 
       <div className="relative max-w-4xl mx-auto px-6 text-center">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[13px] font-semibold mb-8">
-          <Zap size={13} className="fill-blue-400" />
-          Bugün başla, yarın sonuç al
-        </div>
+        <Reveal>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[13px] font-semibold mb-8">
+            <Zap size={13} className="fill-blue-400" />
+            Bugün başla, yarın sonuç al
+          </div>
 
-        {/* Headline */}
-        <h2 className="text-[40px] lg:text-[56px] xl:text-[64px] font-black leading-[1.04] tracking-[-0.035em] text-white mb-6">
-          Rakiplerinden{' '}
-          <span
-            className="animate-gradient-x"
-            style={{
-              background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #60a5fa)',
-              backgroundSize: '200% 200%',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            1 Adım Önde Ol
-          </span>
-        </h2>
+          {/* Headline */}
+          <h2 className="text-[40px] lg:text-[56px] xl:text-[64px] font-black leading-[1.04] tracking-[-0.035em] text-white mb-6">
+            Rakiplerinden{' '}
+            <span
+              className="animate-gradient-x"
+              style={{
+                background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #60a5fa)',
+                backgroundSize: '200% 200%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              1 Adım Önde Ol
+            </span>
+          </h2>
 
-        <p className="text-[18px] text-slate-400 leading-relaxed max-w-xl mx-auto mb-10">
-          2,847+ firma LeadFlow AI ile satışlarını otomatize etti.{' '}
-          <strong className="text-slate-200">Sizin sıranız.</strong>
-        </p>
+          <p className="text-[18px] text-slate-400 leading-relaxed max-w-xl mx-auto mb-10">
+            2,847+ firma LeadFlow AI ile satışlarını otomatize etti.{' '}
+            <strong className="text-slate-200">Sizin sıranız.</strong>
+          </p>
+        </Reveal>
 
         {/* CTA Button */}
         <div className="flex flex-wrap items-center justify-center gap-4 mb-10">

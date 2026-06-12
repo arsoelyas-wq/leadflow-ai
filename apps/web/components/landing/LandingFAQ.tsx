@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Plus, Minus, HelpCircle } from 'lucide-react'
+import Reveal from './Reveal'
 
 const FAQS = [
   {
@@ -52,19 +53,21 @@ export default function LandingFAQ() {
     <section className="py-24 bg-white">
       <div className="max-w-3xl mx-auto px-6">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[13px] font-semibold mb-6">
-            <HelpCircle size={13} />
-            Sıkça Sorulan Sorular
+        <Reveal>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[13px] font-semibold mb-6">
+              <HelpCircle size={13} />
+              Sıkça Sorulan Sorular
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              Aklınızdaki{' '}
+              <span className="gradient-text-blue">sorular</span>
+            </h2>
+            <p className="text-[17px] text-slate-500">
+              Cevabını bulamazsanız WhatsApp veya email ile ulaşın.
+            </p>
           </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            Aklınızdaki{' '}
-            <span className="gradient-text-blue">sorular</span>
-          </h2>
-          <p className="text-[17px] text-slate-500">
-            Cevabını bulamazsanız WhatsApp veya email ile ulaşın.
-          </p>
-        </div>
+        </Reveal>
 
         {/* Accordion */}
         <div className="flex flex-col gap-3">

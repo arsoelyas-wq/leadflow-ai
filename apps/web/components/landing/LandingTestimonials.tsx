@@ -1,5 +1,6 @@
 'use client'
 import { Star, Quote } from 'lucide-react'
+import Reveal from './Reveal'
 
 const TESTIMONIALS = [
   {
@@ -97,19 +98,21 @@ export default function LandingTestimonials() {
     <section className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="text-center mb-14 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[13px] font-semibold mb-6">
-            <Star size={13} className="fill-amber-500 text-amber-500" />
-            Müşteri Yorumları
+        <Reveal>
+          <div className="text-center mb-14 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[13px] font-semibold mb-6">
+              <Star size={13} className="fill-amber-500 text-amber-500" />
+              Müşteri Yorumları
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              Gerçek firmalar,{' '}
+              <span className="gradient-text-blue">gerçek sonuçlar</span>
+            </h2>
+            <p className="text-[17px] text-slate-500 leading-relaxed">
+              Türkiye, Almanya ve daha fazla ülkeden 2,847+ firma bize güveniyor.
+            </p>
           </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            Gerçek firmalar,{' '}
-            <span className="gradient-text-blue">gerçek sonuçlar</span>
-          </h2>
-          <p className="text-[17px] text-slate-500 leading-relaxed">
-            Türkiye, Almanya ve daha fazla ülkeden 2,847+ firma bize güveniyor.
-          </p>
-        </div>
+        </Reveal>
 
         {/* Masonry-style grid */}
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">

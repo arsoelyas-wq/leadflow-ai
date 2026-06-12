@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Play, X, Clock, CheckCircle } from 'lucide-react'
+import Reveal from './Reveal'
 
 export default function LandingDemo() {
   const [playing, setPlaying] = useState(false)
@@ -9,19 +10,21 @@ export default function LandingDemo() {
     <section id="demo" className="py-24 bg-white">
       <div className="max-w-5xl mx-auto px-6">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[13px] font-semibold mb-6">
-            <Clock size={13} />
-            2 dakikada anlayın
+        <Reveal>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[13px] font-semibold mb-6">
+              <Clock size={13} />
+              2 dakikada anlayın
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              Ürünü canlı{' '}
+              <span className="gradient-text-blue">görün</span>
+            </h2>
+            <p className="text-[17px] text-slate-500 max-w-xl mx-auto leading-relaxed">
+              Kurulum, lead toplama ve ilk kampanya gönderme — 2 dakikada nasıl yapıldığını izleyin.
+            </p>
           </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            Ürünü canlı{' '}
-            <span className="gradient-text-blue">görün</span>
-          </h2>
-          <p className="text-[17px] text-slate-500 max-w-xl mx-auto leading-relaxed">
-            Kurulum, lead toplama ve ilk kampanya gönderme — 2 dakikada nasıl yapıldığını izleyin.
-          </p>
-        </div>
+        </Reveal>
 
         {/* Video container */}
         <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-slate-200 group">

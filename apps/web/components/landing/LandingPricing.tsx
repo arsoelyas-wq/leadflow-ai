@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { CheckCircle, X, ArrowRight, Zap, TrendingUp, Crown } from 'lucide-react'
+import Reveal from './Reveal'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 
@@ -97,16 +98,18 @@ export default function LandingPricing() {
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <div className="text-center mb-12 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[13px] font-semibold mb-6">
-            Şeffaf Fiyatlandırma
-          </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            Gizli ücret yok,{' '}
-            <span className="gradient-text-blue">sürpriz yok</span>
-          </h2>
-          <p className="text-[17px] text-slate-500 leading-relaxed">
-            Her plan 14 gün ücretsiz deneme ile başlar. İstediğiniz zaman yükseltin veya iptal edin.
-          </p>
+          <Reveal>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[13px] font-semibold mb-6">
+              Şeffaf Fiyatlandırma
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              Gizli ücret yok,{' '}
+              <span className="gradient-text-blue">sürpriz yok</span>
+            </h2>
+            <p className="text-[17px] text-slate-500 leading-relaxed">
+              Her plan 14 gün ücretsiz deneme ile başlar. İstediğiniz zaman yükseltin veya iptal edin.
+            </p>
+          </Reveal>
 
           {/* Toggle */}
           <div className="flex items-center justify-center gap-3 mt-8">

@@ -1,6 +1,7 @@
 'use client'
 import { Search, Send, TrendingUp, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import Reveal from './Reveal'
 
 const STEPS = [
   {
@@ -55,18 +56,20 @@ export default function LandingHowItWorks() {
     <section id="nasil-calisir" className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="text-center mb-16 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[13px] font-semibold mb-6">
-            Nasıl Çalışır?
+        <Reveal>
+          <div className="text-center mb-16 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[13px] font-semibold mb-6">
+              Nasıl Çalışır?
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              3 adımda tam{' '}
+              <span className="gradient-text-blue">otomasyon</span>
+            </h2>
+            <p className="text-[17px] text-slate-500 leading-relaxed">
+              Kurulum yok, teknik bilgi yok. Hesap açın, hedefi belirleyin, LeadFlow başlasın.
+            </p>
           </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            3 adımda tam{' '}
-            <span className="gradient-text-blue">otomasyon</span>
-          </h2>
-          <p className="text-[17px] text-slate-500 leading-relaxed">
-            Kurulum yok, teknik bilgi yok. Hesap açın, hedefi belirleyin, LeadFlow başlasın.
-          </p>
-        </div>
+        </Reveal>
 
         {/* Steps */}
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 relative">

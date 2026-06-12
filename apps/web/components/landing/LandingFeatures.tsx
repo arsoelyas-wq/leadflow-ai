@@ -6,6 +6,7 @@ import {
   Smartphone, Globe, Workflow, ShieldCheck,
   Zap, Eye, Video, Phone
 } from 'lucide-react'
+import Reveal from './Reveal'
 
 const TABS = ['Tümü', 'Lead Bulma', 'İletişim', 'Analitik', 'AI Araçlar'] as const
 type Tab = typeof TABS[number]
@@ -132,19 +133,21 @@ export default function LandingFeatures() {
     <section id="ozellikler" className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
-        <div className="text-center mb-12 max-w-2xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-50 border border-violet-100 text-violet-700 text-[13px] font-semibold mb-6">
-            <Zap size={13} />
-            Özellikler
+        <Reveal>
+          <div className="text-center mb-12 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-50 border border-violet-100 text-violet-700 text-[13px] font-semibold mb-6">
+              <Zap size={13} />
+              Özellikler
+            </div>
+            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
+              Satışın her adımı{' '}
+              <span className="gradient-text-blue">otomatik</span>
+            </h2>
+            <p className="text-[17px] text-slate-500 leading-relaxed">
+              Lead bulmadan kapatmaya, her aşamada AI destekli araçlar. Rakipleriniz manuel çalışırken siz büyüyün.
+            </p>
           </div>
-          <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-            Satışın her adımı{' '}
-            <span className="gradient-text-blue">otomatik</span>
-          </h2>
-          <p className="text-[17px] text-slate-500 leading-relaxed">
-            Lead bulmadan kapatmaya, her aşamada AI destekli araçlar. Rakipleriniz manuel çalışırken siz büyüyün.
-          </p>
-        </div>
+        </Reveal>
 
         {/* Tabs */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
