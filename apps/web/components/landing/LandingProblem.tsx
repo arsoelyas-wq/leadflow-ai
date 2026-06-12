@@ -13,7 +13,7 @@ const PROBLEMS = [
 
 const SOLUTIONS = [
   '7/24 otomatik lead toplama — siz uyurken bile',
-  'Claude AI ile her müşteriye özel, doğal mesajlar',
+  'Gelişmiş yapay zeka ile her müşteriye özel, doğal mesajlar',
   'Pipeline, skor ve durum takibi tek ekranda',
   'SDR maliyetinin onda biri ile aynı sonuç',
   'WhatsApp, Email, SMS — tek platformdan',

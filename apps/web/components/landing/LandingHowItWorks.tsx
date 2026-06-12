@@ -22,7 +22,7 @@ const STEPS = [
     step: '02',
     icon: Send,
     title: 'AI Kampanya Oluşturur',
-    desc: 'Claude AI, her lead\'e özel mesaj yazar. Spam değil, gerçek bir iş teklifiymiş gibi görünen kişisel iletişim.',
+    desc: 'Yapay zeka, her lead\'e özel mesaj yazar. Spam değil, gerçek bir iş teklifiymiş gibi görünen kişisel iletişim.',
     color: '#7c3aed',
     bg: 'bg-violet-50',
     border: 'border-violet-200',

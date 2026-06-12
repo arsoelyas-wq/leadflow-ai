@@ -23,7 +23,7 @@ const FEATURES = [
   {
     icon: Bot,
     title: 'AI Kişiselleştirme',
-    desc: 'Claude AI ile her müşteriye özel, doğal görünen mesajlar. Spam değil, gerçek konuşma.',
+    desc: 'Gelişmiş yapay zeka ile her müşteriye özel, doğal görünen mesajlar. Spam değil, gerçek konuşma.',
     color: '#7c3aed',
     bg: 'bg-violet-50',
     border: 'border-violet-100',
@@ -68,7 +68,7 @@ const FEATURES = [
   {
     icon: Video,
     title: 'Video Outreach',
-    desc: 'AI avatar ile kişiselleştirilmiş satış videoları oluştur. HeyGen entegrasyonu ile otomatik.',
+    desc: 'AI avatar ile kişiselleştirilmiş satış videoları oluştur, otomatik olarak gönder.',
     color: '#7c3aed',
     bg: 'bg-violet-50',
     border: 'border-violet-100',

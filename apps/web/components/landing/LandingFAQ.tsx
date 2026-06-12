@@ -21,7 +21,7 @@ const FAQS = [
   },
   {
     q: 'Hangi kanalları destekliyorsunuz?',
-    a: 'WhatsApp Business, Email (SMTP/Gmail/Outlook), SMS, LinkedIn DM, Instagram DM, Video outreach (HeyGen AI), Sesli arama (AI) — hepsini tek platformdan yönetebilirsiniz.',
+    a: 'WhatsApp Business, Email (SMTP/Gmail/Outlook), SMS, LinkedIn DM, Instagram DM, Video outreach (AI avatar), Sesli arama (AI) — hepsini tek platformdan yönetebilirsiniz.',
   },
   {
     q: 'Mevcut CRM sistemimle entegre olabilir mi?',

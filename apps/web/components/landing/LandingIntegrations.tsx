@@ -9,15 +9,10 @@ const INTEGRATIONS = [
   { name: 'LinkedIn', color: '#0A66C2', icon: '💼' },
   { name: 'Gmail / Google', color: '#EA4335', icon: '📧' },
   { name: 'Outlook / Microsoft', color: '#0078D4', icon: '📩' },
-  { name: 'Green API', color: '#25D366', icon: '🟢' },
-  { name: 'HeyGen AI', color: '#7C3AED', icon: '🎬' },
-  { name: 'Twilio SMS', color: '#F22F46', icon: '📱' },
   { name: 'Google Ads', color: '#FBBC05', icon: '📢' },
   { name: 'HubSpot CRM', color: '#FF7A59', icon: '🔶' },
   { name: 'Zapier', color: '#FF4A00', icon: '⚡' },
   { name: 'Calendly', color: '#006BFF', icon: '📅' },
-  { name: 'Perplexity AI', color: '#20B2AA', icon: '🔍' },
-  { name: 'Claude AI', color: '#CC785C', icon: '🤖' },
 ] as const
 
 function IntegrationCard({ name, color, icon }: { name: string; color: string; icon: string }) {
@@ -32,8 +27,8 @@ function IntegrationCard({ name, color, icon }: { name: string; color: string; i
 }
 
 export default function LandingIntegrations() {
-  const row1 = INTEGRATIONS.slice(0, 8)
-  const row2 = INTEGRATIONS.slice(8)
+  const row1 = INTEGRATIONS.slice(0, 6)
+  const row2 = INTEGRATIONS.slice(6)
 
   return (
     <section id="entegrasyonlar" className="py-24 bg-white overflow-hidden">
@@ -48,7 +43,7 @@ export default function LandingIntegrations() {
             <span className="gradient-text-blue">tam uyum</span>
           </h2>
           <p className="text-[17px] text-slate-500 leading-relaxed">
-            50+ entegrasyon ile mevcut iş akışınıza hemen dahil olur. Sıfırdan başlamak yok.
+            Mevcut iş akışınıza hemen dahil olur. Sıfırdan başlamak yok.
           </p>
         </div>
       </div>
@@ -79,12 +74,11 @@ export default function LandingIntegrations() {
         </div>
       </div>
 
-      {/* More count */}
+      {/* More */}
       <div className="max-w-7xl mx-auto px-6 mt-8 text-center">
         <p className="text-[14px] text-slate-400 font-medium">
-          ve{' '}
-          <span className="text-blue-600 font-bold">34+ daha fazla</span>{' '}
-          entegrasyon — Zapier üzerinden sınırsız genişletme
+          Ve <span className="text-blue-600 font-bold">Zapier</span> ile binlerce
+          uygulamaya bağlanın — ihtiyacınız olan her şey bir tık ötede.
         </p>
       </div>
     </section>
