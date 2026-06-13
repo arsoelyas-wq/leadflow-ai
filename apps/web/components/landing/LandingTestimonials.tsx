@@ -1,4 +1,3 @@
-'use client'
 import { Star, Quote, ShieldCheck, Lock, Server, Activity } from 'lucide-react'
 import Reveal from './Reveal'
 
@@ -130,10 +129,10 @@ export default function LandingTestimonials() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-[14px] font-bold text-slate-900 leading-tight">{t.name}</div>
-                  <div className="text-[12px] text-slate-400 truncate">
+                  <div className="text-[12px] text-slate-500 truncate">
                     {t.role} · {t.company}
                   </div>
-                  <div className="text-[11px] text-slate-300 mt-0.5">{t.country} · {t.sector}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">{t.country} · {t.sector}</div>
                 </div>
               </div>
             </div>
@@ -145,12 +144,12 @@ export default function LandingTestimonials() {
           <div className="text-center">
             <div className="text-[28px] font-black text-slate-900">4.9 / 5</div>
             <div className="flex justify-center mb-1"><Stars count={5} /></div>
-            <div className="text-[12px] text-slate-400">Ortalama puan</div>
+            <div className="text-[12px] text-slate-500">Ortalama puan</div>
           </div>
           <div className="w-px h-12 bg-slate-200 hidden sm:block" />
           <div className="text-center">
             <div className="text-[28px] font-black text-slate-900">%98</div>
-            <div className="text-[12px] text-slate-400">Tavsiye oranı</div>
+            <div className="text-[12px] text-slate-500">Tavsiye oranı</div>
           </div>
         </div>
       </div>
