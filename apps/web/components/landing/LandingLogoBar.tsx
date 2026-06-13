@@ -15,13 +15,33 @@ const PROOF_STATS = [
   { target: 14, prefix: '', suffix: '', label: 'Ülkede Aktif' },
 ]
 
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+
+  return reduced
+}
+
 function Counter({ target, prefix = '', suffix = '', duration = 1500 }: { target: number; prefix?: string; suffix?: string; duration?: number }) {
   const [value, setValue] = useState(0)
   const ref = useRef<HTMLSpanElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
+    if (reduced) {
+      setValue(target)
+      return
+    }
+    let raf = 0
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return
       const steps = Math.max(1, Math.round(duration / 16))
@@ -34,18 +54,21 @@ function Counter({ target, prefix = '', suffix = '', duration = 1500 }: { target
           return
         }
         setValue(Math.floor(current))
-        requestAnimationFrame(tick)
+        raf = requestAnimationFrame(tick)
       }
       tick()
       observer.disconnect()
     }, { threshold: 0.4 })
     observer.observe(el)
-    return () => observer.disconnect()
-  }, [target, duration])
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(raf)
+    }
+  }, [target, duration, reduced])
 
   return (
-    <span ref={ref}>
-      {prefix}{value.toLocaleString('tr-TR')}{suffix}
+    <span ref={ref} aria-label={`${prefix}${target.toLocaleString('tr-TR')}${suffix}`}>
+      <span aria-hidden="true">{prefix}{value.toLocaleString('tr-TR')}{suffix}</span>
     </span>
   )
 }
