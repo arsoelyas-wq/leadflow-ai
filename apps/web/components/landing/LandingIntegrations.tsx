@@ -1,26 +1,19 @@
-'use client'
-import { Puzzle } from 'lucide-react'
-import Reveal from './Reveal'
-
 const INTEGRATIONS = [
-  { name: 'Google Maps', color: '#4285F4', icon: '📍' },
-  { name: 'Meta / Facebook', color: '#1877F2', icon: '📘' },
-  { name: 'Instagram', color: '#E4405F', icon: '📸' },
-  { name: 'WhatsApp Business', color: '#25D366', icon: '💬' },
-  { name: 'LinkedIn', color: '#0A66C2', icon: '💼' },
-  { name: 'Gmail / Google', color: '#EA4335', icon: '📧' },
-  { name: 'Outlook / Microsoft', color: '#0078D4', icon: '📩' },
-  { name: 'Google Ads', color: '#FBBC05', icon: '📢' },
-  { name: 'HubSpot CRM', color: '#FF7A59', icon: '🔶' },
-  { name: 'Zapier', color: '#FF4A00', icon: '⚡' },
-  { name: 'Calendly', color: '#006BFF', icon: '📅' },
+  { name: 'Google Maps', color: '#4285F4' },
+  { name: 'WhatsApp Business', color: '#25D366' },
+  { name: 'Meta / Facebook', color: '#1877F2' },
+  { name: 'Instagram', color: '#E4405F' },
+  { name: 'LinkedIn', color: '#0A66C2' },
+  { name: 'Gmail / Google', color: '#EA4335' },
+  { name: 'HubSpot CRM', color: '#FF7A59' },
+  { name: 'Zapier', color: '#FF4A00' },
 ] as const
 
-function IntegrationCard({ name, color, icon }: { name: string; color: string; icon: string }) {
+function IntegrationCard({ name, color }: { name: string; color: string }) {
   return (
-    <div className="flex-shrink-0 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-200 group">
-      <span className="text-xl leading-none">{icon}</span>
-      <span className="text-[13px] font-semibold text-slate-700 whitespace-nowrap group-hover:text-slate-900 transition-colors">
+    <div className="flex-shrink-0 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-200">
+      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+      <span className="text-[13px] font-semibold text-slate-700 whitespace-nowrap">
         {name}
       </span>
     </div>
@@ -28,61 +21,22 @@ function IntegrationCard({ name, color, icon }: { name: string; color: string; i
 }
 
 export default function LandingIntegrations() {
-  const row1 = INTEGRATIONS.slice(0, 6)
-  const row2 = INTEGRATIONS.slice(6)
-
   return (
-    <section id="entegrasyonlar" className="py-24 bg-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 mb-12">
-        <Reveal>
-          <div className="text-center max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[13px] font-semibold mb-6">
-              <Puzzle size={13} />
-              Entegrasyonlar
-            </div>
-            <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-              Kullandığınız araçlarla{' '}
-              <span className="gradient-text-blue">tam uyum</span>
-            </h2>
-            <p className="text-[17px] text-slate-500 leading-relaxed">
-              Mevcut iş akışınıza hemen dahil olur. Sıfırdan başlamak yok.
-            </p>
-          </div>
-        </Reveal>
-      </div>
+    <section id="entegrasyonlar" className="py-14 bg-white overflow-hidden border-t border-slate-100">
+      <p className="text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-8">
+        Mevcut Araçlarınızla Entegre Çalışır
+      </p>
 
-      {/* Row 1 — left to right */}
-      <div className="relative mb-4">
-        <div className="absolute left-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to right, white, transparent)' }} />
-        <div className="absolute right-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
-          style={{ background: 'linear-gradient(to left, white, transparent)' }} />
-        <div className="flex animate-marquee will-change-transform gap-3 w-max px-3">
-          {[...row1, ...row1].map((item, i) => (
-            <IntegrationCard key={`r1-${i}`} {...item} />
-          ))}
-        </div>
-      </div>
-
-      {/* Row 2 — right to left */}
       <div className="relative">
         <div className="absolute left-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
           style={{ background: 'linear-gradient(to right, white, transparent)' }} />
         <div className="absolute right-0 top-0 bottom-0 w-20 z-10 pointer-events-none"
           style={{ background: 'linear-gradient(to left, white, transparent)' }} />
-        <div className="flex animate-marquee-reverse will-change-transform gap-3 w-max px-3">
-          {[...row2, ...row2].map((item, i) => (
-            <IntegrationCard key={`r2-${i}`} {...item} />
+        <div className="flex animate-marquee will-change-transform gap-3 w-max px-3">
+          {[...INTEGRATIONS, ...INTEGRATIONS].map((item, i) => (
+            <IntegrationCard key={i} {...item} />
           ))}
         </div>
-      </div>
-
-      {/* More */}
-      <div className="max-w-7xl mx-auto px-6 mt-8 text-center">
-        <p className="text-[14px] text-slate-400 font-medium">
-          Ve <span className="text-blue-600 font-bold">Zapier</span> ile binlerce
-          uygulamaya bağlanın — ihtiyacınız olan her şey bir tık ötede.
-        </p>
       </div>
     </section>
   )
