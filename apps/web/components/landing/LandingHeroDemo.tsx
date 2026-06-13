@@ -2,13 +2,25 @@
 import { useEffect, useState } from 'react'
 import {
   Zap, TrendingUp, Users, Search, MapPin, MessageCircle, Mail, Phone,
-  CheckCircle2, Loader2,
+  CheckCircle2, Loader2, LayoutDashboard, Send, BarChart3, Settings,
 } from 'lucide-react'
 
 const SCENES = ['scrape', 'campaign', 'results'] as const
 const SCENE_TITLES = ['Lead Taranıyor', 'Kampanya Gönderiliyor', 'Sonuçlar Güncelleniyor']
 const SCENE_DURATION = 4500
 const TICK = 60
+
+// Light-theme tokens (mirrors apps/web/app/(dashboard)/dashboard/page.tsx)
+const tx1 = '#0f172a'
+const tx2 = '#64748b'
+const tx3 = '#94a3b8'
+const surf = '#f8fafc'
+const cardStyle = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 12,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+}
 
 const LEADS = [
   { name: 'Türk Tekstil A.Ş.', sector: 'Tekstil', score: 95 },
@@ -45,6 +57,64 @@ const MAP_PINS = [
   { top: '32%', left: '78%' },
 ]
 
+const SIDEBAR_ICONS = [LayoutDashboard, Send, BarChart3, Settings]
+
+const STAT_CARDS: { label: string; value: number; prefix?: string; suffix?: string; color: string; trend: number }[] = [
+  { label: 'Pipeline', value: 874, prefix: '₺', suffix: 'K', color: '#10b981', trend: 8 },
+  { label: 'Dönüşüm', value: 87, suffix: '%', color: '#8b5cf6', trend: 15 },
+  { label: 'Kredi', value: 4203, color: '#f59e0b', trend: 5 },
+]
+
+const CHART_DATA = [3, 5, 4, 6, 5, 8, 7, 9, 8, 11, 9, 12, 11, 14]
+
+const FUNNEL = [
+  { label: 'Yeni', pct: 100, color: '#3b82f6' },
+  { label: 'İletişim', pct: 72, color: '#8b5cf6' },
+  { label: 'Teklif', pct: 48, color: '#f59e0b' },
+  { label: 'Kapandı', pct: 28, color: '#10b981' },
+]
+
+const RECENT_LEADS = [
+  { name: 'Türk Tekstil A.Ş.', status: 'Kazanıldı', color: '#059669', bg: '#ecfdf5', score: 95 },
+  { name: 'Metro Yapı Ltd.', status: 'Aktif', color: '#2563eb', bg: '#eff6ff', score: 78 },
+  { name: 'Digital GmbH', status: 'İletişim', color: '#b45309', bg: '#fffbeb', score: 62 },
+]
+
+type CursorWaypoint = { atProgress: number; x: number; y: number; click?: boolean }
+
+const CURSOR_WAYPOINTS: CursorWaypoint[][] = [
+  // Scene 0 — Scrape: search bar -> map pins -> lead list
+  [
+    { atProgress: 0, x: 110, y: 60 },
+    { atProgress: 8, x: 110, y: 60, click: true },
+    { atProgress: 18, x: 50, y: 130 },
+    { atProgress: 26, x: 95, y: 178, click: true },
+    { atProgress: 45, x: 340, y: 120 },
+    { atProgress: 60, x: 340, y: 195, click: true },
+    { atProgress: 85, x: 340, y: 235 },
+  ],
+  // Scene 1 — Campaign: channel selector -> call row
+  [
+    { atProgress: 0, x: 60, y: 60 },
+    { atProgress: 8, x: 60, y: 60, click: true },
+    { atProgress: 25, x: 180, y: 60 },
+    { atProgress: 33, x: 180, y: 60, click: true },
+    { atProgress: 50, x: 300, y: 60 },
+    { atProgress: 58, x: 300, y: 60, click: true },
+    { atProgress: 75, x: 460, y: 250 },
+    { atProgress: 83, x: 460, y: 250, click: true },
+  ],
+  // Scene 2 — Results: stat cards -> chart -> recent leads
+  [
+    { atProgress: 0, x: 470, y: 60 },
+    { atProgress: 15, x: 470, y: 60, click: true },
+    { atProgress: 35, x: 250, y: 180 },
+    { atProgress: 55, x: 430, y: 180, click: true },
+    { atProgress: 75, x: 250, y: 320 },
+    { atProgress: 90, x: 250, y: 320, click: true },
+  ],
+]
+
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false)
 
@@ -59,21 +129,136 @@ function useReducedMotion() {
   return reduced
 }
 
+function useCountUp(target: number, reduced: boolean, duration = 1200) {
+  const [value, setValue] = useState(reduced ? target : 0)
+
+  useEffect(() => {
+    if (reduced) {
+      setValue(target)
+      return
+    }
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const pct = Math.min(1, (now - start) / duration)
+      setValue(Math.round(target * pct))
+      if (pct < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [reduced, target, duration])
+
+  return value
+}
+
+function HeroCursor({ waypoints, progress }: { waypoints: CursorWaypoint[]; progress: number }) {
+  let current = waypoints[0]
+  for (const wp of waypoints) {
+    if (progress >= wp.atProgress) current = wp
+  }
+  const sincePoint = progress - current.atProgress
+  const clickWindow = (250 / SCENE_DURATION) * 100
+  const clicking = !!current.click && sincePoint >= 0 && sincePoint <= clickWindow
+
+  return (
+    <div
+      className="absolute z-10 pointer-events-none"
+      style={{
+        left: current.x,
+        top: current.y,
+        width: 14,
+        height: 14,
+        transition: 'left 0.5s ease-in-out, top 0.5s ease-in-out',
+      }}
+    >
+      <div
+        className={clicking ? 'animate-cursor-click' : ''}
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: '50%',
+          background: '#ffffff',
+          border: `2px solid ${tx1}`,
+          boxShadow: '0 2px 6px rgba(15,23,42,0.25)',
+        }}
+      />
+    </div>
+  )
+}
+
+function DeltaBadge({ trend }: { trend: number }) {
+  const positive = trend >= 0
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold flex-shrink-0"
+      style={{
+        background: positive ? '#ecfdf5' : '#fef2f2',
+        color: positive ? '#059669' : '#dc2626',
+      }}
+    >
+      {positive ? '▲' : '▼'} {positive ? '+' : ''}{trend}%
+    </span>
+  )
+}
+
+function DonutChart({ value, label, color, reduced }: { value: number; label: string; color: string; reduced: boolean }) {
+  const display = useCountUp(value, reduced)
+  const r = 26
+  const c = 2 * Math.PI * r
+  const offset = c - (display / 100) * c
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <svg width={60} height={60} viewBox="0 0 64 64" className="-rotate-90 flex-shrink-0">
+        <circle cx={32} cy={32} r={r} fill="none" stroke="#e2e8f0" strokeWidth={6} />
+        <circle
+          cx={32} cy={32} r={r} fill="none" stroke={color} strokeWidth={6}
+          strokeLinecap="round" strokeDasharray={c} strokeDashoffset={offset}
+        />
+      </svg>
+      <div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: tx1, lineHeight: 1 }}>%{display}</div>
+        <div style={{ fontSize: 10, color: tx2, marginTop: 2 }}>{label}</div>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, prefix, suffix, color, trend, reduced }: {
+  label: string
+  value: number
+  prefix?: string
+  suffix?: string
+  color: string
+  trend: number
+  reduced: boolean
+}) {
+  const display = useCountUp(value, reduced)
+  return (
+    <div className="flex flex-col justify-between p-2.5 rounded-xl" style={cardStyle}>
+      <div className="flex items-center justify-between gap-1">
+        <div style={{ fontSize: 10, color: tx2, fontWeight: 600 }}>{label}</div>
+        <DeltaBadge trend={trend} />
+      </div>
+      <div style={{ fontSize: 18, fontWeight: 800, color }}>
+        {prefix}{display.toLocaleString('tr-TR')}{suffix}
+      </div>
+    </div>
+  )
+}
+
 function ScrapeScene() {
   return (
     <div className="h-full flex flex-col gap-2">
       {/* Search bar */}
-      <div
-        className="flex items-center gap-2 rounded-xl px-3 py-2"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        <Search size={11} className="text-white/30 flex-shrink-0" />
-        <span className="text-white/50 text-[10px] font-medium animate-typing">
+      <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={cardStyle}>
+        <Search size={12} style={{ color: tx3 }} className="flex-shrink-0" />
+        <span style={{ fontSize: 11, color: tx1, fontWeight: 500 }} className="animate-typing">
           İstanbul · Tekstil firmaları ara...
         </span>
         <span
           className="animate-caret-blink flex-shrink-0"
-          style={{ width: 2, height: 10, background: '#3b82f6', borderRadius: 1 }}
+          style={{ width: 2, height: 12, background: '#2563eb', borderRadius: 1 }}
         />
       </div>
 
@@ -83,9 +268,9 @@ function ScrapeScene() {
         <div
           className="relative rounded-xl overflow-hidden"
           style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)',
+            background: surf,
+            border: '1px solid #e2e8f0',
+            backgroundImage: 'radial-gradient(circle, #e2e8f0 1px, transparent 1px)',
             backgroundSize: '12px 12px',
           }}
         >
@@ -95,37 +280,34 @@ function ScrapeScene() {
               className="absolute animate-drop-pin"
               style={{ ...pos, animationDelay: `${0.3 + i * 0.35}s` }}
             >
-              <MapPin size={14} className="text-blue-400 fill-blue-400/30" />
+              <MapPin size={14} style={{ color: '#2563eb', fill: '#dbeafe' }} />
             </div>
           ))}
         </div>
 
         {/* Lead list */}
-        <div
-          className="rounded-xl p-2.5 flex flex-col gap-1.5 justify-center"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
+        <div className="rounded-xl p-2.5 flex flex-col gap-1.5 justify-center" style={cardStyle}>
           {LEADS.map((lead, i) => (
             <div
               key={lead.name}
               className="flex items-center justify-between animate-scene-in"
               style={{ animationDelay: `${0.4 + i * 0.3}s` }}
             >
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <div
-                  className="w-4 h-4 rounded-lg flex items-center justify-center text-[7px] font-bold text-blue-300 flex-shrink-0"
-                  style={{ background: 'rgba(59,130,246,0.15)' }}
+                  className="w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                  style={{ background: '#dbeafe', color: '#2563eb' }}
                 >
                   {lead.name[0]}
                 </div>
-                <div>
-                  <div className="text-white/60 text-[9px] font-medium leading-tight">{lead.name}</div>
-                  <div className="text-white/25 text-[7px]">{lead.sector}</div>
+                <div className="min-w-0">
+                  <div style={{ fontSize: 11, fontWeight: 600, color: tx1 }} className="leading-tight truncate">{lead.name}</div>
+                  <div style={{ fontSize: 9, color: tx3 }}>{lead.sector}</div>
                 </div>
               </div>
               <span
-                className="text-[7px] px-1.5 py-0.5 rounded-full font-semibold text-emerald-400 flex-shrink-0"
-                style={{ background: 'rgba(16,185,129,0.12)' }}
+                className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+                style={{ background: '#eff6ff', color: '#2563eb' }}
               >
                 Skor {lead.score}
               </span>
@@ -135,8 +317,8 @@ function ScrapeScene() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center gap-2 text-white/30 text-[8px] font-semibold">
-        <Loader2 size={10} className="animate-spin text-blue-400" />
+      <div className="flex items-center gap-2" style={{ color: tx2, fontSize: 11, fontWeight: 600 }}>
+        <Loader2 size={12} className="animate-spin" style={{ color: '#2563eb' }} />
         4/4 lead bulundu
       </div>
     </div>
@@ -152,66 +334,66 @@ function CampaignScene() {
           <div
             key={label}
             className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 animate-channel-active"
-            style={{ border: '1px solid rgba(255,255,255,0.08)', animationDelay: `${i * 1.2}s` }}
+            style={{ border: '1px solid #e2e8f0', animationDelay: `${i * 1.2}s` }}
           >
-            <Icon size={11} className="text-white/50" />
-            <span className="text-white/40 text-[9px] font-semibold">{label}</span>
+            <Icon size={13} style={{ color: tx2 }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: tx1 }}>{label}</span>
           </div>
         ))}
       </div>
 
       {/* Lead rows with delivery status */}
-      <div
-        className="rounded-xl p-2.5 flex-1 min-h-0 flex flex-col gap-1.5 justify-center"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
-      >
+      <div className="rounded-xl p-2.5 flex-1 min-h-0 flex flex-col gap-1.5 justify-center" style={cardStyle}>
         {LEADS.map((lead, i) => (
           <div key={lead.name} className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               <div
-                className="w-4 h-4 rounded-lg flex items-center justify-center text-[7px] font-bold text-blue-300 flex-shrink-0"
-                style={{ background: 'rgba(59,130,246,0.15)' }}
+                className="w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                style={{ background: '#dbeafe', color: '#2563eb' }}
               >
                 {lead.name[0]}
               </div>
-              <span className="text-white/50 text-[9px] font-medium">{lead.name}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: tx1 }} className="truncate">{lead.name}</span>
             </div>
-            <div className="relative h-3" style={{ minWidth: 78 }}>
+            <div className="relative h-4 flex-shrink-0" style={{ minWidth: 92 }}>
               <span
-                className="absolute right-0 top-0 flex items-center gap-1 text-[8px] font-semibold text-amber-400 animate-status-out whitespace-nowrap"
-                style={{ animationDelay: `${i * 0.4}s` }}
+                className="absolute right-0 top-0 flex items-center gap-1 whitespace-nowrap px-1.5 py-0.5 rounded-md animate-status-out"
+                style={{ animationDelay: `${i * 0.4}s`, background: '#fffbeb', color: '#b45309', fontSize: 9, fontWeight: 700 }}
               >
-                <Loader2 size={9} className="animate-spin" /> Gönderiliyor
+                <Loader2 size={10} className="animate-spin" /> Gönderiliyor
               </span>
               <span
-                className="absolute right-0 top-0 flex items-center gap-1 text-[8px] font-semibold text-emerald-400 animate-status-in whitespace-nowrap"
-                style={{ animationDelay: `${i * 0.4}s` }}
+                className="absolute right-0 top-0 flex items-center gap-1 whitespace-nowrap px-1.5 py-0.5 rounded-md animate-status-in"
+                style={{ animationDelay: `${i * 0.4}s`, background: '#ecfdf5', color: '#059669', fontSize: 9, fontWeight: 700 }}
               >
-                <CheckCircle2 size={9} /> Teslim Edildi
+                <CheckCircle2 size={10} /> Teslim Edildi
               </span>
             </div>
           </div>
         ))}
 
         {/* Call row */}
-        <div
-          className="flex items-center justify-between mt-0.5 pt-1.5"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
-        >
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-between pt-1.5" style={{ borderTop: '1px solid #f1f5f9' }}>
+          <div className="flex items-center gap-1.5 min-w-0">
             <div
-              className="w-4 h-4 rounded-lg flex items-center justify-center animate-ring-pulse flex-shrink-0"
-              style={{ background: 'rgba(16,185,129,0.15)' }}
+              className="w-5 h-5 rounded-lg flex items-center justify-center animate-ring-pulse flex-shrink-0"
+              style={{ background: '#ecfdf5', color: '#059669' }}
             >
-              <Phone size={9} className="text-emerald-400" />
+              <Phone size={11} />
             </div>
-            <span className="text-white/50 text-[9px] font-medium">Metro Yapı Ltd. — Sesli Arama</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: tx1 }} className="truncate">Metro Yapı Ltd. — Sesli Arama</span>
           </div>
-          <div className="relative h-3" style={{ minWidth: 78 }}>
-            <span className="absolute right-0 top-0 text-[8px] font-semibold text-blue-400 animate-status-out whitespace-nowrap">
+          <div className="relative h-4 flex-shrink-0" style={{ minWidth: 92 }}>
+            <span
+              className="absolute right-0 top-0 whitespace-nowrap px-1.5 py-0.5 rounded-md animate-status-out"
+              style={{ background: '#ecfdf5', color: '#059669', fontSize: 9, fontWeight: 700 }}
+            >
               Bağlanıyor...
             </span>
-            <span className="absolute right-0 top-0 text-[8px] font-semibold text-emerald-400 animate-status-in whitespace-nowrap">
+            <span
+              className="absolute right-0 top-0 whitespace-nowrap px-1.5 py-0.5 rounded-md animate-status-in"
+              style={{ background: '#ecfdf5', color: '#059669', fontSize: 9, fontWeight: 700 }}
+            >
               Görüşme 00:42
             </span>
           </div>
@@ -219,99 +401,110 @@ function CampaignScene() {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center gap-2 text-white/30 text-[8px] font-semibold">
-        <CheckCircle2 size={10} className="text-emerald-400" />
+      <div className="flex items-center gap-2" style={{ color: tx2, fontSize: 11, fontWeight: 600 }}>
+        <CheckCircle2 size={12} style={{ color: '#059669' }} />
         4/4 mesaj gönderildi · 1 arama aktif
       </div>
     </div>
   )
 }
 
-function ResultsScene() {
+function ResultsScene({ reduced }: { reduced: boolean }) {
+  const totalLeads = useCountUp(2847, reduced)
+
+  const max = Math.max(...CHART_DATA)
+  const min = Math.min(...CHART_DATA)
+  const range = max - min || 1
+  const points = CHART_DATA.map((v, i) => ({
+    x: (i / (CHART_DATA.length - 1)) * 100,
+    y: 38 - ((v - min) / range) * 34,
+  }))
+  const pathD = `M ${points.map(p => `${p.x},${p.y}`).join(' L ')}`
+  const last = points[points.length - 1]
+
   return (
     <div className="h-full flex flex-col gap-2">
-      {/* Stat cards */}
+      {/* Stat row */}
       <div className="grid grid-cols-4 gap-2">
-        {[
-          { v: '2,847', l: 'Lead', c: '#3b82f6' },
-          { v: '₺874K', l: 'Pipeline', c: '#10b981' },
-          { v: '%87', l: 'Dönüşüm', c: '#8b5cf6' },
-          { v: '4,203', l: 'Kredi', c: '#f59e0b' },
-        ].map(s => (
-          <div key={s.l} className="rounded-xl p-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="text-[11px] font-extrabold" style={{ color: s.c }}>{s.v}</div>
-            <div className="text-white/25 text-[8px] mt-0.5">{s.l}</div>
-            <div className="mt-1.5 flex items-end gap-px h-5">
-              {[3,5,4,7,5,8,6,9].map((h, i) => (
-                <div key={i} className="flex-1 rounded-sm" style={{ height: `${h * 8}%`, background: `${s.c}50` }} />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Chart + Funnel */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 100px' }}>
-        <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="text-white/30 text-[8px] mb-2 font-semibold">Mesaj Trendi — Son 14 gün</div>
-          <div className="flex items-end gap-0.5 h-10">
-            {[3,5,4,6,5,8,7,9,8,11,9,12,11,14].map((h, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-t-sm"
-                style={{
-                  height: `${h * 6}%`,
-                  background: i >= 12 ? 'rgba(59,130,246,0.9)' : i >= 10 ? 'rgba(59,130,246,0.6)' : 'rgba(59,130,246,0.25)',
-                }}
-              />
+        <div className="flex flex-col justify-between p-2.5 rounded-xl" style={cardStyle}>
+          <div style={{ fontSize: 10, color: tx2, fontWeight: 600 }}>Toplam Lead</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#3b82f6' }}>{totalLeads.toLocaleString('tr-TR')}</div>
+          <div className="flex items-end gap-0.5" style={{ height: 14 }}>
+            {[3, 5, 4, 7, 5, 8, 6, 9].map((v, i) => (
+              <div key={i} style={{ width: 3, height: `${v * 1.4}px`, background: '#3b82f6', borderRadius: 1, opacity: 0.4 + i / 16 }} />
             ))}
           </div>
         </div>
-        <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="text-white/30 text-[8px] mb-2 font-semibold">Pipeline</div>
-          {[
-            { l: 'Yeni', p: 100, c: '#3b82f6' },
-            { l: 'İletişim', p: 72, c: '#8b5cf6' },
-            { l: 'Teklif', p: 48, c: '#f59e0b' },
-            { l: 'Kapandı', p: 28, c: '#10b981' },
-          ].map(s => (
-            <div key={s.l} className="mb-1">
-              <div className="flex justify-between items-center mb-0.5">
-                <span className="text-white/25 text-[7px]">{s.l}</span>
+        {STAT_CARDS.map(card => (
+          <StatCard key={card.label} {...card} reduced={reduced} />
+        ))}
+      </div>
+
+      {/* Chart + donut + funnel */}
+      <div className="flex-1 grid gap-2 min-h-0" style={{ gridTemplateColumns: '1fr 96px 96px' }}>
+        {/* Line chart */}
+        <div className="flex flex-col p-2.5 rounded-xl" style={cardStyle}>
+          <div style={{ fontSize: 10, color: tx2, fontWeight: 600, marginBottom: 4 }}>Mesaj Trendi — Son 14 gün</div>
+          <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="flex-1 w-full">
+            <path
+              d={pathD}
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+              pathLength={1}
+              strokeDasharray={1}
+              strokeDashoffset={reduced ? 0 : undefined}
+              className={reduced ? '' : 'animate-draw-stroke'}
+            />
+            <circle cx={last.x} cy={last.y} r={2.5} fill="#3b82f6" />
+          </svg>
+        </div>
+
+        {/* Donut */}
+        <div className="flex items-center justify-center p-2 rounded-xl" style={cardStyle}>
+          <DonutChart value={91} label="Yanıt Oranı" color="#10b981" reduced={reduced} />
+        </div>
+
+        {/* Funnel */}
+        <div className="flex flex-col gap-1.5 justify-center p-2.5 rounded-xl" style={cardStyle}>
+          {FUNNEL.map(stage => (
+            <div key={stage.label}>
+              <div className="flex items-center justify-between mb-0.5" style={{ fontSize: 9, color: tx2 }}>
+                <span>{stage.label}</span><span>{stage.pct}%</span>
               </div>
-              <div className="h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <div className="h-full rounded-full" style={{ width: `${s.p}%`, background: s.c }} />
+              <div className="h-1 rounded-full" style={{ background: '#e2e8f0' }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${stage.pct}%`, background: stage.color, transition: reduced ? 'none' : 'width 1s ease-out' }}
+                />
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Lead list */}
-      <div className="rounded-xl p-3 flex-1 min-h-0" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="text-white/30 text-[8px] mb-2 font-semibold">Son Leadler</div>
-        <div className="flex flex-col gap-1">
-          {[
-            { n: 'Türk Tekstil A.Ş.', s: 'Kazanıldı', c: '#10b981', sc: 95 },
-            { n: 'Metro Yapı Ltd.', s: 'Aktif', c: '#3b82f6', sc: 78 },
-            { n: 'Digital GmbH', s: 'İletişim', c: '#f59e0b', sc: 62 },
-          ].map(lead => (
-            <div key={lead.n} className="flex items-center justify-between py-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded-lg flex items-center justify-center text-[7px] font-bold text-blue-300" style={{ background: 'rgba(59,130,246,0.15)' }}>
-                  {lead.n[0]}
-                </div>
-                <span className="text-white/50 text-[8px]">{lead.n}</span>
+      {/* Recent leads */}
+      <div className="flex flex-col gap-1.5">
+        {RECENT_LEADS.map(lead => (
+          <div key={lead.name} className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl" style={cardStyle}>
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                style={{ background: '#dbeafe', color: '#2563eb' }}
+              >
+                {lead.name[0]}
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-1 w-8 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  <div className="h-full rounded-full" style={{ width: `${lead.sc}%`, background: lead.c }} />
-                </div>
-                <span className="text-[7px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: `${lead.c}20`, color: lead.c }}>{lead.s}</span>
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: tx1 }} className="truncate">{lead.name}</div>
             </div>
-          ))}
-        </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div style={{ width: 50, height: 4, borderRadius: 2, background: '#e2e8f0' }}>
+                <div style={{ width: `${lead.score}%`, height: '100%', borderRadius: 2, background: lead.color }} />
+              </div>
+              <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold" style={{ background: lead.bg, color: lead.color }}>{lead.status}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -349,50 +542,61 @@ export default function LandingHeroDemo() {
 
   return (
     <div className="relative w-full max-w-[600px] mx-auto animate-float">
-      {/* Browser chrome */}
-      <div className="bg-slate-200 rounded-t-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-red-400" />
-          <div className="w-3 h-3 rounded-full bg-yellow-400" />
-          <div className="w-3 h-3 rounded-full bg-emerald-400" />
-        </div>
-        <div className="flex-1 bg-slate-100 rounded-lg py-1.5 px-3">
-          <p className="text-slate-400 text-[11px] text-center font-medium">app.leadflow.ai/dashboard</p>
-        </div>
-      </div>
+      {/* Glow effect behind mockup */}
+      <div
+        className="absolute inset-0 -z-10 blur-3xl opacity-20 rounded-3xl"
+        style={{ background: 'radial-gradient(circle at 50% 50%, #3b82f6, #7c3aed)' }}
+      />
 
-      {/* Dashboard UI */}
-      <div className="rounded-b-2xl overflow-hidden shadow-2xl" style={{ background: '#060a14', height: 400 }}>
-        <div className="flex h-full">
+      {/* Window frame */}
+      <div className="rounded-2xl overflow-hidden shadow-2xl">
+        {/* Title bar */}
+        <div className="px-4 py-2.5 flex items-center gap-3" style={{ background: '#1e293b' }}>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+          </div>
+          <div className="flex-1 flex justify-center">
+            <div className="px-3 py-1 rounded-md" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <p className="text-[11px] text-center font-medium" style={{ color: '#94a3b8' }}>app.leadflow.ai/dashboard</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Dashboard body */}
+        <div className="flex" style={{ height: 400 }}>
           {/* Sidebar */}
           <div
-            className="flex-shrink-0 flex flex-col items-center py-4 gap-3"
-            style={{ width: 54, background: '#0a0f1e', borderRight: '1px solid rgba(255,255,255,0.05)' }}
+            className="flex-shrink-0 flex flex-col items-center py-4 gap-2"
+            style={{ width: 54, background: '#ffffff', borderRight: '1px solid #e2e8f0' }}
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center mb-2" style={{ background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)' }}>
               <Zap size={14} className="text-white fill-white" />
             </div>
-            <div className="w-1 h-1 rounded-full bg-white/20 mt-2" />
-            {[0,1,2,3,4,5,6,7].map(i => (
+            {SIDEBAR_ICONS.map((Icon, i) => (
               <div
                 key={i}
-                className={`w-7 h-1.5 rounded-full transition-colors ${i === 0 ? 'bg-blue-500' : 'bg-white/10'}`}
-                style={{ width: i === 0 ? 28 : 20 }}
-              />
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: i === 0 ? '#eff6ff' : 'transparent', color: i === 0 ? '#2563eb' : '#94a3b8' }}
+              >
+                <Icon size={15} />
+              </div>
             ))}
           </div>
 
           {/* Main content */}
-          <div className="flex-1 p-4 overflow-hidden flex flex-col gap-2">
+          <div className="relative flex-1 p-4 overflow-hidden flex flex-col gap-2" style={{ background: surf }}>
             {/* Story progress bar */}
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               {SCENES.map((s, i) => (
-                <div key={s} className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <div key={s} className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: '#e2e8f0' }}>
                   <div
                     className="h-full rounded-full"
                     style={{
                       background: 'linear-gradient(90deg,#3b82f6,#8b5cf6)',
                       width: i < scene ? '100%' : i === scene ? `${progress}%` : '0%',
+                      transition: i === scene ? 'none' : 'width .3s ease',
                     }}
                   />
                 </div>
@@ -401,10 +605,10 @@ export default function LandingHeroDemo() {
 
             {/* Scene header */}
             <div className="flex items-center justify-between">
-              <div className="text-white text-[12px] font-bold">{SCENE_TITLES[scene]}</div>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-dot" />
-                <span className="text-emerald-400 text-[8px] font-semibold">Canlı</span>
+              <div style={{ fontSize: 13, fontWeight: 700, color: tx1 }}>{SCENE_TITLES[scene]}</div>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ background: '#ecfdf5' }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-dot" />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#059669' }}>Canlı</span>
               </div>
             </div>
 
@@ -412,8 +616,10 @@ export default function LandingHeroDemo() {
             <div key={scene} className="flex-1 min-h-0 animate-scene-in">
               {scene === 0 && <ScrapeScene />}
               {scene === 1 && <CampaignScene />}
-              {scene === 2 && <ResultsScene />}
+              {scene === 2 && <ResultsScene reduced={reduced} />}
             </div>
+
+            {!reduced && <HeroCursor waypoints={CURSOR_WAYPOINTS[scene]} progress={progress} />}
           </div>
         </div>
       </div>
@@ -443,12 +649,6 @@ export default function LandingHeroDemo() {
           </div>
         </div>
       </div>
-
-      {/* Glow effect behind mockup */}
-      <div
-        className="absolute inset-0 -z-10 blur-3xl opacity-20 rounded-3xl"
-        style={{ background: 'radial-gradient(circle at 50% 50%, #3b82f6, #7c3aed)' }}
-      />
     </div>
   )
 }
