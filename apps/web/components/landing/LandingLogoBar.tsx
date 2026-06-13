@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 
 const LOGOS = [
   'Türk Tekstil A.Ş.', 'Metro Yapı Ltd.', 'Digital GmbH',
@@ -15,32 +15,33 @@ const PROOF_STATS = [
   { target: 14, prefix: '', suffix: '', label: 'Ülkede Aktif' },
 ]
 
+function subscribeReducedMotion(callback: () => void) {
+  const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+  mq.addEventListener('change', callback)
+  return () => mq.removeEventListener('change', callback)
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function getReducedMotionServerSnapshot() {
+  return false
+}
+
 function useReducedMotion() {
-  const [reduced, setReduced] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReduced(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setReduced(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  return reduced
+  return useSyncExternalStore(subscribeReducedMotion, getReducedMotionSnapshot, getReducedMotionServerSnapshot)
 }
 
 function Counter({ target, prefix = '', suffix = '', duration = 1500 }: { target: number; prefix?: string; suffix?: string; duration?: number }) {
-  const [value, setValue] = useState(0)
+  const [animatedValue, setAnimatedValue] = useState(0)
   const ref = useRef<HTMLSpanElement>(null)
   const reduced = useReducedMotion()
+  const value = reduced ? target : animatedValue
 
   useEffect(() => {
     const el = ref.current
-    if (!el) return
-    if (reduced) {
-      setValue(target)
-      return
-    }
+    if (!el || reduced) return
     let raf = 0
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return
@@ -50,10 +51,10 @@ function Counter({ target, prefix = '', suffix = '', duration = 1500 }: { target
       const tick = () => {
         current += increment
         if (current >= target) {
-          setValue(target)
+          setAnimatedValue(target)
           return
         }
-        setValue(Math.floor(current))
+        setAnimatedValue(Math.floor(current))
         raf = requestAnimationFrame(tick)
       }
       tick()
