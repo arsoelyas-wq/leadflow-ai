@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { ArrowRight, Play, CheckCircle } from 'lucide-react'
+import { ArrowRight, CheckCircle } from 'lucide-react'
 import LandingHeroDemo from './LandingHeroDemo'
 
 export default function LandingHero() {
@@ -25,7 +25,7 @@ export default function LandingHero() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-8">
               <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse-dot" />
-              <span className="text-blue-700 text-[13px] font-semibold">Yapay Zeka Destekli B2B Lead Platformu</span>
+              <span className="text-blue-700 text-[13px] font-semibold">B2B Satış Ekipleri İçin Otomasyon Platformu</span>
             </div>
 
             {/* Headline */}
@@ -37,8 +37,10 @@ export default function LandingHero() {
 
             {/* Subheadline */}
             <p className="text-[17px] lg:text-[18px] text-slate-500 leading-[1.7] mb-8 max-w-lg">
-              Google Maps&apos;ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt.{' '}
-              <strong className="text-slate-700 font-semibold">2,847+ firma</strong> LeadFlow AI ile satışlarını otomatize ediyor.
+              LeadFlow AI, hedef sektörünüzdeki şirketleri otomatik bulur; WhatsApp ve e-postada
+              kişiye özel kampanyalarla ulaşır, sonuçları tek panelden gösterir.{' '}
+              <strong className="text-slate-700 font-semibold">2,847+ B2B ekibi</strong>, satış
+              sürecini günler değil dakikalar içinde kurdu.
             </p>
 
             {/* CTAs */}
@@ -52,13 +54,11 @@ export default function LandingHero() {
               </Link>
 
               <a
-                href="#demo"
+                href="#nasil-calisir"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-slate-100 text-slate-700 text-[15px] font-semibold hover:bg-slate-200 transition-colors"
               >
-                <div className="w-6 h-6 rounded-full bg-white shadow flex items-center justify-center">
-                  <Play size={10} className="text-slate-700 fill-slate-700 ml-0.5" />
-                </div>
-                Demo İzle
+                Nasıl Çalışır?
+                <ArrowRight size={16} />
               </a>
             </div>
 
@@ -66,7 +66,7 @@ export default function LandingHero() {
             <div className="flex flex-wrap items-center gap-4">
               {[
                 'Kredi kartı gerekmez',
-                '2,847+ aktif firma',
+                'KVKK & GDPR uyumlu',
                 'İstediğin an iptal',
               ].map(t => (
                 <div key={t} className="flex items-center gap-1.5">
