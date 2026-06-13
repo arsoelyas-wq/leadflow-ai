@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import LandingNavbar from '@/components/landing/LandingNavbar'
 import LandingHero from '@/components/landing/LandingHero'
 import LandingLogoBar from '@/components/landing/LandingLogoBar'
-import LandingStats from '@/components/landing/LandingStats'
 import LandingProblem from '@/components/landing/LandingProblem'
 import LandingFeatures from '@/components/landing/LandingFeatures'
 import LandingHowItWorks from '@/components/landing/LandingHowItWorks'
@@ -69,37 +68,34 @@ export default function LandingPage() {
       <LandingNavbar />
 
       <main>
-        {/* 1. Hero — ilk izlenim, split layout, dashboard mockup */}
+        {/* 1. Hero — değer önerisi, tek bakışta ne/kime/neden */}
         <LandingHero />
 
-        {/* 2. Logo Bar — social proof, güven inşası */}
+        {/* 2. Logo Bar — sosyal kanıt + büyüme rakamları */}
         <LandingLogoBar />
 
-        {/* 3. Stats — rakamsal güven */}
-        <LandingStats />
-
-        {/* 4. Problem → Solution — duygusal bağ */}
+        {/* 3. Problem → Solution — kısa, editoryal karşılaştırma */}
         <LandingProblem />
 
-        {/* 5. Features — özellik keşfi */}
+        {/* 4. Capabilities — küratörlü özellik seti */}
         <LandingFeatures />
 
-        {/* 6. How It Works — 3 adım, net akış */}
+        {/* 5. How It Works — 3 adım, net akış */}
         <LandingHowItWorks />
 
-        {/* 7. Testimonials — sosyal kanıt */}
-        <LandingTestimonials />
-
-        {/* 8. Integrations — ekosistem genişliği */}
+        {/* 6. Integrations — mevcut araçlarla uyum (hafif şerit) */}
         <LandingIntegrations />
 
-        {/* 9. Pricing — şeffaf, 3 plan */}
+        {/* 7. Proof & Trust — testimonial + güven sinyalleri, fiyatlandırmaya yakın */}
+        <LandingTestimonials />
+
+        {/* 8. Pricing — şeffaf, 3 plan */}
         <LandingPricing />
 
-        {/* 10. FAQ — son engelleri kaldır */}
+        {/* 9. FAQ — kalan tereddütleri kaldır */}
         <LandingFAQ />
 
-        {/* 11. Final CTA — kapanış */}
+        {/* 10. Final CTA — kapanış */}
         <LandingCTA />
       </main>
 

@@ -1,11 +1,54 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react'
+
 const LOGOS = [
   'Türk Tekstil A.Ş.', 'Metro Yapı Ltd.', 'Digital GmbH',
   'SaaS Startup TR', 'E-Ticaret Pro', 'Fintexco Ltd.',
   'Pazarlama360', 'TechSoft A.Ş.', 'GlobalTrade TR',
   'Ankara Dijital', 'İstanbul SaaS', 'EuroAgency GmbH',
 ]
+
+const PROOF_STATS = [
+  { target: 2847, prefix: '', suffix: '+', label: 'Aktif Firma' },
+  { target: 87, prefix: '%', suffix: '', label: 'Dönüşüm Artışı' },
+  { target: 14, prefix: '', suffix: '', label: 'Ülkede Aktif' },
+]
+
+function Counter({ target, prefix = '', suffix = '', duration = 1500 }: { target: number; prefix?: string; suffix?: string; duration?: number }) {
+  const [value, setValue] = useState(0)
+  const ref = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      const steps = Math.max(1, Math.round(duration / 16))
+      const increment = target / steps
+      let current = 0
+      const tick = () => {
+        current += increment
+        if (current >= target) {
+          setValue(target)
+          return
+        }
+        setValue(Math.floor(current))
+        requestAnimationFrame(tick)
+      }
+      tick()
+      observer.disconnect()
+    }, { threshold: 0.4 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [target, duration])
+
+  return (
+    <span ref={ref}>
+      {prefix}{value.toLocaleString('tr-TR')}{suffix}
+    </span>
+  )
+}
 
 function LogoItem({ name }: { name: string }) {
   const colors = [
@@ -29,10 +72,22 @@ export default function LandingLogoBar() {
 
   return (
     <section className="py-14 border-y border-slate-100 bg-slate-50/60 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 mb-6">
-        <p className="text-center text-[13px] text-slate-400 font-medium tracking-wide uppercase">
-          2,847+ firma tarafından güvenilir
-        </p>
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-center gap-x-10 sm:gap-x-16 gap-y-4 flex-wrap text-center mb-10">
+          {PROOF_STATS.map((s, i) => (
+            <div key={s.label} className="flex items-center gap-x-10 sm:gap-x-16">
+              <div>
+                <div className="text-[28px] sm:text-[32px] font-black text-slate-900 leading-none">
+                  <Counter target={s.target} prefix={s.prefix} suffix={s.suffix} />
+                </div>
+                <div className="text-[13px] text-slate-500 font-medium mt-1">{s.label}</div>
+              </div>
+              {i < PROOF_STATS.length - 1 && (
+                <div className="hidden sm:block w-px h-10 bg-slate-200" />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="relative">
