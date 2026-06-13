@@ -197,7 +197,7 @@ export default function LandingPricing() {
 
                 {/* Features */}
                 <div className="px-7 pb-7 flex-1 border-t border-slate-100 pt-5 mt-2">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">
                     Neler dahil
                   </div>
                   <div className="flex flex-col gap-2.5">
