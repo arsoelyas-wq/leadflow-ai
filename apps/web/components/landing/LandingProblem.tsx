@@ -47,7 +47,7 @@ export default function LandingProblem() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100 overflow-hidden">
             {COMPARISON.map((row, i) => (
               <div key={i} className="grid sm:grid-cols-[1fr_auto_1fr] gap-3 sm:gap-6 items-center px-6 sm:px-8 py-6">
-                <p className="text-[15px] text-slate-400 line-through">{row.before}</p>
+                <p className="text-[15px] text-slate-500 line-through">{row.before}</p>
                 <ArrowRight className="hidden sm:block text-slate-300 flex-shrink-0" size={18} />
                 <div className="flex items-start gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
