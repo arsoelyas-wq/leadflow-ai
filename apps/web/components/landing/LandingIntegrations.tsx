@@ -23,7 +23,7 @@ function IntegrationCard({ name, color }: { name: string; color: string }) {
 export default function LandingIntegrations() {
   return (
     <section id="entegrasyonlar" className="py-14 bg-white overflow-hidden border-t border-slate-100">
-      <p className="text-center text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-8">
+      <p className="text-center text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-8">
         Mevcut Araçlarınızla Entegre Çalışır
       </p>
 
@@ -34,7 +34,7 @@ export default function LandingIntegrations() {
           style={{ background: 'linear-gradient(to left, white, transparent)' }} />
         <div className="flex animate-marquee will-change-transform gap-3 w-max px-3">
           {[...INTEGRATIONS, ...INTEGRATIONS].map((item, i) => (
-            <IntegrationCard key={i} {...item} />
+            <IntegrationCard key={`${item.name}-${i}`} {...item} />
           ))}
         </div>
       </div>
