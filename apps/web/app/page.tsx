@@ -6,8 +6,6 @@ import LandingStats from '@/components/landing/LandingStats'
 import LandingProblem from '@/components/landing/LandingProblem'
 import LandingFeatures from '@/components/landing/LandingFeatures'
 import LandingHowItWorks from '@/components/landing/LandingHowItWorks'
-import LandingDemo from '@/components/landing/LandingDemo'
-import LandingUseCases from '@/components/landing/LandingUseCases'
 import LandingTestimonials from '@/components/landing/LandingTestimonials'
 import LandingIntegrations from '@/components/landing/LandingIntegrations'
 import LandingPricing from '@/components/landing/LandingPricing'
@@ -89,25 +87,19 @@ export default function LandingPage() {
         {/* 6. How It Works — 3 adım, net akış */}
         <LandingHowItWorks />
 
-        {/* 7. Demo — ürün deneyimi */}
-        <LandingDemo />
-
-        {/* 8. Use Cases — persona bazlı ikna */}
-        <LandingUseCases />
-
-        {/* 9. Testimonials — sosyal kanıt */}
+        {/* 7. Testimonials — sosyal kanıt */}
         <LandingTestimonials />
 
-        {/* 10. Integrations — ekosistem genişliği */}
+        {/* 8. Integrations — ekosistem genişliği */}
         <LandingIntegrations />
 
-        {/* 11. Pricing — şeffaf, 3 plan */}
+        {/* 9. Pricing — şeffaf, 3 plan */}
         <LandingPricing />
 
-        {/* 12. FAQ — son engelleri kaldır */}
+        {/* 10. FAQ — son engelleri kaldır */}
         <LandingFAQ />
 
-        {/* 13. Final CTA — kapanış */}
+        {/* 11. Final CTA — kapanış */}
         <LandingCTA />
       </main>
 
