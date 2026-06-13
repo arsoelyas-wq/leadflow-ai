@@ -2,9 +2,12 @@ import type { Metadata } from 'next'
 import LandingNavbar from '@/components/landing/LandingNavbar'
 import LandingHero from '@/components/landing/LandingHero'
 import LandingLogoBar from '@/components/landing/LandingLogoBar'
+import LandingStats from '@/components/landing/LandingStats'
 import LandingProblem from '@/components/landing/LandingProblem'
 import LandingFeatures from '@/components/landing/LandingFeatures'
 import LandingHowItWorks from '@/components/landing/LandingHowItWorks'
+import LandingDemo from '@/components/landing/LandingDemo'
+import LandingUseCases from '@/components/landing/LandingUseCases'
 import LandingTestimonials from '@/components/landing/LandingTestimonials'
 import LandingIntegrations from '@/components/landing/LandingIntegrations'
 import LandingPricing from '@/components/landing/LandingPricing'
@@ -68,34 +71,43 @@ export default function LandingPage() {
       <LandingNavbar />
 
       <main>
-        {/* 1. Hero — değer önerisi, tek bakışta ne/kime/neden */}
+        {/* 1. Hero — ilk izlenim, split layout, dashboard mockup */}
         <LandingHero />
 
-        {/* 2. Logo Bar — sosyal kanıt + büyüme rakamları */}
+        {/* 2. Logo Bar — social proof, güven inşası */}
         <LandingLogoBar />
 
-        {/* 3. Problem → Solution — kısa, editoryal karşılaştırma */}
+        {/* 3. Stats — rakamsal güven */}
+        <LandingStats />
+
+        {/* 4. Problem → Solution — duygusal bağ */}
         <LandingProblem />
 
-        {/* 4. Capabilities — küratörlü özellik seti */}
+        {/* 5. Features — özellik keşfi */}
         <LandingFeatures />
 
-        {/* 5. How It Works — 3 adım, net akış */}
+        {/* 6. How It Works — 3 adım, net akış */}
         <LandingHowItWorks />
 
-        {/* 6. Integrations — mevcut araçlarla uyum (hafif şerit) */}
-        <LandingIntegrations />
+        {/* 7. Demo — ürün deneyimi */}
+        <LandingDemo />
 
-        {/* 7. Proof & Trust — testimonial + güven sinyalleri, fiyatlandırmaya yakın */}
+        {/* 8. Use Cases — persona bazlı ikna */}
+        <LandingUseCases />
+
+        {/* 9. Testimonials — sosyal kanıt */}
         <LandingTestimonials />
 
-        {/* 8. Pricing — şeffaf, 3 plan */}
+        {/* 10. Integrations — ekosistem genişliği */}
+        <LandingIntegrations />
+
+        {/* 11. Pricing — şeffaf, 3 plan */}
         <LandingPricing />
 
-        {/* 9. FAQ — kalan tereddütleri kaldır */}
+        {/* 12. FAQ — son engelleri kaldır */}
         <LandingFAQ />
 
-        {/* 10. Final CTA — kapanış */}
+        {/* 13. Final CTA — kapanış */}
         <LandingCTA />
       </main>
 

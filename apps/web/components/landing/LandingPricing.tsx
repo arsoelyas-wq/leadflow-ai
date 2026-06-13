@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle, ArrowRight, Zap, TrendingUp, Crown } from 'lucide-react'
+import { CheckCircle, X, ArrowRight, Zap, TrendingUp, Crown } from 'lucide-react'
 import Reveal from './Reveal'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -21,13 +21,17 @@ const PLANS = [
     ctaHref: '/register',
     popular: false,
     features: [
-      '500 kredi / ay',
-      'WhatsApp kampanya',
-      'Email kampanya',
-      'Lead scraper (Google Maps)',
-      'AI mesaj kişiselleştirme',
-      'Pipeline yönetimi',
-      'Temel analitik',
+      { text: '500 kredi / ay', included: true },
+      { text: 'WhatsApp kampanya', included: true },
+      { text: 'Email kampanya', included: true },
+      { text: 'Lead scraper (Google Maps)', included: true },
+      { text: 'AI mesaj kişiselleştirme', included: true },
+      { text: 'Pipeline yönetimi', included: true },
+      { text: 'Temel analitik', included: true },
+      { text: 'Video outreach', included: false },
+      { text: 'AI sesli arama', included: false },
+      { text: 'Whitelabel', included: false },
+      { text: 'API erişimi', included: false },
     ],
   },
   {
@@ -44,15 +48,17 @@ const PLANS = [
     ctaHref: '/register?plan=growth',
     popular: true,
     features: [
-      '2,000 kredi / ay',
-      'WhatsApp kampanya',
-      'Email & SMS kampanya',
-      'Lead scraper (50+ kaynak)',
-      'AI mesaj kişiselleştirme',
-      'Pipeline + CRM',
-      'Gelişmiş analitik & ROI',
-      'Video outreach (AI avatar)',
-      'API erişimi',
+      { text: '2,000 kredi / ay', included: true },
+      { text: 'WhatsApp kampanya', included: true },
+      { text: 'Email & SMS kampanya', included: true },
+      { text: 'Lead scraper (50+ kaynak)', included: true },
+      { text: 'AI mesaj kişiselleştirme', included: true },
+      { text: 'Pipeline + CRM', included: true },
+      { text: 'Gelişmiş analitik & ROI', included: true },
+      { text: 'Video outreach (AI avatar)', included: true },
+      { text: 'AI sesli arama', included: false },
+      { text: 'Whitelabel', included: false },
+      { text: 'API erişimi', included: true },
     ],
   },
   {
@@ -69,17 +75,17 @@ const PLANS = [
     ctaHref: '/register?plan=pro',
     popular: false,
     features: [
-      '10,000 kredi / ay',
-      'WhatsApp kampanya',
-      'Email, SMS & LinkedIn',
-      'Lead scraper (sınırsız)',
-      'AI + karar verici bulma',
-      'Pipeline + Tam CRM',
-      'Gelişmiş analitik & raporlama',
-      'Video outreach (AI avatar)',
-      'AI sesli arama',
-      'Whitelabel',
-      'API + Webhook erişimi',
+      { text: '10,000 kredi / ay', included: true },
+      { text: 'WhatsApp kampanya', included: true },
+      { text: 'Email, SMS & LinkedIn', included: true },
+      { text: 'Lead scraper (sınırsız)', included: true },
+      { text: 'AI + karar verici bulma', included: true },
+      { text: 'Pipeline + Tam CRM', included: true },
+      { text: 'Gelişmiş analitik & raporlama', included: true },
+      { text: 'Video outreach (AI avatar)', included: true },
+      { text: 'AI sesli arama', included: true },
+      { text: 'Whitelabel', included: true },
+      { text: 'API + Webhook erişimi', included: true },
     ],
   },
 ]
@@ -197,14 +203,20 @@ export default function LandingPricing() {
 
                 {/* Features */}
                 <div className="px-7 pb-7 flex-1 border-t border-slate-100 pt-5 mt-2">
-                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">
                     Neler dahil
                   </div>
                   <div className="flex flex-col gap-2.5">
                     {plan.features.map((f, i) => (
                       <div key={i} className="flex items-center gap-2.5">
-                        <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-                        <span className="text-[13px] text-slate-700">{f}</span>
+                        {f.included ? (
+                          <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
+                        ) : (
+                          <X size={14} className="text-slate-300 flex-shrink-0" />
+                        )}
+                        <span className={`text-[13px] ${f.included ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {f.text}
+                        </span>
                       </div>
                     ))}
                   </div>

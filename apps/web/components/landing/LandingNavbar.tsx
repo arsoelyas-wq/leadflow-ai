@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { label: 'Özellikler', href: '#ozellikler' },
   { label: 'Nasıl Çalışır', href: '#nasil-calisir' },
   { label: 'Fiyatlar', href: '#fiyatlar' },
+  { label: 'Entegrasyonlar', href: '#entegrasyonlar' },
 ]
 
 export default function LandingNavbar() {

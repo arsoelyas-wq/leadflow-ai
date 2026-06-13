@@ -9,16 +9,20 @@ const FAQS = [
     a: 'Hayır. 14 günlük ücretsiz deneme süresinde kredi kartı bilgisi istenmez. Süre sonunda isterseniz ücretli plana geçersiniz, istemezseniz hesabınız otomatik olarak ücretsiz katmana alınır.',
   },
   {
+    q: 'WhatsApp mesajları spam olarak işaretlenir mi?',
+    a: 'LeadFlow, resmi WhatsApp Business API (WABA) üzerinden çalışır. Meta onaylı kanallardan kişiselleştirilmiş mesajlar gönderildiğinde spam riski minimum düzeydedir. Ayrıca AI kişiselleştirmesi sayesinde mesajlar organik görünür.',
+  },
+  {
     q: 'KVKK ve GDPR\'a uyumlu mu?',
     a: 'Evet. LeadFlow Türk KVKK mevzuatı ve AB GDPR\'ına tam uyumlu olacak şekilde tasarlanmıştır. Kişisel veri işleme, silme ve ihraç talepleri platforma entegredir. Ayrıca veritabanınızı temizlemek için KVKK modülümüz mevcuttur.',
   },
   {
-    q: 'Verilerim nerede saklanıyor?',
-    a: 'Verileriniz Avrupa\'da (Frankfurt) konumlu Supabase sunucularında şifreli olarak saklanır. Yedekler günlük alınır, veri ihracı için CSV/Excel dışa aktarma mevcuttur.',
+    q: 'Günde kaç lead toplayabilirim?',
+    a: 'Starter planında günde ~50-150, Growth planında ~300-500, Pro planında ise sınırsız (kapasiteye göre) lead toplayabilirsiniz. Hedef sektör, şehir ve filtre seçeneklerine göre bu rakamlar değişir.',
   },
   {
-    q: 'WhatsApp mesajları spam olarak işaretlenir mi?',
-    a: 'LeadFlow, resmi WhatsApp Business API (WABA) üzerinden çalışır. Meta onaylı kanallardan kişiselleştirilmiş mesajlar gönderildiğinde spam riski minimum düzeydedir. Ayrıca AI kişiselleştirmesi sayesinde mesajlar organik görünür.',
+    q: 'Hangi kanalları destekliyorsunuz?',
+    a: 'WhatsApp Business, Email (SMTP/Gmail/Outlook), SMS, LinkedIn DM, Instagram DM, Video outreach (AI avatar), Sesli arama (AI) — hepsini tek platformdan yönetebilirsiniz.',
   },
   {
     q: 'Mevcut CRM sistemimle entegre olabilir mi?',
@@ -27,6 +31,18 @@ const FAQS = [
   {
     q: 'İptal etmek ne kadar kolay?',
     a: 'Hesap ayarlarından tek tıkla iptal edebilirsiniz. İptal sonrası mevcut döneminiz tamamlanır, veri silinmez. Yeniden başlamak istediğinizde aynı hesabınıza devam edersiniz.',
+  },
+  {
+    q: 'Destek ekibine nasıl ulaşırım?',
+    a: 'WhatsApp destek hattımız, email destek (destek@leadflow.ai) ve platform içi chat — tümü 7/24 aktiftir. Pro planlarda öncelikli ve özel müşteri başarı yöneticisi atanır.',
+  },
+  {
+    q: 'Birden fazla kullanıcı hesabı açabilir miyim?',
+    a: 'Growth ve Pro planlarda birden fazla ekip üyesi ekleyebilirsiniz. Ekip üyeleri farklı izinlerle lead, kampanya ve analitik erişimine sahip olabilir.',
+  },
+  {
+    q: 'Verilerim nerede saklanıyor?',
+    a: 'Verileriniz Avrupa\'da (Frankfurt) konumlu Supabase sunucularında şifreli olarak saklanır. Yedekler günlük alınır, veri ihracı için CSV/Excel dışa aktarma mevcuttur.',
   },
 ]
 

@@ -1,4 +1,5 @@
-import { Star, Quote, ShieldCheck, Lock, Server, Activity } from 'lucide-react'
+'use client'
+import { Star, Quote } from 'lucide-react'
 import Reveal from './Reveal'
 
 const TESTIMONIALS = [
@@ -41,14 +42,46 @@ const TESTIMONIALS = [
     result: '50 demo / ilk 2 hafta',
     stars: 5,
   },
+  {
+    name: 'Fatma Yılmaz',
+    role: 'Satış Direktörü',
+    company: 'EuroTrade İthalat Ltd.',
+    sector: 'İthalat & İhracat',
+    country: 'İzmir',
+    avatar: 'FY',
+    color: '#d97706',
+    bg: 'bg-amber-100',
+    quote: 'Avrupa\'daki tedarikçilere ulaşmak için LeadFlow\'u denedik. İlk ay 200+ kaliteli kontakt, ikinci ay sözleşmeler başladı. Harika araç.',
+    result: '200+ kontakt / ilk ay',
+    stars: 5,
+  },
+  {
+    name: 'Burak Şahin',
+    role: 'Franchise Koordinatörü',
+    company: 'FastFood Franchise Grup',
+    sector: 'Franchise & Gıda',
+    country: 'İstanbul',
+    avatar: 'BŞ',
+    color: '#dc2626',
+    bg: 'bg-rose-100',
+    quote: 'Yeni franchise adayı bulmak artık çok kolay. LeadFlow ile hedef profilde 500+ aday belirledik, 12\'si sözleşme imzaladı. ROI muhteşem.',
+    result: '12 yeni franchise noktası',
+    stars: 5,
+  },
+  {
+    name: 'Elif Demirtaş',
+    role: 'Genel Müdür',
+    company: 'Medya Ajansı Pro',
+    sector: 'Reklam & Medya',
+    country: 'Bursa',
+    avatar: 'ED',
+    color: '#0891b2',
+    bg: 'bg-cyan-100',
+    quote: 'WhatsApp kampanyalarımızın açılma oranı %67\'ye çıktı. Müşterilerimiz mesajların spam olmadığını, kişisel göründüğünü söylüyor. AI kişiselleştirmesi harika çalışıyor.',
+    result: '%67 açılma oranı',
+    stars: 5,
+  },
 ]
-
-const TRUST_SIGNALS = [
-  { icon: ShieldCheck, label: 'KVKK Uyumlu' },
-  { icon: Lock, label: 'GDPR Uyumlu' },
-  { icon: Server, label: 'Veriler Avrupa\'da (Frankfurt) saklanır' },
-  { icon: Activity, label: '%99.9 Uptime SLA' },
-] as const
 
 function Stars({ count }: { count: number }) {
   return (
@@ -81,24 +114,12 @@ export default function LandingTestimonials() {
           </div>
         </Reveal>
 
-        {/* Trust signals */}
-        <Reveal>
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-14">
-            {TRUST_SIGNALS.map(({ icon: Icon, label }) => (
-              <div key={label} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 shadow-sm text-[13px] font-semibold text-slate-700">
-                <Icon size={14} className="text-emerald-600" />
-                {label}
-              </div>
-            ))}
-          </div>
-        </Reveal>
-
-        {/* Testimonial grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Masonry-style grid */}
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
           {TESTIMONIALS.map((t) => (
             <div
               key={t.name}
-              className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm card-hover"
+              className="break-inside-avoid bg-white rounded-2xl border border-slate-200 p-6 shadow-sm card-hover"
             >
               {/* Quote icon */}
               <Quote size={24} className="text-slate-200 mb-3" />
@@ -129,10 +150,10 @@ export default function LandingTestimonials() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-[14px] font-bold text-slate-900 leading-tight">{t.name}</div>
-                  <div className="text-[12px] text-slate-500 truncate">
+                  <div className="text-[12px] text-slate-400 truncate">
                     {t.role} · {t.company}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{t.country} · {t.sector}</div>
+                  <div className="text-[11px] text-slate-300 mt-0.5">{t.country} · {t.sector}</div>
                 </div>
               </div>
             </div>
@@ -144,12 +165,22 @@ export default function LandingTestimonials() {
           <div className="text-center">
             <div className="text-[28px] font-black text-slate-900">4.9 / 5</div>
             <div className="flex justify-center mb-1"><Stars count={5} /></div>
-            <div className="text-[12px] text-slate-500">Ortalama puan</div>
+            <div className="text-[12px] text-slate-400">Ortalama puan</div>
+          </div>
+          <div className="w-px h-12 bg-slate-200 hidden sm:block" />
+          <div className="text-center">
+            <div className="text-[28px] font-black text-slate-900">2,847+</div>
+            <div className="text-[12px] text-slate-400">Aktif firma</div>
+          </div>
+          <div className="w-px h-12 bg-slate-200 hidden sm:block" />
+          <div className="text-center">
+            <div className="text-[28px] font-black text-slate-900">14</div>
+            <div className="text-[12px] text-slate-400">Ülke</div>
           </div>
           <div className="w-px h-12 bg-slate-200 hidden sm:block" />
           <div className="text-center">
             <div className="text-[28px] font-black text-slate-900">%98</div>
-            <div className="text-[12px] text-slate-500">Tavsiye oranı</div>
+            <div className="text-[12px] text-slate-400">Tavsiye oranı</div>
           </div>
         </div>
       </div>
