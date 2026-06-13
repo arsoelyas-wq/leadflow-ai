@@ -18,10 +18,10 @@ export default function LandingHero() {
       />
 
       <div className="relative max-w-7xl mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
           {/* LEFT — Value prop */}
-          <div className="max-w-xl">
+          <div className="max-w-xl min-w-0">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-8">
               <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse-dot" />
