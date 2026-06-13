@@ -77,7 +77,6 @@ const FUNNEL = [
 const RECENT_LEADS = [
   { name: 'Türk Tekstil A.Ş.', status: 'Kazanıldı', color: '#059669', bg: '#ecfdf5', score: 95 },
   { name: 'Metro Yapı Ltd.', status: 'Aktif', color: '#2563eb', bg: '#eff6ff', score: 78 },
-  { name: 'Digital GmbH', status: 'İletişim', color: '#b45309', bg: '#fffbeb', score: 62 },
 ]
 
 type CursorWaypoint = { atProgress: number; x: number; y: number; click?: boolean }
@@ -586,7 +585,7 @@ export default function LandingHeroDemo() {
           </div>
 
           {/* Main content */}
-          <div className="relative flex-1 p-4 overflow-hidden flex flex-col gap-2" style={{ background: surf }}>
+          <div className="relative flex-1 p-4 pb-12 overflow-hidden flex flex-col gap-2" style={{ background: surf }}>
             {/* Story progress bar */}
             <div className="flex gap-1.5">
               {SCENES.map((s, i) => (
