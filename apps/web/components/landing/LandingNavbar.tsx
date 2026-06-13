@@ -8,7 +8,11 @@ const NAV_LINKS = [
   { label: 'Nasıl Çalışır', href: '#nasil-calisir' },
   { label: 'Fiyatlar', href: '#fiyatlar' },
   { label: 'Entegrasyonlar', href: '#entegrasyonlar' },
+  { label: 'İletişim', href: '/contact' },
 ]
+
+const NAV_LINK_CLASS = 'px-4 py-2 text-[14px] font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-all duration-150'
+const MOBILE_NAV_LINK_CLASS = 'px-4 py-3 text-[15px] font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all'
 
 export default function LandingNavbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -45,13 +49,15 @@ export default function LandingNavbar() {
             {/* Desktop Nav */}
             <nav className="hidden lg:flex items-center gap-1">
               {NAV_LINKS.map(link => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  className="px-4 py-2 text-[14px] font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-all duration-150"
-                >
-                  {link.label}
-                </a>
+                link.href.startsWith('/') ? (
+                  <Link key={link.label} href={link.href} className={NAV_LINK_CLASS}>
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a key={link.label} href={link.href} className={NAV_LINK_CLASS}>
+                    {link.label}
+                  </a>
+                )
               ))}
             </nav>
 
@@ -114,14 +120,25 @@ export default function LandingNavbar() {
 
           <nav className="flex flex-col p-4 gap-1">
             {NAV_LINKS.map(link => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="px-4 py-3 text-[15px] font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-              >
-                {link.label}
-              </a>
+              link.href.startsWith('/') ? (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={MOBILE_NAV_LINK_CLASS}
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={MOBILE_NAV_LINK_CLASS}
+                >
+                  {link.label}
+                </a>
+              )
             ))}
 
             <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">

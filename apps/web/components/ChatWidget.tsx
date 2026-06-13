@@ -66,6 +66,16 @@ export default function ChatWidget() {
     return () => clearTimeout(t)
   }, [])
 
+  // Diğer sayfalardaki "Canlı Sohbet" butonlarından açma
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setOpen(true)
+      setUnread(0)
+    }
+    window.addEventListener('leadflow:open-chat', handleOpenChat)
+    return () => window.removeEventListener('leadflow:open-chat', handleOpenChat)
+  }, [])
+
   const handleOption = async (option: string) => {
     const currentStep = STEPS[step]
     const newAnswers = { ...answers, [currentStep.key]: option }

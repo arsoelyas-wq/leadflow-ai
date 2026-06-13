@@ -14,6 +14,7 @@ const PRODUCT_LINKS = [
 
 const COMPANY_LINKS = [
   { label: 'Hakkımızda', href: '/about' },
+  { label: 'İletişim', href: '/contact' },
   { label: 'Nasıl Çalışır', href: '#nasil-calisir' },
   { label: 'Blog', href: '/blog' },
   { label: 'Kariyer', href: '/careers' },
