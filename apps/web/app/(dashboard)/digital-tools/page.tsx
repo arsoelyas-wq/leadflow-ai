@@ -17,8 +17,8 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 const APP_URL = process.env.NEXT_PUBLIC_API_URL
-  ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '').replace('https://leadflow-ai-production.up.railway.app', 'https://leadflow-ai-web-kappa.vercel.app')
-  : 'https://leadflow-ai-web-kappa.vercel.app'
+  ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '').replace('https://leadflow-ai-production.up.railway.app', 'https://sovlo.io')
+  : 'https://sovlo.io'
 const CATALOG_BASE = `${APP_URL}/catalog/`
 
 const tx1 = '#0f172a', tx2 = '#475569', tx3 = '#94a3b8'
@@ -31,7 +31,7 @@ const inp = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 
 const QR_TYPES = [
   { key: 'url',       label: 'Web Sitesi',      Icon: Globe,         color: '#0d9488', placeholder: 'https://siteadresiniz.com', hint: '' },
   { key: 'whatsapp',  label: 'WhatsApp',        Icon: MessageCircle, color: '#059669', placeholder: '905xxxxxxxxx', hint: 'Ülke kodu dahil numara (905xxxxxxxx)' },
-  { key: 'microsite', label: 'Kişisel Katalog', Icon: FileText,      color: '#7c3aed', placeholder: 'https://leadflow-ai-web-kappa.vercel.app/catalog/...', hint: 'Katalog linkini yapıştırın' },
+  { key: 'microsite', label: 'Kişisel Katalog', Icon: FileText,      color: '#7c3aed', placeholder: 'https://sovlo.io/catalog/...', hint: 'Katalog linkini yapıştırın' },
   { key: 'phone',     label: 'Telefon',         Icon: Phone,         color: '#b45309', placeholder: '905xxxxxxxxx', hint: 'Ülke kodu dahil numara' },
   { key: 'email',     label: 'E-Posta',         Icon: Mail,          color: '#db2777', placeholder: 'ornek@email.com', hint: '' },
   { key: 'wifi',      label: 'WiFi',            Icon: Wifi,          color: '#0d9488', placeholder: 'WiFi Ağ Adı', hint: 'SSID sonraki alana, şifre bunun yanına' },

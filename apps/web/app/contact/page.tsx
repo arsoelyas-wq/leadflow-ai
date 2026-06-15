@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'İletişim — LeadFlow AI',
   description: 'LeadFlow AI ekibiyle iletişime geçin. Satış, destek veya ortaklık talepleri için formu doldurun ya da canlı sohbet ile anında yanıt alın.',
   alternates: {
-    canonical: 'https://leadflow-ai-web-kappa.vercel.app/contact',
+    canonical: 'https://sovlo.io/contact',
   },
 }
 

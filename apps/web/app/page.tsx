@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   alternates: {
-    canonical: 'https://leadflow-ai-web-kappa.vercel.app',
+    canonical: 'https://sovlo.io',
   },
 }
 
