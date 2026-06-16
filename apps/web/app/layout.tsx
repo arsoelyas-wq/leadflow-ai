@@ -9,18 +9,18 @@ import MetaTrackingInit from '@/components/MetaTrackingInit'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LeadFlow AI — B2B Satış Otomasyonu',
+  title: 'Sovlo AI — B2B Satış Otomasyonu',
   description: 'AI destekli B2B lead yönetim ve satış otomasyon platformu',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'LeadFlow AI',
+    title: 'Sovlo AI',
   },
   formatDetection: { telephone: false },
   openGraph: {
     type: 'website',
-    title: 'LeadFlow AI',
+    title: 'Sovlo AI',
     description: 'AI destekli B2B satış platformu',
   },
   icons: {
@@ -48,10 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="tr">
       <head>
-        <meta name="application-name" content="LeadFlow AI" />
+        <meta name="application-name" content="Sovlo AI" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="LeadFlow AI" />
+        <meta name="apple-mobile-web-app-title" content="Sovlo AI" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#3b82f6" />
         <meta name="msapplication-tap-highlight" content="no" />

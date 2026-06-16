@@ -52,7 +52,7 @@ export default function LandingFooter() {
               <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
                 <Zap size={15} className="text-white fill-white" />
               </div>
-              <span className="text-white text-[17px] font-bold">LeadFlow AI</span>
+              <span className="text-white text-[17px] font-bold">Sovlo AI</span>
             </Link>
 
             <p className="text-[14px] leading-relaxed mb-5 max-w-xs">
@@ -62,9 +62,9 @@ export default function LandingFooter() {
 
             {/* Contact */}
             <div className="flex flex-col gap-2 mb-6">
-              <a href="mailto:destek@leadflow.ai" className="flex items-center gap-2 text-[13px] hover:text-white transition-colors w-fit">
+              <a href="mailto:destek@sovlo.io" className="flex items-center gap-2 text-[13px] hover:text-white transition-colors w-fit">
                 <Mail size={13} />
-                destek@leadflow.ai
+                destek@sovlo.io
               </a>
               <a href="https://wa.me/905000000000" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[13px] hover:text-white transition-colors w-fit">
                 <MessageSquare size={13} />
@@ -75,8 +75,8 @@ export default function LandingFooter() {
             {/* Social */}
             <div className="flex items-center gap-3">
               {[
-                { icon: Linkedin, href: 'https://linkedin.com/company/leadflow-ai', label: 'LinkedIn' },
-                { icon: Twitter, href: 'https://twitter.com/leadflowai', label: 'X/Twitter' },
+                { icon: Linkedin, href: 'https://linkedin.com/company/sovlo-ai', label: 'LinkedIn' },
+                { icon: Twitter, href: 'https://twitter.com/sovloai', label: 'X/Twitter' },
               ].map(({ icon: Icon, href, label }) => (
                 <a
                   key={label}
@@ -143,7 +143,7 @@ export default function LandingFooter() {
         <div className="border-t border-slate-800 pt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-[12px] text-slate-600">
-              © {year} LeadFlow AI. Tüm hakları saklıdır.
+              © {year} Sovlo AI. Tüm hakları saklıdır.
             </p>
 
             {/* Compliance badges */}

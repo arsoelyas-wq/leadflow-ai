@@ -558,7 +558,7 @@ export default function LandingHeroDemo() {
           </div>
           <div className="flex-1 flex justify-center">
             <div className="px-3 py-1 rounded-md" style={{ background: 'rgba(255,255,255,0.08)' }}>
-              <p className="text-[11px] text-center font-medium" style={{ color: '#94a3b8' }}>app.leadflow.ai/dashboard</p>
+              <p className="text-[11px] text-center font-medium" style={{ color: '#94a3b8' }}>app.sovlo.io/dashboard</p>
             </div>
           </div>
         </div>

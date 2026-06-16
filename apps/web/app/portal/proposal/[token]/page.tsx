@@ -208,7 +208,7 @@ export default function ProposalPortalPage() {
               {(proposal.sender_company || 'LF').substring(0, 2).toUpperCase()}
             </div>
           )}
-          <span className="font-semibold">{proposal.sender_company || 'LeadFlow AI'}</span>
+          <span className="font-semibold">{proposal.sender_company || 'Sovlo AI'}</span>
         </div>
         <div className="flex items-center gap-2 text-slate-400">
           <Clock className="w-3.5 h-3.5" />
@@ -351,7 +351,7 @@ export default function ProposalPortalPage() {
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-400">Powered by <span className="font-semibold">LeadFlow AI</span></p>
+        <p className="text-center text-xs text-slate-400">Powered by <span className="font-semibold">Sovlo AI</span></p>
       </div>
 
       {/* ── ACCEPT MODAL ── */}

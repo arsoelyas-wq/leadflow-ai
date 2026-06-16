@@ -33,7 +33,7 @@ export default function RegisterPage() {
             <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <span className="text-white font-bold text-lg">L</span>
             </div>
-            <span className="text-white text-2xl font-bold">LeadFlow AI</span>
+            <span className="text-white text-2xl font-bold">Sovlo AI</span>
           </div>
           <p className="text-slate-400">Ucretsiz hesap olusturun — 50 lead hediye!</p>
         </div>

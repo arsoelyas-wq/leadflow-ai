@@ -220,7 +220,7 @@ export default function MarketEditorPage() {
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 5 }}>
               <code style={{ color: '#475569', fontSize: 12, fontFamily: 'monospace', background: 'rgba(255,255,255,0.04)', padding: '2px 8px', borderRadius: 6 }}>
-                leadflow.ai/{slug}
+                sovlo.io/{slug}
               </code>
               <span style={{
                 padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700,
@@ -283,7 +283,7 @@ export default function MarketEditorPage() {
           <Inp value={page.hero_headline || ''} onChange={v => set('hero_headline', v)} placeholder="B2B Satışlarınızı Yapay Zeka ile Otomatikleştirin" multiline />
         </Field>
         <Field label="Alt Başlık">
-          <Inp value={page.hero_subheadline || ''} onChange={v => set('hero_subheadline', v)} placeholder="LeadFlow AI ile günde 500+ potansiyel müşteriyle iletişim kurun..." multiline />
+          <Inp value={page.hero_subheadline || ''} onChange={v => set('hero_subheadline', v)} placeholder="Sovlo AI ile günde 500+ potansiyel müşteriyle iletişim kurun..." multiline />
         </Field>
         <Row>
           <Field label="Birincil CTA — Buton Metni">
@@ -389,7 +389,7 @@ export default function MarketEditorPage() {
             <Inp value={page.whatsapp_number || ''} onChange={v => set('whatsapp_number', v)} placeholder="+90 555 000 00 00" />
           </Field>
           <Field label="E-posta">
-            <Inp value={page.email_contact || ''} onChange={v => set('email_contact', v)} placeholder="destek@leadflow.ai" />
+            <Inp value={page.email_contact || ''} onChange={v => set('email_contact', v)} placeholder="destek@sovlo.io" />
           </Field>
           <Field label="Calendly / Demo Rezervasyon URL" hint="İkincil CTA için kullanılır">
             <Inp value={page.calendly_url || ''} onChange={v => set('calendly_url', v)} placeholder="https://calendly.com/leadflow/demo" />
@@ -400,7 +400,7 @@ export default function MarketEditorPage() {
       {/* ── SEO ── */}
       <Section title="SEO & Sosyal Medya Meta" emoji="🔍">
         <Field label="Meta Başlık" hint="Google'da görünen başlık. Maks 60 karakter.">
-          <Inp value={page.meta_title || ''} onChange={v => set('meta_title', v)} placeholder="LeadFlow AI — Türkiye'nin #1 B2B Satış Platformu" />
+          <Inp value={page.meta_title || ''} onChange={v => set('meta_title', v)} placeholder="Sovlo AI — Türkiye'nin #1 B2B Satış Platformu" />
           <span style={{ color: '#334155', fontSize: 11, marginTop: 5, display: 'block' }}>{(page.meta_title || '').length}/60 karakter</span>
         </Field>
         <Field label="Meta Açıklama" hint="Google'da görünen kısa açıklama. 120-160 karakter ideal.">

@@ -103,7 +103,7 @@ export default function WebhooksPage() {
             <Webhook size={24} className="text-orange-400" />
             Webhook Sistemi
           </h1>
-          <p className="text-slate-400 mt-1 text-sm">{t('webhooks.leadflow_olaylarini_dis_s', 'LeadFlow olaylarını dış sistemlere (CRM, Zapier, Make) ilet')}</p>
+          <p className="text-slate-400 mt-1 text-sm">{t('webhooks.leadflow_olaylarini_dis_s', 'Sovlo olaylarını dış sistemlere (CRM, Zapier, Make) ilet')}</p>
         </div>
         <button onClick={() => setShowCreate(!showCreate)}
           className="flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">

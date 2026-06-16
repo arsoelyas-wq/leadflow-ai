@@ -7,8 +7,8 @@ import Reveal from '@/components/landing/Reveal'
 import ContactSection from '@/components/landing/ContactSection'
 
 export const metadata: Metadata = {
-  title: 'İletişim — LeadFlow AI',
-  description: 'LeadFlow AI ekibiyle iletişime geçin. Satış, destek veya ortaklık talepleri için formu doldurun ya da canlı sohbet ile anında yanıt alın.',
+  title: 'İletişim — Sovlo AI',
+  description: 'Sovlo AI ekibiyle iletişime geçin. Satış, destek veya ortaklık talepleri için formu doldurun ya da canlı sohbet ile anında yanıt alın.',
   alternates: {
     canonical: 'https://sovlo.io/contact',
   },

@@ -76,7 +76,7 @@ export default function LandingProblem() {
                 <CheckCircle size={16} className="text-emerald-500" />
               </div>
               <div>
-                <div className="text-[15px] font-bold text-slate-900">LeadFlow AI ile</div>
+                <div className="text-[15px] font-bold text-slate-900">Sovlo AI ile</div>
                 <div className="text-[12px] text-emerald-600 font-medium">Otomatik, hızlı ve ölçeklenebilir</div>
               </div>
             </div>

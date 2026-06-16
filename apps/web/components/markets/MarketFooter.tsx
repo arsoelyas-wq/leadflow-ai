@@ -24,7 +24,7 @@ export default function MarketFooter({ page }: { page: MarketPage }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 15, fontWeight: 900, color: '#fff',
           }}>L</div>
-          <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>LeadFlow AI</span>
+          <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>Sovlo AI</span>
           {market && (
             <span style={{ color: '#334155', fontSize: 13 }}>— {market.flag} {market.name}</span>
           )}
@@ -42,7 +42,7 @@ export default function MarketFooter({ page }: { page: MarketPage }) {
         </div>
 
         <p style={{ color: '#1e293b', fontSize: 13, margin: 0 }}>
-          © {year} LeadFlow AI. {ui.copyright}
+          © {year} Sovlo AI. {ui.copyright}
         </p>
       </div>
     </footer>

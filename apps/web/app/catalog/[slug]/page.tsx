@@ -121,7 +121,7 @@ export default function CatalogPage() {
             <div style={{ width: 34, height: 34, background: 'linear-gradient(135deg,#0891b2,#7c3aed)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(8,145,178,0.3)' }}>
               <span style={{ color: '#fff', fontWeight: 900, fontSize: 15 }}>L</span>
             </div>
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>LeadFlow AI</span>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 15 }}>Sovlo AI</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.18)', borderRadius: 24, padding: '5px 16px' }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#06b6d4', display: 'inline-block', animation: 'catBlink 2s ease-in-out infinite' }} />
@@ -282,7 +282,7 @@ export default function CatalogPage() {
           <div style={{ width: 22, height: 22, background: 'linear-gradient(135deg,#0891b2,#7c3aed)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ color: '#fff', fontWeight: 900, fontSize: 10 }}>L</span>
           </div>
-          <span style={{ color: '#475569', fontSize: 12 }}>Powered by LeadFlow AI</span>
+          <span style={{ color: '#475569', fontSize: 12 }}>Powered by Sovlo AI</span>
         </div>
       </div>
     </div>

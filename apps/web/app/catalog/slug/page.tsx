@@ -24,7 +24,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: { sl
             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">L</span>
             </div>
-            <span className="text-white font-bold">LeadFlow AI</span>
+            <span className="text-white font-bold">Sovlo AI</span>
           </div>
           <span className="text-slate-400 text-sm">Kisisel Koleksiyon</span>
         </div>
@@ -66,7 +66,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: { sl
             WhatsApp ile Yaz
           </a>
         </div>
-        <p className="text-center mt-8 text-slate-600 text-sm">Powered by LeadFlow AI</p>
+        <p className="text-center mt-8 text-slate-600 text-sm">Powered by Sovlo AI</p>
       </div>
     </div>
   )

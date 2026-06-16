@@ -839,7 +839,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
-                  LeadFlow&apos;da bir lead&apos;i &quot;Kazanıldı&quot; olarak işaretlediğinizde Meta otomatik öğrenir.
+                  Sovlo&apos;da bir lead&apos;i &quot;Kazanıldı&quot; olarak işaretlediğinizde Meta otomatik öğrenir.
                   Böylece reklamlarınız zamanla daha doğru kişilere, daha düşük maliyetle ulaşır.
                 </p>
               </div>
@@ -1014,7 +1014,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
-                  LeadFlow&apos;da &quot;Kazanıldı&quot; olan her lead Google Ads&apos;e bildirilir.
+                  Sovlo&apos;da &quot;Kazanıldı&quot; olan her lead Google Ads&apos;e bildirilir.
                   Smart Bidding hangi reklamın müşteri getirdiğini öğrenir — daha düşük tıklama maliyeti, daha yüksek dönüşüm oranı.
                 </p>
               </div>
@@ -1097,7 +1097,7 @@ export default function SettingsPage() {
                 <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {[
-                    { step: '1', label: 'Lead Reklamdan Geldi', desc: 'Google reklamına tıklayan kişi LeadFlow\'a düşer (gclid otomatik yakalanır)', dotColor: '#60a5fa' },
+                    { step: '1', label: 'Lead Reklamdan Geldi', desc: 'Google reklamına tıklayan kişi Sovlo\'ya düşer (gclid otomatik yakalanır)', dotColor: '#60a5fa' },
                     { step: '2', label: 'İletişim Kuruldu', desc: 'Mesaj veya arama yapıldığında Google\'a "Lead" sinyali gönderilir', dotColor: '#22d3ee' },
                     { step: '3', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olunca Google\'a "Dönüşüm" bildirimi gider — deal değeri ile birlikte', dotColor: '#34d399' },
                     { step: '4', label: 'Smart Bidding Öğrenir', desc: 'Google algoritması hangi aramalar/hedef kitleler müşteri getirdi, sonraki reklamlarda daha iyi hedefleme yapar', dotColor: '#fbbf24' },

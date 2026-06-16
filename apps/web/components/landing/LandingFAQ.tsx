@@ -10,11 +10,11 @@ const FAQS = [
   },
   {
     q: 'WhatsApp mesajları spam olarak işaretlenir mi?',
-    a: 'LeadFlow, resmi WhatsApp Business API (WABA) üzerinden çalışır. Meta onaylı kanallardan kişiselleştirilmiş mesajlar gönderildiğinde spam riski minimum düzeydedir. Ayrıca AI kişiselleştirmesi sayesinde mesajlar organik görünür.',
+    a: 'Sovlo, resmi WhatsApp Business API (WABA) üzerinden çalışır. Meta onaylı kanallardan kişiselleştirilmiş mesajlar gönderildiğinde spam riski minimum düzeydedir. Ayrıca AI kişiselleştirmesi sayesinde mesajlar organik görünür.',
   },
   {
     q: 'KVKK ve GDPR\'a uyumlu mu?',
-    a: 'Evet. LeadFlow Türk KVKK mevzuatı ve AB GDPR\'ına tam uyumlu olacak şekilde tasarlanmıştır. Kişisel veri işleme, silme ve ihraç talepleri platforma entegredir. Ayrıca veritabanınızı temizlemek için KVKK modülümüz mevcuttur.',
+    a: 'Evet. Sovlo Türk KVKK mevzuatı ve AB GDPR\'ına tam uyumlu olacak şekilde tasarlanmıştır. Kişisel veri işleme, silme ve ihraç talepleri platforma entegredir. Ayrıca veritabanınızı temizlemek için KVKK modülümüz mevcuttur.',
   },
   {
     q: 'Günde kaç lead toplayabilirim?',
@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: 'Destek ekibine nasıl ulaşırım?',
-    a: 'WhatsApp destek hattımız, email destek (destek@leadflow.ai) ve platform içi chat — tümü 7/24 aktiftir. Pro planlarda öncelikli ve özel müşteri başarı yöneticisi atanır.',
+    a: 'WhatsApp destek hattımız, email destek (destek@sovlo.io) ve platform içi chat — tümü 7/24 aktiftir. Pro planlarda öncelikli ve özel müşteri başarı yöneticisi atanır.',
   },
   {
     q: 'Birden fazla kullanıcı hesabı açabilir miyim?',
@@ -119,7 +119,7 @@ export default function LandingFAQ() {
               💬 WhatsApp&apos;tan Yaz
             </a>
             <a
-              href="mailto:destek@leadflow.ai"
+              href="mailto:destek@sovlo.io"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-[13px] font-semibold hover:bg-slate-50 transition-colors"
             >
               📧 Email Gönder

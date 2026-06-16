@@ -38,7 +38,7 @@ export default function LandingHero() {
             {/* Subheadline */}
             <p className="text-[17px] lg:text-[18px] text-slate-500 leading-[1.7] mb-8 max-w-lg">
               Google Maps&apos;ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt.{' '}
-              <strong className="text-slate-700 font-semibold">2,847+ firma</strong> LeadFlow AI ile satışlarını otomatize ediyor.
+              <strong className="text-slate-700 font-semibold">2,847+ firma</strong> Sovlo AI ile satışlarını otomatize ediyor.
             </p>
 
             {/* CTAs */}

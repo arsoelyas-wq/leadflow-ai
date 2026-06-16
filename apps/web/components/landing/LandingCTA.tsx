@@ -66,7 +66,7 @@ export default function LandingCTA() {
           </h2>
 
           <p className="text-[18px] text-slate-400 leading-relaxed max-w-xl mx-auto mb-10">
-            2,847+ firma LeadFlow AI ile satışlarını otomatize etti.{' '}
+            2,847+ firma Sovlo AI ile satışlarını otomatize etti.{' '}
             <strong className="text-slate-200">Sizin sıranız.</strong>
           </p>
         </Reveal>

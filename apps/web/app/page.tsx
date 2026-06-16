@@ -17,18 +17,18 @@ import LandingFooter from '@/components/landing/LandingFooter'
 import ChatWidget from '@/components/ChatWidget'
 
 export const metadata: Metadata = {
-  title: 'LeadFlow AI — Yapay Zeka Destekli B2B Lead Intelligence Platformu',
+  title: 'Sovlo AI — Yapay Zeka Destekli B2B Lead Intelligence Platformu',
   description: 'Google Maps\'ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt. 2,847+ firma ile satışlarınızı otomatize edin.',
   keywords: ['B2B lead', 'satış otomasyonu', 'WhatsApp kampanya', 'lead scraper', 'AI satış', 'CRM Türkiye'],
   openGraph: {
     type: 'website',
-    title: 'LeadFlow AI — B2B Lead Intelligence Platformu',
+    title: 'Sovlo AI — B2B Lead Intelligence Platformu',
     description: '2,847+ firma tarafından kullanılan AI destekli B2B satış otomasyon platformu.',
-    siteName: 'LeadFlow AI',
+    siteName: 'Sovlo AI',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'LeadFlow AI — B2B Lead Intelligence',
+    title: 'Sovlo AI — B2B Lead Intelligence',
     description: '2,847+ firma tarafından kullanılan AI destekli B2B satış otomasyon platformu.',
   },
   robots: {
@@ -50,7 +50,7 @@ export default function LandingPage() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'LeadFlow AI',
+            name: 'Sovlo AI',
             applicationCategory: 'BusinessApplication',
             operatingSystem: 'Web',
             description: 'Yapay Zeka Destekli B2B Lead Intelligence ve Satış Otomasyon Platformu',

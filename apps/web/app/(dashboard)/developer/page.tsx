@@ -138,7 +138,7 @@ export default function DeveloperPage() {
           <KeyVault size={88} />
           <div style={{ flex: 1 }}>
             <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('developer.api_erisimi', 'API Erişimi')}</h1>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('developer.kendi_uygulamalarinizi_le', 'Kendi uygulamalarınızı LeadFlow AI ile entegre edin — güvenli, kapsamlı')}</p>
+            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('developer.kendi_uygulamalarinizi_le', 'Kendi uygulamalarınızı Sovlo AI ile entegre edin — güvenli, kapsamlı')}</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
               {[{l:'Toplam İstek',v:usage?.totalRequests||0,c:'#06b6d4'},{l:'Kalan Limit',v:usage?.remaining||0,c:'#10b981'},{l:'Aktif Key',v:keys.filter(k=>k.is_active).length,c:'#8b5cf6'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>

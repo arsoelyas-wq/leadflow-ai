@@ -6,7 +6,7 @@ import { Mail, MessageCircle, MapPin, Clock, Send, CheckCircle2, AlertCircle, Lo
 const SUBJECTS = ['Genel Soru', 'Satış & Fiyatlandırma', 'Teknik Destek', 'Ortaklık & İş Birliği', 'Diğer']
 
 const CONTACT_INFO = [
-  { icon: Mail, label: 'E-posta', value: 'destek@leadflow.ai', href: 'mailto:destek@leadflow.ai' },
+  { icon: Mail, label: 'E-posta', value: 'destek@sovlo.io', href: 'mailto:destek@sovlo.io' },
   { icon: MessageCircle, label: 'WhatsApp', value: '+90 500 000 00 00', href: 'https://wa.me/905000000000' },
   { icon: MapPin, label: 'Ofis', value: 'Maslak, İstanbul, Türkiye', href: null },
   { icon: Clock, label: 'Çalışma Saatleri', value: 'Pzt - Cum, 09:00 - 18:00 (GMT+3)', href: null },

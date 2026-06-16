@@ -60,7 +60,7 @@ export default function Admin2FAPage() {
               2FA, giriş sırasında telefon uygulamasından bir kod girmenizi gerektirir. Bu, yetkisiz girişleri engeller.
             </p>
             <label style={{display:'block',color:'#64748b',fontSize:11,fontWeight:700,textTransform:'uppercase' as const,letterSpacing:'0.07em',marginBottom:8}}>Admin E-posta</label>
-            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@leadflow.ai" style={{...inp,marginBottom:16}} />
+            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="admin@sovlo.io" style={{...inp,marginBottom:16}} />
             <button onClick={generateQR} disabled={loading||!email} style={{width:'100%',padding:'13px',borderRadius:12,border:'none',background:'linear-gradient(135deg,#3b82f6,#6366f1)',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:'inherit'}}>
               {loading?'Hazırlanıyor...':'QR Kodu Oluştur →'}
             </button>

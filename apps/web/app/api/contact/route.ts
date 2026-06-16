@@ -55,10 +55,10 @@ export async function POST(request: NextRequest) {
       auth: { user: SMTP_USER, pass: SMTP_PASS },
     })
 
-    const recipient = CONTACT_EMAIL_TO || "destek@leadflow.ai"
+    const recipient = CONTACT_EMAIL_TO || "destek@sovlo.io"
 
     await transporter.sendMail({
-      from: `"LeadFlow AI İletişim Formu" <${SMTP_USER}>`,
+      from: `"Sovlo AI İletişim Formu" <${SMTP_USER}>`,
       to: recipient,
       replyTo: email.trim(),
       subject: `[İletişim Formu] ${subject?.trim() || "Yeni Mesaj"} — ${name.trim()}`,

@@ -236,7 +236,7 @@ function ARViewerContent() {
           }}>
             <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>⚡</span>
           </div>
-          <span style={{ color: '#334155', fontSize: 12 }}>LeadFlow AI</span>
+          <span style={{ color: '#334155', fontSize: 12 }}>Sovlo AI</span>
         </div>
         <div style={{ display: 'flex', gap: 16, color: '#334155', fontSize: 12 }}>
           <span>⏱️ {viewTime}s</span>

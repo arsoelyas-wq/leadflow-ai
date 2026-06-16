@@ -235,7 +235,7 @@ export default function LandingPricing() {
             </p>
           </div>
           <a
-            href="mailto:destek@leadflow.ai"
+            href="mailto:destek@sovlo.io"
             className="flex-shrink-0 flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 text-white text-[14px] font-bold hover:bg-slate-800 transition-colors"
           >
             Bize Ulaşın

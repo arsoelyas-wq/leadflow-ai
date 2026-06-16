@@ -53,7 +53,7 @@ const CASES = [
     border: 'border-amber-100',
     headline: 'SDR ekibi maliyeti olmadan kurumsal büyüme',
     pain: 'Satış temsilcisi işe almak ve eğitmek pahalı; mevcut ekip zaten yoğun.',
-    solution: 'LeadFlow, tam zamanlı satış asistanı gibi çalışır. Hedef kitleye ulaşır, ilgilileri filtreler, sıcak leadleri ekibinize yönlendirir.',
+    solution: 'Sovlo, tam zamanlı satış asistanı gibi çalışır. Hedef kitleye ulaşır, ilgilileri filtreler, sıcak leadleri ekibinize yönlendirir.',
     result: 'SDR maliyetinin onda biri, 3x daha fazla aktif lead',
     steps: ['Hedef tanımla', 'AI tara & filtrele', 'Sıcak lead\'i al', 'Satışı kapat'],
   },

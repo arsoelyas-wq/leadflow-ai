@@ -74,8 +74,8 @@ export default function LeadMachinePage() {
     const name = profile?.company?.name
 
     const greeting = name
-      ? `Merhaba ${name}, ben LeadFlow Asistanı. Hangi sektörde, hangi şehirde yeni müşteri arayalım — doğal dille anlatman yeterli.`
-      : `Merhaba, ben LeadFlow Asistanı. Doğal dille anlat, gerisini ben hallederim — örn. "İstanbul'da mobilya üreticileri bul, Instagram'dan".`
+      ? `Merhaba ${name}, ben Sovlo Asistanı. Hangi sektörde, hangi şehirde yeni müşteri arayalım — doğal dille anlatman yeterli.`
+      : `Merhaba, ben Sovlo Asistanı. Doğal dille anlat, gerisini ben hallederim — örn. "İstanbul'da mobilya üreticileri bul, Instagram'dan".`
 
     const quickReplies = sector
       ? [`${sector} sektöründe ${city || 'İstanbul'}'da müşteri bul`, `${sector} için rakip analizi öner`, 'Bana uygun bir araç öner']
@@ -152,7 +152,7 @@ export default function LeadMachinePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Sparkles size={24} className="text-emerald-400"/> {t('lead_machine.title','LeadFlow Asistanı')}
+            <Sparkles size={24} className="text-emerald-400"/> {t('lead_machine.title','Sovlo Asistanı')}
           </h1>
           <p className="text-slate-400 mt-1 text-sm">
             {t('lead_machine.subtitle','Doğal dille anlat, ben arayayım — ya da sana en uygun aracı önereyim')}

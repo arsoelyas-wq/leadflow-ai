@@ -12,7 +12,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">1. Toplanan Veriler</h2>
-            <p>LeadFlow AI platformu aşağıdaki verileri toplar:</p>
+            <p>Sovlo AI platformu aşağıdaki verileri toplar:</p>
             <ul className="list-disc list-inside mt-2 space-y-1 text-slate-400">
               <li>Kullanıcı adı, e-posta adresi ve şifre (şifreli)</li>
               <li>İşletme adı, telefon numarası ve adres bilgileri</li>
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">3. Facebook ve Instagram Verileri</h2>
-            <p>LeadFlow AI, Meta platformları (Facebook ve Instagram) ile entegrasyon için yalnızca yetkili API'leri kullanır. Toplanan veriler:</p>
+            <p>Sovlo AI, Meta platformları (Facebook ve Instagram) ile entegrasyon için yalnızca yetkili API'leri kullanır. Toplanan veriler:</p>
             <ul className="list-disc list-inside mt-2 space-y-1 text-slate-400">
               <li>Yalnızca kullanıcının izni ile erişilen sayfa ve hesap bilgileri</li>
               <li>Üçüncü taraflarla paylaşılmaz</li>
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">5. Veri Silme</h2>
-            <p>Hesabınızı ve tüm verilerinizi silmek için <a href="mailto:info@leadflowai.com" className="text-blue-400 hover:underline">info@leadflowai.com</a> adresine e-posta gönderin. Talebiniz 30 gün içinde işleme alınır.</p>
+            <p>Hesabınızı ve tüm verilerinizi silmek için <a href="mailto:info@sovlo.io" className="text-blue-400 hover:underline">info@sovlo.io</a> adresine e-posta gönderin. Talebiniz 30 gün içinde işleme alınır.</p>
           </section>
 
           <section>
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">8. İletişim</h2>
             <p>Gizlilik politikası hakkında sorularınız için:</p>
-            <p className="mt-2 text-slate-400">E-posta: <a href="mailto:info@leadflowai.com" className="text-blue-400 hover:underline">info@leadflowai.com</a></p>
+            <p className="mt-2 text-slate-400">E-posta: <a href="mailto:info@sovlo.io" className="text-blue-400 hover:underline">info@sovlo.io</a></p>
           </section>
 
         </div>

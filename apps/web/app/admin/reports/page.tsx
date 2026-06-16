@@ -39,7 +39,7 @@ export default function AdminReportsPage() {
   const downloadRevenueHTML = () => {
     if (!revenue) return
     const html = `<!DOCTYPE html><html lang="tr">
-<head><meta charset="UTF-8"><title>LeadFlow Gelir Raporu</title>
+<head><meta charset="UTF-8"><title>Sovlo Gelir Raporu</title>
 <style>body{font-family:-apple-system,sans-serif;background:#0a0f1e;color:#e2e8f0;padding:40px;max-width:900px;margin:0 auto}
 h1{font-size:28px;font-weight:900;color:#fff;margin-bottom:4px}
 .sub{color:#64748b;font-size:14px;margin-bottom:32px}
@@ -52,7 +52,7 @@ th,td{padding:12px 16px;text-align:left;border-bottom:1px solid rgba(255,255,255
 th{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#475569}
 </style></head>
 <body>
-<h1>💰 LeadFlow AI — Gelir Raporu</h1>
+<h1>💰 Sovlo AI — Gelir Raporu</h1>
 <p class="sub">Oluşturulma tarihi: ${new Date().toLocaleDateString('tr-TR', {weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
 <div class="grid">
   <div class="stat"><p class="val" style="color:#10b981">₺${(revenue.mrr||0).toLocaleString()}</p><p class="lbl">Aylık Gelir (MRR)</p></div>
@@ -64,7 +64,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#475569}
   <tr>${['Plan','Aylık Gelir','Yıllık Tahmin'].map(h=>`<th>${h}</th>`).join('')}</tr>
   ${Object.entries(revenue.by_plan||{}).map(([plan,rev]:any)=>`<tr><td style="text-transform:capitalize">${plan}</td><td>₺${rev.toLocaleString()}</td><td>₺${(rev*12).toLocaleString()}</td></tr>`).join('')}
 </table>
-<p style="color:#334155;font-size:11px;margin-top:32px">Bu rapor LeadFlow Admin OS tarafından otomatik oluşturuldu.</p>
+<p style="color:#334155;font-size:11px;margin-top:32px">Bu rapor Sovlo Admin OS tarafından otomatik oluşturuldu.</p>
 </body></html>`
     const blob = new Blob([html], { type: 'text/html' })
     const url = URL.createObjectURL(blob)

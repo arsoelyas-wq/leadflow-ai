@@ -1,6 +1,6 @@
 {
-  "name": "LeadFlow AI",
-  "short_name": "LeadFlow",
+  "name": "Sovlo AI",
+  "short_name": "Sovlo",
   "description": "AI destekli B2B satış ve lead yönetim platformu",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -34,7 +34,7 @@ export default function AdsAdvancedPage() {
   const [smartForm, setSmartForm] = useState({ product:'', sector:'', budget:'10', targetCountries:['TR'] })
   const [monitorForm, setMonitorForm] = useState({ adAccountId:'', minCtr:'0.5', maxCpm:'50' })
   const [competitorForm, setCompetitorForm] = useState({ keywords:'', country:'TR' })
-  const [retargetForm, setRetargetForm] = useState({ audienceName:'LeadFlow Retargeting', days:'30' })
+  const [retargetForm, setRetargetForm] = useState({ audienceName:'Sovlo Retargeting', days:'30' })
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
 
   const showMsg = (type:'success'|'error', text:string) => { setMsg({type,text}); setTimeout(()=>setMsg(null),6000) }

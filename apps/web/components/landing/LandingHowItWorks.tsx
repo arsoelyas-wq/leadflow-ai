@@ -8,7 +8,7 @@ const STEPS = [
     step: '01',
     icon: Search,
     title: 'Hedef Sektör & Lokasyon Seç',
-    desc: 'Hangi sektör, hangi şehir, hangi büyüklükte firma istediğinizi belirleyin. LeadFlow geri kalanını halleder.',
+    desc: 'Hangi sektör, hangi şehir, hangi büyüklükte firma istediğinizi belirleyin. Sovlo geri kalanını halleder.',
     color: '#2563eb',
     bg: 'bg-blue-50',
     border: 'border-blue-200',
@@ -66,7 +66,7 @@ export default function LandingHowItWorks() {
               <span className="gradient-text-blue">otomasyon</span>
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              Kurulum yok, teknik bilgi yok. Hesap açın, hedefi belirleyin, LeadFlow başlasın.
+              Kurulum yok, teknik bilgi yok. Hesap açın, hedefi belirleyin, Sovlo başlasın.
             </p>
           </div>
         </Reveal>

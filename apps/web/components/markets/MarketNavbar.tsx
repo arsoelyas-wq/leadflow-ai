@@ -32,7 +32,7 @@ export default function MarketNavbar({ page }: { page: MarketPage }) {
             fontSize: 18, fontWeight: 900, color: '#fff',
             boxShadow: '0 4px 12px rgba(99,102,241,0.4)',
           }}>L</div>
-          <span style={{ color: '#fff', fontSize: 19, fontWeight: 800, letterSpacing: '-0.025em' }}>LeadFlow AI</span>
+          <span style={{ color: '#fff', fontSize: 19, fontWeight: 800, letterSpacing: '-0.025em' }}>Sovlo AI</span>
         </Link>
 
         {/* Right: market badge + CTA */}

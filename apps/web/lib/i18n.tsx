@@ -84,7 +84,7 @@ const T: Record<string, Record<string, string>> = {
     'nav.system':'Sistem',
     // Sidebar nav items
     'nav.leads':'Müşterilerim',
-    'nav.lead_machine':'LeadFlow Asistanı',
+    'nav.lead_machine':'Sovlo Asistanı',
     'nav.decision_maker':'Karar Vericiler',
     'nav.network':'Bağlantı Ağım',
     'nav.health_scores':'Müşteri Sinyali',
@@ -213,7 +213,7 @@ const T: Record<string, Record<string, string>> = {
     'nav.customers':'Customers', 'nav.sales':'Sales',
     'nav.communication':'Communication', 'nav.marketing':'Marketing',
     'nav.market':'Market Analysis', 'nav.intelligence':'Intelligence', 'nav.growth':'Growth & Finance', 'nav.system':'System',
-    'nav.leads':'My Customers', 'nav.lead_machine':'LeadFlow Assistant',
+    'nav.leads':'My Customers', 'nav.lead_machine':'Sovlo Assistant',
     'nav.decision_maker':'Decision Makers', 'nav.network':'My Network',
     'nav.health_scores':'Customer Signal', 'nav.pipeline':'My Sales Flow',
     'nav.proposals':'My Proposals', 'nav.products':'My Product List',

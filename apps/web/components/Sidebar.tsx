@@ -282,7 +282,7 @@ export default function Sidebar() {
         </div>
         <div style={{ lineHeight: 1.1 }}>
           <span style={{ color: '#0f172a', fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.3px' }}>
-            LeadFlow
+            Sovlo
           </span>
           <span style={{
             background: 'linear-gradient(135deg,#2563eb,#7c3aed)',

@@ -110,7 +110,7 @@ export default function ChatWidget() {
         const data = await res.json()
         setMessages(prev => [...prev, {
           role: 'bot',
-          text: data.message || 'LeadFlow AI tam size göre! Hemen başlayalım. 🚀',
+          text: data.message || 'Sovlo AI tam size göre! Hemen başlayalım. 🚀',
         }])
         setTimeout(() => {
           setMessages(prev => [...prev, {
@@ -122,7 +122,7 @@ export default function ChatWidget() {
       } catch {
         setMessages(prev => [...prev, {
           role: 'bot',
-          text: 'LeadFlow AI ile her ay yüzlerce yeni müşteriye ulaşabilirsiniz! 🚀\n\n14 gün ücretsiz deneyin.',
+          text: 'Sovlo AI ile her ay yüzlerce yeni müşteriye ulaşabilirsiniz! 🚀\n\n14 gün ücretsiz deneyin.',
         }])
         setDone(true)
       } finally {
@@ -173,7 +173,7 @@ export default function ChatWidget() {
                   <MessageSquare size={16} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-white font-semibold text-sm">LeadFlow AI</p>
+                  <p className="text-white font-semibold text-sm">Sovlo AI</p>
                   <div className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
                     <p className="text-blue-100 text-xs">Çevrimiçi</p>

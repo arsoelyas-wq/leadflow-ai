@@ -42,7 +42,7 @@ export default function LandingNavbar() {
                 <Zap size={16} className="text-white fill-white" />
               </div>
               <span className="text-slate-900 text-[17px] font-800 tracking-tight font-bold">
-                LeadFlow <span className="gradient-text-blue">AI</span>
+                Sovlo <span className="gradient-text-blue">AI</span>
               </span>
             </Link>
 

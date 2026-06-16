@@ -26,16 +26,16 @@ export async function generateMetadata(
 
   if (!page) {
     return {
-      title: `LeadFlow AI — ${market?.name || params.locale.toUpperCase()}`,
+      title: `Sovlo AI — ${market?.name || params.locale.toUpperCase()}`,
       description: 'B2B Satış Otomasyon Platformu',
     }
   }
 
   return {
-    title: page.meta_title || `LeadFlow AI — ${market?.name}`,
+    title: page.meta_title || `Sovlo AI — ${market?.name}`,
     description: page.meta_description || 'B2B Satış Otomasyon Platformu',
     openGraph: {
-      title: page.meta_title || 'LeadFlow AI',
+      title: page.meta_title || 'Sovlo AI',
       description: page.meta_description || '',
       images: page.og_image_url ? [{ url: page.og_image_url }] : [],
       locale: page.locale,
@@ -43,7 +43,7 @@ export async function generateMetadata(
     },
     twitter: {
       card: 'summary_large_image',
-      title: page.meta_title || 'LeadFlow AI',
+      title: page.meta_title || 'Sovlo AI',
       description: page.meta_description || '',
       images: page.og_image_url ? [page.og_image_url] : [],
     },
@@ -76,7 +76,7 @@ export default async function MarketPublicPage(
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'LeadFlow AI',
+            name: 'Sovlo AI',
             applicationCategory: 'BusinessApplication',
             description: page.meta_description,
             offers: page.price_monthly ? {

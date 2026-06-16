@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{ width: 60, height: 60, borderRadius: 18, background: 'linear-gradient(135deg,#ef4444,#f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: 26, fontWeight: 900, color: '#fff', boxShadow: '0 12px 35px rgba(239,68,68,0.4)' }}>A</div>
           <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 900, margin: '0 0 6px', letterSpacing: '-0.03em' }}>Admin Girişi</h1>
-          <p style={{ color: '#334155', fontSize: 14, margin: 0 }}>LeadFlow AI — Sistem Yönetimi</p>
+          <p style={{ color: '#334155', fontSize: 14, margin: 0 }}>Sovlo AI — Sistem Yönetimi</p>
         </div>
 
         <form onSubmit={login} style={{ background: 'linear-gradient(135deg,rgba(10,18,45,0.95),rgba(5,10,28,0.98))', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, padding: 32, boxShadow: '0 30px 60px rgba(0,0,0,0.5)' }}>
@@ -46,7 +46,7 @@ export default function AdminLoginPage() {
           <div style={{ marginBottom: 18 }}>
             <label style={label}>Admin E-posta</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-              placeholder="admin@leadflow.ai" style={inp} />
+              placeholder="admin@sovlo.io" style={inp} />
           </div>
 
           <div style={{ marginBottom: 28, position: 'relative' }}>
