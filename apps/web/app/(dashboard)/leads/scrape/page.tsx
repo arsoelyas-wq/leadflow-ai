@@ -398,7 +398,7 @@ export default function LeadFinderPage() {
       {/* Header */}
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-medium px-3 py-1 rounded-full">
-          <Search size={12} /> Akıllı Çoklu Kaynak Arama
+          <Search size={12} /> AI Destekli Lead Tarayıcı
         </div>
         <h1 className="text-3xl font-bold text-white">Lead Bul</h1>
         <p className="text-slate-400 text-sm">{t('leads.google_maps_oncelikli_ger', 'Google Maps öncelikli · Gerektiğinde ek kaynaklar devreye girer')}</p>
@@ -629,21 +629,10 @@ export default function LeadFinderPage() {
           </div>
         </div>
 
-        {/* Source badges */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-500/30 bg-blue-500/5">
-            <MapPin size={13} className="text-blue-400" />
-            <span className="text-sm text-white font-medium">Google Maps</span>
-            <span className="text-[10px] text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded-full">Apify</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-green-500/30 bg-green-500/5">
-            <MapPin size={13} className="text-green-400" />
-            <span className="text-sm text-slate-300 font-medium">OpenStreetMap</span>
-          </div>
-          <div className="flex items-center gap-2 px-2.5 py-2 rounded-xl border border-slate-600/50 bg-slate-800/30">
-            <MapPin size={12} className="text-slate-400" />
-            <span className="text-xs text-slate-400">+Yelp, HERE, Foursquare</span>
-          </div>
+        {/* Source info */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-700/60 bg-slate-800/30">
+          <MapPin size={12} className="text-blue-400 shrink-0" />
+          <span className="text-xs text-slate-400">Google Maps verisi · Çoklu kaynak doğrulama · Gerçek zamanlı tarama</span>
         </div>
 
         {/* Advanced filters */}
