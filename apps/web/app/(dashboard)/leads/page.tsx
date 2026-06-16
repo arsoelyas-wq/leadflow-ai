@@ -619,7 +619,7 @@ export default function LeadsPage() {
                     </td>
                     {/* Date */}
                     <td className="px-3 py-3 align-middle text-slate-400 text-[11px] whitespace-nowrap">
-                      {new Date(lead.created_at).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'})}
+                      {new Date(lead.created_at).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit'})}
                     </td>
                     {/* Link */}
                     <td className="pr-2 py-3 align-middle">
