@@ -10,8 +10,8 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 app.set('trust proxy', 1);
 app.use(helmet());
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://leadflow-ai-web-kappa.vercel.app,http://localhost:3000').split(',');
-app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin) || (!!origin && origin.endsWith('.vercel.app'))), credentials: true, methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization'] }));
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://sovlo.io,https://www.sovlo.io,https://leadflow-ai-web-kappa.vercel.app,http://localhost:3000').split(',');
+app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin) || (!!origin && (origin.endsWith('.vercel.app') || origin.endsWith('.sovlo.io')))), credentials: true, methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization', 'x-lang'] }));
 const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 const scrapeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 50, message: { error: 'Çok fazla istek. Lütfen bir saat sonra tekrar deneyin.' } });
@@ -20,6 +20,16 @@ const aiLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
 app.use(generalLimiter);
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
+// Ensure all JSON responses explicitly declare UTF-8
+app.use((_req, res, next) => {
+    const orig = res.json.bind(res);
+    res.json = function (body) {
+        if (!res.headersSent)
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        return orig(body);
+    };
+    next();
+});
 const { authMiddleware } = require('./middleware/auth');
 // PUBLIC
 app.use('/api/auth', authLimiter, require('./routes/auth'));
@@ -112,7 +122,12 @@ app.use('/api/coaching', authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox', authMiddleware, require('./routes/inbox'));
 app.use('/api/pipeline', authMiddleware, require('./routes/pipeline'));
 app.use('/api/crisis', authMiddleware, require('./routes/crisis'));
+// Public microsite view (no auth — customer-facing catalog link)
+app.use('/api/microsite/view', require('./routes/microsite').publicRouter);
 app.use('/api/microsite', authMiddleware, require('./routes/microsite'));
+// Public: Excel template download (no sensitive data — just an empty template)
+app.get('/api/products/excel-template', require('./routes/products').excelTemplateHandler);
+app.use('/api/products', authMiddleware, require('./routes/products'));
 app.use('/api/referral', authMiddleware, require('./routes/referral'));
 app.use('/api/debt', authMiddleware, require('./routes/debt'));
 app.use('/api/emotional', authMiddleware, require('./routes/emotional'));
@@ -136,8 +151,15 @@ app.use('/api/abtests', authMiddleware, require('./routes/ab-testing'));
 app.use('/api/wa-numbers', authMiddleware, require('./routes/wa-numbers'));
 app.use('/api/shadow', authMiddleware, require('./routes/shadow'));
 app.use('/api/visual-trends', authMiddleware, require('./routes/visual-trends'));
-app.use('/api/video-outreach', authMiddleware, require('./routes/video-outreach'));
+// HeyGen webhook public (no auth, called by HeyGen servers)
+const videoOutreachRouter = require('./routes/video-outreach');
+app.post('/api/video-outreach/heygen-webhook', (req, res, next) => { req.url = '/heygen-webhook'; videoOutreachRouter(req, res, next); });
+app.get('/api/video-outreach/test-ai', (req, res, next) => { req.url = '/test-ai'; videoOutreachRouter(req, res, next); });
+app.use('/api/video-outreach', authMiddleware, videoOutreachRouter);
 app.use('/v', require('./routes/video-tracking'));
+// Video sequences — multi-touch outreach engine
+const { router: videoSeqRouter, checkAndAdvanceSequences } = require('./routes/video-sequences');
+app.use('/api/video-sequences', authMiddleware, videoSeqRouter);
 app.use('/api/avatar', authMiddleware, require('./routes/avatar'));
 app.use('/api/retargeting', authMiddleware, require('./routes/retargeting'));
 const { router: proposalsRouter, portalRouter: proposalPortalRouter } = require('./routes/proposals');
@@ -150,18 +172,26 @@ app.use('/api/developer', authMiddleware, require('./routes/developer'));
 app.use('/api/whitelabel', authMiddleware, require('./routes/whitelabel'));
 const voiceRouter = require('./routes/voice-outreach');
 app.post('/api/voice/webhook/elevenlabs', (req, res, next) => { req.url = '/webhook/elevenlabs'; voiceRouter(req, res, next); });
+app.post('/api/voice/webhook/vapi', (req, res, next) => { req.url = '/webhook/vapi'; voiceRouter(req, res, next); });
+// XTTS custom TTS endpoint — Vapi canlı arama sırasında bu URL'i çağırır (public, auth yok)
+app.post('/api/voice/tts-xtts/:voiceId', (req, res, next) => { req.url = `/tts-xtts/${req.params.voiceId}`; voiceRouter(req, res, next); });
 app.use('/api/voice', authMiddleware, voiceRouter);
+app.use('/api/voice-library', authMiddleware, require('./routes/voice-library'));
 app.use('/api/push', authMiddleware, require('./routes/push'));
 app.use('/api/cultural', authMiddleware, require('./routes/cultural'));
 app.use('/api/meta', authMiddleware, require('./routes/meta-intent'));
 app.use('/api/meta-capi', authMiddleware, require('./routes/meta-capi'));
 app.use('/api/google-capi', authMiddleware, require('./routes/google-capi'));
 app.use('/api/export', authMiddleware, require('./routes/export-intelligence'));
+const { router: platformsRouter } = require('./routes/platforms');
+app.use('/api/platforms', authMiddleware, platformsRouter);
 app.use('/api/ar', authMiddleware, require('./routes/ar-integration'));
 app.use('/api/sales-intelligence', authMiddleware, require('./routes/sales-intelligence'));
 app.use('/api/ti-reports', authMiddleware, require('./routes/team-intelligence-reports'));
 app.use('/api/ads-automation', authMiddleware, require('./routes/ads-automation'));
 app.use('/api/lead-finder', authMiddleware, scrapeLimiter, require('./routes/lead-finder'));
+app.use('/api/replica', authMiddleware, require('./routes/replica'));
+app.use('/api/avatar-library', authMiddleware, require('./routes/avatar-library'));
 // Activity tracking (pixel is public, rest protected)
 const { router: activityRouter } = require('./routes/activity');
 app.get('/api/activity/pixel/:token', (req, res, next) => { req.url = `/pixel/${req.params.token}`; activityRouter(req, res, next); });
@@ -184,6 +214,32 @@ global.processIncomingWhatsApp = _piMsg;
 const { router: settingsRouter } = require('./routes/settings');
 app.use('/api/settings', authMiddleware, settingsRouter);
 app.use('/api/settings/business-profile', authMiddleware, require('./routes/business-profile'));
+// Market pages — public GET no auth, CRUD requires auth
+app.use('/api/market-pages/public', require('./routes/market-pages-public'));
+app.use('/api/market-pages', authMiddleware, require('./routes/market-pages'));
+// ── ADMIN OS ─────────────────────────────────────────────────────────────────
+const { adminAuthMiddleware } = require('./middleware/adminAuth');
+const adminRouter = require('./routes/admin/index');
+app.use('/api/admin', (req, res, next) => {
+    // Public routes — no admin auth needed
+    if (req.path.startsWith('/auth/') || req.path.startsWith('/content/banners/active') || req.path.startsWith('/content/banners/') && (req.path.endsWith('/click') || req.path.endsWith('/view')))
+        return next();
+    // Promo redemption uses regular user auth (handled inside the route)
+    if (req.path === '/promo/redeem') {
+        // Extract user from JWT if present (but don't block if no admin token)
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+            try {
+                const jwt = require('jsonwebtoken');
+                const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'leadflow-super-secret-jwt-key-2026');
+                req.userId = decoded.userId;
+            }
+            catch { }
+        }
+        return next();
+    }
+    adminAuthMiddleware(req, res, next);
+}, adminRouter);
 const { router: dashboardRouter } = require('./routes/dashboard');
 app.use('/api/dashboard', authMiddleware, dashboardRouter);
 const { router: monitoringRouter } = require('./routes/monitoring');
@@ -208,4 +264,5 @@ function scheduleDailyTenderScan() {
 scheduleDailyTenderScan();
 const { runNightlyCollection } = require('./routes/data-collector');
 require('node-cron').schedule('0 2 * * *', () => { runNightlyCollection(); });
+require('node-cron').schedule('*/10 * * * *', () => { checkAndAdvanceSequences(); });
 app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));
