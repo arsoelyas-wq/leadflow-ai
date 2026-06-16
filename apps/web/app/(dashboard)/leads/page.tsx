@@ -453,16 +453,27 @@ export default function LeadsPage() {
       {/* ── Table ── */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px]">
+          <table className="w-full" style={{tableLayout:'fixed',minWidth:'960px'}}>
+            <colgroup>
+              <col style={{width:'40px'}}/>
+              <col style={{width:'22%'}}/>
+              <col style={{width:'16%'}}/>
+              <col style={{width:'15%'}}/>
+              <col style={{width:'80px'}}/>
+              <col style={{width:'13%'}}/>
+              <col style={{width:'72px'}}/>
+              <col style={{width:'120px'}}/>
+              <col style={{width:'60px'}}/>
+              <col style={{width:'28px'}}/>
+            </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="pl-4 pr-2 py-3 w-10">
+                <th className="pl-3 pr-1 py-3">
                   <input type="checkbox" checked={allSel}
                     onChange={()=>setSelected(allSel?[]:leads.map(l=>l.id))}
                     className="accent-indigo-600 w-3.5 h-3.5 cursor-pointer rounded"/>
                 </th>
                 <TH>Firma</TH>
-                <TH>Kaynak</TH>
                 <TH>Telefon</TH>
                 <TH>E-posta</TH>
                 <TH>Sosyal</TH>
@@ -470,19 +481,19 @@ export default function LeadsPage() {
                 <TH>Puan</TH>
                 <TH>Durum</TH>
                 <TH>Tarih</TH>
-                <th className="w-8"/>
+                <th/>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading?(
-                <tr><td colSpan={11}>
+                <tr><td colSpan={10}>
                   <div className="flex items-center justify-center gap-2 py-16">
                     <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"/>
                     <span className="text-slate-500 text-sm">Yükleniyor...</span>
                   </div>
                 </td></tr>
               ):leads.length===0?(
-                <tr><td colSpan={11}>
+                <tr><td colSpan={10}>
                   <div className="flex flex-col items-center justify-center py-16 gap-4">
                     <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">
                       <Users size={24} className="text-slate-400"/>
@@ -504,98 +515,95 @@ export default function LeadsPage() {
                 return (
                   <tr key={lead.id} className="group/row hover:bg-slate-50/70 transition-colors">
                     {/* Checkbox */}
-                    <td className="pl-4 pr-2 py-3.5 w-10 align-middle">
+                    <td className="pl-3 pr-1 py-3 align-middle">
                       <input type="checkbox" checked={selected.includes(lead.id)} onChange={()=>toggleSel(lead.id)}
                         className="accent-indigo-600 w-3.5 h-3.5 cursor-pointer rounded opacity-40 group-hover/row:opacity-100 checked:opacity-100 transition-opacity"/>
                     </td>
-                    {/* Company */}
-                    <td className="px-4 py-3.5 align-middle">
-                      <div className="flex items-center gap-3 min-w-[160px] max-w-[220px]">
-                        <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center text-sm font-bold"
+                    {/* Company + source */}
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold"
                           style={{background:bg,color:tc}}>
                           {initials}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-slate-900 text-sm font-semibold truncate">{lead.company_name}</span>
-                            {(lead.hot_score||0)>=30&&<Flame size={11} className="text-red-400 shrink-0"/>}
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="text-slate-900 text-sm font-semibold truncate block">{lead.company_name}</span>
+                            {(lead.hot_score||0)>=30&&<Flame size={10} className="text-red-400 shrink-0"/>}
                           </div>
-                          {lead.city&&<p className="text-slate-400 text-[11px] mt-0.5 truncate">{lead.city}{lead.sector?` · ${lead.sector}`:''}</p>}
+                          <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                            {lead.city&&<span className="text-slate-400 text-[10px] truncate">{lead.city}</span>}
+                            <SourceBadge source={lead.source}/>
+                          </div>
                         </div>
                       </div>
                     </td>
-                    {/* Source */}
-                    <td className="px-4 py-3.5 align-middle">
-                      <SourceBadge source={lead.source}/>
-                    </td>
                     {/* Phone */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-3 py-3 align-middle">
                       {lead.phone?(
                         <div>
-                          <div className="flex items-center gap-0.5">
+                          <div className="flex items-center">
                             <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
-                              className="text-slate-800 hover:text-indigo-600 text-sm font-mono transition-colors whitespace-nowrap">
+                              className="text-slate-800 hover:text-indigo-600 text-xs font-mono transition-colors truncate block">
                               {lead.phone}
                             </a>
                             <Cp v={lead.phone}/>
                           </div>
                           {domain&&<a href={lead.website!.startsWith('http')?lead.website!:`https://${lead.website}`} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-indigo-500 mt-0.5 transition-colors">
-                            <Globe size={8}/>{domain.slice(0,20)}
+                            className="flex items-center gap-0.5 text-[10px] text-slate-400 hover:text-indigo-500 mt-0.5 transition-colors truncate">
+                            <Globe size={8} className="shrink-0"/><span className="truncate">{domain.slice(0,18)}</span>
                           </a>}
                         </div>
                       ):(
                         <button onClick={()=>findPhone(lead)} disabled={!!findingDM}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-600 hover:text-indigo-600 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
-                          {findingDM===lead.id+'_ph'?<RefreshCw size={10} className="animate-spin"/>:<Phone size={10}/>}
-                          Telefon Bul
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-500 hover:text-indigo-600 text-[11px] font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap">
+                          {findingDM===lead.id+'_ph'?<RefreshCw size={9} className="animate-spin"/>:<Phone size={9}/>}
+                          Bul
                         </button>
                       )}
                     </td>
                     {/* Email */}
-                    <td className="px-4 py-3.5 align-middle max-w-[180px]">
+                    <td className="px-3 py-3 align-middle">
                       {lead.email?(
                         <div>
-                          <div className="flex items-center gap-0.5">
+                          <div className="flex items-center">
                             <a href={`mailto:${lead.email}`}
-                              className="text-slate-600 hover:text-indigo-600 text-xs transition-colors truncate max-w-[150px] block">
+                              className="text-slate-600 hover:text-indigo-600 text-[11px] transition-colors truncate block">
                               {lead.email}
                             </a>
                             <Cp v={lead.email}/>
                           </div>
                           {lead.rating&&(
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Star size={9} className="text-amber-400 fill-amber-400"/>
+                            <div className="flex items-center gap-0.5 mt-0.5">
+                              <Star size={9} className="text-amber-400 fill-amber-400 shrink-0"/>
                               <span className="text-[10px] text-slate-400">{lead.rating.toFixed(1)}{lead.review_count?` (${lead.review_count})`:''}</span>
                             </div>
                           )}
                         </div>
-                      ):<span className="text-slate-300 text-sm">—</span>}
+                      ):<span className="text-slate-300 text-xs">—</span>}
                     </td>
                     {/* Social */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-3 py-3 align-middle">
                       <Socials lead={lead}/>
                     </td>
                     {/* Decision Maker */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-3 py-3 align-middle">
                       {lead.contact_name?(
-                        <div className="max-w-[130px]">
-                          <p className="text-indigo-700 text-xs font-semibold truncate">{lead.contact_name}</p>
-                        </div>
+                        <p className="text-indigo-700 text-xs font-semibold truncate">{lead.contact_name}</p>
                       ):(
                         <button onClick={()=>findDM(lead)} disabled={!!findingDM}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer">
-                          {findingDM===lead.id?<RefreshCw size={10} className="animate-spin"/>:<Crosshair size={10}/>}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-[11px] font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap">
+                          {findingDM===lead.id?<RefreshCw size={9} className="animate-spin"/>:<Crosshair size={9}/>}
                           KV Bul
                         </button>
                       )}
                     </td>
                     {/* Score */}
-                    <td className="px-4 py-3.5 align-middle">
-                      <div className="flex items-center gap-1.5">
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center gap-1">
                         <ScoreBadge score={lead.score}/>
                         {lead.ai_grade&&(['A','B','C','D'] as const).includes(lead.ai_grade as any)&&(
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border"
+                          <span className="text-[9px] font-bold px-1 py-0.5 rounded border"
                             style={lead.ai_grade==='A'?{background:'#DCFCE7',color:'#15803D',borderColor:'#BBF7D0'}
                               :lead.ai_grade==='B'?{background:'#EDE9FE',color:'#6D28D9',borderColor:'#DDD6FE'}
                               :lead.ai_grade==='C'?{background:'#FEF3C7',color:'#92400E',borderColor:'#FDE68A'}
@@ -606,18 +614,18 @@ export default function LeadsPage() {
                       </div>
                     </td>
                     {/* Status */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-3 py-3 align-middle">
                       <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)}/>
                     </td>
                     {/* Date */}
-                    <td className="px-4 py-3.5 align-middle text-slate-400 text-xs whitespace-nowrap">
-                      {new Date(lead.created_at).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit'})}
+                    <td className="px-3 py-3 align-middle text-slate-400 text-[11px] whitespace-nowrap">
+                      {new Date(lead.created_at).toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'})}
                     </td>
                     {/* Link */}
-                    <td className="pr-3 py-3.5 align-middle w-8">
+                    <td className="pr-2 py-3 align-middle">
                       <Link href={`/leads/${lead.id}`}
                         className="opacity-0 group-hover/row:opacity-100 transition-opacity text-slate-400 hover:text-indigo-600 block">
-                        <ExternalLink size={13}/>
+                        <ExternalLink size={12}/>
                       </Link>
                     </td>
                   </tr>
