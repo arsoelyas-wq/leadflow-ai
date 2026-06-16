@@ -596,7 +596,7 @@ export default function LeadsPage() {
                         <ScoreBadge score={lead.score}/>
                         {lead.ai_grade&&(['A','B','C','D'] as const).includes(lead.ai_grade as any)&&(
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border"
-                            style={lead.ai_grade==='A'?{bg:'#DCFCE7',color:'#15803D',borderColor:'#BBF7D0'}
+                            style={lead.ai_grade==='A'?{background:'#DCFCE7',color:'#15803D',borderColor:'#BBF7D0'}
                               :lead.ai_grade==='B'?{background:'#EDE9FE',color:'#6D28D9',borderColor:'#DDD6FE'}
                               :lead.ai_grade==='C'?{background:'#FEF3C7',color:'#92400E',borderColor:'#FDE68A'}
                               :{background:'#FEE2E2',color:'#991B1B',borderColor:'#FECACA'}}>
