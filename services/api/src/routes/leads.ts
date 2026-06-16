@@ -87,7 +87,7 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
 
     let query = supabase
       .from('leads')
-      .select('company_name,contact_name,phone,email,website,city,sector,source,score,status,notes,created_at')
+      .select('company_name,contact_name,phone,email,website,instagram,facebook,linkedin_url,youtube,twitter,city,sector,source,score,status,notes,created_at')
       .eq('user_id', req.userId)
       .order('created_at', { ascending: false })
       .limit(5000);
@@ -108,8 +108,10 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
     const xlsx = require('xlsx');
     const colMap: Record<string, string> = {
       company_name: 'Firma Adı', contact_name: 'Karar Verici', phone: 'Telefon',
-      email: 'E-posta', website: 'Web Sitesi', city: 'Şehir', sector: 'Sektör',
-      source: 'Kaynak', score: 'Puan', status: 'Durum', notes: 'Notlar', created_at: 'Tarih',
+      email: 'E-posta', website: 'Web Sitesi', instagram: 'Instagram', facebook: 'Facebook',
+      linkedin_url: 'LinkedIn', youtube: 'YouTube', twitter: 'Twitter',
+      city: 'Şehir', sector: 'Sektör', source: 'Kaynak', score: 'Puan',
+      status: 'Durum', notes: 'Notlar', created_at: 'Tarih',
     };
     const statusTR: Record<string, string> = {
       new: 'Yeni', contacted: 'İletişime Geçildi', qualified: 'Nitelikli',
@@ -136,7 +138,7 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
     ws['!cols'] = colWidths;
 
     const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const filename = `leadflow-leads-${new Date().toISOString().slice(0,10)}.xlsx`;
+    const filename = `sovlo-leads-${new Date().toISOString().slice(0,10)}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buf);

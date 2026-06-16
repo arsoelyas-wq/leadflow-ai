@@ -10,7 +10,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 // GET /api/leads — Liste (filtre + sayfalama)
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        const { status, source, city, search, sector, ids, list, page = 1, limit = 20 } = req.query;
+        const { status, source, city, search, sector, grade, ids, list, page = 1, limit = 20 } = req.query;
         const offset = (page - 1) * limit;
         let query = supabase
             .from('leads')
@@ -26,6 +26,8 @@ router.get('/', authMiddleware, async (req, res) => {
             query = query.ilike('city', `%${city}%`);
         if (sector)
             query = query.ilike('sector', `%${sector}%`);
+        if (grade)
+            query = query.eq('ai_grade', grade);
         if (search)
             query = query.ilike('company_name', `%${search}%`);
         if (ids) {
@@ -39,6 +41,26 @@ router.get('/', authMiddleware, async (req, res) => {
         if (error)
             throw error;
         res.json({ leads: data || [], total: count || 0, page: Number(page), limit: Number(limit) });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// GET /api/leads/with-phone — All leads that have a phone number (no limit, for voice outreach)
+router.get('/with-phone', authMiddleware, async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('leads')
+            .select('id, company_name, phone, country')
+            .eq('user_id', req.userId)
+            .not('phone', 'is', null)
+            .neq('phone', '')
+            .not('phone', 'ilike', '%@%')
+            .order('company_name', { ascending: true })
+            .limit(20000);
+        if (error)
+            throw error;
+        res.json({ leads: data || [], total: (data || []).length });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
@@ -64,10 +86,10 @@ router.get('/sectors', authMiddleware, async (req, res) => {
 // GET /api/leads/export — Excel/CSV download
 router.get('/export', authMiddleware, async (req, res) => {
     try {
-        const { status, sector, search, ids } = req.query;
+        const { status, sector, search, grade, ids } = req.query;
         let query = supabase
             .from('leads')
-            .select('company_name,contact_name,phone,email,website,city,sector,source,score,status,notes,created_at')
+            .select('company_name,contact_name,phone,email,website,instagram,facebook,linkedin_url,youtube,twitter,city,sector,source,score,status,notes,created_at')
             .eq('user_id', req.userId)
             .order('created_at', { ascending: false })
             .limit(5000);
@@ -81,6 +103,8 @@ router.get('/export', authMiddleware, async (req, res) => {
                 query = query.eq('status', status);
             if (sector)
                 query = query.ilike('sector', `%${sector}%`);
+            if (grade)
+                query = query.eq('ai_grade', grade);
             if (search)
                 query = query.ilike('company_name', `%${search}%`);
         }
@@ -90,8 +114,10 @@ router.get('/export', authMiddleware, async (req, res) => {
         const xlsx = require('xlsx');
         const colMap = {
             company_name: 'Firma Adı', contact_name: 'Karar Verici', phone: 'Telefon',
-            email: 'E-posta', website: 'Web Sitesi', city: 'Şehir', sector: 'Sektör',
-            source: 'Kaynak', score: 'Puan', status: 'Durum', notes: 'Notlar', created_at: 'Tarih',
+            email: 'E-posta', website: 'Web Sitesi', instagram: 'Instagram', facebook: 'Facebook',
+            linkedin_url: 'LinkedIn', youtube: 'YouTube', twitter: 'Twitter',
+            city: 'Şehir', sector: 'Sektör', source: 'Kaynak', score: 'Puan',
+            status: 'Durum', notes: 'Notlar', created_at: 'Tarih',
         };
         const statusTR = {
             new: 'Yeni', contacted: 'İletişime Geçildi', qualified: 'Nitelikli',
@@ -116,7 +142,7 @@ router.get('/export', authMiddleware, async (req, res) => {
         const colWidths = Object.values(colMap).map((h) => ({ wch: Math.max(h.length + 2, 14) }));
         ws['!cols'] = colWidths;
         const buf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        const filename = `leadflow-leads-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const filename = `sovlo-leads-${new Date().toISOString().slice(0, 10)}.xlsx`;
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.send(buf);

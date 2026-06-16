@@ -177,6 +177,7 @@ export default function LeadFinderPage() {
           requirePhone,
           requireWebsite,
           enrichEmail,
+          minScore: minScore > 0 ? minScore : undefined,
           sector: keyword,
           listName: listName.trim() || undefined,
         }),
@@ -611,12 +612,20 @@ export default function LeadFinderPage() {
           </div>
         </div>
 
-        {/* Source badge */}
-        <div className="flex items-center gap-2">
+        {/* Source badges */}
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-500/30 bg-blue-500/5">
             <MapPin size={13} className="text-blue-400" />
             <span className="text-sm text-white font-medium">Google Maps</span>
-            <span className="text-[10px] text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded-full">Aktif</span>
+            <span className="text-[10px] text-blue-400 bg-blue-500/20 px-1.5 py-0.5 rounded-full">Apify</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-green-500/30 bg-green-500/5">
+            <MapPin size={13} className="text-green-400" />
+            <span className="text-sm text-slate-300 font-medium">OpenStreetMap</span>
+          </div>
+          <div className="flex items-center gap-2 px-2.5 py-2 rounded-xl border border-slate-600/50 bg-slate-800/30">
+            <MapPin size={12} className="text-slate-400" />
+            <span className="text-xs text-slate-400">+Yelp, HERE, Foursquare</span>
           </div>
         </div>
 

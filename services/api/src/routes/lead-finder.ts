@@ -5,7 +5,6 @@ const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-const GOOGLE_KEY  = process.env.GOOGLE_PLACES_API_KEY;
 const YELP_KEY    = process.env.YELP_API_KEY;
 const FSQ_KEY     = process.env.FOURSQUARE_API_KEY;
 const HERE_KEY    = process.env.HERE_API_KEY;
@@ -43,6 +42,12 @@ interface RawLead {
   external_id?: string;
   score?: number;
   searchCity?: string;
+  // Social media links
+  instagram?: string | null;
+  facebook?: string | null;
+  linkedin_url?: string | null;
+  youtube?: string | null;
+  twitter?: string | null;
 }
 
 interface SourceStat {
@@ -83,7 +88,6 @@ function createJob(query: string, cities: string[], total: number, userId: strin
   return {
     status: 'running',
     sources: {
-      google:     { status: GOOGLE_KEY  ? 'pending' : 'skipped', count: 0 },
       apify:      { status: APIFY_TOKEN ? 'pending' : 'skipped', count: 0 },
       osm:        { status: 'pending', count: 0 },
       yelp:       { status: YELP_KEY    ? 'pending' : 'skipped', count: 0 },
@@ -122,134 +126,48 @@ function normKey(s: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
-// ── Source 1: Google Places Grid Search ───────────────────────────────────────
-// Divides city into an N×N grid, runs Text Search at each cell for maximum coverage.
-// The critical fix: nextPageToken must NOT appear in X-Goog-FieldMask.
+// ── Social media link extractor ────────────────────────────────────────────────
+// Scrapes company website for FB/IG/YT/LI/TW profile links.
 
-const GOOGLE_FIELD_MASK =
-  'places.id,places.displayName,places.formattedAddress,' +
-  'places.nationalPhoneNumber,places.internationalPhoneNumber,' +
-  'places.websiteUri,places.rating,places.userRatingCount,' +
-  'places.primaryTypeDisplayName,places.location';
+async function extractSocialLinks(website: string): Promise<{
+  facebook?: string; instagram?: string; linkedin_url?: string;
+  youtube?: string; twitter?: string;
+}> {
+  if (!website) return {};
+  const base = website.startsWith('http') ? website : `https://${website}`;
+  try {
+    const resp = await fetch(base, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!resp.ok) return {};
+    const html = await resp.text();
+    const links: Record<string, string> = {};
 
-async function googleGridSearch(params: {
-  query: string;
-  lat: number;
-  lng: number;
-  radiusKm: number;
-  targetCount: number;
-  langCode: string;
-  onCount?: (n: number) => void;
-}): Promise<RawLead[]> {
-  if (!GOOGLE_KEY) return [];
+    const fbM = html.match(/(?:href|content)=["'](?:https?:\/\/)?(?:www\.)?facebook\.com\/((?!sharer|share|plugins|photo|video|events|groups)[^"'\s?#/]{2,60})/i);
+    if (fbM) links.facebook = `https://facebook.com/${fbM[1]}`;
 
-  const leads: RawLead[] = [];
-  const seenIds = new Set<string>();
+    const igM = html.match(/(?:href|content)=["'](?:https?:\/\/)?(?:www\.)?instagram\.com\/([^"'\s?#/]{2,40})\/?["']/i);
+    if (igM && !['p','reel','stories','explore','accounts'].includes(igM[1])) links.instagram = `https://instagram.com/${igM[1]}`;
 
-  // Grid size scales with target count — larger grids give better coverage
-  const gridSize = params.targetCount <= 30  ? 2
-                 : params.targetCount <= 80  ? 3
-                 : params.targetCount <= 200 ? 4
-                 : params.targetCount <= 500 ? 5 : 6;
+    const liM = html.match(/(?:href|content)=["'](?:https?:\/\/)?(?:www\.)?linkedin\.com\/(company|in)\/([^"'\s?#/]{2,60})/i);
+    if (liM) links.linkedin_url = `https://linkedin.com/${liM[1]}/${liM[2]}`;
 
-  const stepLatDeg = (params.radiusKm * 2 / gridSize) / 111;
-  const cosLat     = Math.cos(params.lat * Math.PI / 180);
-  const stepLngDeg = stepLatDeg / (cosLat || 1);
-  const cellRadiusM = (params.radiusKm / gridSize) * 1000 * 1.5; // overlap cells slightly
+    const ytM = html.match(/(?:href|content)=["'](?:https?:\/\/)?(?:www\.)?youtube\.com\/(channel|c|user|@)\/([^"'\s?#/]{2,80})/i);
+    if (ytM) links.youtube = `https://youtube.com/${ytM[1]}/${ytM[2]}`;
 
-  const gridPoints: { lat: number; lng: number }[] = [];
-  for (let i = 0; i < gridSize; i++) {
-    for (let j = 0; j < gridSize; j++) {
-      gridPoints.push({
-        lat: params.lat - params.radiusKm / 111 + i * stepLatDeg + stepLatDeg / 2,
-        lng: params.lng - (params.radiusKm / 111 / cosLat) + j * stepLngDeg + stepLngDeg / 2,
-      });
+    const twM = html.match(/(?:href|content)=["'](?:https?:\/\/)?(?:www\.)?(?:twitter|x)\.com\/([^"'\s?#/]{2,30})\/?["']/i);
+    if (twM && !['twitter','home','login','i','intent','share','hashtag','search'].includes(twM[1].toLowerCase())) {
+      links.twitter = `https://twitter.com/${twM[1]}`;
     }
+
+    return links;
+  } catch {
+    return {};
   }
-
-  // Two query variations per grid cell: full keyword + first word (broader match)
-  const words = params.query.trim().split(/\s+/);
-  const queryVariants = [params.query, words[0]].filter((v, i, a) => a.indexOf(v) === i);
-
-  // Gather up to targetCount * 4 raw leads to have buffer after CRM dedup
-  const rawCap = params.targetCount * 4;
-
-  outer:
-  for (const point of gridPoints) {
-    for (const queryText of queryVariants) {
-      if (leads.length >= rawCap) break outer;
-
-      let pageToken: string | null = null;
-      let page = 0;
-
-      do {
-        if (leads.length >= rawCap) break;
-        try {
-          const body: any = { textQuery: queryText, languageCode: params.langCode, maxResultCount: 20 };
-          if (pageToken) {
-            body.pageToken = pageToken;
-          } else {
-            body.locationBias = {
-              circle: { center: { latitude: point.lat, longitude: point.lng }, radius: cellRadiusM },
-            };
-          }
-
-          const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Goog-Api-Key': GOOGLE_KEY!,
-              'X-Goog-FieldMask': GOOGLE_FIELD_MASK,
-            },
-            body: JSON.stringify(body),
-            signal: AbortSignal.timeout(8000),
-          });
-
-          if (!resp.ok) {
-            const err = await resp.text();
-            console.error('[LeadFinder] Google error:', err.slice(0, 150));
-            break;
-          }
-
-          const data: any = await resp.json();
-          for (const p of data.places || []) {
-            if (!p.id || seenIds.has(p.id)) continue;
-            seenIds.add(p.id);
-            const name = p.displayName?.text || '';
-            if (!name) continue;
-            leads.push({
-              source: 'google',
-              place_id: p.id,
-              company_name: name,
-              phone: p.nationalPhoneNumber || p.internationalPhoneNumber || null,
-              website: p.websiteUri || null,
-              address: p.formattedAddress || null,
-              lat: p.location?.latitude ?? null,
-              lng: p.location?.longitude ?? null,
-              rating: p.rating || null,
-              review_count: p.userRatingCount || null,
-              category: p.primaryTypeDisplayName?.text || null,
-            });
-          }
-
-          pageToken = data.nextPageToken || null;
-          page++;
-          params.onCount?.(leads.length);
-          if (pageToken) await sleep(2100);
-        } catch (e: any) {
-          console.error('[LeadFinder] Google fetch error:', e.message?.slice(0, 80));
-          break;
-        }
-      } while (pageToken && page < 3);
-
-      await sleep(80); // brief pause between grid cells
-    }
-  }
-
-  return leads;
 }
 
-// ── Source 2: Apify Google Maps Scraper (APIFY_TOKEN required) ───────────────
+// ── Source 1: Apify Google Maps Scraper (APIFY_TOKEN required) ───────────────
 // Uses compass/crawler-google-places — bypasses Places API limits entirely.
 
 async function apifySearch(params: {
@@ -315,6 +233,12 @@ async function apifySearch(params: {
       rating:       p.totalScore ?? p.rating ?? null,
       review_count: p.reviewsCount ?? p.reviewCount ?? null,
       category:     p.categoryName || p.category || null,
+      // Apify sometimes returns social links directly from Google Maps
+      facebook:     p.facebookUrl || null,
+      instagram:    p.instagramUrl || null,
+      linkedin_url: p.linkedInUrl || null,
+      youtube:      p.youtubeUrl || null,
+      twitter:      p.twitterUrl || null,
     } as RawLead));
 }
 
@@ -763,20 +687,7 @@ async function geocodeCity(city: string, countryName: string): Promise<{ lat: nu
     }
   } catch {}
 
-  // Fallback: Google Geocoding API (if key available)
-  if (GOOGLE_KEY) {
-    try {
-      const sp = new URLSearchParams({ address: `${city}, ${countryName}`, key: GOOGLE_KEY });
-      const resp = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?${sp}`, {
-        signal: AbortSignal.timeout(6000),
-      });
-      if (resp.ok) {
-        const data: any = await resp.json();
-        const loc = data.results?.[0]?.geometry?.location;
-        if (loc) return { lat: loc.lat, lng: loc.lng };
-      }
-    } catch {}
-  }
+  // Geocoding fallback via Nominatim already handled above
 
   // Last resort: country center approximation
   console.warn(`[LeadFinder] Could not geocode ${city}, ${countryName} — using country center`);
@@ -1010,38 +921,94 @@ async function runFinder(params: FinderParams): Promise<{
   const countryName = COUNTRY_NAME_MAP[country] || country;
   const langCode    = LANG_MAP[country] || 'en';
 
-  const sourceBreakdown: Record<string, number> = { google: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
+  const sourceBreakdown: Record<string, number> = { apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
 
-  // ── Google grid search — one pass per city ───────────────────────────────────
-  updateSource('google', 'running', 0);
   const perCityTarget = Math.max(10, Math.ceil(targetCount / cities.length));
 
-  for (let i = 0; i < cities.length; i++) {
-    const cityName = cities[i];
-    updateJob({ phase: cities.length > 1 ? `${cityName} taranıyor... (${i + 1}/${cities.length})` : 'Google Maps taranıyor...' });
-
-    const coords = await geocodeCity(cityName, countryName);
-    const cityLeads = await googleGridSearch({
-      query, lat: coords.lat, lng: coords.lng, radiusKm,
-      targetCount: perCityTarget,
-      langCode,
-      onCount: (n) => updateSource('google', 'running', allLeads.length + n),
-    });
-
-    cityLeads.forEach(l => { l.searchCity = cityName; });
-    allLeads.push(...cityLeads);
-    sourceBreakdown.google += cityLeads.length;
-    updateJob({ found: deduplicateLeads(allLeads).length });
-    console.log(`[LeadFinder] Google ${cityName}: ${cityLeads.length} raw results`);
+  // ── Primary: Apify Google Maps Scraper (rich data, social links, no quota) ──
+  if (APIFY_TOKEN) {
+    updateSource('apify', 'running', 0);
+    for (let i = 0; i < cities.length; i++) {
+      const cityName = cities[i];
+      updateJob({ phase: cities.length > 1 ? `${cityName} taranıyor... (${i + 1}/${cities.length})` : 'Google Maps taranıyor...' });
+      const apifyLeads = await apifySearch({ query, city: cityName, countryName, langCode, targetCount: perCityTarget });
+      apifyLeads.forEach(l => { l.searchCity = cityName; });
+      allLeads.push(...apifyLeads);
+      sourceBreakdown.apify += apifyLeads.length;
+      updateSource('apify', 'running', sourceBreakdown.apify);
+      updateJob({ found: deduplicateLeads(allLeads).length });
+      console.log(`[LeadFinder] Apify ${cityName}: ${apifyLeads.length} raw results`);
+    }
+    updateSource('apify', 'done', sourceBreakdown.apify);
+  } else {
+    updateSource('apify', 'skipped', 0);
   }
 
-  updateSource('google', 'done', sourceBreakdown.google);
-  updateSource('apify', 'skipped', 0);
+  // ── Supplementary: OSM (always free), Yelp, Foursquare, HERE ────────────────
+  // Run when Apify unavailable, or when total leads still below target
+  const needSupplement = !APIFY_TOKEN || allLeads.length < targetCount * 1.2;
+  if (needSupplement) {
+    for (let i = 0; i < cities.length; i++) {
+      const cityName = cities[i];
+      updateJob({ phase: `${cityName} haritalar taranıyor...` });
+      const coords = await geocodeCity(cityName, countryName);
 
-  for (const name of ['osm', 'yelp', 'foursquare', 'here', 'registry']) {
-    updateSource(name, 'skipped', 0);
+      // OSM — always try (free, no key needed)
+      updateSource('osm', 'running', 0);
+      const osmLeads = await osmSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm });
+      osmLeads.forEach(l => { l.searchCity = cityName; });
+      allLeads.push(...osmLeads);
+      sourceBreakdown.osm += osmLeads.length;
+      updateSource('osm', 'done', sourceBreakdown.osm);
+      console.log(`[LeadFinder] OSM ${cityName}: ${osmLeads.length} raw results`);
+
+      if (YELP_KEY) {
+        updateSource('yelp', 'running', 0);
+        const yelpLeads = await yelpSearch({ query, city: cityName, countryName, targetCount: perCityTarget });
+        yelpLeads.forEach(l => { l.searchCity = cityName; });
+        allLeads.push(...yelpLeads);
+        sourceBreakdown.yelp += yelpLeads.length;
+        updateSource('yelp', 'done', sourceBreakdown.yelp);
+      } else {
+        updateSource('yelp', 'skipped', 0);
+      }
+
+      if (FSQ_KEY) {
+        updateSource('foursquare', 'running', 0);
+        const fsqLeads = await foursquareSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm, targetCount: perCityTarget });
+        fsqLeads.forEach(l => { l.searchCity = cityName; });
+        allLeads.push(...fsqLeads);
+        sourceBreakdown.foursquare += fsqLeads.length;
+        updateSource('foursquare', 'done', sourceBreakdown.foursquare);
+      } else {
+        updateSource('foursquare', 'skipped', 0);
+      }
+
+      if (HERE_KEY) {
+        updateSource('here', 'running', 0);
+        const hereLeads = await hereSearch({ query, lat: coords.lat, lng: coords.lng, radiusKm });
+        hereLeads.forEach(l => { l.searchCity = cityName; });
+        allLeads.push(...hereLeads);
+        sourceBreakdown.here += hereLeads.length;
+        updateSource('here', 'done', sourceBreakdown.here);
+      } else {
+        updateSource('here', 'skipped', 0);
+      }
+
+      updateJob({ found: deduplicateLeads(allLeads).length });
+    }
+  } else {
+    for (const src of ['osm', 'yelp', 'foursquare', 'here']) updateSource(src, 'skipped', 0);
   }
+
+  // ── Registry search ───────────────────────────────────────────────────────────
+  updateSource('registry', 'running', 0);
+  const regLeads = await registrySearch({ query, country, city: cities[0], limit: Math.ceil(targetCount * 0.3) });
+  regLeads.forEach(l => { l.searchCity = cities[0]; });
+  allLeads.push(...regLeads);
+  sourceBreakdown.registry += regLeads.length;
+  updateSource('registry', 'done', sourceBreakdown.registry);
 
   updateJob({ phase: 'Sonuçlar hazırlanıyor...' });
 
@@ -1073,7 +1040,7 @@ async function runFinder(params: FinderParams): Promise<{
     return true;
   });
 
-  updateJob({ skipped, phase: enrichEmail ? 'Email keşfediliyor...' : 'Kaydediliyor...' });
+  updateJob({ skipped, phase: enrichEmail ? 'Email keşfediliyor...' : 'Sosyal medya taranıyor...' });
 
   // Email enrichment (bounded concurrency)
   if (enrichEmail) {
@@ -1086,6 +1053,25 @@ async function runFinder(params: FinderParams): Promise<{
         })
       );
     }
+  }
+
+  // Social media extraction — scrape website for FB/IG/YT/LI/TW links
+  updateJob({ phase: 'Sosyal medya linkleri aranıyor...' });
+  const toSocial = unique.filter(l => l.website && !l.instagram && !l.facebook).slice(0, 80);
+  const SOC_CONCURRENCY = 8;
+  for (let i = 0; i < toSocial.length; i += SOC_CONCURRENCY) {
+    await Promise.allSettled(
+      toSocial.slice(i, i + SOC_CONCURRENCY).map(async (lead) => {
+        try {
+          const soc = await extractSocialLinks(lead.website!);
+          if (soc.facebook)     lead.facebook     = lead.facebook     || soc.facebook;
+          if (soc.instagram)    lead.instagram    = lead.instagram    || soc.instagram;
+          if (soc.linkedin_url) lead.linkedin_url = lead.linkedin_url || soc.linkedin_url;
+          if (soc.youtube)      lead.youtube      = lead.youtube      || soc.youtube;
+          if (soc.twitter)      lead.twitter      = lead.twitter      || soc.twitter;
+        } catch {}
+      })
+    );
   }
 
   // Score, sort, truncate
@@ -1104,22 +1090,33 @@ async function runFinder(params: FinderParams): Promise<{
       ? `[📁 ${listName}]${notesBase ? ` | ${notesBase}` : ''}`
       : notesBase;
     return {
-      user_id: userId,
+      user_id:     userId,
       company_name: l.company_name,
-      phone:   l.phone   || null,
-      email:   l.email   || null,
-      website: l.website || null,
-      city:    l.searchCity || cities[0],
-      sector:  params.sector || query,
-      source:  l.sources && l.sources.length > 1 ? l.sources.join('+') : (l.source || 'lead_finder'),
-      status:  'new',
-      score:   l.score || 0,
+      phone:       l.phone        || null,
+      email:       l.email        || null,
+      website:     l.website      || null,
+      instagram:   l.instagram    || null,
+      facebook:    l.facebook     || null,
+      linkedin_url: l.linkedin_url || null,
+      youtube:     l.youtube      || null,
+      twitter:     l.twitter      || null,
+      city:        l.searchCity   || cities[0],
+      sector:      params.sector  || query,
+      source:      l.sources && l.sources.length > 1 ? l.sources.join('+') : (l.source || 'lead_finder'),
+      status:      'new',
+      score:       l.score || 0,
       notes,
     };
   });
 
   for (let i = 0; i < toInsert.length; i += 50) {
-    const { data, error } = await supabase.from('leads').insert(toInsert.slice(i, i + 50)).select('id');
+    let { data, error } = await supabase.from('leads').insert(toInsert.slice(i, i + 50)).select('id');
+    // If social columns don't exist in schema yet, retry without them
+    if (error?.message?.includes('column') && (error.message.includes('facebook') || error.message.includes('linkedin_url') || error.message.includes('youtube') || error.message.includes('twitter'))) {
+      console.warn('[LeadFinder] Social columns missing, retrying without them');
+      const fallback = toInsert.slice(i, i + 50).map(({ facebook, linkedin_url, youtube, twitter, ...rest }: any) => rest);
+      ({ data, error } = await supabase.from('leads').insert(fallback).select('id'));
+    }
     if (error) console.error('[LeadFinder] Insert error:', error.message);
     if (data) {
       saved += data.length;
@@ -1218,7 +1215,7 @@ router.post('/search', async (req: any, res: any) => {
       return res.json({
         ok: true, jobId, async: true, total: limit,
         availableSources: {
-          google: !!GOOGLE_KEY, yelp: !!YELP_KEY,
+          apify: !!APIFY_TOKEN, yelp: !!YELP_KEY,
           foursquare: !!FSQ_KEY, here: !!HERE_KEY, osm: true, registry: true,
         },
         message: 'Arka planda çalışıyor...',
@@ -1330,8 +1327,7 @@ router.get('/test-apify', async (req: any, res: any) => {
 // GET /api/lead-finder/sources — which sources are active
 router.get('/sources', (_req: any, res: any) => {
   res.json({
-    google:     { active: !!GOOGLE_KEY,  label: 'Google Maps',   icon: 'G', free: false },
-    apify:      { active: !!APIFY_TOKEN, label: 'Apify Scraper', icon: 'A', free: false },
+    apify:      { active: !!APIFY_TOKEN, label: 'Google Maps (Apify)', icon: 'G', free: false },
     osm:        { active: true,           label: 'OpenStreetMap', icon: 'O', free: true  },
     yelp:       { active: !!YELP_KEY,    label: 'Yelp',          icon: 'Y', free: true  },
     foursquare: { active: !!FSQ_KEY,     label: 'Foursquare',    icon: '4', free: true  },
