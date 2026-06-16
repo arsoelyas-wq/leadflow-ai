@@ -429,6 +429,23 @@ export default function LeadFinderPage() {
             placeholder={t('leads.mobilya_magazasi_restoran', 'mobilya mağazası, restoran, avukat...')}
             className="w-full bg-slate-900/60 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500 transition"
           />
+          {/* Sector quick-picks */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {[
+              {l:'🍽 Restoran',v:'restoran'},{l:'☕ Kafe',v:'kafe'},
+              {l:'🦷 Dişçi',v:'dişçi kliniği'},{l:'⚖️ Avukat',v:'avukat bürosu'},
+              {l:'🛋 Mobilya',v:'mobilya mağazası'},{l:'🔨 İnşaat',v:'inşaat firması'},
+              {l:'💇 Kuaför',v:'kuaför'},{l:'🚗 Oto Galeri',v:'oto galeri'},
+              {l:'💻 Yazılım',v:'yazılım şirketi'},{l:'👗 Tekstil',v:'tekstil firması'},
+              {l:'🏨 Otel',v:'otel'},{l:'💊 Eczane',v:'eczane'},
+              {l:'🏋 Spor Salonu',v:'spor salonu'},{l:'📦 Lojistik',v:'nakliye firması'},
+            ].map(({l,v})=>(
+              <button key={v} type="button" onClick={()=>setKeyword(v)}
+                className={`px-2.5 py-1 rounded-lg text-xs border transition cursor-pointer ${keyword===v?'bg-blue-600/25 border-blue-500/50 text-blue-300':'bg-slate-800/60 border-slate-600/60 text-slate-400 hover:border-slate-500 hover:text-slate-300'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Country + City */}

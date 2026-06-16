@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 import {
   Search, Plus, Trash2, ExternalLink, Crosshair, RefreshCw,
-  Download, Flame, Globe, ChevronDown, Copy, CheckCircle2, X,
-  Instagram, Users, TrendingUp, Zap, SlidersHorizontal, Phone, Star,
+  Download, Flame, Globe, ChevronDown, ChevronUp, Copy, CheckCircle2, X,
+  Instagram, Users, TrendingUp, Zap, SlidersHorizontal, Phone, Star, MapPin, ChevronsUpDown,
 } from 'lucide-react'
 
 interface Lead {
@@ -31,6 +31,7 @@ interface Lead {
   review_count?: number
   status: string
   created_at: string
+  maps_url?: string
 }
 
 /* ─── Avatar ─────────────────────────────────────────────────── */
@@ -181,9 +182,20 @@ function StatCard({icon:Icon,value,label,iconBg,iconColor}:{icon:any;value:numbe
   )
 }
 
-/* ─── Column header ──────────────────────────────────────────── */
+/* ─── Column headers ─────────────────────────────────────────── */
 function TH({children,className=''}:{children:React.ReactNode;className?:string}) {
   return <th className={`px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap ${className}`}>{children}</th>
+}
+function SortTH({col,children,sortBy,sortDir,onSort}:{col:string;children:React.ReactNode;sortBy:string;sortDir:string;onSort:(c:string)=>void}) {
+  const active=sortBy===col
+  return (
+    <th onClick={()=>onSort(col)} className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap cursor-pointer hover:text-slate-600 select-none">
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {active?(sortDir==='asc'?<ChevronUp size={10} className="text-indigo-500"/>:<ChevronDown size={10} className="text-indigo-500"/>):<ChevronsUpDown size={10} className="opacity-40"/>}
+      </span>
+    </th>
+  )
 }
 
 const PAGE_SIZES=[20,50,100]
@@ -211,13 +223,16 @@ export default function LeadsPage() {
   const [lists,setLists]=useState<string[]>([])
   const [showDel,setShowDel]=useState(false)
   const [showFilters,setShowFilters]=useState(false)
+  const [sortBy,setSortBy]=useState('created_at')
+  const [sortDir,setSortDir]=useState('desc')
+  const [selectAllTotal,setSelectAllTotal]=useState(false)
 
   const toast=(type:'success'|'error',text:string)=>{setMsg({type,text});setTimeout(()=>setMsg(null),4000)}
 
   const load=async()=>{
     setLoading(true)
     try {
-      const p=new URLSearchParams({page:String(page),limit:String(pageSize)})
+      const p=new URLSearchParams({page:String(page),limit:String(pageSize),sortBy,sortDir})
       if(search)p.set('search',search);if(status)p.set('status',status)
       if(sector)p.set('sector',sector);if(grade)p.set('grade',grade)
       if(list)p.set('list',list)
@@ -228,10 +243,16 @@ export default function LeadsPage() {
 
   useEffect(()=>{api.get('/api/leads/sectors').then(d=>setSectors(d.sectors||[])).catch(()=>{})},[])
   useEffect(()=>{api.get('/api/leads/lists').then(d=>setLists(d.lists||[])).catch(()=>{})},[])
-  useEffect(()=>{load()},[page,pageSize,status,sector,grade,list])
+  useEffect(()=>{load()},[page,pageSize,status,sector,grade,list,sortBy,sortDir])
   useEffect(()=>{const t=setTimeout(load,380);return ()=>clearTimeout(t)},[search])
 
-  const toggleSel=(id:string)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id])
+  const handleSort=(col:string)=>{
+    if(sortBy===col){setSortDir(d=>d==='asc'?'desc':'asc')}
+    else{setSortBy(col);setSortDir('desc')}
+    setPage(1);setSelectAllTotal(false)
+  }
+
+  const toggleSel=(id:string)=>{setSelectAllTotal(false);setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id])}
   const allSel=leads.length>0&&selected.length===leads.length
 
   const bulkDelete=async()=>{
@@ -427,8 +448,20 @@ export default function LeadsPage() {
       {selected.length>0&&(
         <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">{selected.length}</span>
-            <span className="text-indigo-800 text-sm font-semibold">lead seçili</span>
+            <span className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">{selectAllTotal?total:selected.length}</span>
+            <span className="text-indigo-800 text-sm font-semibold">{selectAllTotal?`tüm ${total.toLocaleString('tr-TR')} lead seçili`:'lead seçili'}</span>
+            {allSel&&!selectAllTotal&&total>pageSize&&(
+              <button onClick={()=>setSelectAllTotal(true)}
+                className="text-indigo-600 hover:text-indigo-900 text-xs underline font-medium ml-1 cursor-pointer">
+                Tüm {total.toLocaleString('tr-TR')} leadi seç
+              </button>
+            )}
+            {selectAllTotal&&(
+              <button onClick={()=>{setSelectAllTotal(false);setSelected([])}}
+                className="text-indigo-600 hover:text-indigo-900 text-xs underline font-medium ml-1 cursor-pointer">
+                Seçimi temizle
+              </button>
+            )}
           </div>
           <div className="flex gap-2 ml-auto flex-wrap">
             <button onClick={bulkFindDMs} disabled={bulkRunning}
@@ -470,17 +503,17 @@ export default function LeadsPage() {
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="pl-3 pr-1 py-3">
                   <input type="checkbox" checked={allSel}
-                    onChange={()=>setSelected(allSel?[]:leads.map(l=>l.id))}
+                    onChange={()=>{setSelectAllTotal(false);setSelected(allSel?[]:leads.map(l=>l.id))}}
                     className="accent-indigo-600 w-3.5 h-3.5 cursor-pointer rounded"/>
                 </th>
-                <TH>Firma</TH>
+                <SortTH col="company_name" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Firma</SortTH>
                 <TH>Telefon</TH>
                 <TH>E-posta</TH>
                 <TH>Sosyal</TH>
                 <TH>Karar Verici</TH>
-                <TH>Puan</TH>
-                <TH>Durum</TH>
-                <TH>Tarih</TH>
+                <SortTH col="score" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Puan</SortTH>
+                <SortTH col="status" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Durum</SortTH>
+                <SortTH col="created_at" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}>Tarih</SortTH>
                 <th/>
               </tr>
             </thead>
@@ -533,6 +566,12 @@ export default function LeadsPage() {
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                             {lead.city&&<span className="text-slate-400 text-[10px] truncate">{lead.city}</span>}
+                            {lead.maps_url&&(
+                              <a href={lead.maps_url} target="_blank" rel="noreferrer" title="Google Maps'te Aç"
+                                className="text-slate-400 hover:text-red-500 transition-colors shrink-0" onClick={e=>e.stopPropagation()}>
+                                <MapPin size={9}/>
+                              </a>
+                            )}
                             <SourceBadge source={lead.source}/>
                           </div>
                         </div>
