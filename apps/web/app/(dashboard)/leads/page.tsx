@@ -157,7 +157,7 @@ function DeleteModal({count,onConfirm,onCancel}:{count:number;onConfirm:()=>void
           <button onClick={onCancel} className="text-slate-400 hover:text-slate-700 transition-colors"><X size={16}/></button>
         </div>
         <p className="text-slate-900 font-semibold mb-1">Lead'leri Sil</p>
-        <p className="text-slate-500 text-sm mb-6"><span className="text-slate-900 font-medium">{count} lead</span> kalıcı silinecek.</p>
+        <p className="text-slate-500 text-sm mb-6">Seçili <span className="text-slate-900 font-medium">{count} lead</span> kalıcı silinecek. Bu işlem geri alınamaz.</p>
         <div className="flex gap-2">
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition-colors">İptal</button>
           <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors">Sil</button>
@@ -475,7 +475,7 @@ export default function LeadsPage() {
                 → {ST[s]?.label}
               </button>
             ))}
-            <button onClick={()=>setShowDel(true)}
+            <button onClick={()=>{setSelectAllTotal(false);setShowDel(true)}}
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors shadow-sm cursor-pointer">
               <Trash2 size={11}/> Sil
             </button>

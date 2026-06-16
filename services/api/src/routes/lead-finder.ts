@@ -1178,12 +1178,17 @@ async function runFinder(params: FinderParams): Promise<{
 
   for (let i = 0; i < toInsert.length; i += 50) {
     let { data, error } = await supabase.from('leads').insert(toInsert.slice(i, i + 50)).select('id');
-    // If social columns don't exist in schema yet, retry without them
     if (error?.message?.includes('column')) {
-      // Gracefully drop unknown columns and retry
-      console.warn('[LeadFinder] Unknown column, retrying without extended fields:', error.message.slice(0, 80));
-      const fallback = toInsert.slice(i, i + 50).map(({ facebook, linkedin_url, youtube, twitter, maps_url, opening_hours, ...rest }: any) => rest);
-      ({ data, error } = await supabase.from('leads').insert(fallback).select('id'));
+      // Step 1: drop only new columns (maps_url, opening_hours) — social cols may already exist
+      console.warn('[LeadFinder] Unknown column, retrying without maps/hours:', error.message.slice(0, 80));
+      const f1 = toInsert.slice(i, i + 50).map(({ maps_url, opening_hours, ...r }: any) => r);
+      let { data: d1, error: e1 } = await supabase.from('leads').insert(f1).select('id');
+      if (e1?.message?.includes('column')) {
+        // Step 2: social cols also missing — drop them too
+        console.warn('[LeadFinder] Social cols also missing, dropping all extended fields');
+        const f2 = f1.map(({ facebook, linkedin_url, youtube, twitter, instagram, ...r }: any) => r);
+        ({ data, error } = await supabase.from('leads').insert(f2).select('id'));
+      } else { data = d1; error = e1; }
     }
     if (error) console.error('[LeadFinder] Insert error:', error.message);
     if (data) {
