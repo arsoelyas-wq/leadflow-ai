@@ -14,14 +14,17 @@ const supabase = createClient(
 // GET /api/leads — Liste (filtre + sayfalama)
 router.get('/', authMiddleware, async (req: any, res: any) => {
   try {
-    const { status, source, city, search, sector, grade, ids, list, page = 1, limit = 20 } = req.query;
+    const { status, source, city, search, sector, grade, ids, list, page = 1, limit = 20, sortBy = 'created_at', sortDir = 'desc' } = req.query;
     const offset = (page - 1) * limit;
+    const ALLOWED_SORT = ['created_at', 'score', 'company_name', 'status', 'city', 'sector', 'updated_at'];
+    const col = ALLOWED_SORT.includes(String(sortBy)) ? String(sortBy) : 'created_at';
+    const asc = sortDir === 'asc';
 
     let query = supabase
       .from('leads')
       .select('*', { count: 'exact' })
       .eq('user_id', req.userId)
-      .order('created_at', { ascending: false })
+      .order(col, { ascending: asc })
       .range(offset, offset + limit - 1);
 
     if (status) query = query.eq('status', status);

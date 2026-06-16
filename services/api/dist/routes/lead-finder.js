@@ -146,6 +146,8 @@ async function apifySearch(params) {
     }
     return items
         .filter((p) => p.title || p.name)
+        // Filter permanently/temporarily closed businesses
+        .filter((p) => !p.permanentlyClosed && !p.temporarilyClosed && p.businessStatus !== 'CLOSED_PERMANENTLY' && p.businessStatus !== 'CLOSED_TEMPORARILY')
         .map((p) => ({
         source: 'apify',
         place_id: p.placeId || undefined,
@@ -159,7 +161,9 @@ async function apifySearch(params) {
         rating: p.totalScore ?? p.rating ?? null,
         review_count: p.reviewsCount ?? p.reviewCount ?? null,
         category: p.categoryName || p.category || null,
-        // Apify sometimes returns social links directly from Google Maps
+        maps_url: p.url || p.googleMapsUrl || p.googleMapsUri || null,
+        opening_hours: p.openingHours ? JSON.stringify(p.openingHours) : null,
+        // Social links from Google Maps / Apify
         facebook: p.facebookUrl || null,
         instagram: p.instagramUrl || null,
         linkedin_url: p.linkedInUrl || null,
@@ -784,6 +788,56 @@ const COUNTRY_NAME_MAP = {
     JP: 'Japan', KR: 'South Korea', AE: 'United Arab Emirates', SA: 'Saudi Arabia',
     EG: 'Egypt', MA: 'Morocco', ZA: 'South Africa', NG: 'Nigeria', KE: 'Kenya',
 };
+// ── Sector classifier ─────────────────────────────────────────────────────────
+// Maps raw keyword / Google category → clean Turkish sector label.
+const SECTOR_KW = [
+    ['restoran', 'Yiyecek & İçecek'], ['restaurant', 'Yiyecek & İçecek'], ['kafe', 'Yiyecek & İçecek'],
+    ['cafe', 'Yiyecek & İçecek'], ['lokanta', 'Yiyecek & İçecek'], ['pastane', 'Yiyecek & İçecek'],
+    ['dişçi', 'Sağlık & Tıp'], ['diş', 'Sağlık & Tıp'], ['doktor', 'Sağlık & Tıp'],
+    ['klinik', 'Sağlık & Tıp'], ['eczane', 'Sağlık & Tıp'], ['hastane', 'Sağlık & Tıp'],
+    ['optik', 'Sağlık & Tıp'], ['fizyoterapi', 'Sağlık & Tıp'],
+    ['avukat', 'Hukuk & Danışmanlık'], ['hukuk', 'Hukuk & Danışmanlık'],
+    ['muhasebe', 'Hukuk & Danışmanlık'], ['danışman', 'Hukuk & Danışmanlık'],
+    ['mobilya', 'Mobilya & Dekorasyon'], ['dekorasyon', 'Mobilya & Dekorasyon'],
+    ['koltuk', 'Mobilya & Dekorasyon'], ['ev tekstil', 'Mobilya & Dekorasyon'],
+    ['inşaat', 'İnşaat & Yapı'], ['yapı', 'İnşaat & Yapı'], ['tadilat', 'İnşaat & Yapı'],
+    ['boya', 'İnşaat & Yapı'], ['zemin', 'İnşaat & Yapı'], ['panel', 'İnşaat & Yapı'],
+    ['güzellik', 'Güzellik & Bakım'], ['kuaför', 'Güzellik & Bakım'], ['berber', 'Güzellik & Bakım'],
+    ['estetik', 'Güzellik & Bakım'], ['spa', 'Güzellik & Bakım'], ['nail', 'Güzellik & Bakım'],
+    ['oto', 'Otomotiv'], ['araba', 'Otomotiv'], ['araç', 'Otomotiv'], ['galerisi', 'Otomotiv'],
+    ['lastik', 'Otomotiv'], ['servis', 'Otomotiv'], ['yedek parça', 'Otomotiv'],
+    ['yazılım', 'Teknoloji & Yazılım'], ['teknoloji', 'Teknoloji & Yazılım'],
+    ['bilgisayar', 'Teknoloji & Yazılım'], ['web', 'Teknoloji & Yazılım'],
+    ['tekstil', 'Tekstil & Giyim'], ['giyim', 'Tekstil & Giyim'], ['kumaş', 'Tekstil & Giyim'],
+    ['konfeksiyon', 'Tekstil & Giyim'], ['moda', 'Tekstil & Giyim'],
+    ['lojistik', 'Lojistik & Nakliye'], ['nakliye', 'Lojistik & Nakliye'], ['kargo', 'Lojistik & Nakliye'],
+    ['taşımacılık', 'Lojistik & Nakliye'], ['depo', 'Lojistik & Nakliye'],
+    ['otel', 'Turizm & Konaklama'], ['pansiyon', 'Turizm & Konaklama'], ['apart', 'Turizm & Konaklama'],
+    ['turizm', 'Turizm & Konaklama'], ['tatil', 'Turizm & Konaklama'],
+    ['okul', 'Eğitim'], ['dershane', 'Eğitim'], ['kurs', 'Eğitim'], ['eğitim', 'Eğitim'],
+    ['akademi', 'Eğitim'], ['üniversite', 'Eğitim'],
+    ['mühendis', 'Mühendislik & Teknik'], ['makine', 'Mühendislik & Teknik'],
+    ['elektrik', 'Mühendislik & Teknik'], ['elektronik', 'Mühendislik & Teknik'],
+    ['metal', 'Mühendislik & Teknik'], ['çelik', 'Mühendislik & Teknik'],
+    ['gıda', 'Gıda & Tarım'], ['tarım', 'Gıda & Tarım'], ['market', 'Gıda & Tarım'],
+    ['manav', 'Gıda & Tarım'], ['kasap', 'Gıda & Tarım'],
+    ['hukuk', 'Hukuk & Danışmanlık'], ['sigorta', 'Finans & Sigorta'],
+    ['finans', 'Finans & Sigorta'], ['banka', 'Finans & Sigorta'],
+    ['temizlik', 'Temizlik & Hizmet'], ['çevre', 'Temizlik & Hizmet'],
+    ['güvenlik', 'Güvenlik & Koruma'], ['kamera', 'Güvenlik & Koruma'],
+    ['reklam', 'Reklam & Pazarlama'], ['matbaa', 'Reklam & Pazarlama'],
+    ['medya', 'Reklam & Pazarlama'], ['ajans', 'Reklam & Pazarlama'],
+];
+function classifySector(keyword, category) {
+    const kw = keyword.toLowerCase();
+    const cat = (category || '').toLowerCase();
+    for (const [pattern, label] of SECTOR_KW) {
+        if (kw.includes(pattern) || cat.includes(pattern))
+            return label;
+    }
+    // If no match, title-case the first keyword word
+    return keyword.split(' ').slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
 async function runFinder(params) {
     const { query, cities, country, targetCount, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId, listName } = params;
     const updateJob = (patch) => {
@@ -957,11 +1011,15 @@ async function runFinder(params) {
             catch { }
         }));
     }
-    // Score, sort, truncate
+    // Score, sort, apply minScore filter, truncate
     unique = unique
         .map(l => ({ ...l, score: scoreLead(l) }))
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .slice(0, targetCount);
+        .sort((a, b) => (b.score || 0) - (a.score || 0));
+    const { minScore = 0 } = params;
+    if (minScore > 0) {
+        unique = unique.filter(l => (l.score || 0) >= minScore);
+    }
+    unique = unique.slice(0, targetCount);
     // Batch insert to Supabase
     updateJob({ phase: 'Veritabanına kaydediliyor...' });
     let saved = 0;
@@ -983,8 +1041,10 @@ async function runFinder(params) {
             youtube: l.youtube || null,
             twitter: l.twitter || null,
             city: l.searchCity || cities[0],
-            sector: params.sector || query,
+            sector: params.sector || classifySector(query, l.category),
             source: l.sources && l.sources.length > 1 ? l.sources.join('+') : (l.source || 'lead_finder'),
+            maps_url: l.maps_url || null,
+            opening_hours: l.opening_hours || null,
             status: 'new',
             score: l.score || 0,
             notes,
@@ -993,9 +1053,10 @@ async function runFinder(params) {
     for (let i = 0; i < toInsert.length; i += 50) {
         let { data, error } = await supabase.from('leads').insert(toInsert.slice(i, i + 50)).select('id');
         // If social columns don't exist in schema yet, retry without them
-        if (error?.message?.includes('column') && (error.message.includes('facebook') || error.message.includes('linkedin_url') || error.message.includes('youtube') || error.message.includes('twitter'))) {
-            console.warn('[LeadFinder] Social columns missing, retrying without them');
-            const fallback = toInsert.slice(i, i + 50).map(({ facebook, linkedin_url, youtube, twitter, ...rest }) => rest);
+        if (error?.message?.includes('column')) {
+            // Gracefully drop unknown columns and retry
+            console.warn('[LeadFinder] Unknown column, retrying without extended fields:', error.message.slice(0, 80));
+            const fallback = toInsert.slice(i, i + 50).map(({ facebook, linkedin_url, youtube, twitter, maps_url, opening_hours, ...rest }) => rest);
             ({ data, error } = await supabase.from('leads').insert(fallback).select('id'));
         }
         if (error)
@@ -1030,7 +1091,7 @@ async function runFinder(params) {
 // POST /api/lead-finder/search
 router.post('/search', async (req, res) => {
     try {
-        const { query, city, cities: citiesRaw, country = 'TR', sector, listName, targetCount = 50, radiusKm = 20, requirePhone = false, requireWebsite = false, enrichEmail = false, } = req.body;
+        const { query, city, cities: citiesRaw, country = 'TR', sector, listName, targetCount = 50, radiusKm = 20, requirePhone = false, requireWebsite = false, enrichEmail = false, minScore = 0, } = req.body;
         const userId = req.userId;
         // Normalise: accept cities[] array or fall back to single city string
         const cities = Array.isArray(citiesRaw) && citiesRaw.length > 0
@@ -1059,7 +1120,7 @@ router.post('/search', async (req, res) => {
                 .update({ credits_used: (userData.credits_used || 0) + limit })
                 .eq('id', userId);
             // Fire and forget
-            runFinder({ query, cities, country, sector, listName, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, userId, jobId })
+            runFinder({ query, cities, country, sector, listName, targetCount: limit, radiusKm, requirePhone, requireWebsite, enrichEmail, minScore: Number(minScore) || 0, userId, jobId })
                 .then(({ saved, skipped, sourceBreakdown, savedLeadIds }) => {
                 const j = jobs.get(jobId);
                 if (j) {
@@ -1094,7 +1155,7 @@ router.post('/search', async (req, res) => {
         // Synchronous path (≤50 leads, no email enrichment)
         const { saved, skipped, sourceBreakdown, savedLeadIds } = await runFinder({
             query, cities, country, sector, listName, targetCount: limit, radiusKm,
-            requirePhone, requireWebsite, enrichEmail: false, userId,
+            requirePhone, requireWebsite, enrichEmail: false, minScore: Number(minScore) || 0, userId,
         });
         await supabase.from('users')
             .update({ credits_used: (userData.credits_used || 0) + saved })
