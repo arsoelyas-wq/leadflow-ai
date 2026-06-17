@@ -10,6 +10,10 @@ const HERE_KEY = process.env.HERE_API_KEY;
 const CH_KEY = process.env.UK_COMPANIES_HOUSE_KEY;
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
 const OC_KEY = process.env.OPENCORPORATES_KEY; // free key: opencorporates.com/api_accounts/new
+// Google Places API (New) — direct key, higher quota than Apify
+const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_API_KEY
+    || process.env.GOOGLE_MAPS_API_KEY
+    || process.env.GOOGLE_CUSTOM_SEARCH_KEY;
 // OpenCorporates jurisdiction codes (ISO-2 → OC jurisdiction)
 const OC_JURISDICTION = {
     TR: 'tr', DE: 'de', FR: 'fr', GB: 'gb', IT: 'it', ES: 'es', NL: 'nl',
@@ -34,6 +38,7 @@ function createJob(query, cities, total, userId, listName) {
     return {
         status: 'running',
         sources: {
+            google_places: { status: GOOGLE_PLACES_KEY ? 'pending' : 'skipped', count: 0 },
             apify: { status: APIFY_TOKEN ? 'pending' : 'skipped', count: 0 },
             osm: { status: 'pending', count: 0 },
             yelp: { status: YELP_KEY ? 'pending' : 'skipped', count: 0 },
@@ -102,6 +107,132 @@ async function extractSocialLinks(website) {
     catch {
         return {};
     }
+}
+// ── Source 0: Google Places API (New) — grid search, no intermediary ─────────
+// Uses Places API v1 Text Search with NxN city grid for maximum keyword coverage.
+// CRITICAL: nextPageToken must NOT appear in X-Goog-FieldMask — it's returned
+// automatically in the response body; including it in the mask causes API errors.
+// Requires GOOGLE_PLACES_API_KEY (or GOOGLE_MAPS_API_KEY / GOOGLE_CUSTOM_SEARCH_KEY).
+const GP_FIELD_MASK = [
+    'places.id', 'places.displayName', 'places.formattedAddress',
+    'places.nationalPhoneNumber', 'places.internationalPhoneNumber',
+    'places.websiteUri', 'places.rating', 'places.userRatingCount',
+    'places.primaryTypeDisplayName', 'places.location',
+    'places.regularOpeningHours', 'places.googleMapsUri', 'places.businessStatus',
+].join(',');
+async function googlePlacesSearch(params) {
+    if (!GOOGLE_PLACES_KEY)
+        return [];
+    const leads = [];
+    const seenIds = new Set();
+    // Grid size scales with target count — larger grids give better city coverage
+    const gridSize = params.targetCount <= 30 ? 2
+        : params.targetCount <= 80 ? 3
+            : params.targetCount <= 200 ? 4
+                : params.targetCount <= 500 ? 5 : 6;
+    const stepLatDeg = (params.radiusKm * 2 / gridSize) / 111;
+    const cosLat = Math.cos(params.lat * Math.PI / 180);
+    const stepLngDeg = stepLatDeg / (cosLat || 1);
+    const cellRadiusM = (params.radiusKm / gridSize) * 1000 * 1.5; // overlap cells slightly
+    const gridPoints = [];
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+            gridPoints.push({
+                lat: params.lat - params.radiusKm / 111 + i * stepLatDeg + stepLatDeg / 2,
+                lng: params.lng - (params.radiusKm / 111 / cosLat) + j * stepLngDeg + stepLngDeg / 2,
+            });
+        }
+    }
+    // Two query variants per grid cell: full keyword + first word (broader match)
+    const words = params.query.trim().split(/\s+/);
+    const queryVariants = [...new Set([params.query, words[0]])];
+    const rawCap = params.targetCount * 4; // buffer for dedup
+    outer: for (const point of gridPoints) {
+        for (const queryText of queryVariants) {
+            if (leads.length >= rawCap)
+                break outer;
+            let pageToken = null;
+            let page = 0;
+            do {
+                if (leads.length >= rawCap)
+                    break;
+                try {
+                    const body = {
+                        textQuery: `${queryText} ${params.city}`,
+                        languageCode: params.langCode,
+                        maxResultCount: 20,
+                    };
+                    // When using pageToken, DO NOT include locationBias (API requirement)
+                    if (pageToken) {
+                        body.pageToken = pageToken;
+                    }
+                    else {
+                        body.locationBias = {
+                            circle: {
+                                center: { latitude: point.lat, longitude: point.lng },
+                                radius: Math.min(cellRadiusM, 50000),
+                            },
+                        };
+                    }
+                    const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Goog-Api-Key': GOOGLE_PLACES_KEY,
+                            'X-Goog-FieldMask': GP_FIELD_MASK,
+                        },
+                        body: JSON.stringify(body),
+                        signal: AbortSignal.timeout(10000),
+                    });
+                    if (!resp.ok) {
+                        const errText = await resp.text().catch(() => '');
+                        console.error(`[LeadFinder] Google Places HTTP ${resp.status}:`, errText.slice(0, 200));
+                        break;
+                    }
+                    const data = await resp.json();
+                    for (const p of (data.places || [])) {
+                        if (!p.id || seenIds.has(p.id))
+                            continue;
+                        if (p.businessStatus === 'CLOSED_PERMANENTLY' || p.businessStatus === 'CLOSED_TEMPORARILY')
+                            continue;
+                        seenIds.add(p.id);
+                        const name = p.displayName?.text || '';
+                        if (!name)
+                            continue;
+                        leads.push({
+                            source: 'google_places',
+                            place_id: p.id,
+                            external_id: `gp_${p.id}`,
+                            company_name: name,
+                            phone: p.nationalPhoneNumber || p.internationalPhoneNumber || null,
+                            website: p.websiteUri || null,
+                            address: p.formattedAddress || null,
+                            lat: p.location?.latitude ?? null,
+                            lng: p.location?.longitude ?? null,
+                            rating: p.rating ?? null,
+                            review_count: p.userRatingCount ?? null,
+                            category: p.primaryTypeDisplayName?.text ?? null,
+                            maps_url: p.googleMapsUri || null,
+                            opening_hours: p.regularOpeningHours?.weekdayDescriptions
+                                ? JSON.stringify(p.regularOpeningHours.weekdayDescriptions)
+                                : null,
+                        });
+                    }
+                    pageToken = data.nextPageToken || null;
+                    page++;
+                    if (pageToken)
+                        await sleep(2100); // Google requires >2s between paginated requests
+                }
+                catch (e) {
+                    console.error('[LeadFinder] Google Places error:', e.message?.slice(0, 100));
+                    break;
+                }
+            } while (pageToken && page < 3);
+            await sleep(80); // brief pause between grid cells
+        }
+    }
+    console.log(`[LeadFinder] Google Places grid "${params.query}" in ${params.city}: ${leads.length} results (${gridSize}x${gridSize} grid)`);
+    return leads;
 }
 // ── Source 1: Apify Google Maps Scraper (APIFY_TOKEN required) ───────────────
 // Uses compass/crawler-google-places — bypasses Places API limits entirely.
@@ -858,11 +989,31 @@ async function runFinder(params) {
     };
     const countryName = COUNTRY_NAME_MAP[country] || country;
     const langCode = LANG_MAP[country] || 'en';
-    const sourceBreakdown = { apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
+    const sourceBreakdown = { google_places: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
     const allLeads = [];
     const perCityTarget = Math.max(10, Math.ceil(targetCount / cities.length));
-    // ── Primary: Apify Google Maps Scraper (rich data, social links, no quota) ──
-    if (APIFY_TOKEN) {
+    // ── Primary: Direct Google Places API (if key available) ─────────────────────
+    if (GOOGLE_PLACES_KEY) {
+        updateSource('google_places', 'running', 0);
+        for (let i = 0; i < cities.length; i++) {
+            const cityName = cities[i];
+            updateJob({ phase: cities.length > 1 ? `${cityName} Google Maps taranıyor... (${i + 1}/${cities.length})` : 'Google Places taranıyor...' });
+            const coords = await geocodeCity(cityName, countryName);
+            const gpLeads = await googlePlacesSearch({ query, city: cityName, lat: coords.lat, lng: coords.lng, radiusKm, langCode, targetCount: perCityTarget });
+            gpLeads.forEach(l => { l.searchCity = cityName; });
+            allLeads.push(...gpLeads);
+            sourceBreakdown.google_places += gpLeads.length;
+            updateSource('google_places', 'running', sourceBreakdown.google_places);
+            updateJob({ found: deduplicateLeads(allLeads).length });
+            console.log(`[LeadFinder] Google Places ${cityName}: ${gpLeads.length} raw results`);
+        }
+        updateSource('google_places', 'done', sourceBreakdown.google_places);
+    }
+    else {
+        updateSource('google_places', 'skipped', 0);
+    }
+    // ── Secondary: Apify Google Maps Scraper (runs when GP key unavailable) ──────
+    if (APIFY_TOKEN && !GOOGLE_PLACES_KEY) {
         updateSource('apify', 'running', 0);
         for (let i = 0; i < cities.length; i++) {
             const cityName = cities[i];
@@ -881,8 +1032,9 @@ async function runFinder(params) {
         updateSource('apify', 'skipped', 0);
     }
     // ── Supplementary: OSM (always free), Yelp, Foursquare, HERE ────────────────
-    // Run when Apify unavailable, or when total leads still below target
-    const needSupplement = !APIFY_TOKEN || allLeads.length < targetCount * 1.2;
+    // Run when primary sources unavailable, or when total leads still below target
+    const hasPrimary = GOOGLE_PLACES_KEY || APIFY_TOKEN;
+    const needSupplement = !hasPrimary || allLeads.length < targetCount * 1.2;
     if (needSupplement) {
         for (let i = 0; i < cities.length; i++) {
             const cityName = cities[i];
@@ -1052,12 +1204,21 @@ async function runFinder(params) {
     });
     for (let i = 0; i < toInsert.length; i += 50) {
         let { data, error } = await supabase.from('leads').insert(toInsert.slice(i, i + 50)).select('id');
-        // If social columns don't exist in schema yet, retry without them
         if (error?.message?.includes('column')) {
-            // Gracefully drop unknown columns and retry
-            console.warn('[LeadFinder] Unknown column, retrying without extended fields:', error.message.slice(0, 80));
-            const fallback = toInsert.slice(i, i + 50).map(({ facebook, linkedin_url, youtube, twitter, maps_url, opening_hours, ...rest }) => rest);
-            ({ data, error } = await supabase.from('leads').insert(fallback).select('id'));
+            // Step 1: drop only new columns (maps_url, opening_hours) — social cols may already exist
+            console.warn('[LeadFinder] Unknown column, retrying without maps/hours:', error.message.slice(0, 80));
+            const f1 = toInsert.slice(i, i + 50).map(({ maps_url, opening_hours, ...r }) => r);
+            let { data: d1, error: e1 } = await supabase.from('leads').insert(f1).select('id');
+            if (e1?.message?.includes('column')) {
+                // Step 2: social cols also missing — drop them too
+                console.warn('[LeadFinder] Social cols also missing, dropping all extended fields');
+                const f2 = f1.map(({ facebook, linkedin_url, youtube, twitter, instagram, ...r }) => r);
+                ({ data, error } = await supabase.from('leads').insert(f2).select('id'));
+            }
+            else {
+                data = d1;
+                error = e1;
+            }
         }
         if (error)
             console.error('[LeadFinder] Insert error:', error.message);

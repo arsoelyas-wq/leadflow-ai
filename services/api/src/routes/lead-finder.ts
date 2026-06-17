@@ -174,10 +174,11 @@ async function extractSocialLinks(website: string): Promise<{
   }
 }
 
-// ── Source 0: Google Places API (New) — direct, no intermediary ──────────────
-// Uses Places API v1 Text Search. Returns phone, website, maps_url, hours.
+// ── Source 0: Google Places API (New) — grid search, no intermediary ─────────
+// Uses Places API v1 Text Search with NxN city grid for maximum keyword coverage.
+// CRITICAL: nextPageToken must NOT appear in X-Goog-FieldMask — it's returned
+// automatically in the response body; including it in the mask causes API errors.
 // Requires GOOGLE_PLACES_API_KEY (or GOOGLE_MAPS_API_KEY / GOOGLE_CUSTOM_SEARCH_KEY).
-// Google Cloud Console → Places API (New) must be enabled for the key.
 
 const GP_FIELD_MASK = [
   'places.id', 'places.displayName', 'places.formattedAddress',
@@ -185,7 +186,6 @@ const GP_FIELD_MASK = [
   'places.websiteUri', 'places.rating', 'places.userRatingCount',
   'places.primaryTypeDisplayName', 'places.location',
   'places.regularOpeningHours', 'places.googleMapsUri', 'places.businessStatus',
-  'nextPageToken',
 ].join(',');
 
 async function googlePlacesSearch(params: {
@@ -198,74 +198,123 @@ async function googlePlacesSearch(params: {
   targetCount: number;
 }): Promise<RawLead[]> {
   if (!GOOGLE_PLACES_KEY) return [];
+
   const leads: RawLead[] = [];
-  let pageToken: string | null = null;
-  const maxPages = Math.min(Math.ceil(params.targetCount / 20), 5); // 20/page, max 100
+  const seenIds = new Set<string>();
 
-  for (let page = 0; page < maxPages && leads.length < params.targetCount; page++) {
-    try {
-      const body: any = {
-        textQuery: `${params.query} ${params.city}`,
-        languageCode: params.langCode,
-        maxResultCount: 20,
-        locationBias: {
-          circle: {
-            center: { latitude: params.lat, longitude: params.lng },
-            radius: Math.min(params.radiusKm * 1000, 50000),
-          },
-        },
-      };
-      if (pageToken) body.pageToken = pageToken;
+  // Grid size scales with target count — larger grids give better city coverage
+  const gridSize = params.targetCount <= 30  ? 2
+                 : params.targetCount <= 80  ? 3
+                 : params.targetCount <= 200 ? 4
+                 : params.targetCount <= 500 ? 5 : 6;
 
-      const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': GOOGLE_PLACES_KEY!,
-          'X-Goog-FieldMask': GP_FIELD_MASK,
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15000),
+  const stepLatDeg  = (params.radiusKm * 2 / gridSize) / 111;
+  const cosLat      = Math.cos(params.lat * Math.PI / 180);
+  const stepLngDeg  = stepLatDeg / (cosLat || 1);
+  const cellRadiusM = (params.radiusKm / gridSize) * 1000 * 1.5; // overlap cells slightly
+
+  const gridPoints: { lat: number; lng: number }[] = [];
+  for (let i = 0; i < gridSize; i++) {
+    for (let j = 0; j < gridSize; j++) {
+      gridPoints.push({
+        lat: params.lat - params.radiusKm / 111 + i * stepLatDeg + stepLatDeg / 2,
+        lng: params.lng - (params.radiusKm / 111 / cosLat) + j * stepLngDeg + stepLngDeg / 2,
       });
-
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => '');
-        console.error(`[LeadFinder] Google Places HTTP ${resp.status}:`, errText.slice(0, 200));
-        break;
-      }
-
-      const data: any = await resp.json();
-      for (const p of (data.places || [])) {
-        if (p.businessStatus === 'CLOSED_PERMANENTLY' || p.businessStatus === 'CLOSED_TEMPORARILY') continue;
-        leads.push({
-          source:       'google_places',
-          place_id:     p.id,
-          external_id:  `gp_${p.id}`,
-          company_name: p.displayName?.text || '',
-          phone:        p.nationalPhoneNumber || p.internationalPhoneNumber || null,
-          website:      p.websiteUri || null,
-          address:      p.formattedAddress || null,
-          lat:          p.location?.latitude  ?? null,
-          lng:          p.location?.longitude ?? null,
-          rating:       p.rating ?? null,
-          review_count: p.userRatingCount ?? null,
-          category:     p.primaryTypeDisplayName?.text ?? null,
-          maps_url:     p.googleMapsUri || null,
-          opening_hours: p.regularOpeningHours?.weekdayDescriptions
-            ? JSON.stringify(p.regularOpeningHours.weekdayDescriptions)
-            : null,
-        } as RawLead);
-      }
-
-      pageToken = data.nextPageToken || null;
-      if (!pageToken || leads.length >= params.targetCount) break;
-      await sleep(500); // Google requires a small delay between paginated requests
-    } catch (e: any) {
-      console.error('[LeadFinder] Google Places error:', e.message?.slice(0, 100));
-      break;
     }
   }
-  console.log(`[LeadFinder] Google Places "${params.query} ${params.city}": ${leads.length} results`);
+
+  // Two query variants per grid cell: full keyword + first word (broader match)
+  const words = params.query.trim().split(/\s+/);
+  const queryVariants = [...new Set([params.query, words[0]])];
+
+  const rawCap = params.targetCount * 4; // buffer for dedup
+
+  outer:
+  for (const point of gridPoints) {
+    for (const queryText of queryVariants) {
+      if (leads.length >= rawCap) break outer;
+
+      let pageToken: string | null = null;
+      let page = 0;
+
+      do {
+        if (leads.length >= rawCap) break;
+        try {
+          const body: any = {
+            textQuery: `${queryText} ${params.city}`,
+            languageCode: params.langCode,
+            maxResultCount: 20,
+          };
+          // When using pageToken, DO NOT include locationBias (API requirement)
+          if (pageToken) {
+            body.pageToken = pageToken;
+          } else {
+            body.locationBias = {
+              circle: {
+                center: { latitude: point.lat, longitude: point.lng },
+                radius: Math.min(cellRadiusM, 50000),
+              },
+            };
+          }
+
+          const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': GOOGLE_PLACES_KEY!,
+              'X-Goog-FieldMask': GP_FIELD_MASK,
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(10000),
+          });
+
+          if (!resp.ok) {
+            const errText = await resp.text().catch(() => '');
+            console.error(`[LeadFinder] Google Places HTTP ${resp.status}:`, errText.slice(0, 200));
+            break;
+          }
+
+          const data: any = await resp.json();
+          for (const p of (data.places || [])) {
+            if (!p.id || seenIds.has(p.id)) continue;
+            if (p.businessStatus === 'CLOSED_PERMANENTLY' || p.businessStatus === 'CLOSED_TEMPORARILY') continue;
+            seenIds.add(p.id);
+            const name = p.displayName?.text || '';
+            if (!name) continue;
+            leads.push({
+              source:        'google_places',
+              place_id:      p.id,
+              external_id:   `gp_${p.id}`,
+              company_name:  name,
+              phone:         p.nationalPhoneNumber || p.internationalPhoneNumber || null,
+              website:       p.websiteUri || null,
+              address:       p.formattedAddress || null,
+              lat:           p.location?.latitude  ?? null,
+              lng:           p.location?.longitude ?? null,
+              rating:        p.rating ?? null,
+              review_count:  p.userRatingCount ?? null,
+              category:      p.primaryTypeDisplayName?.text ?? null,
+              maps_url:      p.googleMapsUri || null,
+              opening_hours: p.regularOpeningHours?.weekdayDescriptions
+                ? JSON.stringify(p.regularOpeningHours.weekdayDescriptions)
+                : null,
+            } as RawLead);
+          }
+
+          pageToken = data.nextPageToken || null;
+          page++;
+          if (pageToken) await sleep(2100); // Google requires >2s between paginated requests
+        } catch (e: any) {
+          console.error('[LeadFinder] Google Places error:', e.message?.slice(0, 100));
+          break;
+        }
+      } while (pageToken && page < 3);
+
+      await sleep(80); // brief pause between grid cells
+    }
+  }
+
+  console.log(`[LeadFinder] Google Places grid "${params.query}" in ${params.city}: ${leads.length} results (${gridSize}x${gridSize} grid)`);
   return leads;
 }
 
