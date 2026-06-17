@@ -1568,6 +1568,41 @@ router.get('/test-apify', async (req: any, res: any) => {
   });
 });
 
+// GET /api/lead-finder/test-google-places — diagnose Google Places API key
+router.get('/test-google-places', async (_req: any, res: any) => {
+  if (!GOOGLE_PLACES_KEY) {
+    return res.json({ ok: false, keyPresent: false, error: 'No Google Places key set (GOOGLE_PLACES_API_KEY / GOOGLE_MAPS_API_KEY / GOOGLE_CUSTOM_SEARCH_KEY)' });
+  }
+  const t0 = Date.now();
+  try {
+    const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_KEY,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress',
+      },
+      body: JSON.stringify({ textQuery: 'restoran İstanbul', languageCode: 'tr', maxResultCount: 3 }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const text = await resp.text();
+    let data: any = {};
+    try { data = JSON.parse(text); } catch { data = { raw: text.slice(0, 300) }; }
+    return res.json({
+      ok: resp.ok,
+      keyPresent: true,
+      keyPrefix: GOOGLE_PLACES_KEY.slice(0, 8) + '...',
+      httpStatus: resp.status,
+      placesCount: (data.places || []).length,
+      error: !resp.ok ? (data.error?.message || data.error?.status || text.slice(0, 300)) : null,
+      sample: (data.places || []).slice(0, 2).map((p: any) => p.displayName?.text),
+      durationMs: Date.now() - t0,
+    });
+  } catch (e: any) {
+    return res.json({ ok: false, keyPresent: true, error: e.message, durationMs: Date.now() - t0 });
+  }
+});
+
 // GET /api/lead-finder/sources — which sources are active
 router.get('/sources', (_req: any, res: any) => {
   res.json({
