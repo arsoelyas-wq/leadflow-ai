@@ -5,12 +5,16 @@ const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-const YELP_KEY    = process.env.YELP_API_KEY;
-const FSQ_KEY     = process.env.FOURSQUARE_API_KEY;
-const HERE_KEY    = process.env.HERE_API_KEY;
-const CH_KEY      = process.env.UK_COMPANIES_HOUSE_KEY;
-const APIFY_TOKEN = process.env.APIFY_TOKEN;
-const OC_KEY      = process.env.OPENCORPORATES_KEY; // free key: opencorporates.com/api_accounts/new
+const YELP_KEY          = process.env.YELP_API_KEY;
+const FSQ_KEY           = process.env.FOURSQUARE_API_KEY;
+const HERE_KEY          = process.env.HERE_API_KEY;
+const CH_KEY            = process.env.UK_COMPANIES_HOUSE_KEY;
+const APIFY_TOKEN       = process.env.APIFY_TOKEN;
+const OC_KEY            = process.env.OPENCORPORATES_KEY; // free key: opencorporates.com/api_accounts/new
+// Google Places API (New) — direct key, higher quota than Apify
+const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_API_KEY
+  || process.env.GOOGLE_MAPS_API_KEY
+  || process.env.GOOGLE_CUSTOM_SEARCH_KEY;
 
 // OpenCorporates jurisdiction codes (ISO-2 → OC jurisdiction)
 const OC_JURISDICTION: Record<string, string> = {
@@ -90,12 +94,13 @@ function createJob(query: string, cities: string[], total: number, userId: strin
   return {
     status: 'running',
     sources: {
-      apify:      { status: APIFY_TOKEN ? 'pending' : 'skipped', count: 0 },
-      osm:        { status: 'pending', count: 0 },
-      yelp:       { status: YELP_KEY    ? 'pending' : 'skipped', count: 0 },
-      foursquare: { status: FSQ_KEY     ? 'pending' : 'skipped', count: 0 },
-      here:       { status: HERE_KEY    ? 'pending' : 'skipped', count: 0 },
-      registry:   { status: 'pending', count: 0 },
+      google_places: { status: GOOGLE_PLACES_KEY ? 'pending' : 'skipped', count: 0 },
+      apify:         { status: APIFY_TOKEN        ? 'pending' : 'skipped', count: 0 },
+      osm:           { status: 'pending', count: 0 },
+      yelp:          { status: YELP_KEY    ? 'pending' : 'skipped', count: 0 },
+      foursquare:    { status: FSQ_KEY     ? 'pending' : 'skipped', count: 0 },
+      here:          { status: HERE_KEY    ? 'pending' : 'skipped', count: 0 },
+      registry:      { status: 'pending', count: 0 },
     },
     found: 0, saved: 0, skipped: 0, total,
     query, city, phase: 'Başlatılıyor...', startedAt: Date.now(),
@@ -167,6 +172,101 @@ async function extractSocialLinks(website: string): Promise<{
   } catch {
     return {};
   }
+}
+
+// ── Source 0: Google Places API (New) — direct, no intermediary ──────────────
+// Uses Places API v1 Text Search. Returns phone, website, maps_url, hours.
+// Requires GOOGLE_PLACES_API_KEY (or GOOGLE_MAPS_API_KEY / GOOGLE_CUSTOM_SEARCH_KEY).
+// Google Cloud Console → Places API (New) must be enabled for the key.
+
+const GP_FIELD_MASK = [
+  'places.id', 'places.displayName', 'places.formattedAddress',
+  'places.nationalPhoneNumber', 'places.internationalPhoneNumber',
+  'places.websiteUri', 'places.rating', 'places.userRatingCount',
+  'places.primaryTypeDisplayName', 'places.location',
+  'places.regularOpeningHours', 'places.googleMapsUri', 'places.businessStatus',
+  'nextPageToken',
+].join(',');
+
+async function googlePlacesSearch(params: {
+  query: string;
+  city: string;
+  lat: number;
+  lng: number;
+  radiusKm: number;
+  langCode: string;
+  targetCount: number;
+}): Promise<RawLead[]> {
+  if (!GOOGLE_PLACES_KEY) return [];
+  const leads: RawLead[] = [];
+  let pageToken: string | null = null;
+  const maxPages = Math.min(Math.ceil(params.targetCount / 20), 5); // 20/page, max 100
+
+  for (let page = 0; page < maxPages && leads.length < params.targetCount; page++) {
+    try {
+      const body: any = {
+        textQuery: `${params.query} ${params.city}`,
+        languageCode: params.langCode,
+        maxResultCount: 20,
+        locationBias: {
+          circle: {
+            center: { latitude: params.lat, longitude: params.lng },
+            radius: Math.min(params.radiusKm * 1000, 50000),
+          },
+        },
+      };
+      if (pageToken) body.pageToken = pageToken;
+
+      const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_PLACES_KEY!,
+          'X-Goog-FieldMask': GP_FIELD_MASK,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        console.error(`[LeadFinder] Google Places HTTP ${resp.status}:`, errText.slice(0, 200));
+        break;
+      }
+
+      const data: any = await resp.json();
+      for (const p of (data.places || [])) {
+        if (p.businessStatus === 'CLOSED_PERMANENTLY' || p.businessStatus === 'CLOSED_TEMPORARILY') continue;
+        leads.push({
+          source:       'google_places',
+          place_id:     p.id,
+          external_id:  `gp_${p.id}`,
+          company_name: p.displayName?.text || '',
+          phone:        p.nationalPhoneNumber || p.internationalPhoneNumber || null,
+          website:      p.websiteUri || null,
+          address:      p.formattedAddress || null,
+          lat:          p.location?.latitude  ?? null,
+          lng:          p.location?.longitude ?? null,
+          rating:       p.rating ?? null,
+          review_count: p.userRatingCount ?? null,
+          category:     p.primaryTypeDisplayName?.text ?? null,
+          maps_url:     p.googleMapsUri || null,
+          opening_hours: p.regularOpeningHours?.weekdayDescriptions
+            ? JSON.stringify(p.regularOpeningHours.weekdayDescriptions)
+            : null,
+        } as RawLead);
+      }
+
+      pageToken = data.nextPageToken || null;
+      if (!pageToken || leads.length >= params.targetCount) break;
+      await sleep(500); // Google requires a small delay between paginated requests
+    } catch (e: any) {
+      console.error('[LeadFinder] Google Places error:', e.message?.slice(0, 100));
+      break;
+    }
+  }
+  console.log(`[LeadFinder] Google Places "${params.query} ${params.city}": ${leads.length} results`);
+  return leads;
 }
 
 // ── Source 1: Apify Google Maps Scraper (APIFY_TOKEN required) ───────────────
@@ -980,13 +1080,33 @@ async function runFinder(params: FinderParams): Promise<{
   const countryName = COUNTRY_NAME_MAP[country] || country;
   const langCode    = LANG_MAP[country] || 'en';
 
-  const sourceBreakdown: Record<string, number> = { apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
+  const sourceBreakdown: Record<string, number> = { google_places: 0, apify: 0, osm: 0, yelp: 0, foursquare: 0, here: 0, registry: 0 };
   const allLeads: RawLead[] = [];
 
   const perCityTarget = Math.max(10, Math.ceil(targetCount / cities.length));
 
-  // ── Primary: Apify Google Maps Scraper (rich data, social links, no quota) ──
-  if (APIFY_TOKEN) {
+  // ── Primary: Direct Google Places API (if key available) ─────────────────────
+  if (GOOGLE_PLACES_KEY) {
+    updateSource('google_places', 'running', 0);
+    for (let i = 0; i < cities.length; i++) {
+      const cityName = cities[i];
+      updateJob({ phase: cities.length > 1 ? `${cityName} Google Maps taranıyor... (${i + 1}/${cities.length})` : 'Google Places taranıyor...' });
+      const coords = await geocodeCity(cityName, countryName);
+      const gpLeads = await googlePlacesSearch({ query, city: cityName, lat: coords.lat, lng: coords.lng, radiusKm, langCode, targetCount: perCityTarget });
+      gpLeads.forEach(l => { l.searchCity = cityName; });
+      allLeads.push(...gpLeads);
+      sourceBreakdown.google_places += gpLeads.length;
+      updateSource('google_places', 'running', sourceBreakdown.google_places);
+      updateJob({ found: deduplicateLeads(allLeads).length });
+      console.log(`[LeadFinder] Google Places ${cityName}: ${gpLeads.length} raw results`);
+    }
+    updateSource('google_places', 'done', sourceBreakdown.google_places);
+  } else {
+    updateSource('google_places', 'skipped', 0);
+  }
+
+  // ── Secondary: Apify Google Maps Scraper (runs when GP key unavailable) ──────
+  if (APIFY_TOKEN && !GOOGLE_PLACES_KEY) {
     updateSource('apify', 'running', 0);
     for (let i = 0; i < cities.length; i++) {
       const cityName = cities[i];
@@ -1005,8 +1125,9 @@ async function runFinder(params: FinderParams): Promise<{
   }
 
   // ── Supplementary: OSM (always free), Yelp, Foursquare, HERE ────────────────
-  // Run when Apify unavailable, or when total leads still below target
-  const needSupplement = !APIFY_TOKEN || allLeads.length < targetCount * 1.2;
+  // Run when primary sources unavailable, or when total leads still below target
+  const hasPrimary = GOOGLE_PLACES_KEY || APIFY_TOKEN;
+  const needSupplement = !hasPrimary || allLeads.length < targetCount * 1.2;
   if (needSupplement) {
     for (let i = 0; i < cities.length; i++) {
       const cityName = cities[i];
