@@ -4,7 +4,20 @@ import { NextRequest, NextResponse } from 'next/server'
 const LOCALES = ['tr_TR','en_US','en_GB','de_DE','fr_FR','ar_AE','ar_SA','ru_RU','es_ES','it_IT','nl_NL','pl_PL','zh_CN','ja_JP']
 const DEFAULT_LOCALE = 'tr_TR'
 
+const CANONICAL_HOST = 'sovlo.io'
+
 export function middleware(req: NextRequest) {
+  const host = req.headers.get('host') || ''
+
+  // Redirect all *.vercel.app traffic to sovlo.io (preserving path + query)
+  if (host.includes('vercel.app')) {
+    const url = req.nextUrl.clone()
+    url.host = CANONICAL_HOST
+    url.port = ''
+    url.protocol = 'https'
+    return NextResponse.redirect(url, 301)
+  }
+
   const res = NextResponse.next()
   const url  = req.nextUrl
 
