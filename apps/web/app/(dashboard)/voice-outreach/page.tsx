@@ -517,109 +517,109 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                         </div>
                       </div>
 
-                      {/* Inline tuning panel — toggleable */}
+                      {/* Tuning modal — full overlay */}
                       {tuningOpen === v.id && (
-                        <div className="px-3.5 pb-3.5 space-y-2 fade-in-up" style={{ borderTop: '1px solid #ede9fe' }}>
-                          <div className="flex items-center justify-between pt-2.5 mb-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#7c3aed' }}>
-                              <Settings className="w-3 h-3"/> {v.name} — Ses Ayarları
-                            </span>
-                            <button onClick={e => { e.stopPropagation(); setTuningOpen(null) }}
-                              className="text-slate-400 hover:text-slate-600 transition p-0.5" title="Kapat">
-                              <X className="w-3 h-3"/>
-                            </button>
-                          </div>
-                          {(() => {
-                            const SLIDERS = [
-                              { key: 'speed',    label: 'Konuşma Hızı',  min: 0.5, max: 2.0, step: 0.05, def: 1.0,  unit: 'x',  lo: 'Yavaş',    hi: 'Hızlı',     color: '#7c3aed' },
-                              { key: 'pitch',    label: 'Ses Perdesi',   min: -6,  max: 6,   step: 0.5,  def: 0,    unit: '',   lo: 'Kalın',    hi: 'İnce',      color: '#8b5cf6' },
-                              { key: 'volume',   label: 'Ses Seviyesi',  min: 0.1, max: 3.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Kısık',    hi: 'Yüksek',    color: '#2563eb' },
-                              { key: 'bass',     label: 'Bas Derinliği', min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Hafif',    hi: 'Derin',     color: '#059669' },
-                              { key: 'warmth',   label: 'Sıcaklık',     min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Soğuk',    hi: 'Sıcak',     color: '#dc2626' },
-                              { key: 'presence', label: 'Berraklık',    min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Bulanık',  hi: 'Berrak',    color: '#0891b2' },
-                              { key: 'treble',   label: 'Parlaklık',    min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Mat',      hi: 'Parlak',    color: '#d97706' },
-                              { key: 'compress', label: 'Ses Dengeleme', min: 0,   max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Kapalı',   hi: 'Güçlü',     color: '#6366f1' },
-                            ]
-                            return <>
-                              {SLIDERS.map(s => {
-                                const val = settings[`voice_${s.key}`] ?? s.def
-                                const pct = ((val - s.min) / (s.max - s.min)) * 100
-                                return (
-                                  <div key={s.key}>
-                                    <div className="flex items-center justify-between mb-0.5">
-                                      <span className="text-[10px] font-semibold" style={{ color: '#64748b' }}>{s.label}</span>
-                                      <span className="text-[10px] font-mono font-bold" style={{ color: s.color }}>{s.unit === 'dB' ? (val > 0 ? '+' : '') : ''}{Number(val).toFixed(s.step < 1 ? 1 : 0)}{s.unit}</span>
-                                    </div>
-                                    <input type="range" min={s.min} max={s.max} step={s.step} value={val}
-                                      onClick={e => e.stopPropagation()}
-                                      onChange={e => {
-                                        const newVal = parseFloat(e.target.value)
-                                        const newSettings = { ...settings, [`voice_${s.key}`]: newVal }
-                                        setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: newVal }))
-                                        clearTimeout(previewTimerRef.current)
-                                        previewTimerRef.current = setTimeout(() => {
-                                          playVoiceSample(v.sample_url, v.id, newSettings)
-                                        }, 500)
-                                      }}
-                                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                                      style={{ background: `linear-gradient(to right, ${s.color} ${pct}%, #e2e8f0 ${pct}%)` }}/>
-                                    <div className="flex justify-between">
-                                      <span className="text-[8px]" style={{ color: '#cbd5e1' }}>{s.lo}</span>
-                                      <span className="text-[8px]" style={{ color: '#cbd5e1' }}>{s.hi}</span>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                              <div className="flex items-center gap-1.5 pt-0.5 text-[9px] text-slate-400 justify-center">
-                                <Volume2 className="w-3 h-3"/> Slider kaydırınca sesiniz otomatik çalar
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+                          onClick={e => { if (e.target === e.currentTarget) { stopAllAudio(); setTuningOpen(null) } }}>
+                          <div className="w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden" style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}
+                            onClick={e => e.stopPropagation()}>
+
+                            {/* Modal header */}
+                            <div className="flex items-center justify-between px-6 py-4" style={{ background: 'linear-gradient(135deg, #7c3aed08, #6d28d905)', borderBottom: '1px solid #f1f5f9' }}>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#ede9fe' }}>
+                                  <Mic className="w-5 h-5" style={{ color: '#7c3aed' }}/>
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-sm" style={{ color: '#0f172a' }}>{v.name} — Ses Stüdyosu</h3>
+                                  <p className="text-xs" style={{ color: '#94a3b8' }}>Slider kaydırınca sesiniz otomatik çalar</p>
+                                </div>
                               </div>
-                              {/* AI klonlanmış ses üretimi */}
-                              <div className="pt-2 border-t mt-2" style={{ borderColor: '#ede9fe' }}>
-                                <button onClick={async e => {
-                                  e.stopPropagation()
-                                  // Warm up GPU first
-                                  try { await fetch(`${API}/api/voice/warmup`, { method: 'POST', headers: authH() }) } catch {}
-                                  setPlaying(v.id); onMsg('success', 'AI ses klonlama başlatılıyor (GPU ısınması 30-90sn sürebilir)...')
-                                  try {
-                                    stopAllAudio()
-                                    const r = await fetch(`${API}/api/voice/preview-voice`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ voiceId: v.id, text: 'Merhaba, nasılsınız? Sizinle iş birliği hakkında konuşmak istiyorum. Ürünlerimiz hakkında bilgi vermek isterim.', language: 'tr' }) })
-                                    if (!r.ok) {
-                                      const err = await r.json().catch(() => ({}))
-                                      onMsg('error', err.error || 'Ses üretilemedi')
-                                      if (err.retryable) onMsg('error', 'GPU ısınıyor — 30sn sonra tekrar deneyin')
-                                      setPlaying(null); return
-                                    }
-                                    const ct = r.headers.get('content-type') || ''
-                                    if (ct.includes('audio')) {
-                                      const blob = await r.blob(); const url = URL.createObjectURL(blob)
-                                      const a = new Audio(url); globalAudio = a
-                                      a.playbackRate = settings.voice_speed ?? 1.0
-                                      a.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(url) }
-                                      a.play().catch(() => setPlaying(null))
-                                      onMsg('success', 'AI klonlanmış sesiniz hazır!')
-                                    } else { onMsg('error', 'Ses üretilemedi'); setPlaying(null) }
-                                  } catch { onMsg('error', 'Bağlantı hatası'); setPlaying(null) }
-                                }}
-                                  className="w-full py-2.5 rounded-xl text-[11px] font-bold transition-all hover:scale-[1.01] flex items-center justify-center gap-1.5"
-                                  style={{ background: 'linear-gradient(135deg, #7c3aed12, #6d28d908)', border: '1px solid #ddd6fe', color: '#7c3aed' }}>
-                                  {playing === v.id ? <><RefreshCw className="w-3.5 h-3.5 animate-spin"/> AI Oluşturuyor...</> : <><Sparkles className="w-3.5 h-3.5"/> AI ile Klonlanmış Sesimi Üret</>}
+                              <button onClick={() => { stopAllAudio(); setTuningOpen(null) }}
+                                className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-slate-100 transition" style={{ color: '#94a3b8' }}>
+                                <X className="w-4 h-4"/>
+                              </button>
+                            </div>
+
+                            {/* Sliders grid — 2 columns */}
+                            <div className="px-6 py-5">
+                              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                                {[
+                                  { key: 'speed',    label: 'Konuşma Hızı',  min: 0.5, max: 2.0, step: 0.05, def: 1.0,  unit: 'x',  lo: 'Yavaş',    hi: 'Hızlı',     color: '#7c3aed', icon: '⚡' },
+                                  { key: 'pitch',    label: 'Ses Perdesi',   min: -6,  max: 6,   step: 0.5,  def: 0,    unit: '',   lo: 'Kalın',    hi: 'İnce',      color: '#8b5cf6', icon: '🎵' },
+                                  { key: 'volume',   label: 'Ses Seviyesi',  min: 0.1, max: 3.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Kısık',    hi: 'Yüksek',    color: '#2563eb', icon: '🔊' },
+                                  { key: 'bass',     label: 'Bas Derinliği', min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Hafif',    hi: 'Derin',     color: '#059669', icon: '🎸' },
+                                  { key: 'warmth',   label: 'Sıcaklık',     min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Soğuk',    hi: 'Sıcak',     color: '#dc2626', icon: '🔥' },
+                                  { key: 'presence', label: 'Berraklık',    min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Bulanık',  hi: 'Berrak',    color: '#0891b2', icon: '💎' },
+                                  { key: 'treble',   label: 'Parlaklık',    min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Mat',      hi: 'Parlak',    color: '#d97706', icon: '✨' },
+                                  { key: 'compress', label: 'Ses Dengeleme', min: 0,   max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Kapalı',   hi: 'Güçlü',     color: '#6366f1', icon: '📊' },
+                                ].map(s => {
+                                  const val = settings[`voice_${s.key}`] ?? s.def
+                                  const pct = ((val - s.min) / (s.max - s.min)) * 100
+                                  return (
+                                    <div key={s.key} className="p-3 rounded-xl transition hover:bg-slate-50" style={{ border: '1px solid #f1f5f9' }}>
+                                      <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: '#334155' }}>
+                                          <span>{s.icon}</span> {s.label}
+                                        </span>
+                                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md" style={{ color: s.color, background: `${s.color}10` }}>
+                                          {s.unit === 'dB' ? (val > 0 ? '+' : '') : ''}{Number(val).toFixed(s.step < 1 ? 1 : 0)}{s.unit}
+                                        </span>
+                                      </div>
+                                      <input type="range" min={s.min} max={s.max} step={s.step} value={val}
+                                        onChange={e => {
+                                          const newVal = parseFloat(e.target.value)
+                                          const newSettings = { ...settings, [`voice_${s.key}`]: newVal }
+                                          setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: newVal }))
+                                          clearTimeout(previewTimerRef.current)
+                                          previewTimerRef.current = setTimeout(() => {
+                                            playVoiceSample(v.sample_url, v.id, newSettings)
+                                          }, 500)
+                                        }}
+                                        className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                                        style={{ background: `linear-gradient(to right, ${s.color} ${pct}%, #e2e8f0 ${pct}%)` }}/>
+                                      <div className="flex justify-between mt-0.5">
+                                        <span className="text-[9px]" style={{ color: '#94a3b8' }}>{s.lo}</span>
+                                        <span className="text-[9px]" style={{ color: '#94a3b8' }}>{s.hi}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Modal footer */}
+                            <div className="flex items-center justify-between px-6 py-4 gap-3" style={{ borderTop: '1px solid #f1f5f9', background: '#fafafa' }}>
+                              <button onClick={() => {
+                                const defaults: any = {}
+                                ;['speed','pitch','volume','bass','warmth','presence','treble','compress'].forEach(k => { defaults[`voice_${k}`] = k === 'speed' || k === 'volume' ? 1.0 : 0 })
+                                setSettings((prev: any) => ({ ...prev, ...defaults }))
+                                onMsg('success', 'Ayarlar sıfırlandı')
+                              }}
+                                className="px-4 py-2.5 rounded-xl text-xs font-semibold transition hover:bg-slate-200"
+                                style={{ background: '#f1f5f9', color: '#64748b' }}>
+                                Sıfırla
+                              </button>
+                              <div className="flex gap-2">
+                                <button onClick={() => playVoiceSample(v.sample_url, v.id, settings)}
+                                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition hover:scale-[1.02]"
+                                  style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#059669' }}>
+                                  <Play className="w-3.5 h-3.5"/> Dinle
                                 </button>
-                                <p className="text-[8px] text-center mt-1" style={{ color: '#94a3b8' }}>XTTS-v2 motoru ile gerçek ses klonlama (ilk kullanımda GPU ısınması gerekir)</p>
+                                <button onClick={async () => {
+                                  try {
+                                    await fetch(`${API}/api/voice/settings`, { method: 'PATCH', headers: authH(), body: JSON.stringify(settings) })
+                                    onMsg('success', `${v.name} ayarları kaydedildi`)
+                                    stopAllAudio(); setTuningOpen(null)
+                                  } catch { onMsg('error', 'Kaydetme başarısız') }
+                                }}
+                                  className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-xs font-bold text-white transition hover:scale-[1.02]"
+                                  style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 2px 8px rgba(124,58,237,0.25)' }}>
+                                  <CheckCircle className="w-3.5 h-3.5"/> Kaydet ve Kapat
+                                </button>
                               </div>
-                            </>
-                          })()}
-                          <button onClick={async e => {
-                            e.stopPropagation()
-                            try {
-                              await fetch(`${API}/api/voice/settings`, { method: 'PATCH', headers: authH(), body: JSON.stringify(settings) })
-                              onMsg('success', `${v.name} ayarları kaydedildi`)
-                              setTuningOpen(null)
-                            } catch { onMsg('error', 'Kaydetme başarısız') }
-                          }}
-                            className="w-full py-2.5 rounded-xl text-[11px] font-bold text-white transition-all hover:scale-[1.01]"
-                            style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 2px 8px rgba(124,58,237,0.2)' }}>
-                            Kaydet ve Kapat
-                          </button>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
