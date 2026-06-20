@@ -89,18 +89,9 @@ export default function NewCampaignPage() {
   const loadLeads = async () => {
     setLoadingLeads(true)
     try {
-      const all: Lead[] = []
-      let offset = 0
-      const pageSize = 200
-      while (true) {
-        const data = await api.get(`/api/leads?limit=${pageSize}&offset=${offset}`)
-        const batch: Lead[] = data.leads || []
-        all.push(...batch)
-        if (data.total != null) setLeadsTotal(data.total)
-        if (batch.length < pageSize) break
-        offset += pageSize
-      }
-      setLeads(all)
+      const data = await api.get('/api/leads?limit=500&offset=0')
+      setLeads(data.leads || [])
+      if (data.total != null) setLeadsTotal(data.total)
     } catch { setLeads([]) }
     finally { setLoadingLeads(false) }
   }
