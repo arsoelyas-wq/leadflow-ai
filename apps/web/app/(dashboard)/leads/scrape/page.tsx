@@ -6,6 +6,8 @@ import {
   MapPin, Search, Loader2, CheckCircle, ArrowLeft, Zap,
   Globe, ChevronDown, AlertTriangle, SlidersHorizontal,
   Phone, Mail, Folder, Pencil, Clock, Target, Building2,
+  Download, ExternalLink, Star, Database, SkipForward,
+  TrendingUp, Eye, PhoneCall, MousePointerClick,
 } from 'lucide-react'
 import { COUNTRIES, CITIES, REGIONS } from './countries-cities'
 
@@ -92,6 +94,7 @@ export default function LeadFinderPage() {
   const [currentJobId,   setCurrentJobId]  = useState<string | null>(null)
   const [previewLeads,   setPreviewLeads]  = useState<any[]>([])
   const [loadingPreview, setLoadingPreview]= useState(false)
+  const [searchStartTime, setSearchStartTime] = useState<number>(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -176,7 +179,7 @@ export default function LeadFinderPage() {
     if (!keyword)                    { setError('Arama terimi girin'); return }
     if (selectedCities.length === 0) { setError('En az bir şehir seçin'); return }
 
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setSearchStartTime(Date.now())
 
     const cityDisplay = selectedCities.join(', ')
 
@@ -230,6 +233,62 @@ export default function LeadFinderPage() {
     setLoading(false)
   }
 
+  // ── Helpers for results view ────────────────────────────────────────────────
+
+  function getScoreInfo(score: number) {
+    if (score >= 70) return { color: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/30', label: 'Yüksek' }
+    if (score >= 50) return { color: 'text-blue-400',    bg: 'bg-blue-500/15 border-blue-500/30',    label: 'İyi' }
+    if (score >= 30) return { color: 'text-amber-400',   bg: 'bg-amber-500/15 border-amber-500/30',  label: 'Orta' }
+    return { color: 'text-slate-500', bg: 'bg-slate-500/10 border-slate-500/20', label: 'Düşük' }
+  }
+
+  function getInitialColor(name: string) {
+    const colors = [
+      'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500',
+      'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-teal-500',
+    ]
+    let hash = 0
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+    return colors[Math.abs(hash) % colors.length]
+  }
+
+  function exportCSV() {
+    if (!previewLeads.length) return
+    const headers = ['Firma', 'Telefon', 'Website', 'Adres', 'Şehir', 'Kategori', 'Puan', 'Rating']
+    const rows = previewLeads.map(l => [
+      l.company_name || '', l.phone || '', l.website || '', l.address || '',
+      l.city || '', l.category || '', l.score || '', l.rating || '',
+    ])
+    const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${jobStatus?.query || 'leads'}_${jobStatus?.city || ''}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function getDuration() {
+    if (!searchStartTime) return null
+    const elapsed = Math.round((Date.now() - searchStartTime) / 1000)
+    if (elapsed < 60) return `${elapsed} saniye`
+    return `${Math.floor(elapsed / 60)} dk ${elapsed % 60} sn`
+  }
+
+  function getSourceBreakdown() {
+    if (!jobStatus?.sources) return []
+    return Object.entries(jobStatus.sources)
+      .filter(([, v]: any) => v.status === 'done' && v.count > 0)
+      .map(([k, v]: any) => {
+        const labels: Record<string, string> = {
+          google_places: 'Google Maps', osm: 'Harita', yelp: 'Yelp',
+          foursquare: 'Foursquare', here: 'HERE', registry: 'Sicil',
+        }
+        return { name: labels[k] || k, count: v.count }
+      })
+  }
+
   // ── Progress view ──────────────────────────────────────────────────────────
 
   if (jobStatus) {
@@ -238,166 +297,281 @@ export default function LeadFinderPage() {
     const totalSaved = jobStatus.saved || 0
     const skipped    = jobStatus.skipped || 0
     const totalFound = jobStatus.found || 0
+    const duration   = isDone ? getDuration() : null
+    const sources    = isDone ? getSourceBreakdown() : []
 
     const pct = jobStatus.total > 0
       ? Math.min(100, Math.round((isDone ? jobStatus.total : totalFound) / jobStatus.total * 100))
       : 0
 
     return (
-      <div className="max-w-2xl mx-auto space-y-5">
-        <button onClick={() => { router.push('/leads') }} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition">
-          <ArrowLeft className="w-4 h-4" /> Leadlere Dön
+      <div className="max-w-3xl mx-auto space-y-5">
+        <button onClick={() => { router.push('/leads') }} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition group">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Leadlere Dön
         </button>
 
+        {/* ── Main result card ── */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+
           {/* Header */}
-          <div className="p-6 border-b border-slate-700">
+          <div className="p-8 border-b border-slate-700/50">
             {isDone ? (
-              <div className="text-center space-y-2">
-                {totalSaved === 0
-                  ? <AlertTriangle className="w-12 h-12 text-amber-400 mx-auto" />
-                  : <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto" />}
-                <h2 className="text-2xl font-bold text-white">{totalSaved} Lead Toplandı</h2>
-                <p className="text-slate-400 text-sm">"{jobStatus.query}" · {jobStatus.city}</p>
+              <div className="text-center space-y-3">
+                {totalSaved === 0 ? (
+                  <div className="w-16 h-16 mx-auto bg-amber-500/10 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-8 h-8 text-amber-400" />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 mx-auto bg-emerald-500/10 rounded-full flex items-center justify-center animate-[bounceIn_0.5s_ease-out]">
+                    <CheckCircle className="w-9 h-9 text-emerald-400" />
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-3xl font-bold text-white">{totalSaved} Lead Toplandı</h2>
+                  <p className="text-slate-400 text-sm mt-1">
+                    <span className="text-slate-300">"{jobStatus.query}"</span> · {jobStatus.city}
+                  </p>
+                </div>
+                {/* Duration + sources */}
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  {duration && (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-700/50 px-3 py-1 rounded-full">
+                      <Clock size={11} className="text-blue-400" /> {duration}
+                    </span>
+                  )}
+                  {sources.map(s => (
+                    <span key={s.name} className="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-700/50 px-3 py-1 rounded-full">
+                      <MapPin size={11} className="text-emerald-400" /> {s.name}: {s.count}
+                    </span>
+                  ))}
+                </div>
               </div>
             ) : isError ? (
-              <div className="text-center space-y-2">
-                <AlertTriangle className="w-12 h-12 text-red-400 mx-auto" />
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 mx-auto bg-red-500/10 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-8 h-8 text-red-400" />
+                </div>
                 <h2 className="text-xl font-bold text-white">{t('leads.hata_olustu', 'Hata Oluştu')}</h2>
                 <p className="text-red-400 text-sm">{jobStatus.error}</p>
               </div>
             ) : (
-              <div className="text-center space-y-2">
-                <div className="relative w-14 h-14 mx-auto">
+              <div className="text-center space-y-3">
+                <div className="relative w-16 h-16 mx-auto">
                   <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" />
-                  <div className="w-14 h-14 bg-blue-500/30 rounded-full flex items-center justify-center">
-                    <Search className="w-6 h-6 text-blue-400" />
+                  <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/30">
+                    <Search className="w-7 h-7 text-blue-400 animate-pulse" />
                   </div>
                 </div>
-                <h2 className="text-lg font-bold text-white">{t('leads.lead_araniyor', 'Lead Aranıyor...')}</h2>
-                <p className="text-blue-400 text-sm">{jobStatus.phase}</p>
+                <div>
+                  <h2 className="text-lg font-bold text-white">{t('leads.lead_araniyor', 'Lead Aranıyor...')}</h2>
+                  <p className="text-blue-400 text-sm mt-1">{jobStatus.phase}</p>
+                </div>
               </div>
             )}
           </div>
 
           {/* Progress / stats */}
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-5">
+            {/* Progress bar (running state) */}
             {!isDone && !isError && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-400">{t('leads.ilerleme', 'İlerleme')}</span>
                   <span className="text-white font-medium">{pct}%</span>
                 </div>
-                <div className="h-2.5 bg-slate-700 rounded-full overflow-hidden">
-                  <div className="h-2.5 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.max(4, pct)}%` }} />
+                <div className="h-3 bg-slate-700/60 rounded-full overflow-hidden">
+                  <div className="h-3 bg-gradient-to-r from-blue-500 via-blue-400 to-emerald-500 rounded-full transition-all duration-700 relative"
+                    style={{ width: `${Math.max(4, pct)}%` }}>
+                    <div className="absolute inset-0 bg-white/10 animate-pulse rounded-full" />
+                  </div>
                 </div>
                 <p className="text-xs text-slate-500 text-center">{t('leads.sayfadan_ayrilabilirsiniz', 'Sayfadan ayrılabilirsiniz — işlem arka planda devam eder')}</p>
               </div>
             )}
 
+            {/* Stats cards */}
             {totalFound > 0 && (
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="bg-slate-900/50 rounded-xl p-3">
-                  <p className="text-2xl font-bold text-blue-400">{totalFound}</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-900/40 rounded-xl p-4 border border-slate-700/50 hover:border-blue-500/30 transition group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                      <Search size={15} className="text-blue-400" />
+                    </div>
+                    <TrendingUp size={13} className="text-slate-600 group-hover:text-blue-400 transition" />
+                  </div>
+                  <p className="text-2xl font-bold text-white">{totalFound}</p>
                   <p className="text-xs text-slate-500 mt-0.5">Ham bulunan</p>
                 </div>
-                <div className="bg-slate-900/50 rounded-xl p-3">
-                  <p className="text-2xl font-bold text-emerald-400">{totalSaved}</p>
+                <div className="bg-slate-900/40 rounded-xl p-4 border border-slate-700/50 hover:border-emerald-500/30 transition group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                      <Database size={15} className="text-emerald-400" />
+                    </div>
+                    <CheckCircle size={13} className="text-slate-600 group-hover:text-emerald-400 transition" />
+                  </div>
+                  <p className="text-2xl font-bold text-white">{totalSaved}</p>
                   <p className="text-xs text-slate-500 mt-0.5">Kaydedilen</p>
                 </div>
-                <div className="bg-slate-900/50 rounded-xl p-3">
-                  <p className="text-2xl font-bold text-amber-400">{skipped}</p>
+                <div className="bg-slate-900/40 rounded-xl p-4 border border-slate-700/50 hover:border-amber-500/30 transition group">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <SkipForward size={15} className="text-amber-400" />
+                    </div>
+                    <AlertTriangle size={13} className="text-slate-600 group-hover:text-amber-400 transition" />
+                  </div>
+                  <p className="text-2xl font-bold text-white">{skipped}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{t('leads.tekrar_atlandi', 'Tekrar atlandı')}</p>
                 </div>
               </div>
             )}
 
+            {/* Skipped warning */}
             {isDone && skipped > 0 && (
-              <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <AlertTriangle size={14} className="text-amber-400" />
+                </div>
                 <div>
                   <p className="text-amber-300 text-sm font-medium">{skipped} tekrar lead atlandı</p>
-                  <p className="text-amber-400/70 text-xs mt-0.5">{t('leads.bu_leadler_zaten_crminizd', 'Bu leadler zaten CRM\'inizde kayıtlı. Kredi harcanmadı.')}</p>
+                  <p className="text-amber-400/60 text-xs mt-0.5">{t('leads.bu_leadler_zaten_crminizd', 'Bu leadler zaten CRM\'inizde kayıtlı. Kredi harcanmadı.')}</p>
                 </div>
               </div>
             )}
 
+            {/* Zero results */}
             {isDone && totalSaved === 0 && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 space-y-2 text-sm">
-                <p className="text-red-300 font-medium">{t('leads.sonuc_bulunamadi_olasi_ne', 'Sonuç bulunamadı — olası nedenler:')}</p>
-                <ul className="text-red-400/80 space-y-1 list-disc list-inside text-xs">
-                  <li>{t('leads.google_places_api_anahtar', 'Google Places API anahtarı geçersiz veya kotası dolmuş')}</li>
-                  <li>{t('leads.bu_sehirsektor_kombinasyo', 'Bu şehir/sektör kombinasyonu için yeterli veri yok')}</li>
-                  <li>{t('leads.arama_terimi_cok_spesifik', 'Arama terimi çok spesifik — daha genel bir kelime deneyin')}</li>
-                  <li>Tüm sonuçlar zaten CRM'inizde kayıtlı ({skipped} tekrar)</li>
+              <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-5 space-y-3">
+                <p className="text-red-300 font-medium text-sm">{t('leads.sonuc_bulunamadi_olasi_ne', 'Sonuç bulunamadı — olası nedenler:')}</p>
+                <ul className="text-red-400/70 space-y-1.5 list-none text-xs">
+                  <li className="flex items-start gap-2"><span className="text-red-500/60 mt-0.5">•</span>{t('leads.google_places_api_anahtar', 'Google Places API anahtarı geçersiz veya kotası dolmuş')}</li>
+                  <li className="flex items-start gap-2"><span className="text-red-500/60 mt-0.5">•</span>{t('leads.bu_sehirsektor_kombinasyo', 'Bu şehir/sektör kombinasyonu için yeterli veri yok')}</li>
+                  <li className="flex items-start gap-2"><span className="text-red-500/60 mt-0.5">•</span>{t('leads.arama_terimi_cok_spesifik', 'Arama terimi çok spesifik — daha genel bir kelime deneyin')}</li>
+                  <li className="flex items-start gap-2"><span className="text-red-500/60 mt-0.5">•</span>Tüm sonuçlar zaten CRM'inizde kayıtlı ({skipped} tekrar)</li>
                 </ul>
               </div>
             )}
 
+            {/* Action buttons */}
             {(isDone || isError) && (
               <div className="flex gap-3">
                 {totalSaved > 0 && (
                   <button onClick={() => router.push('/leads')}
-                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition text-sm">
-                    Leadleri Görüntüle →
+                    className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-xl font-semibold transition text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+                    <Eye size={16} /> Leadleri Görüntüle
+                  </button>
+                )}
+                {totalSaved > 0 && previewLeads.length > 0 && (
+                  <button onClick={exportCSV}
+                    className="py-3.5 px-5 bg-slate-700/80 hover:bg-slate-600 text-white rounded-xl font-medium transition text-sm flex items-center gap-2 border border-slate-600">
+                    <Download size={15} /> CSV
                   </button>
                 )}
                 <button onClick={() => { setJobStatus(null); setPreviewLeads([]); setCurrentJobId(null); if (pollRef.current) clearInterval(pollRef.current) }}
-                  className={`${totalSaved > 0 ? '' : 'flex-1 '} py-3 px-6 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition text-sm`}>
-                  Yeni Arama
+                  className={`${totalSaved > 0 ? '' : 'flex-1 '} py-3.5 px-5 bg-slate-700/80 hover:bg-slate-600 text-white rounded-xl font-medium transition text-sm flex items-center gap-2 border border-slate-600`}>
+                  <Search size={15} /> Yeni Arama
                 </button>
-              </div>
-            )}
-
-            {isDone && (loadingPreview || previewLeads.length > 0) && (
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-300">
-                    {loadingPreview ? 'Önizleme yükleniyor...' : `İlk ${previewLeads.length} lead`}
-                  </p>
-                  {jobStatus?.listName && (
-                    <span className="text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Folder size={10} /> {jobStatus.listName}
-                    </span>
-                  )}
-                </div>
-                {!loadingPreview && previewLeads.length > 0 && (
-                  <div className="overflow-x-auto rounded-xl border border-slate-700">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-700 bg-slate-900/50">
-                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Firma</th>
-                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Telefon</th>
-                          <th className="px-3 py-2 text-left text-slate-400 font-medium">Web</th>
-                          <th className="px-3 py-2 text-left text-slate-400 font-medium">{t('leads.sehir', 'Şehir')}</th>
-                          <th className="px-3 py-2 text-right text-slate-400 font-medium">Puan</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewLeads.map((lead, i) => (
-                          <tr key={lead.id} className={`border-b border-slate-700/50 ${i % 2 === 0 ? '' : 'bg-slate-900/20'}`}>
-                            <td className="px-3 py-2 text-white font-medium max-w-[160px] truncate">{lead.company_name}</td>
-                            <td className="px-3 py-2 text-slate-300">{lead.phone || <span className="text-slate-600">—</span>}</td>
-                            <td className="px-3 py-2 text-slate-400 truncate max-w-[100px]">
-                              {lead.website ? <span className="text-blue-400">{lead.website.replace(/^https?:\/\//, '').split('/')[0]}</span> : <span className="text-slate-600">—</span>}
-                            </td>
-                            <td className="px-3 py-2 text-slate-400">{lead.city || '—'}</td>
-                            <td className="px-3 py-2 text-right">
-                              <span className={`font-semibold ${lead.score >= 50 ? 'text-emerald-400' : lead.score >= 30 ? 'text-blue-400' : 'text-slate-500'}`}>
-                                {lead.score}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
             )}
           </div>
         </div>
+
+        {/* ── Lead preview list ── */}
+        {isDone && (loadingPreview || previewLeads.length > 0) && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-white">
+                  {loadingPreview ? 'Önizleme yükleniyor...' : `İlk ${previewLeads.length} lead`}
+                </h3>
+                {jobStatus?.listName && (
+                  <span className="text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <Folder size={10} /> {jobStatus.listName}
+                  </span>
+                )}
+              </div>
+              {previewLeads.length > 0 && (
+                <button onClick={exportCSV} className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition">
+                  <Download size={12} /> CSV İndir
+                </button>
+              )}
+            </div>
+
+            {!loadingPreview && previewLeads.length > 0 && (
+              <div className="space-y-2">
+                {previewLeads.map((lead, i) => {
+                  const si = getScoreInfo(lead.score || 0)
+                  const initial = (lead.company_name || '?')[0].toUpperCase()
+                  const domain = lead.website ? lead.website.replace(/^https?:\/\//, '').split('/')[0] : null
+                  return (
+                    <div key={lead.id || i}
+                      className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition group cursor-pointer"
+                      onClick={() => lead.id && router.push(`/leads/${lead.id}`)}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Avatar */}
+                        <div className={`w-10 h-10 rounded-xl ${getInitialColor(lead.company_name || '')} flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg`}>
+                          {initial}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold text-white truncate">{lead.company_name}</h4>
+                            {lead.category && (
+                              <span className="text-[10px] text-slate-400 bg-slate-700/60 px-2 py-0.5 rounded-full shrink-0 hidden sm:inline">
+                                {lead.category}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+                            {lead.phone && (
+                              <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()}
+                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition">
+                                <PhoneCall size={11} /> {lead.phone}
+                              </a>
+                            )}
+                            {domain && (
+                              <a href={lead.website.startsWith('http') ? lead.website : `https://${lead.website}`}
+                                target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-400 transition truncate max-w-[160px]">
+                                <ExternalLink size={11} /> {domain}
+                              </a>
+                            )}
+                            {lead.city && (
+                              <span className="flex items-center gap-1 text-xs text-slate-500">
+                                <MapPin size={11} /> {lead.city}
+                              </span>
+                            )}
+                            {lead.rating && (
+                              <span className="flex items-center gap-1 text-xs text-amber-400">
+                                <Star size={11} className="fill-amber-400" /> {lead.rating}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Score badge */}
+                        <div className={`flex flex-col items-center gap-0.5 shrink-0 px-3 py-1.5 rounded-lg border ${si.bg}`}>
+                          <span className={`text-lg font-bold ${si.color}`}>{lead.score || 0}</span>
+                          <span className={`text-[9px] font-medium ${si.color} opacity-70`}>{si.label}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* View all CTA */}
+            {totalSaved > previewLeads.length && (
+              <button onClick={() => router.push('/leads')}
+                className="w-full py-3 border border-slate-700 hover:border-slate-600 rounded-xl text-sm text-slate-400 hover:text-white transition flex items-center justify-center gap-2">
+                <MousePointerClick size={14} /> Tüm {totalSaved} lead'i görüntüle
+              </button>
+            )}
+          </div>
+        )}
       </div>
     )
   }
