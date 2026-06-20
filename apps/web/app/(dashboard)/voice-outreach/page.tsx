@@ -183,6 +183,61 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const [inputMode, setInputMode] = useState<'record' | 'upload'>('record')
   const [tuningOpen, setTuningOpen] = useState<string | null>(null)
   const previewTimerRef = useRef<any>(null)
+  const activeCtxRef = useRef<AudioContext | null>(null)
+  const activeSourceRef = useRef<AudioBufferSourceNode | null>(null)
+  const audioCacheRef = useRef<{ url: string; buffer: AudioBuffer } | null>(null)
+
+  function stopAllAudio() {
+    globalAudio?.pause(); globalAudio = null
+    try { activeSourceRef.current?.stop() } catch {}
+    try { activeCtxRef.current?.close() } catch {}
+    activeSourceRef.current = null; activeCtxRef.current = null
+    setPlaying(null)
+  }
+
+  async function playVoiceSample(sampleUrl: string, voiceId: string, curSettings: any) {
+    stopAllAudio()
+    if (!sampleUrl) return
+    setPlaying(voiceId)
+    try {
+      const actx = new AudioContext()
+      activeCtxRef.current = actx
+
+      let audioBuf: AudioBuffer
+      if (audioCacheRef.current?.url === sampleUrl) {
+        audioBuf = audioCacheRef.current.buffer
+      } else {
+        const resp = await fetch(sampleUrl)
+        const arrBuf = await resp.arrayBuffer()
+        audioBuf = await actx.decodeAudioData(arrBuf)
+        audioCacheRef.current = { url: sampleUrl, buffer: audioBuf }
+      }
+
+      const source = actx.createBufferSource()
+      activeSourceRef.current = source
+      source.buffer = audioBuf
+      source.playbackRate.value = curSettings.voice_speed ?? 1.0
+
+      const bass = actx.createBiquadFilter()
+      bass.type = 'lowshelf'; bass.frequency.value = 200
+      bass.gain.value = curSettings.voice_bass ?? 0
+
+      const treble = actx.createBiquadFilter()
+      treble.type = 'highshelf'; treble.frequency.value = 3000
+      treble.gain.value = curSettings.voice_treble ?? 0
+
+      const warmth = actx.createBiquadFilter()
+      warmth.type = 'peaking'; warmth.frequency.value = 400; warmth.Q.value = 1.0
+      warmth.gain.value = curSettings.voice_warmth ?? 0
+
+      const gain = actx.createGain()
+      gain.gain.value = curSettings.voice_volume ?? 1.0
+
+      source.connect(bass).connect(treble).connect(warmth).connect(gain).connect(actx.destination)
+      source.onended = () => { setPlaying(null); activeSourceRef.current = null }
+      source.start(0)
+    } catch { setPlaying(null) }
+  }
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
@@ -417,7 +472,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                           <span className="text-xs" style={{ color:'#94a3b8' }}>{new Date(v.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={e => { e.stopPropagation(); if (playing===v.id){globalAudio?.pause();globalAudio=null;setPlaying(null);return} globalAudio?.pause();globalAudio=null;setPlaying(v.id);const a=new Audio(v.sample_url);globalAudio=a;a.onended=()=>{setPlaying(null);globalAudio=null};a.play().catch(()=>setPlaying(null)) }}
+                          <button onClick={e => { e.stopPropagation(); if (playing===v.id) { stopAllAudio(); return } playVoiceSample(v.sample_url, v.id, settings) }}
                             className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:scale-110"
                             style={{ background: playing===v.id ? '#ef4444' : '#f1f5f9' }} title="Dinle">
                             {playing === v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3" style={{ color:'#64748b' }}/>}
@@ -455,48 +510,6 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                               { key: 'treble', label: 'Tiz (Netlik)',   min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Yumuşak', hi: 'Keskin',  color: '#d97706' },
                               { key: 'warmth', label: 'Sıcaklık',      min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Soğuk',   hi: 'Sıcak',   color: '#dc2626' },
                             ]
-
-                            // Play voice sample with all current settings via Web Audio API
-                            const playWithSettings = async (overrides: Record<string, number> = {}) => {
-                              if (!v.sample_url) return
-                              globalAudio?.pause(); globalAudio = null; setPlaying(v.id)
-                              try {
-                                const merged = { ...settings, ...overrides }
-                                const actx = new AudioContext()
-                                const resp = await fetch(v.sample_url)
-                                const arrBuf = await resp.arrayBuffer()
-                                const audioBuf = await actx.decodeAudioData(arrBuf)
-
-                                const source = actx.createBufferSource()
-                                source.buffer = audioBuf
-                                source.playbackRate.value = merged.voice_speed ?? 1.0
-
-                                const bassFilter = actx.createBiquadFilter()
-                                bassFilter.type = 'lowshelf'; bassFilter.frequency.value = 200
-                                bassFilter.gain.value = merged.voice_bass ?? 0
-
-                                const trebleFilter = actx.createBiquadFilter()
-                                trebleFilter.type = 'highshelf'; trebleFilter.frequency.value = 3000
-                                trebleFilter.gain.value = merged.voice_treble ?? 0
-
-                                const warmthFilter = actx.createBiquadFilter()
-                                warmthFilter.type = 'peaking'; warmthFilter.frequency.value = 400
-                                warmthFilter.Q.value = 1.0; warmthFilter.gain.value = merged.voice_warmth ?? 0
-
-                                const gainNode = actx.createGain()
-                                gainNode.gain.value = merged.voice_volume ?? 1.0
-
-                                source.connect(bassFilter)
-                                bassFilter.connect(trebleFilter)
-                                trebleFilter.connect(warmthFilter)
-                                warmthFilter.connect(gainNode)
-                                gainNode.connect(actx.destination)
-
-                                source.onended = () => { setPlaying(null); actx.close() }
-                                source.start(0)
-                              } catch { setPlaying(null) }
-                            }
-
                             return <>
                               {SLIDERS.map(s => {
                                 const val = settings[`voice_${s.key}`] ?? s.def
@@ -511,11 +524,12 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                                       onClick={e => e.stopPropagation()}
                                       onChange={e => {
                                         const newVal = parseFloat(e.target.value)
+                                        const newSettings = { ...settings, [`voice_${s.key}`]: newVal }
                                         setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: newVal }))
                                         clearTimeout(previewTimerRef.current)
                                         previewTimerRef.current = setTimeout(() => {
-                                          playWithSettings({ [`voice_${s.key}`]: newVal })
-                                        }, 400)
+                                          playVoiceSample(v.sample_url, v.id, newSettings)
+                                        }, 500)
                                       }}
                                       className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                                       style={{ background: `linear-gradient(to right, ${s.color} ${pct}%, #e2e8f0 ${pct}%)` }}/>
