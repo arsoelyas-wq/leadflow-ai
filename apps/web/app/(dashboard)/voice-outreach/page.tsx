@@ -173,7 +173,7 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 // ─── STEP 1: SES SEÇ ─────────────────────────────────────────────────────────
-function StepVoice({ selectedId, selectedType, onSelect, onMsg }: any) {
+function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSettings }: any) {
   const [voiceSubTab, setVoiceSubTab] = useState<'mine' | 'library'>('mine')
   const [voices, setVoices] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -369,8 +369,51 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg }: any) {
             </button>
           </div>
 
-          {/* Right: saved voices */}
+          {/* Right: saved voices + tuning */}
           <div className="lg:col-span-2 space-y-3">
+            {/* Voice tuning panel */}
+            {selectedId && (
+              <div className="rounded-2xl p-4 space-y-3 fade-in-up" style={{ background: '#faf5ff', border: '1px solid #e9d5ff' }}>
+                <h4 className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#7c3aed' }}>
+                  <Settings className="w-3.5 h-3.5"/> Ses Ayarları
+                </h4>
+                {[
+                  { key: 'speed',     label: 'Konuşma Hızı',  min: 0.5, max: 2.0, step: 0.1, def: 1.0, unit: 'x',  desc: 'Yavaş ↔ Hızlı'      },
+                  { key: 'pitch',     label: 'Ses Tonu',       min: 0.5, max: 2.0, step: 0.1, def: 1.0, unit: 'x',  desc: 'Kalın ↔ İnce'        },
+                  { key: 'stability', label: 'Kararlılık',     min: 0,   max: 1.0, step: 0.05,def: 0.5, unit: '',   desc: 'Doğal ↔ Tutarlı'     },
+                  { key: 'clarity',   label: 'Netlik',         min: 0,   max: 1.0, step: 0.05,def: 0.75,unit: '',   desc: 'Yumuşak ↔ Net'       },
+                ].map(s => {
+                  const val = settings[`voice_${s.key}`] ?? s.def
+                  return (
+                    <div key={s.key}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-semibold" style={{ color: '#64748b' }}>{s.label}</span>
+                        <span className="text-[11px] font-mono font-bold" style={{ color: '#7c3aed' }}>{Number(val).toFixed(s.step < 0.1 ? 2 : 1)}{s.unit}</span>
+                      </div>
+                      <input type="range" min={s.min} max={s.max} step={s.step} value={val}
+                        onChange={e => setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: parseFloat(e.target.value) }))}
+                        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                        style={{ background: `linear-gradient(to right, #7c3aed ${((val - s.min) / (s.max - s.min)) * 100}%, #e2e8f0 ${((val - s.min) / (s.max - s.min)) * 100}%)` }}/>
+                      <div className="flex justify-between mt-0.5">
+                        <span className="text-[9px]" style={{ color: '#cbd5e1' }}>{s.desc.split(' ↔ ')[0]}</span>
+                        <span className="text-[9px]" style={{ color: '#cbd5e1' }}>{s.desc.split(' ↔ ')[1]}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+                <button onClick={async () => {
+                  try {
+                    await fetch(`${API}/api/voice/settings`, { method: 'PATCH', headers: authH(), body: JSON.stringify(settings) })
+                    onMsg('success', 'Ses ayarları kaydedildi')
+                  } catch { onMsg('error', 'Kaydetme başarısız') }
+                }}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-[1.02]"
+                  style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 2px 8px rgba(124,58,237,0.25)' }}>
+                  Ayarları Kaydet
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-bold flex items-center gap-2" style={{ color:'#0f172a' }}>
                 <User className="w-4 h-4" style={{ color:'#7c3aed' }}/>Kayıtlı Seslerim
@@ -1033,7 +1076,7 @@ export default function VoicePage() {
 
           {/* Step content */}
           <div key={step}>
-            {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg}/>}
+            {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg} settings={settings} setSettings={setSettings}/>}
             {step===2 && <StepLead leads={leads} callMode={callMode} setCallMode={setCallMode} selectedLead={selectedLead} setSelectedLead={setSelectedLead} selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads} campaignName={campaignName} setCampaignName={setCampaignName} filterCountry={filterCountry} setFilterCountry={setFilterCountry}/>}
             {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings}/>}
             {step===4 && <StepLaunch selectedVoiceName={selectedVoiceName} selectedVoiceType={selectedVoiceType} callMode={callMode} selectedLead={selectedLead} selectedLeads={selectedLeads} selectedLanguage={selectedLanguage} leads={leads} calling={calling} campaignRunning={campaignRunning} onCall={makeSingleCall} onCampaign={startCampaign}/>}

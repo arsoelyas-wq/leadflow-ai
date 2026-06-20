@@ -48,20 +48,29 @@ router.get('/', authMiddleware, async (req: any, res: any) => {
   }
 });
 
-// GET /api/leads/with-phone — All leads that have a phone number (no limit, for voice outreach)
+// GET /api/leads/with-phone — All leads that have a phone number (paginated past Supabase 1000 default)
 router.get('/with-phone', authMiddleware, async (req: any, res: any) => {
   try {
-    const { data, error } = await supabase
-      .from('leads')
-      .select('id, company_name, phone, country')
-      .eq('user_id', req.userId)
-      .not('phone', 'is', null)
-      .neq('phone', '')
-      .not('phone', 'ilike', '%@%')
-      .order('company_name', { ascending: true })
-      .limit(20000);
-    if (error) throw error;
-    res.json({ leads: data || [], total: (data || []).length });
+    const allLeads: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, company_name, phone, city, country, score, sector')
+        .eq('user_id', req.userId)
+        .not('phone', 'is', null)
+        .neq('phone', '')
+        .not('phone', 'ilike', '%@%')
+        .order('company_name', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allLeads.push(...data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    res.json({ leads: allLeads, total: allLeads.length });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
