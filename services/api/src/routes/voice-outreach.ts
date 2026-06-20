@@ -465,7 +465,7 @@ router.get('/eleven-voices', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/clone — ses yükle, Supabase'e kaydet
+// POST /api/voice/clone — ses yükle, ElevenLabs ile klonla, Supabase'e kaydet
 router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
   try {
     const { name } = req.body;
@@ -476,30 +476,59 @@ router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
     const ext = (file.originalname || 'audio').split('.').pop() || 'mp3';
     const fileName = `voices/${req.userId}/${Date.now()}.${ext}`;
 
+    // Upload to Supabase Storage (backup + sample playback)
     const { error: uploadError } = await supabase.storage
       .from('voice-samples')
-      .upload(fileName, fileBuffer, {
-        contentType: file.mimetype || 'audio/mpeg',
-        upsert: false,
-      });
-
+      .upload(fileName, fileBuffer, { contentType: file.mimetype || 'audio/mpeg', upsert: false });
     if (uploadError) throw new Error(uploadError.message);
 
     const { data: { publicUrl } } = supabase.storage
       .from('voice-samples')
       .getPublicUrl(fileName);
 
+    // Clone voice with ElevenLabs API (if key available)
+    let elevenVoiceId: string | null = null;
+    if (ELEVEN_KEY) {
+      try {
+        const FormData = require('form-data');
+        const fd = new FormData();
+        fd.append('name', name || 'Sesim');
+        fd.append('files', fileBuffer, { filename: file.originalname || 'audio.mp3', contentType: file.mimetype || 'audio/mpeg' });
+        fd.append('remove_background_noise', 'true');
+
+        const cloneRes = await axios.post(`${ELEVEN_BASE}/voices/add`, fd, {
+          headers: { ...fd.getHeaders(), 'xi-api-key': ELEVEN_KEY },
+          timeout: 120_000,
+        });
+        elevenVoiceId = cloneRes.data?.voice_id || null;
+        console.log(`[Voice] ElevenLabs clone success: ${elevenVoiceId}`);
+      } catch (cloneErr: any) {
+        console.error('[Voice] ElevenLabs clone failed:', cloneErr.response?.data?.detail || cloneErr.message);
+      }
+    }
+
     const { data: voice, error: dbError } = await supabase
       .from('cloned_voices')
-      .insert([{ user_id: req.userId, name: name || 'Sesim', sample_url: publicUrl, file_name: file.originalname }])
+      .insert([{
+        user_id: req.userId,
+        name: name || 'Sesim',
+        sample_url: publicUrl,
+        file_name: file.originalname,
+        elevenlabs_voice_id: elevenVoiceId,
+      }])
       .select()
       .single();
 
     if (dbError) throw new Error(dbError.message);
-
     try { fs.unlinkSync(file.path); } catch {}
 
-    res.json({ ok: true, voiceId: voice.id, voiceName: voice.name, message: 'Ses kaydedildi!' });
+    res.json({
+      ok: true,
+      voiceId: voice.id,
+      voiceName: voice.name,
+      elevenVoiceId,
+      message: elevenVoiceId ? 'Ses klonlandı ve kaydedildi!' : 'Ses kaydedildi (klonlama devre dışı)',
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -539,36 +568,70 @@ router.post('/set-voice', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/preview-voice — with speed/pitch from request or saved settings
+// POST /api/voice/preview-voice — ElevenLabs for cloned voices, Azure for library
 router.post('/preview-voice', async (req: any, res: any) => {
   try {
-    const { voiceId, text, language = 'tr', provider = 'azure', speed, pitch } = req.body;
+    const { voiceId, text, language = 'tr', speed, pitch, stability, clarity } = req.body;
     const defaults: Record<string, string> = {
       tr: 'Merhaba, nasılsınız? Size kısa bir bilgi vermek istiyorum.',
       en: 'Hello, how are you? I would like to share some information with you.',
     };
     const sampleText = text || defaults[language] || defaults['tr'];
 
-    // Convert 0.5-2.0 range to -50..+50 percentage for TTS engine
-    let rate = 0, pitchHz = 0;
-    if (speed != null || pitch != null) {
-      rate = speed != null ? Math.round((speed - 1) * 100) : 0;
-      pitchHz = pitch != null ? Math.round((pitch - 1) * 50) : 0;
-    } else {
-      try {
-        const { data: vs } = await supabase.from('voice_settings').select('*').eq('user_id', req.userId).maybeSingle();
-        if (vs) {
-          rate = vs.voice_speed != null ? Math.round((vs.voice_speed - 1) * 100) : 0;
-          pitchHz = vs.voice_pitch != null ? Math.round((vs.voice_pitch - 1) * 50) : 0;
-        }
-      } catch {}
+    // Check if this is a cloned voice with ElevenLabs ID
+    let elevenVoiceId: string | null = null;
+    if (voiceId) {
+      const { data: cv } = await supabase.from('cloned_voices')
+        .select('elevenlabs_voice_id')
+        .eq('id', voiceId)
+        .eq('user_id', req.userId)
+        .maybeSingle();
+      if (cv?.elevenlabs_voice_id) elevenVoiceId = cv.elevenlabs_voice_id;
+      if (!elevenVoiceId && voiceId.length > 10 && !voiceId.includes('-')) elevenVoiceId = voiceId;
     }
 
+    // If we have an ElevenLabs voice ID, use ElevenLabs TTS
+    if (elevenVoiceId && ELEVEN_KEY) {
+      const stab = stability ?? 0.5;
+      const sim  = clarity ?? 0.75;
+      const spd  = speed ?? 1.0;
+
+      const elRes = await axios.post(
+        `${ELEVEN_BASE}/text-to-speech/${elevenVoiceId}`,
+        {
+          text: sampleText,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: {
+            stability: stab,
+            similarity_boost: sim,
+            style: 0.0,
+            use_speaker_boost: true,
+            speed: spd,
+          },
+        },
+        {
+          headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
+          responseType: 'arraybuffer',
+          timeout: 30000,
+        }
+      );
+      res.setHeader('Content-Type', 'audio/mpeg');
+      return res.send(Buffer.from(elRes.data));
+    }
+
+    // Fallback: Azure TTS for library voices
+    let rate = 0, pitchHz = 0;
+    if (speed != null) rate = Math.round((speed - 1) * 100);
+    if (pitch != null) pitchHz = Math.round((pitch - 1) * 50);
+
     const { synthesize } = require('../services/tts-engine');
-    const audio = await synthesize({ text: sampleText, language, voiceId, provider, rate, pitch: pitchHz });
+    const audio = await synthesize({ text: sampleText, language, voiceId, provider: 'azure', rate, pitch: pitchHz });
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(audio);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    console.error('[Voice Preview]', e.response?.data ? Buffer.from(e.response.data).toString().slice(0, 200) : e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/voice/call/single

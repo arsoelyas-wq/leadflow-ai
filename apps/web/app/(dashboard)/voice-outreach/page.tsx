@@ -472,7 +472,9 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                                         globalAudio?.pause(); globalAudio = null
                                         const curSpeed = s.key === 'speed' ? newVal : (settings.voice_speed ?? 1.0)
                                         const curPitch = s.key === 'pitch' ? newVal : (settings.voice_pitch ?? 1.0)
-                                        const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:{ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body:JSON.stringify({ voiceId: v.elevenlabs_voice_id || v.id, text: 'Merhaba, nasılsınız?', speed: curSpeed, pitch: curPitch }) })
+                                        const curStability = s.key === 'stability' ? newVal : (settings.voice_stability ?? 0.5)
+                                        const curClarity = s.key === 'clarity' ? newVal : (settings.voice_clarity ?? 0.75)
+                                        const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:{ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body:JSON.stringify({ voiceId: v.id, text: 'Merhaba, nasılsınız?', speed: curSpeed, pitch: curPitch, stability: curStability, clarity: curClarity }) })
                                         if (!r.ok) return
                                         const ct = r.headers.get('content-type') || ''
                                         if (ct.includes('audio')) {
