@@ -469,11 +469,21 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                                     clearTimeout(previewTimerRef.current)
                                     previewTimerRef.current = setTimeout(async () => {
                                       try {
-                                        const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:authH(), body:JSON.stringify({ voiceId: v.elevenlabs_voice_id || v.id, text: 'Merhaba, nasılsınız?' }) })
-                                        const d = await r.json()
-                                        if (d.audioUrl) { globalAudio?.pause(); const a = new Audio(d.audioUrl); globalAudio = a; setPlaying(v.id); a.onended = () => { setPlaying(null); globalAudio = null }; a.play().catch(() => {}) }
+                                        globalAudio?.pause(); globalAudio = null
+                                        const curSpeed = s.key === 'speed' ? newVal : (settings.voice_speed ?? 1.0)
+                                        const curPitch = s.key === 'pitch' ? newVal : (settings.voice_pitch ?? 1.0)
+                                        const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:{ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body:JSON.stringify({ voiceId: v.elevenlabs_voice_id || v.id, text: 'Merhaba, nasılsınız?', speed: curSpeed, pitch: curPitch }) })
+                                        if (!r.ok) return
+                                        const ct = r.headers.get('content-type') || ''
+                                        if (ct.includes('audio')) {
+                                          const blob = await r.blob()
+                                          const url = URL.createObjectURL(blob)
+                                          const a = new Audio(url); globalAudio = a; setPlaying(v.id)
+                                          a.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(url) }
+                                          a.play().catch(() => {})
+                                        }
                                       } catch {}
-                                    }, 800)
+                                    }, 1000)
                                   }}
                                   className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                                   style={{ background: `linear-gradient(to right, #7c3aed ${pct}%, #e2e8f0 ${pct}%)` }}/>

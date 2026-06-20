@@ -539,17 +539,33 @@ router.post('/set-voice', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/preview-voice
+// POST /api/voice/preview-voice — with speed/pitch from request or saved settings
 router.post('/preview-voice', async (req: any, res: any) => {
   try {
-    const { voiceId, text, language = 'tr', provider = 'azure' } = req.body;
+    const { voiceId, text, language = 'tr', provider = 'azure', speed, pitch } = req.body;
     const defaults: Record<string, string> = {
       tr: 'Merhaba, nasılsınız? Size kısa bir bilgi vermek istiyorum.',
       en: 'Hello, how are you? I would like to share some information with you.',
     };
     const sampleText = text || defaults[language] || defaults['tr'];
+
+    // Convert 0.5-2.0 range to -50..+50 percentage for TTS engine
+    let rate = 0, pitchHz = 0;
+    if (speed != null || pitch != null) {
+      rate = speed != null ? Math.round((speed - 1) * 100) : 0;
+      pitchHz = pitch != null ? Math.round((pitch - 1) * 50) : 0;
+    } else {
+      try {
+        const { data: vs } = await supabase.from('voice_settings').select('*').eq('user_id', req.userId).maybeSingle();
+        if (vs) {
+          rate = vs.voice_speed != null ? Math.round((vs.voice_speed - 1) * 100) : 0;
+          pitchHz = vs.voice_pitch != null ? Math.round((vs.voice_pitch - 1) * 50) : 0;
+        }
+      } catch {}
+    }
+
     const { synthesize } = require('../services/tts-engine');
-    const audio = await synthesize({ text: sampleText, language, voiceId, provider });
+    const audio = await synthesize({ text: sampleText, language, voiceId, provider, rate, pitch: pitchHz });
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(audio);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
