@@ -409,16 +409,31 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg }: any) {
                           <span className="text-sm font-medium truncate" style={{ color:'#0f172a' }}>{v.name}</span>
                           {active && <CheckCircle className="w-3.5 h-3.5 shrink-0" style={{ color:'#7c3aed' }}/>}
                         </div>
-                        <span className="text-xs" style={{ color:'#94a3b8' }}>{new Date(v.created_at).toLocaleDateString()}</span>
+                        <span className="text-xs" style={{ color:'#94a3b8' }}>{new Date(v.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
                         <button onClick={e => { e.stopPropagation(); if (playing===v.id){globalAudio?.pause();globalAudio=null;setPlaying(null);return} globalAudio?.pause();globalAudio=null;setPlaying(v.id);const a=new Audio(v.sample_url);globalAudio=a;a.onended=()=>{setPlaying(null);globalAudio=null};a.play().catch(()=>setPlaying(null)) }}
                           className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:scale-110"
-                          style={{ background: playing===v.id ? '#ef4444' : '#f1f5f9' }}>
+                          style={{ background: playing===v.id ? '#ef4444' : '#f1f5f9' }}
+                          title="Dinle">
                           {playing === v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3" style={{ color:'#64748b' }}/>}
                         </button>
+                        <button onClick={async e => {
+                          e.stopPropagation()
+                          try {
+                            const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:authH(), body:JSON.stringify({ voiceId: v.elevenlabs_voice_id || v.id, text: 'Merhaba, ben sizinle iş birliği hakkında konuşmak istiyorum.' }) })
+                            const d = await r.json()
+                            if (d.audioUrl) { globalAudio?.pause(); const a = new Audio(d.audioUrl); globalAudio = a; setPlaying(v.id); a.onended = () => { setPlaying(null); globalAudio = null }; a.play().catch(() => setPlaying(null)) }
+                            else onMsg('error', d.error || 'Önizleme oluşturulamadı')
+                          } catch { onMsg('error', 'Ses testi başarısız') }
+                        }}
+                          className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-violet-50 transition hover:scale-110" style={{ background: '#f1f5f9' }}
+                          title="Test Et">
+                          <Sparkles className="w-3 h-3" style={{ color:'#7c3aed' }}/>
+                        </button>
                         <button onClick={async e => { e.stopPropagation(); await fetch(`${API}/api/voice/my-voices/${v.id}`, { method:'DELETE', headers:authH() }); await loadVoices(); if (selectedId===v.id) onSelect('','','library') }}
-                          className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 transition hover:scale-110" style={{ background: '#f1f5f9' }}>
+                          className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 transition hover:scale-110" style={{ background: '#f1f5f9' }}
+                          title="Sil">
                           <Trash2 className="w-3 h-3" style={{ color:'#94a3b8' }}/>
                         </button>
                       </div>
@@ -895,12 +910,12 @@ export default function VoicePage() {
   }
 
   const STATS_DATA = stats ? [
-    { label:'Toplam',    value:stats.total,       color:'#0f172a',  glow:'rgba(15,23,42,0.06)'    },
-    { label:'Bitti',     value:stats.completed,   color:'#059669',  glow:'rgba(5,150,105,0.1)'    },
-    { label:'Olumlu',    value:stats.positive,    color:'#0d9488',  glow:'rgba(13,148,136,0.1)'   },
-    { label:'Cevap Yok', value:stats.no_answer,   color:'#64748b',  glow:'rgba(100,116,139,0.08)' },
-    { label:'Dakika',    value:stats.totalMinutes,color:'#b45309',  glow:'rgba(180,83,9,0.1)'     },
-    { label:'Dil',       value:Object.keys(stats.byLanguage||{}).length,color:'#7c3aed',glow:'rgba(124,58,237,0.1)'},
+    { label:'Toplam Arama', value:stats.total,       color:'#0f172a',  glow:'rgba(15,23,42,0.06)',    Icon: Phone      },
+    { label:'Tamamlanan',   value:stats.completed,   color:'#059669',  glow:'rgba(5,150,105,0.1)',    Icon: CheckCircle},
+    { label:'Olumlu Sonuç', value:stats.positive,    color:'#0d9488',  glow:'rgba(13,148,136,0.1)',   Icon: Sparkles   },
+    { label:'Cevap Yok',    value:stats.no_answer,   color:'#64748b',  glow:'rgba(100,116,139,0.08)', Icon: AlertTriangle },
+    { label:'Toplam Süre',  value:`${stats.totalMinutes}dk`, color:'#b45309', glow:'rgba(180,83,9,0.1)', Icon: Zap  },
+    { label:'Dil Sayısı',   value:Object.keys(stats.byLanguage||{}).length, color:'#7c3aed', glow:'rgba(124,58,237,0.1)', Icon: Globe2 },
   ] : []
 
   return (
@@ -978,11 +993,14 @@ export default function VoicePage() {
       {/* ── STATS ─────────────────────────────────────────────────────────────── */}
       {stats && (
         <div className="grid grid-cols-3 md:grid-cols-6 gap-2.5">
-          {STATS_DATA.map(({ label, value, color, glow }) => (
-            <div key={label} className="rounded-2xl p-4 text-center relative overflow-hidden group hover:scale-[1.03] transition-transform duration-200 cursor-default" style={{ background:'#ffffff', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+          {STATS_DATA.map(({ label, value, color, glow, Icon }) => (
+            <div key={label} className="rounded-2xl p-4 relative overflow-hidden group hover:scale-[1.03] transition-transform duration-200 cursor-default" style={{ background:'#ffffff', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
               <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: `radial-gradient(ellipse at 50% 120%, ${glow}, transparent 65%)` }}/>
+              <div className="flex items-center gap-2 mb-1.5 relative">
+                <Icon className="w-3.5 h-3.5" style={{ color: `${color}88` }}/>
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color:'#94a3b8' }}>{label}</span>
+              </div>
               <div className="text-2xl font-bold relative" style={{ color }}>{value}</div>
-              <div className="text-xs mt-0.5 relative" style={{ color:'#94a3b8' }}>{label}</div>
             </div>
           ))}
         </div>
