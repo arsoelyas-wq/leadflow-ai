@@ -8,56 +8,114 @@ const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 const STAGES = ['new', 'contacted', 'replied', 'proposal', 'negotiation', 'won', 'lost'];
+const CARDS_PER_PAGE = 30;
 
-// GET /api/pipeline/board — Full Kanban board with rich card data
+// GET /api/pipeline/board — Optimized board with per-stage pagination
 router.get('/board', async (req: any, res: any) => {
   try {
     const { data: leads, error } = await supabase
       .from('leads')
-      .select(`
-        id, company_name, contact_name, phone, email,
-        status, sector, city, source, score,
-        created_at, updated_at
-      `)
+      .select('id, company_name, contact_name, phone, email, website, status, sector, city, source, score, created_at, updated_at')
       .eq('user_id', req.userId)
-      .order('updated_at', { ascending: false });
+      .order('score', { ascending: false });
 
     if (error) throw error;
 
     const board: Record<string, any[]> = {};
-    STAGES.forEach(s => { board[s] = []; });
+    const stageCounts: Record<string, number> = {};
+    const stageScoreSum: Record<string, number> = {};
+    const stageDaysSum: Record<string, number> = {};
+    STAGES.forEach(s => { board[s] = []; stageCounts[s] = 0; stageScoreSum[s] = 0; stageDaysSum[s] = 0; });
 
     const now = Date.now();
     (leads || []).forEach((lead: any) => {
       const stage = STAGES.includes(lead.status) ? lead.status : 'new';
-      // Days in current stage (proxy: time since last status update)
       const lastUpdate = lead.updated_at || lead.created_at;
       const daysInStage = Math.floor((now - new Date(lastUpdate).getTime()) / 86400000);
-      board[stage].push({ ...lead, daysInStage });
+
+      stageCounts[stage]++;
+      stageScoreSum[stage] += (lead.score || 0);
+      stageDaysSum[stage] += daysInStage;
+
+      // Only send first CARDS_PER_PAGE cards per stage (rest loaded on demand)
+      if (board[stage].length < CARDS_PER_PAGE) {
+        board[stage].push({ ...lead, daysInStage });
+      }
     });
 
-    // Stats
     const total = leads?.length || 0;
-    const won   = board['won'].length;
-    const lost  = board['lost'].length;
+    const won   = stageCounts['won'];
+    const lost  = stageCounts['lost'];
     const inProgress = total - won - lost;
     const winRate = (won + lost) > 0 ? Math.round((won / (won + lost)) * 100) : 0;
 
-    // Conversion rates between adjacent stages
+    // Per-stage analytics
+    const stageAnalytics: Record<string, { count: number; avgScore: number; avgDays: number; hasMore: boolean }> = {};
+    STAGES.forEach(s => {
+      const c = stageCounts[s];
+      stageAnalytics[s] = {
+        count: c,
+        avgScore: c > 0 ? Math.round(stageScoreSum[s] / c) : 0,
+        avgDays: c > 0 ? Math.round(stageDaysSum[s] / c) : 0,
+        hasMore: c > CARDS_PER_PAGE,
+      };
+    });
+
+    // Conversion funnel
     const funnel = STAGES.slice(0, 6).map((stage, i) => ({
       stage,
-      count: board[stage].length,
-      rate: i > 0 && board[STAGES[i - 1]].length > 0
-        ? Math.round((board[stage].length / board[STAGES[i - 1]].length) * 100)
+      count: stageCounts[stage],
+      rate: i > 0 && stageCounts[STAGES[i - 1]] > 0
+        ? Math.round((stageCounts[stage] / stageCounts[STAGES[i - 1]]) * 100)
         : 100,
     }));
+
+    // Bottleneck: stage with highest avg days (excluding won/lost)
+    const activeStages = STAGES.filter(s => !['won', 'lost'].includes(s) && stageCounts[s] > 0);
+    const bottleneck = activeStages.length > 0
+      ? activeStages.reduce((a, b) => stageAnalytics[a].avgDays > stageAnalytics[b].avgDays ? a : b)
+      : null;
 
     res.json({
       board,
       stages: STAGES,
-      stats: { total, won, lost, inProgress, winRate },
+      stageCounts,
+      stageAnalytics,
+      stats: { total, won, lost, inProgress, winRate, bottleneck },
       funnel,
     });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/pipeline/stage/:stage — Load more cards for a stage
+router.get('/stage/:stage', async (req: any, res: any) => {
+  try {
+    const { stage } = req.params;
+    const offset = parseInt(req.query.offset || '0', 10);
+    const limit  = parseInt(req.query.limit  || String(CARDS_PER_PAGE), 10);
+
+    if (!STAGES.includes(stage)) return res.status(400).json({ error: 'Geçersiz aşama' });
+
+    const { data, error } = await supabase
+      .from('leads')
+      .select('id, company_name, contact_name, phone, email, website, status, sector, city, source, score, created_at, updated_at')
+      .eq('user_id', req.userId)
+      .eq('status', stage)
+      .order('score', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    const now = Date.now();
+    const cards = (data || []).map((lead: any) => {
+      const lastUpdate = lead.updated_at || lead.created_at;
+      const daysInStage = Math.floor((now - new Date(lastUpdate).getTime()) / 86400000);
+      return { ...lead, daysInStage };
+    });
+
+    res.json({ cards, hasMore: cards.length === limit });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -99,7 +157,6 @@ router.patch('/move', async (req: any, res: any) => {
       }]).catch(() => {});
     }
 
-    // Log activity event
     try {
       await supabase.from('lead_activities').insert({
         lead_id:    leadId,
@@ -109,7 +166,6 @@ router.patch('/move', async (req: any, res: any) => {
       });
     } catch {}
 
-    // Meta CAPI — fire appropriate funnel event (non-blocking)
     try {
       const { data: lead } = await supabase
         .from('leads')

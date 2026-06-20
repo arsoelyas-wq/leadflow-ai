@@ -4,54 +4,54 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
 import {
-  RefreshCw, Phone, Flame, ExternalLink,
-  TrendingUp, Trophy, BarChart3, AlertTriangle,
-  Clock, User, ArrowRight, Target, Search,
+  RefreshCw, Phone, ExternalLink, TrendingUp, Trophy, BarChart3,
+  AlertTriangle, Clock, User, ArrowRight, Target, Search,
+  ChevronDown, PhoneCall, Globe, MapPin, Star, Zap,
+  ArrowUpRight, Timer, ChevronRight, Filter, Layers,
 } from 'lucide-react'
 
-// ── Stage config ───────────────────────────────────────────────────────────────
+// ── Stage config ────────────────────────────────────────────────────────────────
 const STAGES = [
-  { key: 'new',         label: 'Yeni Lead',   short: 'Yeni',      accent: '#94a3b8', dot: 'bg-slate-400',   badgeBg: 'bg-slate-500/15 text-slate-300'    },
-  { key: 'contacted',   label: 'İletişimde',  short: 'İletişim',  accent: '#60a5fa', dot: 'bg-blue-400',    badgeBg: 'bg-blue-500/15 text-blue-300'      },
-  { key: 'replied',     label: 'Cevap Verdi', short: 'Cevap',     accent: '#22d3ee', dot: 'bg-cyan-400',    badgeBg: 'bg-cyan-500/15 text-cyan-300'      },
-  { key: 'proposal',    label: 'Teklif',      short: 'Teklif',    accent: '#fbbf24', dot: 'bg-amber-400',   badgeBg: 'bg-amber-500/15 text-amber-300'    },
-  { key: 'negotiation', label: 'Pazarlık',    short: 'Pazarlık',  accent: '#fb923c', dot: 'bg-orange-400',  badgeBg: 'bg-orange-500/15 text-orange-300'  },
-  { key: 'won',         label: 'Kazanıldı',   short: 'Kazandı',   accent: '#34d399', dot: 'bg-emerald-400', badgeBg: 'bg-emerald-500/15 text-emerald-300' },
-  { key: 'lost',        label: 'Kaybedildi',  short: 'Kaybetti',  accent: '#f87171', dot: 'bg-red-400',     badgeBg: 'bg-red-500/15 text-red-300'        },
+  { key: 'new',         label: 'Yeni Lead',   short: 'Yeni',     accent: '#94a3b8', dotClass: 'bg-slate-400',   gradient: 'from-slate-400/20 to-slate-400/5'  },
+  { key: 'contacted',   label: 'İletişimde',  short: 'İletişim',  accent: '#60a5fa', dotClass: 'bg-blue-400',    gradient: 'from-blue-400/20 to-blue-400/5'    },
+  { key: 'replied',     label: 'Cevap Verdi', short: 'Cevap',     accent: '#22d3ee', dotClass: 'bg-cyan-400',    gradient: 'from-cyan-400/20 to-cyan-400/5'    },
+  { key: 'proposal',    label: 'Teklif',      short: 'Teklif',    accent: '#fbbf24', dotClass: 'bg-amber-400',   gradient: 'from-amber-400/20 to-amber-400/5'  },
+  { key: 'negotiation', label: 'Pazarlık',    short: 'Pazarlık',  accent: '#fb923c', dotClass: 'bg-orange-400',  gradient: 'from-orange-400/20 to-orange-400/5'},
+  { key: 'won',         label: 'Kazanıldı',   short: 'Kazandı',   accent: '#34d399', dotClass: 'bg-emerald-400', gradient: 'from-emerald-400/20 to-emerald-400/5'},
+  { key: 'lost',        label: 'Kaybedildi',  short: 'Kaybetti',  accent: '#f87171', dotClass: 'bg-red-400',     gradient: 'from-red-400/20 to-red-400/5'      },
 ]
 
 const STAGE_ORDER: Record<string, number> = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
 
-const GRADE_STYLE: Record<string, string> = {
-  A: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
-  B: 'bg-blue-500/15 text-blue-300 border-blue-500/25',
-  C: 'bg-amber-500/15 text-amber-300 border-amber-500/25',
-  D: 'bg-red-500/15 text-red-300 border-red-500/25',
-}
-
-const SOURCE_EMOJI: Record<string, string> = {
-  google_maps: '🗺', instagram: '📷', facebook: '📘',
-  tiktok: '🎵', referral: '🤝', manual: '✍', apify: '🤖',
-}
-
+// ── Helpers ─────────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
   'bg-blue-600', 'bg-violet-600', 'bg-amber-600', 'bg-emerald-600',
-  'bg-rose-600', 'bg-cyan-600', 'bg-orange-600', 'bg-pink-600', 'bg-teal-600',
+  'bg-rose-600', 'bg-cyan-600', 'bg-indigo-600', 'bg-teal-600', 'bg-orange-600',
 ]
-
 function avatarColor(name: string) {
   let h = 0; for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + h * 31
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
 }
-
 function initials(name: string) {
   return (name || '?').split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'
 }
+function scoreColor(score: number) {
+  if (score >= 70) return 'text-emerald-400'
+  if (score >= 50) return 'text-blue-400'
+  if (score >= 30) return 'text-amber-400'
+  return 'text-slate-500'
+}
+function daysLabel(days: number) {
+  if (days === 0) return 'Bugün'
+  if (days === 1) return 'Dün'
+  return `${days}g`
+}
 
-// ── Component ──────────────────────────────────────────────────────────────────
+// ── Component ───────────────────────────────────────────────────────────────────
 export default function PipelinePage() {
   const { t } = useI18n()
   const [board, setBoard]             = useState<Record<string, any[]>>({})
+  const [stageAnalytics, setAnalytics]= useState<Record<string, any>>({})
   const [stats, setStats]             = useState<any>(null)
   const [funnel, setFunnel]           = useState<any[]>([])
   const [loading, setLoading]         = useState(true)
@@ -61,16 +61,20 @@ export default function PipelinePage() {
   const [search, setSearch]           = useState('')
   const [dragId, setDragId]           = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
 
   const showMsg = (type: 'success' | 'error', text: string) => {
-    setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
+    setMsg({ type, text }); setTimeout(() => setMsg(null), 3000)
   }
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const data = await api.get('/api/pipeline/board')
-      setBoard(data.board || {}); setStats(data.stats || null); setFunnel(data.funnel || [])
+      setBoard(data.board || {})
+      setAnalytics(data.stageAnalytics || {})
+      setStats(data.stats || null)
+      setFunnel(data.funnel || [])
     } catch (e: any) { showMsg('error', e.message) }
     finally { setLoading(false) }
   }, [])
@@ -95,6 +99,7 @@ export default function PipelinePage() {
     finally { setMoving(null) }
   }
 
+  // Drag & Drop
   const handleDragStart = (e: React.DragEvent, id: string) => { e.dataTransfer.effectAllowed = 'move'; setDragId(id) }
   const handleDragOver  = (e: React.DragEvent, col: string) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverCol(col) }
   const handleDrop      = (e: React.DragEvent, col: string) => { e.preventDefault(); setDragOverCol(null); if (dragId) moveLead(dragId, col); setDragId(null) }
@@ -114,30 +119,32 @@ export default function PipelinePage() {
   )
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-              <Target className="w-4 h-4 text-blue-400" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600/30 to-violet-600/30 border border-blue-500/30 flex items-center justify-center">
+              <Layers className="w-4 h-4 text-blue-400" />
             </div>
             {t('pipeline.title', 'Pipeline & Satış Takibi')}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5 ml-10">{t('pipeline.subtitle', 'Kartları sürükleyerek aşama değiştir')}</p>
+          <p className="text-slate-500 text-sm mt-0.5 ml-[42px]">Kartları sürükleyerek aşama değiştir</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-slate-800/80 border border-slate-700 rounded-xl p-1">
+          <div className="flex bg-slate-800/80 border border-slate-700 rounded-xl p-0.5">
             {(['kanban', 'funnel'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${v === view ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
-                {v === 'kanban' ? `⊞ ${t('pipeline.kanban','Kanban')}` : `▽ ${t('pipeline.funnel_view','Huni')}`}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  v === view ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:text-white'
+                }`}>
+                {v === 'kanban' ? <><Layers size={13} /> Kanban</> : <><Filter size={13} /> Huni</>}
               </button>
             ))}
           </div>
           <button onClick={load}
-            className="p-2 bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-white rounded-xl transition">
+            className="p-2.5 bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-white rounded-xl transition">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -145,31 +152,49 @@ export default function PipelinePage() {
 
       {/* ── Toast ── */}
       {msg && (
-        <div className={`px-4 py-2.5 rounded-xl border text-sm font-medium ${
+        <div className={`px-4 py-2.5 rounded-xl border text-sm font-medium animate-[bounceIn_0.3s_ease-out] ${
           msg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
         }`}>{msg.text}</div>
       )}
 
       {/* ── Stats ── */}
       {stats && (
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: t('pipeline.stat_total','Toplam Lead'),  value: stats.total,        sub: t('pipeline.pipeline_total','pipeline geneli'),  Icon: BarChart3,  iconCls: 'text-slate-400',   bgCls: 'bg-slate-700/60'      },
-            { label: t('pipeline.stat_active','Aktif Deal'),   value: stats.inProgress,   sub: t('pipeline.in_progress','işlem devam ediyor'), Icon: TrendingUp, iconCls: 'text-blue-400',  bgCls: 'bg-blue-500/15'       },
-            { label: t('pipeline.stat_won','Kazanıldı'),    value: stats.won,          sub: t('pipeline.closed_success','başarıyla kapandı'), Icon: Trophy,    iconCls: 'text-emerald-400', bgCls: 'bg-emerald-500/15'    },
-            { label: t('pipeline.stat_win_rate','Win Rate'),     value: `${stats.winRate}%`, sub: t('pipeline.lost_count','{n} kaybedildi').replace('{n}', String(stats.lost)), Icon: Target, iconCls: 'text-amber-400', bgCls: 'bg-amber-500/15' },
-          ].map(({ label, value, sub, Icon, iconCls, bgCls }) => (
-            <div key={label} className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-4 flex items-center gap-3 hover:border-slate-600 transition group">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${bgCls} group-hover:scale-105 transition-transform`}>
-                <Icon className={`w-5 h-5 ${iconCls}`} />
+            { label: 'Toplam Lead',  value: stats.total,        sub: 'pipeline geneli',       Icon: BarChart3,  iconBg: 'bg-slate-500/15',   iconColor: 'text-slate-400'   },
+            { label: 'Aktif Süreç',  value: stats.inProgress,   sub: 'işlem devam ediyor',    Icon: TrendingUp, iconBg: 'bg-blue-500/15',    iconColor: 'text-blue-400'    },
+            { label: 'Kazanıldı',    value: stats.won,          sub: 'başarıyla kapandı',     Icon: Trophy,     iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-400' },
+            { label: 'Win Rate',     value: `${stats.winRate}%`, sub: `${stats.lost} kaybedildi`, Icon: Target,  iconBg: 'bg-amber-500/15',   iconColor: 'text-amber-400'   },
+          ].map(({ label, value, sub, Icon, iconBg, iconColor }) => (
+            <div key={label} className="bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4 hover:border-slate-600 transition group">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg} group-hover:scale-105 transition-transform`}>
+                  <Icon className={`w-5 h-5 ${iconColor}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white text-xl font-bold leading-tight">{value}</p>
+                  <p className="text-slate-500 text-[11px]">{label}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-white text-xl font-bold leading-tight">{value}</p>
-                <p className="text-slate-500 text-xs">{label}</p>
-                <p className="text-slate-600 text-[10px]">{sub}</p>
-              </div>
+              <p className="text-slate-600 text-[10px] mt-2 ml-[52px]">{sub}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Bottleneck alert ── */}
+      {stats?.bottleneck && stageAnalytics[stats.bottleneck]?.avgDays > 3 && (
+        <div className="flex items-center gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Timer size={16} className="text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-amber-300 text-sm font-medium">Darboğaz Tespiti</p>
+            <p className="text-amber-400/60 text-xs">
+              <span className="font-semibold text-amber-400">{STAGES.find(s => s.key === stats.bottleneck)?.label}</span> aşamasında lead'ler ortalama{' '}
+              <span className="font-semibold text-amber-400">{stageAnalytics[stats.bottleneck]?.avgDays} gün</span> bekliyor
+            </p>
+          </div>
         </div>
       )}
 
@@ -178,8 +203,8 @@ export default function PipelinePage() {
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
         <input
           value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={t('pipeline.search','Lead ara — firma adı veya kişi...')}
-          className="w-full pl-10 pr-10 py-2.5 bg-slate-800/60 border border-slate-700 hover:border-slate-600 focus:border-blue-500 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none transition"
+          placeholder="Lead ara — firma adı veya kişi..."
+          className="w-full pl-10 pr-10 py-2.5 bg-slate-800/50 border border-slate-700 hover:border-slate-600 focus:border-blue-500 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none transition"
         />
         {search && (
           <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-lg leading-none">×</button>
@@ -192,46 +217,69 @@ export default function PipelinePage() {
         </div>
       ) : view === 'funnel' ? (
 
-        /* ── Funnel View ── */
-        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-white font-bold text-lg">{t('pipeline.funnel','Dönüşüm Hunisi')}</h2>
+        /* ═══════ Funnel View ═══════ */
+        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 lg:p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-white font-bold text-lg">Dönüşüm Hunisi</h2>
             <div className="flex items-center gap-4 text-sm">
-              <span className="text-slate-500">{t('pipeline.total','Toplam:')} <span className="text-white font-semibold">{stats?.total || 0} lead</span></span>
-              <span className="text-slate-500">Win rate: <span className="text-emerald-400 font-bold">{stats?.winRate || 0}%</span></span>
+              <span className="text-slate-500">Toplam: <span className="text-white font-semibold">{stats?.total || 0}</span></span>
+              <span className="text-slate-500">Win: <span className="text-emerald-400 font-bold">{stats?.winRate || 0}%</span></span>
             </div>
           </div>
-          <div className="space-y-5">
+
+          <div className="space-y-4">
             {STAGES.slice(0, 6).map((stage, i) => {
-              const count    = board[stage.key]?.length || 0
-              const maxCount = Math.max(...STAGES.slice(0, 6).map(s => board[s.key]?.length || 0), 1)
-              const pct      = Math.round((count / maxCount) * 100)
-              const fe       = funnel.find(f => f.stage === stage.key)
+              const analytics = stageAnalytics[stage.key] || {}
+              const count   = analytics.count || 0
+              const maxCount = Math.max(...STAGES.slice(0, 6).map(s => stageAnalytics[s.key]?.count || 0), 1)
+              const pct     = Math.round((count / maxCount) * 100)
+              const fe      = funnel.find((f: any) => f.stage === stage.key)
+              const isBottleneck = stats?.bottleneck === stage.key
+
               return (
-                <div key={stage.key}>
-                  <div className="flex items-center justify-between mb-2 text-sm">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-2.5 h-2.5 rounded-full ${stage.dot}`} />
-                      <span className="text-slate-200 font-medium">{t(`pipeline.stage.${stage.key}`, stage.label)}</span>
+                <div key={stage.key} className={`p-4 rounded-xl border transition ${
+                  isBottleneck ? 'border-amber-500/30 bg-amber-500/5' : 'border-transparent hover:bg-slate-700/20'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${stage.dotClass}`} />
+                      <span className="text-white font-semibold text-sm">{stage.label}</span>
                       {i > 0 && fe?.rate !== undefined && (
-                        <span className="text-xs text-slate-500 bg-slate-700/60 px-2 py-0.5 rounded-lg">{fe.rate}% {t('pipeline.conversion','dönüşüm')}</span>
+                        <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-700/40 px-2 py-0.5 rounded-lg">
+                          <ArrowUpRight size={10} /> {fe.rate}% dönüşüm
+                        </span>
+                      )}
+                      {isBottleneck && (
+                        <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg">
+                          <Timer size={10} /> Darboğaz
+                        </span>
                       )}
                     </div>
-                    <span className="text-white font-bold">{count}</span>
+                    <div className="flex items-center gap-3">
+                      {analytics.avgDays > 0 && (
+                        <span className="text-[11px] text-slate-500">ort. {analytics.avgDays}g</span>
+                      )}
+                      <span className="text-white font-bold text-sm">{count}</span>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-700/50 rounded-full h-3 overflow-hidden">
-                    <div className={`h-3 rounded-full transition-all duration-700 ${stage.dot}`}
-                      style={{ width: `${Math.max(pct, count > 0 ? 4 : 0)}%` }} />
+                  <div className="w-full bg-slate-700/40 rounded-full h-3.5 overflow-hidden">
+                    <div className="h-3.5 rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.max(pct, count > 0 ? 3 : 0)}%`,
+                        background: `linear-gradient(90deg, ${stage.accent}cc, ${stage.accent}44)`,
+                      }} />
                   </div>
                 </div>
               )
             })}
           </div>
-          <div className="border-t border-slate-700/60 mt-8 pt-6 grid grid-cols-3 gap-4 text-center">
+
+          {/* Summary cards */}
+          <div className="border-t border-slate-700/60 mt-6 pt-6 grid grid-cols-3 gap-4 text-center">
             {[
-              { label: t('pipeline.entry','Giriş (Yeni)'),  value: board['new']?.length || 0,  color: 'text-slate-300' },
-              { label: t('pipeline.active_process','Aktif Süreç'),   value: stats?.inProgress || 0,     color: 'text-blue-400'  },
-              { label: t('pipeline.stat_won','Kazanıldı'),     value: board['won']?.length || 0,  color: 'text-emerald-400' },
+              { label: 'Giriş',   value: stageAnalytics['new']?.count || 0,        color: 'text-slate-300'   },
+              { label: 'Aktif',    value: stats?.inProgress || 0,                    color: 'text-blue-400'    },
+              { label: 'Kazanıldı', value: stageAnalytics['won']?.count || 0,        color: 'text-emerald-400' },
             ].map(s => (
               <div key={s.label} className="bg-slate-900/40 rounded-xl py-4">
                 <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
@@ -243,67 +291,79 @@ export default function PipelinePage() {
 
       ) : (
 
-        /* ── Kanban Board ── */
-        <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: '560px' }}>
+        /* ═══════ Kanban Board ═══════ */
+        <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1" style={{ minHeight: '520px' }}>
           {STAGES.map(stage => {
             const allCards   = board[stage.key] || []
             const cards      = filterCards(allCards)
             const isDrop     = dragOverCol === stage.key
+            const analytics  = stageAnalytics[stage.key] || {}
+            const isBottleneck = stats?.bottleneck === stage.key
             const rottenCnt  = allCards.filter(isRotten).length
-            const avgScore   = allCards.length ? Math.round(allCards.reduce((s: number, c: any) => s + (c.score || 0), 0) / allCards.length) : 0
 
             return (
               <div
                 key={stage.key}
-                className={`flex-shrink-0 w-[268px] flex flex-col rounded-2xl border transition-all duration-200 ${
-                  isDrop ? 'border-blue-500/50 shadow-xl shadow-blue-500/10 scale-[1.008]' : 'border-slate-700/60'
-                } bg-slate-800/40 backdrop-blur-sm`}
+                className={`flex-shrink-0 w-[272px] flex flex-col rounded-2xl border transition-all duration-200 ${
+                  isDrop ? 'border-blue-500/50 shadow-xl shadow-blue-500/10 scale-[1.01]'
+                  : isBottleneck ? 'border-amber-500/30'
+                  : 'border-slate-700/50'
+                } bg-slate-800/30`}
                 onDragOver={e => handleDragOver(e, stage.key)}
                 onDrop={e => handleDrop(e, stage.key)}
                 onDragLeave={() => setDragOverCol(null)}
               >
                 {/* Accent bar */}
-                <div className="h-[3px] rounded-t-2xl flex-shrink-0"
-                  style={{ background: `linear-gradient(90deg, ${stage.accent}dd 0%, ${stage.accent}22 100%)` }} />
+                <div className="h-[3px] rounded-t-2xl shrink-0"
+                  style={{ background: `linear-gradient(90deg, ${stage.accent}cc 0%, ${stage.accent}11 100%)` }} />
 
                 {/* Column header */}
-                <div className="px-3.5 py-3 border-b border-slate-700/50 flex-shrink-0">
+                <div className="px-3.5 py-3 border-b border-slate-700/40 shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${stage.dot} flex-shrink-0`} />
-                      <span className="text-[13px] font-semibold text-white">{t(`pipeline.stage.${stage.key}`, stage.label)}</span>
+                      <div className={`w-2 h-2 rounded-full ${stage.dotClass} shrink-0`} />
+                      <span className="text-[13px] font-semibold text-white">{stage.label}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {rottenCnt > 0 && (
-                        <span className="flex items-center gap-0.5 text-orange-400 text-[11px] font-medium">
+                        <span className="flex items-center gap-0.5 text-amber-400 text-[10px] font-medium bg-amber-500/10 px-1.5 py-0.5 rounded-md">
                           <AlertTriangle className="w-3 h-3" />{rottenCnt}
                         </span>
                       )}
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${stage.badgeBg}`}>
-                        {allCards.length}
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
+                        style={{ background: `${stage.accent}15`, color: stage.accent }}>
+                        {analytics.count || 0}
                       </span>
                     </div>
                   </div>
-                  {/* Avg score bar */}
-                  {avgScore > 0 && (
-                    <div className="mt-2.5 flex items-center gap-2">
-                      <div className="flex-1 bg-slate-700/50 rounded-full h-1 overflow-hidden">
-                        <div className="h-1 rounded-full bg-slate-500/80 transition-all duration-500"
-                          style={{ width: `${Math.min(avgScore, 100)}%` }} />
-                      </div>
-                      <span className="text-slate-600 text-[10px] shrink-0">ort.{avgScore}</span>
+                  {/* Analytics bar */}
+                  {(analytics.avgScore > 0 || analytics.avgDays > 0) && (
+                    <div className="mt-2 flex items-center gap-3 text-[10px] text-slate-500">
+                      {analytics.avgScore > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Star size={9} className="text-slate-600" /> ort.{analytics.avgScore}
+                        </span>
+                      )}
+                      {analytics.avgDays > 0 && (
+                        <span className={`flex items-center gap-1 ${isBottleneck ? 'text-amber-400' : ''}`}>
+                          <Clock size={9} /> {analytics.avgDays}g
+                        </span>
+                      )}
+                      {analytics.hasMore && (
+                        <span className="text-blue-400">+{(analytics.count || 0) - allCards.length} daha</span>
+                      )}
                     </div>
                   )}
                 </div>
 
                 {/* Cards */}
-                <div className="flex-1 p-2.5 space-y-2 overflow-y-auto" style={{ maxHeight: '580px' }}>
+                <div className="flex-1 p-2 space-y-2 overflow-y-auto" style={{ maxHeight: '520px' }}>
                   {cards.length === 0 && (
                     <div className={`flex items-center justify-center h-20 rounded-xl border-2 border-dashed transition-all ${
-                      isDrop ? 'border-blue-500/40 bg-blue-500/5' : 'border-slate-700/30'
+                      isDrop ? 'border-blue-500/40 bg-blue-500/5' : 'border-slate-700/25'
                     }`}>
                       <p className="text-slate-600 text-xs">
-                        {isDrop ? t('pipeline.drop_here','Buraya bırak') : allCards.length === 0 ? t('pipeline.drag_here','Buraya sürükle') : t('pipeline.no_results','Arama sonucu yok')}
+                        {isDrop ? 'Buraya bırak' : allCards.length === 0 ? 'Buraya sürükle' : 'Sonuç yok'}
                       </p>
                     </div>
                   )}
@@ -311,9 +371,10 @@ export default function PipelinePage() {
                   {cards.map((lead: any) => {
                     const rotten     = isRotten(lead)
                     const isDragging = dragId === lead.id
-                    const hot        = (lead.hot_score || 0)
                     const avBg       = avatarColor(lead.company_name || '')
                     const ins        = initials(lead.company_name || '')
+                    const isExpanded = expandedCard === lead.id
+                    const domain     = lead.website ? lead.website.replace(/^https?:\/\//, '').split('/')[0] : null
 
                     return (
                       <div
@@ -321,123 +382,122 @@ export default function PipelinePage() {
                         draggable
                         onDragStart={e => handleDragStart(e, lead.id)}
                         onDragEnd={handleDragEnd}
-                        className={`group bg-slate-800 border rounded-xl overflow-hidden select-none cursor-grab active:cursor-grabbing transition-all duration-150 ${
+                        onClick={() => setExpandedCard(isExpanded ? null : lead.id)}
+                        className={`group bg-slate-800/80 border rounded-xl overflow-hidden select-none cursor-grab active:cursor-grabbing transition-all duration-150 ${
                           isDragging
-                            ? 'opacity-25 scale-95 shadow-none'
+                            ? 'opacity-20 scale-95'
                             : rotten
-                            ? 'border-orange-500/30 hover:border-orange-500/60 hover:shadow-md hover:shadow-orange-500/10 hover:-translate-y-0.5'
-                            : 'border-slate-700/60 hover:border-slate-500/80 hover:shadow-lg hover:shadow-slate-900/60 hover:-translate-y-0.5'
+                            ? 'border-amber-500/25 hover:border-amber-500/50 hover:shadow-md hover:shadow-amber-500/5 hover:-translate-y-0.5'
+                            : 'border-slate-700/50 hover:border-slate-600 hover:shadow-lg hover:shadow-slate-900/40 hover:-translate-y-0.5'
                         }`}
                       >
-                        {/* Hot stripe */}
-                        {hot >= 50 && (
-                          <div className="h-[2px] bg-gradient-to-r from-red-500 via-orange-400 to-transparent" />
-                        )}
-
                         <div className="p-3">
-                          {/* Avatar + name */}
-                          <div className="flex items-start gap-2.5 mb-2.5">
-                            <div className={`w-8 h-8 rounded-lg ${avBg} flex items-center justify-center text-white text-[11px] font-bold shrink-0 mt-0.5`}>
+                          {/* Row 1: Avatar + Name + Score */}
+                          <div className="flex items-start gap-2.5">
+                            <div className={`w-8 h-8 rounded-lg ${avBg} flex items-center justify-center text-white text-[11px] font-bold shrink-0`}>
                               {ins}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-white text-[13px] font-semibold leading-snug truncate">{lead.company_name}</p>
-                              {lead.sector && <p className="text-slate-500 text-[10px] truncate">{lead.sector}</p>}
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {lead.sector && <p className="text-slate-500 text-[10px] truncate">{lead.sector}</p>}
+                                {lead.city && (
+                                  <span className="flex items-center gap-0.5 text-[10px] text-slate-600">
+                                    <MapPin size={8} /> {lead.city?.slice(0, 8)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {hot >= 30 && (
-                                <Flame className={`w-3.5 h-3.5 ${hot >= 60 ? 'text-red-400 animate-pulse' : 'text-orange-400'}`} />
-                              )}
-                              {lead.source && <span className="text-[11px]">{SOURCE_EMOJI[lead.source] || ''}</span>}
-                              <Link href={`/leads/${lead.id}`} onClick={e => e.stopPropagation()}
-                                className="opacity-0 group-hover:opacity-100 transition text-slate-500 hover:text-blue-400 ml-0.5">
-                                <ExternalLink className="w-3 h-3" />
-                              </Link>
-                            </div>
+                            {(lead.score || 0) > 0 && (
+                              <span className={`text-sm font-bold shrink-0 ${scoreColor(lead.score)}`}>{lead.score}</span>
+                            )}
                           </div>
 
-                          {/* Contact */}
-                          {(lead.contact_name || lead.phone) && (
-                            <div className="space-y-1 mb-2.5">
-                              {lead.contact_name && (
-                                <div className="flex items-center gap-1.5">
-                                  <User className="w-3 h-3 text-slate-600 shrink-0" />
-                                  <p className="text-slate-400 text-[11px] truncate">{lead.contact_name}</p>
-                                </div>
-                              )}
+                          {/* Row 2: Contact info */}
+                          {(lead.phone || domain) && (
+                            <div className="flex items-center gap-3 mt-2.5 flex-wrap">
                               {lead.phone && (
-                                <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <Phone className="w-3 h-3 text-slate-600 shrink-0" />
-                                    <p className="text-slate-400 text-[11px] truncate">{lead.phone}</p>
-                                  </div>
-                                  <a href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
-                                    target="_blank" rel="noreferrer"
-                                    onClick={e => e.stopPropagation()}
-                                    className="opacity-0 group-hover:opacity-100 transition shrink-0 text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-1.5 py-0.5 rounded-md">
-                                    WA
-                                  </a>
-                                </div>
+                                <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()}
+                                  className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-emerald-400 transition truncate">
+                                  <PhoneCall size={10} /> {lead.phone}
+                                </a>
+                              )}
+                              {domain && (
+                                <a href={lead.website?.startsWith('http') ? lead.website : `https://${lead.website}`}
+                                  target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                  className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-blue-400 transition truncate max-w-[110px]">
+                                  <Globe size={9} /> {domain}
+                                </a>
                               )}
                             </div>
                           )}
 
-                          {/* Score bar */}
-                          {(lead.score || 0) > 0 && (
-                            <div className="mb-2.5">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] text-slate-600">Skor</span>
-                                <span className="text-[10px] text-slate-400 font-semibold">{lead.score}</span>
-                              </div>
-                              <div className="w-full bg-slate-700/50 rounded-full h-1 overflow-hidden">
-                                <div className="h-1 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-700"
-                                  style={{ width: `${Math.min(lead.score, 100)}%` }} />
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Badges */}
-                          <div className="flex items-center gap-1 flex-wrap mb-2.5">
-                            {lead.ai_grade && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-bold ${GRADE_STYLE[lead.ai_grade] || 'bg-slate-700 text-slate-400 border-slate-600'}`}>
-                                {lead.ai_grade}
-                              </span>
-                            )}
+                          {/* Row 3: Badges */}
+                          <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                             <span className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
-                              rotten ? 'bg-orange-500/15 text-orange-400' : 'bg-slate-700/60 text-slate-500'
+                              rotten ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-700/40 text-slate-500'
                             }`}>
-                              <Clock className="w-2.5 h-2.5" />
-                              {lead.daysInStage === 0 ? 'Bugün' : `${lead.daysInStage}g`}
+                              <Clock className="w-2.5 h-2.5" /> {daysLabel(lead.daysInStage)}
                             </span>
                             {rotten && (
-                              <span className="flex items-center gap-0.5 text-[10px] text-orange-400 font-medium">
-                                <AlertTriangle className="w-2.5 h-2.5" /> Bekliyor
+                              <span className="flex items-center gap-0.5 text-[10px] text-amber-400 font-medium">
+                                <AlertTriangle className="w-2.5 h-2.5" />
                               </span>
                             )}
+                            {lead.contact_name && (
+                              <span className="flex items-center gap-0.5 text-[10px] text-slate-500 bg-slate-700/30 px-1.5 py-0.5 rounded-md truncate max-w-[100px]">
+                                <User className="w-2.5 h-2.5 shrink-0" /> {lead.contact_name}
+                              </span>
+                            )}
+                            <Link href={`/leads/${lead.id}`} onClick={e => e.stopPropagation()}
+                              className="ml-auto opacity-0 group-hover:opacity-100 transition text-slate-500 hover:text-blue-400">
+                              <ExternalLink className="w-3 h-3" />
+                            </Link>
                           </div>
 
-                          {/* Move buttons */}
-                          <div className="flex flex-wrap gap-1">
-                            {nextStages(stage.key).map(s => (
-                              <button key={s.key}
-                                onClick={() => moveLead(lead.id, s.key)}
-                                disabled={moving === lead.id}
-                                className={`flex items-center gap-0.5 px-2 py-1 text-[10px] rounded-lg font-semibold transition-all disabled:opacity-40 ${
-                                  s.key === 'won'
-                                    ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20'
-                                    : s.key === 'lost'
-                                    ? 'bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/20'
-                                    : 'bg-slate-700/70 hover:bg-slate-600 text-slate-300 border border-slate-600/50'
-                                }`}
-                              >
-                                <ArrowRight className="w-2.5 h-2.5" /> {s.short}
-                              </button>
-                            ))}
-                          </div>
+                          {/* Expanded: move buttons + WhatsApp */}
+                          {isExpanded && (
+                            <div className="mt-3 pt-2.5 border-t border-slate-700/40 space-y-2 animate-[bounceIn_0.2s_ease-out]">
+                              {lead.phone && (
+                                <a href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
+                                  target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                                  className="flex items-center justify-center gap-1.5 w-full py-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition">
+                                  <Phone size={11} /> WhatsApp
+                                </a>
+                              )}
+                              <div className="flex flex-wrap gap-1">
+                                {nextStages(stage.key).map(s => (
+                                  <button key={s.key}
+                                    onClick={e => { e.stopPropagation(); moveLead(lead.id, s.key) }}
+                                    disabled={moving === lead.id}
+                                    className={`flex-1 flex items-center justify-center gap-0.5 px-2 py-1.5 text-[10px] rounded-lg font-semibold transition-all disabled:opacity-40 min-w-0 ${
+                                      s.key === 'won'
+                                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                                        : s.key === 'lost'
+                                        ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20'
+                                        : 'bg-slate-700/50 hover:bg-slate-600 text-slate-300 border border-slate-600/40'
+                                    }`}
+                                  >
+                                    <ArrowRight className="w-2.5 h-2.5 shrink-0" /> {s.short}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )
                   })}
+
+                  {/* Load more */}
+                  {analytics.hasMore && !search && (
+                    <button
+                      onClick={() => showMsg('success', 'Tüm leadleri görmek için Lead Veritabanına gidin')}
+                      className="w-full py-2.5 text-[11px] text-slate-500 hover:text-blue-400 border border-dashed border-slate-700/40 hover:border-blue-500/30 rounded-xl transition flex items-center justify-center gap-1.5"
+                    >
+                      <ChevronDown size={12} /> +{(analytics.count || 0) - allCards.length} daha göster
+                    </button>
+                  )}
                 </div>
               </div>
             )
@@ -446,14 +506,14 @@ export default function PipelinePage() {
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-5 text-xs text-slate-600 pb-1">
-        <span className="flex items-center gap-1.5"><Flame className="w-3 h-3 text-red-400" /> Sıcak lead</span>
-        <span className="flex items-center gap-1.5"><AlertTriangle className="w-3 h-3 text-orange-400" /> 7+ gün bekliyor</span>
+      <div className="flex items-center gap-5 text-[11px] text-slate-600 pb-1 flex-wrap">
+        <span className="flex items-center gap-1.5"><AlertTriangle className="w-3 h-3 text-amber-400" /> 7+ gün bekliyor</span>
+        <span className="flex items-center gap-1.5"><Timer className="w-3 h-3 text-amber-400" /> Darboğaz tespiti</span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3.5 h-3.5 rounded-md bg-blue-600 inline-flex items-center justify-center text-white text-[8px] font-bold">AB</span>
-          Şirket rengi otomatik
+          <span className="w-3.5 h-3.5 rounded-md bg-blue-600 inline-flex items-center justify-center text-white text-[7px] font-bold">AB</span>
+          Firma rengi otomatik
         </span>
-        <span>{t('pipeline.drag_hint','Kartları sürükle → bırak ile aşama değiştir')}</span>
+        <span>Karta tıkla → aksiyonlar • Sürükle-bırak → aşama değiştir</span>
       </div>
     </div>
   )
