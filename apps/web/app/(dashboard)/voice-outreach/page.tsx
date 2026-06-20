@@ -570,8 +570,41 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                                   </div>
                                 )
                               })}
-                              <div className="flex items-center gap-1.5 pt-1 text-[9px] text-slate-400 justify-center">
+                              <div className="flex items-center gap-1.5 pt-0.5 text-[9px] text-slate-400 justify-center">
                                 <Volume2 className="w-3 h-3"/> Slider kaydırınca sesiniz otomatik çalar
+                              </div>
+                              {/* AI klonlanmış ses üretimi */}
+                              <div className="pt-2 border-t mt-2" style={{ borderColor: '#ede9fe' }}>
+                                <button onClick={async e => {
+                                  e.stopPropagation()
+                                  // Warm up GPU first
+                                  try { await fetch(`${API}/api/voice/warmup`, { method: 'POST', headers: authH() }) } catch {}
+                                  setPlaying(v.id); onMsg('success', 'AI ses klonlama başlatılıyor (GPU ısınması 30-90sn sürebilir)...')
+                                  try {
+                                    stopAllAudio()
+                                    const r = await fetch(`${API}/api/voice/preview-voice`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ voiceId: v.id, text: 'Merhaba, nasılsınız? Sizinle iş birliği hakkında konuşmak istiyorum. Ürünlerimiz hakkında bilgi vermek isterim.', language: 'tr' }) })
+                                    if (!r.ok) {
+                                      const err = await r.json().catch(() => ({}))
+                                      onMsg('error', err.error || 'Ses üretilemedi')
+                                      if (err.retryable) onMsg('error', 'GPU ısınıyor — 30sn sonra tekrar deneyin')
+                                      setPlaying(null); return
+                                    }
+                                    const ct = r.headers.get('content-type') || ''
+                                    if (ct.includes('audio')) {
+                                      const blob = await r.blob(); const url = URL.createObjectURL(blob)
+                                      const a = new Audio(url); globalAudio = a
+                                      a.playbackRate = settings.voice_speed ?? 1.0
+                                      a.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(url) }
+                                      a.play().catch(() => setPlaying(null))
+                                      onMsg('success', 'AI klonlanmış sesiniz hazır!')
+                                    } else { onMsg('error', 'Ses üretilemedi'); setPlaying(null) }
+                                  } catch { onMsg('error', 'Bağlantı hatası'); setPlaying(null) }
+                                }}
+                                  className="w-full py-2.5 rounded-xl text-[11px] font-bold transition-all hover:scale-[1.01] flex items-center justify-center gap-1.5"
+                                  style={{ background: 'linear-gradient(135deg, #7c3aed12, #6d28d908)', border: '1px solid #ddd6fe', color: '#7c3aed' }}>
+                                  {playing === v.id ? <><RefreshCw className="w-3.5 h-3.5 animate-spin"/> AI Oluşturuyor...</> : <><Sparkles className="w-3.5 h-3.5"/> AI ile Klonlanmış Sesimi Üret</>}
+                                </button>
+                                <p className="text-[8px] text-center mt-1" style={{ color: '#94a3b8' }}>XTTS-v2 motoru ile gerçek ses klonlama (ilk kullanımda GPU ısınması gerekir)</p>
                               </div>
                             </>
                           })()}

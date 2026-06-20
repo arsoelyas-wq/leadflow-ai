@@ -63,37 +63,71 @@ function getLanguageByCountry(code: string): string {
 
 async function synthesizeXtts(text: string, sampleUrl: string, language = 'tr'): Promise<Buffer> {
   const endpointId = process.env.RUNPOD_XTTS_ENDPOINT_ID;
-  if (!endpointId) throw new Error('Ses klonlama motoru yapılandırılmamış (RUNPOD_XTTS_ENDPOINT_ID)');
+  if (!endpointId) throw new Error('RUNPOD_XTTS_ENDPOINT_ID ayarlanmamış');
+  const rpKey = process.env.RUNPOD_API_KEY;
+  if (!rpKey) throw new Error('RUNPOD_API_KEY ayarlanmamış');
+  const rpHeaders = { Authorization: `Bearer ${rpKey}`, 'Content-Type': 'application/json' };
+
+  console.log(`[XTTS] Starting: text="${text.slice(0, 40)}...", lang=${language}, sample=${sampleUrl.slice(-30)}`);
 
   const runRes = await axios.post(
     `https://api.runpod.ai/v2/${endpointId}/run`,
     { input: { text, speaker_wav_url: sampleUrl, language } },
-    { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 30000 }
+    { headers: rpHeaders, timeout: 30000 }
   );
 
   const jobId = runRes.data?.id;
-  if (!jobId) throw new Error('Ses motoru başlatılamadı');
+  if (!jobId) throw new Error(`RunPod job başlatılamadı: ${JSON.stringify(runRes.data).slice(0, 200)}`);
+  console.log(`[XTTS] Job started: ${jobId}`);
 
-  const deadline = Date.now() + 60000; // 60s max
+  // Cold start can take 60-90s on serverless GPU — poll for up to 180s
+  const deadline = Date.now() + 180000;
+  let lastStatus = '';
   while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 2500));
-    const statusRes = await axios.get(
-      `https://api.runpod.ai/v2/${endpointId}/status/${jobId}`,
-      { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}` } }
-    );
-    const { status, output } = statusRes.data;
-    if (status === 'COMPLETED') {
-      if (output?.audio_url) {
-        const audioRes = await axios.get(output.audio_url, { responseType: 'arraybuffer' });
-        return Buffer.from(audioRes.data);
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const statusRes = await axios.get(
+        `https://api.runpod.ai/v2/${endpointId}/status/${jobId}`,
+        { headers: rpHeaders, timeout: 10000 }
+      );
+      const { status, output, error: rpError } = statusRes.data;
+      if (status !== lastStatus) { console.log(`[XTTS] Status: ${status}`); lastStatus = status; }
+
+      if (status === 'COMPLETED') {
+        if (output?.audio_url) {
+          const audioRes = await axios.get(output.audio_url, { responseType: 'arraybuffer', timeout: 30000 });
+          console.log(`[XTTS] Audio received: ${audioRes.data.byteLength} bytes`);
+          return Buffer.from(audioRes.data);
+        }
+        if (output?.audio_base64) {
+          console.log(`[XTTS] Audio base64 received`);
+          return Buffer.from(output.audio_base64, 'base64');
+        }
+        throw new Error('Audio çıktısı yok');
       }
-      if (output?.audio_base64) return Buffer.from(output.audio_base64, 'base64');
-      throw new Error('Ses oluşturuldu ama audio çıktısı yok');
+      if (status === 'FAILED') throw new Error(`RunPod failed: ${rpError || 'bilinmeyen hata'}`);
+    } catch (pollErr: any) {
+      if (pollErr.message?.includes('RunPod failed')) throw pollErr;
+      console.warn(`[XTTS] Poll error (retrying): ${pollErr.message?.slice(0, 60)}`);
     }
-    if (status === 'FAILED') throw new Error('Ses sentezi başarısız');
   }
-  throw new Error('Ses sentezi zaman aşımına uğradı');
+  throw new Error('XTTS 180sn zaman aşımı — RunPod GPU soğuk başlatma çok uzun sürdü');
 }
+
+// RunPod warm-up: ping the endpoint to pre-warm GPU
+async function warmUpXtts() {
+  const endpointId = process.env.RUNPOD_XTTS_ENDPOINT_ID;
+  const rpKey = process.env.RUNPOD_API_KEY;
+  if (!endpointId || !rpKey) return;
+  try {
+    const r = await axios.get(`https://api.runpod.ai/v2/${endpointId}/health`, {
+      headers: { Authorization: `Bearer ${rpKey}` }, timeout: 10000,
+    });
+    console.log(`[XTTS] Health: ${JSON.stringify(r.data)}`);
+  } catch (e: any) { console.warn(`[XTTS] Warm-up ping failed: ${e.message?.slice(0, 60)}`); }
+}
+// Warm up on server start
+setTimeout(warmUpXtts, 5000);
 
 // ─── KİŞİSELLEŞTİRİLMİŞ AÇILIŞ SATIRI ───────────────────────────────────────
 
@@ -553,20 +587,22 @@ router.post('/preview-voice', async (req: any, res: any) => {
         .maybeSingle();
 
       if (cv?.sample_url) {
-        // XTTS available → use AI voice cloning
         if (process.env.RUNPOD_XTTS_ENDPOINT_ID) {
           try {
             const audio = await synthesizeXtts(sampleText, cv.sample_url, language);
             res.setHeader('Content-Type', 'audio/mpeg');
             return res.send(audio);
           } catch (xttsErr: any) {
-            console.error('[Voice Preview] XTTS failed:', xttsErr.message?.slice(0, 100));
-            // Do NOT fall back to Azure for cloned voices — return error
-            return res.status(503).json({ error: 'Ses klonlama motoru meşgul. Lütfen "Ayarlarla Dinle" butonunu kullanın — kayıtlı sesinizi ses efektleriyle dinleyebilirsiniz.' });
+            console.error('[Voice Preview] XTTS failed:', xttsErr.message?.slice(0, 200));
+            return res.status(503).json({
+              error: xttsErr.message?.includes('zaman aşımı')
+                ? 'GPU soğuk başlatma sürüyor (ilk kullanımda 1-2dk sürebilir). Tekrar deneyin.'
+                : `Ses klonlama hatası: ${xttsErr.message?.slice(0, 100)}`,
+              retryable: true,
+            });
           }
         }
-        // XTTS not configured — tell user to use client-side preview
-        return res.status(503).json({ error: 'AI ses klonlama motoru yapılandırılmamış. "Ayarlarla Dinle" butonunu kullanarak ses ayarlarınızı test edebilirsiniz.' });
+        return res.status(503).json({ error: 'XTTS motoru yapılandırılmamış (RUNPOD_XTTS_ENDPOINT_ID)' });
       }
     }
 
@@ -882,13 +918,33 @@ router.patch('/settings', async (req: any, res: any) => {
 });
 
 // GET /api/voice/provider-status
-router.get('/provider-status', (_req: any, res: any) => {
+router.get('/provider-status', async (_req: any, res: any) => {
+  let xttsHealth: any = null;
+  const endpointId = process.env.RUNPOD_XTTS_ENDPOINT_ID;
+  const rpKey = process.env.RUNPOD_API_KEY;
+  if (endpointId && rpKey) {
+    try {
+      const r = await axios.get(`https://api.runpod.ai/v2/${endpointId}/health`, {
+        headers: { Authorization: `Bearer ${rpKey}` }, timeout: 8000,
+      });
+      xttsHealth = r.data;
+    } catch (e: any) { xttsHealth = { error: e.message?.slice(0, 80) }; }
+  }
   res.json({
-    xttsConfigured:       !!process.env.RUNPOD_XTTS_ENDPOINT_ID,
+    xttsConfigured:       !!endpointId,
+    xttsHealth,
     vapiConfigured:       !!VAPI_KEY && !!VAPI_PHONE_ID,
     libraryConfigured:    !!ELEVEN_KEY,
     perplexityConfigured: !!process.env.PERPLEXITY_API_KEY,
   });
+});
+
+// POST /api/voice/warmup — manually warm up XTTS GPU
+router.post('/warmup', async (_req: any, res: any) => {
+  try {
+    await warmUpXtts();
+    res.json({ ok: true, message: 'Warm-up ping gönderildi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
