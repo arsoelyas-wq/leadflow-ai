@@ -450,8 +450,6 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                           {[
                             { key: 'speed',     label: 'Hız',        min: 0.5, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Yavaş',   hi: 'Hızlı'   },
                             { key: 'pitch',     label: 'Ton',        min: 0.5, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Kalın',   hi: 'İnce'    },
-                            { key: 'stability', label: 'Kararlılık', min: 0,   max: 1.0, step: 0.05, def: 0.5,  unit: '',   lo: 'Doğal',   hi: 'Tutarlı' },
-                            { key: 'clarity',   label: 'Netlik',     min: 0,   max: 1.0, step: 0.05, def: 0.75, unit: '',   lo: 'Yumuşak', hi: 'Net'     },
                           ].map(s => {
                             const val = settings[`voice_${s.key}`] ?? s.def
                             const pct = ((val - s.min) / (s.max - s.min)) * 100
@@ -459,33 +457,22 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                               <div key={s.key}>
                                 <div className="flex items-center justify-between mb-0.5">
                                   <span className="text-[10px] font-semibold" style={{ color: '#64748b' }}>{s.label}</span>
-                                  <span className="text-[10px] font-mono font-bold" style={{ color: '#7c3aed' }}>{Number(val).toFixed(s.step < 0.1 ? 2 : 1)}{s.unit}</span>
+                                  <span className="text-[10px] font-mono font-bold" style={{ color: '#7c3aed' }}>{Number(val).toFixed(1)}{s.unit}</span>
                                 </div>
                                 <input type="range" min={s.min} max={s.max} step={s.step} value={val}
                                   onClick={e => e.stopPropagation()}
                                   onChange={e => {
                                     const newVal = parseFloat(e.target.value)
                                     setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: newVal }))
-                                    clearTimeout(previewTimerRef.current)
-                                    previewTimerRef.current = setTimeout(async () => {
-                                      try {
-                                        globalAudio?.pause(); globalAudio = null
-                                        const curSpeed = s.key === 'speed' ? newVal : (settings.voice_speed ?? 1.0)
-                                        const curPitch = s.key === 'pitch' ? newVal : (settings.voice_pitch ?? 1.0)
-                                        const curStability = s.key === 'stability' ? newVal : (settings.voice_stability ?? 0.5)
-                                        const curClarity = s.key === 'clarity' ? newVal : (settings.voice_clarity ?? 0.75)
-                                        const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:{ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body:JSON.stringify({ voiceId: v.id, text: 'Merhaba, nasılsınız?', speed: curSpeed, pitch: curPitch, stability: curStability, clarity: curClarity }) })
-                                        if (!r.ok) return
-                                        const ct = r.headers.get('content-type') || ''
-                                        if (ct.includes('audio')) {
-                                          const blob = await r.blob()
-                                          const url = URL.createObjectURL(blob)
-                                          const a = new Audio(url); globalAudio = a; setPlaying(v.id)
-                                          a.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(url) }
-                                          a.play().catch(() => {})
-                                        }
-                                      } catch {}
-                                    }, 1000)
+                                    // Anlık ses değişimi: kayıtlı sample'ı Web Audio API ile hızda çal
+                                    if (s.key === 'speed' && v.sample_url) {
+                                      globalAudio?.pause(); globalAudio = null
+                                      const a = new Audio(v.sample_url); globalAudio = a
+                                      a.playbackRate = newVal
+                                      setPlaying(v.id)
+                                      a.onended = () => { setPlaying(null); globalAudio = null }
+                                      a.play().catch(() => {})
+                                    }
                                   }}
                                   className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                                   style={{ background: `linear-gradient(to right, #7c3aed ${pct}%, #e2e8f0 ${pct}%)` }}/>
@@ -496,6 +483,29 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                               </div>
                             )
                           })}
+                          {/* XTTS ile klonlanmış sesle test */}
+                          <button onClick={async e => {
+                            e.stopPropagation()
+                            setPlaying(v.id); onMsg('success', 'Klonlanmış ses oluşturuluyor...')
+                            try {
+                              globalAudio?.pause(); globalAudio = null
+                              const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:{ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body:JSON.stringify({ voiceId: v.id, text: 'Merhaba, nasılsınız? Ben sizinle iş birliği hakkında konuşmak istiyorum.' }) })
+                              if (!r.ok) { const err = await r.json().catch(() => ({})); onMsg('error', err.error || 'Ses oluşturulamadı'); setPlaying(null); return }
+                              const ct = r.headers.get('content-type') || ''
+                              if (ct.includes('audio')) {
+                                const blob = await r.blob(); const url = URL.createObjectURL(blob)
+                                const a = new Audio(url); globalAudio = a
+                                a.playbackRate = settings.voice_speed ?? 1.0
+                                a.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(url) }
+                                a.play().catch(() => setPlaying(null))
+                                onMsg('success', 'Klonlanmış sesiniz çalıyor!')
+                              } else { onMsg('error', 'Ses oluşturulamadı'); setPlaying(null) }
+                            } catch { onMsg('error', 'Ses testi başarısız'); setPlaying(null) }
+                          }}
+                            className="w-full py-2 rounded-xl text-[11px] font-bold transition-all hover:scale-[1.01] flex items-center justify-center gap-1.5"
+                            style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#059669' }}>
+                            {playing === v.id ? <><RefreshCw className="w-3 h-3 animate-spin"/> Oluşturuluyor...</> : <><Play className="w-3 h-3"/> Klonlanmış Sesimi Dinle</>}
+                          </button>
                           <button onClick={async e => {
                             e.stopPropagation()
                             try {

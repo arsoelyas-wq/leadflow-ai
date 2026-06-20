@@ -465,7 +465,7 @@ router.get('/eleven-voices', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/clone — ses yükle, ElevenLabs ile klonla, Supabase'e kaydet
+// POST /api/voice/clone — ses yükle, Supabase'e kaydet, XTTS ile test et
 router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
   try {
     const { name } = req.body;
@@ -476,7 +476,6 @@ router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
     const ext = (file.originalname || 'audio').split('.').pop() || 'mp3';
     const fileName = `voices/${req.userId}/${Date.now()}.${ext}`;
 
-    // Upload to Supabase Storage (backup + sample playback)
     const { error: uploadError } = await supabase.storage
       .from('voice-samples')
       .upload(fileName, fileBuffer, { contentType: file.mimetype || 'audio/mpeg', upsert: false });
@@ -486,49 +485,16 @@ router.post('/clone', upload.single('audio'), async (req: any, res: any) => {
       .from('voice-samples')
       .getPublicUrl(fileName);
 
-    // Clone voice with ElevenLabs API (if key available)
-    let elevenVoiceId: string | null = null;
-    if (ELEVEN_KEY) {
-      try {
-        const FormData = require('form-data');
-        const fd = new FormData();
-        fd.append('name', name || 'Sesim');
-        fd.append('files', fileBuffer, { filename: file.originalname || 'audio.mp3', contentType: file.mimetype || 'audio/mpeg' });
-        fd.append('remove_background_noise', 'true');
-
-        const cloneRes = await axios.post(`${ELEVEN_BASE}/voices/add`, fd, {
-          headers: { ...fd.getHeaders(), 'xi-api-key': ELEVEN_KEY },
-          timeout: 120_000,
-        });
-        elevenVoiceId = cloneRes.data?.voice_id || null;
-        console.log(`[Voice] ElevenLabs clone success: ${elevenVoiceId}`);
-      } catch (cloneErr: any) {
-        console.error('[Voice] ElevenLabs clone failed:', cloneErr.response?.data?.detail || cloneErr.message);
-      }
-    }
-
     const { data: voice, error: dbError } = await supabase
       .from('cloned_voices')
-      .insert([{
-        user_id: req.userId,
-        name: name || 'Sesim',
-        sample_url: publicUrl,
-        file_name: file.originalname,
-        elevenlabs_voice_id: elevenVoiceId,
-      }])
+      .insert([{ user_id: req.userId, name: name || 'Sesim', sample_url: publicUrl, file_name: file.originalname }])
       .select()
       .single();
 
     if (dbError) throw new Error(dbError.message);
     try { fs.unlinkSync(file.path); } catch {}
 
-    res.json({
-      ok: true,
-      voiceId: voice.id,
-      voiceName: voice.name,
-      elevenVoiceId,
-      message: elevenVoiceId ? 'Ses klonlandı ve kaydedildi!' : 'Ses kaydedildi (klonlama devre dışı)',
-    });
+    res.json({ ok: true, voiceId: voice.id, voiceName: voice.name, message: 'Ses kaydedildi!' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -568,58 +534,32 @@ router.post('/set-voice', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/voice/preview-voice — ElevenLabs for cloned voices, Azure for library
+// POST /api/voice/preview-voice — XTTS for cloned voices, Azure for library
 router.post('/preview-voice', async (req: any, res: any) => {
   try {
-    const { voiceId, text, language = 'tr', speed, pitch, stability, clarity } = req.body;
+    const { voiceId, text, language = 'tr', speed, pitch } = req.body;
     const defaults: Record<string, string> = {
       tr: 'Merhaba, nasılsınız? Size kısa bir bilgi vermek istiyorum.',
       en: 'Hello, how are you? I would like to share some information with you.',
     };
     const sampleText = text || defaults[language] || defaults['tr'];
 
-    // Check if this is a cloned voice with ElevenLabs ID
-    let elevenVoiceId: string | null = null;
+    // Check if this is a cloned voice — use XTTS with the user's sample audio
     if (voiceId) {
       const { data: cv } = await supabase.from('cloned_voices')
-        .select('elevenlabs_voice_id')
+        .select('sample_url')
         .eq('id', voiceId)
         .eq('user_id', req.userId)
         .maybeSingle();
-      if (cv?.elevenlabs_voice_id) elevenVoiceId = cv.elevenlabs_voice_id;
-      if (!elevenVoiceId && voiceId.length > 10 && !voiceId.includes('-')) elevenVoiceId = voiceId;
+
+      if (cv?.sample_url && process.env.RUNPOD_XTTS_ENDPOINT_ID) {
+        const audio = await synthesizeXtts(sampleText, cv.sample_url, language);
+        res.setHeader('Content-Type', 'audio/mpeg');
+        return res.send(audio);
+      }
     }
 
-    // If we have an ElevenLabs voice ID, use ElevenLabs TTS
-    if (elevenVoiceId && ELEVEN_KEY) {
-      const stab = stability ?? 0.5;
-      const sim  = clarity ?? 0.75;
-      const spd  = speed ?? 1.0;
-
-      const elRes = await axios.post(
-        `${ELEVEN_BASE}/text-to-speech/${elevenVoiceId}`,
-        {
-          text: sampleText,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: {
-            stability: stab,
-            similarity_boost: sim,
-            style: 0.0,
-            use_speaker_boost: true,
-            speed: spd,
-          },
-        },
-        {
-          headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-          responseType: 'arraybuffer',
-          timeout: 30000,
-        }
-      );
-      res.setHeader('Content-Type', 'audio/mpeg');
-      return res.send(Buffer.from(elRes.data));
-    }
-
-    // Fallback: Azure TTS for library voices
+    // Fallback: Azure TTS for library voices or when XTTS not available
     let rate = 0, pitchHz = 0;
     if (speed != null) rate = Math.round((speed - 1) * 100);
     if (pitch != null) pitchHz = Math.round((pitch - 1) * 50);
@@ -629,7 +569,7 @@ router.post('/preview-voice', async (req: any, res: any) => {
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(audio);
   } catch (e: any) {
-    console.error('[Voice Preview]', e.response?.data ? Buffer.from(e.response.data).toString().slice(0, 200) : e.message);
+    console.error('[Voice Preview]', e.message?.slice(0, 200));
     res.status(500).json({ error: e.message });
   }
 });
