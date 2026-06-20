@@ -447,113 +447,90 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                               <X className="w-3 h-3"/>
                             </button>
                           </div>
-                          {[
-                            { key: 'speed',  label: 'Konuşma Hızı', min: 0.5, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Yavaş',   hi: 'Hızlı',   color: '#7c3aed' },
-                            { key: 'volume', label: 'Ses Seviyesi', min: 0.2, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Kısık',   hi: 'Yüksek',  color: '#2563eb' },
-                            { key: 'bass',   label: 'Bas (Kalınlık)', min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Az',      hi: 'Çok',     color: '#059669' },
-                            { key: 'treble', label: 'Tiz (Netlik)',   min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Yumuşak', hi: 'Keskin',  color: '#d97706' },
-                            { key: 'warmth', label: 'Sıcaklık',      min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Soğuk',   hi: 'Sıcak',   color: '#dc2626' },
-                          ].map(s => {
-                            const val = settings[`voice_${s.key}`] ?? s.def
-                            const pct = ((val - s.min) / (s.max - s.min)) * 100
-                            return (
-                              <div key={s.key}>
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <span className="text-[10px] font-semibold" style={{ color: '#64748b' }}>{s.label}</span>
-                                  <span className="text-[10px] font-mono font-bold" style={{ color: s.color }}>{s.unit === 'dB' ? (val > 0 ? '+' : '') : ''}{Number(val).toFixed(s.step < 1 ? 1 : 0)}{s.unit}</span>
-                                </div>
-                                <input type="range" min={s.min} max={s.max} step={s.step} value={val}
-                                  onClick={e => e.stopPropagation()}
-                                  onChange={e => {
-                                    const newVal = parseFloat(e.target.value)
-                                    setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: newVal }))
-                                  }}
-                                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-                                  style={{ background: `linear-gradient(to right, ${s.color} ${pct}%, #e2e8f0 ${pct}%)` }}/>
-                                <div className="flex justify-between">
-                                  <span className="text-[8px]" style={{ color: '#cbd5e1' }}>{s.lo}</span>
-                                  <span className="text-[8px]" style={{ color: '#cbd5e1' }}>{s.hi}</span>
-                                </div>
+                          {(() => {
+                            const SLIDERS = [
+                              { key: 'speed',  label: 'Konuşma Hızı', min: 0.5, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Yavaş',   hi: 'Hızlı',   color: '#7c3aed' },
+                              { key: 'volume', label: 'Ses Seviyesi', min: 0.2, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Kısık',   hi: 'Yüksek',  color: '#2563eb' },
+                              { key: 'bass',   label: 'Bas (Kalınlık)', min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Az',      hi: 'Çok',     color: '#059669' },
+                              { key: 'treble', label: 'Tiz (Netlik)',   min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Yumuşak', hi: 'Keskin',  color: '#d97706' },
+                              { key: 'warmth', label: 'Sıcaklık',      min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Soğuk',   hi: 'Sıcak',   color: '#dc2626' },
+                            ]
+
+                            // Play voice sample with all current settings via Web Audio API
+                            const playWithSettings = async (overrides: Record<string, number> = {}) => {
+                              if (!v.sample_url) return
+                              globalAudio?.pause(); globalAudio = null; setPlaying(v.id)
+                              try {
+                                const merged = { ...settings, ...overrides }
+                                const actx = new AudioContext()
+                                const resp = await fetch(v.sample_url)
+                                const arrBuf = await resp.arrayBuffer()
+                                const audioBuf = await actx.decodeAudioData(arrBuf)
+
+                                const source = actx.createBufferSource()
+                                source.buffer = audioBuf
+                                source.playbackRate.value = merged.voice_speed ?? 1.0
+
+                                const bassFilter = actx.createBiquadFilter()
+                                bassFilter.type = 'lowshelf'; bassFilter.frequency.value = 200
+                                bassFilter.gain.value = merged.voice_bass ?? 0
+
+                                const trebleFilter = actx.createBiquadFilter()
+                                trebleFilter.type = 'highshelf'; trebleFilter.frequency.value = 3000
+                                trebleFilter.gain.value = merged.voice_treble ?? 0
+
+                                const warmthFilter = actx.createBiquadFilter()
+                                warmthFilter.type = 'peaking'; warmthFilter.frequency.value = 400
+                                warmthFilter.Q.value = 1.0; warmthFilter.gain.value = merged.voice_warmth ?? 0
+
+                                const gainNode = actx.createGain()
+                                gainNode.gain.value = merged.voice_volume ?? 1.0
+
+                                source.connect(bassFilter)
+                                bassFilter.connect(trebleFilter)
+                                trebleFilter.connect(warmthFilter)
+                                warmthFilter.connect(gainNode)
+                                gainNode.connect(actx.destination)
+
+                                source.onended = () => { setPlaying(null); actx.close() }
+                                source.start(0)
+                              } catch { setPlaying(null) }
+                            }
+
+                            return <>
+                              {SLIDERS.map(s => {
+                                const val = settings[`voice_${s.key}`] ?? s.def
+                                const pct = ((val - s.min) / (s.max - s.min)) * 100
+                                return (
+                                  <div key={s.key}>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <span className="text-[10px] font-semibold" style={{ color: '#64748b' }}>{s.label}</span>
+                                      <span className="text-[10px] font-mono font-bold" style={{ color: s.color }}>{s.unit === 'dB' ? (val > 0 ? '+' : '') : ''}{Number(val).toFixed(s.step < 1 ? 1 : 0)}{s.unit}</span>
+                                    </div>
+                                    <input type="range" min={s.min} max={s.max} step={s.step} value={val}
+                                      onClick={e => e.stopPropagation()}
+                                      onChange={e => {
+                                        const newVal = parseFloat(e.target.value)
+                                        setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: newVal }))
+                                        clearTimeout(previewTimerRef.current)
+                                        previewTimerRef.current = setTimeout(() => {
+                                          playWithSettings({ [`voice_${s.key}`]: newVal })
+                                        }, 400)
+                                      }}
+                                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                                      style={{ background: `linear-gradient(to right, ${s.color} ${pct}%, #e2e8f0 ${pct}%)` }}/>
+                                    <div className="flex justify-between">
+                                      <span className="text-[8px]" style={{ color: '#cbd5e1' }}>{s.lo}</span>
+                                      <span className="text-[8px]" style={{ color: '#cbd5e1' }}>{s.hi}</span>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                              <div className="flex items-center gap-1.5 pt-1 text-[9px] text-slate-400 justify-center">
+                                <Volume2 className="w-3 h-3"/> Slider kaydırınca sesiniz otomatik çalar
                               </div>
-                            )
-                          })}
-                          {/* Anlık önizleme — Web Audio API ile tüm ayarlar uygulanır */}
-                          <button onClick={async e => {
-                            e.stopPropagation()
-                            if (!v.sample_url) { onMsg('error', 'Ses örneği yok'); return }
-                            globalAudio?.pause(); globalAudio = null
-                            setPlaying(v.id)
-                            try {
-                              const actx = new AudioContext()
-                              const resp = await fetch(v.sample_url)
-                              const arrBuf = await resp.arrayBuffer()
-                              const audioBuf = await actx.decodeAudioData(arrBuf)
-
-                              const source = actx.createBufferSource()
-                              source.buffer = audioBuf
-                              source.playbackRate.value = settings.voice_speed ?? 1.0
-
-                              // Bass boost (lowshelf filter at 200Hz)
-                              const bassFilter = actx.createBiquadFilter()
-                              bassFilter.type = 'lowshelf'
-                              bassFilter.frequency.value = 200
-                              bassFilter.gain.value = settings.voice_bass ?? 0
-
-                              // Treble (highshelf filter at 3000Hz)
-                              const trebleFilter = actx.createBiquadFilter()
-                              trebleFilter.type = 'highshelf'
-                              trebleFilter.frequency.value = 3000
-                              trebleFilter.gain.value = settings.voice_treble ?? 0
-
-                              // Warmth (peaking filter at 400Hz)
-                              const warmthFilter = actx.createBiquadFilter()
-                              warmthFilter.type = 'peaking'
-                              warmthFilter.frequency.value = 400
-                              warmthFilter.Q.value = 1.0
-                              warmthFilter.gain.value = settings.voice_warmth ?? 0
-
-                              // Volume (gain node)
-                              const gainNode = actx.createGain()
-                              gainNode.gain.value = settings.voice_volume ?? 1.0
-
-                              // Chain: source → bass → treble → warmth → gain → output
-                              source.connect(bassFilter)
-                              bassFilter.connect(trebleFilter)
-                              trebleFilter.connect(warmthFilter)
-                              warmthFilter.connect(gainNode)
-                              gainNode.connect(actx.destination)
-
-                              source.onended = () => { setPlaying(null); actx.close() }
-                              source.start(0)
-                            } catch { onMsg('error', 'Ses çalınamadı'); setPlaying(null) }
-                          }}
-                            className="w-full py-2.5 rounded-xl text-[11px] font-bold transition-all hover:scale-[1.01] flex items-center justify-center gap-1.5"
-                            style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#059669' }}>
-                            {playing === v.id ? <><Volume2 className="w-3.5 h-3.5 animate-pulse"/> Çalıyor...</> : <><Play className="w-3.5 h-3.5"/> Ayarlarla Dinle</>}
-                          </button>
-                          {/* XTTS ile klonlanmış sesle test */}
-                          <button onClick={async e => {
-                            e.stopPropagation()
-                            setPlaying(v.id); onMsg('success', 'AI ses klonlama ile oluşturuluyor...')
-                            try {
-                              globalAudio?.pause(); globalAudio = null
-                              const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:{ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' }, body:JSON.stringify({ voiceId: v.id, text: 'Merhaba, nasılsınız? Ben sizinle iş birliği hakkında konuşmak istiyorum.' }) })
-                              if (!r.ok) { const err = await r.json().catch(() => ({})); onMsg('error', err.error || 'Ses oluşturulamadı'); setPlaying(null); return }
-                              const ct = r.headers.get('content-type') || ''
-                              if (ct.includes('audio')) {
-                                const blob = await r.blob(); const url = URL.createObjectURL(blob)
-                                const a = new Audio(url); globalAudio = a
-                                a.playbackRate = settings.voice_speed ?? 1.0
-                                a.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(url) }
-                                a.play().catch(() => setPlaying(null))
-                                onMsg('success', 'Klonlanmış sesiniz çalıyor!')
-                              } else { onMsg('error', 'Ses oluşturulamadı'); setPlaying(null) }
-                            } catch { onMsg('error', 'Ses testi başarısız'); setPlaying(null) }
-                          }}
-                            className="w-full py-2 rounded-xl text-[11px] font-bold transition-all hover:scale-[1.01] flex items-center justify-center gap-1.5"
-                            style={{ background: '#faf5ff', border: '1px solid #e9d5ff', color: '#7c3aed' }}>
-                            {playing === v.id ? <><RefreshCw className="w-3 h-3 animate-spin"/> AI Oluşturuyor...</> : <><Sparkles className="w-3 h-3"/> AI Klonlanmış Ses</>}
-                          </button>
+                            </>
+                          })()}
                           <button onClick={async e => {
                             e.stopPropagation()
                             try {
