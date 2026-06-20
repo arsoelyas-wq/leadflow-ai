@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import {
   Phone, PhoneCall, Mic, Upload, Play, Square, ArrowRight, ArrowLeft,
   CheckCircle, AlertTriangle, RefreshCw, Zap, Volume2, Users,
-  Globe2, Search, Settings, Sparkles, Trash2, User, StopCircle, ChevronRight
+  Globe2, Search, Settings, Sparkles, Trash2, User, StopCircle, ChevronRight, X
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -181,6 +181,8 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const [voiceName, setVoiceName] = useState('')
   const [playing, setPlaying] = useState<string | null>(null)
   const [inputMode, setInputMode] = useState<'record' | 'upload'>('record')
+  const [tuningOpen, setTuningOpen] = useState<string | null>(null)
+  const previewTimerRef = useRef<any>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
@@ -402,7 +404,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                         boxShadow: active ? '0 0 0 3px rgba(124,58,237,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
                       }}>
                       {/* Voice card header */}
-                      <div onClick={() => onSelect(v.id, v.name, 'cloned')}
+                      <div onClick={() => { onSelect(v.id, v.name, 'cloned'); setTuningOpen(tuningOpen === v.id ? null : v.id) }}
                         className="group flex items-center gap-3 p-3.5 cursor-pointer">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: active ? '#ede9fe' : '#f8fafc' }}>
                           <Mic className="w-4 h-4" style={{ color: active ? '#7c3aed' : '#94a3b8' }}/>
@@ -414,39 +416,36 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                           </div>
                           <span className="text-xs" style={{ color:'#94a3b8' }}>{new Date(v.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <div className="flex gap-1">
                           <button onClick={e => { e.stopPropagation(); if (playing===v.id){globalAudio?.pause();globalAudio=null;setPlaying(null);return} globalAudio?.pause();globalAudio=null;setPlaying(v.id);const a=new Audio(v.sample_url);globalAudio=a;a.onended=()=>{setPlaying(null);globalAudio=null};a.play().catch(()=>setPlaying(null)) }}
                             className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:scale-110"
                             style={{ background: playing===v.id ? '#ef4444' : '#f1f5f9' }} title="Dinle">
                             {playing === v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3" style={{ color:'#64748b' }}/>}
                           </button>
-                          <button onClick={async e => {
-                            e.stopPropagation()
-                            try {
-                              const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:authH(), body:JSON.stringify({ voiceId: v.elevenlabs_voice_id || v.id, text: 'Merhaba, ben sizinle iş birliği hakkında konuşmak istiyorum.' }) })
-                              const d = await r.json()
-                              if (d.audioUrl) { globalAudio?.pause(); const a = new Audio(d.audioUrl); globalAudio = a; setPlaying(v.id); a.onended = () => { setPlaying(null); globalAudio = null }; a.play().catch(() => setPlaying(null)) }
-                              else onMsg('error', d.error || 'Önizleme oluşturulamadı')
-                            } catch { onMsg('error', 'Ses testi başarısız') }
-                          }}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-violet-50 transition hover:scale-110" style={{ background: '#f1f5f9' }} title="Test Et">
-                            <Sparkles className="w-3 h-3" style={{ color:'#7c3aed' }}/>
+                          <button onClick={e => { e.stopPropagation(); setTuningOpen(tuningOpen === v.id ? null : v.id) }}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:scale-110"
+                            style={{ background: tuningOpen === v.id ? '#ede9fe' : '#f1f5f9' }} title="Ayarlar">
+                            <Settings className="w-3 h-3" style={{ color: tuningOpen === v.id ? '#7c3aed' : '#94a3b8' }}/>
                           </button>
                           <button onClick={async e => { e.stopPropagation(); await fetch(`${API}/api/voice/my-voices/${v.id}`, { method:'DELETE', headers:authH() }); await loadVoices(); if (selectedId===v.id) onSelect('','','library') }}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 transition hover:scale-110" style={{ background: '#f1f5f9' }} title="Sil">
+                            className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 transition hover:scale-110"
+                            style={{ background: '#f1f5f9' }} title="Sil">
                             <Trash2 className="w-3 h-3" style={{ color:'#94a3b8' }}/>
                           </button>
                         </div>
                       </div>
 
-                      {/* Inline tuning panel — only for selected voice */}
-                      {active && (
+                      {/* Inline tuning panel — toggleable */}
+                      {tuningOpen === v.id && (
                         <div className="px-3.5 pb-3.5 space-y-2.5 fade-in-up" style={{ borderTop: '1px solid #ede9fe' }}>
-                          <div className="flex items-center gap-1.5 pt-2.5 mb-1">
-                            <Settings className="w-3 h-3" style={{ color: '#7c3aed' }}/>
-                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#7c3aed' }}>
-                              {v.name} — Ses Ayarları
+                          <div className="flex items-center justify-between pt-2.5 mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#7c3aed' }}>
+                              <Settings className="w-3 h-3"/> {v.name} — Ses Ayarları
                             </span>
+                            <button onClick={e => { e.stopPropagation(); setTuningOpen(null) }}
+                              className="text-slate-400 hover:text-slate-600 transition p-0.5" title="Kapat">
+                              <X className="w-3 h-3"/>
+                            </button>
                           </div>
                           {[
                             { key: 'speed',     label: 'Hız',        min: 0.5, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Yavaş',   hi: 'Hızlı'   },
@@ -464,7 +463,18 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                                 </div>
                                 <input type="range" min={s.min} max={s.max} step={s.step} value={val}
                                   onClick={e => e.stopPropagation()}
-                                  onChange={e => setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: parseFloat(e.target.value) }))}
+                                  onChange={e => {
+                                    const newVal = parseFloat(e.target.value)
+                                    setSettings((prev: any) => ({ ...prev, [`voice_${s.key}`]: newVal }))
+                                    clearTimeout(previewTimerRef.current)
+                                    previewTimerRef.current = setTimeout(async () => {
+                                      try {
+                                        const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:authH(), body:JSON.stringify({ voiceId: v.elevenlabs_voice_id || v.id, text: 'Merhaba, nasılsınız?' }) })
+                                        const d = await r.json()
+                                        if (d.audioUrl) { globalAudio?.pause(); const a = new Audio(d.audioUrl); globalAudio = a; setPlaying(v.id); a.onended = () => { setPlaying(null); globalAudio = null }; a.play().catch(() => {}) }
+                                      } catch {}
+                                    }, 800)
+                                  }}
                                   className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                                   style={{ background: `linear-gradient(to right, #7c3aed ${pct}%, #e2e8f0 ${pct}%)` }}/>
                                 <div className="flex justify-between">
@@ -474,32 +484,18 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                               </div>
                             )
                           })}
-                          <div className="flex gap-2 pt-1">
-                            <button onClick={async e => {
-                              e.stopPropagation()
-                              try {
-                                await fetch(`${API}/api/voice/settings`, { method: 'PATCH', headers: authH(), body: JSON.stringify(settings) })
-                                onMsg('success', `${v.name} ayarları kaydedildi`)
-                              } catch { onMsg('error', 'Kaydetme başarısız') }
-                            }}
-                              className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white"
-                              style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 2px 8px rgba(124,58,237,0.2)' }}>
-                              Kaydet
-                            </button>
-                            <button onClick={async e => {
-                              e.stopPropagation()
-                              try {
-                                const r = await fetch(`${API}/api/voice/preview-voice`, { method:'POST', headers:authH(), body:JSON.stringify({ voiceId: v.elevenlabs_voice_id || v.id, text: 'Merhaba, ben sizinle iş birliği hakkında konuşmak istiyorum. Ürünlerimiz hakkında bilgi vermek isterim.' }) })
-                                const d = await r.json()
-                                if (d.audioUrl) { globalAudio?.pause(); const a = new Audio(d.audioUrl); globalAudio = a; setPlaying(v.id); a.onended = () => { setPlaying(null); globalAudio = null }; a.play().catch(() => setPlaying(null)) }
-                                else onMsg('error', d.error || 'Önizleme oluşturulamadı')
-                              } catch { onMsg('error', 'Test başarısız') }
-                            }}
-                              className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all hover:scale-[1.02]"
-                              style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#7c3aed' }}>
-                              Ayarlarla Test Et
-                            </button>
-                          </div>
+                          <button onClick={async e => {
+                            e.stopPropagation()
+                            try {
+                              await fetch(`${API}/api/voice/settings`, { method: 'PATCH', headers: authH(), body: JSON.stringify(settings) })
+                              onMsg('success', `${v.name} ayarları kaydedildi`)
+                              setTuningOpen(null)
+                            } catch { onMsg('error', 'Kaydetme başarısız') }
+                          }}
+                            className="w-full py-2.5 rounded-xl text-[11px] font-bold text-white transition-all hover:scale-[1.01]"
+                            style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 2px 8px rgba(124,58,237,0.2)' }}>
+                            Kaydet ve Kapat
+                          </button>
                         </div>
                       )}
                     </div>
