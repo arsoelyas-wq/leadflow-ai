@@ -86,11 +86,11 @@ router.get('/sectors', authMiddleware, async (req: any, res: any) => {
 // GET /api/leads/export — Excel/CSV download
 router.get('/export', authMiddleware, async (req: any, res: any) => {
   try {
-    const { status, sector, search, grade, ids } = req.query;
+    const { status, sector, search, grade, ids, list } = req.query;
 
     let query = supabase
       .from('leads')
-      .select('company_name,contact_name,phone,email,website,instagram,facebook,linkedin_url,youtube,twitter,city,sector,source,score,status,notes,created_at')
+      .select('company_name,contact_name,phone,email,website,instagram,facebook,linkedin_url,youtube,twitter,city,sector,source,score,status,notes,created_at,rating,review_count,address,maps_url')
       .eq('user_id', req.userId)
       .order('created_at', { ascending: false })
       .limit(5000);
@@ -103,6 +103,7 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
       if (sector) query = query.ilike('sector', `%${sector}%`);
       if (grade)  query = query.eq('ai_grade', grade);
       if (search) query = query.ilike('company_name', `%${search}%`);
+      if (list)   query = query.ilike('notes', `[📁 ${list}]%`);
     }
 
     const { data, error } = await query;
@@ -111,10 +112,12 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
     const xlsx = require('xlsx');
     const colMap: Record<string, string> = {
       company_name: 'Firma Adı', contact_name: 'Karar Verici', phone: 'Telefon',
-      email: 'E-posta', website: 'Web Sitesi', instagram: 'Instagram', facebook: 'Facebook',
+      email: 'E-posta', website: 'Web Sitesi', address: 'Adres',
+      instagram: 'Instagram', facebook: 'Facebook',
       linkedin_url: 'LinkedIn', youtube: 'YouTube', twitter: 'Twitter',
       city: 'Şehir', sector: 'Sektör', source: 'Kaynak', score: 'Puan',
-      status: 'Durum', notes: 'Notlar', created_at: 'Tarih',
+      rating: 'Google Rating', review_count: 'Yorum Sayısı',
+      status: 'Durum', maps_url: 'Google Maps', notes: 'Notlar', created_at: 'Tarih',
     };
     const statusTR: Record<string, string> = {
       new: 'Yeni', contacted: 'İletişime Geçildi', qualified: 'Nitelikli',

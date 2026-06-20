@@ -311,15 +311,20 @@ export default function LeadsPage() {
     try{
       const p=new URLSearchParams()
       if(selected.length>0){p.set('ids',selected.join(','))}
-      else{if(search)p.set('search',search);if(status)p.set('status',status);if(sector)p.set('sector',sector)}
+      else{if(search)p.set('search',search);if(status)p.set('status',status);if(sector)p.set('sector',sector);if(list)p.set('list',list)}
       const token=localStorage.getItem('token')||''
       const API=process.env.NEXT_PUBLIC_API_URL||'https://leadflow-ai-production.up.railway.app'
       const resp=await fetch(`${API}/api/leads/export?${p}`,{headers:{Authorization:`Bearer ${token}`}})
-      if(!resp.ok)throw new Error('Export başarısız')
+      if(!resp.ok){const t=await resp.text().catch(()=>'');throw new Error(t||'Export başarısız')}
       const blob=await resp.blob()
       const url=URL.createObjectURL(blob)
-      const a=document.createElement('a');a.href=url;a.download=`sovlo-leads-${new Date().toISOString().slice(0,10)}.xlsx`;a.click()
-      URL.revokeObjectURL(url)
+      const a=document.createElement('a')
+      a.href=url
+      a.download=`sovlo-leads-${new Date().toISOString().slice(0,10)}.xlsx`
+      a.style.display='none'
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url)},200)
     }catch(e:any){toast('error',e.message)}
     finally{setExporting(false)}
   }
