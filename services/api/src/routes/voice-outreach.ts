@@ -544,7 +544,7 @@ router.post('/preview-voice', async (req: any, res: any) => {
     };
     const sampleText = text || defaults[language] || defaults['tr'];
 
-    // Check if this is a cloned voice — use XTTS with the user's sample audio
+    // Check if this is a cloned voice
     if (voiceId) {
       const { data: cv } = await supabase.from('cloned_voices')
         .select('sample_url')
@@ -552,14 +552,25 @@ router.post('/preview-voice', async (req: any, res: any) => {
         .eq('user_id', req.userId)
         .maybeSingle();
 
-      if (cv?.sample_url && process.env.RUNPOD_XTTS_ENDPOINT_ID) {
-        const audio = await synthesizeXtts(sampleText, cv.sample_url, language);
-        res.setHeader('Content-Type', 'audio/mpeg');
-        return res.send(audio);
+      if (cv?.sample_url) {
+        // XTTS available → use AI voice cloning
+        if (process.env.RUNPOD_XTTS_ENDPOINT_ID) {
+          try {
+            const audio = await synthesizeXtts(sampleText, cv.sample_url, language);
+            res.setHeader('Content-Type', 'audio/mpeg');
+            return res.send(audio);
+          } catch (xttsErr: any) {
+            console.error('[Voice Preview] XTTS failed:', xttsErr.message?.slice(0, 100));
+            // Do NOT fall back to Azure for cloned voices — return error
+            return res.status(503).json({ error: 'Ses klonlama motoru meşgul. Lütfen "Ayarlarla Dinle" butonunu kullanın — kayıtlı sesinizi ses efektleriyle dinleyebilirsiniz.' });
+          }
+        }
+        // XTTS not configured — tell user to use client-side preview
+        return res.status(503).json({ error: 'AI ses klonlama motoru yapılandırılmamış. "Ayarlarla Dinle" butonunu kullanarak ses ayarlarınızı test edebilirsiniz.' });
       }
     }
 
-    // Fallback: Azure TTS for library voices or when XTTS not available
+    // Library voices only → Azure TTS
     let rate = 0, pitchHz = 0;
     if (speed != null) rate = Math.round((speed - 1) * 100);
     if (pitch != null) pitchHz = Math.round((pitch - 1) * 50);
