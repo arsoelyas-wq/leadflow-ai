@@ -372,10 +372,8 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
           const TabIcon = s.Icon
           return (
             <button key={s.id} onClick={() => setVoiceSubTab(s.id as any)}
-              className="flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold transition-all duration-300"
-              style={active ? { background: s.gradient, color:'#ffffff', boxShadow:'0 4px 14px rgba(0,0,0,0.12)' } : { color:'#64748b' }}
-              onMouseEnter={e => { if (!active) e.currentTarget.style.color = '#0f172a' }}
-              onMouseLeave={e => { if (!active) e.currentTarget.style.color = '#64748b' }}>
+              className={`flex-1 flex items-center justify-center gap-2.5 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${!active ? 'hover:text-slate-900' : ''}`}
+              style={active ? { background: s.gradient, color:'#ffffff', boxShadow:'0 4px 14px rgba(0,0,0,0.12)' } : { color:'#64748b' }}>
               <TabIcon className="w-4 h-4"/>{s.label}
             </button>
           )
@@ -420,10 +418,8 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
               </div>
             ) : (
               <div onClick={() => fileRef.current?.click()}
-                className="rounded-3xl p-10 text-center cursor-pointer border-2 border-dashed group transition-all duration-300 hover:scale-[1.01]"
-                style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor='#a78bfa')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor='#e2e8f0')}>
+                className="rounded-3xl p-10 text-center cursor-pointer border-2 border-dashed group transition-all duration-300 hover:border-violet-400"
+                style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-transform group-hover:scale-110"
                   style={{ background: '#f5f3ff', border: '1px solid #ddd6fe' }}>
                   <Upload className="w-7 h-7" style={{ color:'#7c3aed' }}/>
@@ -439,7 +435,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                 <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"/>
                 <span className="text-xs font-semibold" style={{ color:'#059669' }}>{fmt(recordingTime)} kayıt</span>
                 <audio controls src={recordedUrl} className="flex-1 h-8"/>
-                <button onClick={clearRec} className="transition p-1" style={{ color:'#94a3b8' }} onMouseEnter={e => e.currentTarget.style.color='#dc2626'} onMouseLeave={e => e.currentTarget.style.color='#94a3b8'}><Trash2 className="w-4 h-4"/></button>
+                <button onClick={clearRec} className="transition p-1 text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
               </div>
             )}
 
@@ -772,9 +768,7 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
           {callMode==='campaign' && (
             <div className="flex gap-3">
               <button onClick={() => setSelectedLeads(filtered.map((l: any) => l.id))} className="text-xs font-semibold transition cursor-pointer" style={{ color: '#b45309' }}>Tümünü Seç</button>
-              <button onClick={() => setSelectedLeads([])} className="text-xs transition cursor-pointer" style={{ color:'#94a3b8' }}
-                onMouseEnter={e => (e.currentTarget.style.color='#0f172a')}
-                onMouseLeave={e => (e.currentTarget.style.color='#94a3b8')}>Temizle</button>
+              <button onClick={() => setSelectedLeads([])} className="text-xs transition cursor-pointer text-slate-400 hover:text-slate-900">Temizle</button>
             </div>
           )}
         </div>
@@ -798,10 +792,8 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
             {filtered.map((l: any) => {
               const checked = selectedLeads.includes(l.id)
               return (
-                <label key={l.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors group"
-                  style={{ background: checked ? '#fffbeb' : 'transparent' }}
-                  onMouseEnter={e => { if (!checked) (e.currentTarget as HTMLElement).style.background='#f1f5f9' }}
-                  onMouseLeave={e => { if (!checked) (e.currentTarget as HTMLElement).style.background='transparent' }}>
+                <label key={l.id}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-colors group ${checked ? 'bg-amber-50' : 'hover:bg-slate-50'}`}>
                   <div className="relative w-4 h-4 flex-shrink-0">
                     <input type="checkbox" checked={checked}
                       onChange={ev => setSelectedLeads((prev: string[]) => ev.target.checked ? [...prev, l.id] : prev.filter((id: string) => id !== l.id))}
@@ -1125,7 +1117,7 @@ export default function VoicePage() {
         .lux-btn { background:linear-gradient(135deg,#1d4ed8,#3b82f6);box-shadow:0 4px 16px rgba(59,130,246,0.3),inset 0 1px 0 rgba(255,255,255,0.2);transition:all 0.2s; }
         .lux-btn:not(:disabled):hover { transform:translateY(-1px);box-shadow:0 8px 24px rgba(59,130,246,0.35),inset 0 1px 0 rgba(255,255,255,0.25); }
         .lux-btn::before { content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.18) 50%,transparent 60%);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite; }
-        .voice-card:hover { transform:translateY(-1px) scale(1.005); }
+        .voice-card:hover { box-shadow:0 2px 8px rgba(0,0,0,0.06); }
         .custom-scroll::-webkit-scrollbar{width:3px}
         .custom-scroll::-webkit-scrollbar-track{background:transparent}
         .custom-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:2px}
@@ -1271,8 +1263,7 @@ export default function VoicePage() {
             <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: '#f1f5f9', color: '#94a3b8' }}>{calls.length}</span>
           </h3>
           <div className="flex items-center gap-2">
-            <button onClick={e => { e.stopPropagation(); loadAll() }} aria-label="Yenile" className="p-1.5 transition rounded-lg cursor-pointer hover:bg-slate-100" style={{ color:'#94a3b8' }}
-              onMouseEnter={e => (e.currentTarget.style.color='#0f172a')} onMouseLeave={e => (e.currentTarget.style.color='#94a3b8')}>
+            <button onClick={e => { e.stopPropagation(); loadAll() }} aria-label="Yenile" className="p-1.5 transition rounded-lg cursor-pointer hover:bg-slate-100 text-slate-400 hover:text-slate-900">
               <RefreshCw className="w-3.5 h-3.5"/>
             </button>
             <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${showCalls ? 'rotate-90' : ''}`} style={{ color:'#94a3b8' }}/>
