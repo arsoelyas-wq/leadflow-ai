@@ -185,7 +185,8 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const previewTimerRef = useRef<any>(null)
   const activeCtxRef = useRef<AudioContext | null>(null)
   const activeSourceRef = useRef<AudioBufferSourceNode | null>(null)
-  const audioCacheRef = useRef<{ url: string; buffer: AudioBuffer } | null>(null)
+  const rawAudioRef = useRef<ArrayBuffer | null>(null)
+  const rawUrlRef = useRef<string>('')
 
   function stopAllAudio() {
     globalAudio?.pause(); globalAudio = null
@@ -195,7 +196,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
     setPlaying(null)
   }
 
-  async function playVoiceSample(sampleUrl: string, voiceId: string, curSettings: any) {
+  async function playVoiceSample(sampleUrl: string, voiceId: string, s: any) {
     stopAllAudio()
     if (!sampleUrl) return
     setPlaying(voiceId)
@@ -203,37 +204,63 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
       const actx = new AudioContext()
       activeCtxRef.current = actx
 
-      let audioBuf: AudioBuffer
-      if (audioCacheRef.current?.url === sampleUrl) {
-        audioBuf = audioCacheRef.current.buffer
-      } else {
+      // Cache raw ArrayBuffer (must decode fresh per AudioContext)
+      if (rawUrlRef.current !== sampleUrl || !rawAudioRef.current) {
         const resp = await fetch(sampleUrl)
-        const arrBuf = await resp.arrayBuffer()
-        audioBuf = await actx.decodeAudioData(arrBuf)
-        audioCacheRef.current = { url: sampleUrl, buffer: audioBuf }
+        rawAudioRef.current = await resp.arrayBuffer()
+        rawUrlRef.current = sampleUrl
       }
+      const audioBuf = await actx.decodeAudioData(rawAudioRef.current.slice(0))
 
+      // Source — hız ayarı
       const source = actx.createBufferSource()
       activeSourceRef.current = source
       source.buffer = audioBuf
-      source.playbackRate.value = curSettings.voice_speed ?? 1.0
+      source.playbackRate.value = s.voice_speed ?? 1.0
+      // Perde (pitch) — bağımsız, cents cinsinden (100 cent = 1 yarım ton)
+      source.detune.value = (s.voice_pitch ?? 0) * 100
 
+      // EQ: Bas güçlendirici (80Hz lowshelf — derin bas)
       const bass = actx.createBiquadFilter()
-      bass.type = 'lowshelf'; bass.frequency.value = 200
-      bass.gain.value = curSettings.voice_bass ?? 0
+      bass.type = 'lowshelf'; bass.frequency.value = 80
+      bass.gain.value = (s.voice_bass ?? 0) * 2.5
 
-      const treble = actx.createBiquadFilter()
-      treble.type = 'highshelf'; treble.frequency.value = 3000
-      treble.gain.value = curSettings.voice_treble ?? 0
-
+      // EQ: Alt-orta sıcaklık (300Hz peaking — ses sıcaklığı)
       const warmth = actx.createBiquadFilter()
-      warmth.type = 'peaking'; warmth.frequency.value = 400; warmth.Q.value = 1.0
-      warmth.gain.value = curSettings.voice_warmth ?? 0
+      warmth.type = 'peaking'; warmth.frequency.value = 300; warmth.Q.value = 0.8
+      warmth.gain.value = (s.voice_warmth ?? 0) * 2
 
+      // EQ: Berraklık / presence (2.5kHz peaking — anlaşılırlık)
+      const presence = actx.createBiquadFilter()
+      presence.type = 'peaking'; presence.frequency.value = 2500; presence.Q.value = 1.2
+      presence.gain.value = (s.voice_presence ?? 0) * 2
+
+      // EQ: Tiz / air (8kHz highshelf — parlaklık)
+      const treble = actx.createBiquadFilter()
+      treble.type = 'highshelf'; treble.frequency.value = 8000
+      treble.gain.value = (s.voice_treble ?? 0) * 2.5
+
+      // Kompresör — ses dengeleme
+      const comp = actx.createDynamicsCompressor()
+      comp.threshold.value = -24 + (s.voice_compress ?? 0) * -3
+      comp.knee.value = 12
+      comp.ratio.value = 2 + (s.voice_compress ?? 0) * 1.5
+      comp.attack.value = 0.003
+      comp.release.value = 0.15
+
+      // Ses seviyesi
       const gain = actx.createGain()
-      gain.gain.value = curSettings.voice_volume ?? 1.0
+      gain.gain.value = s.voice_volume ?? 1.0
 
-      source.connect(bass).connect(treble).connect(warmth).connect(gain).connect(actx.destination)
+      // Chain: Source → Bass → Warmth → Presence → Treble → Compressor → Gain → Output
+      source.connect(bass)
+      bass.connect(warmth)
+      warmth.connect(presence)
+      presence.connect(treble)
+      treble.connect(comp)
+      comp.connect(gain)
+      gain.connect(actx.destination)
+
       source.onended = () => { setPlaying(null); activeSourceRef.current = null }
       source.start(0)
     } catch { setPlaying(null) }
@@ -504,11 +531,14 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                           </div>
                           {(() => {
                             const SLIDERS = [
-                              { key: 'speed',  label: 'Konuşma Hızı', min: 0.5, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Yavaş',   hi: 'Hızlı',   color: '#7c3aed' },
-                              { key: 'volume', label: 'Ses Seviyesi', min: 0.2, max: 2.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Kısık',   hi: 'Yüksek',  color: '#2563eb' },
-                              { key: 'bass',   label: 'Bas (Kalınlık)', min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Az',      hi: 'Çok',     color: '#059669' },
-                              { key: 'treble', label: 'Tiz (Netlik)',   min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Yumuşak', hi: 'Keskin',  color: '#d97706' },
-                              { key: 'warmth', label: 'Sıcaklık',      min: -10, max: 10, step: 1,   def: 0,    unit: 'dB', lo: 'Soğuk',   hi: 'Sıcak',   color: '#dc2626' },
+                              { key: 'speed',    label: 'Konuşma Hızı',  min: 0.5, max: 2.0, step: 0.05, def: 1.0,  unit: 'x',  lo: 'Yavaş',    hi: 'Hızlı',     color: '#7c3aed' },
+                              { key: 'pitch',    label: 'Ses Perdesi',   min: -6,  max: 6,   step: 0.5,  def: 0,    unit: '',   lo: 'Kalın',    hi: 'İnce',      color: '#8b5cf6' },
+                              { key: 'volume',   label: 'Ses Seviyesi',  min: 0.1, max: 3.0, step: 0.1,  def: 1.0,  unit: 'x',  lo: 'Kısık',    hi: 'Yüksek',    color: '#2563eb' },
+                              { key: 'bass',     label: 'Bas Derinliği', min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Hafif',    hi: 'Derin',     color: '#059669' },
+                              { key: 'warmth',   label: 'Sıcaklık',     min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Soğuk',    hi: 'Sıcak',     color: '#dc2626' },
+                              { key: 'presence', label: 'Berraklık',    min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Bulanık',  hi: 'Berrak',    color: '#0891b2' },
+                              { key: 'treble',   label: 'Parlaklık',    min: -8,  max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Mat',      hi: 'Parlak',    color: '#d97706' },
+                              { key: 'compress', label: 'Ses Dengeleme', min: 0,   max: 8,   step: 1,    def: 0,    unit: '',   lo: 'Kapalı',   hi: 'Güçlü',     color: '#6366f1' },
                             ]
                             return <>
                               {SLIDERS.map(s => {
