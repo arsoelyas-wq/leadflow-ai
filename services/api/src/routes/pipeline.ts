@@ -16,8 +16,7 @@ router.get('/board', async (req: any, res: any) => {
       .from('leads')
       .select(`
         id, company_name, contact_name, phone, email,
-        status, sector, city, source, score, ai_grade,
-        hot_score, last_activity_at, ai_summary,
+        status, sector, city, source, score,
         created_at, updated_at
       `)
       .eq('user_id', req.userId)
