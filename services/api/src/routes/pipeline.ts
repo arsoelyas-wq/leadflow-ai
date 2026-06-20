@@ -13,11 +13,24 @@ const CARDS_PER_PAGE = 30;
 // GET /api/pipeline/board — Optimized board with per-stage pagination
 router.get('/board', async (req: any, res: any) => {
   try {
-    const { data: leads, error } = await supabase
-      .from('leads')
-      .select('id, company_name, contact_name, phone, email, website, status, sector, city, source, score, created_at, updated_at')
-      .eq('user_id', req.userId)
-      .order('score', { ascending: false });
+    const allLeads: any[] = [];
+    let from = 0;
+    const PAGE = 1000;
+    while (true) {
+      const { data, error: pageErr } = await supabase
+        .from('leads')
+        .select('id, company_name, contact_name, phone, email, website, status, sector, city, source, score, created_at, updated_at')
+        .eq('user_id', req.userId)
+        .order('score', { ascending: false })
+        .range(from, from + PAGE - 1);
+      if (pageErr) throw pageErr;
+      if (!data || data.length === 0) break;
+      allLeads.push(...data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    const leads = allLeads;
+    const error = null;
 
     if (error) throw error;
 
