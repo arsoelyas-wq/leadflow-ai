@@ -538,10 +538,10 @@ async function scrapeSocialReviews(competitorName: string, country: any): Promis
 async function scrapeLinkedIn(query: string, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
   try {
     const results = await scrapeGoogleSearch(`${query} site:linkedin.com/in OR site:linkedin.com/company`, langCode, googleDomain, countryCode, ['linkedin.com']);
-    return results.filter((r: any) => r.url.includes('linkedin.com')).map((r: any) => ({
+    return results.filter((r: any) => r?.url?.includes('linkedin.com')).map((r: any) => ({
       name: r.title.replace('| LinkedIn', '').replace('- LinkedIn', '').trim(),
       website: r.url, notes: r.snippet,
-      type: r.url.includes('/in/') ? 'person' : 'business',
+      type: r.url?.includes('/in/') ? 'person' : 'business',
       source_channel: 'LinkedIn', linkedin: r.url,
     }));
   } catch { return []; }
@@ -701,7 +701,7 @@ async function scrapeInstagram(keyword: string, country: any): Promise<any[]> {
 async function scrapeComplaintSite(competitorName: string, site: { id: string; name: string; domain: string }, langCode: string, googleDomain: string, countryCode: string): Promise<any[]> {
   try {
     const results = await scrapeGoogleSearch(`"${competitorName}" site:${site.domain}`, langCode, googleDomain, countryCode, [site.domain]);
-    return results.filter((r: any) => r.url.includes(site.domain)).map((r: any) => ({
+    return results.filter((r: any) => r?.url?.includes(site.domain)).map((r: any) => ({
       name: r.title.split('|')[0].split('-')[0].trim(),
       website: r.url, notes: r.snippet, type: 'person',
       source_channel: site.name, isComplaint: true,
@@ -716,11 +716,11 @@ async function scrapeInternational(query: string): Promise<any[]> {
     scrapeGoogleSearch(`${query} site:kompass.com`, 'en', 'google.com', 'US', ['kompass.com']),
     scrapeGoogleSearch(`${query} site:europages.com`, 'en', 'google.com', 'US', ['europages.com']),
   ]);
-  if (k.status === 'fulfilled') results.push(...k.value.filter((r: any) => r.url.includes('kompass.com')).map((r: any) => ({
-    name: r.title, website: r.url, notes: r.snippet, type: 'business', source_channel: 'Kompass B2B',
+  if (k.status === 'fulfilled') results.push(...(k.value || []).filter((r: any) => r?.url?.includes('kompass.com')).map((r: any) => ({
+    name: r.title || '', website: r.url || '', notes: r.snippet || '', type: 'business', source_channel: 'Kompass B2B',
   })));
-  if (e.status === 'fulfilled') results.push(...e.value.filter((r: any) => r.url.includes('europages')).map((r: any) => ({
-    name: r.title, website: r.url, notes: r.snippet, type: 'business', source_channel: 'Europages',
+  if (e.status === 'fulfilled') results.push(...(e.value || []).filter((r: any) => r?.url?.includes('europages')).map((r: any) => ({
+    name: r.title || '', website: r.url || '', notes: r.snippet || '', type: 'business', source_channel: 'Europages',
   })));
   return results;
 }
@@ -927,6 +927,9 @@ router.post('/list', async (req: any, res: any) => {
   try {
     const { name, city, sector, channels, auto_scan, country } = req.body;
     if (!name) return res.status(400).json({ error: 'name zorunlu' });
+    // Duplicate kontrolü
+    const { data: existing } = await supabase.from('competitors').select('id').eq('user_id', req.userId).ilike('name', name.trim()).maybeSingle();
+    if (existing) return res.status(400).json({ error: `"${name}" zaten rakip listenizde mevcut` });
     const { data, error } = await supabase.from('competitors').insert([{
       user_id: req.userId, name, city: city || '', sector: sector || '',
       channels: channels || ['google', 'linkedin', 'social_reviews'],
