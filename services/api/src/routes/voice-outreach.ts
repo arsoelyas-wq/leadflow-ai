@@ -369,7 +369,7 @@ async function makeVapiCall(params: {
         maxTokens: 120,
       },
       voice: voiceConfig || defaultVoice,
-      firstMessage: openingLine,
+      firstMessage: openingLine || (language === 'tr' ? 'Merhaba, nasılsınız? Kısa bir konuda aramak istedim.' : 'Hi, how are you? I wanted to reach out about something quick.'),
       firstMessageMode: 'assistant-speaks-first',
       endCallMessage: language === 'tr' ? 'Teşekkürler, iyi günler dilerim!' : 'Thank you, have a great day!',
       endCallPhrases: language === 'tr'
@@ -380,7 +380,11 @@ async function makeVapiCall(params: {
       maxDurationSeconds: 480,
       recordingEnabled: true,
     },
+    serverUrl: `${API_BASE}/api/voice/webhook/vapi`,
   };
+
+  console.log('[Vapi Call] firstMessage:', openingLine?.slice(0, 60));
+  console.log('[Vapi Call] systemPrompt length:', systemPrompt.length);
 
   const r = await axios.post('https://api.vapi.ai/call/phone', body, {
     headers: { 'Authorization': `Bearer ${VAPI_KEY}`, 'Content-Type': 'application/json' },
@@ -731,9 +735,9 @@ router.post('/call/single', async (req: any, res: any) => {
     if (!lead)       return res.status(404).json({ error: 'Lead bulunamadı' });
     if (!lead.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
 
-    const agentName   = settings?.agent_name    || userRow?.name    || 'Satış Temsilcisi';
-    const companyName = profile?.company?.name  || userRow?.company || 'Şirketimiz';
-    const productDesc = profile?.product?.description || settings?.product_description || '';
+    const agentName   = settings?.agent_name    || userRow?.name    || 'Ahmet';
+    const companyName = settings?.company_name  || profile?.company?.name  || userRow?.company || 'Şirketimiz';
+    const productDesc = settings?.product_description || profile?.product?.description || 'Ürün ve hizmetlerimiz hakkında bilgi vermek istiyorum';
     const avoidWords  = profile?.sales_style?.avoid_words || '';
     const callLang    = language || getLanguageByCountry(lead.country_code || '') || 'tr';
 
@@ -799,9 +803,9 @@ router.post('/call/campaign', async (req: any, res: any) => {
       supabase.from('users').select('name, company').eq('id', userId).single(),
     ]);
 
-    const agentName   = settings?.agent_name    || userRow?.name    || 'Satış Temsilcisi';
-    const companyName = profile?.company?.name  || userRow?.company || 'Şirketimiz';
-    const productDesc = profile?.product?.description || settings?.product_description || '';
+    const agentName   = settings?.agent_name    || userRow?.name    || 'Ahmet';
+    const companyName = settings?.company_name  || profile?.company?.name  || userRow?.company || 'Şirketimiz';
+    const productDesc = settings?.product_description || profile?.product?.description || 'Ürün ve hizmetlerimiz hakkında bilgi vermek istiyorum';
     const avoidWords  = profile?.sales_style?.avoid_words || '';
 
     const voiceType      = (settings?.voice_provider === 'cloned' ? 'cloned' : 'library') as 'cloned' | 'library';
