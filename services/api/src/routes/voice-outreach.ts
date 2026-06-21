@@ -380,11 +380,8 @@ async function makeVapiCall(params: {
       maxDurationSeconds: 480,
       recordingEnabled: true,
     },
-    serverUrl: `${API_BASE}/api/voice/webhook/vapi`,
   };
-
-  console.log('[Vapi Call] firstMessage:', openingLine?.slice(0, 60));
-  console.log('[Vapi Call] systemPrompt length:', systemPrompt.length);
+  console.log('[Vapi Call] firstMessage:', body.assistant.firstMessage?.slice(0, 60));
 
   const r = await axios.post('https://api.vapi.ai/call/phone', body, {
     headers: { 'Authorization': `Bearer ${VAPI_KEY}`, 'Content-Type': 'application/json' },
