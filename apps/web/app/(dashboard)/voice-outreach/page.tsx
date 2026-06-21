@@ -818,7 +818,7 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
 }
 
 // ─── STEP 3: HAZIRLA ─────────────────────────────────────────────────────────
-function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinutes, setDelayMinutes, settings, setSettings, onMsg }: any) {
+function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinutes, setDelayMinutes, settings, setSettings, onMsg, setHasVerifiedPhone }: any) {
   return (
     <div className="step-slide space-y-6">
       <div>
@@ -909,8 +909,8 @@ function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinu
           try {
             const r = await fetch(`${API}/api/voice/confirm-number`, { method: 'POST', headers: authH(), body: JSON.stringify({ code: verifyCode }) })
             const d = await r.json()
-            if (d.ok) { setVerifiedPhone(d.phone); setVerifyStep('verified'); onMsg('success', 'Numara doğrulandı!') }
-            else onMsg('error', d.error)
+            if (d.ok) { setVerifiedPhone(d.phone); setVerifyStep('verified'); setHasVerifiedPhone(true); onMsg('success', 'Numara doğrulandı!') }
+            else { onMsg('error', d.error || 'Yanlış kod'); setVerifyCode('') }
           } catch { onMsg('error', 'Doğrulama başarısız') }
           setVerifyLoading(false)
         }
@@ -1076,9 +1076,19 @@ function StepLaunch({ selectedVoiceName, selectedVoiceType, callMode, selectedLe
             })}
           </div>
           {pipeStep >= PIPE.length && (
-            <div className="text-center fade-in-up">
-              <p className="font-bold text-lg" style={{ color:'#059669' }}>Arama Başlatıldı!</p>
-              <p className="text-sm mt-1" style={{ color:'#94a3b8' }}>Aramalar sekmesinden takip edebilirsiniz</p>
+            <div className="text-center fade-in-up space-y-2">
+              {calling || campaignRunning ? (
+                <>
+                  <div className="w-6 h-6 mx-auto rounded-full border-2 animate-spin" style={{ borderColor: '#059669', borderTopColor: 'transparent' }}/>
+                  <p className="font-bold text-lg" style={{ color: '#0f172a' }}>Aranıyor...</p>
+                  <p className="text-sm" style={{ color: '#94a3b8' }}>Telefon çalıyor, lütfen bekleyin</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold text-lg" style={{ color:'#059669' }}>Arama Talebi Gönderildi!</p>
+                  <p className="text-sm" style={{ color:'#94a3b8' }}>Arama geçmişinden durumu takip edebilirsiniz</p>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -1175,10 +1185,17 @@ export default function VoicePage() {
     catch (e: any) { showMsg('error', e.message) }
   }
 
+  const [hasVerifiedPhone, setHasVerifiedPhone] = useState(false)
+
+  useEffect(() => {
+    fetch(`${API}/api/voice/my-number`, { headers: authH() })
+      .then(r => r.json()).then(d => { if (d.phone) setHasVerifiedPhone(true) }).catch(() => {})
+  }, [])
+
   const canNext: Record<number, boolean> = {
     1: !!selectedVoiceId,
     2: callMode==='single' ? !!selectedLead : selectedLeads.length > 0,
-    3: true,
+    3: hasVerifiedPhone,
     4: false,
   }
 
@@ -1308,7 +1325,7 @@ export default function VoicePage() {
           <div key={step}>
             {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg} settings={settings} setSettings={setSettings}/>}
             {step===2 && <StepLead leads={leads} callMode={callMode} setCallMode={setCallMode} selectedLead={selectedLead} setSelectedLead={setSelectedLead} selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads} campaignName={campaignName} setCampaignName={setCampaignName} filterCountry={filterCountry} setFilterCountry={setFilterCountry}/>}
-            {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings} onMsg={showMsg}/>}
+            {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings} onMsg={showMsg} setHasVerifiedPhone={setHasVerifiedPhone}/>}
             {step===4 && <StepLaunch selectedVoiceName={selectedVoiceName} selectedVoiceType={selectedVoiceType} callMode={callMode} selectedLead={selectedLead} selectedLeads={selectedLeads} selectedLanguage={selectedLanguage} leads={leads} calling={calling} campaignRunning={campaignRunning} onCall={makeSingleCall} onCampaign={startCampaign}/>}
           </div>
 
@@ -1327,7 +1344,7 @@ export default function VoicePage() {
                 ))}
               </div>
 
-              <button onClick={() => { if (step === 3) { saveSettings() }; setStep(s => Math.min(4, s + 1)) }} disabled={!canNext[step]}
+              <button onClick={() => { if (step === 3) { if (!hasVerifiedPhone) { showMsg('error', 'Önce arama numaranızı doğrulayın'); return } saveSettings() }; setStep(s => Math.min(4, s + 1)) }} disabled={!canNext[step]}
                 className="relative flex items-center gap-2 px-7 py-3 rounded-2xl text-sm font-bold text-white overflow-hidden disabled:opacity-35 disabled:cursor-not-allowed transition-all hover:scale-[1.03] active:scale-100"
                 style={{
                   background: canNext[step] ? `linear-gradient(135deg, ${WIZARD_STEPS[step-1].color}, ${WIZARD_STEPS[step].color})` : '#e2e8f0',
