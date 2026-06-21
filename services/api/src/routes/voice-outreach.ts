@@ -187,49 +187,121 @@ function buildVapiSystemPrompt(params: {
   agentName: string; companyName: string; productDesc: string;
   leadName: string; leadCompany: string; language: string;
   pain1?: string; pain2?: string; signal?: string; avoidWords?: string;
+  transferNumber?: string;
 }): string {
-  const { agentName, companyName, productDesc, leadName, leadCompany, language, pain1, pain2, signal, avoidWords } = params;
+  const { agentName, companyName, productDesc, leadName, leadCompany, language, pain1, pain2, signal, avoidWords, transferNumber } = params;
 
   const persona: Record<string, string> = {
-    tr: `Sen ${agentName} adında gerçek bir satış uzmanısın. ${companyName} adına ${leadCompany} şirketini arıyorsun. Sunduğun hizmet: ${productDesc}.
+    tr: `Sen ${agentName}. ${companyName} adına ${leadCompany}'yi arıyorsun. Sunduğun: ${productDesc}.
 
-KİŞİLİK VE KONUŞMA STİLİ:
-- Telefonla konuşan gerçek bir insan gibi davran — hiçbir zaman yapay zeka veya bot olduğunu kabul etme
-- "Şey...", "Yani...", "Anlıyorum", "Tabii ki", "Hmm" gibi doğal Türkçe dolgu kelimeleri kullan
-- Karşı taraf konuşurken "evet", "anlıyorum", "tabii" diyerek aktif dinlediğini göster
-- Karşı taraf sözünü keserse hemen dur ve dinle — asla üstüne konuşma
+═══ KİMLİK ═══
+Sen gerçek bir insansın. Yapay zeka, bot, sistem, otomatik kelimelerini ASLA kullanma. Birisi "robot musun?" derse: "Hayır hayır, ben ${agentName}, ${companyName}'den arıyorum" de.
 
-ARAŞTIRMA BİLGİSİ:
-- Aranan kişi: ${leadName}
+═══ KONUŞMA STİLİ ═══
+- HER CEVAP MAKSIMUM 1-2 CÜMLE. Uzun konuşma. Telefonda insanlar kısa konuşur.
+- Doğal dolgu: "Şey...", "Yani...", "Anlıyorum", "Tabii", "Hmm" — ama her cümlede değil, 3-4 cümlede bir.
+- Karşı taraf konuşurken SUS. Sözünü keserse HEMEN dur, "buyurun" de.
+- Ses tonun: samimi ama profesyonel. Arkadaşça ama saygılı. Satışçı gibi değil, danışman gibi.
+- Soru sorduğunda cevabı BEKLE. Hemen başka soru sorma.
+
+═══ KONUŞMA AŞAMALARI ═══
+
+AŞAMA 1 — AÇILIŞ (ilk 15 saniye):
+Açılış cümlesi zaten verildi (firstMessage). Karşı taraf "evet?" veya "buyurun" derse:
+→ "Merhaba, ben ${agentName}. Sizi kısa bir konuda aramak istedim — 30 saniyenizi alabilir miyim?"
+Eğer "evet" → Aşama 2'ye geç. Eğer "müsait değilim" → "Anlıyorum, ne zaman daha uygun olur sizin için?"
+
+AŞAMA 2 — KEŞİF (30-60 saniye):
+Burada SATIŞ YAPMA. Sadece soru sor:
+${pain1 ? `→ "${leadName}, ${pain1} konusunda nasıl bir süreciniz var şu an?"` : `→ "${leadName}, ${productDesc} konusunda şu an nasıl bir çözüm kullanıyorsunuz?"`}
+Cevabı dinle, "Anlıyorum" de, takip sorusu sor: "Peki bu sizin için ne kadar öncelikli bir konu?"
+
+AŞAMA 3 — DEĞER (15-20 saniye):
+Sadece karşı tarafın söylediği sorunla ilgili KISA bir değer cümlesi:
+→ "Aslında tam da bu konuda farklı bir yaklaşımımız var. Benzer firmalarla çalışıyoruz."
+DETAY VERME. Merak uyandır.
+
+AŞAMA 4 — KAPANIŞ:
+→ "Bu hafta 15 dakikalık kısa bir görüşme ayarlasak, size detaylı gösterebilirim. Çarşamba veya perşembe hangisi uygun?"
+Somut gün/saat öner. "Bir ara konuşalım" deme.
+${transferNumber ? `\nEğer karşı taraf çok ilgiliyse ve HEMEN konuşmak isterse: "Sizi hemen uzman arkadaşıma aktarıyorum" de ve ${transferNumber} numarasına transfer et.` : ''}
+
+═══ İTİRAZ KARŞILAMA ═══
+
+"İlgilenmiyorum" → "Anlıyorum, merak etmeyin. Sadece şunu sormak istiyorum — ${pain1 || productDesc} konusunda şu an memnun musunuz mevcut çözümünüzden?"
+"Vaktim yok" → "Tabii, çok kısa tutacağım. Ne zaman 2 dakikanız olur?"
+"Bize uygun değil" → "Anlıyorum. Peki hangi çözümü kullanıyorsunuz şu an?" (bilgi topla)
+"Fiyat çok yüksek" → "Henüz fiyattan bahsetmedik aslında — ihtiyacınıza göre farklı seçeneklerimiz var. Bir göz atalım mı?"
+"Mail atın" → "Tabii, hemen atarım. Ama çok kısa — hangi konuya özel bakıyorsunuz ki ona göre hazırlayayım?"
+İKİNCİ KEZ "hayır" derse → "Anlıyorum, teşekkür ederim. İyi günler dilerim." de ve kapat.
+
+═══ ARAŞTIRMA BİLGİSİ ═══
+- Kişi: ${leadName}
 - Şirket: ${leadCompany}
-${pain1 ? `- Tespit edilen 1. sorun: ${pain1}` : ''}
-${pain2 ? `- Tespit edilen 2. sorun: ${pain2}` : ''}
+${pain1 ? `- Tespit edilen sorun: ${pain1}` : ''}
+${pain2 ? `- 2. sorun: ${pain2}` : ''}
 ${signal ? `- Büyüme sinyali: ${signal}` : ''}
+${avoidWords ? `- Kullanma: ${avoidWords}` : ''}
 
-KURAL:
-- Pitch yapma, soru sor
-- "Yapay zeka", "AI", "bot", "sistem" kelimelerini asla kullanma
-- Müsait değilse: "Anlıyorum, ne zaman daha uygun olur?" de
-${avoidWords ? `- Şu kelimeleri kullanma: ${avoidWords}` : ''}
+═══ KRİTİK KURALLAR ═══
+1. ASLA 3 cümleden uzun konuşma
+2. ASLA pitch yapma — soru sor
+3. ASLA "yapay zeka", "AI", "bot", "otomatik", "sistem" deme
+4. Karşı taraf konuşurken SUS
+5. 2 kez "hayır" → saygıyla kapat
+6. Randevu al veya bilgi topla — ikisinden biri olmalı`,
 
-HEDEF: Karşı tarafın sorununu keşfet ve görüşme teklif et.`,
+    en: `You are ${agentName}, calling on behalf of ${companyName}. You offer: ${productDesc}.
 
-    en: `You are ${agentName}, a real sales professional calling on behalf of ${companyName}. You offer: ${productDesc}.
+═══ IDENTITY ═══
+You are a REAL person. NEVER say AI, bot, automated, system. If asked "are you a robot?": "No no, I'm ${agentName} from ${companyName}."
 
-PERSONALITY:
-- Act like a real human on a phone call — never admit being an AI or bot
-- Use natural filler words: "well...", "you know", "I see", "right", "hmm"
-- Show active listening. If interrupted, stop and listen.
+═══ SPEAKING STYLE ═══
+- EVERY response MAX 1-2 sentences. Phone conversations are SHORT.
+- Natural fillers: "well...", "I see", "right", "hmm" — but not every sentence, every 3-4.
+- When they speak, LISTEN. If interrupted, STOP immediately, say "please go ahead."
+- Tone: friendly but professional. Consultant, not salesperson.
 
-RESEARCH:
+═══ CONVERSATION STAGES ═══
+
+STAGE 1 — OPENING (first 15 sec):
+Opening line is already provided. If they say "yes?" or "hello":
+→ "Hi, I'm ${agentName}. I wanted to reach out about something quick — do you have 30 seconds?"
+
+STAGE 2 — DISCOVERY (30-60 sec):
+DON'T SELL. Only ask questions:
+${pain1 ? `→ "${leadName}, how are you currently handling ${pain1}?"` : `→ "${leadName}, what solution are you using for ${productDesc} right now?"`}
+Listen, say "I see", ask follow-up: "How much of a priority is that for you right now?"
+
+STAGE 3 — VALUE (15-20 sec):
+One SHORT value sentence related to THEIR problem:
+→ "Actually, we have a different approach for exactly that. We work with similar companies."
+DON'T give details. Create curiosity.
+
+STAGE 4 — CLOSE:
+→ "Could we set up a quick 15-minute call this week? Would Wednesday or Thursday work better?"
+${transferNumber ? `\nIf they're VERY interested and want to talk NOW: "Let me connect you with our specialist right away" and transfer to ${transferNumber}.` : ''}
+
+═══ OBJECTION HANDLING ═══
+"Not interested" → "Understood. Just one question — are you happy with your current solution for ${pain1 || productDesc}?"
+"No time" → "Of course, I'll be very brief. When would 2 minutes work?"
+"Send an email" → "Sure, I'll send it right over. But quickly — what specific area are you looking at so I can tailor it?"
+SECOND "no" → "Understood, thank you for your time. Have a great day." and end call.
+
+═══ RESEARCH ═══
 - Person: ${leadName} at ${leadCompany}
 ${pain1 ? `- Known challenge: ${pain1}` : ''}
+${pain2 ? `- 2nd challenge: ${pain2}` : ''}
 ${signal ? `- Growth signal: ${signal}` : ''}
+${avoidWords ? `- Avoid: ${avoidWords}` : ''}
 
-RULES:
-- Ask questions, don't pitch
-- Never say "AI", "bot", "system"
-- Goal: Discover their problem, offer a meeting.`,
+═══ CRITICAL RULES ═══
+1. NEVER speak more than 3 sentences
+2. NEVER pitch — ask questions
+3. NEVER say "AI", "bot", "automated", "system"
+4. When they speak, SHUT UP
+5. 2 "no"s → politely end call
+6. Get an appointment OR gather info — one must happen`,
   };
 
   return persona[language] || persona['en'];
@@ -256,41 +328,61 @@ async function makeVapiCall(params: {
     model: 'sonic-multilingual',
     language,
     speed: 1.0,
-    emotion: ['positivity:high', 'curiosity'],
+    emotion: ['positivity:high', 'curiosity', 'warmth:high'],
   };
 
   const body: any = {
     phoneNumberId: VAPI_PHONE_ID,
     customer: { number: toNumber },
     assistant: {
+      // ── Ses tanıma (STT) ──
       transcriber: {
         provider: 'deepgram',
         model: 'nova-2',
         language: deepgramLang[language] || 'tr',
         smartFormat: true,
+        endpointing: 300,
       },
+      // ── AI beyin ──
       model: {
         provider: 'anthropic',
         model: 'claude-haiku-4-5-20251001',
         messages: [{ role: 'system', content: systemPrompt }],
-        temperature: 0.7,
-        maxTokens: 200,
+        temperature: 0.5,
+        maxTokens: 120,
       },
+      // ── Ses motoru ──
       voice: voiceConfig || defaultVoice,
+      // ── Konuşma başlatma ──
       firstMessage: openingLine,
       firstMessageMode: 'assistant-speaks-first',
-      endCallMessage: language === 'tr' ? 'Teşekkürler, iyi günler!' : 'Thank you, have a great day!',
-      endCallPhrases: ['görüşürüz', 'hoşça kalın', 'bye', 'goodbye', 'auf wiedersehen'],
+      // ── Konuşma politikası ──
+      endCallMessage: language === 'tr' ? 'Teşekkürler, iyi günler dilerim!' : 'Thank you, have a great day!',
+      endCallPhrases: language === 'tr'
+        ? ['görüşürüz', 'hoşça kalın', 'iyi günler', 'kapattım', 'tamam tamam']
+        : ['bye', 'goodbye', 'have a good day', 'no thanks', 'not interested'],
       backgroundDenoisingEnabled: true,
+      // ── Turn-taking & bekleme ──
       messagePlan: {
-        idleMessages: [
-          language === 'tr' ? 'Orada mısınız?' : 'Are you there?',
-        ],
-        idleTimeoutSeconds: 8,
+        idleMessages: language === 'tr'
+          ? ['Alo, orada mısınız?', 'Beni duyabiliyor musunuz?']
+          : ['Hello, are you there?', 'Can you hear me?'],
+        idleTimeoutSeconds: 12,
       },
-      silenceTimeoutSeconds: 30,
-      maxDurationSeconds: 600,
+      silenceTimeoutSeconds: 18,
+      maxDurationSeconds: 480,
+      // ── Interruption handling ──
+      responseDelaySeconds: 0.4,
+      hipaaEnabled: false,
+      // ── Loglama ──
+      recordingEnabled: true,
+      artifactPlan: {
+        recordingEnabled: true,
+        videoRecordingEnabled: false,
+      },
     },
+    // ── Webhook — arama sonuçlarını logla ──
+    serverUrl: `${API_BASE}/api/voice/webhook/vapi`,
   };
 
   const r = await axios.post('https://api.vapi.ai/call/phone', body, {
@@ -339,6 +431,7 @@ async function dispatchCall(params: {
   voiceType?: 'cloned' | 'library';
   clonedVoiceId?: string;
   libraryVoiceId?: string;
+  transferNumber?: string;
 }): Promise<{ conversationId: string; callSid: string; provider: string }> {
   const { language, lead, researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId } = params;
 
@@ -358,6 +451,7 @@ async function dispatchCall(params: {
         pain2: researchData?.pains?.[1],
         signal: researchData?.jobSignals?.[0],
         avoidWords,
+        transferNumber: params.transferNumber,
       });
 
       // XTTS mevcut ise klonlanmış ses, değilse Cartesia fallback
@@ -392,6 +486,7 @@ async function dispatchCall(params: {
       pain2: researchData?.pains?.[1],
       signal: researchData?.jobSignals?.[0],
       avoidWords,
+      transferNumber: params.transferNumber,
     });
     const result = await makeVapiCall({ ...params, openingLine, systemPrompt });
     return { ...result, provider: 'vapi' };
@@ -673,7 +768,7 @@ router.post('/call/single', async (req: any, res: any) => {
           leadName: lead.contact_name || lead.company_name,
           leadCompany: lead.company_name, language: callLang, lead,
           researchData: latestVideo?.research_data || null,
-          avoidWords, voiceType, clonedVoiceId, libraryVoiceId,
+          avoidWords, voiceType, clonedVoiceId, libraryVoiceId, transferNumber: settings?.transfer_number,
         });
         await supabase.from('voice_calls').update({
           eleven_conversation_id: result.conversationId,
@@ -754,7 +849,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
             leadName: lead.contact_name || lead.company_name,
             leadCompany: lead.company_name, language: callLang, lead,
             researchData: latestVideo?.research_data || null,
-            avoidWords, voiceType, clonedVoiceId, libraryVoiceId,
+            avoidWords, voiceType, clonedVoiceId, libraryVoiceId, transferNumber: settings?.transfer_number,
           });
 
           await supabase.from('voice_calls').update({
@@ -854,11 +949,57 @@ router.post('/webhook/vapi', async (req: any, res: any) => {
     if (!callId) return;
     const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('eleven_conversation_id', callId).single();
     if (!call) return;
+
     const transcript = message.transcript || message.artifact?.transcript || '';
-    await supabase.from('voice_calls').update({
-      status: 'completed', ended_at: new Date().toISOString(),
+    const durationSec = message.call?.duration || message.durationSeconds || 0;
+    const endReason = message.endedReason || message.call?.endedReason || 'unknown';
+    const costCents = message.cost || 0;
+    const recordingUrl = message.artifact?.recordingUrl || message.recordingUrl || null;
+
+    const updates: any = {
+      status: 'completed',
+      ended_at: new Date().toISOString(),
       transcript: transcript.slice(0, 10000),
-    }).eq('eleven_conversation_id', callId);
+      duration_seconds: durationSec,
+      end_reason: endReason,
+      recording_url: recordingUrl,
+      cost_cents: costCents,
+    };
+
+    // AI analiz: konuşma transkriptinden sonuç çıkar
+    if (transcript.length > 50 && call.leads) {
+      try {
+        const analysisResult = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          messages: [{ role: 'user', content: `Aşağıdaki telefon konuşmasını analiz et ve JSON döndür:
+Transkript: "${transcript.slice(0, 3000)}"
+
+Döndür:
+{
+  "outcome": "positive|negative|callback|no_answer",
+  "interest_level": 1-10,
+  "appointment_set": true/false,
+  "objections": ["itiraz1"],
+  "next_step": "sonraki adım",
+  "summary": "1 cümle özet"
+}` }],
+        });
+        const txt = (analysisResult.content[0] as any)?.text || '';
+        const m = txt.match(/\{[\s\S]*\}/);
+        if (m) {
+          const parsed = JSON.parse(m[0]);
+          updates.analysis = parsed;
+          updates.outcome = parsed.outcome || 'negative';
+          if (parsed.appointment_set && call.lead_id) {
+            await supabase.from('leads').update({ status: 'replied' }).eq('id', call.lead_id);
+          }
+        }
+      } catch {}
+    }
+
+    await supabase.from('voice_calls').update(updates).eq('eleven_conversation_id', callId);
+    console.log(`[Vapi Webhook] Call ${callId}: ${updates.outcome || 'completed'}, ${durationSec}s, reason=${endReason}`);
   } catch (e: any) { console.error('Vapi webhook error:', e.message); }
 });
 
