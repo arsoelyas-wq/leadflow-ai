@@ -481,8 +481,8 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                         border: active ? '1px solid #c4b5fd' : '1px solid #e2e8f0',
                         boxShadow: active ? '0 0 0 3px rgba(124,58,237,0.08)' : '0 1px 3px rgba(0,0,0,0.04)',
                       }}>
-                      {/* Voice card header */}
-                      <div onClick={() => { onSelect(v.id, v.name, 'cloned'); setTuningOpen(tuningOpen === v.id ? null : v.id) }}
+                      {/* Voice card header — click only selects, gear opens tuning */}
+                      <div onClick={() => onSelect(v.id, v.name, 'cloned')}
                         className="group flex items-center gap-3 p-3.5 cursor-pointer">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: active ? '#ede9fe' : '#f8fafc' }}>
                           <Mic className="w-4 h-4" style={{ color: active ? '#7c3aed' : '#94a3b8' }}/>
@@ -820,7 +820,22 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
 // ─── STEP 3: HAZIRLA ─────────────────────────────────────────────────────────
 function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinutes, setDelayMinutes, settings, setSettings, onMsg, setHasVerifiedPhone }: any) {
   return (
-    <div className="step-slide space-y-6">
+    <div className="step-slide space-y-5">
+      {/* Konuşma Akışı Önizleme */}
+      <div className="p-4 rounded-2xl" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
+        <label className="text-xs mb-2 block font-bold uppercase tracking-widest" style={{ color: '#92400e' }}>
+          <Sparkles className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5"/> Konuşma Akışı
+        </label>
+        <div className="space-y-2 text-xs" style={{ color: '#78350f' }}>
+          <div className="flex gap-2"><span className="font-bold shrink-0" style={{ color: '#059669' }}>1.</span> AI lead'i araştırır ve kişiselleştirilmiş açılış cümlesi üretir</div>
+          <div className="flex gap-2"><span className="font-bold shrink-0" style={{ color: '#2563eb' }}>2.</span> "30 saniyenizi alabilir miyim?" — izin ister</div>
+          <div className="flex gap-2"><span className="font-bold shrink-0" style={{ color: '#7c3aed' }}>3.</span> Sorun keşfi — "Şu an nasıl bir çözüm kullanıyorsunuz?"</div>
+          <div className="flex gap-2"><span className="font-bold shrink-0" style={{ color: '#b45309' }}>4.</span> Değer sunma — "Benzer firmalarla çalışıyoruz"</div>
+          <div className="flex gap-2"><span className="font-bold shrink-0" style={{ color: '#dc2626' }}>5.</span> Randevu — "Çarşamba veya Perşembe hangisi uygun?"</div>
+        </div>
+        <p className="text-[10px] mt-2" style={{ color: '#a16207' }}>2 kez "hayır" → saygıyla kapanır · İtiraz karşılama hazır · Max 1-2 cümle cevap</p>
+      </div>
+
       <div>
         <label className="text-xs mb-2 block font-bold uppercase tracking-widest" style={{ color:'#94a3b8' }}>Arama Dili</label>
         <div className="relative">

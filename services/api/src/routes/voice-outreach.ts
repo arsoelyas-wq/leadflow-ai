@@ -44,6 +44,24 @@ const CALL_VOICES: Record<string, string> = {
 
 function elevenHeaders() { return { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }; }
 
+// Telefon numarasını E.164 formatına çevir
+function normalizePhoneE164(phone: string, countryCode?: string): string {
+  let num = phone.replace(/[\s\-\(\)\.]/g, '');
+  if (num.startsWith('+')) return num;
+  // Türkiye
+  if (num.startsWith('0') && num.length >= 10 && num.length <= 11) {
+    return '+90' + num.slice(1);
+  }
+  // Almanya
+  if (countryCode === 'DE' || countryCode === 'de') {
+    if (num.startsWith('0')) return '+49' + num.slice(1);
+    return '+49' + num;
+  }
+  // Genel: ülke kodu yoksa TR varsay
+  if (/^\d{10,11}$/.test(num)) return '+90' + (num.startsWith('0') ? num.slice(1) : num);
+  return '+' + num;
+}
+
 function getLanguageByCountry(code: string): string {
   const m: Record<string, string> = {
     TR: 'tr', DE: 'de', AT: 'de', CH: 'de',
@@ -313,7 +331,7 @@ async function makeVapiCall(params: {
   toNumber: string; agentName: string; companyName: string;
   productDesc: string; leadName: string; leadCompany: string;
   language: string; openingLine: string; systemPrompt: string;
-  voiceConfig?: any; userPhoneId?: string;
+  voiceConfig?: any; userPhoneId?: string; lead?: any;
 }): Promise<{ conversationId: string; callSid: string }> {
   const { toNumber, language, openingLine, systemPrompt, voiceConfig } = params;
 
@@ -329,11 +347,12 @@ async function makeVapiCall(params: {
     language,
   };
 
-  // Müşterinin kendi Vapi phone ID'si varsa onu kullan, yoksa sistem default
   const phoneId = params.userPhoneId || VAPI_PHONE_ID;
+  const normalizedNumber = normalizePhoneE164(toNumber, params.lead?.country_code);
+  console.log(`[Vapi Call] ${toNumber} → ${normalizedNumber}`);
   const body: any = {
     phoneNumberId: phoneId,
-    customer: { number: toNumber },
+    customer: { number: normalizedNumber },
     assistant: {
       transcriber: {
         provider: 'deepgram',
