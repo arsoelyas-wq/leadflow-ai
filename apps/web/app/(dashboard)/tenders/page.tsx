@@ -290,12 +290,24 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
 
 // ── TENDER DETAIL PANEL ────────────────────────────────────────────────────────
 function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (id: string, status: string) => void; onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<'info'|'requirements'|'proposal'>('info')
+  const [activeTab, setActiveTab] = useState<'info'|'requirements'|'proposal'|'coach'>('info')
   const [generating, setGenerating] = useState(false)
   const [proposal, setProposal] = useState<string | null>(tender.proposal_draft || null)
   const [companyInfo, setCompanyInfo] = useState('')
   const [copied, setCopied] = useState(false)
+  const [coaching, setCoaching] = useState<any>(null)
+  const [coachLoading, setCoachLoading] = useState(false)
   const sc = tender.ai_score || 60
+
+  const loadCoaching = async () => {
+    if (coaching) return
+    setCoachLoading(true)
+    try {
+      const data: any = await api.post(`/api/tenders/${tender.id}/coaching`, {})
+      setCoaching(data.coaching)
+    } catch {}
+    setCoachLoading(false)
+  }
 
   const generateProposal = async () => {
     if (!companyInfo.trim()) return
@@ -333,7 +345,29 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
           {tender.budget_text && <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(180,83,9,0.12)', border:'1px solid rgba(180,83,9,0.25)', color:'#b45309', fontSize:10, padding:'2px 8px', borderRadius:20 }}><Wallet size={10} /> {tender.budget_text}</span>}
           {tender.deadline && <span style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)', color:'#dc2626', fontSize:10, padding:'2px 8px', borderRadius:20 }}><DaysLeft deadline={tender.deadline} /></span>}
           {tender.risk_level && <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:`${riskColor(tender.risk_level)}12`, border:`1px solid ${riskColor(tender.risk_level)}30`, color:riskColor(tender.risk_level), fontSize:10, padding:'2px 8px', borderRadius:20 }}><ShieldAlert size={10} /> Risk: {tender.risk_level}</span>}
+          {tender.win_probability > 0 && <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.25)', color:'#059669', fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:700 }}><TrendingUp size={10} /> %{tender.win_probability} Kazanma</span>}
         </div>
+
+        {/* Pipeline Steps */}
+        {tender.pipeline_step && (
+          <div style={{ display:'flex', gap:2, marginTop:10, alignItems:'center' }}>
+            {['discovered','reviewing','docs_preparing','guarantee','submitted','evaluation','won'].map((step, i) => {
+              const labels: Record<string, string> = { discovered:'Kesfedildi', reviewing:'Inceleniyor', docs_preparing:'Belge', guarantee:'Teminat', submitted:'Teklif', evaluation:'Degerlendirme', won:'Kazanildi' };
+              const currentIdx = ['discovered','reviewing','docs_preparing','guarantee','submitted','evaluation','won'].indexOf(tender.pipeline_step || 'discovered');
+              const isActive = i <= currentIdx;
+              const isCurrent = i === currentIdx;
+              return (
+                <div key={step} style={{ display:'flex', alignItems:'center', gap:2, flex:1 }}>
+                  <div onClick={() => onUpdate(tender.id, step === 'won' ? 'won' : step === 'submitted' ? 'applied' : tender.status)}
+                    style={{ flex:1, height:4, borderRadius:2, background:isActive ? '#7c3aed' : '#e2e8f0', cursor:'pointer', position:'relative' }}>
+                    {isCurrent && <div style={{ position:'absolute', top:-2, right:-3, width:8, height:8, borderRadius:'50%', background:'#7c3aed', border:'2px solid white', boxShadow:'0 0 4px rgba(124,58,237,0.5)' }} />}
+                  </div>
+                  {i < 6 && <div style={{ width:1, height:8, background:'#e2e8f0' }} />}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Status actions */}
@@ -354,7 +388,7 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
 
       {/* Tabs */}
       <div style={{ display:'flex', gap:2, padding:'10px 20px 0', borderBottom:'1px solid #f1f5f9' }}>
-        {[{id:'info',label:'Bilgi',Icon:FileText},{id:'requirements',label:'Şartlar',Icon:ClipboardCheck},{id:'proposal',label:'Teklif',Icon:PenLine}].map(tb => (
+        {[{id:'info',label:'Bilgi',Icon:FileText},{id:'requirements',label:'Sartlar',Icon:ClipboardCheck},{id:'coach',label:'AI Koc',Icon:Sparkles},{id:'proposal',label:'Teklif',Icon:PenLine}].map(tb => (
           <button key={tb.id} onClick={() => setActiveTab(tb.id as any)}
             style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:'8px 8px 0 0', border:'none', cursor:'pointer', fontSize:11, fontWeight:600, background:activeTab===tb.id?'rgba(139,92,246,0.15)':'transparent', color:activeTab===tb.id?'#7c3aed':'#64748b', borderBottom:activeTab===tb.id?'2px solid #7c3aed':'2px solid transparent' }}>
             <tb.Icon size={12} /> {tb.label}
@@ -384,6 +418,36 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
                 <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.match_reason}</p>
               </div>
             )}
+            {tender.competitor_insight && (
+              <div style={{ background:'rgba(220,38,38,0.05)', border:'1px solid rgba(220,38,38,0.15)', borderRadius:11, padding:'12px 14px' }}>
+                <p style={{ display:'flex', alignItems:'center', gap:5, color:'#dc2626', fontSize:11, fontWeight:700, margin:'0 0 5px', textTransform:'uppercase', letterSpacing:1 }}><Users size={11} /> Rekabet Analizi</p>
+                <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.6 }}>{tender.competitor_insight}</p>
+              </div>
+            )}
+            {(tender.action_steps?.length > 0 || tender.missing_docs?.length > 0) && (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {tender.action_steps?.length > 0 && (
+                  <div style={{ background:'rgba(37,99,235,0.06)', border:'1px solid rgba(37,99,235,0.15)', borderRadius:11, padding:'12px 14px' }}>
+                    <p style={{ color:'#2563eb', fontSize:11, fontWeight:700, margin:'0 0 8px' }}>Yapilmasi Gerekenler</p>
+                    {tender.action_steps.map((s: string, i: number) => (
+                      <p key={i} style={{ color:'#475569', fontSize:11, margin:'0 0 4px', display:'flex', gap:5 }}>
+                        <span style={{ color:'#2563eb', fontWeight:700, flexShrink:0 }}>{i+1}.</span> {s}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {tender.missing_docs?.length > 0 && (
+                  <div style={{ background:'rgba(220,38,38,0.05)', border:'1px solid rgba(220,38,38,0.15)', borderRadius:11, padding:'12px 14px' }}>
+                    <p style={{ color:'#dc2626', fontSize:11, fontWeight:700, margin:'0 0 8px' }}>Eksik Belgeler</p>
+                    {tender.missing_docs.map((d: string, i: number) => (
+                      <p key={i} style={{ color:'#475569', fontSize:11, margin:'0 0 4px', display:'flex', gap:5 }}>
+                        <span style={{ color:'#dc2626' }}>!</span> {d}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {tender.notes && (
               <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:11, padding:'12px 14px' }}>
                 <p style={{ color:'#64748b', fontSize:11, fontWeight:700, margin:'0 0 5px' }}>NOTLAR</p>
@@ -407,6 +471,68 @@ function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (i
             ))}
             {!tender.requirements && !tender.eligibility && !tender.documents && (
               <p style={{ color:'#334155', textAlign:'center', padding:24, fontSize:13 }}>AI analizi henüz yapılmadı</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'coach' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            {!coaching && !coachLoading && (
+              <button onClick={loadCoaching}
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'14px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 14px rgba(124,58,237,0.35)' }}>
+                <Sparkles size={14} /> AI Ihale Kocu Baslat
+              </button>
+            )}
+            {coachLoading && (
+              <div style={{ textAlign:'center', padding:32 }}>
+                <RefreshCw size={20} style={{ color:'#7c3aed', animation:'tender-spin 1s linear infinite' }} />
+                <p style={{ color:'#7c3aed', fontSize:13, marginTop:10 }}>AI strateji olusturuyor...</p>
+              </div>
+            )}
+            {coaching && (
+              <>
+                {coaching.strategy && (
+                  <div style={{ background:'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(139,92,246,0.04))', border:'1px solid rgba(124,58,237,0.2)', borderRadius:13, padding:'16px 18px' }}>
+                    <p style={{ display:'flex', alignItems:'center', gap:6, color:'#7c3aed', fontSize:12, fontWeight:700, margin:'0 0 8px' }}><Sparkles size={13} /> Kazanma Stratejisi</p>
+                    <p style={{ color:'#334155', fontSize:13, margin:0, lineHeight:1.7 }}>{coaching.strategy}</p>
+                  </div>
+                )}
+                {coaching.pricing_hint && (
+                  <div style={{ background:'rgba(245,158,11,0.06)', border:'1px solid rgba(245,158,11,0.2)', borderRadius:11, padding:'12px 14px' }}>
+                    <p style={{ display:'flex', alignItems:'center', gap:6, color:'#b45309', fontSize:11, fontWeight:700, margin:'0 0 5px' }}><Wallet size={12} /> Fiyat Stratejisi</p>
+                    <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.5 }}>{coaching.pricing_hint}</p>
+                  </div>
+                )}
+                {coaching.timeline?.length > 0 && (
+                  <div style={{ background:'rgba(37,99,235,0.06)', border:'1px solid rgba(37,99,235,0.15)', borderRadius:11, padding:'14px 16px' }}>
+                    <p style={{ color:'#2563eb', fontSize:11, fontWeight:700, margin:'0 0 10px' }}>Zaman Plani</p>
+                    {coaching.timeline.map((t: string, i: number) => (
+                      <div key={i} style={{ display:'flex', gap:8, marginBottom:6, alignItems:'flex-start' }}>
+                        <div style={{ width:20, height:20, borderRadius:'50%', background:'#2563eb', color:'#fff', fontSize:9, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>{i+1}</div>
+                        <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.5 }}>{t}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  {coaching.strengths_to_highlight?.length > 0 && (
+                    <div style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:11, padding:'12px 14px' }}>
+                      <p style={{ color:'#059669', fontSize:11, fontWeight:700, margin:'0 0 8px' }}>Vurgula</p>
+                      {coaching.strengths_to_highlight.map((s: string, i: number) => (
+                        <p key={i} style={{ color:'#475569', fontSize:11, margin:'0 0 4px' }}>+ {s}</p>
+                      ))}
+                    </div>
+                  )}
+                  {coaching.risks_to_mitigate?.length > 0 && (
+                    <div style={{ background:'rgba(220,38,38,0.05)', border:'1px solid rgba(220,38,38,0.15)', borderRadius:11, padding:'12px 14px' }}>
+                      <p style={{ color:'#dc2626', fontSize:11, fontWeight:700, margin:'0 0 8px' }}>Riskleri Azalt</p>
+                      {coaching.risks_to_mitigate.map((r: string, i: number) => (
+                        <p key={i} style={{ color:'#475569', fontSize:11, margin:'0 0 4px' }}>! {r}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}

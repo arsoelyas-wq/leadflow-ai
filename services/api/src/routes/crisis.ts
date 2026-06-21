@@ -69,7 +69,7 @@ ${alerts.map(a => `- ${a.title}`).join('\n')}
 router.get('/scan', async (req: any, res: any) => {
   try {
     const { sector, country } = req.query;
-    if (!sector) return res.status(400).json({ error: 'sector zorunlu' });
+    if (!sector || typeof sector !== 'string') return res.status(400).json({ error: 'sector zorunlu' });
 
     const alerts = await scanMarketNews(sector as string, country as string);
     const analysis = await analyzeAlerts(alerts, sector as string);

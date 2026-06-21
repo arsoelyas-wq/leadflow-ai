@@ -360,26 +360,32 @@ async function makeVapiCall(params: {
         model: 'nova-2',
         language: deepgramLang[language] || 'tr',
         smartFormat: true,
+        endpointing: 300,
       },
       model: {
         provider: 'anthropic',
         model: 'claude-haiku-4-5-20251001',
         messages: [{ role: 'system', content: systemPrompt }],
         temperature: 0.5,
-        maxTokens: 120,
+        maxTokens: 150,
       },
       voice: voiceConfig || defaultVoice,
       firstMessage: openingLine || (language === 'tr' ? 'Merhaba, nasılsınız? Kısa bir konuda aramak istedim.' : 'Hi, how are you? I wanted to reach out about something quick.'),
       firstMessageMode: 'assistant-speaks-first',
       endCallMessage: language === 'tr' ? 'Teşekkürler, iyi günler dilerim!' : 'Thank you, have a great day!',
       endCallPhrases: language === 'tr'
-        ? ['görüşürüz', 'hoşça kalın', 'iyi günler']
-        : ['bye', 'goodbye', 'have a good day'],
+        ? ['görüşürüz', 'hoşça kalın', 'iyi günler dilerim']
+        : ['goodbye', 'have a good day'],
       backgroundDenoisingEnabled: true,
-      silenceTimeoutSeconds: 18,
+      silenceTimeoutSeconds: 30,
       maxDurationSeconds: 480,
       recordingEnabled: true,
+      responseDelaySeconds: 0.5,
+      llmRequestDelaySeconds: 0.3,
+      numWordsToInterruptAssistant: 2,
+      backgroundSound: 'off',
     },
+    serverUrl: `${API_BASE}/api/voice/webhook/vapi`,
   };
   console.log('[Vapi Call] firstMessage:', body.assistant.firstMessage?.slice(0, 60));
 
@@ -957,8 +963,19 @@ router.post('/webhook/vapi', async (req: any, res: any) => {
     const costCents = message.cost || 0;
     const recordingUrl = message.artifact?.recordingUrl || message.recordingUrl || null;
 
+    const noConversation = !transcript || transcript.length < 20;
+    const silenceEnd = endReason === 'silence-timed-out' || endReason === 'customer-did-not-speak';
+    const failedEnd = endReason === 'assistant-error' || endReason === 'pipeline-error-openai-llm-failed';
+    const noAnswer = endReason === 'customer-busy' || endReason === 'customer-did-not-answer' || endReason === 'voicemail';
+
+    let callStatus = 'completed';
+    if (noAnswer) callStatus = 'no-answer';
+    else if (failedEnd) callStatus = 'failed';
+    else if (silenceEnd && noConversation) callStatus = 'no-answer';
+    else if (durationSec < 5 && noConversation) callStatus = 'no-answer';
+
     const updates: any = {
-      status: 'completed',
+      status: callStatus,
       ended_at: new Date().toISOString(),
       transcript: transcript.slice(0, 10000),
       duration_seconds: durationSec,

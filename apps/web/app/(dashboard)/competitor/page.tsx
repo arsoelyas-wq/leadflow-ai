@@ -6,6 +6,8 @@ import {
   RefreshCw, Trash2, Zap, Search, BarChart3, Plus, Copy, CheckCircle, Target,
   MapPin, Star, Linkedin, Facebook, Instagram, MessageCircleWarning, Flame, Globe2,
   Radar, Users, Phone, Briefcase, TrendingDown, TrendingUp, MessageCircle,
+  Shield, Swords, Lightbulb, AlertTriangle, Send, Mail, PhoneCall, Award,
+  ArrowRight, Filter, SortAsc, Megaphone,
 } from 'lucide-react'
 
 // ── Light theme tokens (dashboard/page.tsx ile aynı tasarım dili) ─────────────
@@ -158,8 +160,29 @@ function ChannelPicker({ selected, onToggle }: { selected: string[]; onToggle: (
   )
 }
 
+// ── Lead Quality Badge ────────────────────────────────────────────────────────
+function QualityBadge({ score }: { score: number }) {
+  const tier = score >= 80 ? { label: 'A+', bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' }
+    : score >= 60 ? { label: 'A', bg: '#ecfdf5', color: '#0d9488', border: '#99f6e4' }
+    : score >= 40 ? { label: 'B', bg: '#fffbeb', color: '#b45309', border: '#fde68a' }
+    : { label: 'C', bg: '#fef2f2', color: '#dc2626', border: '#fecaca' }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+      <div style={{ position: 'relative', width: 36, height: 36 }}>
+        <svg width={36} height={36} style={{ transform: 'rotate(-90deg)' }}>
+          <circle cx={18} cy={18} r={15} fill="none" stroke="#f1f5f9" strokeWidth={3} />
+          <circle cx={18} cy={18} r={15} fill="none" stroke={tier.color} strokeWidth={3}
+            strokeDasharray={`${(score / 100) * 94.2} 94.2`} strokeLinecap="round" />
+        </svg>
+        <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: tier.color }}>{tier.label}</span>
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 700, color: tier.color }}>{score}%</span>
+    </div>
+  )
+}
+
 // ── Lead Row ───────────────────────────────────────────────────────────────────
-function LeadRow({ lead }: { lead: any }) {
+function LeadRow({ lead, onAction }: { lead: any; onAction?: (type: string, lead: any) => void }) {
   const [copied, setCopied] = useState(false)
   const channel = lead.source?.match(/\(([^)]+)\)/)?.[1] || ''
   const ch = ALL_CHANNELS.find(c => channel.toLowerCase().includes(c.id.replace('_', ' '))) || ALL_CHANNELS[0]
@@ -178,7 +201,19 @@ function LeadRow({ lead }: { lead: any }) {
           <span style={{ color: ch.color, fontSize: 10, fontWeight: 600 }}>{channel}</span>
         </div>
       </div>
-      <span style={{ background: lead.score >= 70 ? '#ecfdf5' : '#fffbeb', color: lead.score >= 70 ? accentEmerald : '#b45309', fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{lead.score}%</span>
+      <QualityBadge score={lead.score || 0} />
+      {onAction && lead.phone && (
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => onAction('call', lead)} title="Sesli Ara"
+            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid #a7f3d0', cursor: 'pointer', background: '#ecfdf5', color: accentEmerald, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <PhoneCall size={11} />
+          </button>
+          <button onClick={() => onAction('whatsapp', lead)} title="WhatsApp"
+            style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid #a7f3d0', cursor: 'pointer', background: '#ecfdf5', color: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <MessageCircle size={11} />
+          </button>
+        </div>
+      )}
       {lead.phone && (
         <button onClick={() => { navigator.clipboard.writeText(lead.phone); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
           aria-label="Telefonu kopyala"
@@ -190,10 +225,28 @@ function LeadRow({ lead }: { lead: any }) {
   )
 }
 
+// ── SWOT Card ────────────────────────────────────────────────────────────────
+function SwotCard({ title, items, color, Icon, bg }: { title: string; items: string[]; color: string; Icon: any; bg: string }) {
+  return (
+    <div style={{ background: bg, border: `1px solid ${color}25`, borderRadius: 14, padding: 16, minHeight: 120 }}>
+      <p style={{ color, fontSize: 12, fontWeight: 700, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Icon size={14} /> {title}
+      </p>
+      {(items || []).map((item: string, i: number) => (
+        <div key={i} style={{ display: 'flex', gap: 7, marginBottom: 7 }}>
+          <span style={{ color: `${color}90`, fontSize: 10, marginTop: 2, flexShrink: 0 }}>▸</span>
+          <p style={{ color: tx2, fontSize: 12, margin: 0, lineHeight: 1.5 }}>{item}</p>
+        </div>
+      ))}
+      {(!items || items.length === 0) && <p style={{ color: tx3, fontSize: 11, margin: 0 }}>Veri bulunamadı</p>}
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CompetitorPage() {
   const { t } = useI18n()
-  const [tab, setTab] = useState<'list' | 'hijack' | 'leads' | 'analyze'>('list')
+  const [tab, setTab] = useState<'list' | 'hijack' | 'leads' | 'analyze' | 'campaign'>('list')
   const [competitors, setCompetitors] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
   const [groupedLeads, setGroupedLeads] = useState<Record<string, any[]>>({})
@@ -216,6 +269,10 @@ export default function CompetitorPage() {
   const [aCountry, setACountry] = useState('TR'); const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<any>(null)
   const [filterComp, setFilterComp] = useState('')
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
+  const [campaignSending, setCampaignSending] = useState(false)
+  const [leadSort, setLeadSort] = useState<'score' | 'date' | 'name'>('score')
+  const [leadMinScore, setLeadMinScore] = useState(0)
 
   const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 6000) }
 
@@ -278,6 +335,69 @@ export default function CompetitorPage() {
   }
 
   const toggleCh = (arr: string[], set: (v: string[]) => void, id: string) => set(arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id])
+
+  const handleLeadAction = async (type: string, lead: any) => {
+    if (type === 'call') {
+      try {
+        await api.post('/api/voice/call/single', { leadId: lead.id })
+        showMsg('success', `${lead.company_name} aranıyor...`)
+      } catch (e: any) { showMsg('error', e.message) }
+    } else if (type === 'whatsapp') {
+      const phone = lead.phone?.replace(/\s/g, '')
+      if (phone) window.open(`https://wa.me/${phone.replace('+', '')}`, '_blank')
+    }
+  }
+
+  const sendCampaign = async (type: 'voice' | 'whatsapp') => {
+    if (!selectedLeads.size) return showMsg('error', 'Lead seçin')
+    setCampaignSending(true)
+    try {
+      if (type === 'voice') {
+        await api.post('/api/voice/call/campaign', {
+          leadIds: Array.from(selectedLeads),
+          campaignName: `Rakip Leads — ${new Date().toLocaleDateString('tr-TR')}`,
+          delayMinutes: 5,
+        })
+        showMsg('success', `${selectedLeads.size} lead için sesli arama kampanyası başlatıldı!`)
+      } else {
+        const phoneLeads = leads.filter(l => selectedLeads.has(l.id) && l.phone)
+        for (const lead of phoneLeads) {
+          const phone = lead.phone.replace(/\s/g, '').replace('+', '')
+          window.open(`https://wa.me/${phone}`, '_blank')
+          await new Promise(r => setTimeout(r, 500))
+        }
+        showMsg('success', `${phoneLeads.length} WhatsApp penceresi açıldı`)
+      }
+      setSelectedLeads(new Set())
+    } catch (e: any) { showMsg('error', e.message) }
+    finally { setCampaignSending(false) }
+  }
+
+  const toggleLeadSelect = (id: string) => {
+    setSelectedLeads(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const selectAllLeads = () => {
+    const filtered = getFilteredLeads()
+    if (selectedLeads.size === filtered.length) {
+      setSelectedLeads(new Set())
+    } else {
+      setSelectedLeads(new Set(filtered.map(l => l.id)))
+    }
+  }
+
+  const getFilteredLeads = () => {
+    let list = filterComp ? groupedLeads[filterComp] || [] : leads
+    if (leadMinScore > 0) list = list.filter((l: any) => (l.score || 0) >= leadMinScore)
+    if (leadSort === 'score') list = [...list].sort((a: any, b: any) => (b.score || 0) - (a.score || 0))
+    else if (leadSort === 'name') list = [...list].sort((a: any, b: any) => (a.company_name || '').localeCompare(b.company_name || ''))
+    else if (leadSort === 'date') list = [...list].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    return list
+  }
 
   const countryGroups = countries.reduce((acc: Record<string, CountryConf[]>, c) => {
     if (!acc[c.region]) acc[c.region] = []; acc[c.region].push(c); return acc
@@ -364,10 +484,11 @@ export default function CompetitorPage() {
       {/* ── TABS ──────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 4, background: surf, padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 22, border: '1px solid #f1f5f9' }}>
         {[
-          { id: 'list',    label: `Rakip Listesi (${competitors.length})`, Icon: Target },
-          { id: 'hijack',  label: t('competitor.hizli_tarama', 'Hızlı Tarama'), Icon: Zap },
-          { id: 'leads',   label: `Bulunan Leadler (${leads.length})`, Icon: Users },
-          { id: 'analyze', label: 'Rakip Analizi', Icon: BarChart3 },
+          { id: 'list',     label: `Rakip Listesi (${competitors.length})`, Icon: Target },
+          { id: 'hijack',   label: t('competitor.hizli_tarama', 'Hızlı Tarama'), Icon: Zap },
+          { id: 'leads',    label: `Bulunan Leadler (${leads.length})`, Icon: Users },
+          { id: 'analyze',  label: 'SWOT Analizi', Icon: BarChart3 },
+          { id: 'campaign', label: 'Kampanya', Icon: Megaphone },
         ].map(tb => (
           <button key={tb.id} onClick={() => setTab(tb.id as any)} style={{ ...tabBtn(tab === tb.id), display: 'flex', alignItems: 'center', gap: 6 }}>
             <tb.Icon size={14} /> {tb.label}
@@ -536,40 +657,114 @@ export default function CompetitorPage() {
       )}
 
       {/* ── TAB: LEADS ────────────────────────────────────────────────────── */}
-      {tab === 'leads' && (
-        <div>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ position: 'relative' }}>
-              <select value={filterComp} onChange={e => setFilterComp(e.target.value)}
-                style={{ ...inputStyle, minWidth: 220, appearance: 'none', paddingRight: 32 }}>
-                <option value="">Tüm rakipler ({leads.length})</option>
-                {Object.keys(groupedLeads).map(name => (
-                  <option key={name} value={name}>{name} ({groupedLeads[name].length})</option>
-                ))}
-              </select>
-              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
+      {tab === 'leads' && (() => {
+        const filtered = getFilteredLeads()
+        const avgScore = filtered.length ? Math.round(filtered.reduce((s: number, l: any) => s + (l.score || 0), 0) / filtered.length) : 0
+        const highQuality = filtered.filter((l: any) => (l.score || 0) >= 60).length
+        return (
+          <div>
+            {/* Stats bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+              {[
+                { label: 'Toplam Lead', value: leads.length, color: '#7c3aed', Icon: Users },
+                { label: 'Yüksek Kalite', value: highQuality, color: accentEmerald, Icon: Award },
+                { label: 'Ortalama Skor', value: `${avgScore}%`, color: '#2563eb', Icon: BarChart3 },
+                { label: 'Seçili', value: selectedLeads.size, color: '#b45309', Icon: CheckCircle },
+              ].map(({ label, value, color, Icon }) => (
+                <div key={label} style={{ ...card, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon size={14} style={{ color }} />
+                  </div>
+                  <div>
+                    <p style={{ color: tx1, fontSize: 16, fontWeight: 800, margin: 0, lineHeight: 1 }}>{value}</p>
+                    <p style={{ color: tx3, fontSize: 10, margin: 0 }}>{label}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-          {leads.length === 0 ? (
-            <div style={{ ...card, padding: 48, textAlign: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><RadarScanner size={80} /></div>
-              <p style={{ color: tx3, fontSize: 14 }}>{t('competitor.henuz_lead_bulunamadi', 'Henüz lead bulunamadı')}</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {(filterComp ? groupedLeads[filterComp] || [] : leads).map((lead: any) => <LeadRow key={lead.id} lead={lead} />)}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* ── TAB: ANALYZE ──────────────────────────────────────────────────── */}
+            {/* Filters & actions */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative' }}>
+                <select value={filterComp} onChange={e => setFilterComp(e.target.value)}
+                  style={{ ...inputStyle, minWidth: 200, appearance: 'none', paddingRight: 32 }}>
+                  <option value="">Tüm rakipler ({leads.length})</option>
+                  {Object.keys(groupedLeads).map(name => (
+                    <option key={name} value={name}>{name} ({groupedLeads[name].length})</option>
+                  ))}
+                </select>
+                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <select value={leadSort} onChange={e => setLeadSort(e.target.value as any)}
+                  style={{ ...inputStyle, minWidth: 140, appearance: 'none', paddingRight: 32 }}>
+                  <option value="score">Skora göre</option>
+                  <option value="date">Tarihe göre</option>
+                  <option value="name">İsme göre</option>
+                </select>
+                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <select value={leadMinScore} onChange={e => setLeadMinScore(Number(e.target.value))}
+                  style={{ ...inputStyle, minWidth: 130, appearance: 'none', paddingRight: 32 }}>
+                  <option value={0}>Tüm skorlar</option>
+                  <option value={40}>40%+</option>
+                  <option value={60}>60%+ (iyi)</option>
+                  <option value={80}>80%+ (mükemmel)</option>
+                </select>
+                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
+              </div>
+
+              <div style={{ flex: 1 }} />
+
+              <button onClick={selectAllLeads}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: '1px solid #e2e8f0', background: selectedLeads.size === filtered.length && filtered.length > 0 ? '#ecfdf5' : '#ffffff', color: tx2, fontSize: 12, cursor: 'pointer' }}>
+                <CheckCircle size={12} /> {selectedLeads.size === filtered.length && filtered.length > 0 ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+              </button>
+
+              {selectedLeads.size > 0 && (
+                <>
+                  <button onClick={() => sendCampaign('voice')} disabled={campaignSending}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#0f766e,#0d9488)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    <PhoneCall size={12} /> Sesli Ara ({selectedLeads.size})
+                  </button>
+                  <button onClick={() => sendCampaign('whatsapp')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#25d366', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    <MessageCircle size={12} /> WhatsApp ({selectedLeads.size})
+                  </button>
+                </>
+              )}
+            </div>
+
+            {filtered.length === 0 ? (
+              <div style={{ ...card, padding: 48, textAlign: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><RadarScanner size={80} /></div>
+                <p style={{ color: tx3, fontSize: 14 }}>{t('competitor.henuz_lead_bulunamadi', 'Henüz lead bulunamadı')}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {filtered.map((lead: any) => (
+                  <div key={lead.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div onClick={() => toggleLeadSelect(lead.id)}
+                      style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${selectedLeads.has(lead.id) ? accentTeal : '#d1d5db'}`, background: selectedLeads.has(lead.id) ? accentTeal : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                      {selectedLeads.has(lead.id) && <CheckCircle size={12} style={{ color: '#fff' }} />}
+                    </div>
+                    <div style={{ flex: 1 }}><LeadRow lead={lead} onAction={handleLeadAction} /></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* ── TAB: SWOT ANALYZE ──────────────────────────────────────────── */}
       {tab === 'analyze' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20 }}>
           <div style={{ ...card, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <BarChart3 size={16} style={{ color: accentTeal }} />
-              <h2 style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>Rakip Analizi</h2>
+              <h2 style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>AI SWOT Analizi</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <input value={aName} onChange={e => setAName(e.target.value)} placeholder={t('competitor.rakip_firma_adi', 'Rakip firma adı *')} style={inputStyle} />
@@ -581,95 +776,276 @@ export default function CompetitorPage() {
               <button onClick={analyze} disabled={analyzing || !aName}
                 style={{ padding: '12px', borderRadius: 11, border: 'none', cursor: analyzing || !aName ? 'not-allowed' : 'pointer', background: aName ? 'linear-gradient(135deg,#0f766e,#0d9488)' : surf, color: aName ? '#ffffff' : tx3, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 {analyzing ? <RefreshCw size={14} style={{ animation: 'rdrSpin 1s linear infinite' }} /> : <Search size={14} />}
-                {analyzing ? 'Analiz Ediliyor...' : 'Analiz Başlat'}
+                {analyzing ? 'AI Analiz Ediyor...' : 'SWOT Analizi Başlat'}
               </button>
             </div>
+
+            {/* Quick competitor select from list */}
+            {competitors.length > 0 && (
+              <div style={{ marginTop: 16, borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+                <p style={{ color: tx3, fontSize: 11, margin: '0 0 8px' }}>Veya listeden seç:</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {competitors.slice(0, 5).map(c => (
+                    <button key={c.id} onClick={() => { setAName(c.name); setACity(c.city || '') }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: '1px solid #f1f5f9', background: aName === c.name ? '#ecfdf5' : 'transparent', color: tx1, fontSize: 12, cursor: 'pointer', textAlign: 'left' }}>
+                      <Target size={12} style={{ color: accentTeal }} />
+                      <span style={{ fontWeight: 500 }}>{c.name}</span>
+                      {c.city && <span style={{ color: tx3, fontSize: 10 }}>· {c.city}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div style={{ ...card, padding: 24, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {analyzing ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 16 }}>
+              <div style={{ ...card, padding: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
                 <RadarScanner size={100} scanning={true} />
-                <p style={{ color: tx1, fontWeight: 700, fontSize: 15 }}>AI analiz ediyor...</p>
-                <p style={{ color: tx2, fontSize: 13 }}>Google Maps, Trustpilot, LinkedIn, sosyal medya</p>
+                <p style={{ color: tx1, fontWeight: 700, fontSize: 15, margin: 0 }}>AI SWOT analizi yapılıyor...</p>
+                <p style={{ color: tx2, fontSize: 13, margin: 0 }}>Google Maps, Trustpilot, LinkedIn, sosyal medya taranıyor</p>
               </div>
             ) : analysis ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <h3 style={{ color: tx1, fontSize: 16, fontWeight: 700, margin: 0 }}>{analysis.competitor?.name || aName}</h3>
-                  {analysis.analysis?.threatLevel && (() => {
-                    const level = analysis.analysis.threatLevel
-                    const meta = level === 'high' ? { bg: '#fef2f2', dot: '#dc2626', text: '#dc2626', label: 'Yüksek Tehdit' }
-                      : level === 'medium' ? { bg: '#fffbeb', dot: '#b45309', text: '#b45309', label: 'Orta Tehdit' }
-                      : { bg: '#ecfdf5', dot: accentEmerald, text: accentEmerald, label: 'Düşük Tehdit' }
-                    return (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: meta.bg, color: meta.text, fontSize: 12, padding: '4px 12px', borderRadius: 20, fontWeight: 700 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.dot, display: 'inline-block' }} />
-                        {meta.label}
-                      </span>
-                    )
-                  })()}
+              <>
+                {/* Header with threat level & score */}
+                <div style={{ ...card, padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f0fdfa', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Target size={20} style={{ color: accentTeal }} />
+                    </div>
+                    <div>
+                      <h3 style={{ color: tx1, fontSize: 17, fontWeight: 700, margin: 0 }}>{analysis.competitor?.name || aName}</h3>
+                      <p style={{ color: tx2, fontSize: 12, margin: 0 }}>{aCity ? `${aCity}, ` : ''}{analysis.country}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {analysis.analysis?.overallScore && (
+                      <div style={{ position: 'relative', width: 48, height: 48 }}>
+                        <svg width={48} height={48} style={{ transform: 'rotate(-90deg)' }}>
+                          <circle cx={24} cy={24} r={20} fill="none" stroke="#f1f5f9" strokeWidth={4} />
+                          <circle cx={24} cy={24} r={20} fill="none"
+                            stroke={analysis.analysis.overallScore >= 70 ? '#dc2626' : analysis.analysis.overallScore >= 40 ? '#b45309' : accentEmerald}
+                            strokeWidth={4} strokeDasharray={`${(analysis.analysis.overallScore / 100) * 125.6} 125.6`} strokeLinecap="round" />
+                        </svg>
+                        <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: tx1 }}>{analysis.analysis.overallScore}</span>
+                      </div>
+                    )}
+                    {analysis.analysis?.threatLevel && (() => {
+                      const level = analysis.analysis.threatLevel
+                      const meta = level === 'high' ? { bg: '#fef2f2', dot: '#dc2626', text: '#dc2626', label: 'Yüksek Tehdit' }
+                        : level === 'medium' ? { bg: '#fffbeb', dot: '#b45309', text: '#b45309', label: 'Orta Tehdit' }
+                        : { bg: '#ecfdf5', dot: accentEmerald, text: accentEmerald, label: 'Düşük Tehdit' }
+                      return (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: meta.bg, color: meta.text, fontSize: 12, padding: '5px 14px', borderRadius: 20, fontWeight: 700 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.dot, display: 'inline-block' }} />
+                          {meta.label}
+                        </span>
+                      )
+                    })()}
+                  </div>
                 </div>
+
+                {/* Channel data cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
                   {[
-                    { label: 'Google Maps', rating: analysis.channels?.googleMaps?.rating },
-                    { label: 'Trustpilot', rating: analysis.channels?.trustpilot?.rating },
-                    { label: t('competitor.sikayetvar', 'Şikayetvar'), complaints: analysis.channels?.sikayetvar?.complaintCount },
-                  ].map(({ label, rating, complaints }) => (
-                    <div key={label} style={{ background: surf, border: '1px solid #f1f5f9', borderRadius: 10, padding: '10px 14px', textAlign: 'center' }}>
-                      <p style={{ color: tx2, fontSize: 10, margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>{label}</p>
+                    { label: 'Google Maps', rating: analysis.channels?.googleMaps?.rating, icon: Star },
+                    { label: 'Trustpilot', rating: analysis.channels?.trustpilot?.rating, icon: Star },
+                    { label: 'Şikayetvar', complaints: analysis.channels?.sikayetvar?.complaintCount, icon: MessageCircleWarning },
+                  ].map(({ label, rating, complaints, icon: Ic }) => (
+                    <div key={label} style={{ ...card, padding: '12px 14px', textAlign: 'center' }}>
+                      <p style={{ color: tx2, fontSize: 10, margin: '0 0 6px', fontWeight: 600, textTransform: 'uppercase' }}>{label}</p>
                       {rating ? (
-                        <p style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                          <Star size={13} style={{ color: '#d19405' }} /> {rating}
+                        <p style={{ color: tx1, fontSize: 18, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          <Ic size={14} style={{ color: '#d19405' }} /> {rating}
                         </p>
                       ) : complaints ? (
-                        <p style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>{complaints} şikayet</p>
+                        <p style={{ color: '#dc2626', fontSize: 18, fontWeight: 700, margin: 0 }}>{complaints}</p>
                       ) : (
-                        <p style={{ color: tx3, fontSize: 15, fontWeight: 700, margin: 0 }}>—</p>
+                        <p style={{ color: tx3, fontSize: 18, fontWeight: 700, margin: 0 }}>—</p>
                       )}
                     </div>
                   ))}
                 </div>
-                {analysis.analysis && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {([
-                      { label: t('competitor.zayif_yonleri', 'Zayıf Yönleri'), items: analysis.analysis.weaknesses, color: '#dc2626', Icon: TrendingDown },
-                      { label: t('competitor.firsatlar', 'Fırsatlar'), items: analysis.analysis.opportunities, color: accentEmerald, Icon: TrendingUp },
-                    ] as {label:string;items:string[];color:string;Icon:typeof TrendingUp}[]).map(({ label, items, color, Icon }) => (
-                      <div key={label} style={{ background: `${color}08`, border: `1px solid ${color}25`, borderRadius: 12, padding: 14 }}>
-                        <p style={{ color, fontSize: 12, fontWeight: 700, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6 }}><Icon size={13} /> {label}</p>
-                        {(items || []).map((item: string, i: number) => (
-                          <div key={i} style={{ display: 'flex', gap: 7, marginBottom: 6 }}>
-                            <span style={{ color: `${color}90`, fontSize: 10, marginTop: 2 }}>▸</span>
-                            <p style={{ color: tx2, fontSize: 12, margin: 0, lineHeight: 1.4 }}>{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+
+                {/* SWOT Grid */}
+                {analysis.analysis?.swot && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <SwotCard title="Güçlü Yönler" items={analysis.analysis.swot.strengths} color="#059669" Icon={Shield} bg="#ecfdf508" />
+                    <SwotCard title="Zayıf Yönler" items={analysis.analysis.swot.weaknesses} color="#dc2626" Icon={TrendingDown} bg="#fef2f208" />
+                    <SwotCard title="Fırsatlar" items={analysis.analysis.swot.opportunities} color="#2563eb" Icon={Lightbulb} bg="#eff6ff08" />
+                    <SwotCard title="Tehditler" items={analysis.analysis.swot.threats} color="#b45309" Icon={AlertTriangle} bg="#fffbeb08" />
                   </div>
                 )}
-                {analysis.analysis?.suggestedWhatsApp && (
-                  <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: 16 }}>
-                    <p style={{ color: accentEmerald, fontSize: 12, fontWeight: 700, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <MessageCircle size={13} /> {t('competitor.whatsapp_mesaj_taslagi', 'WhatsApp Mesaj Taslağı')}
+
+                {/* Backward compat: old weaknesses/opportunities format */}
+                {!analysis.analysis?.swot && analysis.analysis && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <SwotCard title="Zayıf Yönler" items={analysis.analysis.weaknesses} color="#dc2626" Icon={TrendingDown} bg="#fef2f208" />
+                    <SwotCard title="Fırsatlar" items={analysis.analysis.opportunities} color={accentEmerald} Icon={TrendingUp} bg="#ecfdf508" />
+                  </div>
+                )}
+
+                {/* Attack Strategy */}
+                {analysis.analysis?.attackStrategy && (
+                  <div style={{ ...card, padding: 18, borderLeft: '4px solid #7c3aed' }}>
+                    <p style={{ color: '#7c3aed', fontSize: 12, fontWeight: 700, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Swords size={13} /> Saldırı Stratejisi
                     </p>
-                    <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{analysis.analysis.suggestedWhatsApp}</p>
-                    <button onClick={() => navigator.clipboard.writeText(analysis.analysis.suggestedWhatsApp)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: `1px solid ${accentEmerald}40`, background: '#ffffff', color: accentEmerald, fontSize: 11, cursor: 'pointer' }}>
-                      <Copy size={11} /> Kopyala
-                    </button>
+                    <p style={{ color: tx1, fontSize: 13, margin: 0, lineHeight: 1.6 }}>{analysis.analysis.attackStrategy}</p>
                   </div>
                 )}
-              </div>
+
+                {/* Message Templates */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  {analysis.analysis?.suggestedWhatsApp && (
+                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: 14 }}>
+                      <p style={{ color: '#25d366', fontSize: 11, fontWeight: 700, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <MessageCircle size={12} /> WhatsApp
+                      </p>
+                      <p style={{ color: tx2, fontSize: 12, margin: '0 0 8px', lineHeight: 1.4 }}>{analysis.analysis.suggestedWhatsApp}</p>
+                      <button onClick={() => navigator.clipboard.writeText(analysis.analysis.suggestedWhatsApp)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, border: '1px solid #a7f3d0', background: '#ffffff', color: accentEmerald, fontSize: 10, cursor: 'pointer' }}>
+                        <Copy size={10} /> Kopyala
+                      </button>
+                    </div>
+                  )}
+                  {analysis.analysis?.suggestedEmail && (
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: 14 }}>
+                      <p style={{ color: '#2563eb', fontSize: 11, fontWeight: 700, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Mail size={12} /> E-posta
+                      </p>
+                      <p style={{ color: tx1, fontSize: 12, fontWeight: 600, margin: '0 0 4px' }}>
+                        {typeof analysis.analysis.suggestedEmail === 'string' ? analysis.analysis.suggestedEmail : analysis.analysis.suggestedEmail?.subject}
+                      </p>
+                      {analysis.analysis.suggestedEmail?.preview && (
+                        <p style={{ color: tx2, fontSize: 11, margin: '0 0 6px', lineHeight: 1.4 }}>{analysis.analysis.suggestedEmail.preview}</p>
+                      )}
+                      <button onClick={() => navigator.clipboard.writeText(typeof analysis.analysis.suggestedEmail === 'string' ? analysis.analysis.suggestedEmail : analysis.analysis.suggestedEmail?.subject || '')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, border: '1px solid #bfdbfe', background: '#ffffff', color: '#2563eb', fontSize: 10, cursor: 'pointer' }}>
+                        <Copy size={10} /> Kopyala
+                      </button>
+                    </div>
+                  )}
+                  {analysis.analysis?.suggestedCallScript && (
+                    <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 12, padding: 14 }}>
+                      <p style={{ color: '#7c3aed', fontSize: 11, fontWeight: 700, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <PhoneCall size={12} /> Arama Scripti
+                      </p>
+                      <p style={{ color: tx2, fontSize: 12, margin: '0 0 8px', lineHeight: 1.4 }}>{analysis.analysis.suggestedCallScript}</p>
+                      <button onClick={() => navigator.clipboard.writeText(analysis.analysis.suggestedCallScript)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, border: '1px solid #e9d5ff', background: '#ffffff', color: '#7c3aed', fontSize: 10, cursor: 'pointer' }}>
+                        <Copy size={10} /> Kopyala
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 12 }}>
+              <div style={{ ...card, padding: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                 <RadarScanner size={90} />
-                <p style={{ color: tx3, fontSize: 13 }}>{t('competitor.rakip_adini_girin_ve_anal', 'Rakip adını girin ve analiz başlatın')}</p>
+                <p style={{ color: tx3, fontSize: 13, margin: 0 }}>{t('competitor.rakip_adini_girin_ve_anal', 'Rakip adını girin ve SWOT analizi başlatın')}</p>
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* ── TAB: CAMPAIGN ─────────────────────────────────────────────────── */}
+      {tab === 'campaign' && (() => {
+        const phoneLeads = leads.filter(l => l.phone)
+        const highScoreLeads = phoneLeads.filter(l => (l.score || 0) >= 60)
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            {/* Campaign Creator */}
+            <div style={{ ...card, padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                <Megaphone size={16} style={{ color: '#7c3aed' }} />
+                <h2 style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>Kampanya Oluştur</h2>
+              </div>
+              <p style={{ color: tx2, fontSize: 12, marginBottom: 16 }}>Rakip taramasından bulunan leadleri sesli arama, WhatsApp veya e-posta kampanyasına dönüştürün.</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Quick stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ background: '#f0fdfa', border: '1px solid #a7f3d0', borderRadius: 10, padding: 14, textAlign: 'center' }}>
+                    <p style={{ color: accentEmerald, fontSize: 22, fontWeight: 800, margin: 0 }}>{phoneLeads.length}</p>
+                    <p style={{ color: tx2, fontSize: 11, margin: 0 }}>Aranabilir Lead</p>
+                  </div>
+                  <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10, padding: 14, textAlign: 'center' }}>
+                    <p style={{ color: '#7c3aed', fontSize: 22, fontWeight: 800, margin: 0 }}>{highScoreLeads.length}</p>
+                    <p style={{ color: tx2, fontSize: 11, margin: 0 }}>Yüksek Kalite (60%+)</p>
+                  </div>
+                </div>
+
+                {/* Campaign actions */}
+                <button onClick={async () => {
+                  if (!highScoreLeads.length) return showMsg('error', 'Yüksek kaliteli lead yok')
+                  setCampaignSending(true)
+                  try {
+                    await api.post('/api/voice/call/campaign', {
+                      leadIds: highScoreLeads.map(l => l.id),
+                      campaignName: `Rakip Hijack — ${new Date().toLocaleDateString('tr-TR')}`,
+                      delayMinutes: 5,
+                    })
+                    showMsg('success', `${highScoreLeads.length} lead için sesli arama kampanyası başlatıldı!`)
+                  } catch (e: any) { showMsg('error', e.message) }
+                  finally { setCampaignSending(false) }
+                }} disabled={!highScoreLeads.length || campaignSending}
+                  style={{ padding: '14px', borderRadius: 12, border: 'none', cursor: highScoreLeads.length && !campaignSending ? 'pointer' : 'not-allowed', background: highScoreLeads.length ? 'linear-gradient(135deg,#0f766e,#0d9488)' : surf, color: highScoreLeads.length ? '#ffffff' : tx3, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: highScoreLeads.length ? '0 6px 20px rgba(13,148,136,0.25)' : 'none' }}>
+                  {campaignSending ? <RefreshCw size={15} style={{ animation: 'rdrSpin 1s linear infinite' }} /> : <PhoneCall size={15} />}
+                  {campaignSending ? 'Başlatılıyor...' : `Sesli Arama Kampanyası (${highScoreLeads.length} lead)`}
+                </button>
+
+                <button onClick={() => {
+                  const wLeads = highScoreLeads.filter(l => l.phone)
+                  if (!wLeads.length) return showMsg('error', 'WhatsApp için lead yok')
+                  for (const lead of wLeads.slice(0, 10)) {
+                    const p = lead.phone.replace(/\s/g, '').replace('+', '')
+                    window.open(`https://wa.me/${p}`, '_blank')
+                  }
+                  showMsg('success', `${Math.min(wLeads.length, 10)} WhatsApp penceresi açıldı`)
+                }} disabled={!highScoreLeads.length}
+                  style={{ padding: '14px', borderRadius: 12, border: 'none', cursor: highScoreLeads.length ? 'pointer' : 'not-allowed', background: highScoreLeads.length ? '#25d366' : surf, color: highScoreLeads.length ? '#ffffff' : tx3, fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <MessageCircle size={15} />
+                  WhatsApp Kampanyası ({Math.min(highScoreLeads.length, 10)} lead)
+                </button>
+
+                <button onClick={() => {
+                  setTab('leads')
+                  setLeadMinScore(60)
+                }}
+                  style={{ padding: '12px', borderRadius: 12, border: '1px solid #e2e8f0', cursor: 'pointer', background: '#ffffff', color: tx1, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <Filter size={14} style={{ color: tx2 }} />
+                  Leadleri Filtrele & Seç
+                </button>
+              </div>
+            </div>
+
+            {/* Top leads preview */}
+            <div style={{ ...card, padding: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Award size={16} style={{ color: '#b45309' }} />
+                  <h2 style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>En İyi Leadler</h2>
+                </div>
+                <span style={{ color: tx3, fontSize: 11 }}>Skor 60%+</span>
+              </div>
+              {highScoreLeads.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 32 }}>
+                  <RadarScanner size={70} />
+                  <p style={{ color: tx3, fontSize: 12, marginTop: 12 }}>Önce rakip taraması yapın</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 400, overflowY: 'auto' }}>
+                  {highScoreLeads.slice(0, 15).map(lead => (
+                    <LeadRow key={lead.id} lead={lead} onAction={handleLeadAction} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       <style>{`
         @keyframes radarSweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

@@ -399,7 +399,9 @@ const COUNTRIES: CountryConfig[] = [
 ];
 
 export function getCountryByCode(code: string): CountryConfig {
-  return COUNTRIES.find(c => c.code === code) || COUNTRIES[0];
+  if (!code) return COUNTRIES[0];
+  const upper = code.toUpperCase().trim().slice(0, 2);
+  return COUNTRIES.find(c => c.code === upper) || COUNTRIES[0];
 }
 
 export function getAllCountries(): CountryConfig[] {

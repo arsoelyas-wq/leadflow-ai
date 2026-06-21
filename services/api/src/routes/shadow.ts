@@ -13,7 +13,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/
 
 // ── DATA COLLECTION ───────────────────────────────────────────────────────────
 async function fetchCompetitorData(name: string, website: string, countryCode = 'TR'): Promise<any> {
-  const country = getCountryByCode(countryCode);
+  const country = getCountryByCode(countryCode || 'TR');
   const { queries } = country;
 
   const data: any = {
@@ -327,6 +327,102 @@ router.post('/add-website/:id', async (req: any, res: any) => {
     const url = website.startsWith('http') ? website : `https://${website}`;
     await supabase.from('competitors').update({ website: url }).eq('id', req.params.id).eq('user_id', req.userId);
     res.json({ message: 'Website eklendi', url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── COMPETITOR COMPARISON ─────────────────────────────────────────────────────
+router.get('/compare', async (req: any, res: any) => {
+  try {
+    const { data: comps, error } = await supabase.from('competitors')
+      .select('id,name,website,city,sector,country,shadow_data,shadow_changes,shadow_price_history,threat_score')
+      .eq('user_id', req.userId)
+      .not('shadow_data', 'is', null);
+
+    if (error) throw error;
+    if (!comps?.length) return res.json({ competitors: [], comparison: null });
+
+    const safe = (v: any, fb: any) => {
+      if (!v) return fb;
+      if (typeof v === 'string') { try { return JSON.parse(v); } catch { return fb; } }
+      return v;
+    };
+
+    const entries = comps.map((c: any) => {
+      const data = safe(c.shadow_data, {});
+      const history = safe(c.shadow_price_history, []);
+      return {
+        id: c.id,
+        name: c.name,
+        threatScore: c.threat_score || 0,
+        rating: data.reviews?.avg || 0,
+        reviewCount: data.reviews?.count || 0,
+        complaintCount: (data.complaints || []).length,
+        productCount: (data.products || []).length,
+        pricingCount: (data.pricing || []).length,
+        techStack: data.techStack || [],
+        jobPostings: (data.jobPostings || []).length,
+        social: data.social || {},
+        historyPoints: history.length,
+        trendDirection: history.length >= 2
+          ? (history[history.length - 1]?.score || 0) > (history[history.length - 2]?.score || 0) ? 'up' : 'down'
+          : 'stable',
+        aiInsight: data.aiInsight?.insight || null,
+      };
+    }).sort((a: any, b: any) => b.threatScore - a.threatScore);
+
+    // AI comparison summary
+    let comparison = null;
+    if (entries.length >= 2) {
+      try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const resp = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 400,
+          messages: [{
+            role: 'user',
+            content: `${entries.length} rakibi karşılaştır:
+${entries.map((e: any) => `- ${e.name}: Tehdit=${e.threatScore}, Rating=${e.rating}/5, Yorum=${e.reviewCount}, Şikayet=${e.complaintCount}, İş İlanı=${e.jobPostings}`).join('\n')}
+
+SADECE JSON döndür:
+{"mostDangerous":"en tehlikeli rakip adı","weakestLink":"en zayıf rakip adı","summary":"2 cümle karşılaştırma özeti","priorityAction":"en acil yapılması gereken aksiyon"}`,
+          }],
+        });
+        const text = resp.content[0]?.text || '';
+        const m = text.match(/\{[\s\S]*\}/);
+        if (m) comparison = JSON.parse(m[0]);
+      } catch { /* AI comparison failed */ }
+    }
+
+    res.json({ competitors: entries, comparison });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── TREND HISTORY ────────────────────────────────────────────────────────────
+router.get('/trends/:id', async (req: any, res: any) => {
+  try {
+    const { data: comp, error } = await supabase.from('competitors')
+      .select('name,shadow_price_history,shadow_changes,threat_score,shadow_data')
+      .eq('id', req.params.id).eq('user_id', req.userId).single();
+    if (error || !comp) return res.status(404).json({ error: 'Rakip bulunamadı' });
+
+    const safe = (v: any, fb: any) => {
+      if (!v) return fb;
+      if (typeof v === 'string') { try { return JSON.parse(v); } catch { return fb; } }
+      return v;
+    };
+
+    const history = safe(comp.shadow_price_history, []);
+    const changes = safe(comp.shadow_changes, []);
+    const data = safe(comp.shadow_data, {});
+
+    res.json({
+      name: comp.name,
+      currentScore: comp.threat_score || 0,
+      history,
+      recentChanges: changes,
+      aiInsight: data.aiInsight || null,
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

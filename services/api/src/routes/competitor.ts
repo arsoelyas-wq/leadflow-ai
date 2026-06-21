@@ -37,14 +37,23 @@ const DDG_KL: Record<string, string> = {
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function cleanPhone(p: string): string { return (p || '').replace(/\s/g, '').replace(/[^\d+]/g, ''); }
 function calcScore(lead: any): number {
-  let s = 30;
-  if (lead.phone) s += 25;
-  if (lead.website || lead.instagram || lead.linkedin) s += 15;
-  if (lead.email) s += 20;
-  if (lead.city) s += 5;
+  let s = 20;
+  // Contact completeness
+  if (lead.phone) s += 20;
+  if (lead.email) s += 15;
+  if (lead.website) s += 8;
+  if (lead.instagram) s += 5;
+  if (lead.linkedin) s += 8;
+  // Identity quality
   if (lead.name?.length > 3) s += 5;
-  // Şikayet eden = rakipten memnun değil = daha değerli lead
+  if (lead.city) s += 3;
+  // Source quality — complaints = unhappy customers = highest value
   if (lead.score_boost) s += lead.score_boost;
+  // Channel-based bonus
+  const ch = (lead.source_channel || '').toLowerCase();
+  if (ch.includes('şikayet') || ch.includes('complaint') || ch.includes('trustpilot')) s += 10;
+  else if (ch.includes('google yorum') || ch.includes('review')) s += 8;
+  else if (ch.includes('linkedin')) s += 6;
   return Math.min(s, 100);
 }
 
@@ -926,7 +935,8 @@ router.get('/list', async (req: any, res: any) => {
 router.post('/list', async (req: any, res: any) => {
   try {
     const { name, city, sector, channels, auto_scan, country } = req.body;
-    if (!name) return res.status(400).json({ error: 'name zorunlu' });
+    if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name zorunlu' });
+    if (name.trim().length < 2 || name.trim().length > 200) return res.status(400).json({ error: 'Firma adı 2-200 karakter arası olmalı' });
     // Duplicate kontrolü
     const { data: existing } = await supabase.from('competitors').select('id').eq('user_id', req.userId).ilike('name', name.trim()).maybeSingle();
     if (existing) return res.status(400).json({ error: `"${name}" zaten rakip listenizde mevcut` });
@@ -990,7 +1000,8 @@ router.post('/scan-all', async (req: any, res: any) => {
 router.post('/hijack', async (req: any, res: any) => {
   try {
     const { competitorName, city, targetSector, maxResults = 20, channels = ['google', 'linkedin', 'social_reviews'], country = 'TR' } = req.body;
-    if (!competitorName || !city) return res.status(400).json({ error: 'competitorName ve city zorunlu' });
+    if (!competitorName || typeof competitorName !== 'string') return res.status(400).json({ error: 'competitorName zorunlu' });
+    if (!city || typeof city !== 'string') return res.status(400).json({ error: 'city zorunlu' });
     const { data: ud } = await supabase.from('users').select('credits_total, credits_used').eq('id', req.userId).single();
     const available = (ud?.credits_total || 0) - (ud?.credits_used || 0);
     if (available < 5) return res.status(400).json({ error: `Yetersiz kredi. Mevcut: ${available}` });
@@ -1019,29 +1030,63 @@ router.post('/analyze', async (req: any, res: any) => {
     const complaints = sikayetvarRes.status === 'fulfilled' ? sikayetvarRes.value : null;
     const trustpilot = trustpilotRes.status === 'fulfilled' ? trustpilotRes.value : null;
     const linkedin = linkedinRes.status === 'fulfilled' ? linkedinRes.value[0] : null;
-    const socialMentions = socialRes.status === 'fulfilled' ? socialRes.value.slice(0, 3) : [];
+    const socialMentions = socialRes.status === 'fulfilled' ? socialRes.value.slice(0, 5) : [];
 
     const Anthropic = require('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const analysis = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 900,
+      max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `Rakip analizi: "${competitorName}" — ${city || ''} (${countryConf.name})
-Google Maps: ${googlePlace ? `Rating: ${googlePlace.rating}/5, ${googlePlace.reviewCount} yorum` : 'Bulunamadı'}
-Şikayetvar: ${complaints ? `${complaints.complaintCount} şikayet` : 'Veri yok'}
+        content: `Rakip SWOT analizi: "${competitorName}" — ${city || ''} (${countryConf.name})
+
+VERİLER:
+Google Maps: ${googlePlace ? `Rating: ${googlePlace.rating}/5, ${googlePlace.reviewCount} yorum, Adres: ${googlePlace.address || 'yok'}` : 'Bulunamadı'}
+Şikayetvar: ${complaints ? `${complaints.complaintCount} şikayet. Örnekler: ${(complaints.complaints || []).slice(0, 3).join(' | ')}` : 'Veri yok'}
 Trustpilot: ${trustpilot ? `Rating: ${trustpilot.rating}` : 'Veri yok'}
 LinkedIn: ${linkedin ? linkedin.name : 'Veri yok'}
-Sosyal medya şikayetleri: ${socialMentions.length} paylaşım
+Sosyal medya şikayetleri: ${socialMentions.length} paylaşım${socialMentions.length > 0 ? '. Örnekler: ' + socialMentions.slice(0, 2).map((s: any) => s.notes?.slice(0, 80) || '').join(' | ') : ''}
 
-SADECE JSON döndür:
-{"weaknesses":["..."],"opportunities":["..."],"customerComplaints":["..."],"targetCustomerProfile":"...","suggestedWhatsApp":"max 200 karakter mesaj","suggestedEmail":"konu satırı","competitorStrength":"...","threatLevel":"low|medium|high"}`
+SADECE JSON döndür (Türkçe yaz):
+{
+  "swot": {
+    "strengths": ["güçlü yön 1", "güçlü yön 2", "güçlü yön 3"],
+    "weaknesses": ["zayıf yön 1", "zayıf yön 2", "zayıf yön 3"],
+    "opportunities": ["fırsat 1", "fırsat 2", "fırsat 3"],
+    "threats": ["tehdit 1", "tehdit 2", "tehdit 3"]
+  },
+  "threatLevel": "low|medium|high",
+  "overallScore": 1-100,
+  "customerComplaints": ["en sık şikayet konusu 1", "2"],
+  "targetCustomerProfile": "bu rakibin kaybedebileceği ideal müşteri profili",
+  "competitorStrength": "rakibin en güçlü yanı, 1 cümle",
+  "attackStrategy": "bu rakibin müşterilerini kazanmak için en etkili strateji, 2-3 cümle",
+  "suggestedWhatsApp": "max 200 karakter WhatsApp mesajı (rakibin zayıf yönüne vurgu yap)",
+  "suggestedEmail": { "subject": "konu satırı", "preview": "ilk cümle" },
+  "suggestedCallScript": "telefon açılış cümlesi (15 kelime max)"
+}`
       }],
     });
     const rawText = analysis.content[0]?.text || '';
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    res.json({ found: !!(googlePlace || complaints), competitor: { name: googlePlace?.name || competitorName, ...googlePlace }, channels: { googleMaps: googlePlace, sikayetvar: complaints, trustpilot, linkedin }, socialMentions, analysis: jsonMatch ? JSON.parse(jsonMatch[0]) : null, country: countryConf.name });
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+
+    // Backward compat: map swot fields to old format too
+    const compat = parsed ? {
+      ...parsed,
+      weaknesses: parsed.swot?.weaknesses || parsed.weaknesses || [],
+      opportunities: parsed.swot?.opportunities || parsed.opportunities || [],
+    } : null;
+
+    res.json({
+      found: !!(googlePlace || complaints),
+      competitor: { name: googlePlace?.name || competitorName, ...googlePlace },
+      channels: { googleMaps: googlePlace, sikayetvar: complaints, trustpilot, linkedin },
+      socialMentions,
+      analysis: compat,
+      country: countryConf.name,
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
