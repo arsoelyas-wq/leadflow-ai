@@ -341,11 +341,11 @@ async function makeVapiCall(params: {
     ru: 'ru', es: 'es', it: 'it', nl: 'nl',
   };
 
+  // ElevenLabs voice — daha güvenilir TTS
   const defaultVoice = {
-    provider: 'cartesia',
-    voiceId: CALL_VOICES[language] || CALL_VOICES.default,
-    model: 'sonic-multilingual',
-    language,
+    provider: '11labs',
+    voiceId: 'pNInz6obpgDQGcFmaJgB',
+    model: 'eleven_multilingual_v2',
   };
 
   const phoneId = params.userPhoneId || VAPI_PHONE_ID;
