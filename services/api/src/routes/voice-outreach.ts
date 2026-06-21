@@ -335,15 +335,12 @@ async function makeVapiCall(params: {
     phoneNumberId: VAPI_PHONE_ID,
     customer: { number: toNumber },
     assistant: {
-      // ── Ses tanıma (STT) ──
       transcriber: {
         provider: 'deepgram',
         model: 'nova-2',
         language: deepgramLang[language] || 'tr',
         smartFormat: true,
-        endpointing: 300,
       },
-      // ── AI beyin ──
       model: {
         provider: 'anthropic',
         model: 'claude-haiku-4-5-20251001',
@@ -351,38 +348,18 @@ async function makeVapiCall(params: {
         temperature: 0.5,
         maxTokens: 120,
       },
-      // ── Ses motoru ──
       voice: voiceConfig || defaultVoice,
-      // ── Konuşma başlatma ──
       firstMessage: openingLine,
       firstMessageMode: 'assistant-speaks-first',
-      // ── Konuşma politikası ──
       endCallMessage: language === 'tr' ? 'Teşekkürler, iyi günler dilerim!' : 'Thank you, have a great day!',
       endCallPhrases: language === 'tr'
-        ? ['görüşürüz', 'hoşça kalın', 'iyi günler', 'kapattım', 'tamam tamam']
-        : ['bye', 'goodbye', 'have a good day', 'no thanks', 'not interested'],
+        ? ['görüşürüz', 'hoşça kalın', 'iyi günler']
+        : ['bye', 'goodbye', 'have a good day'],
       backgroundDenoisingEnabled: true,
-      // ── Turn-taking & bekleme ──
-      messagePlan: {
-        idleMessages: language === 'tr'
-          ? ['Alo, orada mısınız?', 'Beni duyabiliyor musunuz?']
-          : ['Hello, are you there?', 'Can you hear me?'],
-        idleTimeoutSeconds: 12,
-      },
       silenceTimeoutSeconds: 18,
       maxDurationSeconds: 480,
-      // ── Interruption handling ──
-      responseDelaySeconds: 0.4,
-      hipaaEnabled: false,
-      // ── Loglama ──
       recordingEnabled: true,
-      artifactPlan: {
-        recordingEnabled: true,
-        videoRecordingEnabled: false,
-      },
     },
-    // ── Webhook — arama sonuçlarını logla ──
-    serverUrl: `${API_BASE}/api/voice/webhook/vapi`,
   };
 
   const r = await axios.post('https://api.vapi.ai/call/phone', body, {
@@ -780,7 +757,9 @@ router.post('/call/single', async (req: any, res: any) => {
           status: 'contacted', last_contacted_at: new Date().toISOString(),
         }).eq('id', leadId);
       } catch (err: any) {
-        await supabase.from('voice_calls').update({ status: 'failed', notes: err.message }).eq('id', callRecord?.id);
+        const errDetail = err.response?.data ? JSON.stringify(err.response.data).slice(0, 500) : err.message;
+        console.error('[Voice Call] Failed:', errDetail);
+        await supabase.from('voice_calls').update({ status: 'failed', notes: errDetail }).eq('id', callRecord?.id);
       }
     })();
   } catch (e: any) { res.status(500).json({ error: e.message }); }
