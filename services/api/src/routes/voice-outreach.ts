@@ -34,7 +34,7 @@ const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.
 
 // Cartesia ses ID'leri dil bazında (kütüphane aramalar için)
 const CALL_VOICES: Record<string, string> = {
-  tr: 'b7d50908-b17c-442d-ad8d-810c63997ed9',
+  tr: '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
   en: '79a125e8-cd45-4c13-8a67-188112f4dd22',
   de: '3f6e78a8-5283-42aa-b5e7-af82e8bb310c',
   fr: 'a8a1eb38-5f15-4c1d-8722-7ac0f329727d',
