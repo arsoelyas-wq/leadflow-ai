@@ -1032,8 +1032,8 @@ router.get('/settings', async (req: any, res: any) => {
 // PATCH /api/voice/settings
 router.patch('/settings', async (req: any, res: any) => {
   try {
-    const { agent_name, company_name, product_description, transfer_number, vapi_phone_id, voice_speed, voice_pitch, voice_bass, voice_treble, voice_warmth, voice_presence, voice_volume, voice_compress } = req.body;
-    const updateData: any = { user_id: req.userId };
+    const { agent_name, company_name, product_description, transfer_number, vapi_phone_id, voice_speed, voice_pitch } = req.body;
+    const updateData: any = {};
     if (agent_name !== undefined) updateData.agent_name = agent_name;
     if (company_name !== undefined) updateData.company_name = company_name;
     if (product_description !== undefined) updateData.product_description = product_description;
@@ -1041,7 +1041,13 @@ router.patch('/settings', async (req: any, res: any) => {
     if (vapi_phone_id !== undefined) updateData.vapi_phone_id = vapi_phone_id;
     if (voice_speed !== undefined) updateData.voice_speed = voice_speed;
     if (voice_pitch !== undefined) updateData.voice_pitch = voice_pitch;
-    await supabase.from('voice_settings').upsert([updateData]);
+
+    const { data: existing } = await supabase.from('voice_settings').select('id').eq('user_id', req.userId).maybeSingle();
+    if (existing) {
+      await supabase.from('voice_settings').update(updateData).eq('user_id', req.userId);
+    } else {
+      await supabase.from('voice_settings').insert([{ user_id: req.userId, ...updateData }]);
+    }
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -1058,13 +1064,13 @@ router.post('/verify-number', async (req: any, res: any) => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 dk geçerli
 
-    // Kodu veritabanına kaydet
-    await supabase.from('voice_settings').upsert([{
-      user_id: req.userId,
-      pending_phone: phoneNumber,
-      verify_code: code,
-      verify_expires: expires,
-    }]);
+    // Kodu veritabanına kaydet (mevcut kaydı güncelle)
+    const { data: existing } = await supabase.from('voice_settings').select('id').eq('user_id', req.userId).maybeSingle();
+    if (existing) {
+      await supabase.from('voice_settings').update({ pending_phone: phoneNumber, verify_code: code, verify_expires: expires }).eq('user_id', req.userId);
+    } else {
+      await supabase.from('voice_settings').insert([{ user_id: req.userId, pending_phone: phoneNumber, verify_code: code, verify_expires: expires }]);
+    }
 
     // Twilio ile SMS gönder
     const twilioSid = process.env.TWILIO_ACCOUNT_SID;
@@ -1117,12 +1123,13 @@ router.post('/confirm-number', async (req: any, res: any) => {
     if (settings.verify_code !== String(code)) return res.status(400).json({ error: 'Yanlış kod' });
 
     // Doğrulandı — numarayı kaydet
-    await supabase.from('voice_settings').update({
+    const { error: updateErr } = await supabase.from('voice_settings').update({
       verified_phone: settings.pending_phone,
       pending_phone: null,
       verify_code: null,
       verify_expires: null,
     }).eq('user_id', req.userId);
+    if (updateErr) throw updateErr;
 
     res.json({ ok: true, phone: settings.pending_phone, message: 'Numara doğrulandı!' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
