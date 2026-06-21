@@ -822,26 +822,23 @@ function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinu
   return (
     <div className="step-slide space-y-6">
       <div>
-        <label className="text-xs mb-3 block font-bold uppercase tracking-widest" style={{ color:'#94a3b8' }}>Arama Dili</label>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-          {VOICE_LANGS.map(l => {
-            const active = selectedLanguage === l.code
-            return (
-              <button key={l.code} onClick={() => setSelectedLanguage(l.code)}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-2xl text-xs transition-all duration-200 hover:scale-105 cursor-pointer"
-                style={{ background: active ? '#fffbeb' : '#ffffff', border: active ? '1.5px solid #fbbf24' : '1px solid #e2e8f0', boxShadow: active ? '0 0 0 4px rgba(251,191,36,0.12)' : '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <span className="text-2xl">{l.flag}</span>
-                <span className="text-[10px] font-semibold" style={{ color: active ? '#b45309' : '#94a3b8' }}>{l.name.split(' ')[0]}</span>
-              </button>
-            )
-          })}
-          <button onClick={() => setSelectedLanguage('')}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-2xl text-xs transition-all duration-200 hover:scale-105 cursor-pointer"
-            style={{ background: !selectedLanguage ? '#f0fdfa' : '#ffffff', border: !selectedLanguage ? '1.5px solid #5eead4' : '1px solid #e2e8f0', boxShadow: !selectedLanguage ? '0 0 0 4px rgba(13,148,136,0.1)' : '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <Globe2 className="w-6 h-6" style={{ color: !selectedLanguage ? '#0d9488' : '#94a3b8' }}/>
-            <span className="text-[10px] font-semibold" style={{ color: !selectedLanguage ? '#0d9488' : '#94a3b8' }}>Otomatik</span>
-          </button>
+        <label className="text-xs mb-2 block font-bold uppercase tracking-widest" style={{ color:'#94a3b8' }}>Arama Dili</label>
+        <div className="relative">
+          <select value={selectedLanguage} onChange={e => setSelectedLanguage(e.target.value)}
+            className="w-full px-4 py-3.5 rounded-2xl text-sm font-medium focus:outline-none transition-all cursor-pointer appearance-none"
+            style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', color: '#0f172a' }}>
+            <option value="">🌐 Otomatik (ülkeye göre algıla)</option>
+            {VOICE_LANGS.map(l => (
+              <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
+            ))}
+          </select>
+          <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" style={{ color: '#94a3b8', width: 16, height: 16 }}/>
         </div>
+        {selectedLanguage && (
+          <p className="text-xs mt-1.5 flex items-center gap-1.5" style={{ color: '#64748b' }}>
+            {LANG_MAP[selectedLanguage]?.flag} {LANG_MAP[selectedLanguage]?.name} dilinde konuşacak
+          </p>
+        )}
       </div>
 
       {callMode === 'campaign' && (
@@ -863,21 +860,35 @@ function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinu
         <label className="text-xs mb-3 block font-bold uppercase tracking-widest" style={{ color:'#94a3b8' }}>Temsilci Profili</label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
-            { key:'agent_name',          label:'Temsilci Adı',  ph:'Ahmet'               },
-            { key:'company_name',         label:'Şirket Adı',    ph:'Şirketiniz'          },
-            { key:'product_description',  label:'Ürün / Hizmet', ph:'Ne sattığınızı açıklayın' },
-            { key:'transfer_number',      label:'Transfer No',   ph:'İnsan temsilci'      },
-          ].map(({ key, label, ph }) => (
+            { key:'agent_name',          label:'Temsilci Adı',    ph:'Ahmet',                         desc: '' },
+            { key:'company_name',         label:'Şirket Adı',      ph:'Şirketiniz',                    desc: '' },
+            { key:'product_description',  label:'Ürün / Hizmet',   ph:'Ne sattığınızı açıklayın',      desc: '' },
+            { key:'transfer_number',      label:'Transfer No',     ph:'+90 5XX XXX XX XX',             desc: 'Sıcak lead gelince yönlendirilecek numara' },
+          ].map(({ key, label, ph, desc }) => (
             <div key={key}>
               <label className="text-[11px] mb-1.5 block font-semibold uppercase tracking-wider" style={{ color:'#94a3b8' }}>{label}</label>
               <input value={settings[key]||''} onChange={e => setSettings((s: any) => ({ ...s, [key]: e.target.value }))} placeholder={ph}
                 className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-all"
-                style={{ background:'#ffffff', border:'1px solid #e2e8f0', color:'#0f172a' }}
-                onFocus={ev => (ev.target.style.borderColor='#93c5fd')}
-                onBlur={ev => (ev.target.style.borderColor='#e2e8f0')}/>
+                style={{ background:'#ffffff', border:'1px solid #e2e8f0', color:'#0f172a' }}/>
+              {desc && <p className="text-[9px] mt-1" style={{ color:'#cbd5e1' }}>{desc}</p>}
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Arama numarası ayarı */}
+      <div className="p-4 rounded-2xl" style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+        <label className="text-xs mb-2 block font-bold uppercase tracking-widest" style={{ color: '#0369a1' }}>
+          <Phone className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5"/> Arama Numarası
+        </label>
+        <input value={settings.vapi_phone_id || ''} onChange={e => setSettings((s: any) => ({ ...s, vapi_phone_id: e.target.value }))}
+          placeholder="Vapi Phone Number UUID"
+          className="w-full px-4 py-3 rounded-xl text-sm font-mono focus:outline-none transition-all"
+          style={{ background:'#ffffff', border:'1px solid #bae6fd', color:'#0f172a' }}/>
+        <p className="text-[10px] mt-2 leading-relaxed" style={{ color:'#64748b' }}>
+          Vapi Dashboard → Phone Numbers → numaranıza tıklayın → UUID'yi kopyalayın.
+          Twilio numaranızı import edebilir veya Vapi'den yeni numara alabilirsiniz.
+        </p>
       </div>
     </div>
   )

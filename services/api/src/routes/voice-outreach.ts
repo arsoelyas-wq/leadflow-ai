@@ -313,7 +313,7 @@ async function makeVapiCall(params: {
   toNumber: string; agentName: string; companyName: string;
   productDesc: string; leadName: string; leadCompany: string;
   language: string; openingLine: string; systemPrompt: string;
-  voiceConfig?: any;
+  voiceConfig?: any; userPhoneId?: string;
 }): Promise<{ conversationId: string; callSid: string }> {
   const { toNumber, language, openingLine, systemPrompt, voiceConfig } = params;
 
@@ -329,8 +329,10 @@ async function makeVapiCall(params: {
     language,
   };
 
+  // Müşterinin kendi Vapi phone ID'si varsa onu kullan, yoksa sistem default
+  const phoneId = params.userPhoneId || VAPI_PHONE_ID;
   const body: any = {
-    phoneNumberId: VAPI_PHONE_ID,
+    phoneNumberId: phoneId,
     customer: { number: toNumber },
     assistant: {
       transcriber: {
@@ -407,6 +409,7 @@ async function dispatchCall(params: {
   clonedVoiceId?: string;
   libraryVoiceId?: string;
   transferNumber?: string;
+  userPhoneId?: string;
 }): Promise<{ conversationId: string; callSid: string; provider: string }> {
   const { language, lead, researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId } = params;
 
@@ -446,7 +449,7 @@ async function dispatchCall(params: {
         };
       }
 
-      const result = await makeVapiCall({ ...params, openingLine, systemPrompt, voiceConfig });
+      const result = await makeVapiCall({ ...params, openingLine, systemPrompt, voiceConfig, userPhoneId: params.userPhoneId });
       return { ...result, provider: 'vapi-cloned' };
     }
   }
@@ -463,7 +466,7 @@ async function dispatchCall(params: {
       avoidWords,
       transferNumber: params.transferNumber,
     });
-    const result = await makeVapiCall({ ...params, openingLine, systemPrompt });
+    const result = await makeVapiCall({ ...params, openingLine, systemPrompt, userPhoneId: params.userPhoneId });
     return { ...result, provider: 'vapi' };
   }
 
@@ -743,7 +746,7 @@ router.post('/call/single', async (req: any, res: any) => {
           leadName: lead.contact_name || lead.company_name,
           leadCompany: lead.company_name, language: callLang, lead,
           researchData: latestVideo?.research_data || null,
-          avoidWords, voiceType, clonedVoiceId, libraryVoiceId, transferNumber: settings?.transfer_number,
+          avoidWords, voiceType, clonedVoiceId, libraryVoiceId, transferNumber: settings?.transfer_number, userPhoneId: settings?.vapi_phone_id,
         });
         await supabase.from('voice_calls').update({
           eleven_conversation_id: result.conversationId,
@@ -826,7 +829,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
             leadName: lead.contact_name || lead.company_name,
             leadCompany: lead.company_name, language: callLang, lead,
             researchData: latestVideo?.research_data || null,
-            avoidWords, voiceType, clonedVoiceId, libraryVoiceId, transferNumber: settings?.transfer_number,
+            avoidWords, voiceType, clonedVoiceId, libraryVoiceId, transferNumber: settings?.transfer_number, userPhoneId: settings?.vapi_phone_id,
           });
 
           await supabase.from('voice_calls').update({
@@ -1029,8 +1032,16 @@ router.get('/settings', async (req: any, res: any) => {
 // PATCH /api/voice/settings
 router.patch('/settings', async (req: any, res: any) => {
   try {
-    const { agent_name, company_name, product_description, transfer_number } = req.body;
-    await supabase.from('voice_settings').upsert([{ user_id: req.userId, agent_name, company_name, product_description, transfer_number }]);
+    const { agent_name, company_name, product_description, transfer_number, vapi_phone_id, voice_speed, voice_pitch, voice_bass, voice_treble, voice_warmth, voice_presence, voice_volume, voice_compress } = req.body;
+    const updateData: any = { user_id: req.userId };
+    if (agent_name !== undefined) updateData.agent_name = agent_name;
+    if (company_name !== undefined) updateData.company_name = company_name;
+    if (product_description !== undefined) updateData.product_description = product_description;
+    if (transfer_number !== undefined) updateData.transfer_number = transfer_number;
+    if (vapi_phone_id !== undefined) updateData.vapi_phone_id = vapi_phone_id;
+    if (voice_speed !== undefined) updateData.voice_speed = voice_speed;
+    if (voice_pitch !== undefined) updateData.voice_pitch = voice_pitch;
+    await supabase.from('voice_settings').upsert([updateData]);
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
