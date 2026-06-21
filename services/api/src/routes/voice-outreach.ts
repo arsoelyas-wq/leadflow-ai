@@ -1073,6 +1073,37 @@ router.patch('/settings', async (req: any, res: any) => {
 
 // ─── NUMARA DOĞRULAMA ────────────────────────────────────────────────────────
 
+// POST /api/voice/import-twilio-number — Twilio numarasını Vapi'ye otomatik import et
+router.post('/import-twilio-number', async (req: any, res: any) => {
+  try {
+    if (!VAPI_KEY) return res.status(400).json({ error: 'VAPI_API_KEY ayarlanmamış' });
+    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+    if (!twilioSid || !twilioToken || !twilioPhone) return res.status(400).json({ error: 'Twilio bilgileri eksik' });
+
+    // Vapi'ye Twilio numarasını import et
+    const r = await axios.post('https://api.vapi.ai/phone-number', {
+      provider: 'twilio',
+      number: twilioPhone,
+      twilioAccountSid: twilioSid,
+      twilioAuthToken: twilioToken,
+    }, {
+      headers: { Authorization: `Bearer ${VAPI_KEY}`, 'Content-Type': 'application/json' },
+      timeout: 30000,
+    });
+
+    const vapiPhoneId = r.data?.id;
+    console.log(`[Vapi] Twilio number imported: ${twilioPhone} → ${vapiPhoneId}`);
+
+    res.json({ ok: true, phoneNumberId: vapiPhoneId, number: twilioPhone });
+  } catch (e: any) {
+    const detail = e.response?.data ? JSON.stringify(e.response.data).slice(0, 300) : e.message;
+    console.error('[Vapi Import]', detail);
+    res.status(500).json({ error: detail });
+  }
+});
+
 // POST /api/voice/verify-number — Doğrulama kodu gönder
 router.post('/verify-number', async (req: any, res: any) => {
   try {
