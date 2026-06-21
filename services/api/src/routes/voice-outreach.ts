@@ -1046,6 +1046,99 @@ router.patch('/settings', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── NUMARA DOĞRULAMA ────────────────────────────────────────────────────────
+
+// POST /api/voice/verify-number — Doğrulama kodu gönder
+router.post('/verify-number', async (req: any, res: any) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) return res.status(400).json({ error: 'Telefon numarası zorunlu' });
+
+    // 6 haneli kod oluştur
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 dk geçerli
+
+    // Kodu veritabanına kaydet
+    await supabase.from('voice_settings').upsert([{
+      user_id: req.userId,
+      pending_phone: phoneNumber,
+      verify_code: code,
+      verify_expires: expires,
+    }]);
+
+    // Twilio ile SMS gönder
+    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
+
+    if (twilioSid && twilioToken && twilioFrom) {
+      try {
+        const twilio = require('twilio')(twilioSid, twilioToken);
+        await twilio.messages.create({
+          body: `Sovlo AI doğrulama kodunuz: ${code}`,
+          from: twilioFrom,
+          to: phoneNumber,
+        });
+        console.log(`[Verify] SMS sent to ${phoneNumber}: ${code}`);
+      } catch (smsErr: any) {
+        console.error('[Verify] SMS failed, trying call:', smsErr.message?.slice(0, 80));
+        // SMS başarısız → telefon ile doğrulama
+        try {
+          const twilio = require('twilio')(twilioSid, twilioToken);
+          await twilio.calls.create({
+            twiml: `<Response><Say language="tr-TR" voice="Polly.Filiz">Sovlo doğrulama kodunuz: ${code.split('').join('. ')}. Tekrar ediyorum: ${code.split('').join('. ')}</Say></Response>`,
+            from: twilioFrom,
+            to: phoneNumber,
+          });
+          console.log(`[Verify] Call sent to ${phoneNumber}`);
+        } catch (callErr: any) {
+          console.error('[Verify] Call also failed:', callErr.message?.slice(0, 80));
+        }
+      }
+    }
+
+    res.json({ ok: true, message: 'Doğrulama kodu gönderildi', expiresIn: '10 dakika' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/voice/confirm-number — Kodu doğrula ve numarayı kaydet
+router.post('/confirm-number', async (req: any, res: any) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Doğrulama kodu zorunlu' });
+
+    const { data: settings } = await supabase.from('voice_settings')
+      .select('pending_phone, verify_code, verify_expires')
+      .eq('user_id', req.userId)
+      .single();
+
+    if (!settings?.verify_code) return res.status(400).json({ error: 'Doğrulama talebi bulunamadı' });
+    if (new Date(settings.verify_expires) < new Date()) return res.status(400).json({ error: 'Kodun süresi dolmuş. Tekrar gönderin.' });
+    if (settings.verify_code !== String(code)) return res.status(400).json({ error: 'Yanlış kod' });
+
+    // Doğrulandı — numarayı kaydet
+    await supabase.from('voice_settings').update({
+      verified_phone: settings.pending_phone,
+      pending_phone: null,
+      verify_code: null,
+      verify_expires: null,
+    }).eq('user_id', req.userId);
+
+    res.json({ ok: true, phone: settings.pending_phone, message: 'Numara doğrulandı!' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/voice/my-number — Doğrulanmış numarayı getir
+router.get('/my-number', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('voice_settings')
+      .select('verified_phone')
+      .eq('user_id', req.userId)
+      .single();
+    res.json({ phone: data?.verified_phone || null });
+  } catch { res.json({ phone: null }); }
+});
+
 // GET /api/voice/provider-status
 router.get('/provider-status', async (_req: any, res: any) => {
   let xttsHealth: any = null;

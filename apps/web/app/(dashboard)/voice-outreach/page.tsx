@@ -818,7 +818,7 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
 }
 
 // ─── STEP 3: HAZIRLA ─────────────────────────────────────────────────────────
-function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinutes, setDelayMinutes, settings, setSettings }: any) {
+function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinutes, setDelayMinutes, settings, setSettings, onMsg }: any) {
   return (
     <div className="step-slide space-y-6">
       <div>
@@ -876,20 +876,105 @@ function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinu
         </div>
       </div>
 
-      {/* Arama numarası ayarı */}
-      <div className="p-4 rounded-2xl" style={{ background: '#f0f9ff', border: '1px solid #bae6fd' }}>
-        <label className="text-xs mb-2 block font-bold uppercase tracking-widest" style={{ color: '#0369a1' }}>
-          <Phone className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5"/> Arama Numarası
-        </label>
-        <input value={settings.vapi_phone_id || ''} onChange={e => setSettings((s: any) => ({ ...s, vapi_phone_id: e.target.value }))}
-          placeholder="Vapi Phone Number UUID"
-          className="w-full px-4 py-3 rounded-xl text-sm font-mono focus:outline-none transition-all"
-          style={{ background:'#ffffff', border:'1px solid #bae6fd', color:'#0f172a' }}/>
-        <p className="text-[10px] mt-2 leading-relaxed" style={{ color:'#64748b' }}>
-          Vapi Dashboard → Phone Numbers → numaranıza tıklayın → UUID'yi kopyalayın.
-          Twilio numaranızı import edebilir veya Vapi'den yeni numara alabilirsiniz.
-        </p>
-      </div>
+      {/* Arama numarası doğrulama */}
+      {(() => {
+        const [verifyPhone, setVerifyPhone] = useState('')
+        const [verifyCode, setVerifyCode] = useState('')
+        const [verifyStep, setVerifyStep] = useState<'idle' | 'sent' | 'verified'>('idle')
+        const [verifyLoading, setVerifyLoading] = useState(false)
+        const [verifiedPhone, setVerifiedPhone] = useState('')
+
+        useEffect(() => {
+          fetch(`${API}/api/voice/my-number`, { headers: authH() })
+            .then(r => r.json()).then(d => { if (d.phone) { setVerifiedPhone(d.phone); setVerifyStep('verified') } })
+            .catch(() => {})
+        }, [])
+
+        const sendCode = async () => {
+          if (!verifyPhone || verifyPhone.length < 10) return onMsg('error', 'Geçerli telefon numarası girin')
+          setVerifyLoading(true)
+          try {
+            const num = verifyPhone.startsWith('+') ? verifyPhone : `+90${verifyPhone.replace(/^0/, '')}`
+            const r = await fetch(`${API}/api/voice/verify-number`, { method: 'POST', headers: authH(), body: JSON.stringify({ phoneNumber: num }) })
+            const d = await r.json()
+            if (d.ok) { setVerifyStep('sent'); onMsg('success', 'Doğrulama kodu gönderildi!') }
+            else onMsg('error', d.error)
+          } catch { onMsg('error', 'Gönderilemedi') }
+          setVerifyLoading(false)
+        }
+
+        const confirmCode = async () => {
+          if (!verifyCode || verifyCode.length !== 6) return onMsg('error', '6 haneli kodu girin')
+          setVerifyLoading(true)
+          try {
+            const r = await fetch(`${API}/api/voice/confirm-number`, { method: 'POST', headers: authH(), body: JSON.stringify({ code: verifyCode }) })
+            const d = await r.json()
+            if (d.ok) { setVerifiedPhone(d.phone); setVerifyStep('verified'); onMsg('success', 'Numara doğrulandı!') }
+            else onMsg('error', d.error)
+          } catch { onMsg('error', 'Doğrulama başarısız') }
+          setVerifyLoading(false)
+        }
+
+        return (
+          <div className="p-4 rounded-2xl" style={{ background: verifyStep === 'verified' ? '#f0fdf4' : '#f0f9ff', border: `1px solid ${verifyStep === 'verified' ? '#bbf7d0' : '#bae6fd'}` }}>
+            <label className="text-xs mb-3 block font-bold uppercase tracking-widest" style={{ color: verifyStep === 'verified' ? '#059669' : '#0369a1' }}>
+              <Phone className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5"/>
+              {verifyStep === 'verified' ? 'Doğrulanmış Numara' : 'Arama Numarası Ekle'}
+            </label>
+
+            {verifyStep === 'verified' ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#dcfce7' }}>
+                    <CheckCircle className="w-5 h-5" style={{ color: '#059669' }}/>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{verifiedPhone}</p>
+                    <p className="text-xs" style={{ color: '#059669' }}>Doğrulanmış — aramalar bu numaradan yapılacak</p>
+                  </div>
+                </div>
+                <button onClick={() => { setVerifyStep('idle'); setVerifyPhone(''); setVerifyCode('') }}
+                  className="text-xs px-3 py-1.5 rounded-lg transition" style={{ color: '#64748b', background: '#f1f5f9' }}>
+                  Değiştir
+                </button>
+              </div>
+            ) : verifyStep === 'sent' ? (
+              <div className="space-y-3">
+                <p className="text-xs" style={{ color: '#64748b' }}>SMS ile gönderilen 6 haneli kodu girin</p>
+                <div className="flex gap-2">
+                  <input value={verifyCode} onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000" maxLength={6}
+                    className="flex-1 px-4 py-3 rounded-xl text-center text-lg font-mono font-bold tracking-[0.5em] focus:outline-none"
+                    style={{ background: '#ffffff', border: '1.5px solid #bae6fd', color: '#0f172a', letterSpacing: '0.3em' }}/>
+                  <button onClick={confirmCode} disabled={verifyLoading || verifyCode.length !== 6}
+                    className="px-6 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+                    {verifyLoading ? <RefreshCw className="w-4 h-4 animate-spin"/> : 'Doğrula'}
+                  </button>
+                </div>
+                <button onClick={() => setVerifyStep('idle')} className="text-xs transition" style={{ color: '#94a3b8' }}>
+                  ← Numarayı değiştir
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs" style={{ color: '#64748b' }}>Aramalarınız bu numaradan yapılacak. Doğrulama kodu SMS ile gönderilecek.</p>
+                <div className="flex gap-2">
+                  <input value={verifyPhone} onChange={e => setVerifyPhone(e.target.value)}
+                    placeholder="+90 5XX XXX XX XX"
+                    className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
+                    style={{ background: '#ffffff', border: '1.5px solid #bae6fd', color: '#0f172a' }}/>
+                  <button onClick={sendCode} disabled={verifyLoading}
+                    className="px-6 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
+                    {verifyLoading ? <RefreshCw className="w-4 h-4 animate-spin"/> : 'Kod Gönder'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -1223,7 +1308,7 @@ export default function VoicePage() {
           <div key={step}>
             {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg} settings={settings} setSettings={setSettings}/>}
             {step===2 && <StepLead leads={leads} callMode={callMode} setCallMode={setCallMode} selectedLead={selectedLead} setSelectedLead={setSelectedLead} selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads} campaignName={campaignName} setCampaignName={setCampaignName} filterCountry={filterCountry} setFilterCountry={setFilterCountry}/>}
-            {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings}/>}
+            {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings} onMsg={showMsg}/>}
             {step===4 && <StepLaunch selectedVoiceName={selectedVoiceName} selectedVoiceType={selectedVoiceType} callMode={callMode} selectedLead={selectedLead} selectedLeads={selectedLeads} selectedLanguage={selectedLanguage} leads={leads} calling={calling} campaignRunning={campaignRunning} onCall={makeSingleCall} onCampaign={startCampaign}/>}
           </div>
 
