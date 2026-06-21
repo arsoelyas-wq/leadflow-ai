@@ -28,7 +28,8 @@ const ELEVEN_AGENT_ID = process.env.ELEVENLABS_AGENT_ID   || '';
 const ELEVEN_PHONE_ID = process.env.ELEVENLABS_PHONE_NUMBER_ID || '';
 
 const VAPI_KEY    = process.env.VAPI_API_KEY || '';
-const VAPI_PHONE_ID = process.env.VAPI_PHONE_NUMBER_ID || 'c5103fbb-47da-411e-b690-2329c2fe4f06';
+// Twilio imported number — uluslararası arama destekli
+const VAPI_PHONE_ID = 'c5103fbb-47da-411e-b690-2329c2fe4f06';
 
 const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app';
 
