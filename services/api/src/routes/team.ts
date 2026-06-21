@@ -210,42 +210,99 @@ router.get('/load-balance', async (req: any, res: any) => {
   } catch(e:any) { res.status(500).json({ error: e.message }); }
 });
 
-// ── OTOMATIK LEAD DAĞITIMI (Round-Robin) ─────────────────────────────────────
+// ── AKILLI LEAD DAGITIMI (AI-Powered) ────────────────────────────────────────
 router.post('/auto-assign', async (req: any, res: any) => {
   try {
-    const { leadIds, rule = 'round_robin', roleFilter } = req.body;
+    const { leadIds, rule = 'smart', roleFilter, maxPerMember = 25 } = req.body;
     if (!leadIds?.length) return res.status(400).json({ error: 'leadIds zorunlu' });
 
-    let query = supabase.from('team_members').select('id, name, leads_count').eq('owner_id', req.userId).eq('active', true);
+    let query = supabase.from('team_members').select('id, name, role, leads_count, status, wa_phone, target_leads_monthly, badges').eq('owner_id', req.userId).eq('active', true);
     if (roleFilter) query = query.in('role', roleFilter);
     const { data: members } = await query;
-    if (!members?.length) return res.status(400).json({ error: 'Aktif üye bulunamadı' });
+    if (!members?.length) return res.status(400).json({ error: 'Aktif uye bulunamadi' });
 
-    // Gerçek aktif lead sayısını al
-    const memberLoads = await Promise.all(members.map(async (m:any) => {
-      const { data } = await supabase.from('leads').select('id').eq('user_id', req.userId).eq('assigned_member_id', m.id).not('status', 'in', '(won,lost,dismissed)');
-      return { ...m, currentLoad: data?.length||0 };
+    const memberLoads = await Promise.all(members.map(async (m: any) => {
+      const [activeRes, wonRes, coachRes] = await Promise.allSettled([
+        supabase.from('leads').select('id, sector, city, source').eq('user_id', req.userId).eq('assigned_member_id', m.id).not('status', 'in', '(won,lost,dismissed)'),
+        supabase.from('leads').select('sector').eq('user_id', req.userId).eq('assigned_member_id', m.id).eq('status', 'won'),
+        supabase.from('sales_coaching').select('analysis_score').eq('user_id', req.userId).eq('agent_name', m.name).order('created_at', { ascending: false }).limit(5),
+      ]);
+      const activeLeads = activeRes.status === 'fulfilled' ? activeRes.value.data || [] : [];
+      const wonLeads = wonRes.status === 'fulfilled' ? wonRes.value.data || [] : [];
+      const coaching = coachRes.status === 'fulfilled' ? coachRes.value.data || [] : [];
+      const avgScore = coaching.length ? Math.round(coaching.reduce((s: number, c: any) => s + (c.analysis_score || 0), 0) / coaching.length) : 50;
+      const wonSectors: Record<string, number> = {};
+      wonLeads.forEach((l: any) => { if (l.sector) wonSectors[l.sector] = (wonSectors[l.sector] || 0) + 1; });
+
+      return { ...m, currentLoad: activeLeads.length, avgScore, wonSectors, isOnline: m.status === 'online' };
+    }));
+
+    const leadsToAssign = await Promise.all(leadIds.map(async (id: string) => {
+      const { data } = await supabase.from('leads').select('id, sector, city, source, score').eq('id', id).eq('user_id', req.userId).maybeSingle();
+      return data;
     }));
 
     let assigned = 0;
-    for (const leadId of leadIds) {
-      let target: any;
-      if (rule === 'round_robin') {
-        // En az yüklü üye
-        memberLoads.sort((a,b) => a.currentLoad - b.currentLoad);
-        target = memberLoads[0];
-      } else if (rule === 'random') {
-        target = memberLoads[Math.floor(Math.random()*memberLoads.length)];
-      }
-      if (!target) continue;
+    const assignments: Array<{ leadId: string; memberId: string; memberName: string; reason: string }> = [];
 
-      await supabase.from('leads').update({ assigned_to: target.name, assigned_member_id: target.id }).eq('id', leadId).eq('user_id', req.userId);
+    for (const lead of leadsToAssign) {
+      if (!lead) continue;
+
+      let target: any = null;
+      let reason = '';
+
+      if (rule === 'smart') {
+        const eligible = memberLoads.filter(m => m.currentLoad < maxPerMember);
+        if (!eligible.length) { reason = 'Tum uyeler dolu'; continue; }
+
+        let bestScore = -1;
+        for (const m of eligible) {
+          let fitScore = 0;
+          // Sektor uyumu (0-40)
+          if (lead.sector && m.wonSectors[lead.sector]) {
+            fitScore += Math.min(40, m.wonSectors[lead.sector] * 10);
+          }
+          // Koçluk skoru (0-20)
+          fitScore += Math.round((m.avgScore / 100) * 20);
+          // Yuk dengesi (0-20) — az yuklu = yuksek puan
+          fitScore += Math.max(0, 20 - m.currentLoad);
+          // Online bonus (0-10)
+          if (m.isOnline) fitScore += 10;
+          // Hedef altindaysa bonus (0-10)
+          const monthlyRate = m.currentLoad / Math.max(1, m.target_leads_monthly || 30);
+          if (monthlyRate < 0.7) fitScore += 10;
+
+          if (fitScore > bestScore) { bestScore = fitScore; target = m; reason = `Uyum: ${fitScore}/100`; }
+        }
+      } else if (rule === 'round_robin') {
+        memberLoads.sort((a, b) => a.currentLoad - b.currentLoad);
+        target = memberLoads.filter(m => m.currentLoad < maxPerMember)[0];
+        reason = 'Round-robin';
+      } else if (rule === 'random') {
+        const eligible = memberLoads.filter(m => m.currentLoad < maxPerMember);
+        target = eligible[Math.floor(Math.random() * eligible.length)];
+        reason = 'Rastgele';
+      }
+
+      if (!target) continue;
+      await supabase.from('leads').update({ assigned_to: target.name, assigned_member_id: target.id }).eq('id', lead.id).eq('user_id', req.userId);
       target.currentLoad++;
       assigned++;
+      assignments.push({ leadId: lead.id, memberId: target.id, memberName: target.name, reason });
     }
 
-    res.json({ message: `${assigned} lead otomatik dağıtıldı (${rule})`, assigned });
-  } catch(e:any) { res.status(500).json({ error: e.message }); }
+    // WA bildirim — her uyeye kac lead atandigini bildir
+    const byMember: Record<string, number> = {};
+    assignments.forEach(a => { byMember[a.memberName] = (byMember[a.memberName] || 0) + 1; });
+    for (const [name, count] of Object.entries(byMember)) {
+      const m = memberLoads.find(ml => ml.name === name);
+      if (m?.wa_phone) {
+        sendWhatsAppToMember(req.userId, m.wa_phone, `📋 ${name}, sana ${count} yeni lead atandi! Sovlo.io'dan kontrol et.`).catch(() => {});
+      }
+    }
+
+    res.json({ message: `${assigned} lead akilli dagitildi (${rule})`, assigned, assignments, rule });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // ── TOPLU TRANSFER ────────────────────────────────────────────────────────────
@@ -344,6 +401,213 @@ router.post('/assign-leads', async (req: any, res: any) => {
     }
     res.json({ message: `${leadIds.length} lead ${member.name}'e atandı`, notified: !!member.wa_phone });
   } catch(e:any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── KONUSMA DNA — Uye Satis Profili ──────────────────────────────────────────
+router.get('/member-dna/:memberId', async (req: any, res: any) => {
+  try {
+    const member = await getTeamMember(req.userId, req.params.memberId);
+    if (!member) return res.status(404).json({ error: 'Uye bulunamadi' });
+
+    const { data: coaching } = await supabase.from('sales_coaching')
+      .select('analysis_score, tone_score, persuasion_score, empathy_score, outcome, created_at')
+      .eq('user_id', req.userId).eq('agent_name', member.name)
+      .order('created_at', { ascending: false }).limit(30);
+
+    const { data: tiAnalyses } = await supabase.from('member_analyses')
+      .select('overall_score, professionalism_score, sales_technique_score, empathy_score, closing_score, communication_score, outcome, strengths, weaknesses, customer_needs, created_at')
+      .eq('user_id', req.userId).eq('member_name', member.name)
+      .order('created_at', { ascending: false }).limit(30);
+
+    const analyses = tiAnalyses || [];
+    const legacy = coaching || [];
+    const totalAnalyses = analyses.length + legacy.length;
+
+    if (totalAnalyses === 0) return res.json({ member: member.name, dna: null, message: 'Analiz verisi yok' });
+
+    const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    const professionalism = avg(analyses.map((a: any) => a.professionalism_score).filter(Boolean));
+    const salesTechnique = avg(analyses.map((a: any) => a.sales_technique_score).filter(Boolean));
+    const empathy = avg([...analyses.map((a: any) => a.empathy_score), ...legacy.map((c: any) => c.empathy_score)].filter(Boolean));
+    const closing = avg(analyses.map((a: any) => a.closing_score).filter(Boolean));
+    const communication = avg(analyses.map((a: any) => a.communication_score).filter(Boolean));
+    const overall = avg([...analyses.map((a: any) => a.overall_score), ...legacy.map((c: any) => c.analysis_score)].filter(Boolean));
+
+    const wonCount = [...analyses, ...legacy].filter((a: any) => a.outcome === 'sale' || a.outcome === 'positive').length;
+    const lostCount = [...analyses, ...legacy].filter((a: any) => a.outcome === 'no_sale' || a.outcome === 'negative').length;
+    const winRate = (wonCount + lostCount) > 0 ? Math.round((wonCount / (wonCount + lostCount)) * 100) : 0;
+
+    const allStrengths: Record<string, number> = {};
+    const allWeaknesses: Record<string, number> = {};
+    analyses.forEach((a: any) => {
+      (a.strengths || []).forEach((s: string) => { allStrengths[s] = (allStrengths[s] || 0) + 1; });
+      (a.weaknesses || []).forEach((w: string) => { allWeaknesses[w] = (allWeaknesses[w] || 0) + 1; });
+    });
+
+    const topStrengths = Object.entries(allStrengths).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, c]) => ({ text: s, count: c }));
+    const topWeaknesses = Object.entries(allWeaknesses).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([w, c]) => ({ text: w, count: c }));
+
+    // Trend (son 7 vs onceki 7)
+    const recent7 = [...analyses, ...legacy].slice(0, 7);
+    const prev7 = [...analyses, ...legacy].slice(7, 14);
+    const recentAvg = avg(recent7.map((a: any) => a.overall_score || a.analysis_score || 0));
+    const prevAvg = avg(prev7.map((a: any) => a.overall_score || a.analysis_score || 0));
+    const trend = prevAvg > 0 ? recentAvg - prevAvg : 0;
+
+    res.json({
+      member: member.name, role: ROLES[member.role]?.label || member.role,
+      dna: {
+        overall, professionalism, salesTechnique, empathy, closing, communication,
+        winRate, totalAnalyses, wonCount, lostCount,
+        topStrengths, topWeaknesses,
+        trend, trendLabel: trend > 5 ? 'yukseliyor' : trend < -5 ? 'dususte' : 'sabit',
+        bestAt: [{ metric: 'Profesyonellik', score: professionalism }, { metric: 'Satis Teknigi', score: salesTechnique }, { metric: 'Empati', score: empathy }, { metric: 'Kapanis', score: closing }, { metric: 'Iletisim', score: communication }]
+          .sort((a, b) => b.score - a.score).slice(0, 2).map(m => m.metric),
+        worstAt: [{ metric: 'Profesyonellik', score: professionalism }, { metric: 'Satis Teknigi', score: salesTechnique }, { metric: 'Empati', score: empathy }, { metric: 'Kapanis', score: closing }, { metric: 'Iletisim', score: communication }]
+          .sort((a, b) => a.score - b.score).slice(0, 2).map(m => m.metric),
+      },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── OTOMATIK KOCLUK MOTORU ───────────────────────────────────────────────────
+router.post('/auto-coaching', async (req: any, res: any) => {
+  try {
+    const { data: members } = await supabase.from('team_members')
+      .select('id, name, role, wa_phone, badges')
+      .eq('owner_id', req.userId).eq('active', true);
+    if (!members?.length) return res.json({ message: 'Aktif uye yok', sent: 0 });
+
+    let sent = 0;
+    const results: Array<{ name: string; score: number; sent: boolean; reason: string }> = [];
+
+    for (const member of members) {
+      const { data: coaching } = await supabase.from('sales_coaching')
+        .select('analysis_score')
+        .eq('user_id', req.userId).eq('agent_name', member.name)
+        .order('created_at', { ascending: false }).limit(5);
+
+      if (!coaching?.length) {
+        results.push({ name: member.name, score: 0, sent: false, reason: 'Analiz verisi yok' });
+        continue;
+      }
+
+      const avgScore = Math.round(coaching.reduce((s: number, c: any) => s + (c.analysis_score || 0), 0) / coaching.length);
+
+      if (avgScore >= 80) {
+        results.push({ name: member.name, score: avgScore, sent: false, reason: 'Skor yeterli (80+)' });
+        continue;
+      }
+
+      try {
+        const resp = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001', max_tokens: 250,
+          messages: [{ role: 'user', content: `Satis kocu olarak ${member.name}'e kisa WhatsApp mesaji yaz.
+Skor: ${avgScore}/100. ${avgScore < 50 ? 'Acil iyilestirme gerekiyor.' : 'Gelisim potansiyeli var.'}
+Rol: ${ROLES[member.role]?.label || member.role}
+Max 150 kelime, WhatsApp formati, emoji, motive edici. Turkce yaz.` }]
+        });
+        const message = resp.content[0]?.text?.trim() || '';
+        if (member.wa_phone && message) {
+          await sendWhatsAppToMember(req.userId, member.wa_phone, message);
+          sent++;
+          results.push({ name: member.name, score: avgScore, sent: true, reason: 'Kocluk gonderildi' });
+        } else {
+          results.push({ name: member.name, score: avgScore, sent: false, reason: 'WA numarasi yok' });
+        }
+      } catch {
+        results.push({ name: member.name, score: avgScore, sent: false, reason: 'AI hatasi' });
+      }
+    }
+
+    res.json({ message: `${sent} uyeye otomatik kocluk gonderildi`, sent, total: members.length, results });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GUNLUK STANDUP MESAJI ────────────────────────────────────────────────────
+router.post('/daily-standup', async (req: any, res: any) => {
+  try {
+    const { data: members } = await supabase.from('team_members')
+      .select('id, name, role, wa_phone, target_leads_monthly, target_conversion_rate')
+      .eq('owner_id', req.userId).eq('active', true);
+    if (!members?.length) return res.json({ message: 'Aktif uye yok', sent: 0 });
+
+    const yesterday = new Date(Date.now() - 864e5).toISOString();
+    let sent = 0;
+    const standups: any[] = [];
+
+    for (const m of members) {
+      const [msgsRes, wonRes, activeRes, coachRes] = await Promise.allSettled([
+        supabase.from('messages').select('id').eq('user_id', req.userId).eq('agent_id', m.id).gte('sent_at', yesterday),
+        supabase.from('leads').select('id').eq('user_id', req.userId).eq('assigned_member_id', m.id).eq('status', 'won').gte('won_at', yesterday),
+        supabase.from('leads').select('id').eq('user_id', req.userId).eq('assigned_member_id', m.id).not('status', 'in', '(won,lost,dismissed)'),
+        supabase.from('sales_coaching').select('analysis_score').eq('user_id', req.userId).eq('agent_name', m.name).order('created_at', { ascending: false }).limit(1),
+      ]);
+
+      const yesterdayMsgs = msgsRes.status === 'fulfilled' ? msgsRes.value.data?.length || 0 : 0;
+      const yesterdayWon = wonRes.status === 'fulfilled' ? wonRes.value.data?.length || 0 : 0;
+      const activeLeads = activeRes.status === 'fulfilled' ? activeRes.value.data?.length || 0 : 0;
+      const lastScore = coachRes.status === 'fulfilled' ? coachRes.value.data?.[0]?.analysis_score || null : null;
+
+      const dailyTarget = Math.ceil((m.target_leads_monthly || 30) / 22);
+      const msg = `☀️ Gunaydin ${m.name}!\n\n📊 *Dunku Ozet:*\n💬 ${yesterdayMsgs} mesaj | 🏆 ${yesterdayWon} kapanis${lastScore ? ` | ⭐ Skor: ${lastScore}` : ''}\n\n🎯 *Bugunun Hedefi:*\n📋 ${activeLeads} aktif lead bekliyor\n🔥 Gunluk hedef: ${dailyTarget} lead isle\n\n💪 Harika bir gun olsun!`;
+
+      if (m.wa_phone) {
+        await sendWhatsAppToMember(req.userId, m.wa_phone, msg);
+        sent++;
+      }
+      standups.push({ name: m.name, yesterdayMsgs, yesterdayWon, activeLeads, lastScore, sent: !!m.wa_phone });
+    }
+
+    // Yoneticiye ozet
+    const { data: owner } = await supabase.from('user_settings').select('phone').eq('user_id', req.userId).single();
+    if (owner?.phone) {
+      const totalActive = standups.reduce((s, st) => s + st.activeLeads, 0);
+      const totalWon = standups.reduce((s, st) => s + st.yesterdayWon, 0);
+      const managerMsg = `📊 *Ekip Gunluk Ozet*\n\n👥 ${members.length} uye aktif\n📋 ${totalActive} bekleyen lead\n🏆 Dun ${totalWon} kapanis\n\n${standups.map(s => `${s.name}: ${s.yesterdayMsgs}msg, ${s.yesterdayWon}won${s.lastScore ? ', ⭐'+s.lastScore : ''}`).join('\n')}`;
+      await sendWhatsAppToMember(req.userId, owner.phone, managerMsg).catch(() => {});
+    }
+
+    res.json({ message: `${sent} uyeye standup gonderildi`, sent, standups });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── KOCLUK ETKINLIGI OLCUMU ──────────────────────────────────────────────────
+router.get('/coaching-effectiveness', async (req: any, res: any) => {
+  try {
+    const { data: members } = await supabase.from('team_members')
+      .select('id, name').eq('owner_id', req.userId).eq('active', true);
+    if (!members?.length) return res.json({ members: [] });
+
+    const results = await Promise.all(members.map(async (m: any) => {
+      const { data: analyses } = await supabase.from('sales_coaching')
+        .select('analysis_score, created_at')
+        .eq('user_id', req.userId).eq('agent_name', m.name)
+        .order('created_at', { ascending: true });
+      if (!analyses?.length || analyses.length < 4) return { name: m.name, data: null };
+
+      const mid = Math.floor(analyses.length / 2);
+      const firstHalf = analyses.slice(0, mid);
+      const secondHalf = analyses.slice(mid);
+      const avgFirst = Math.round(firstHalf.reduce((s: number, a: any) => s + (a.analysis_score || 0), 0) / firstHalf.length);
+      const avgSecond = Math.round(secondHalf.reduce((s: number, a: any) => s + (a.analysis_score || 0), 0) / secondHalf.length);
+      const improvement = avgSecond - avgFirst;
+
+      return {
+        name: m.name,
+        data: {
+          totalAnalyses: analyses.length,
+          firstPeriodAvg: avgFirst,
+          secondPeriodAvg: avgSecond,
+          improvement,
+          improving: improvement > 3,
+          declining: improvement < -3,
+        },
+      };
+    }));
+
+    res.json({ members: results.filter(r => r.data) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

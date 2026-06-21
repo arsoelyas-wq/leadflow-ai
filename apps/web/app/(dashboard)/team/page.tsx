@@ -220,7 +220,13 @@ export default function TeamPage() {
   const [stats,          setStats]          = useState<any>(null)
   const [leads,          setLeads]          = useState<any[]>([])
   const [loading,        setLoading]        = useState(true)
-  const [activeTab,      setActiveTab]      = useState<'team'|'activity'|'leaderboard'|'kpi'|'coaching'|'analytics'>('team')
+  const [activeTab,      setActiveTab]      = useState<'team'|'activity'|'leaderboard'|'kpi'|'coaching'|'analytics'|'dna'>('team')
+  const [memberDna,      setMemberDna]      = useState<any>(null)
+  const [dnaLoading,     setDnaLoading]     = useState(false)
+  const [autoCoaching,   setAutoCoaching]   = useState(false)
+  const [standupSending, setStandupSending] = useState(false)
+  const [effectiveness,  setEffectiveness]  = useState<any[]>([])
+  const [assignRule,     setAssignRule]      = useState<'smart'|'round_robin'|'random'>('smart')
   const [trend,          setTrend]          = useState<any>(null)
   const [benchmark,      setBenchmark]      = useState<any>(null)
   const [trendDays,      setTrendDays]      = useState(30)
@@ -282,9 +288,9 @@ export default function TeamPage() {
   const deleteMember  = async (id:string) => { if (!confirm('Üye silinsin mi?')) return; await api.delete(`/api/team/members/${id}`); setMembers(p=>p.filter(m=>m.id!==id)) }
   const toggleActive  = async (id:string, active:boolean) => { await api.patch(`/api/team/members/${id}`, { active: !active }); setMembers(p=>p.map(m=>m.id===id?{...m,active:!active}:m)) }
   const autoAssign    = async () => {
-    if (!selectedLeads.length) return showMsg('error','Lead seçin')
+    if (!selectedLeads.length) return showMsg('error','Lead secin')
     setAutoAssigning(true)
-    try { const d:any = await api.post('/api/team/auto-assign', { leadIds: selectedLeads, rule:'round_robin' }); showMsg('success', d.message); setSelectedLeads([]); loadAll() }
+    try { const d:any = await api.post('/api/team/auto-assign', { leadIds: selectedLeads, rule: assignRule, maxPerMember: 25 }); showMsg('success', d.message); setSelectedLeads([]); loadAll() }
     catch(e:any) { showMsg('error', e.message) }
     setAutoAssigning(false)
   }
@@ -306,12 +312,44 @@ export default function TeamPage() {
     setGeneratingReport(false)
   }
 
+  const loadMemberDna = async (memberId: string) => {
+    setDnaLoading(true); setMemberDna(null)
+    try { const data: any = await api.get(`/api/team/member-dna/${memberId}`); setMemberDna(data) } catch {}
+    setDnaLoading(false)
+  }
+
+  const sendAutoCoaching = async () => {
+    setAutoCoaching(true)
+    try {
+      const data: any = await api.post('/api/team/auto-coaching', {})
+      showMsg('success', `${data.sent} uyeye otomatik kocluk gonderildi`)
+    } catch (e: any) { showMsg('error', e.message) }
+    setAutoCoaching(false)
+  }
+
+  const sendDailyStandup = async () => {
+    setStandupSending(true)
+    try {
+      const data: any = await api.post('/api/team/daily-standup', {})
+      showMsg('success', `${data.sent} uyeye gunluk standup gonderildi`)
+    } catch (e: any) { showMsg('error', e.message) }
+    setStandupSending(false)
+  }
+
+  const loadEffectiveness = async () => {
+    try {
+      const data: any = await api.get('/api/team/coaching-effectiveness')
+      setEffectiveness(data.members || [])
+    } catch {}
+  }
+
   const TABS = [
     {id:'team',        label:'Ekip'},
     {id:'activity',    label:'Aktivite'},
     {id:'leaderboard', label:'Liderlik'},
     {id:'kpi',         label:'KPI'},
-    {id:'coaching',    label:'Koçluk'},
+    {id:'coaching',    label:'Kocluk'},
+    {id:'dna',         label:'DNA'},
     {id:'analytics',   label:'Analitik'},
   ]
 
@@ -400,11 +438,19 @@ export default function TeamPage() {
                 {leads.length > 6 && <span style={{ color:C.text4, fontSize:11 }}>+{leads.length-6} daha</span>}
               </div>
               {selectedLeads.length > 0 && (
-                <button onClick={autoAssign} disabled={autoAssigning}
-                  style={{ ...btn(), marginLeft:'auto', whiteSpace:'nowrap' }}>
-                  {autoAssigning?<RefreshCw size={11} style={{ animation:'tm-spin 1s linear infinite' }}/>:<Zap size={11}/>}
-                  {selectedLeads.length} Lead Dağıt
-                </button>
+                <div style={{ display:'flex', gap:6, marginLeft:'auto', alignItems:'center' }}>
+                  <select value={assignRule} onChange={e => setAssignRule(e.target.value as any)}
+                    style={{ padding:'6px 10px', borderRadius:7, border:C.cardBd, background:'#fff', color:C.text2, fontSize:11, cursor:'pointer' }}>
+                    <option value="smart">Akilli (AI)</option>
+                    <option value="round_robin">Round-Robin</option>
+                    <option value="random">Rastgele</option>
+                  </select>
+                  <button onClick={autoAssign} disabled={autoAssigning}
+                    style={{ ...btn(), whiteSpace:'nowrap', background:assignRule==='smart'?'linear-gradient(135deg,#7c3aed,#a78bfa)':'', color:assignRule==='smart'?'#fff':'', border:assignRule==='smart'?'none':'' }}>
+                    {autoAssigning?<RefreshCw size={11} style={{ animation:'tm-spin 1s linear infinite' }}/>:<Zap size={11}/>}
+                    {selectedLeads.length} Lead Dagit
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -687,6 +733,100 @@ export default function TeamPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* ════════════════ DNA TAB ════════════════ */}
+      {activeTab === 'dna' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            <p style={{ color:C.text2, fontSize:12, margin:0 }}>Uye secin:</p>
+            {members.map(m => (
+              <button key={m.id} onClick={() => loadMemberDna(m.id)}
+                style={{ padding:'6px 14px', borderRadius:8, border:`1px solid ${memberDna?.member === m.name ? C.violetBd : '#e2e8f0'}`, background:memberDna?.member === m.name ? C.violetBg : '#fff', color:memberDna?.member === m.name ? C.violet : C.text2, fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                {m.name}
+              </button>
+            ))}
+            <div style={{ flex:1 }} />
+            <button onClick={sendAutoCoaching} disabled={autoCoaching}
+              style={{ ...btn(), background:'linear-gradient(135deg,#7c3aed,#a78bfa)', color:'#fff', border:'none' }}>
+              {autoCoaching ? <RefreshCw size={11} style={{ animation:'tm-spin 1s linear infinite' }} /> : <Zap size={11} />}
+              Otomatik Kocluk (Dusuk Skor)
+            </button>
+            <button onClick={sendDailyStandup} disabled={standupSending}
+              style={{ ...btn(), background:'linear-gradient(135deg,#0f766e,#0d9488)', color:'#fff', border:'none' }}>
+              {standupSending ? <RefreshCw size={11} style={{ animation:'tm-spin 1s linear infinite' }} /> : <Send size={11} />}
+              Gunluk Standup Gonder
+            </button>
+          </div>
+
+          {dnaLoading && <div style={{ textAlign:'center', padding:32 }}><RefreshCw size={20} style={{ color:C.violet, animation:'tm-spin 1s linear infinite' }} /><p style={{ color:C.text3, fontSize:12, marginTop:8 }}>DNA analizi yapiliyor...</p></div>}
+
+          {memberDna?.dna && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              {/* Radar Skorlar */}
+              <div style={{ ...card, padding:'18px 20px' }}>
+                <h3 style={{ color:C.text1, fontSize:14, fontWeight:700, margin:'0 0 14px' }}>{memberDna.member} — Satis DNA</h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {[
+                    { label:'Profesyonellik', score:memberDna.dna.professionalism, color:'#3b82f6' },
+                    { label:'Satis Teknigi', score:memberDna.dna.salesTechnique, color:'#8b5cf6' },
+                    { label:'Empati', score:memberDna.dna.empathy, color:'#ec4899' },
+                    { label:'Kapanis', score:memberDna.dna.closing, color:'#f59e0b' },
+                    { label:'Iletisim', score:memberDna.dna.communication, color:'#10b981' },
+                  ].map(m => (
+                    <div key={m.label} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <span style={{ color:C.text2, fontSize:11, width:100, flexShrink:0 }}>{m.label}</span>
+                      <div style={{ flex:1, height:8, borderRadius:4, background:'#f1f5f9', overflow:'hidden' }}>
+                        <div style={{ width:`${m.score}%`, height:'100%', borderRadius:4, background:m.color, transition:'width 0.5s' }} />
+                      </div>
+                      <span style={{ color:C.text1, fontSize:12, fontWeight:700, width:30, textAlign:'right' }}>{m.score}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginTop:14 }}>
+                  <div style={{ background:'#ecfdf5', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
+                    <p style={{ color:'#059669', fontSize:18, fontWeight:800, margin:0 }}>{memberDna.dna.winRate}%</p>
+                    <p style={{ color:C.text3, fontSize:9, margin:0 }}>Kazanma</p>
+                  </div>
+                  <div style={{ background:'#eff6ff', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
+                    <p style={{ color:'#2563eb', fontSize:18, fontWeight:800, margin:0 }}>{memberDna.dna.overall}</p>
+                    <p style={{ color:C.text3, fontSize:9, margin:0 }}>Genel Skor</p>
+                  </div>
+                  <div style={{ background:memberDna.dna.trend > 0 ? '#ecfdf5' : memberDna.dna.trend < 0 ? '#fef2f2' : '#f8fafc', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
+                    <p style={{ color:memberDna.dna.trend > 0 ? '#059669' : memberDna.dna.trend < 0 ? '#dc2626' : C.text2, fontSize:18, fontWeight:800, margin:0 }}>{memberDna.dna.trend > 0 ? '+' : ''}{memberDna.dna.trend}</p>
+                    <p style={{ color:C.text3, fontSize:9, margin:0 }}>Trend</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Guclu/Zayif Yonler */}
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                <div style={{ ...card, padding:'14px 16px' }}>
+                  <p style={{ color:'#059669', fontSize:11, fontWeight:700, margin:'0 0 8px' }}>En Iyi Yonleri: {memberDna.dna.bestAt?.join(', ')}</p>
+                  {memberDna.dna.topStrengths?.map((s: any, i: number) => (
+                    <p key={i} style={{ color:C.text2, fontSize:11, margin:'0 0 4px' }}>+ {s.text} ({s.count}x)</p>
+                  ))}
+                </div>
+                <div style={{ ...card, padding:'14px 16px' }}>
+                  <p style={{ color:'#dc2626', fontSize:11, fontWeight:700, margin:'0 0 8px' }}>Gelistirmesi Gereken: {memberDna.dna.worstAt?.join(', ')}</p>
+                  {memberDna.dna.topWeaknesses?.map((w: any, i: number) => (
+                    <p key={i} style={{ color:C.text2, fontSize:11, margin:'0 0 4px' }}>! {w.text} ({w.count}x)</p>
+                  ))}
+                </div>
+                <div style={{ ...card, padding:'14px 16px', borderLeft:`3px solid ${C.violet}` }}>
+                  <p style={{ color:C.violet, fontSize:11, fontWeight:700, margin:'0 0 4px' }}>Toplam Analiz: {memberDna.dna.totalAnalyses}</p>
+                  <p style={{ color:C.text2, fontSize:11, margin:0 }}>Kazanilan: {memberDna.dna.wonCount} | Kaybedilen: {memberDna.dna.lostCount}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {memberDna && !memberDna.dna && (
+            <div style={{ ...card, padding:32, textAlign:'center' }}>
+              <p style={{ color:C.text3, fontSize:13 }}>Bu uye icin henuz analiz verisi yok</p>
+            </div>
+          )}
         </div>
       )}
 
