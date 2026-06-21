@@ -327,8 +327,7 @@ async function makeVapiCall(params: {
     voiceId: CALL_VOICES[language] || CALL_VOICES.default,
     model: 'sonic-multilingual',
     language,
-    speed: 1.0,
-    emotion: ['positivity:high', 'curiosity', 'warmth:high'],
+    emotion: ['positivity:high', 'curiosity'],
   };
 
   const body: any = {
