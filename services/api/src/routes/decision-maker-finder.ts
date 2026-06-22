@@ -30,7 +30,7 @@ interface DMJob {
   status:    'running' | 'done' | 'error';
   total:     number;
   completed: number;
-  results:   Array<{ leadId: string; company: string; found: boolean; name?: string; title?: string; email?: string }>;
+  results:   Array<{ leadId: string; company: string; found: boolean; name?: string; title?: string; email?: string; phone?: string }>;
   error?:    string;
   startedAt: number;
 }
@@ -118,6 +118,42 @@ async function claudeAnalyze(prompt: string, maxTokens = 300): Promise<string> {
     messages: [{ role: 'user', content: prompt }],
   });
   return r.content[0]?.text?.trim() || '';
+}
+
+// ── Phone normalization ──────────────────────────────────────────────────────
+function normalizePhoneDM(raw: string): string | null {
+  if (!raw) return null;
+  let p = raw.replace(/[\s\-\(\)\.]/g, '');
+  if (p.startsWith('+90')) p = '0' + p.slice(3);
+  else if (p.startsWith('90') && p.length >= 12) p = '0' + p.slice(2);
+  p = p.replace(/[^0-9]/g, '');
+  if (p.length < 7) return null;
+  if (!p.startsWith('0') && p.length === 10) p = '0' + p;
+  return p || null;
+}
+
+// ── AI Decision Maker Prediction ─────────────────────────────────────────────
+async function predictDecisionMaker(companyName: string, sector: string, city: string): Promise<DMResult | null> {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  try {
+    const reply = await claudeAnalyze(
+      `${companyName} firmasi (${sector || 'genel'} sektoru, ${city || 'Turkiye'}) icin tipik karar verici kim olur?
+Benzer firmalardan orneklerle tahmin et. SADECE JSON dondur:
+{"firstName":"tahmin","lastName":"tahmin","title":"Genel Mudur/CEO/Sahip","reasoning":"neden bu title"}
+Gercek isim VERME, sadece title ve reasoning ver.`, 150);
+    if (reply) {
+      const m = reply.match(/\{[\s\S]*?\}/);
+      if (m) {
+        const p = JSON.parse(m[0]);
+        return {
+          firstName: '', lastName: '', fullName: '',
+          title: p.title || null, email: null, phone: null,
+          linkedinUrl: null, confidence: 20, source: `AI Tahmin (${p.reasoning?.slice(0, 50) || ''})`,
+        };
+      }
+    }
+  } catch {}
+  return null;
 }
 
 // ── LinkdAPI helper ────────────────────────────────────────────────────────────
@@ -248,7 +284,7 @@ async function scrapeWebsiteDM(website: string, companyName: string): Promise<DM
               found = {
                 firstName: parts[0], lastName: parts.slice(1).join(' '), fullName: node.name,
                 title: node.jobTitle || null, email: node.email || null,
-                phone: null, linkedinUrl: null, confidence: 70, source: 'Website (JSON-LD)',
+                phone: cleanedPhone, linkedinUrl: null, confidence: 70, source: 'Website (JSON-LD)',
               };
             }
           }
@@ -256,9 +292,20 @@ async function scrapeWebsiteDM(website: string, companyName: string): Promise<DM
       });
       if (found) return found;
 
-      // Email bul
+      // Email + Phone bul
       const bodyText = $('body').text().replace(/\s+/g, ' ');
       const emails = extractEmails(bodyText, domain);
+
+      // Phone extraction
+      const phones: string[] = [];
+      $('a[href^="tel:"]').each((_: any, el: any) => {
+        const href = $(el).attr('href')?.replace('tel:', '').trim();
+        if (href) phones.push(href);
+      });
+      const phoneRegex = /(?:\+90|0)[\s\-]?\(?[0-9]{3}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}/g;
+      const phoneMatches = bodyText.match(phoneRegex) || [];
+      phoneMatches.forEach((p: string) => { if (!phones.includes(p)) phones.push(p); });
+      const cleanedPhone = phones.length > 0 ? normalizePhoneDM(phones[0]) : null;
 
       // Schema.org / team HTML patterns
       let schemaName: string | null = null;
@@ -273,7 +320,7 @@ async function scrapeWebsiteDM(website: string, companyName: string): Promise<DM
         return {
           firstName: f, lastName: rest.join(' '), fullName: schemaName as string,
           title: schemaTitle, email: emails[0] || null,
-          phone: null, linkedinUrl: null, confidence: 65, source: 'Website (Schema)',
+          phone: cleanedPhone, linkedinUrl: null, confidence: 65, source: 'Website (Schema)',
         };
       }
 
@@ -296,7 +343,7 @@ If no real person found, return: null`, 200);
                   firstName: p.firstName, lastName: p.lastName || '',
                   fullName: `${p.firstName} ${p.lastName || ''}`.trim(),
                   title: p.title || null, email: emails[0] || null,
-                  phone: null, linkedinUrl: null, confidence: 55, source: 'Website (Claude)',
+                  phone: cleanedPhone, linkedinUrl: null, confidence: 55, source: 'Website (Claude)',
                 };
               }
             }
@@ -308,7 +355,7 @@ If no real person found, return: null`, 200);
       if (emails.length > 0) {
         return {
           firstName: '', lastName: '', fullName: '',
-          title: null, email: emails[0], phone: null,
+          title: null, email: emails[0], phone: cleanedPhone,
           linkedinUrl: null, confidence: 30, source: 'Website (email)',
         };
       }
@@ -448,6 +495,12 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
     }
   }
 
+  // AI prediction fallback if nothing found
+  if (results.length === 0) {
+    const prediction = await predictDecisionMaker(company_name, lead.sector || '', lead.city || '');
+    if (prediction) results.push(prediction);
+  }
+
   console.log(`[DMFinder] Done: ${results.length} DMs for "${company_name}"`);
   return results;
 }
@@ -538,6 +591,48 @@ router.get('/job/:jobId', (req: any, res: any) => {
   res.json({ status: job.status, total: job.total, completed: job.completed,
     pct: job.total ? Math.round((job.completed / job.total) * 100) : 0,
     results: job.results, error: job.error });
+});
+
+// POST /auto-enrich — Otomatik zenginlestirme (yeni lead'ler icin)
+router.post('/auto-enrich', async (req: any, res: any) => {
+  try {
+    const { data: leads } = await supabase.from('leads')
+      .select('id, company_name, website, city, sector, contact_name, score')
+      .eq('user_id', req.userId)
+      .is('contact_name', null)
+      .not('company_name', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(req.body?.limit || 10);
+
+    if (!leads?.length) return res.json({ message: 'Zenginlestirilecek lead yok', enriched: 0 });
+
+    const jobId = uuidv4();
+    jobs.set(jobId, { status: 'running', total: leads.length, completed: 0, results: [], startedAt: Date.now() });
+
+    res.json({ ok: true, jobId, total: leads.length, message: `${leads.length} lead otomatik zenginlestiriliyor...` });
+
+    (async () => {
+      const job = jobs.get(jobId)!;
+      for (const lead of leads) {
+        try {
+          const dms = await runChain(lead, req.userId);
+          job.completed++;
+          if (dms.length > 0 && (dms[0].fullName || dms[0].email || dms[0].phone)) {
+            job.results.push({ leadId: lead.id, company: lead.company_name, found: true,
+              name: dms[0].fullName || undefined, title: dms[0].title || undefined,
+              email: dms[0].email || undefined, phone: dms[0].phone || undefined });
+          } else {
+            job.results.push({ leadId: lead.id, company: lead.company_name, found: false });
+          }
+          await sleep(1000);
+        } catch {
+          job.completed++;
+          job.results.push({ leadId: lead.id, company: lead.company_name, found: false });
+        }
+      }
+      job.status = 'done';
+    })();
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/status', (_req: any, res: any) => {

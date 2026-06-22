@@ -337,6 +337,28 @@ export default function DecisionMakerPage() {
             ? `${selectedIds.size} Şirketi Tara`
             : L.select_lead}
         </button>
+
+        {/* Auto-enrich button */}
+        <button onClick={async () => {
+          try {
+            const data = await api.post('/api/decision-maker-finder/auto-enrich', { limit: 20 })
+            showMsg('success', data.message || `${data.total} lead zenginleştiriliyor...`)
+            if (data.jobId) {
+              const poll = setInterval(async () => {
+                try {
+                  const j = await api.get(`/api/decision-maker-finder/job/${data.jobId}`)
+                  if (j.status === 'done') { clearInterval(poll); showMsg('success', `${j.results?.filter((r:any)=>r.found).length || 0} karar verici bulundu!`); load() }
+                } catch { clearInterval(poll) }
+              }, 5000)
+            }
+          } catch (e: any) { showMsg('error', e.message) }
+        }}
+          disabled={scanning}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-violet-600 hover:bg-violet-500 text-white transition"
+          title="Yetkili bilgisi olmayan ilk 20 lead için otomatik karar verici arar">
+          <Crosshair size={14} />
+          Otomatik Zenginleştir
+        </button>
       </div>
 
       {/* Lead grid */}
