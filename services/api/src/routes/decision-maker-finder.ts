@@ -387,11 +387,83 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
   const domain = website ? extractDomain(website) : null;
   let results: DMResult[] = [];
 
-  // ── A: Hunter.io domain-search (best source — no IP restrictions) ──────────
+  const EXA_KEY = process.env.EXA_API_KEY;
+  const short = company_name.replace(/\s+(A\.Ş\.|Ltd\.?|Ş\.?T\.?İ\.?|ve Tic\.?|San\.?|Sanayi|Ticaret).*$/i, '').trim().slice(0, 50);
+
+  // ── A: EXA.AI — Birincil kaynak (LinkedIn + genel web) ───────────────────
+  if (EXA_KEY) {
+    console.log(`[DMFinder] Exa search: "${short}"`);
+    try {
+      const queries = [
+        { q: `"${short}" CEO OR founder OR "genel müdür" OR kurucu OR owner site:linkedin.com/in`, domains: ['linkedin.com'] },
+        { q: `"${short}" director OR müdür OR manager OR sahip site:linkedin.com`, domains: ['linkedin.com'] },
+        { q: `"${short}" CEO kurucu yönetici iletişim`, domains: [] },
+      ];
+
+      for (const { q, domains } of queries) {
+        try {
+          const body: any = { query: q, numResults: 8, type: 'neural', useAutoprompt: true, contents: { text: { maxCharacters: 200 } } };
+          if (domains.length) body.includeDomains = domains;
+          const res = await axios.post('https://api.exa.ai/search', body, {
+            headers: { 'x-api-key': EXA_KEY, 'Content-Type': 'application/json' }, timeout: 15000,
+          });
+
+          for (const hit of (res.data.results || [])) {
+            const isLI = hit.url?.includes('linkedin.com/in/');
+            const title_raw = hit.title || '';
+            const snippet = hit.text || '';
+
+            if (isLI) {
+              const parts = title_raw.replace(/\s*\|\s*LinkedIn.*$/i, '').split(/\s*[-–—]\s*/);
+              const fullName = parts[0]?.trim() || '';
+              const title = parts[1]?.replace(/\s+at\s+.*/i, '').replace(/\s+[-–]\s+.*/,'').trim() || null;
+              const nameParts = fullName.split(' ');
+              if (fullName.length > 3 && isRealName(fullName)) {
+                const dm: DMResult = {
+                  firstName: nameParts[0], lastName: nameParts.slice(1).join(' '),
+                  fullName, title, email: null, phone: null,
+                  linkedinUrl: hit.url, confidence: title && isDM(title) ? 75 : 55,
+                  source: 'Exa LinkedIn',
+                };
+                if (dm.firstName && domain) {
+                  dm.email = await guessEmail(dm.firstName, dm.lastName, domain);
+                }
+                results.push(dm);
+                await saveDMToLead(lead, userId, dm);
+              }
+            } else {
+              const emailMatch = (snippet + ' ' + title_raw).match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+              const phoneMatch = (snippet + ' ' + title_raw).match(/(?:\+90|0)[\s-]?\(?[0-9]{3}\)?[\s-]?[0-9]{3}[\s-]?[0-9]{2}[\s-]?[0-9]{2}/);
+              if (emailMatch || phoneMatch) {
+                const cleanEmail = emailMatch?.[0] || null;
+                const cleanPhone = phoneMatch ? normalizePhoneDM(phoneMatch[0]) : null;
+                if (cleanEmail || cleanPhone) {
+                  results.push({
+                    firstName: '', lastName: '', fullName: '',
+                    title: null, email: cleanEmail, phone: cleanPhone,
+                    linkedinUrl: null, confidence: 35, source: 'Exa Web',
+                  });
+                }
+              }
+            }
+          }
+          if (results.length > 0) break;
+          await sleep(200);
+        } catch {}
+      }
+    } catch (e: any) {
+      console.error('[DMFinder] Exa hata:', e.message?.slice(0, 60));
+    }
+    if (results.length > 0) {
+      console.log(`[DMFinder] Exa found: ${results[0].fullName || results[0].email} for "${short}"`);
+      return results;
+    }
+  }
+
+  // ── B: Hunter.io domain-search (ikincil — key varsa) ─────────────────────
   if (domain) {
     results = await hunterDomainSearch(domain);
     if (results.length > 0) {
-      // Enrich LinkedIn if available from Hunter result
       for (const dm of results.slice(0, 1)) {
         if (dm.linkedinUrl && LINKDAPI_KEY) {
           await sleep(400);
@@ -401,10 +473,9 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
               const contact = await linkdContactInfo(dm.linkedinUrl);
               dm.email = contact?.email || dm.email;
             }
-            dm.title  = dm.title  || profile.headline || profile.title || null;
+            dm.title = dm.title || profile.headline || profile.title || null;
           }
         }
-        // Fill in missing email
         if (!dm.email) {
           dm.email = await hunterEmailFinder(dm.firstName, dm.lastName, domain)
                   || await guessEmail(dm.firstName, dm.lastName, domain);
@@ -416,7 +487,7 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
     }
   }
 
-  // ── B: Website scraping + Claude AI ───────────────────────────────────────
+  // ── C: Website scraping + Claude AI ───────────────────────────────────────
   if (website) {
     console.log(`[DMFinder] Trying website scraping for "${company_name}"`);
     const webDM = await scrapeWebsiteDM(website, company_name);
@@ -425,72 +496,9 @@ async function runChain(lead: any, userId: string): Promise<DMResult[]> {
         webDM.email = await hunterEmailFinder(webDM.firstName, webDM.lastName, domain)
                    || await guessEmail(webDM.firstName, webDM.lastName, domain);
       }
-      if (webDM.fullName || webDM.email) {
+      if (webDM.fullName || webDM.email || webDM.phone) {
         results = [webDM];
         await saveDMToLead(lead, userId, webDM);
-      }
-    }
-  }
-
-  // ── C: Exa.ai LinkedIn Search (1B+ profil) ────────────────────────────────
-  if (results.length === 0) {
-    const EXA_KEY = process.env.EXA_API_KEY;
-    console.log(`[DMFinder] Exa LinkedIn: key=${EXA_KEY ? 'SET' : 'MISSING'}`);
-    if (EXA_KEY) {
-      try {
-        const short = company_name.replace(/\s+(A\.Ş\.|Ltd\.?|Ş\.?T\.?İ\.?|ve Tic\.?|San\.?).*$/i, '').trim().slice(0, 50);
-        const queries = [
-          `${short} CEO kurucu "genel müdür" founder director`,
-          `${short} müdür manager sahib owner`,
-          `${short}`,
-        ];
-        for (const q of queries) {
-          const res = await axios.post('https://api.exa.ai/search', {
-            query: q,
-            numResults: 5,
-            type: 'neural',
-            useAutoprompt: true,
-            includeDomains: ['linkedin.com'],
-          }, {
-            headers: { 'x-api-key': EXA_KEY, 'Content-Type': 'application/json' },
-            timeout: 20000,
-          });
-
-          const hits = (res.data.results || []).filter((r: any) => r.url?.includes('linkedin.com/in/'));
-          console.log(`[DMFinder] Exa "${q.slice(0,50)}": ${hits.length} profil`);
-
-          for (const hit of hits.slice(0, 2)) {
-            // "Ad Soyad - Unvan | LinkedIn" → parse
-            const parts = (hit.title || '').replace(/\s*\|\s*LinkedIn.*$/i, '').split(/\s*[-–]\s*/);
-            const fullName = parts[0]?.trim() || '';
-            const title    = parts[1]?.replace(/\s+at\s+.*/i, '').trim() || null;
-            const nameParts = fullName.split(' ');
-            if (fullName.length > 3) {
-              const dm: DMResult = {
-                firstName:   nameParts[0] || '',
-                lastName:    nameParts.slice(1).join(' ') || '',
-                fullName,
-                title,
-                email:       null,
-                phone:       null,
-                linkedinUrl: hit.url,
-                confidence:  title ? 60 : 40,
-                source:      'Exa LinkedIn',
-              };
-              if (!dm.email && dm.firstName && domain) {
-                dm.email = await hunterEmailFinder(dm.firstName, dm.lastName, domain)
-                        || await guessEmail(dm.firstName, dm.lastName, domain);
-              }
-              results.push(dm);
-              await saveDMToLead(lead, userId, dm);
-              break;
-            }
-          }
-          if (results.length > 0) break;
-          await sleep(300);
-        }
-      } catch (e: any) {
-        console.error('[DMFinder] Exa hata:', e.response?.status, e.message?.slice(0, 60));
       }
     }
   }
