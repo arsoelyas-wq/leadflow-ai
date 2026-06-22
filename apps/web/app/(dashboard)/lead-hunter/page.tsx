@@ -14,12 +14,12 @@ const surf = '#f8fafc'
 const accentTeal = '#0d9488', accentEmerald = '#059669'
 const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 13px', color: tx1, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
-const SECTORS = ['Restoran','Kafe','Mobilya','Dekorasyon','Tadilat','Insaat','Tekstil',
-  'Guzellik Salonu','Spor Salonu','Otel','Otomotiv','Elektronik','Muhasebe','Saglik',
-  'Egitim','Temizlik','Nakliyat','Cicekci','Firin','Market']
+const SECTORS = ['Restoran','Kafe','Mobilya','Dekorasyon','Tadilat','İnşaat','Tekstil',
+  'Güzellik Salonu','Spor Salonu','Otel','Otomotiv','Elektronik','Muhasebe','Sağlık',
+  'Eğitim','Temizlik','Nakliyat','Çiçekçi','Fırın','Market']
 
 const CITIES = ['Istanbul','Ankara','Izmir','Bursa','Antalya','Adana',
-  'Gaziantep','Konya','Kayseri','Mersin','Eskisehir','Trabzon','Diyarbakir','Samsun']
+  'Gaziantep','Konya','Kayseri','Mersin','Eskişehir','Trabzon','Diyarbakır','Samsun']
 
 const SOURCES = [
   { id: 'google_maps', label: 'Google Maps', Icon: MapPin, color: '#4285f4' },
@@ -138,7 +138,7 @@ export default function HunterSettingsPage() {
     setRunning(true)
     try {
       await api.post('/api/hunter/run-now', {})
-      showMsg('success', 'Hunter calistiriliyor... Birkac dakika bekleyin.')
+      showMsg('success', 'Hunter çalıştırılıyor... Birkaç dakika bekleyin.')
       setTimeout(load, 45000)
     } catch (e: any) { showMsg('error', e.message) }
     finally { setTimeout(() => setRunning(false), 3000) }
@@ -173,10 +173,10 @@ export default function HunterSettingsPage() {
             <HunterOrb size={100} scanning={running} />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: tx1, fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>7/24 Otonom Lead Avcisi</h1>
+                <h1 style={{ color: tx1, fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>7/24 Otonom Lead Avcısı</h1>
                 <span style={{ background: active ? 'linear-gradient(135deg,#059669,#10b981)' : '#94a3b8', color: '#ffffff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700 }}>{active ? 'AKTIF' : 'PASIF'}</span>
               </div>
-              <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px', maxWidth: 420 }}>AI destekli, 7 kaynakli otonom lead bulma motoru. Google Maps, Instagram, Facebook, OSM, Yelp, Foursquare ve HERE'den surekli lead arar.</p>
+              <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px', maxWidth: 420 }}>AI destekli, 7 kaynaklı otonom lead bulma motoru. Google Maps, Instagram, Facebook, OSM, Yelp, Foursquare ve HERE'den sürekli lead arar.</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {['Google Maps', 'Instagram', 'Facebook', 'OSM', 'AI Expansion', 'Email Discovery'].map(f => (
                   <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: surf, border: '1px solid #f1f5f9', color: tx2, fontSize: 10, padding: '3px 8px', borderRadius: 20 }}>{f}</span>
@@ -189,12 +189,12 @@ export default function HunterSettingsPage() {
             <button onClick={runNow} disabled={running}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: 'none', cursor: running ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#b45309,#f59e0b)', color: '#ffffff', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(245,158,11,0.3)' }}>
               {running ? <RefreshCw size={14} style={{ animation: 'hunterSpin 1s linear infinite' }} /> : <Zap size={14} />}
-              {running ? 'Taraniyor...' : 'Simdi Calistir'}
+              {running ? 'Taranıyor...' : 'Şimdi Çalıştır'}
             </button>
             <button onClick={save} disabled={saving}
               style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#0f766e,#0d9488)', color: '#ffffff', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(13,148,136,0.3)' }}>
               {saving ? <RefreshCw size={14} style={{ animation: 'hunterSpin 1s linear infinite' }} /> : <Play size={14} />}
-              {saving ? 'Kaydediliyor...' : 'Kaydet & Baslat'}
+              {saving ? 'Kaydediliyor...' : 'Kaydet & Başlat'}
             </button>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function HunterSettingsPage() {
           {/* Kaynaklar */}
           <div style={{ ...card, padding: '16px 20px' }}>
             <p style={{ color: tx1, fontWeight: 700, fontSize: 14, margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Globe2 size={15} style={{ color: accentTeal }} /> Lead Kaynaklari
+              <Globe2 size={15} style={{ color: accentTeal }} /> Lead Kaynakları
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {SOURCES.map(s => {
@@ -260,14 +260,14 @@ export default function HunterSettingsPage() {
             </div>
           </div>
 
-          {/* Tarama Ayarlari */}
+          {/* Tarama Ayarları */}
           <div style={{ ...card, padding: '16px 20px' }}>
             <p style={{ color: tx1, fontWeight: 700, fontSize: 14, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Settings size={15} style={{ color: '#7c3aed' }} /> Tarama Ayarlari
+              <Settings size={15} style={{ color: '#7c3aed' }} /> Tarama Ayarları
             </p>
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ color: tx2, fontSize: 12 }}>Tarama Araligi</span>
+                <span style={{ color: tx2, fontSize: 12 }}>Tarama Aralığı</span>
                 <span style={{ color: tx1, fontSize: 12, fontWeight: 700 }}>Her {interval} saat</span>
               </div>
               <input type="range" min={1} max={24} value={interval} onChange={e => setInterval2(parseInt(e.target.value))}
@@ -288,7 +288,7 @@ export default function HunterSettingsPage() {
                 {autoWorkflow && <CheckCircle size={10} style={{ color: '#fff' }} />}
               </div>
               <div>
-                <p style={{ color: tx1, fontSize: 12, fontWeight: 600, margin: 0 }}>Otomatik Workflow Baslat</p>
+                <p style={{ color: tx1, fontSize: 12, fontWeight: 600, margin: 0 }}>Otomatik Workflow Başlat</p>
                 <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Her yeni lead'e cold_outreach baslat</p>
               </div>
             </div>
@@ -300,7 +300,7 @@ export default function HunterSettingsPage() {
           {/* Sektorler */}
           <div style={{ ...card, padding: '16px 20px' }}>
             <p style={{ color: tx1, fontWeight: 700, fontSize: 14, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Target size={15} style={{ color: '#f59e0b' }} /> Hedef Sektorler ({keywords.length})
+              <Target size={15} style={{ color: '#f59e0b' }} /> Hedef Sektörler ({keywords.length})
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10, maxHeight: 110, overflowY: 'auto' }}>
               {SECTORS.map(k => (
@@ -313,7 +313,7 @@ export default function HunterSettingsPage() {
             <div style={{ display: 'flex', gap: 6 }}>
               <input value={customKeyword} onChange={e => setCustomKeyword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addCustomKeyword()}
-                placeholder="Ozel sektor ekle..." style={{ ...inputStyle, fontSize: 11, padding: '7px 10px' }} />
+                placeholder="Özel sektör ekle..." style={{ ...inputStyle, fontSize: 11, padding: '7px 10px' }} />
               <button onClick={addCustomKeyword}
                 style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#ffffff', color: tx2, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                 <Plus size={12} />
@@ -334,7 +334,7 @@ export default function HunterSettingsPage() {
           {/* Sehirler */}
           <div style={{ ...card, padding: '16px 20px' }}>
             <p style={{ color: tx1, fontWeight: 700, fontSize: 14, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MapPin size={15} style={{ color: '#dc2626' }} /> Hedef Sehirler ({cities.length})
+              <MapPin size={15} style={{ color: '#dc2626' }} /> Hedef Şehirler ({cities.length})
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
               {CITIES.map(c => (
@@ -350,7 +350,7 @@ export default function HunterSettingsPage() {
           <div style={{ ...card, padding: '16px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <p style={{ color: tx1, fontWeight: 700, fontSize: 14, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Clock size={15} style={{ color: tx3 }} /> Tarama Gecmisi
+                <Clock size={15} style={{ color: tx3 }} /> Tarama Geçmişi
               </p>
               <button onClick={load} style={{ background: 'none', border: 'none', color: tx3, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
                 <RefreshCw size={11} /> Yenile
@@ -359,7 +359,7 @@ export default function HunterSettingsPage() {
             {logs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 24 }}>
                 <Bot size={28} style={{ color: tx3, margin: '0 auto 8px' }} />
-                <p style={{ color: tx3, fontSize: 12, margin: 0 }}>Henuz tarama yapilmadi</p>
+                <p style={{ color: tx3, fontSize: 12, margin: 0 }}>Henüz tarama yapılmadı</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
@@ -371,7 +371,7 @@ export default function HunterSettingsPage() {
                     <span style={{ color: log.leads_found > 0 ? accentEmerald : tx3, fontSize: 12, fontWeight: 700 }}>
                       {log.leads_found} lead
                     </span>
-                    {(log.skipped || 0) > 0 && <span style={{ color: '#b45309', fontSize: 10 }}>{log.skipped} atld</span>}
+                    {(log.skipped || 0) > 0 && <span style={{ color: '#b45309', fontSize: 10 }}>{log.skipped} atlandı</span>}
                     {log.sources && typeof log.sources === 'object' && Object.keys(log.sources).length > 0 && (
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
                         {Object.entries(log.sources).map(([s, c]) => (
