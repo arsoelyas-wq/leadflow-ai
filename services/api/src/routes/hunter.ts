@@ -9,7 +9,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_CUSTOM_SEARCH_KEY;
 const EXA_API_KEY = process.env.EXA_API_KEY;
 const YELP_API_KEY = process.env.YELP_API_KEY;
 const FOURSQUARE_API_KEY = process.env.FOURSQUARE_API_KEY;
@@ -639,22 +639,22 @@ router.post('/run-now', async (req: any, res: any) => {
         }
 
         await supabase.from('lead_hunter_logs').insert([{
-          user_id: userId, config_id: config.id,
+          user_id: userId, config_id: config?.id || null,
           ran_at: new Date().toISOString(),
           leads_found: result.added,
           skipped: result.skipped,
-          sources: result.sources,
-          errors: result.errors.slice(0, 5),
-        }]).catch(() => {});
+          sources: result.sources || {},
+          errors: result.errors?.slice(0, 5) || [],
+        }]).catch((logErr: any) => console.error('[Hunter] Log insert failed:', logErr.message));
 
-        console.log(`[Hunter] Manual run done: ${result.added} added for ${userId.slice(0, 8)}`);
+        console.log(`[Hunter] Manual run done: ${result.added} added, ${result.skipped} skipped, emails: ${result.emailsFound} for ${userId.slice(0, 8)}`);
       } catch (e: any) {
-        console.error('[Hunter] Manual run failed:', e.message);
+        console.error('[Hunter] Manual run failed:', e.message, e.stack?.slice(0, 200));
         await supabase.from('lead_hunter_logs').insert([{
-          user_id: userId, config_id: config.id,
+          user_id: userId, config_id: config?.id || null,
           ran_at: new Date().toISOString(), leads_found: 0,
-          errors: [e.message?.slice(0, 100)],
-        }]).catch(() => {});
+          skipped: 0, sources: {}, errors: [e.message?.slice(0, 200)],
+        }]).catch((logErr: any) => console.error('[Hunter] Log insert also failed:', logErr.message));
       }
     })();
   } catch (e: any) { res.status(500).json({ error: e.message }); }
