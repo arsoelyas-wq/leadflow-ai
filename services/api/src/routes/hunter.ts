@@ -11,6 +11,25 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
 const EXA_API_KEY = process.env.EXA_API_KEY;
+const YELP_API_KEY = process.env.YELP_API_KEY;
+const FOURSQUARE_API_KEY = process.env.FOURSQUARE_API_KEY;
+const HERE_API_KEY = process.env.HERE_API_KEY;
+
+const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  'Istanbul': { lat: 41.0082, lng: 28.9784 }, 'Ankara': { lat: 39.9334, lng: 32.8597 },
+  'Izmir': { lat: 38.4192, lng: 27.1287 }, 'Bursa': { lat: 40.1826, lng: 29.0665 },
+  'Antalya': { lat: 36.8969, lng: 30.7133 }, 'Adana': { lat: 37.0, lng: 35.3213 },
+  'Gaziantep': { lat: 37.0662, lng: 37.3833 }, 'Konya': { lat: 37.8746, lng: 32.4932 },
+  'Kayseri': { lat: 38.7312, lng: 35.4787 }, 'Mersin': { lat: 36.8121, lng: 34.6415 },
+  'Eskisehir': { lat: 39.7767, lng: 30.5206 }, 'Trabzon': { lat: 41.0027, lng: 39.7168 },
+  'Diyarbakir': { lat: 37.9144, lng: 40.2306 }, 'Samsun': { lat: 41.2867, lng: 36.33 },
+};
+
+const CITY_DISTRICTS: Record<string, string[]> = {
+  'Istanbul': ['Kadikoy', 'Besiktas', 'Sisli', 'Fatih', 'Uskudar', 'Bakirkoy', 'Maltepe', 'Pendik', 'Beylikduzu'],
+  'Ankara': ['Cankaya', 'Kecioren', 'Mamak', 'Etimesgut', 'Sincan'],
+  'Izmir': ['Konak', 'Bornova', 'Karsiyaka', 'Buca', 'Cigli'],
+};
 
 // ── MULTI-SOURCE LEAD SEARCH ─────────────────────────────────────────────────
 
@@ -137,6 +156,149 @@ async function searchOpenStreetMap(keyword: string, city: string): Promise<any[]
   return leads;
 }
 
+// ── YELP SEARCH ──────────────────────────────────────────────────────────────
+async function searchYelp(keyword: string, city: string): Promise<any[]> {
+  if (!YELP_API_KEY) return [];
+  const leads: any[] = [];
+  try {
+    const coords = CITY_COORDS[city];
+    const params: any = { term: keyword, location: `${city}, Turkey`, limit: 20 };
+    if (coords) { params.latitude = coords.lat; params.longitude = coords.lng; delete params.location; }
+    const res = await axios.get('https://api.yelp.com/v3/businesses/search', {
+      params, headers: { Authorization: `Bearer ${YELP_API_KEY}` }, timeout: 12000,
+    });
+    for (const b of (res.data?.businesses || [])) {
+      if (b.is_closed) continue;
+      leads.push({
+        company_name: b.name, phone: normalizePhone(b.phone || ''),
+        address: b.location?.display_address?.join(', ') || null,
+        website: b.url || null, city, sector: keyword, source: 'yelp',
+        rating: b.rating || null, review_count: b.review_count || 0,
+      });
+    }
+  } catch (e: any) { console.log('[Hunter] Yelp error:', e.message?.slice(0, 60)); }
+  return leads;
+}
+
+// ── FOURSQUARE SEARCH ────────────────────────────────────────────────────────
+async function searchFoursquare(keyword: string, city: string): Promise<any[]> {
+  if (!FOURSQUARE_API_KEY) return [];
+  const leads: any[] = [];
+  try {
+    const coords = CITY_COORDS[city];
+    const params: any = { query: keyword, limit: 20 };
+    if (coords) params.ll = `${coords.lat},${coords.lng}`;
+    else params.near = `${city}, Turkey`;
+    const res = await axios.get('https://api.foursquare.com/v3/places/search', {
+      params, headers: { Authorization: FOURSQUARE_API_KEY, Accept: 'application/json' }, timeout: 12000,
+    });
+    for (const p of (res.data?.results || [])) {
+      leads.push({
+        company_name: p.name, phone: normalizePhone(p.tel || ''),
+        address: p.location?.formatted_address || p.location?.address || null,
+        website: p.website || null, city, sector: keyword, source: 'foursquare',
+      });
+    }
+  } catch (e: any) { console.log('[Hunter] Foursquare error:', e.message?.slice(0, 60)); }
+  return leads;
+}
+
+// ── HERE DISCOVER SEARCH ─────────────────────────────────────────────────────
+async function searchHERE(keyword: string, city: string): Promise<any[]> {
+  if (!HERE_API_KEY) return [];
+  const leads: any[] = [];
+  try {
+    const coords = CITY_COORDS[city] || { lat: 41.0, lng: 29.0 };
+    const res = await axios.get('https://discover.search.hereapi.com/v1/discover', {
+      params: { q: keyword, at: `${coords.lat},${coords.lng}`, limit: 20, apiKey: HERE_API_KEY },
+      timeout: 12000,
+    });
+    for (const item of (res.data?.items || [])) {
+      const contacts = item.contacts || [];
+      const phone = contacts[0]?.phone?.[0]?.value || '';
+      const website = contacts[0]?.www?.[0]?.value || '';
+      leads.push({
+        company_name: item.title, phone: normalizePhone(phone),
+        address: item.address?.label || null,
+        website: website || null, city, sector: keyword, source: 'here',
+      });
+    }
+  } catch (e: any) { console.log('[Hunter] HERE error:', e.message?.slice(0, 60)); }
+  return leads;
+}
+
+// ── AI QUERY EXPANSION ───────────────────────────────────────────────────────
+async function expandKeywords(keywords: string[], maxExpanded = 3): Promise<string[]> {
+  if (!process.env.ANTHROPIC_API_KEY || keywords.length >= 8) return keywords;
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 200,
+      messages: [{ role: 'user', content: `Bu anahtar kelimeler icin iliskili arama terimleri oner. Her keyword icin ${maxExpanded} alternatif ver.
+Keywords: ${keywords.join(', ')}
+SADECE virgullu liste dondur, baska hicbir sey yazma. Ornek: mobilya -> mobilya magazasi, ev dekorasyon, ofis mobilyasi` }],
+    });
+    const text = (resp.content[0] as any)?.text || '';
+    const expanded = text.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 2 && s.length < 40);
+    const all = [...new Set([...keywords, ...expanded])];
+    return all.slice(0, 15);
+  } catch { return keywords; }
+}
+
+// ── EMAIL DISCOVERY ──────────────────────────────────────────────────────────
+async function discoverEmail(website: string): Promise<string | null> {
+  if (!website || website.includes('instagram.com') || website.includes('facebook.com') || website.includes('yelp.com')) return null;
+  try {
+    const url = website.startsWith('http') ? website : `https://${website}`;
+    const paths = ['', '/contact', '/iletisim', '/about', '/hakkimizda'];
+    for (const path of paths) {
+      try {
+        const res = await axios.get(url + path, {
+          timeout: 6000, maxRedirects: 3,
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        });
+        const html = typeof res.data === 'string' ? res.data : '';
+        const emailMatch = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+        if (emailMatch) {
+          const blacklist = ['example.com', 'domain.com', 'email.com', 'test.com', 'wixpress.com', 'sentry.io'];
+          const valid = emailMatch.filter((e: string) => !blacklist.some(b => e.includes(b)));
+          const preferred = valid.find((e: string) => /info|iletisim|contact|hello|merhaba|satis|sales/.test(e));
+          if (preferred) return preferred;
+          if (valid.length) return valid[0];
+        }
+      } catch { continue; }
+    }
+  } catch {}
+  return null;
+}
+
+// ── COMPETITOR LEAD SNIPER ───────────────────────────────────────────────────
+async function sniperFromCompetitors(userId: string): Promise<any[]> {
+  const leads: any[] = [];
+  try {
+    const { data: competitors } = await supabase.from('competitors')
+      .select('name, city, sector, country')
+      .eq('user_id', userId).eq('auto_scan', true).limit(3);
+    if (!competitors?.length) return [];
+
+    for (const comp of competitors) {
+      const { data: compLeads } = await supabase.from('leads')
+        .select('company_name, phone, city, sector, source')
+        .eq('user_id', userId)
+        .ilike('source', `Rakip: ${comp.name}%`)
+        .eq('status', 'new')
+        .limit(5);
+      if (compLeads?.length) {
+        leads.push(...compLeads.map((l: any) => ({
+          ...l, source: `sniper_${comp.name.slice(0, 20)}`,
+          notes: `Rakip ${comp.name} musterisi — cevrilebilir`,
+        })));
+      }
+    }
+  } catch {}
+  return leads;
+}
+
 function normalizePhone(raw: string): string | null {
   if (!raw) return null;
   let p = raw.replace(/[\s\-\(\)\.]/g, '');
@@ -165,28 +327,46 @@ function calcScore(lead: any): number {
 
 // ── ORCHESTRATOR ─────────────────────────────────────────────────────────────
 
-async function runHunt(userId: string, config: any): Promise<{ added: number; skipped: number; sources: Record<string, number>; errors: string[] }> {
-  const keywords = config.keywords || [];
+async function runHunt(userId: string, config: any): Promise<{ added: number; skipped: number; sources: Record<string, number>; errors: string[]; emailsFound: number }> {
+  const rawKeywords = config.keywords || [];
   const cities = config.cities || ['Istanbul'];
   const enabledSources = config.sources || ['google_maps'];
   const maxLeads = config.max_leads_per_run || 50;
   const errors: string[] = [];
   const sourceStats: Record<string, number> = {};
   const allRaw: any[] = [];
+  let emailsFound = 0;
+
+  // AI Query Expansion
+  const keywords = maxLeads >= 30 ? await expandKeywords(rawKeywords, 2) : rawKeywords;
+  if (keywords.length > rawKeywords.length) {
+    console.log(`[Hunter] Query expanded: ${rawKeywords.join(',')} -> ${keywords.join(',')}`);
+  }
 
   for (const keyword of keywords) {
     for (const city of cities) {
       const tasks: Promise<any[]>[] = [];
-      if (enabledSources.includes('google_maps')) tasks.push(searchGoogleMaps(keyword, city, Math.ceil(maxLeads / keywords.length / cities.length)));
+      const perSourceMax = Math.ceil(maxLeads / keywords.length / cities.length);
+
+      // Grid search for large cities
+      const districts = (maxLeads >= 50 && CITY_DISTRICTS[city]) ? CITY_DISTRICTS[city].slice(0, 3) : [];
+      const searchCities = districts.length ? [city, ...districts.map(d => `${city} ${d}`)] : [city];
+
+      for (const searchCity of searchCities) {
+        if (enabledSources.includes('google_maps')) tasks.push(searchGoogleMaps(keyword, searchCity, perSourceMax));
+      }
       if (enabledSources.includes('instagram')) tasks.push(searchInstagram(keyword, city));
       if (enabledSources.includes('facebook')) tasks.push(searchFacebook(keyword, city));
       tasks.push(searchOpenStreetMap(keyword, city));
+      if (YELP_API_KEY) tasks.push(searchYelp(keyword, city));
+      if (FOURSQUARE_API_KEY) tasks.push(searchFoursquare(keyword, city));
+      if (HERE_API_KEY) tasks.push(searchHERE(keyword, city));
 
       const results = await Promise.allSettled(tasks);
-      results.forEach((r, i) => {
+      results.forEach(r => {
         if (r.status === 'fulfilled') {
           allRaw.push(...r.value);
-          r.value.forEach(l => { sourceStats[l.source] = (sourceStats[l.source] || 0) + 1; });
+          r.value.forEach((l: any) => { sourceStats[l.source] = (sourceStats[l.source] || 0) + 1; });
         } else {
           errors.push(`${keyword}/${city}: ${(r as any).reason?.message?.slice(0, 60)}`);
         }
@@ -194,6 +374,15 @@ async function runHunt(userId: string, config: any): Promise<{ added: number; sk
       await sleep(300);
     }
   }
+
+  // Competitor sniper leads
+  try {
+    const sniperLeads = await sniperFromCompetitors(userId);
+    if (sniperLeads.length) {
+      allRaw.push(...sniperLeads);
+      sourceStats['competitor_sniper'] = sniperLeads.length;
+    }
+  } catch {}
 
   // Dedup by company name
   const seen = new Set<string>();
@@ -215,6 +404,18 @@ async function runHunt(userId: string, config: any): Promise<{ added: number; sk
 
   const toInsert = unique.filter(l => !existingNames.has(l.company_name)).slice(0, maxLeads);
   let added = 0;
+
+  // Email discovery (parallel, max 5 concurrent)
+  const emailBatch = toInsert.filter(l => l.website && !l.email).slice(0, 10);
+  if (emailBatch.length) {
+    const emailResults = await Promise.allSettled(emailBatch.map(l => discoverEmail(l.website)));
+    emailResults.forEach((r, i) => {
+      if (r.status === 'fulfilled' && r.value) {
+        emailBatch[i].email = r.value;
+        emailsFound++;
+      }
+    });
+  }
 
   for (const lead of toInsert) {
     const score = calcScore(lead);
@@ -250,7 +451,7 @@ async function runHunt(userId: string, config: any): Promise<{ added: number; sk
     }
   }
 
-  return { added, skipped: unique.length - toInsert.length + (allRaw.length - unique.length), sources: sourceStats, errors };
+  return { added, skipped: unique.length - toInsert.length + (allRaw.length - unique.length), sources: sourceStats, errors, emailsFound };
 }
 
 // ── 7/24 OTOMATIK TARAMA MOTORU ──────────────────────────────────────────────
@@ -316,7 +517,7 @@ async function runScheduledHunts() {
             if (us?.phone) {
               const { sendWhatsAppMessage } = require('./settings');
               sendWhatsAppMessage(config.user_id, us.phone,
-                `🎯 *${result.added} Yeni Lead!*\n\nOtomatik avcı ${config.keywords?.join(', ')} icin ${result.added} yeni lead buldu.\nKaynaklar: ${Object.entries(result.sources).map(([s, c]) => `${s}(${c})`).join(', ')}\n\nSovlo.io'dan inceleyin!`
+                `🎯 *${result.added} Yeni Lead!*\n\nOtomatik avci ${config.keywords?.join(', ')} icin ${result.added} yeni lead buldu.${result.emailsFound ? `\n📧 ${result.emailsFound} email kesfedildi` : ''}\nKaynaklar: ${Object.entries(result.sources).map(([s, c]) => `${s}(${c})`).join(', ')}\n\nSovlo.io'dan inceleyin!`
               ).catch(() => {});
             }
           } catch {}

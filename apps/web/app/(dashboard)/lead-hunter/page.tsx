@@ -15,7 +15,6 @@ const SOURCES = [
   { id: 'google_maps', label: 'Google Maps', icon: '🗺️' },
   { id: 'instagram', label: 'Instagram', icon: '📸' },
   { id: 'facebook', label: 'Facebook', icon: '📘' },
-  { id: 'tiktok', label: 'TikTok', icon: '🎵' },
 ]
 
 export default function HunterSettingsPage() {
@@ -252,13 +251,21 @@ export default function HunterSettingsPage() {
             {logs.length === 0 ? (
               <p className="text-slate-500 text-sm">{t('lead_hunter.henuz_tarama_yapilmadi', 'Henüz tarama yapılmadı')}</p>
             ) : (
-              <div className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="space-y-2 max-h-60 overflow-y-auto">
                 {logs.map((log: any) => (
-                  <div key={log.id} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">{new Date(log.ran_at).toLocaleString()}</span>
-                    <span className={`font-medium ${log.leads_found > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-                      {log.leads_found} lead
-                    </span>
+                  <div key={log.id} className="flex items-center justify-between text-xs gap-2">
+                    <span className="text-slate-400 shrink-0">{new Date(log.ran_at).toLocaleString('tr-TR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                    <div className="flex items-center gap-2 flex-1 justify-end flex-wrap">
+                      <span className={`font-bold ${log.leads_found > 0 ? 'text-emerald-500' : 'text-slate-500'}`}>
+                        {log.leads_found} lead
+                      </span>
+                      {log.skipped > 0 && <span className="text-orange-400">{log.skipped} atlandı</span>}
+                      {log.sources && typeof log.sources === 'object' && Object.keys(log.sources).length > 0 && (
+                        <span className="text-blue-400">
+                          {Object.entries(log.sources).map(([s, c]) => `${s.replace('google_maps','GM').replace('instagram','IG').replace('facebook','FB').replace('openstreetmap','OSM').replace('yelp','Yelp').replace('foursquare','4SQ').replace('here','HERE').replace('competitor_sniper','Rakip')}:${c}`).join(' ')}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
