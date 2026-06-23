@@ -230,307 +230,207 @@ export default function DecisionMakerPage() {
   const doneCount = results.filter(r => r.done).length
   const foundTotal = results.reduce((s, r) => s + r.employees.length, 0)
 
-  return (
-    <div className="space-y-5 max-w-5xl">
+  const crd = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } as const
+  const tx1 = '#0f172a', tx2 = '#64748b', tx3 = '#94a3b8'
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
-            <Crosshair size={18} className="text-violet-400" />
+  return (
+    <div style={{ padding: 0 }}>
+
+      {/* ── HERO ────────────────────────────────────────────────────────── */}
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius: 20, padding: '28px', marginBottom: 24, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(124,58,237,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.03) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
+
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'linear-gradient(135deg,#7c3aed,#a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(124,58,237,0.3)', flexShrink: 0 }}>
+              <Crosshair size={28} style={{ color: '#ffffff' }} />
+            </div>
+            <div>
+              <h1 style={{ color: tx1, fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{L.title}</h1>
+              <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px', maxWidth: 420 }}>Exa.ai + Claude AI + LinkedIn ile karar vericileri otomatik bul, email ve telefon keşfet</p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {['Exa.ai LinkedIn', 'Claude AI', 'Email Keşif', 'Telefon Çıkarma', 'AI Tahmin'].map(f => (
+                  <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f8fafc', border: '1px solid #f1f5f9', color: tx2, fontSize: 10, padding: '3px 8px', borderRadius: 20 }}>{f}</span>
+                ))}
+              </div>
+            </div>
           </div>
-          {L.title}
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm flex items-center gap-1.5">
-          <Crosshair size={13} className="text-violet-400" />
-          {L.subtitle}
-        </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button onClick={async () => {
+              try {
+                const data = await api.post('/api/decision-maker-finder/auto-enrich', { limit: 20 })
+                showMsg('success', data.message || `${data.total} lead zenginleştiriliyor...`)
+                if (data.jobId) {
+                  const poll = setInterval(async () => {
+                    try {
+                      const j = await api.get(`/api/decision-maker-finder/job/${data.jobId}`)
+                      if (j.status === 'done') { clearInterval(poll); showMsg('success', `${j.results?.filter((r:any)=>r.found).length || 0} karar verici bulundu!`); load() }
+                    } catch { clearInterval(poll) }
+                  }, 5000)
+                }
+              } catch (e: any) { showMsg('error', e.message) }
+            }} disabled={scanning}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#7c3aed,#a78bfa)', color: '#fff', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }}>
+              <Crosshair size={14} /> Otomatik Zenginleştir
+            </button>
+            <button onClick={() => load()}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#ffffff', color: tx2, fontSize: 12, cursor: 'pointer' }}>
+              <RefreshCw size={12} /> Yenile
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        {stats && (
+          <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 20 }}>
+            {[
+              { label: L.total_lead, value: stats.totalLeads, color: '#2563eb', Icon: Users },
+              { label: L.with_contact, value: stats.withContact, color: '#059669', Icon: UserCheck },
+              { label: L.with_email, value: stats.withEmail, color: '#7c3aed', Icon: Mail },
+              { label: L.coverage, value: `%${stats.coverageRate}`, color: '#b45309', Icon: BarChart3 },
+            ].map(({ label, value, color, Icon }) => (
+              <div key={label} style={{ ...crd, padding: '12px 14px', textAlign: 'center' }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px' }}>
+                  <Icon size={14} style={{ color }} />
+                </div>
+                <p style={{ color: tx1, fontSize: 20, fontWeight: 800, margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>{label}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Toast */}
+      {/* ── TOAST ──────────────────────────────────────────────────────── */}
       {msg && (
-        <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm ${
-          msg.type === 'success'
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-            : 'bg-red-500/10 border-red-500/30 text-red-300'
-        }`}>
+        <div style={{ marginBottom: 16, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: msg.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: msg.type === 'success' ? '#059669' : '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
           {msg.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
           {msg.text}
         </div>
       )}
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: L.total_lead,     value: stats.totalLeads,         icon: Users,     color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
-            { label: L.with_contact, value: stats.withContact,        icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-            { label: L.with_email,   value: stats.withEmail,          icon: Mail,      color: 'text-purple-400',  bg: 'bg-purple-500/10'  },
-            { label: L.coverage,   value: `%${stats.coverageRate}`, icon: BarChart3, color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
-          ].map(s => (
-            <div key={s.label} className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-              <div className={`w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center mb-3`}>
-                <s.icon size={15} className={s.color} />
-              </div>
-              <p className="text-2xl font-bold text-white">{s.value}</p>
-              <p className="text-slate-400 text-xs mt-0.5">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Controls row */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Search */}
-        <div className="relative flex-1 min-w-52">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder={L.search}
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-9 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
-              <X size={13} />
-            </button>
-          )}
+      {/* ── CONTROLS ───────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: tx3 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={L.search}
+            style={{ width: '100%', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '9px 32px 9px 34px', color: tx1, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+          {search && <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: tx3, cursor: 'pointer' }}><X size={13} /></button>}
         </div>
 
-        {/* Filter chips */}
-        <div className="flex gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1">
-          {([
-            { id: 'all', label: L.all },
-            { id: 'no-contact', label: L.no_contact },
-            { id: 'has-contact', label: L.has_contact },
-          ] as { id: Filter; label: string }[]).map(f => (
-            <button key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                filter === f.id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-              }`}>
+        <div style={{ display: 'flex', gap: 2, background: '#f8fafc', padding: 3, borderRadius: 10, border: '1px solid #f1f5f9' }}>
+          {([{ id: 'all', label: L.all }, { id: 'no-contact', label: L.no_contact }, { id: 'has-contact', label: L.has_contact }] as { id: Filter; label: string }[]).map(f => (
+            <button key={f.id} onClick={() => setFilter(f.id)}
+              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: filter === f.id ? '#ffffff' : 'transparent', color: filter === f.id ? tx1 : tx3, boxShadow: filter === f.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
               {f.label}
             </button>
           ))}
         </div>
 
-        {/* Select all / clear */}
         {filtered.length > 0 && (
           <button onClick={selectedIds.size === filtered.length ? clearAll : selectAll}
-            className="px-3 py-2.5 text-xs text-slate-400 hover:text-white bg-slate-800 border border-slate-700 rounded-xl transition">
+            style={{ padding: '8px 14px', borderRadius: 9, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 12, cursor: 'pointer' }}>
             {selectedIds.size === filtered.length ? L.deselect_all : L.select_all}
           </button>
         )}
 
-        {/* Scan button */}
-        <button onClick={runScan}
-          disabled={scanning || selectedIds.size === 0}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition ${
-            selectedIds.size > 0 && !scanning
-              ? 'bg-blue-600 hover:bg-blue-500 text-white'
-              : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
-          }`}>
-          <Crosshair size={14} />
-          {scanning
-            ? `${doneCount}/${results.length} Taranıyor...`
-            : selectedIds.size > 0
-            ? `${selectedIds.size} Şirketi Tara`
-            : L.select_lead}
-        </button>
-
-        {/* Auto-enrich button */}
-        <button onClick={async () => {
-          try {
-            const data = await api.post('/api/decision-maker-finder/auto-enrich', { limit: 20 })
-            showMsg('success', data.message || `${data.total} lead zenginleştiriliyor...`)
-            if (data.jobId) {
-              const poll = setInterval(async () => {
-                try {
-                  const j = await api.get(`/api/decision-maker-finder/job/${data.jobId}`)
-                  if (j.status === 'done') { clearInterval(poll); showMsg('success', `${j.results?.filter((r:any)=>r.found).length || 0} karar verici bulundu!`); load() }
-                } catch { clearInterval(poll) }
-              }, 5000)
-            }
-          } catch (e: any) { showMsg('error', e.message) }
-        }}
-          disabled={scanning}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-violet-600 hover:bg-violet-500 text-white transition"
-          title="Yetkili bilgisi olmayan ilk 20 lead için otomatik karar verici arar">
-          <Crosshair size={14} />
-          Otomatik Zenginleştir
+        <button onClick={runScan} disabled={scanning || selectedIds.size === 0}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 10, border: 'none', cursor: selectedIds.size > 0 && !scanning ? 'pointer' : 'not-allowed', background: selectedIds.size > 0 ? 'linear-gradient(135deg,#2563eb,#3b82f6)' : '#f1f5f9', color: selectedIds.size > 0 ? '#fff' : tx3, fontSize: 13, fontWeight: 600, boxShadow: selectedIds.size > 0 ? '0 4px 14px rgba(37,99,235,0.25)' : 'none' }}>
+          <Crosshair size={13} />
+          {scanning ? `${doneCount}/${results.length} Taranıyor...` : selectedIds.size > 0 ? `${selectedIds.size} Şirketi Tara` : L.select_lead}
         </button>
       </div>
 
-      {/* Lead grid */}
-      <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto pr-1">
+      {/* ── LEAD GRID ──────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 450, overflowY: 'auto' }}>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw size={20} className="animate-spin text-slate-500" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-10 text-slate-500 text-sm">
-            {search ? 'Arama sonucu bulunamadı.' : 'Gösterilecek lead yok.'}
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Crosshair size={28} style={{ color: tx3, margin: '0 auto 8px' }} />
+            <p style={{ color: tx3, fontSize: 13 }}>{search ? 'Arama sonucu bulunamadı.' : 'Gösterilecek lead yok.'}</p>
           </div>
         ) : filtered.map(lead => {
           const sel = selectedIds.has(lead.id)
           const res = results.find(r => r.leadId === lead.id)
           return (
-            <button key={lead.id} onClick={() => toggle(lead.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition border ${
-                sel
-                  ? 'bg-blue-600/10 border-blue-500/30'
-                  : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600'
-              }`}>
-              {/* Checkbox */}
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition ${
-                sel ? 'bg-blue-600 border-blue-600' : 'border-slate-600'
-              }`}>
-                {sel && <CheckCircle size={12} className="text-white" />}
+            <div key={lead.id} onClick={() => toggle(lead.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderRadius: 11, border: `1px solid ${sel ? '#93c5fd' : '#f1f5f9'}`, background: sel ? '#eff6ff' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+              <div style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${sel ? '#2563eb' : '#d1d5db'}`, background: sel ? '#2563eb' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {sel && <CheckCircle size={12} style={{ color: '#fff' }} />}
               </div>
-
-              {/* Company initial */}
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                lead.contact_name ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-300'
-              }`}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: lead.contact_name ? '#ecfdf5' : '#f8fafc', border: `1px solid ${lead.contact_name ? '#a7f3d0' : '#f1f5f9'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: lead.contact_name ? '#059669' : tx2, flexShrink: 0 }}>
                 {lead.company_name[0]?.toUpperCase()}
               </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${sel ? 'text-white' : 'text-slate-200'}`}>
-                  {lead.company_name}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  {lead.city && (
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                      <MapPin size={9} /> {lead.city}
-                    </span>
-                  )}
-                  {lead.website && (
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                      <Globe size={9} /> {lead.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                    </span>
-                  )}
-                  {lead.contact_name && (
-                    <span className="text-xs text-emerald-400 flex items-center gap-1">
-                      <CheckCircle size={9} /> {lead.contact_name}
-                    </span>
-                  )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ color: tx1, fontSize: 13, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.company_name}</p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {lead.city && <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: tx3, fontSize: 11 }}><MapPin size={9} /> {lead.city}</span>}
+                  {lead.website && <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: tx3, fontSize: 11 }}><Globe size={9} /> {lead.website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}</span>}
+                  {lead.contact_name && <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#059669', fontSize: 11, fontWeight: 600 }}><CheckCircle size={9} /> {lead.contact_name}</span>}
                 </div>
               </div>
-
-              {/* Status badges */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {res && !res.done && (
-                  <RefreshCw size={13} className="animate-spin text-blue-400" />
-                )}
-                {res?.done && res.employees.length > 0 && (
-                  <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full">
-                    {res.employees.length} kişi
-                  </span>
-                )}
-                {res?.done && res.employees.length === 0 && !res.error && (
-                  <span className="text-xs text-slate-500">{lang === 'de' ? 'Nicht gefunden' : lang === 'ru' ? 'Не найдено' : lang === 'en' ? 'Not found' : 'Bulunamadı'}</span>
-                )}
-                <span className="text-xs text-slate-600">{L.score}: {lead.score}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                {res && !res.done && <RefreshCw size={13} style={{ color: '#2563eb', animation: 'dmSpin 1s linear infinite' }} />}
+                {res?.done && res.employees.length > 0 && <span style={{ fontSize: 11, padding: '2px 8px', background: '#eff6ff', color: '#2563eb', borderRadius: 20, fontWeight: 600 }}>{res.employees.length} kişi</span>}
+                {res?.done && res.employees.length === 0 && !res.error && <span style={{ fontSize: 11, color: tx3 }}>Bulunamadı</span>}
+                <span style={{ fontSize: 11, color: tx3 }}>{L.score}: {lead.score}</span>
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
 
       {/* Results */}
       {results.length > 0 && (
-        <div className="space-y-4">
-          {/* Summary */}
-          <div className="flex items-center justify-between">
-            <p className="text-white font-medium">
-              Sonuçlar
-              {!scanning && (
-                <span className="text-slate-400 font-normal ml-2 text-sm">
-                  — {results.length} şirket, {foundTotal} kişi bulundu
-                </span>
-              )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <p style={{ color: tx1, fontWeight: 700, fontSize: 14, margin: 0 }}>
+              Sonuçlar {!scanning && <span style={{ color: tx3, fontWeight: 400, fontSize: 12 }}>— {results.length} şirket, {foundTotal} kişi</span>}
             </p>
-            {!scanning && results.length > 0 && (
-              <button onClick={() => setResults([])}
-                className="text-xs text-slate-500 hover:text-white flex items-center gap-1">
-                <X size={12} /> Temizle
-              </button>
-            )}
+            {!scanning && <button onClick={() => setResults([])} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: tx3, fontSize: 11, cursor: 'pointer' }}><X size={11} /> Temizle</button>}
           </div>
 
           {results.map(r => {
             const isCollapsed = collapsed.has(r.leadId)
-            const dms    = r.employees.filter(e => e.isDecisionMaker && e.name)
+            const dms = r.employees.filter(e => e.isDecisionMaker && e.name)
             const others = r.employees.filter(e => !e.isDecisionMaker && e.name)
-
             return (
-              <div key={r.leadId} className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
-                {/* Company header */}
-                <button
-                  onClick={() => setCollapsed(prev => {
-                    const n = new Set(prev)
-                    n.has(r.leadId) ? n.delete(r.leadId) : n.add(r.leadId)
-                    return n
-                  })}
-                  className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-slate-700/30 transition"
-                >
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Linkedin size={14} className="text-blue-400" />
+              <div key={r.leadId} style={{ ...crd, overflow: 'hidden' }}>
+                <div onClick={() => setCollapsed(prev => { const n = new Set(prev); n.has(r.leadId) ? n.delete(r.leadId) : n.add(r.leadId); return n })}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', cursor: 'pointer' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Linkedin size={14} style={{ color: '#2563eb' }} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold text-sm">{r.company}</p>
-                    {!r.done
-                      ? <p className="text-blue-400 text-xs flex items-center gap-1"><RefreshCw size={10} className="animate-spin" />{lang === 'de' ? 'LinkedIn wird durchsucht...' : lang === 'ru' ? 'Поиск LinkedIn...' : lang === 'en' ? 'Searching LinkedIn...' : 'LinkedIn taranıyor...'}</p>
-                      : r.error
-                      ? <p className="text-red-400 text-xs">{r.error}</p>
-                      : r.employees.length === 0
-                      ? <p className="text-slate-500 text-xs">{lang === 'de' ? 'Keine Mitarbeiter auf LinkedIn' : lang === 'ru' ? 'Сотрудники не найдены' : lang === 'en' ? 'No employees found' : 'LinkedIn\'de çalışan bulunamadı'}</p>
-                      : <p className="text-slate-400 text-xs">
-                          {r.employees.length} çalışan
-                          {dms.length > 0 && <span className="text-violet-400 ml-1">· {dms.length} karar verici</span>}
-                        </p>
-                    }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ color: tx1, fontWeight: 700, fontSize: 13, margin: 0 }}>{r.company}</p>
+                    {!r.done ? <p style={{ color: '#2563eb', fontSize: 11, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}><RefreshCw size={10} style={{ animation: 'dmSpin 1s linear infinite' }} /> Taranıyor...</p>
+                      : r.error ? <p style={{ color: '#dc2626', fontSize: 11, margin: '2px 0 0' }}>{r.error}</p>
+                      : r.employees.length === 0 ? <p style={{ color: tx3, fontSize: 11, margin: '2px 0 0' }}>Bulunamadı</p>
+                      : <p style={{ color: tx2, fontSize: 11, margin: '2px 0 0' }}>{r.employees.length} kişi {dms.length > 0 && <span style={{ color: '#7c3aed' }}>· {dms.length} karar verici</span>}</p>}
                   </div>
-                  {r.employees.length > 0 && (
-                    isCollapsed ? <ChevronDown size={15} className="text-slate-400" /> : <ChevronUp size={15} className="text-slate-400" />
-                  )}
-                </button>
+                  {r.employees.length > 0 && (isCollapsed ? <ChevronDown size={14} style={{ color: tx3 }} /> : <ChevronUp size={14} style={{ color: tx3 }} />)}
+                </div>
 
-                {/* Employees */}
                 {!isCollapsed && r.employees.length > 0 && (
-                  <div className="border-t border-slate-700 divide-y divide-slate-700/50">
-
-                    {/* Decision makers */}
+                  <div style={{ borderTop: '1px solid #f1f5f9' }}>
                     {dms.length > 0 && (
                       <>
-                        <div className="px-5 py-2 bg-violet-500/5">
-                          <p className="text-xs text-violet-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
-                            <Crosshair size={10} /> Karar Vericiler ({dms.length})
-                          </p>
+                        <div style={{ padding: '6px 18px', background: '#faf5ff' }}>
+                          <p style={{ color: '#7c3aed', fontSize: 10, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 5 }}><Crosshair size={10} /> Karar Vericiler ({dms.length})</p>
                         </div>
-                        {dms.map((emp, i) => (
-                          <EmployeeRow key={i} emp={emp} leadId={r.leadId} rowKey={`${r.leadId}-dm-${i}`}
-                            saving={saving} savedKeys={savedKeys} copied={copied}
-                            onSave={saveEmployee} onCopy={copy} />
-                        ))}
+                        {dms.map((emp, i) => <EmployeeRow key={i} emp={emp} leadId={r.leadId} rowKey={`${r.leadId}-dm-${i}`} saving={saving} savedKeys={savedKeys} copied={copied} onSave={saveEmployee} onCopy={copy} />)}
                       </>
                     )}
-
-                    {/* Other employees */}
                     {others.length > 0 && (
                       <>
-                        <div className="px-5 py-2 bg-slate-800/30">
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider flex items-center gap-1.5">
-                            <Users size={10} /> Diğer Çalışanlar ({others.length})
-                          </p>
+                        <div style={{ padding: '6px 18px', background: '#f8fafc' }}>
+                          <p style={{ color: tx3, fontSize: 10, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 5 }}><Users size={10} /> Diğer ({others.length})</p>
                         </div>
-                        {others.map((emp, i) => (
-                          <EmployeeRow key={i} emp={emp} leadId={r.leadId} rowKey={`${r.leadId}-ot-${i}`}
-                            saving={saving} savedKeys={savedKeys} copied={copied}
-                            onSave={saveEmployee} onCopy={copy} />
-                        ))}
+                        {others.map((emp, i) => <EmployeeRow key={i} emp={emp} leadId={r.leadId} rowKey={`${r.leadId}-ot-${i}`} saving={saving} savedKeys={savedKeys} copied={copied} onSave={saveEmployee} onCopy={copy} />)}
                       </>
                     )}
                   </div>
@@ -540,6 +440,8 @@ export default function DecisionMakerPage() {
           })}
         </div>
       )}
+
+      <style>{`@keyframes dmSpin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }
@@ -559,59 +461,38 @@ function EmployeeRow({ emp, leadId, rowKey, saving, savedKeys, copied, onSave, o
   const conf  = (CONF as any)[emp.confidence] || CONF.low
   const saved = savedKeys.has(rowKey)
 
+  const confStyle: Record<string, { bg: string; color: string; border: string; label: string }> = {
+    high:   { bg: '#ecfdf5', color: '#059669', border: '#a7f3d0', label: 'Yüksek' },
+    medium: { bg: '#fffbeb', color: '#b45309', border: '#fde68a', label: 'Orta' },
+    low:    { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0', label: 'Düşük' },
+  }
+  const cs = confStyle[emp.confidence] || confStyle.low
+
   return (
-    <div className="flex items-center gap-4 px-5 py-3 hover:bg-slate-700/20 transition">
-      {/* Avatar */}
-      <div className="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-slate-300 font-bold text-xs flex-shrink-0">
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderBottom: '1px solid #f8fafc', transition: 'background 0.15s' }}
+      onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+      <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
         {emp.name?.[0]?.toUpperCase() || '?'}
       </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          {emp.name && <p className="text-white text-sm font-medium">{emp.name}</p>}
-          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${conf.ring} ${conf.color}`}>
-            {conf.label}
-          </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {emp.name && <p style={{ color: '#0f172a', fontSize: 13, fontWeight: 600, margin: 0 }}>{emp.name}</p>}
+          <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: cs.bg, color: cs.color, border: `1px solid ${cs.border}`, fontWeight: 700 }}>{cs.label}</span>
+          {emp.source && <span style={{ fontSize: 9, color: '#94a3b8' }}>{emp.source}</span>}
         </div>
-        <div className="flex items-center gap-3 mt-1 flex-wrap">
-          {emp.title && <span className="text-xs text-slate-400">{emp.title}</span>}
-          {emp.linkedinUrl && (
-            <a href={emp.linkedinUrl} target="_blank" rel="noreferrer"
-              className="flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 transition">
-              <Linkedin size={9} /> Profil <ExternalLink size={8} />
-            </a>
-          )}
-          {emp.email && (
-            <button onClick={() => onCopy(emp.email!, `em-${rowKey}`)}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white transition">
-              <Mail size={9} /> {emp.email}
-              {copied === `em-${rowKey}` ? <CheckCircle size={8} className="text-emerald-400" /> : null}
-            </button>
-          )}
-          {emp.phone && (
-            <button onClick={() => onCopy(emp.phone!, `ph-${rowKey}`)}
-              className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white transition">
-              <Phone size={9} /> {emp.phone}
-              {copied === `ph-${rowKey}` ? <CheckCircle size={8} className="text-emerald-400" /> : null}
-            </button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+          {emp.title && <span style={{ fontSize: 11, color: '#64748b' }}>{emp.title}</span>}
+          {emp.linkedinUrl && <a href={emp.linkedinUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#2563eb', textDecoration: 'none' }}><Linkedin size={9} /> Profil</a>}
+          {emp.email && <button onClick={() => onCopy(emp.email!, `em-${rowKey}`)} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}><Mail size={9} /> {emp.email} {copied === `em-${rowKey}` && <CheckCircle size={8} style={{ color: '#059669' }} />}</button>}
+          {emp.phone && <button onClick={() => onCopy(emp.phone!, `ph-${rowKey}`)} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}><Phone size={9} /> {emp.phone} {copied === `ph-${rowKey}` && <CheckCircle size={8} style={{ color: '#059669' }} />}</button>}
         </div>
       </div>
-
-      {/* Save button */}
-      <button onClick={() => onSave(leadId, emp, rowKey)}
-        disabled={saving === rowKey || saved}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition flex-shrink-0 ${
-          saved
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default'
-            : 'bg-violet-600/80 hover:bg-violet-600 text-white disabled:opacity-50'
-        }`}>
-        {saving === rowKey
-          ? <RefreshCw size={11} className="animate-spin" />
-          : saved
-          ? <><CheckCircle size={11} /> Kaydedildi</>
-          : <><UserCheck size={11} /> Lead'e Ekle</>}
+      <button onClick={() => onSave(leadId, emp, rowKey)} disabled={saving === rowKey || saved}
+        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: saved ? '1px solid #a7f3d0' : 'none', background: saved ? '#ecfdf5' : 'linear-gradient(135deg,#7c3aed,#a78bfa)', color: saved ? '#059669' : '#fff', fontSize: 11, fontWeight: 600, cursor: saved ? 'default' : 'pointer', flexShrink: 0 }}>
+        {saving === rowKey ? <RefreshCw size={10} style={{ animation: 'dmSpin 1s linear infinite' }} />
+          : saved ? <><CheckCircle size={10} /> Kaydedildi</>
+          : <><UserCheck size={10} /> Kaydet</>}
       </button>
     </div>
   )
