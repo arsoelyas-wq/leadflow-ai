@@ -6,8 +6,27 @@ const { getCountryByCode, getAllCountries } = require('../config/countries');
 const router  = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// In-memory cache for dynamically generated profiles (avoid repeated Claude calls)
+// Persistent cache — try Supabase first, then in-memory fallback
 const profileCache: Record<string, any> = {};
+
+async function getCachedProfile(code: string): Promise<any | null> {
+  if (profileCache[code]) return profileCache[code];
+  try {
+    const { data } = await supabase.from('cultural_profiles_cache')
+      .select('profile').eq('country_code', code).maybeSingle();
+    if (data?.profile) { profileCache[code] = data.profile; return data.profile; }
+  } catch {}
+  return null;
+}
+
+async function setCachedProfile(code: string, profile: any): Promise<void> {
+  profileCache[code] = profile;
+  try {
+    await supabase.from('cultural_profiles_cache').upsert([{
+      country_code: code, profile, updated_at: new Date().toISOString(),
+    }], { onConflict: 'country_code' });
+  } catch {}
+}
 
 // ── HARDCODED DETAILED CULTURAL PROFILES (core 8 markets) ─────────────────────
 const CULTURAL_PROFILES: Record<string, any> = {

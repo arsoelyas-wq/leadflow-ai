@@ -9,7 +9,13 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+const UAS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+];
+const randUA = () => UAS[Math.floor(Math.random() * UAS.length)];
 
 // ── SAFE JSON PARSE ───────────────────────────────────────────────────────────
 function safeJson(v: any, fallback: any) {
@@ -19,16 +25,17 @@ function safeJson(v: any, fallback: any) {
 }
 
 // ── PRICE SCRAPER ─────────────────────────────────────────────────────────────
-async function scrapePrice(url: string): Promise<{ price: number | null; currency: string; title: string }> {
-  try {
+async function scrapePrice(url: string, retries = 2): Promise<{ price: number | null; currency: string; title: string }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
     const resp = await axios.get(url, {
       headers: {
-        'User-Agent': UA,
+        'User-Agent': randUA(),
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
         'Cache-Control': 'no-cache',
       },
-      timeout: 12000,
+      timeout: 15000,
       maxRedirects: 5,
     });
     const $ = cheerio.load(resp.data);
@@ -76,29 +83,40 @@ async function scrapePrice(url: string): Promise<{ price: number | null; currenc
       if (match) price = parseFloat(match[0]);
     }
 
-    // Currency detection — more comprehensive
+    // Currency detection — comprehensive multi-source
     let currency = 'TRY';
-    const fullText = rawPrice + resp.data.slice(0, 5000);
-    if (/\$|USD/.test(rawPrice)) currency = 'USD';
-    else if (/€|EUR/.test(rawPrice)) currency = 'EUR';
-    else if (/£|GBP/.test(rawPrice)) currency = 'GBP';
-    else if (/₺|TL|TRY/.test(rawPrice)) currency = 'TRY';
+    const metaCurr = $('meta[property="product:price:currency"]').attr('content')
+      || $('meta[itemprop="priceCurrency"]').attr('content')
+      || '';
+    if (metaCurr) {
+      currency = metaCurr.toUpperCase();
+    } else if (/\$|USD/i.test(rawPrice)) currency = 'USD';
+    else if (/€|EUR/i.test(rawPrice)) currency = 'EUR';
+    else if (/£|GBP/i.test(rawPrice)) currency = 'GBP';
+    else if (/₺|TL|TRY/i.test(rawPrice)) currency = 'TRY';
+    else if (/AED|د\.إ/i.test(rawPrice)) currency = 'AED';
+    else if (/SAR|ر\.س/i.test(rawPrice)) currency = 'SAR';
+    else if (/PLN|zł/i.test(rawPrice)) currency = 'PLN';
+    else if (/RUB|₽/i.test(rawPrice)) currency = 'RUB';
+    else if (/SEK|kr/i.test(rawPrice)) currency = 'SEK';
     else {
-      // Detect from meta or HTML lang
-      const metaCurr = $('meta[property="product:price:currency"]').attr('content') || '';
-      if (metaCurr) currency = metaCurr.toUpperCase();
+      const htmlLang = $('html').attr('lang') || '';
+      const langCurrMap: Record<string, string> = { tr: 'TRY', en: 'USD', de: 'EUR', fr: 'EUR', ar: 'AED', ru: 'RUB', pl: 'PLN', es: 'EUR', it: 'EUR', nl: 'EUR', pt: 'EUR' };
+      if (htmlLang && langCurrMap[htmlLang.slice(0, 2)]) currency = langCurrMap[htmlLang.slice(0, 2)];
     }
 
-    // Title
     const title = $('h1').first().text().trim()
       || $('title').text().replace('|', '').trim().slice(0, 80)
       || '';
 
     return { price, currency, title };
   } catch (e: any) {
+    if (attempt < retries) { await sleep(1000 * (attempt + 1)); continue; }
     console.error(`scrapePrice error [${url.slice(0, 60)}]:`, e.message?.slice(0, 80));
     return { price: null, currency: 'TRY', title: '' };
   }
+  }
+  return { price: null, currency: 'TRY', title: '' };
 }
 
 // ── WHATSAPP ALERT ────────────────────────────────────────────────────────────
