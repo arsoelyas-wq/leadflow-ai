@@ -63,6 +63,18 @@ export default function AutomationsPage() {
   const [workflows, setWorkflows] = useState<any[]>([])
   const [allStats, setAllStats] = useState({ campaigns: 0, sequences: 0, workflows: 0, totalSent: 0, totalReplied: 0 })
 
+  // New feature states
+  const [templates, setTemplates] = useState<any[]>([])
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [smartTiming, setSmartTiming] = useState<any>(null)
+  const [segFilters, setSegFilters] = useState({ min_score: '', city: '', sector: '', source: '', has_phone: 'true' })
+  const [segOptions, setSegOptions] = useState<any>({ cities: [], sectors: [], sources: [] })
+  const [optimizing, setOptimizing] = useState(false)
+  const [optimized, setOptimized] = useState<any>(null)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false)
+  const [activeSubTab, setActiveSubTab] = useState<'compose' | 'templates' | 'analytics'>('compose')
+
   const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 6000) }
 
   const loadAll = async () => {
@@ -85,8 +97,48 @@ export default function AutomationsPage() {
         totalReplied: camps.reduce((s: number, c: any) => s + (c.total_replied || c.totalReplied || 0), 0),
       })
     } catch {} finally { setLoading(false) }
+    // Load templates + analytics in parallel
+    Promise.allSettled([
+      api.get('/api/campaigns/templates'),
+      api.get('/api/campaigns/analytics'),
+      api.get('/api/campaigns/smart-timing'),
+      api.get('/api/campaigns/segments?has_phone=true&limit=200'),
+    ]).then(([tplRes, anlRes, timRes, segRes]) => {
+      if (tplRes.status === 'fulfilled') setTemplates(tplRes.value.templates || [])
+      if (anlRes.status === 'fulfilled') setAnalytics(anlRes.value)
+      if (timRes.status === 'fulfilled') setSmartTiming(timRes.value)
+      if (segRes.status === 'fulfilled') {
+        setSegOptions(segRes.value.filters || {})
+      }
+    })
   }
   useEffect(() => { loadAll() }, [])
+
+  const optimizeMessage = async () => {
+    if (!bcMessage) return
+    setOptimizing(true); setOptimized(null)
+    try {
+      const data = await api.post('/api/campaigns/ai-optimize', { message: bcMessage, channel: bcChannel })
+      setOptimized(data)
+    } catch (e: any) { showMsg('error', e.message) }
+    setOptimizing(false)
+  }
+
+  const applySegment = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (segFilters.min_score) params.set('min_score', segFilters.min_score)
+      if (segFilters.city) params.set('city', segFilters.city)
+      if (segFilters.sector) params.set('sector', segFilters.sector)
+      if (segFilters.source) params.set('source', segFilters.source)
+      if (segFilters.has_phone) params.set('has_phone', segFilters.has_phone)
+      params.set('limit', '200')
+      const data = await api.get(`/api/campaigns/segments?${params.toString()}`)
+      setLeads(data.leads || [])
+      setSegOptions(data.filters || segOptions)
+      showMsg('success', `${data.total || 0} lead filtrelendi`)
+    } catch (e: any) { showMsg('error', e.message) }
+  }
 
   const sendBroadcast = async () => {
     if (!bcName || !bcMessage || !selectedLeads.length) return showMsg('error', 'Isim, mesaj ve lead secimi zorunlu')
@@ -202,39 +254,169 @@ export default function AutomationsPage() {
 
       {/* ═══════════ TOPLU MESAJ ═══════════ */}
       {mode === 'broadcast' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div style={{ ...card, padding: 22 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}><Megaphone size={16} style={{ color: accentBlue }} /><h2 style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>Toplu Mesaj Gonder</h2></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <input value={bcName} onChange={e => setBcName(e.target.value)} placeholder="Kampanya adi *" style={inputStyle} />
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(['whatsapp', 'email'] as const).map(ch => (
-                  <button key={ch} onClick={() => setBcChannel(ch)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: `2px solid ${bcChannel === ch ? accentBlue : '#e2e8f0'}`, background: bcChannel === ch ? '#eff6ff' : '#fff', color: bcChannel === ch ? accentBlue : tx2, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                    {ch === 'whatsapp' ? <MessageCircle size={13} /> : <Mail size={13} />} {ch === 'whatsapp' ? 'WhatsApp' : 'Email'}
-                  </button>
-                ))}
-              </div>
-              <textarea value={bcMessage} onChange={e => setBcMessage(e.target.value)} rows={4} placeholder="Merhaba {{firma}}, {{sektor}} alaninda size ozel teklifimiz var..." style={{ ...inputStyle, resize: 'vertical' as const }} />
-              <p style={{ color: tx3, fontSize: 10, margin: '-8px 0 0' }}>Degiskenler: {'{{firma}} {{isim}} {{sehir}} {{sektor}}'}</p>
-              <button onClick={sendBroadcast} disabled={bcSending || !bcName || !bcMessage || !selectedLeads.length}
-                style={{ padding: '12px', borderRadius: 10, border: 'none', cursor: bcSending || !bcName || !bcMessage || !selectedLeads.length ? 'not-allowed' : 'pointer', background: selectedLeads.length && bcName && bcMessage ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : surf, color: selectedLeads.length && bcName && bcMessage ? '#fff' : tx3, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-                {bcSending ? <RefreshCw size={13} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Send size={13} />}
-                {bcSending ? 'Gonderiliyor...' : `${selectedLeads.length} Lead'e Gonder`}
+        <div>
+          {/* Sub-tabs */}
+          <div style={{ display: 'flex', gap: 3, marginBottom: 14, background: surf, padding: 3, borderRadius: 10, width: 'fit-content', border: '1px solid #f1f5f9' }}>
+            {[{ id: 'compose', label: 'Yaz & Gonder', Icon: Send }, { id: 'templates', label: 'Sablonlar', Icon: ListOrdered }, { id: 'analytics', label: 'Analitik', Icon: BarChart2 }].map(tb => (
+              <button key={tb.id} onClick={() => setActiveSubTab(tb.id as any)}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeSubTab === tb.id ? '#fff' : 'transparent', color: activeSubTab === tb.id ? accentBlue : tx3, boxShadow: activeSubTab === tb.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+                <tb.Icon size={13} /> {tb.label}
               </button>
-            </div>
-            {campaigns.length > 0 && (
-              <div style={{ marginTop: 18, borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
-                <p style={{ color: tx2, fontSize: 11, fontWeight: 600, marginBottom: 8 }}>Onceki ({campaigns.length})</p>
-                {campaigns.slice(0, 8).map((c: any) => { const st = STATUS_COLORS[c.status] || STATUS_COLORS.draft; return (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 7, marginBottom: 4, border: '1px solid #f1f5f9' }}>
-                    <div><p style={{ color: tx1, fontSize: 11, fontWeight: 600, margin: 0 }}>{c.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{c.channel} · {c.total_sent || 0} gonderildi</p></div>
-                    <span style={{ background: st.bg, color: st.color, fontSize: 9, padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>{st.label}</span>
-                  </div>
-                )})}
-              </div>
-            )}
+            ))}
           </div>
-          <LeadSelector maxHeight={500} />
+
+          {activeSubTab === 'compose' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Compose form */}
+                <div style={{ ...card, padding: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}><Megaphone size={15} style={{ color: accentBlue }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Mesaj Olustur</h2>
+                    {smartTiming && <span style={{ marginLeft: 'auto', color: accentEmerald, fontSize: 10, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10 }}>En iyi saat: {smartTiming.bestHour}</span>}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <input value={bcName} onChange={e => setBcName(e.target.value)} placeholder="Kampanya adi *" style={inputStyle} />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {(['whatsapp', 'email'] as const).map(ch => (
+                        <button key={ch} onClick={() => setBcChannel(ch)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: `2px solid ${bcChannel === ch ? accentBlue : '#e2e8f0'}`, background: bcChannel === ch ? '#eff6ff' : '#fff', color: bcChannel === ch ? accentBlue : tx2, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          {ch === 'whatsapp' ? <MessageCircle size={12} /> : <Mail size={12} />} {ch === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea value={bcMessage} onChange={e => { setBcMessage(e.target.value); setOptimized(null) }} rows={4} placeholder="Merhaba {{firma}}, {{sektor}} alaninda size ozel teklifimiz var..." style={{ ...inputStyle, resize: 'vertical' as const }} />
+                    <p style={{ color: tx3, fontSize: 9, margin: '-6px 0 0' }}>Degiskenler: {'{{firma}} {{isim}} {{sehir}} {{sektor}}'}</p>
+
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={optimizeMessage} disabled={optimizing || !bcMessage}
+                        style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1px solid ${accentViolet}40`, background: '#faf5ff', color: accentViolet, fontSize: 11, fontWeight: 600, cursor: optimizing || !bcMessage ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        {optimizing ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Sparkles size={11} />}
+                        AI Optimize Et
+                      </button>
+                      <button onClick={sendBroadcast} disabled={bcSending || !bcName || !bcMessage || !selectedLeads.length}
+                        style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: bcSending || !bcName || !bcMessage || !selectedLeads.length ? 'not-allowed' : 'pointer', background: selectedLeads.length && bcName && bcMessage ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : surf, color: selectedLeads.length && bcName && bcMessage ? '#fff' : tx3, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        {bcSending ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Send size={11} />}
+                        {bcSending ? 'Gonderiliyor...' : `${selectedLeads.length} Lead'e Gonder`}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* AI Optimized versions */}
+                  {optimized?.versions?.length > 0 && (
+                    <div style={{ marginTop: 12, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+                      <p style={{ color: accentViolet, fontSize: 11, fontWeight: 700, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Sparkles size={12} /> AI Oneriler</p>
+                      {optimized.versions.map((v: any, i: number) => (
+                        <div key={i} style={{ padding: '10px 12px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, marginBottom: 6, cursor: 'pointer' }} onClick={() => setBcMessage(v.message)}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ color: accentViolet, fontSize: 10, fontWeight: 700 }}>Versiyon {i + 1}</span>
+                            <span style={{ color: accentEmerald, fontSize: 10 }}>~%{v.estimatedReplyRate} cevap</span>
+                          </div>
+                          <p style={{ color: tx1, fontSize: 11, margin: '0 0 3px', lineHeight: 1.5 }}>{v.message}</p>
+                          <p style={{ color: tx3, fontSize: 9, margin: 0 }}>{v.reason}</p>
+                        </div>
+                      ))}
+                      {optimized.tips?.length > 0 && (
+                        <div style={{ padding: '6px 10px', background: '#eff6ff', borderRadius: 7, marginTop: 6 }}>
+                          {optimized.tips.map((t: string, i: number) => <p key={i} style={{ color: accentBlue, fontSize: 9, margin: '2px 0' }}>💡 {t}</p>)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Segmentation filters */}
+                <div style={{ ...card, padding: 16 }}>
+                  <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 5 }}><Filter size={12} style={{ color: accentBlue }} /> Lead Filtrele</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <select value={segFilters.min_score} onChange={e => setSegFilters(p => ({ ...p, min_score: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
+                      <option value="">Tum Skorlar</option><option value="40">40+</option><option value="60">60+</option><option value="80">80+</option>
+                    </select>
+                    <select value={segFilters.city} onChange={e => setSegFilters(p => ({ ...p, city: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
+                      <option value="">Tum Sehirler</option>
+                      {(segOptions.cities || []).map((c: string) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <select value={segFilters.sector} onChange={e => setSegFilters(p => ({ ...p, sector: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
+                      <option value="">Tum Sektorler</option>
+                      {(segOptions.sectors || []).slice(0, 20).map((s: string) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <button onClick={applySegment} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: accentBlue, color: '#fff', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Filtrele</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right — Lead selector */}
+              <LeadSelector maxHeight={520} />
+            </div>
+          )}
+
+          {activeSubTab === 'templates' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+              {templates.filter(t => !bcChannel || t.channel === bcChannel || t.channel === 'whatsapp').map(tpl => (
+                <div key={tpl.id} style={{ ...card, padding: '14px 16px', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                  onClick={() => { setBcMessage(tpl.message); setActiveSubTab('compose'); showMsg('success', 'Sablon uygulandi') }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = accentBlue}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ color: tx1, fontSize: 12, fontWeight: 700 }}>{tpl.title}</span>
+                    <span style={{ color: accentEmerald, fontSize: 10, background: '#ecfdf5', padding: '1px 7px', borderRadius: 8 }}>~%{tpl.successRate}</span>
+                  </div>
+                  <span style={{ color: accentBlue, fontSize: 9, background: '#eff6ff', padding: '1px 6px', borderRadius: 6 }}>{tpl.category}</span>
+                  <p style={{ color: tx2, fontSize: 11, margin: '8px 0 0', lineHeight: 1.5 }}>{tpl.message.slice(0, 120)}...</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeSubTab === 'analytics' && analytics && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
+                <p style={{ color: accentBlue, fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.totalSent}</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Gonderilen</p>
+              </div>
+              <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
+                <p style={{ color: accentEmerald, fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.totalReplied}</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Cevaplanan</p>
+              </div>
+              <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
+                <p style={{ color: accentViolet, fontSize: 22, fontWeight: 800, margin: 0 }}>%{analytics.replyRate}</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Cevap Orani</p>
+              </div>
+              <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
+                <p style={{ color: '#b45309', fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.bestHour}</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>En Iyi Saat</p>
+              </div>
+              {/* Kanal bazli */}
+              {analytics.byChannel?.length > 0 && (
+                <div style={{ ...card, padding: '14px 16px', gridColumn: 'span 2' }}>
+                  <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kanal Performansi</p>
+                  {analytics.byChannel.map((ch: any) => (
+                    <div key={ch.channel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f1f5f9' }}>
+                      <span style={{ color: tx1, fontSize: 11, fontWeight: 600 }}>{ch.channel}</span>
+                      <div style={{ display: 'flex', gap: 12, fontSize: 10, color: tx2 }}>
+                        <span>{ch.sent} gonderildi</span><span>{ch.replied} cevap</span>
+                        <span style={{ color: accentEmerald, fontWeight: 700 }}>%{ch.replyRate}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Kampanya listesi */}
+              <div style={{ ...card, padding: '14px 16px', gridColumn: 'span 2' }}>
+                <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kampanya Gecmisi</p>
+                {(analytics.campaigns || []).slice(0, 8).map((c: any) => {
+                  const st = STATUS_COLORS[c.status] || STATUS_COLORS.draft
+                  return (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
+                      <div><p style={{ color: tx1, fontSize: 11, fontWeight: 600, margin: 0 }}>{c.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{c.channel} · {new Date(c.created_at).toLocaleDateString('tr-TR')}</p></div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ color: tx2, fontSize: 10 }}>{c.total_sent} gonderildi</span>
+                        <span style={{ color: accentEmerald, fontSize: 10, fontWeight: 700 }}>%{c.replyRate} cevap</span>
+                        <span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
