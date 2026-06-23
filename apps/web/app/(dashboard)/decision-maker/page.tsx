@@ -247,12 +247,7 @@ export default function DecisionMakerPage() {
             </div>
             <div>
               <h1 style={{ color: tx1, fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{L.title}</h1>
-              <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px', maxWidth: 420 }}>Exa.ai + Claude AI + LinkedIn ile karar vericileri otomatik bul, email ve telefon keşfet</p>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {['Exa.ai LinkedIn', 'Claude AI', 'Email Keşif', 'Telefon Çıkarma', 'AI Tahmin'].map(f => (
-                  <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f8fafc', border: '1px solid #f1f5f9', color: tx2, fontSize: 10, padding: '3px 8px', borderRadius: 20 }}>{f}</span>
-                ))}
-              </div>
+              <p style={{ color: tx2, fontSize: 13, margin: 0, maxWidth: 420 }}>Lead'leriniz için karar vericileri otomatik bulun — isim, ünvan, email ve telefon bilgilerini keşfedin</p>
             </div>
           </div>
 
