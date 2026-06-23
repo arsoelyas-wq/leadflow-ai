@@ -566,6 +566,33 @@ module.exports.runScheduledHunts = runScheduledHunts;
 
 // ── ROUTES ───────────────────────────────────────────────────────────────────
 
+// GET /api/hunter/diagnose — test all sources
+router.get('/diagnose', async (req: any, res: any) => {
+  const results: Record<string, any> = {
+    env: {
+      GOOGLE_PLACES_API_KEY: GOOGLE_API_KEY ? 'set (' + GOOGLE_API_KEY.slice(0, 8) + '...)' : 'MISSING',
+      EXA_API_KEY: EXA_API_KEY ? 'set' : 'MISSING',
+      YELP_API_KEY: YELP_API_KEY ? 'set' : 'MISSING',
+      FOURSQUARE_API_KEY: FOURSQUARE_API_KEY ? 'set' : 'MISSING',
+      HERE_API_KEY: HERE_API_KEY ? 'set' : 'MISSING',
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? 'set' : 'MISSING',
+    },
+  };
+  const run = async (label: string, fn: () => Promise<any[]>) => {
+    const t = Date.now();
+    try { const r = await fn(); results[label] = { ok: true, count: r.length, ms: Date.now() - t, sample: r[0]?.company_name || null }; }
+    catch (e: any) { results[label] = { ok: false, error: e.message?.slice(0, 100), ms: Date.now() - t }; }
+  };
+  await run('google_maps', () => searchGoogleMaps('kafe', 'Bursa', 3));
+  await run('instagram', () => searchInstagram('kafe', 'Istanbul'));
+  await run('facebook', () => searchFacebook('kafe', 'Istanbul'));
+  await run('osm', () => searchOpenStreetMap('cafe', 'Istanbul'));
+  if (YELP_API_KEY) await run('yelp', () => searchYelp('cafe', 'Istanbul'));
+  if (FOURSQUARE_API_KEY) await run('foursquare', () => searchFoursquare('cafe', 'Istanbul'));
+  if (HERE_API_KEY) await run('here', () => searchHERE('cafe', 'Istanbul'));
+  res.json(results);
+});
+
 // GET /api/hunter/config
 router.get('/config', async (req: any, res: any) => {
   try {
