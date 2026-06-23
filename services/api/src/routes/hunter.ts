@@ -446,7 +446,7 @@ async function runHunt(userId: string, config: any): Promise<{ added: number; sk
           workflow_type: 'cold_outreach', current_step: 0,
           status: 'active', started_at: new Date().toISOString(),
           next_step_at: new Date().toISOString(),
-        }]).catch(() => {});
+        }]);
       }
     }
   }
@@ -500,7 +500,7 @@ async function runScheduledHunts() {
           skipped: result.skipped,
           sources: result.sources,
           errors: result.errors.slice(0, 5),
-        }]).catch(() => {});
+        }]);
 
         // Bildirim
         if (result.added > 0) {
@@ -509,7 +509,7 @@ async function runScheduledHunts() {
             title: `${result.added} yeni lead bulundu!`,
             body: `7/24 Lead Avcisi: ${Object.entries(result.sources).map(([s, c]) => `${s}: ${c}`).join(', ')}`,
             read: false,
-          }]).catch(() => {});
+          }]);
 
           // WhatsApp bildirim
           try {
@@ -670,7 +670,7 @@ router.post('/run-now', async (req: any, res: any) => {
         skipped: result.skipped,
         sources: result.sources || {},
         errors: result.errors?.slice(0, 5) || [],
-      }]).catch(() => {});
+      }]);
 
       res.json({ message: `Hunt tamamlandi: ${result.added} lead eklendi, ${result.skipped} atlandi`, result });
     } catch (e: any) {
@@ -678,7 +678,7 @@ router.post('/run-now', async (req: any, res: any) => {
       await supabase.from('lead_hunter_logs').insert([{
         user_id: userId, ran_at: new Date().toISOString(), leads_found: 0,
         skipped: 0, sources: {}, errors: [e.message?.slice(0, 200)],
-      }]).catch(() => {});
+      }]);
       res.status(500).json({ error: e.message });
     }
   } catch (e: any) { res.status(500).json({ error: e.message }); }
