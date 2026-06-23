@@ -17,7 +17,7 @@ import {
   Swords, Eye, Tag, LineChart, Languages, PieChart,
   Banknote, Award, FileSpreadsheet,
   ClipboardList, GraduationCap, Cog, Webhook, Code,
-  CreditCard, Shield, Box, X, Command,
+  CreditCard, Shield, Box, X, Command, Mic,
 } from 'lucide-react'
 
 interface NavItem {
@@ -65,12 +65,6 @@ const GROUPS: NavGroup[] = [
       { href: '/proposals', label: 'nav.proposals', icon: FileText },
       { href: '/products',  label: 'nav.products',  icon: Package,  badge: 'AI' },
       { href: '/agent',     label: 'nav.agent',     icon: Bot },
-    ],
-  },
-  {
-    id: 'outreach', label: 'nav.communication',
-    items: [
-      { href: '/video-outreach',  label: 'nav.video',    icon: Video, badge: 'AI' },
     ],
   },
   {
@@ -139,8 +133,12 @@ const GROUPS: NavGroup[] = [
   },
 ]
 
+const AI_CLONE_ITEMS = [
+  { href: '/voice-outreach', label: 'nav.voice', icon: Phone },
+  { href: '/video-outreach', label: 'nav.video', icon: Video },
+]
+
 const SPECIAL_TOOLS = [
-  { href: '/voice-outreach', label: 'nav.voice',      icon: Phone,      color: '#7c3aed', badge: 'AI' },
   { href: '/competitor',     label: 'nav.competitor', icon: Swords,     color: '#e11d48', badge: 'AI' },
   { href: '/tenders', label: 'nav.tenders', icon: ScrollText,  color: '#d97706', badge: 'PRO' },
   { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
@@ -149,6 +147,7 @@ const SPECIAL_TOOLS = [
 // Komut paleti için düzleştirilmiş arama indeksi — tüm öğeler tek listede
 const ALL_NAV_ITEMS: { href: string; label: string; icon: any; groupLabel?: string }[] = [
   ...CORE_ITEMS.map(i => ({ href: i.href, label: i.label, icon: i.icon })),
+  ...AI_CLONE_ITEMS.map(i => ({ href: i.href, label: i.label, icon: i.icon, groupLabel: 'AI Klonum' })),
   ...SPECIAL_TOOLS.map(i => ({ href: i.href, label: i.label, icon: i.icon })),
   ...GROUPS.flatMap(g => g.items.map(i => ({ href: i.href, label: i.label, icon: i.icon, groupLabel: g.label }))),
 ]
@@ -386,6 +385,43 @@ export default function Sidebar() {
         })}
 
         <div style={{ height: 1, background: '#f1f5f9', margin: '8px 2px' }} />
+
+        {/* AI KLONUM — collapsible */}
+        {(() => {
+          const cloneActive = AI_CLONE_ITEMS.some(i => pathname === i.href)
+          const cloneColor = '#7c3aed'
+          return (
+            <>
+              <button onClick={() => {
+                const el = document.getElementById('ai-clone-sub')
+                if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none'
+              }} style={{
+                ...itemStyle(cloneActive, cloneColor),
+                cursor: 'pointer', border: 'none', width: '100%', textAlign: 'left',
+              }}>
+                <div style={{ width: 21, height: 21, borderRadius: 6, background: `${cloneColor}16`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Mic size={11} color={cloneColor} />
+                </div>
+                <span style={{ flex: 1 }}>{t('nav.ai_clone', 'AI Klonum')}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: `${cloneColor}14`, color: cloneColor, flexShrink: 0 }}>AI</span>
+              </button>
+              <div id="ai-clone-sub" style={{ display: cloneActive ? 'flex' : 'none', flexDirection: 'column', gap: 1, paddingLeft: 12 }}>
+                {AI_CLONE_ITEMS.map(({ href, label, icon: Icon }) => {
+                  const active = pathname === href
+                  return (
+                    <Link key={href} href={href} style={{
+                      ...itemStyle(active, cloneColor),
+                      padding: '5px 8px', fontSize: 11,
+                    }}>
+                      <Icon size={12} style={{ color: active ? cloneColor : '#94a3b8', flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>{t(label, label)}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </>
+          )
+        })()}
 
         {/* ÖZEL ARAÇLAR — kompakt pill */}
         {SPECIAL_TOOLS.map(({ href, label, icon: Icon, color, badge }) => {
