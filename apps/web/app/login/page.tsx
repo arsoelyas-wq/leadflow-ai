@@ -20,7 +20,7 @@ export default function LoginPage() {
       await login(email, password)
       router.push('/dashboard')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Giris basarisiz')
+      setError(err instanceof Error ? err.message : 'Giriş başarısız')
     } finally {
       setLoading(false)
     }
@@ -36,7 +36,7 @@ export default function LoginPage() {
             </div>
             <span className="text-white text-2xl font-bold">Sovlo AI</span>
           </div>
-          <p className="text-slate-400">Hesabiniza giris yapin</p>
+          <p className="text-slate-400">Hesabınıza giriş yapın</p>
         </div>
         <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -57,7 +57,7 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-300 mb-2">Sifre</label>
+              <label className="block text-sm text-slate-300 mb-2">Şifre</label>
               <input
                 type="password"
                 value={password}
@@ -72,13 +72,13 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition"
             >
-              {loading ? 'Giris yapiliyor...' : 'Giris Yap'}
+              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             </button>
           </form>
           <p className="text-center text-slate-400 text-sm mt-6">
-            Hesabiniz yok mu?{' '}
+            Hesabınız yok mu?{' '}
             <Link href="/register" className="text-blue-400 hover:text-blue-300">
-              Kayit Ol
+              Kayıt Ol
             </Link>
           </p>
         </div>

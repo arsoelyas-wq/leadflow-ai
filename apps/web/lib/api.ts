@@ -18,8 +18,9 @@ async function request(path: string, options: RequestInit = {}) {
     },
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Hata oluştu' }))
-    throw new Error(err.error || 'Hata oluştu')
+    if (res.status === 429) throw new Error('Çok fazla istek — lütfen 1 dakika bekleyin')
+    const err = await res.json().catch(() => ({ error: `Hata oluştu (${res.status})` }))
+    throw new Error(err.error || `Hata oluştu (${res.status})`)
   }
   return res.json()
 }
