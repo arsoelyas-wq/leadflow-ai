@@ -278,7 +278,7 @@ async function sniperFromCompetitors(userId: string): Promise<any[]> {
   try {
     const { data: competitors } = await supabase.from('competitors')
       .select('name, city, sector, country')
-      .eq('user_id', userId).eq('auto_scan', true).limit(3);
+      .eq('user_id', userId).eq('auto_scan', true);
     if (!competitors?.length) return [];
 
     for (const comp of competitors) {
@@ -286,8 +286,7 @@ async function sniperFromCompetitors(userId: string): Promise<any[]> {
         .select('company_name, phone, city, sector, source')
         .eq('user_id', userId)
         .ilike('source', `Rakip: ${comp.name}%`)
-        .eq('status', 'new')
-        .limit(5);
+        .eq('status', 'new');
       if (compLeads?.length) {
         leads.push(...compLeads.map((l: any) => ({
           ...l, source: `sniper_${comp.name.slice(0, 20)}`,
@@ -525,7 +524,7 @@ async function runScheduledHunts() {
           // Akilli ekip dagitimi
           try {
             const { data: members } = await supabase.from('team_members')
-              .select('id, name').eq('owner_id', config.user_id).eq('active', true).limit(5);
+              .select('id, name').eq('owner_id', config.user_id).eq('active', true);
             if (members?.length) {
               const { data: newLeads } = await supabase.from('leads')
                 .select('id').eq('user_id', config.user_id).eq('auto_hunted', true)
@@ -617,7 +616,7 @@ router.post('/config', async (req: any, res: any) => {
       sources: sources || ['google_maps'],
       active: active !== false,
       run_interval_hours: Math.max(1, Math.min(24, run_interval_hours || 6)),
-      max_leads_per_run: Math.max(5, Math.min(200, max_leads_per_run || 50)),
+      max_leads_per_run: Math.max(5, max_leads_per_run || 50),
       auto_start_workflow: auto_start_workflow !== false,
       updated_at: new Date().toISOString(),
     };
@@ -637,7 +636,7 @@ router.get('/logs', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('lead_hunter_logs')
       .select('*').eq('user_id', req.userId)
-      .order('ran_at', { ascending: false }).limit(30);
+      .order('ran_at', { ascending: false }).limit(100);
     res.json({ logs: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

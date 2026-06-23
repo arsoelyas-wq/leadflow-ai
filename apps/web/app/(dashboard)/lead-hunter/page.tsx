@@ -279,7 +279,7 @@ export default function HunterSettingsPage() {
                 <span style={{ color: tx2, fontSize: 12 }}>Max Lead / Tarama</span>
                 <span style={{ color: tx1, fontSize: 12, fontWeight: 700 }}>{maxLeads}</span>
               </div>
-              <input type="range" min={5} max={200} step={5} value={maxLeads} onChange={e => setMaxLeads(parseInt(e.target.value))}
+              <input type="range" min={5} max={1000} step={5} value={maxLeads} onChange={e => setMaxLeads(parseInt(e.target.value))}
                 style={{ width: '100%', accentColor: accentTeal }} />
             </div>
             <div onClick={() => setAutoWorkflow(!autoWorkflow)}

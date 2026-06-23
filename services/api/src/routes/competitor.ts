@@ -1092,7 +1092,7 @@ SADECE JSON döndür (Türkçe yaz):
 
 router.get('/leads', async (req: any, res: any) => {
   try {
-    const { data, error } = await supabase.from('leads').select('*').eq('user_id', req.userId).ilike('source', 'Rakip:%').order('created_at', { ascending: false }).limit(200);
+    const { data, error } = await supabase.from('leads').select('*').eq('user_id', req.userId).ilike('source', 'Rakip:%').order('created_at', { ascending: false });
     if (error) throw error;
     const grouped: Record<string, any[]> = {};
     (data || []).forEach((lead: any) => {
