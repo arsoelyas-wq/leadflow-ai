@@ -64,6 +64,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/proposals', label: 'nav.proposals', icon: FileText },
       { href: '/products',  label: 'nav.products',  icon: Package,  badge: 'AI' },
+      { href: '/digital-tools', label: 'nav.digital_tools', icon: Box, badge: 'AI' },
       { href: '/agent',     label: 'nav.agent',     icon: Bot },
     ],
   },
@@ -73,12 +74,6 @@ const GROUPS: NavGroup[] = [
       { href: '/ads',          label: 'nav.ads',          icon: Image },
       { href: '/google-ads',   label: 'nav.google_ads',   icon: Search },
       { href: '/ads-advanced', label: 'nav.ads_advanced', icon: Rocket,  plan: 'pro', badge: 'AI' },
-    ],
-  },
-  {
-    id: 'digital', label: 'nav.group_digital',
-    items: [
-      { href: '/digital-tools', label: 'nav.digital_tools', icon: Box, badge: 'AI' },
     ],
   },
   {
