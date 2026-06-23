@@ -15,15 +15,15 @@ const accentBlue = '#2563eb', accentEmerald = '#059669', accentViolet = '#7c3aed
 const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 13px', color: tx1, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
 const MODES = [
-  { id: 'broadcast', label: 'Toplu Mesaj', desc: 'Secili leadlere aninda mesaj gonder', Icon: Megaphone, color: accentBlue, bg: '#eff6ff', border: '#bfdbfe' },
-  { id: 'sequence', label: 'Takip Sekansi', desc: 'Gunler boyunca AI ile adim adim takip', Icon: Bot, color: accentEmerald, bg: '#ecfdf5', border: '#a7f3d0' },
-  { id: 'workflow', label: 'Akilli Otomasyon', desc: 'Kosul bazli gelismis otomasyon', Icon: Workflow, color: accentViolet, bg: '#faf5ff', border: '#e9d5ff', pro: true },
+  { id: 'broadcast', label: 'Toplu Mesaj', desc: 'Seçili leadlere anında mesaj gönder', Icon: Megaphone, color: accentBlue, bg: '#eff6ff', border: '#bfdbfe' },
+  { id: 'sequence', label: 'Takip Sekansı', desc: 'Günler boyunca AI ile adım adım takip', Icon: Bot, color: accentEmerald, bg: '#ecfdf5', border: '#a7f3d0' },
+  { id: 'workflow', label: 'Akıllı Otomasyon', desc: 'Koşul bazlı gelişmiş otomasyon', Icon: Workflow, color: accentViolet, bg: '#faf5ff', border: '#e9d5ff', pro: true },
 ] as const
 
 type Mode = 'broadcast' | 'sequence' | 'workflow'
 
 const STEP_TEMPLATES = [
-  { label: 'Ilk Mesaj', type: 'message', delay_hours: 0, channel: 'whatsapp', message: 'Merhaba [FIRMA_ADI], [SEKTOR] alaninda isletmenize ozel cozumler sunuyoruz. Gorusmek ister misiniz?', condition: 'any' },
+  { label: 'İlk Mesaj', type: 'message', delay_hours: 0, channel: 'whatsapp', message: 'Merhaba [FIRMA_ADI], [SEKTOR] alaninda isletmenize ozel cozumler sunuyoruz. Gorusmek ister misiniz?', condition: 'any' },
   { label: '1 Gun Sonra', type: 'message', delay_hours: 24, channel: 'whatsapp', message: 'Merhaba [AD], dunku mesajimi gordunuz mu? Kisa bir gorusme icin uygun bir zaman var mi?', condition: 'not_replied' },
   { label: 'AI Takip', type: 'ai_reply', delay_hours: 48, channel: 'whatsapp', ai_prompt: 'Musteriye 2 gun once mesaj attik, henuz cevap vermedi. Nazik ama ikna edici bir takip mesaji yaz.', condition: 'not_replied' },
   { label: 'Son Deneme', type: 'message', delay_hours: 72, channel: 'whatsapp', message: 'Son olarak ulasmak istedim [AD]. Ilgileniyorsaniz bir mesaj yeterli!', condition: 'not_replied' },
@@ -181,10 +181,10 @@ export default function AutomationsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Users size={15} style={{ color: accentBlue }} />
-          <h3 style={{ color: tx1, fontSize: 13, fontWeight: 700, margin: 0 }}>Lead Sec ({selectedLeads.length})</h3>
+          <h3 style={{ color: tx1, fontSize: 13, fontWeight: 700, margin: 0 }}>Lead Seç ({selectedLeads.length})</h3>
         </div>
         <button onClick={selectAll} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 11, cursor: 'pointer' }}>
-          {selectedLeads.length === leads.filter(l => l.phone || l.email).length ? 'Kaldir' : 'Tumunu Sec'}
+          {selectedLeads.length === leads.filter(l => l.phone || l.email).length ? 'Kaldır' : 'Tümünü Seç'}
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight, overflowY: 'auto' }}>
@@ -208,16 +208,16 @@ export default function AutomationsPage() {
       {/* ── HERO ──────────────────────────────────────────────── */}
       <div style={{ ...card, padding: '24px 24px 18px', marginBottom: 18, background: 'linear-gradient(135deg,#fff,#f0f9ff 60%,#faf5ff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0 }}>Satis Otomasyonu</h1>
+          <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0 }}>Satış Otomasyonu</h1>
           <span style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700 }}>AI</span>
         </div>
-        <p style={{ color: tx2, fontSize: 12, margin: '0 0 14px' }}>Toplu mesaj, takip sekansi veya akilli otomasyon — tek yerden yonet</p>
+        <p style={{ color: tx2, fontSize: 12, margin: '0 0 14px' }}>Toplu mesaj, takip sekansı veya akıllı otomasyon — tek yerden yönet</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
           {[
             { label: 'Kampanya', value: allStats.campaigns, color: accentBlue, Icon: Megaphone },
             { label: 'Sekans', value: allStats.sequences, color: accentEmerald, Icon: Bot },
             { label: 'Workflow', value: allStats.workflows, color: accentViolet, Icon: Workflow },
-            { label: 'Gonderilen', value: allStats.totalSent, color: '#b45309', Icon: Send },
+            { label: 'Gönderilen', value: allStats.totalSent, color: '#b45309', Icon: Send },
             { label: 'Cevaplanan', value: allStats.totalReplied, color: '#059669', Icon: CheckCircle },
           ].map(({ label, value, color, Icon }) => (
             <div key={label} style={{ ...card, padding: '8px 10px', textAlign: 'center' }}>
@@ -257,7 +257,7 @@ export default function AutomationsPage() {
         <div>
           {/* Sub-tabs */}
           <div style={{ display: 'flex', gap: 3, marginBottom: 14, background: surf, padding: 3, borderRadius: 10, width: 'fit-content', border: '1px solid #f1f5f9' }}>
-            {[{ id: 'compose', label: 'Yaz & Gonder', Icon: Send }, { id: 'templates', label: 'Sablonlar', Icon: ListOrdered }, { id: 'analytics', label: 'Analitik', Icon: BarChart2 }].map(tb => (
+            {[{ id: 'compose', label: 'Yaz & Gönder', Icon: Send }, { id: 'templates', label: 'Şablonlar', Icon: ListOrdered }, { id: 'analytics', label: 'Analitik', Icon: BarChart2 }].map(tb => (
               <button key={tb.id} onClick={() => setActiveSubTab(tb.id as any)}
                 style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeSubTab === tb.id ? '#fff' : 'transparent', color: activeSubTab === tb.id ? accentBlue : tx3, boxShadow: activeSubTab === tb.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
                 <tb.Icon size={13} /> {tb.label}
@@ -270,7 +270,7 @@ export default function AutomationsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Compose form */}
                 <div style={{ ...card, padding: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}><Megaphone size={15} style={{ color: accentBlue }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Mesaj Olustur</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}><Megaphone size={15} style={{ color: accentBlue }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Mesaj Oluştur</h2>
                     {smartTiming && <span style={{ marginLeft: 'auto', color: accentEmerald, fontSize: 10, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10 }}>En iyi saat: {smartTiming.bestHour}</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -294,7 +294,7 @@ export default function AutomationsPage() {
                       <button onClick={sendBroadcast} disabled={bcSending || !bcName || !bcMessage || !selectedLeads.length}
                         style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: bcSending || !bcName || !bcMessage || !selectedLeads.length ? 'not-allowed' : 'pointer', background: selectedLeads.length && bcName && bcMessage ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : surf, color: selectedLeads.length && bcName && bcMessage ? '#fff' : tx3, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                         {bcSending ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Send size={11} />}
-                        {bcSending ? 'Gonderiliyor...' : `${selectedLeads.length} Lead'e Gonder`}
+                        {bcSending ? 'Gönderiliyor...' : `${selectedLeads.length} Lead'e Gönder`}
                       </button>
                     </div>
                   </div>
@@ -302,7 +302,7 @@ export default function AutomationsPage() {
                   {/* AI Optimized versions */}
                   {optimized?.versions?.length > 0 && (
                     <div style={{ marginTop: 12, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
-                      <p style={{ color: accentViolet, fontSize: 11, fontWeight: 700, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Sparkles size={12} /> AI Oneriler</p>
+                      <p style={{ color: accentViolet, fontSize: 11, fontWeight: 700, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Sparkles size={12} /> AI Öneriler</p>
                       {optimized.versions.map((v: any, i: number) => (
                         <div key={i} style={{ padding: '10px 12px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 9, marginBottom: 6, cursor: 'pointer' }} onClick={() => setBcMessage(v.message)}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -327,14 +327,14 @@ export default function AutomationsPage() {
                   <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 5 }}><Filter size={12} style={{ color: accentBlue }} /> Lead Filtrele</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                     <select value={segFilters.min_score} onChange={e => setSegFilters(p => ({ ...p, min_score: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
-                      <option value="">Tum Skorlar</option><option value="40">40+</option><option value="60">60+</option><option value="80">80+</option>
+                      <option value="">Tüm Skorlar</option><option value="40">40+</option><option value="60">60+</option><option value="80">80+</option>
                     </select>
                     <select value={segFilters.city} onChange={e => setSegFilters(p => ({ ...p, city: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
-                      <option value="">Tum Sehirler</option>
+                      <option value="">Tüm Şehirler</option>
                       {(segOptions.cities || []).map((c: string) => <option key={c} value={c}>{c}</option>)}
                     </select>
                     <select value={segFilters.sector} onChange={e => setSegFilters(p => ({ ...p, sector: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
-                      <option value="">Tum Sektorler</option>
+                      <option value="">Tüm Sektörler</option>
                       {(segOptions.sectors || []).slice(0, 20).map((s: string) => <option key={s} value={s}>{s}</option>)}
                     </select>
                     <button onClick={applySegment} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: accentBlue, color: '#fff', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Filtrele</button>
@@ -351,7 +351,7 @@ export default function AutomationsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
               {templates.filter(t => !bcChannel || t.channel === bcChannel || t.channel === 'whatsapp').map(tpl => (
                 <div key={tpl.id} style={{ ...card, padding: '14px 16px', cursor: 'pointer', transition: 'border-color 0.2s' }}
-                  onClick={() => { setBcMessage(tpl.message); setActiveSubTab('compose'); showMsg('success', 'Sablon uygulandi') }}
+                  onClick={() => { setBcMessage(tpl.message); setActiveSubTab('compose'); showMsg('success', 'Şablon uygulandı') }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = accentBlue}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -369,7 +369,7 @@ export default function AutomationsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
                 <p style={{ color: accentBlue, fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.totalSent}</p>
-                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Gonderilen</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Gönderilen</p>
               </div>
               <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
                 <p style={{ color: accentEmerald, fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.totalReplied}</p>
@@ -377,21 +377,21 @@ export default function AutomationsPage() {
               </div>
               <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
                 <p style={{ color: accentViolet, fontSize: 22, fontWeight: 800, margin: 0 }}>%{analytics.replyRate}</p>
-                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Cevap Orani</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Cevap Oranı</p>
               </div>
               <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
                 <p style={{ color: '#b45309', fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.bestHour}</p>
-                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>En Iyi Saat</p>
+                <p style={{ color: tx3, fontSize: 10, margin: 0 }}>En İyi Saat</p>
               </div>
               {/* Kanal bazli */}
               {analytics.byChannel?.length > 0 && (
                 <div style={{ ...card, padding: '14px 16px', gridColumn: 'span 2' }}>
-                  <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kanal Performansi</p>
+                  <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kanal Performansı</p>
                   {analytics.byChannel.map((ch: any) => (
                     <div key={ch.channel} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid #f1f5f9' }}>
                       <span style={{ color: tx1, fontSize: 11, fontWeight: 600 }}>{ch.channel}</span>
                       <div style={{ display: 'flex', gap: 12, fontSize: 10, color: tx2 }}>
-                        <span>{ch.sent} gonderildi</span><span>{ch.replied} cevap</span>
+                        <span>{ch.sent} gönderildi</span><span>{ch.replied} cevap</span>
                         <span style={{ color: accentEmerald, fontWeight: 700 }}>%{ch.replyRate}</span>
                       </div>
                     </div>
@@ -400,14 +400,14 @@ export default function AutomationsPage() {
               )}
               {/* Kampanya listesi */}
               <div style={{ ...card, padding: '14px 16px', gridColumn: 'span 2' }}>
-                <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kampanya Gecmisi</p>
+                <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kampanya Geçmişi</p>
                 {(analytics.campaigns || []).slice(0, 8).map((c: any) => {
                   const st = STATUS_COLORS[c.status] || STATUS_COLORS.draft
                   return (
                     <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
                       <div><p style={{ color: tx1, fontSize: 11, fontWeight: 600, margin: 0 }}>{c.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{c.channel} · {new Date(c.created_at).toLocaleDateString('tr-TR')}</p></div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ color: tx2, fontSize: 10 }}>{c.total_sent} gonderildi</span>
+                        <span style={{ color: tx2, fontSize: 10 }}>{c.total_sent} gönderildi</span>
                         <span style={{ color: accentEmerald, fontSize: 10, fontWeight: 700 }}>%{c.replyRate} cevap</span>
                         <span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
                       </div>
@@ -454,19 +454,19 @@ export default function AutomationsPage() {
                 <div style={{ display: 'flex', gap: 5 }}>{STEP_TEMPLATES.map((t, i) => (<button key={i} onClick={() => setSeqSteps(p => [...p, { ...t }])} style={{ padding: '3px 8px', borderRadius: 5, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 9, cursor: 'pointer' }}>+ {t.label}</button>))}</div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={createSequence} disabled={seqSaving || !seqName} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: seqName ? 'linear-gradient(135deg,#047857,#059669)' : surf, color: seqName ? '#fff' : tx3, fontSize: 12, fontWeight: 700, cursor: seqSaving || !seqName ? 'not-allowed' : 'pointer' }}>{seqSaving ? 'Kaydediliyor...' : 'Olustur'}</button>
-                <button onClick={() => setShowSeqCreate(false)} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 12, cursor: 'pointer' }}>Iptal</button>
+                <button onClick={createSequence} disabled={seqSaving || !seqName} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: seqName ? 'linear-gradient(135deg,#047857,#059669)' : surf, color: seqName ? '#fff' : tx3, fontSize: 12, fontWeight: 700, cursor: seqSaving || !seqName ? 'not-allowed' : 'pointer' }}>{seqSaving ? 'Kaydediliyor...' : 'Oluştur'}</button>
+                <button onClick={() => setShowSeqCreate(false)} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 12, cursor: 'pointer' }}>İptal</button>
               </div>
             </div>
           )}
           {sequences.length === 0 && !showSeqCreate ? (
-            <div style={{ ...card, padding: 40, textAlign: 'center' }}><Bot size={28} style={{ color: tx3, margin: '0 auto 10px' }} /><p style={{ color: tx3, fontSize: 12 }}>Henuz sekans yok</p></div>
+            <div style={{ ...card, padding: 40, textAlign: 'center' }}><Bot size={28} style={{ color: tx3, margin: '0 auto 10px' }} /><p style={{ color: tx3, fontSize: 12 }}>Henüz sekans yok</p></div>
           ) : sequences.map(seq => { const st = STATUS_COLORS[seq.status] || STATUS_COLORS.active; return (
             <div key={seq.id} style={{ ...card, padding: '14px 18px', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 34, height: 34, borderRadius: 9, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Zap size={14} style={{ color: accentEmerald }} /></div>
-                  <div><p style={{ color: tx1, fontWeight: 700, fontSize: 12, margin: 0 }}>{seq.name}</p><div style={{ display: 'flex', gap: 6, marginTop: 2 }}><span style={{ color: tx3, fontSize: 9 }}>{seq.channel === 'whatsapp' ? 'WA' : 'Email'}</span><span style={{ color: tx3, fontSize: 9 }}>{seq.steps?.length || 0} adim</span><span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span></div></div>
+                  <div><p style={{ color: tx1, fontWeight: 700, fontSize: 12, margin: 0 }}>{seq.name}</p><div style={{ display: 'flex', gap: 6, marginTop: 2 }}><span style={{ color: tx3, fontSize: 9 }}>{seq.channel === 'whatsapp' ? 'WA' : 'Email'}</span><span style={{ color: tx3, fontSize: 9 }}>{seq.steps?.length || 0} adım</span><span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span></div></div>
                 </div>
                 <div style={{ display: 'flex', gap: 5 }}>
                   <button onClick={() => setSelectedSeq(selectedSeq?.id === seq.id ? null : seq)} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 10px', borderRadius: 6, border: '1px solid #a7f3d0', background: '#ecfdf5', color: accentEmerald, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><Users size={11} /> Lead</button>
@@ -477,7 +477,7 @@ export default function AutomationsPage() {
               {selectedSeq?.id === seq.id && (
                 <div style={{ marginTop: 12, padding: '12px 14px', background: surf, borderRadius: 9, border: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <p style={{ color: tx2, fontSize: 11, fontWeight: 600, margin: 0 }}>Lead Sec ({selectedLeads.length})</p>
+                    <p style={{ color: tx2, fontSize: 11, fontWeight: 600, margin: 0 }}>Lead Seç ({selectedLeads.length})</p>
                     <button onClick={() => enrollLeads(seq.id)} disabled={!selectedLeads.length} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: selectedLeads.length ? accentEmerald : '#e2e8f0', color: selectedLeads.length ? '#fff' : tx3, fontSize: 10, fontWeight: 600, cursor: selectedLeads.length ? 'pointer' : 'not-allowed' }}>{selectedLeads.length} Lead Ekle</button>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 120, overflowY: 'auto' }}>{leads.filter(l => l.phone).map(lead => (<button key={lead.id} onClick={() => toggleLead(lead.id)} style={{ padding: '3px 8px', borderRadius: 5, border: `1px solid ${selectedLeads.includes(lead.id) ? accentEmerald + '55' : '#e2e8f0'}`, background: selectedLeads.includes(lead.id) ? '#ecfdf5' : '#fff', color: selectedLeads.includes(lead.id) ? accentEmerald : tx2, fontSize: 9, cursor: 'pointer' }}>{lead.company_name?.slice(0, 18)}</button>))}</div>
@@ -492,16 +492,16 @@ export default function AutomationsPage() {
       {mode === 'workflow' && (
         <div>
           <div style={{ ...card, padding: 20, marginBottom: 14, borderLeft: `4px solid ${accentViolet}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><Sparkles size={14} style={{ color: accentViolet }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Akilli Otomasyon</h2><span style={{ background: accentViolet, color: '#fff', fontSize: 9, padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>PRO</span></div>
-            <p style={{ color: tx2, fontSize: 11, margin: '0 0 12px' }}>Gorsel akis editoru ile kosul bazli otomasyonlar — A/B test, skor esigi, otomatik atama</p>
-            <a href="/workflow" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '9px 16px', borderRadius: 9, background: 'linear-gradient(135deg,#6d28d9,#7c3aed)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}><Workflow size={13} /> Workflow Editoru Ac</a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><Sparkles size={14} style={{ color: accentViolet }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Akıllı Otomasyon</h2><span style={{ background: accentViolet, color: '#fff', fontSize: 9, padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>PRO</span></div>
+            <p style={{ color: tx2, fontSize: 11, margin: '0 0 12px' }}>Görsel akış editörü ile koşul bazlı otomasyonlar — A/B test, skor esigi, otomatik atama</p>
+            <a href="/workflow" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '9px 16px', borderRadius: 9, background: 'linear-gradient(135deg,#6d28d9,#7c3aed)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}><Workflow size={13} /> Workflow Editörü Aç</a>
           </div>
           {workflows.length > 0 ? workflows.map((wf: any) => { const st = STATUS_COLORS[wf.status] || STATUS_COLORS.draft; return (
             <div key={wf.id} style={{ ...card, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ width: 32, height: 32, borderRadius: 8, background: '#faf5ff', border: '1px solid #e9d5ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Workflow size={14} style={{ color: accentViolet }} /></div><div><p style={{ color: tx1, fontWeight: 600, fontSize: 12, margin: 0 }}>{wf.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{wf.nodes?.length || 0} node · {wf.trigger_type || 'manual'}</p></div></div>
               <span style={{ background: st.bg, color: st.color, fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>{st.label}</span>
             </div>
-          )}) : <div style={{ ...card, padding: 40, textAlign: 'center' }}><Workflow size={28} style={{ color: tx3, margin: '0 auto 10px' }} /><p style={{ color: tx3, fontSize: 12 }}>Henuz workflow yok</p><a href="/workflow" style={{ color: accentViolet, fontSize: 11 }}>Editore git →</a></div>}
+          )}) : <div style={{ ...card, padding: 40, textAlign: 'center' }}><Workflow size={28} style={{ color: tx3, margin: '0 auto 10px' }} /><p style={{ color: tx3, fontSize: 12 }}>Henüz workflow yok</p><a href="/workflow" style={{ color: accentViolet, fontSize: 11 }}>Editöre git →</a></div>}
         </div>
       )}
 
