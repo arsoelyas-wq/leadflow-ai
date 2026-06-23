@@ -78,12 +78,11 @@ router.post('/create', async (req: any, res: any) => {
       .eq('id', leadId).eq('user_id', userId).single();
     if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
 
-    // Önceki micrositeleri deaktive et
+    // Onceki micrositeleri temizle (hard delete)
     await supabase.from('microsites')
-      .update({ active: false })
+      .delete()
       .eq('user_id', userId)
-      .eq('lead_id', leadId)
-      .eq('active', true);
+      .eq('lead_id', leadId);
 
     const products: any[] = [];
 

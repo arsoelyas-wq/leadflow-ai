@@ -74,30 +74,36 @@ router.post('/upload-model', upload.single('model'), async (req: any, res: any) 
 });
 
 // ── ANALİTİK TRACKING (public — no auth, model existence check only) ─────────
+// Rate limit cache for public tracking endpoints
+const trackCache = new Map<string, number>();
+setInterval(() => trackCache.clear(), 60000);
+
 router.post('/track-view', async (req: any, res: any) => {
   try {
     const { modelId, userAgent } = req.body;
     if (!modelId) return res.json({ ok: true });
 
+    // Rate limit: max 1 view per model per IP per minute
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const cacheKey = `view_${modelId}_${ip}`;
+    if (trackCache.has(cacheKey)) return res.json({ ok: true });
+    trackCache.set(cacheKey, Date.now());
+
     const isMobile = /mobile|android|iphone|ipad/i.test(userAgent || '');
     const isIOS = /iphone|ipad/i.test(userAgent || '');
 
-    // Verify model exists before updating
-    const { data: model } = await supabase.from('ar_models').select('view_count').eq('id', modelId).maybeSingle();
+    const { data: model } = await supabase.from('ar_models').select('view_count, user_id').eq('id', modelId).maybeSingle();
     if (model) {
       await supabase.from('ar_models')
         .update({ view_count: (model.view_count || 0) + 1 })
-        .eq('id', modelId)
-        .catch(() => {});
+        .eq('id', modelId);
     }
 
     await supabase.from('ar_analytics').insert([{
-      model_id: modelId,
-      event: 'view',
-      is_mobile: isMobile,
-      is_ios: isIOS,
+      model_id: modelId, event: 'view',
+      is_mobile: isMobile, is_ios: isIOS,
       user_agent: userAgent?.slice(0, 200),
-    }]).catch(() => {});
+    }]);
 
     res.json({ ok: true });
   } catch {
@@ -107,14 +113,38 @@ router.post('/track-view', async (req: any, res: any) => {
 
 router.post('/track-engagement', async (req: any, res: any) => {
   try {
-    const { modelId, duration } = req.body;
+    const { modelId, duration, leadId } = req.body;
     if (!modelId || !duration) return res.json({ ok: true });
 
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const cacheKey = `eng_${modelId}_${ip}`;
+    if (trackCache.has(cacheKey)) return res.json({ ok: true });
+    trackCache.set(cacheKey, Date.now());
+
     await supabase.from('ar_analytics').insert([{
-      model_id: modelId,
-      event: 'engagement',
-      duration_seconds: duration,
-    }]).catch(() => {});
+      model_id: modelId, event: 'engagement', duration_seconds: duration,
+    }]);
+
+    // AR+CRM: 30sn+ engagement = hot lead, score boost
+    if (duration >= 30) {
+      const { data: model } = await supabase.from('ar_models').select('user_id').eq('id', modelId).maybeSingle();
+      if (model?.user_id) {
+        // Find lead who received this AR link
+        const { data: msgs } = await supabase.from('messages')
+          .select('lead_id').eq('user_id', model.user_id)
+          .ilike('content', `%${modelId}%`).limit(1);
+        const lid = leadId || msgs?.[0]?.lead_id;
+        if (lid) {
+          const { data: lead } = await supabase.from('leads').select('score, status').eq('id', lid).maybeSingle();
+          if (lead) {
+            const newScore = Math.min(100, (lead.score || 0) + 15);
+            const updates: any = { score: newScore };
+            if (lead.status === 'new') updates.status = 'interested';
+            await supabase.from('leads').update(updates).eq('id', lid);
+          }
+        }
+      }
+    }
 
     res.json({ ok: true });
   } catch {
@@ -127,19 +157,21 @@ router.post('/track-ar-session', async (req: any, res: any) => {
     const { modelId } = req.body;
     if (!modelId) return res.json({ ok: true });
 
-    // Verify model exists and increment ar_session_count
+    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+    const cacheKey = `ar_${modelId}_${ip}`;
+    if (trackCache.has(cacheKey)) return res.json({ ok: true });
+    trackCache.set(cacheKey, Date.now());
+
     const { data: model } = await supabase.from('ar_models').select('ar_session_count').eq('id', modelId).maybeSingle();
     if (model) {
       await supabase.from('ar_models')
         .update({ ar_session_count: (model.ar_session_count || 0) + 1 })
-        .eq('id', modelId)
-        .catch(() => {});
+        .eq('id', modelId);
     }
 
     await supabase.from('ar_analytics').insert([{
-      model_id: modelId,
-      event: 'ar_session',
-    }]).catch(() => {});
+      model_id: modelId, event: 'ar_session',
+    }]);
 
     res.json({ ok: true });
   } catch {

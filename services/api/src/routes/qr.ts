@@ -10,6 +10,8 @@ router.post('/generate', async (req: any, res: any) => {
   try {
     const { url, label, type, color } = req.body;
     if (!url) return res.status(400).json({ error: 'url zorunlu' });
+    const VALID_TYPES = ['url', 'whatsapp', 'phone', 'email', 'wifi', 'microsite'];
+    if (type && !VALID_TYPES.includes(type)) return res.status(400).json({ error: 'Gecersiz QR tipi. Desteklenen: ' + VALID_TYPES.join(', ') });
 
     const c = (color || '06b6d4').replace('#', '');
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}&format=png&margin=12&color=${c}&bgcolor=ffffff`;
