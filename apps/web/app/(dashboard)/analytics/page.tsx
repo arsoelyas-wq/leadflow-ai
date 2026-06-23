@@ -542,10 +542,10 @@ export default function AnalyticsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
                 {[
-                  { label: '30 Gün Lead', value: financial.monthlyLeads || financial.last30Leads || 0, color: '#047857', Icon: Users },
-                  { label: 'Churn Riski', value: financial.churnRisk ?? 0, color: '#dc2626', Icon: TrendingDown },
-                  { label: 'Kredi Verimi', value: `%${financial.creditEfficiency || 0}`, color: '#2563eb', Icon: Target },
-                  { label: 'Büyüme', value: `${financial.growthRate > 0 ? '+' : ''}${financial.growthRate || 0}%`, color: (financial.growthRate || 0) >= 0 ? '#047857' : '#dc2626', Icon: TrendingUp },
+                  { label: '30 Gün Lead', value: financial.growth?.thisMonth || financial.monthlyLeads || 0, color: '#047857', Icon: Users },
+                  { label: 'Churn Riski', value: financial.churnRisk?.total ?? financial.churnRisk ?? 0, color: '#dc2626', Icon: TrendingDown },
+                  { label: 'Kredi Verimi', value: `%${financial.creditEfficiency?.efficiency ?? financial.creditEfficiency ?? 0}`, color: '#2563eb', Icon: Target },
+                  { label: 'Büyüme', value: `${(financial.growth?.rate ?? financial.growthRate ?? 0) > 0 ? '+' : ''}${financial.growth?.rate ?? financial.growthRate ?? 0}%`, color: (financial.growth?.rate ?? financial.growthRate ?? 0) >= 0 ? '#047857' : '#dc2626', Icon: TrendingUp },
                 ].map(({ label, value, color, Icon }) => (
                   <div key={label} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                     <Icon size={16} style={{ color, marginBottom: 6 }} />

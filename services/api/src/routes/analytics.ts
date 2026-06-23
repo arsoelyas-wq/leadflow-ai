@@ -354,19 +354,20 @@ router.get('/financial', async (req: any, res: any) => {
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
 
-    // ── CHURN RİSKİ (daha gercekci hesaplama) ───────────────
+    // ── CHURN RİSKİ (anlamli hesaplama) ─────────────────────
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const staleLeads = leads.filter(l =>
       l.status === 'contacted' &&
       l.created_at < fourteenDaysAgo &&
-      l.created_at > thirtyDaysAgo
+      l.created_at > ninetyDaysAgo
     ).length;
 
     const coldLeads = leads.filter(l =>
-      l.status === 'new' &&
-      l.created_at < thirtyDaysAgo
+      ['new', 'interested'].includes(l.status) &&
+      l.created_at < fourteenDaysAgo &&
+      l.created_at > ninetyDaysAgo
     ).length;
 
     // ── KREDİ VERİMLİLİĞİ ────────────────────────────────
