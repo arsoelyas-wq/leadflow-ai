@@ -197,7 +197,10 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<'7d'|'30d'|'90d'>('30d')
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
-  const [tab, setTab] = useState<'overview' | 'reports'>('overview')
+  const [tab, setTab] = useState<'overview' | 'reports' | 'growth' | 'forecast'>('overview')
+  const [financial, setFinancial] = useState<any>(null)
+  const [revenue, setRevenue] = useState<any>(null)
+  const [finLoading, setFinLoading] = useState(false)
 
   // Reports tab state
   const [reportWeekly, setReportWeekly] = useState<any>(null)
@@ -218,6 +221,21 @@ export default function AnalyticsPage() {
   }
 
   useEffect(() => { load() }, [period])
+
+  const loadFinancial = async () => {
+    if (financial) return
+    setFinLoading(true)
+    try {
+      const [f, r] = await Promise.allSettled([
+        api.get('/api/analytics/financial'),
+        api.get('/api/analytics/revenue'),
+      ])
+      if (f.status === 'fulfilled') setFinancial(f.value)
+      if (r.status === 'fulfilled') setRevenue(r.value)
+    } catch {} finally { setFinLoading(false) }
+  }
+
+  useEffect(() => { if (tab === 'growth' || tab === 'forecast') loadFinancial() }, [tab])
 
   const loadReports = () => {
     setReportLoaded(true)
@@ -311,15 +329,18 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── TAB BAR */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        <button onClick={() => setTab('overview')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 10, border: `1px solid ${tab==='overview'?'rgba(5,150,105,0.4)':'#e2e8f0'}`, background: tab==='overview'?'rgba(5,150,105,0.1)':'#ffffff', color: tab==='overview'?'#047857':'#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          <BarChart3 size={14} /> {t('analytics.tab_overview','Canlı Genel Bakış')}
-        </button>
-        <button onClick={() => setTab('reports')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 10, border: `1px solid ${tab==='reports'?'rgba(5,150,105,0.4)':'#e2e8f0'}`, background: tab==='reports'?'rgba(5,150,105,0.1)':'#ffffff', color: tab==='reports'?'#047857':'#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-          <Trophy size={14} /> {t('analytics.tab_reports','Raporlar')}
-        </button>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#f8fafc', padding: 4, borderRadius: 12, width: 'fit-content', border: '1px solid #f1f5f9' }}>
+        {[
+          { id: 'overview', label: 'Genel Bakış', Icon: BarChart3 },
+          { id: 'reports', label: 'Raporlar', Icon: Trophy },
+          { id: 'growth', label: 'Büyüme', Icon: TrendingUp },
+          { id: 'forecast', label: 'Tahmin', Icon: DollarSign },
+        ].map(tb => (
+          <button key={tb.id} onClick={() => setTab(tb.id as any)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: tab === tb.id ? '#ffffff' : 'transparent', color: tab === tb.id ? '#047857' : '#94a3b8', boxShadow: tab === tb.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+            <tb.Icon size={13} /> {tb.label}
+          </button>
+        ))}
       </div>
 
       {tab === 'overview' && (<>
@@ -511,6 +532,124 @@ export default function AnalyticsPage() {
         </>
       )}
       </>)}
+
+      {/* ═══════════ BÜYÜME TAB ═══════════ */}
+      {tab === 'growth' && (
+        <div>
+          {finLoading ? (
+            <div style={{ textAlign: 'center', padding: 48 }}><RefreshCw size={20} style={{ color: '#047857', animation: 'df-spin 1s linear infinite' }} /></div>
+          ) : financial ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+                {[
+                  { label: '30 Gün Lead', value: financial.monthlyLeads || financial.last30Leads || 0, color: '#047857', Icon: Users },
+                  { label: 'Churn Riski', value: financial.churnRisk ?? 0, color: '#dc2626', Icon: TrendingDown },
+                  { label: 'Kredi Verimi', value: `%${financial.creditEfficiency || 0}`, color: '#2563eb', Icon: Target },
+                  { label: 'Büyüme', value: `${financial.growthRate > 0 ? '+' : ''}${financial.growthRate || 0}%`, color: (financial.growthRate || 0) >= 0 ? '#047857' : '#dc2626', Icon: TrendingUp },
+                ].map(({ label, value, color, Icon }) => (
+                  <div key={label} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                    <Icon size={16} style={{ color, marginBottom: 6 }} />
+                    <p style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0 }}>{value}</p>
+                    <p style={{ color: '#94a3b8', fontSize: 11, margin: 0 }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Kaynak ROI */}
+              {financial.sourcePerformance?.length > 0 && (
+                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>Kaynak ROI</p>
+                  {financial.sourcePerformance.slice(0, 6).map((s: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <span style={{ color: '#64748b', fontSize: 11, width: 100, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.source || s.name}</span>
+                      <div style={{ flex: 1, height: 8, borderRadius: 4, background: '#f1f5f9', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, s.rate || s.roi || 0)}%`, height: '100%', borderRadius: 4, background: ['#047857','#2563eb','#7c3aed','#b45309','#dc2626','#059669'][i] || '#047857' }} />
+                      </div>
+                      <span style={{ color: '#0f172a', fontSize: 11, fontWeight: 700, width: 40, textAlign: 'right' }}>{s.rate || s.roi || 0}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* AI Öneriler */}
+              {financial.financialAdvice?.advice?.length > 0 && (
+                <div style={{ background: '#f0fdfa', border: '1px solid #a7f3d0', borderRadius: 14, padding: '16px 18px' }}>
+                  <p style={{ color: '#047857', fontSize: 12, fontWeight: 700, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={13} /> AI Büyüme Önerileri</p>
+                  {financial.financialAdvice.advice.map((a: string, i: number) => (
+                    <p key={i} style={{ color: '#475569', fontSize: 12, margin: '0 0 6px', lineHeight: 1.6, display: 'flex', gap: 6 }}>
+                      <span style={{ color: '#047857', fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span> {a}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 48 }}><p style={{ color: '#94a3b8', fontSize: 13 }}>Veri yüklenemedi</p></div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════ TAHMİN TAB ═══════════ */}
+      {tab === 'forecast' && (
+        <div>
+          {finLoading ? (
+            <div style={{ textAlign: 'center', padding: 48 }}><RefreshCw size={20} style={{ color: '#047857', animation: 'df-spin 1s linear infinite' }} /></div>
+          ) : revenue ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+                {[
+                  { label: 'Bu Ay Potansiyel', value: revenue.revenue?.monthlyPotential?.toLocaleString('tr-TR') || '0', color: '#047857', Icon: DollarSign },
+                  { label: 'Win Rate', value: `%${revenue.funnel?.winRate || 0}`, color: '#2563eb', Icon: CheckCircle },
+                  { label: 'Ort. Deal', value: revenue.revenue?.avgDealValue?.toLocaleString('tr-TR') || '0', color: '#7c3aed', Icon: Target },
+                ].map(({ label, value, color, Icon }) => (
+                  <div key={label} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                    <Icon size={16} style={{ color, marginBottom: 6 }} />
+                    <p style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0 }}>{value}</p>
+                    <p style={{ color: '#94a3b8', fontSize: 11, margin: 0 }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 3 Aylık Projeksiyon */}
+              {revenue.revenue?.projections?.length > 0 && (
+                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>3 Aylık Gelir Projeksiyonu</p>
+                  {revenue.revenue.projections.map((p: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                      <span style={{ color: '#64748b', fontSize: 12, width: 60, flexShrink: 0 }}>T+{i + 1}</span>
+                      <div style={{ flex: 1, height: 10, borderRadius: 5, background: '#f1f5f9', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, (p.revenue / Math.max(1, revenue.revenue.projections[2]?.revenue || 1)) * 100)}%`, height: '100%', borderRadius: 5, background: `linear-gradient(90deg, #047857, #059669)` }} />
+                      </div>
+                      <span style={{ color: '#0f172a', fontSize: 12, fontWeight: 700, width: 80, textAlign: 'right' }}>{p.revenue?.toLocaleString('tr-TR') || 0}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Huni */}
+              {revenue.funnel && (
+                <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                  <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>Satış Hunisi</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+                    {[
+                      { label: 'İletişim Oranı', value: `%${revenue.funnel.contactRate || 0}`, color: '#0d9488' },
+                      { label: 'Nitelendirme', value: `%${revenue.funnel.qualifyRate || 0}`, color: '#7c3aed' },
+                      { label: 'Kazanma', value: `%${revenue.funnel.winRate || 0}`, color: '#059669' },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} style={{ textAlign: 'center', padding: '12px', background: `${color}08`, borderRadius: 10, border: `1px solid ${color}20` }}>
+                        <p style={{ color, fontSize: 20, fontWeight: 800, margin: 0 }}>{value}</p>
+                        <p style={{ color: '#64748b', fontSize: 10, margin: 0 }}>{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 48 }}><p style={{ color: '#94a3b8', fontSize: 13 }}>Veri yüklenemedi</p></div>
+          )}
+        </div>
+      )}
 
       <style>{`
         @keyframes df-spin { to { transform: rotate(360deg); } }

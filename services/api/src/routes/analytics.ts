@@ -136,9 +136,15 @@ router.get('/revenue', async (req: any, res: any) => {
     const prev30Leads = leads.filter((l: any) => l.created_at >= sixtyDaysAgo && l.created_at < thirtyDaysAgo).length;
     const prev30Messages = messages.filter((m: any) => m.direction === 'out' && m.sent_at >= sixtyDaysAgo && m.sent_at < thirtyDaysAgo).length;
 
-    // Büyüme oranları
-    const leadGrowth = prev30Leads > 0 ? ((last30Leads - prev30Leads) / prev30Leads) * 100 : 0;
-    const messageGrowth = prev30Messages > 0 ? ((last30Messages - prev30Messages) / prev30Messages) * 100 : 0;
+    // Buyume oranlari (edge case fix)
+    let leadGrowth = 0;
+    if (prev30Leads > 0 && last30Leads > 0) leadGrowth = ((last30Leads - prev30Leads) / prev30Leads) * 100;
+    else if (!prev30Leads && last30Leads > 0) leadGrowth = 100;
+    leadGrowth = Math.max(-99, Math.min(999, leadGrowth));
+    let messageGrowth = 0;
+    if (prev30Messages > 0 && last30Messages > 0) messageGrowth = ((last30Messages - prev30Messages) / prev30Messages) * 100;
+    else if (!prev30Messages && last30Messages > 0) messageGrowth = 100;
+    messageGrowth = Math.max(-99, Math.min(999, messageGrowth));
 
     // Reply rate
     const replyRate30 = last30Messages > 0 ? Math.round((last30Replies / last30Messages) * 100) : 0;
@@ -348,18 +354,19 @@ router.get('/financial', async (req: any, res: any) => {
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
 
-    // ── CHURN RİSKİ ───────────────────────────────────────
+    // ── CHURN RİSKİ (daha gercekci hesaplama) ───────────────
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
     const staleLeads = leads.filter(l =>
       l.status === 'contacted' &&
-      l.created_at < thirtyDaysAgo
+      l.created_at < fourteenDaysAgo &&
+      l.created_at > thirtyDaysAgo
     ).length;
 
     const coldLeads = leads.filter(l =>
       l.status === 'new' &&
-      l.created_at < sixtyDaysAgo
+      l.created_at < thirtyDaysAgo
     ).length;
 
     // ── KREDİ VERİMLİLİĞİ ────────────────────────────────
@@ -370,12 +377,16 @@ router.get('/financial', async (req: any, res: any) => {
     const costPerLead = creditsUsed > 0 && totalLeads > 0 ? (creditsUsed / totalLeads).toFixed(2) : '0';
     const costPerWin = creditsUsed > 0 && wonLeads > 0 ? (creditsUsed / wonLeads).toFixed(2) : '0';
 
-    // ── BÜYÜME HIZI ───────────────────────────────────────
+    // ── BÜYÜME HIZI (edge case fix) ─────────────────────────
     const thisMonth = monthlyTrend[monthlyTrend.length - 1];
     const lastMonth = monthlyTrend[monthlyTrend.length - 2];
-    const growthRate = lastMonth?.leads > 0
-      ? Math.round(((thisMonth.leads - lastMonth.leads) / lastMonth.leads) * 100)
-      : 0;
+    let growthRate = 0;
+    if (lastMonth?.leads > 0 && thisMonth?.leads > 0) {
+      growthRate = Math.round(((thisMonth.leads - lastMonth.leads) / lastMonth.leads) * 100);
+    } else if (!lastMonth?.leads && thisMonth?.leads > 0) {
+      growthRate = 100;
+    }
+    growthRate = Math.max(-99, Math.min(999, growthRate));
 
     // ── HEDEF TAKİBİ ─────────────────────────────────────
     const monthlyLeadTarget = 50; // Varsayılan hedef
