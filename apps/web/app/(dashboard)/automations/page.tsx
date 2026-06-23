@@ -1,473 +1,329 @@
-﻿'use client'
+'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { RefreshCw, Plus, Trash2, Copy, CheckCircle, Play, ToggleLeft, ToggleRight, Zap, ChevronDown, Clock, X } from 'lucide-react'
+import {
+  Zap, Megaphone, Bot, Workflow, Plus, Play, Pause, Trash2, Users, RefreshCw,
+  MessageSquare, Clock, ChevronRight, Send, Mail, MessageCircle, Phone,
+  CheckCircle, BarChart2, Target, ArrowRight, Sparkles, Settings,
+  ListOrdered, Globe2, Filter,
+} from 'lucide-react'
 
-// ── ZAP ORB ───────────────────────────────────────────────────────────────────
-function ZapOrb({ size = 90, active = false }: { size?: number; active?: boolean }) {
-  const [mounted, setMounted] = useState(false)
-  const [tick, setTick] = useState(0)
-  useEffect(() => { setMounted(true) }, [])
-  useEffect(() => {
-    if (!mounted) return
-    const t = setInterval(() => setTick(p => p + 1), active ? 20 : 40)
-    return () => clearInterval(t)
-  }, [mounted, active])
-  if (!mounted) return <div style={{ width: size * 2.2, height: size * 2.2, flexShrink: 0 }} />
+const card = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } as const
+const tx1 = '#0f172a', tx2 = '#64748b', tx3 = '#94a3b8', surf = '#f8fafc'
+const accentBlue = '#2563eb', accentEmerald = '#059669', accentViolet = '#7c3aed'
+const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 13px', color: tx1, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
-  const cx = size * 1.1, s = size
-  const rot = tick * (active ? 1.2 : 0.5)
-  const bolts = [0, 120, 240].map((deg, i) => {
-    const a = (deg + rot) * Math.PI / 180
-    const mx = cx + Math.cos(a) * s * 0.28, my = cx + Math.sin(a) * s * 0.28
-    const ex = cx + Math.cos(a) * s * 0.72, ey = cx + Math.sin(a) * s * 0.72
-    const jag = Math.sin(tick * 0.3 + i) * s * 0.08
-    const jx = cx + Math.cos(a + Math.PI / 2) * jag + Math.cos(a) * s * 0.5
-    const jy = cx + Math.sin(a + Math.PI / 2) * jag + Math.sin(a) * s * 0.5
-    return { mx, my, jx, jy, ex, ey, color: ['#f59e0b', '#fbbf24', '#fcd34d'][i] }
-  })
-  const satellites = ['Z', 'M', 'N'].map((label, i) => {
-    const a = (i * 120 + rot * 0.6) * Math.PI / 180
-    const colors = ['#ef4444', '#8b5cf6', '#10b981']
-    return { x: cx + Math.cos(a) * s * 0.82, y: cx + Math.sin(a) * s * 0.82, label, color: colors[i] }
-  })
-  const pulseR = s * 0.38 + (active ? Math.sin(tick * 0.2) * s * 0.04 : 0)
+const MODES = [
+  { id: 'broadcast', label: 'Toplu Mesaj', desc: 'Secili leadlere aninda mesaj gonder', Icon: Megaphone, color: accentBlue, bg: '#eff6ff', border: '#bfdbfe' },
+  { id: 'sequence', label: 'Takip Sekansi', desc: 'Gunler boyunca AI ile adim adim takip', Icon: Bot, color: accentEmerald, bg: '#ecfdf5', border: '#a7f3d0' },
+  { id: 'workflow', label: 'Akilli Otomasyon', desc: 'Kosul bazli gelismis otomasyon', Icon: Workflow, color: accentViolet, bg: '#faf5ff', border: '#e9d5ff', pro: true },
+] as const
 
-  return (
-    <div style={{ width: s * 2.2, height: s * 2.2, flexShrink: 0 }}>
-      <svg width={s * 2.2} height={s * 2.2}>
-        <defs>
-          <radialGradient id={`zoG${s}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(245,158,11,0)" /><stop offset="100%" stopColor="rgba(245,158,11,0.15)" />
-          </radialGradient>
-          <radialGradient id={`zoC${s}`} cx="35%" cy="28%" r="65%">
-            <stop offset="0%" stopColor="#fde68a" /><stop offset="40%" stopColor="#f59e0b" /><stop offset="100%" stopColor="#78350f" />
-          </radialGradient>
-        </defs>
-        <circle cx={cx} cy={cx} r={s * 1.05} fill={`url(#zoG${s})`} />
-        {[0.58, 0.78, 0.96].map((r, i) => (
-          <circle key={r} cx={cx} cy={cx} r={s * r} fill="none" stroke="rgba(245,158,11,0.12)" strokeWidth={0.8}
-            strokeDasharray="5 6" style={{ animation: `zo-ring ${7+i*3}s linear ${i%2?'reverse':''} infinite`, transformOrigin: `${cx}px ${cx}px` }} />
-        ))}
-        {bolts.map((b, i) => (
-          <polyline key={i} points={`${b.mx},${b.my} ${b.jx},${b.jy} ${b.ex},${b.ey}`}
-            fill="none" stroke={b.color} strokeWidth={active ? 2 : 1.2} opacity={0.7}
-            style={{ filter: `drop-shadow(0 0 4px ${b.color})` }} />
-        ))}
-        {satellites.map((sat, i) => (
-          <g key={i}>
-            <line x1={cx} y1={cx} x2={sat.x} y2={sat.y} stroke={`${sat.color}30`} strokeWidth={0.8} strokeDasharray="3 5" />
-            <circle cx={sat.x} cy={sat.y} r={14} fill={`${sat.color}20`} stroke={`${sat.color}60`} strokeWidth={1.5} />
-            <text x={sat.x} y={sat.y} fill={sat.color} fontSize={9} textAnchor="middle" dominantBaseline="middle" fontWeight="900">{sat.label}</text>
-          </g>
-        ))}
-        <circle cx={cx} cy={cx} r={pulseR} fill={`url(#zoC${s})`}
-          style={{ filter: `drop-shadow(0 0 ${s * 0.18}px #f59e0bcc)` }} />
-        <text x={cx} y={cx} fill="white" fontSize={s * 0.2} textAnchor="middle" dominantBaseline="middle" fontWeight="900">⚡</text>
-      </svg>
-      <style>{`@keyframes zo-ring{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
-}
+type Mode = 'broadcast' | 'sequence' | 'workflow'
 
-// ── TRIGGER & ACTION CONFIG ───────────────────────────────────────────────────
-const TRIGGERS = [
-  { value: 'no_reply', label: '📵 Lead cevap vermedi', desc: 'Son mesajdan bu kadar gün geçince', hasDays: true },
-  { value: 'no_contact_7d', label: '⏰ 7 Gün İletişim Yok', desc: '7 gündür hiç iletişim kurulmadıysa', hasDays: false },
-  { value: 'new_lead', label: '🆕 Yeni Lead Eklendi', desc: 'Son 1 saat içinde eklenen yeni leadler', hasDays: false },
-  { value: 'deal_won', label: '🏆 Deal Kazanıldı', desc: 'Lead won durumuna geçince', hasDays: false },
+const STEP_TEMPLATES = [
+  { label: 'Ilk Mesaj', type: 'message', delay_hours: 0, channel: 'whatsapp', message: 'Merhaba [FIRMA_ADI], [SEKTOR] alaninda isletmenize ozel cozumler sunuyoruz. Gorusmek ister misiniz?', condition: 'any' },
+  { label: '1 Gun Sonra', type: 'message', delay_hours: 24, channel: 'whatsapp', message: 'Merhaba [AD], dunku mesajimi gordunuz mu? Kisa bir gorusme icin uygun bir zaman var mi?', condition: 'not_replied' },
+  { label: 'AI Takip', type: 'ai_reply', delay_hours: 48, channel: 'whatsapp', ai_prompt: 'Musteriye 2 gun once mesaj attik, henuz cevap vermedi. Nazik ama ikna edici bir takip mesaji yaz.', condition: 'not_replied' },
+  { label: 'Son Deneme', type: 'message', delay_hours: 72, channel: 'whatsapp', message: 'Son olarak ulasmak istedim [AD]. Ilgileniyorsaniz bir mesaj yeterli!', condition: 'not_replied' },
 ]
 
-const ACTIONS = [
-  { value: 'send_whatsapp', label: '💬 WhatsApp Gönder', desc: 'Kişiselleştirilmiş mesaj gönder', hasMessage: true, hasValue: false, hasCampaign: false },
-  { value: 'change_status', label: '🔄 Durumu Değiştir', desc: 'Lead durumunu güncelle', hasMessage: false, hasValue: true, hasCampaign: false },
-  { value: 'add_note', label: '📝 Not Ekle', desc: 'Lead profiline otomatik not ekle', hasMessage: true, hasValue: false, hasCampaign: false },
-  { value: 'add_to_campaign', label: '📢 Kampanyaya Ekle', desc: 'Seçili kampanyaya lead ekle', hasMessage: false, hasValue: false, hasCampaign: true },
-]
-
-const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost']
-
-const MESSAGE_VARIABLES = ['{ad}', '{firma}', '{telefon}']
-
-// ── CREATE RULE MODAL ─────────────────────────────────────────────────────────
-function CreateRuleModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [campaigns, setCampaigns] = useState<any[]>([])
-  const [form, setForm] = useState({
-    name: '', trigger: 'no_reply', trigger_days: '2',
-    action: 'send_whatsapp', action_message: '', action_value: 'contacted', action_campaign_id: '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    api.get('/api/campaigns').then((d: any) => setCampaigns(d.campaigns || d || [])).catch(() => {})
-  }, [])
-
-  const submit = async () => {
-    if (!form.name || !form.trigger || !form.action) { setError('Ad, tetikleyici ve aksiyon zorunlu'); return }
-    setSaving(true); setError('')
-    try {
-      await api.post('/api/automations/rules', form)
-      onCreated(); onClose()
-    } catch (e: any) { setError(e.message || 'Hata oluştu') }
-    setSaving(false)
-  }
-
-  const selectedTrigger = TRIGGERS.find(trig => trig.value === form.trigger)
-  const selectedAction = ACTIONS.find(a => a.value === form.action)
-  const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', color: '#0f172a', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: '#ffffff', border: '1px solid #fde68a', borderRadius: 20, padding: 28, width: 520, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <h2 style={{ color: '#0f172a', fontSize: 16, fontWeight: 800, margin: 0 }}>⚡ Yeni Otomasyon Kuralı</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}><X size={18} /></button>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Name */}
-          <div>
-            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Kural Adı *</label>
-            <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="örn: 2 Gün Cevap Vermeyene Hatırlatma" style={inputStyle} />
-          </div>
-
-          {/* Trigger */}
-          <div>
-            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 8 }}>🎯 Tetikleyici (EĞER)</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {TRIGGERS.map(trig => (
-                <button key={trig.value} onClick={() => setForm(p => ({ ...p, trigger: trig.value }))}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${form.trigger === trig.value ? '#fde68a' : '#e2e8f0'}`, background: form.trigger === trig.value ? '#fffbeb' : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-                  <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 600, margin: 0 }}>{trig.label}</p>
-                  <p style={{ color: '#475569', fontSize: 10, margin: '2px 0 0' }}>{trig.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Days (if trigger supports it) */}
-          {selectedTrigger?.hasDays && (
-            <div>
-              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Kaç Gün Sonra? ({form.trigger_days} gün)</label>
-              <input type="range" min={1} max={14} value={form.trigger_days} onChange={e => setForm(p => ({ ...p, trigger_days: e.target.value }))} style={{ width: '100%', accentColor: '#f59e0b' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-                <span style={{ color: '#475569', fontSize: 10 }}>1 gün</span><span style={{ color: '#475569', fontSize: 10 }}>14 gün</span>
-              </div>
-            </div>
-          )}
-
-          {/* Action */}
-          <div>
-            <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 8 }}>⚡ Aksiyon (O ZAMAN)</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {ACTIONS.map(a => (
-                <button key={a.value} onClick={() => setForm(p => ({ ...p, action: a.value }))}
-                  style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${form.action === a.value ? '#a7f3d0' : '#e2e8f0'}`, background: form.action === a.value ? '#ecfdf5' : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-                  <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 600, margin: 0 }}>{a.label}</p>
-                  <p style={{ color: '#475569', fontSize: 10, margin: '2px 0 0' }}>{a.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Action config */}
-          {selectedAction?.hasMessage && (
-            <div>
-              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>
-                Mesaj İçeriği
-                <span style={{ color: '#475569', marginLeft: 8 }}>Değişkenler: {MESSAGE_VARIABLES.join(' ')}</span>
-              </label>
-              <textarea value={form.action_message} onChange={e => setForm(p => ({ ...p, action_message: e.target.value }))}
-                placeholder="Merhaba {ad}, sizi aramak istedik. {firma} ile ilgili..."
-                rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} />
-            </div>
-          )}
-
-          {selectedAction?.hasValue && (
-            <div>
-              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Yeni Durum</label>
-              <select value={form.action_value} onChange={e => setForm(p => ({ ...p, action_value: e.target.value }))} style={{ ...inputStyle, height: 42 }}>
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-          )}
-
-          {selectedAction?.hasCampaign && (
-            <div>
-              <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>Kampanya Seç</label>
-              <select value={form.action_campaign_id} onChange={e => setForm(p => ({ ...p, action_campaign_id: e.target.value }))} style={{ ...inputStyle, height: 42 }}>
-                <option value="">Kampanya seçin...</option>
-                {campaigns.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          {error && <p style={{ color: '#dc2626', fontSize: 12, margin: 0, background: '#fef2f2', padding: '8px 12px', borderRadius: 8 }}>{error}</p>}
-
-          <button onClick={submit} disabled={saving}
-            style={{ padding: '12px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#78350f,#f59e0b)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            {saving ? <RefreshCw size={14} style={{ animation: 'za-spin 1s linear infinite' }} /> : <Zap size={14} />}
-            {saving ? 'Kaydediliyor...' : 'Kural Oluştur'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+  active: { bg: '#ecfdf5', color: accentEmerald, label: 'Aktif' },
+  draft: { bg: '#f8fafc', color: tx3, label: 'Taslak' },
+  paused: { bg: '#fffbeb', color: '#b45309', label: 'Durduruldu' },
+  completed: { bg: '#eff6ff', color: accentBlue, label: 'Tamamlandi' },
 }
 
 export default function AutomationsPage() {
   const { t } = useI18n()
-  const [rules, setRules] = useState<any[]>([])
-  const [logs, setLogs] = useState<any[]>([])
-  const [stats, setStats] = useState<any>(null)
-  const [webhookUrl, setWebhookUrl] = useState('')
+  const [mode, setMode] = useState<Mode | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'integrations'>('rules')
-  const [showCreate, setShowCreate] = useState(false)
-  const [testing, setTesting] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [expandLog, setExpandLog] = useState<string | null>(null)
-  const loadData = async () => {
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const [leads, setLeads] = useState<any[]>([])
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([])
+
+  const [campaigns, setCampaigns] = useState<any[]>([])
+  const [bcChannel, setBcChannel] = useState<'whatsapp' | 'email'>('whatsapp')
+  const [bcMessage, setBcMessage] = useState('')
+  const [bcName, setBcName] = useState('')
+  const [bcSending, setBcSending] = useState(false)
+
+  const [sequences, setSequences] = useState<any[]>([])
+  const [seqStats, setSeqStats] = useState<any>(null)
+  const [seqName, setSeqName] = useState('')
+  const [seqChannel, setSeqChannel] = useState('whatsapp')
+  const [seqSteps, setSeqSteps] = useState<any[]>([...STEP_TEMPLATES.slice(0, 2)])
+  const [seqSaving, setSeqSaving] = useState(false)
+  const [showSeqCreate, setShowSeqCreate] = useState(false)
+  const [selectedSeq, setSelectedSeq] = useState<any>(null)
+
+  const [workflows, setWorkflows] = useState<any[]>([])
+  const [allStats, setAllStats] = useState({ campaigns: 0, sequences: 0, workflows: 0, totalSent: 0, totalReplied: 0 })
+
+  const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 6000) }
+
+  const loadAll = async () => {
     setLoading(true)
-    const [r, l, s, w] = await Promise.allSettled([
-      api.get('/api/automations/rules'),
-      api.get('/api/automations/rules/logs'),
-      api.get('/api/automations/stats'),
-      api.get('/api/automations/webhook-url'),
-    ])
-    if (r.status === 'fulfilled') setRules((r.value as any).rules || [])
-    if (l.status === 'fulfilled') setLogs((l.value as any).logs || [])
-    if (s.status === 'fulfilled') setStats(s.value)
-    if (w.status === 'fulfilled') setWebhookUrl((w.value as any).url || '')
-    setLoading(false)
+    try {
+      const [campRes, seqRes, seqStatsRes, wfRes, leadsRes] = await Promise.allSettled([
+        api.get('/api/campaigns'), api.get('/api/sequences'),
+        api.get('/api/sequences/stats/overview'), api.get('/api/workflow-v2'),
+        api.get('/api/leads?limit=200'),
+      ])
+      const camps = campRes.status === 'fulfilled' ? campRes.value.campaigns || campRes.value.data || [] : []
+      const seqs = seqRes.status === 'fulfilled' ? seqRes.value.sequences || [] : []
+      const wfs = wfRes.status === 'fulfilled' ? wfRes.value.workflows || [] : []
+      const lds = leadsRes.status === 'fulfilled' ? leadsRes.value.leads || leadsRes.value.data || [] : []
+      setCampaigns(camps); setSequences(seqs); setWorkflows(wfs); setLeads(lds)
+      if (seqStatsRes.status === 'fulfilled') setSeqStats(seqStatsRes.value)
+      setAllStats({
+        campaigns: camps.length, sequences: seqs.length, workflows: wfs.length,
+        totalSent: camps.reduce((s: number, c: any) => s + (c.total_sent || c.totalSent || 0), 0),
+        totalReplied: camps.reduce((s: number, c: any) => s + (c.total_replied || c.totalReplied || 0), 0),
+      })
+    } catch {} finally { setLoading(false) }
+  }
+  useEffect(() => { loadAll() }, [])
+
+  const sendBroadcast = async () => {
+    if (!bcName || !bcMessage || !selectedLeads.length) return showMsg('error', 'Isim, mesaj ve lead secimi zorunlu')
+    setBcSending(true)
+    try {
+      await api.post('/api/campaigns', { name: bcName, channel: bcChannel, message_template: bcMessage, lead_ids: selectedLeads, status: 'active' })
+      showMsg('success', `${selectedLeads.length} lead'e ${bcChannel} kampanyasi baslatildi!`)
+      setBcName(''); setBcMessage(''); setSelectedLeads([]); loadAll()
+    } catch (e: any) { showMsg('error', e.message) }
+    setBcSending(false)
   }
 
-  useEffect(() => { loadData() }, [])
-
-  const toggleRule = async (id: string) => {
-    const data: any = await api.patch(`/api/automations/rules/${id}/toggle`, {})
-    setRules(prev => prev.map(r => r.id === id ? { ...r, active: data.active } : r))
+  const createSequence = async () => {
+    if (!seqName || seqSteps.length === 0) return
+    setSeqSaving(true)
+    try {
+      await api.post('/api/sequences', { name: seqName, channel: seqChannel, steps: seqSteps })
+      showMsg('success', 'Sekans olusturuldu!'); setShowSeqCreate(false); setSeqName(''); setSeqSteps([...STEP_TEMPLATES.slice(0, 2)]); loadAll()
+    } catch (e: any) { showMsg('error', e.message) }
+    setSeqSaving(false)
   }
 
-  const deleteRule = async (id: string) => {
-    if (!confirm('Bu kural silinsin mi?')) return
-    await api.delete(`/api/automations/rules/${id}`)
-    setRules(prev => prev.filter(r => r.id !== id))
+  const enrollLeads = async (seqId: string) => {
+    if (!selectedLeads.length) return showMsg('error', 'Lead secin')
+    try {
+      const data = await api.post(`/api/sequences/${seqId}/enroll`, { leadIds: selectedLeads })
+      showMsg('success', data.message || `${selectedLeads.length} lead eklendi`); setSelectedLeads([]); loadAll()
+    } catch (e: any) { showMsg('error', e.message) }
   }
 
-  const testRule = async (id: string) => {
-    setTesting(id)
-    try { await api.post(`/api/automations/rules/${id}/run`, {}) } catch {}
-    setTimeout(() => { setTesting(null); loadData() }, 3000)
+  const toggleLead = (id: string) => setSelectedLeads(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
+  const selectAll = () => {
+    const valid = leads.filter(l => l.phone || l.email)
+    setSelectedLeads(prev => prev.length === valid.length ? [] : valid.map(l => l.id))
   }
 
-  const copy = (text: string) => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }
-
-  const getTriggerLabel = (rule: any) => {
-    const trig = TRIGGERS.find(tr => tr.value === rule.trigger)
-    if (!trig) return rule.trigger
-    return trig.hasDays ? `${trig.label} (${rule.trigger_days} gün)` : trig.label
-  }
-
-  const getActionLabel = (rule: any) => {
-    const a = ACTIONS.find(ac => ac.value === rule.action)
-    return a?.label || rule.action
-  }
-
-  const totalRuns = rules.reduce((s, r) => s + (r.run_count || 0), 0)
-  const activeCount = rules.filter(r => r.active).length
+  // ── LEAD SELECTOR (shared between broadcast & sequence) ────────────────────
+  const LeadSelector = ({ maxHeight = 400 }: { maxHeight?: number }) => (
+    <div style={{ ...card, padding: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Users size={15} style={{ color: accentBlue }} />
+          <h3 style={{ color: tx1, fontSize: 13, fontWeight: 700, margin: 0 }}>Lead Sec ({selectedLeads.length})</h3>
+        </div>
+        <button onClick={selectAll} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 11, cursor: 'pointer' }}>
+          {selectedLeads.length === leads.filter(l => l.phone || l.email).length ? 'Kaldir' : 'Tumunu Sec'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight, overflowY: 'auto' }}>
+        {leads.filter(l => l.phone || l.email).map(lead => (
+          <div key={lead.id} onClick={() => toggleLead(lead.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1px solid ${selectedLeads.includes(lead.id) ? accentBlue + '55' : '#f1f5f9'}`, background: selectedLeads.includes(lead.id) ? '#eff6ff' : '#fff', cursor: 'pointer' }}>
+            <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${selectedLeads.includes(lead.id) ? accentBlue : '#d1d5db'}`, background: selectedLeads.includes(lead.id) ? accentBlue : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {selectedLeads.includes(lead.id) && <CheckCircle size={9} style={{ color: '#fff' }} />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ color: tx1, fontSize: 11, fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.company_name}</p>
+              <p style={{ color: tx3, fontSize: 9, margin: 0 }}>{lead.phone || lead.email}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <div style={{ padding: 0 }}>
-      {showCreate && <CreateRuleModal onClose={() => setShowCreate(false)} onCreated={loadData} />}
-
-      {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fffbeb 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fde68a' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(245,158,11,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <ZapOrb size={88} active={activeCount > 0} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>Otomasyon Motoru</h1>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('automations.zapiermake_olmadan_kendi', 'Zapier/Make olmadan kendi IF-THEN kurallarınızı oluşturun')}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-              {[{l:'Toplam Kural',v:rules.length,c:'#94a3b8'},{l:'Aktif',v:activeCount,c:'#10b981'},{l:'Toplam Çalışma',v:totalRuns,c:'#f59e0b'},{l:'Webhook Logu',v:stats?.incoming||0,c:'#06b6d4'}].map(m => (
-                <div key={m.l} style={{ textAlign:'center' }}>
-                  <p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p>
-                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.l}</p>
-                </div>
-              ))}
+      {/* ── HERO ──────────────────────────────────────────────── */}
+      <div style={{ ...card, padding: '24px 24px 18px', marginBottom: 18, background: 'linear-gradient(135deg,#fff,#f0f9ff 60%,#faf5ff)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0 }}>Satis Otomasyonu</h1>
+          <span style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700 }}>AI</span>
+        </div>
+        <p style={{ color: tx2, fontSize: 12, margin: '0 0 14px' }}>Toplu mesaj, takip sekansi veya akilli otomasyon — tek yerden yonet</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
+          {[
+            { label: 'Kampanya', value: allStats.campaigns, color: accentBlue, Icon: Megaphone },
+            { label: 'Sekans', value: allStats.sequences, color: accentEmerald, Icon: Bot },
+            { label: 'Workflow', value: allStats.workflows, color: accentViolet, Icon: Workflow },
+            { label: 'Gonderilen', value: allStats.totalSent, color: '#b45309', Icon: Send },
+            { label: 'Cevaplanan', value: allStats.totalReplied, color: '#059669', Icon: CheckCircle },
+          ].map(({ label, value, color, Icon }) => (
+            <div key={label} style={{ ...card, padding: '8px 10px', textAlign: 'center' }}>
+              <Icon size={13} style={{ color, margin: '0 auto 3px' }} />
+              <p style={{ color: tx1, fontSize: 16, fontWeight: 800, margin: 0 }}>{value}</p>
+              <p style={{ color: tx3, fontSize: 9, margin: 0 }}>{label}</p>
             </div>
-          </div>
-          <button onClick={() => setShowCreate(true)}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'11px 20px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#78350f,#f59e0b)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-            <Plus size={15} /> Yeni Kural
-          </button>
+          ))}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
-        {[{id:'rules',label:'🤖 Kurallar'},{id:'logs',label: t('📋 Çalışma Logları','📋 Çalışma Logları')},{id:'integrations',label:'🔗 Entegrasyonlar'}].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tab.id?'linear-gradient(135deg,#78350f,#f59e0b)':'transparent', color:activeTab===tab.id?'#fff':'#64748b', boxShadow:activeTab===tab.id?'0 3px 12px rgba(245,158,11,0.3)':'none' }}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {msg && <div style={{ marginBottom: 14, padding: '10px 16px', borderRadius: 11, fontSize: 12, background: msg.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: msg.type === 'success' ? accentEmerald : '#dc2626' }}>{msg.text}</div>}
 
-      {/* RULES TAB */}
-      {activeTab === 'rules' && (
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          {loading ? (
-            <div style={{ display:'flex', justifyContent:'center', height:80, alignItems:'center' }}><RefreshCw size={20} style={{ color:'#475569', animation:'za-spin 1s linear infinite' }} /></div>
-          ) : rules.length === 0 ? (
-            <div style={{ textAlign:'center', padding:56, background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18 }}>
-              <div style={{ fontSize:48, margin:'0 0 16px' }}>⚡</div>
-              <h3 style={{ color:'#0f172a', fontSize:16, fontWeight:700, margin:'0 0 8px' }}>{t('automations.henuz_kural_yok', 'Henüz kural yok')}</h3>
-              <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>{t('automations.ilk_ifthen_kuralinizi_olu', 'İlk IF-THEN kuralınızı oluşturun — Zapier\'e gerek yok')}</p>
-              <button onClick={() => setShowCreate(true)}
-                style={{ padding:'11px 24px', borderRadius:12, border:'none', background:'linear-gradient(135deg,#78350f,#f59e0b)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                <Plus size={14} style={{ display:'inline', marginRight:6 }} /> İlk Kuralı Oluştur
-              </button>
-            </div>
-          ) : (
-            rules.map(rule => (
-              <div key={rule.id} style={{ background:'#ffffff', border:`1px solid ${rule.active?'#fde68a':'#e2e8f0'}`, borderRadius:16, padding:'16px 20px' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                  {/* Active indicator */}
-                  <div style={{ width:10, height:10, borderRadius:'50%', background:rule.active?'#10b981':'#475569', flexShrink:0, boxShadow:rule.active?'0 0 8px #10b98166':'none' }} />
-
-                  {/* Rule info */}
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:'0 0 6px' }}>{rule.name}</p>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                      <span style={{ background:'#fffbeb', border:'1px solid #fde68a', color:'#b45309', fontSize:11, padding:'3px 9px', borderRadius:20 }}>
-                        EĞER: {getTriggerLabel(rule)}
-                      </span>
-                      <span style={{ color:'#475569', fontSize:11 }}>→</span>
-                      <span style={{ background:'#ecfdf5', border:'1px solid #a7f3d0', color:'#059669', fontSize:11, padding:'3px 9px', borderRadius:20 }}>
-                        O ZAMAN: {getActionLabel(rule)}
-                      </span>
-                    </div>
-                    {rule.action_message && (
-                      <p style={{ color:'#475569', fontSize:11, margin:'6px 0 0', fontStyle:'italic', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        "{rule.action_message}"
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Stats */}
-                  <div style={{ textAlign:'center', flexShrink:0 }}>
-                    <p style={{ color:'#b45309', fontWeight:800, fontSize:16, margin:0 }}>{rule.run_count||0}</p>
-                    <p style={{ color:'#475569', fontSize:10, margin:0 }}>{t('automations.calisti', 'çalıştı')}</p>
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                    <button onClick={() => toggleRule(rule.id)}
-                      style={{ padding:'6px 10px', borderRadius:8, border:`1px solid ${rule.active?'#a7f3d0':'rgba(100,116,139,0.2)'}`, background:'transparent', color:rule.active?'#059669':'#64748b', cursor:'pointer' }}>
-                      {rule.active ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
-                    </button>
-                    <button onClick={() => testRule(rule.id)} disabled={testing === rule.id}
-                      title={t('automations.simdi_calistir', 'Şimdi Çalıştır')}
-                      style={{ padding:'6px 10px', borderRadius:8, border:'1px solid #a5f3fc', background:'#ecfeff', color:'#0d9488', cursor:'pointer' }}>
-                      {testing === rule.id ? <RefreshCw size={13} style={{ animation:'za-spin 1s linear infinite' }} /> : <Play size={13} />}
-                    </button>
-                    <button onClick={() => deleteRule(rule.id)}
-                      style={{ padding:'6px 10px', borderRadius:8, border:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)', color:'#dc2626', cursor:'pointer' }}>
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Last run info */}
-                {rule.last_run_at && (
-                  <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:6 }}>
-                    <Clock size={11} color="#475569" />
-                    <span style={{ color:'#475569', fontSize:11 }}>Son çalışma: {new Date(rule.last_run_at).toLocaleString()}</span>
-                  </div>
-                )}
+      {/* ── MODE SELECTOR ────────────────────────────────────── */}
+      {!mode && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+          {MODES.map(m => (
+            <button key={m.id} onClick={() => setMode(m.id as Mode)}
+              style={{ ...card, padding: '24px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', border: '2px solid #e2e8f0' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = m.color; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}>
+              {'pro' in m && m.pro && <span style={{ position: 'absolute', top: 8, right: 8, background: accentViolet, color: '#fff', fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>PRO</span>}
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: m.bg, border: `1px solid ${m.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <m.Icon size={22} style={{ color: m.color }} />
               </div>
-            ))
-          )}
+              <p style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: '0 0 5px' }}>{m.label}</p>
+              <p style={{ color: tx2, fontSize: 11, margin: 0 }}>{m.desc}</p>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* LOGS TAB */}
-      {activeTab === 'logs' && (
-        <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid #e2e8f0' }}>
-            <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0 }}>{t('automations.kural_yurutme_loglari', '📋 Kural Yürütme Logları')}</h3>
-          </div>
-          {logs.length === 0 ? (
-            <div style={{ padding:40, textAlign:'center', color:'#475569' }}>
-              <p style={{ fontSize:24, margin:'0 0 10px' }}>📋</p>
-              <p style={{ fontSize:13, margin:0 }}>{t('automations.henuz_log_yok_kurallar_ca', 'Henüz log yok — kurallar çalıştıkça burada görünür')}</p>
-            </div>
-          ) : (
-            <div>
-              {logs.slice(0,30).map((log: any, i: number) => (
-                <div key={i} style={{ padding:'12px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:12 }}>
-                  <div style={{ width:8, height:8, borderRadius:'50%', background:'#059669', flexShrink:0 }} />
-                  <div style={{ flex:1 }}>
-                    <p style={{ color:'#0f172a', fontSize:12, fontWeight:600, margin:0 }}>{log.source || 'Otomasyon'}</p>
-                    <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0' }}>{log.destination || 'Aksiyon gerçekleşti'}</p>
-                  </div>
-                  <span style={{ color:'#475569', fontSize:10 }}>{new Date(log.received_at).toLocaleString()}</span>
-                  <button onClick={() => setExpandLog(expandLog === `${i}` ? null : `${i}`)} style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', padding:2 }}>
-                    <ChevronDown size={14} style={{ transform:expandLog===`${i}`?'rotate(180deg)':'none', transition:'transform 0.2s' }} />
+      {mode && <button onClick={() => { setMode(null); setSelectedLeads([]) }} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 12, cursor: 'pointer', marginBottom: 14 }}>← Geri</button>}
+
+      {/* ═══════════ TOPLU MESAJ ═══════════ */}
+      {mode === 'broadcast' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ ...card, padding: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}><Megaphone size={16} style={{ color: accentBlue }} /><h2 style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>Toplu Mesaj Gonder</h2></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input value={bcName} onChange={e => setBcName(e.target.value)} placeholder="Kampanya adi *" style={inputStyle} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['whatsapp', 'email'] as const).map(ch => (
+                  <button key={ch} onClick={() => setBcChannel(ch)} style={{ flex: 1, padding: '10px', borderRadius: 10, border: `2px solid ${bcChannel === ch ? accentBlue : '#e2e8f0'}`, background: bcChannel === ch ? '#eff6ff' : '#fff', color: bcChannel === ch ? accentBlue : tx2, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                    {ch === 'whatsapp' ? <MessageCircle size={13} /> : <Mail size={13} />} {ch === 'whatsapp' ? 'WhatsApp' : 'Email'}
                   </button>
-                  {expandLog === `${i}` && log.payload && (
-                    <code style={{ position:'absolute', marginTop:80, background:'#f8fafc', borderRadius:8, padding:'8px 12px', color:'#94a3b8', fontSize:10, fontFamily:'monospace' }}>
-                      {JSON.stringify(JSON.parse(log.payload), null, 2)}
-                    </code>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* INTEGRATIONS TAB */}
-      {activeTab === 'integrations' && (
-        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          {/* Incoming Webhook */}
-          <div style={{ background:'#ffffff', border:'1px solid rgba(245,158,11,0.15)', borderRadius:18, padding:22 }}>
-            <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 12px' }}>📥 Gelen Webhook URL'niz</h3>
-            <p style={{ color:'#64748b', fontSize:12, margin:'0 0 12px' }}>{t('automations.bu_urlyi_zapiermaken8ne_y', 'Bu URL\'yi Zapier/Make/n8n\'e yapıştırın — gelen veriler otomatik lead olarak eklenir')}</p>
-            <div style={{ display:'flex', gap:8 }}>
-              <code style={{ flex:1, background:'#f8fafc', border:'1px solid #fde68a', borderRadius:9, padding:'10px 14px', color:'#b45309', fontSize:11, fontFamily:'monospace', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {webhookUrl || 'Yükleniyor...'}
-              </code>
-              <button onClick={() => copy(webhookUrl)} style={{ padding:'10px 14px', borderRadius:9, border:'none', background:'#fffbeb', color:'#b45309', cursor:'pointer' }}>
-                {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
+                ))}
+              </div>
+              <textarea value={bcMessage} onChange={e => setBcMessage(e.target.value)} rows={4} placeholder="Merhaba {{firma}}, {{sektor}} alaninda size ozel teklifimiz var..." style={{ ...inputStyle, resize: 'vertical' as const }} />
+              <p style={{ color: tx3, fontSize: 10, margin: '-8px 0 0' }}>Degiskenler: {'{{firma}} {{isim}} {{sehir}} {{sektor}}'}</p>
+              <button onClick={sendBroadcast} disabled={bcSending || !bcName || !bcMessage || !selectedLeads.length}
+                style={{ padding: '12px', borderRadius: 10, border: 'none', cursor: bcSending || !bcName || !bcMessage || !selectedLeads.length ? 'not-allowed' : 'pointer', background: selectedLeads.length && bcName && bcMessage ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : surf, color: selectedLeads.length && bcName && bcMessage ? '#fff' : tx3, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                {bcSending ? <RefreshCw size={13} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Send size={13} />}
+                {bcSending ? 'Gonderiliyor...' : `${selectedLeads.length} Lead'e Gonder`}
               </button>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginTop:12 }}>
-              {[{n:'Zapier',l:'Z',c:'#ef4444',d:'hooks.zapier.com'},{n:'Make',l:'M',c:'#8b5cf6',d:'hook.eu1.make.com'},{n:'n8n',l:'N',c:'#10b981',d:'n8n.io/webhook'}].map(p => (
-                <div key={p.n} style={{ background:`${p.c}08`, border:`1px solid ${p.c}20`, borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:28, height:28, borderRadius:7, background:`${p.c}20`, border:`1px solid ${p.c}40`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:11, color:p.c, flexShrink:0 }}>{p.l}</div>
-                  <div><p style={{ color:'#0f172a', fontSize:12, fontWeight:600, margin:0 }}>{p.n}</p><p style={{ color:'#475569', fontSize:10, margin:0 }}>{p.d}</p></div>
-                </div>
-              ))}
-            </div>
+            {campaigns.length > 0 && (
+              <div style={{ marginTop: 18, borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+                <p style={{ color: tx2, fontSize: 11, fontWeight: 600, marginBottom: 8 }}>Onceki ({campaigns.length})</p>
+                {campaigns.slice(0, 8).map((c: any) => { const st = STATUS_COLORS[c.status] || STATUS_COLORS.draft; return (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 7, marginBottom: 4, border: '1px solid #f1f5f9' }}>
+                    <div><p style={{ color: tx1, fontSize: 11, fontWeight: 600, margin: 0 }}>{c.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{c.channel} · {c.total_sent || 0} gonderildi</p></div>
+                    <span style={{ background: st.bg, color: st.color, fontSize: 9, padding: '2px 7px', borderRadius: 10, fontWeight: 600 }}>{st.label}</span>
+                  </div>
+                )})}
+              </div>
+            )}
           </div>
-
-          {/* Beklenen format */}
-          <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18, padding:22 }}>
-            <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 12px' }}>{t('automations.beklenen_webhook_formati', '📦 Beklenen Webhook Formatı')}</h3>
-            <code style={{ display:'block', background:'#f8fafc', borderRadius:10, padding:'14px 18px', color:'#047857', fontSize:12, fontFamily:'monospace', lineHeight:1.8 }}>
-              {`{\n  "name": "Mehmet Yılmaz",\n  "company": "ABC Ltd",\n  "phone": "+905551234567",\n  "email": "mehmet@abc.com",\n  "source": "zapier"\n}`}
-            </code>
-          </div>
+          <LeadSelector maxHeight={500} />
         </div>
       )}
 
-      <style>{`@keyframes za-spin{to{transform:rotate(360deg)}}`}</style>
+      {/* ═══════════ TAKIP SEKANSI ═══════════ */}
+      {mode === 'sequence' && (
+        <div>
+          {seqStats && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+            {[{ label: 'Enrollment', value: seqStats.total || 0, color: tx1 }, { label: 'Aktif', value: seqStats.active || 0, color: accentEmerald }, { label: 'Tamamlanan', value: seqStats.completed || 0, color: accentBlue }].map(({ label, value, color }) => (
+              <div key={label} style={{ ...card, padding: '10px 12px', textAlign: 'center' }}><p style={{ color, fontSize: 18, fontWeight: 800, margin: 0 }}>{value}</p><p style={{ color: tx3, fontSize: 10, margin: 0 }}>{label}</p></div>
+            ))}
+          </div>}
+          <button onClick={() => setShowSeqCreate(!showSeqCreate)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#047857,#059669)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', marginBottom: 14 }}><Plus size={13} /> Yeni Sekans</button>
+          {showSeqCreate && (
+            <div style={{ ...card, padding: 20, marginBottom: 14 }}>
+              <h3 style={{ color: tx1, fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>Yeni Sekans</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <input value={seqName} onChange={e => setSeqName(e.target.value)} placeholder="Sekans adi *" style={inputStyle} />
+                <select value={seqChannel} onChange={e => setSeqChannel(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                {seqSteps.map((step, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 12px', background: surf, borderRadius: 9, border: '1px solid #f1f5f9' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: step.type === 'ai_reply' ? accentViolet : accentBlue, color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>{idx + 1}</div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        <select value={step.type} onChange={e => { const s = [...seqSteps]; s[idx].type = e.target.value; setSeqSteps(s) }} style={{ padding: '3px 6px', borderRadius: 5, border: '1px solid #e2e8f0', fontSize: 10, color: tx1 }}><option value="message">Sabit</option><option value="ai_reply">AI</option></select>
+                        <select value={step.condition} onChange={e => { const s = [...seqSteps]; s[idx].condition = e.target.value; setSeqSteps(s) }} style={{ padding: '3px 6px', borderRadius: 5, border: '1px solid #e2e8f0', fontSize: 10, color: tx1 }}><option value="any">Her zaman</option><option value="not_replied">Cevap vermezse</option><option value="replied">Cevap verirse</option></select>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={10} style={{ color: tx3 }} /><input type="number" value={step.delay_hours} min={0} onChange={e => { const s = [...seqSteps]; s[idx].delay_hours = Number(e.target.value); setSeqSteps(s) }} style={{ width: 40, padding: '3px 5px', borderRadius: 5, border: '1px solid #e2e8f0', fontSize: 10, color: tx1 }} /><span style={{ color: tx3, fontSize: 9 }}>saat</span></div>
+                      </div>
+                      <textarea value={step.type === 'message' ? step.message : step.ai_prompt} onChange={e => { const s = [...seqSteps]; s[idx][step.type === 'message' ? 'message' : 'ai_prompt'] = e.target.value; setSeqSteps(s) }} rows={2} style={{ ...inputStyle, fontSize: 10, padding: '5px 8px' }} />
+                    </div>
+                    <button onClick={() => setSeqSteps(p => p.filter((_, i) => i !== idx))} style={{ color: tx3, cursor: 'pointer', background: 'none', border: 'none' }}><Trash2 size={11} /></button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 5 }}>{STEP_TEMPLATES.map((t, i) => (<button key={i} onClick={() => setSeqSteps(p => [...p, { ...t }])} style={{ padding: '3px 8px', borderRadius: 5, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 9, cursor: 'pointer' }}>+ {t.label}</button>))}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={createSequence} disabled={seqSaving || !seqName} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: seqName ? 'linear-gradient(135deg,#047857,#059669)' : surf, color: seqName ? '#fff' : tx3, fontSize: 12, fontWeight: 700, cursor: seqSaving || !seqName ? 'not-allowed' : 'pointer' }}>{seqSaving ? 'Kaydediliyor...' : 'Olustur'}</button>
+                <button onClick={() => setShowSeqCreate(false)} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: tx2, fontSize: 12, cursor: 'pointer' }}>Iptal</button>
+              </div>
+            </div>
+          )}
+          {sequences.length === 0 && !showSeqCreate ? (
+            <div style={{ ...card, padding: 40, textAlign: 'center' }}><Bot size={28} style={{ color: tx3, margin: '0 auto 10px' }} /><p style={{ color: tx3, fontSize: 12 }}>Henuz sekans yok</p></div>
+          ) : sequences.map(seq => { const st = STATUS_COLORS[seq.status] || STATUS_COLORS.active; return (
+            <div key={seq.id} style={{ ...card, padding: '14px 18px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Zap size={14} style={{ color: accentEmerald }} /></div>
+                  <div><p style={{ color: tx1, fontWeight: 700, fontSize: 12, margin: 0 }}>{seq.name}</p><div style={{ display: 'flex', gap: 6, marginTop: 2 }}><span style={{ color: tx3, fontSize: 9 }}>{seq.channel === 'whatsapp' ? 'WA' : 'Email'}</span><span style={{ color: tx3, fontSize: 9 }}>{seq.steps?.length || 0} adim</span><span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span></div></div>
+                </div>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  <button onClick={() => setSelectedSeq(selectedSeq?.id === seq.id ? null : seq)} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 10px', borderRadius: 6, border: '1px solid #a7f3d0', background: '#ecfdf5', color: accentEmerald, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><Users size={11} /> Lead</button>
+                  <button onClick={async () => { await api.delete(`/api/sequences/${seq.id}`); loadAll() }} style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={11} /></button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 3, marginTop: 8, flexWrap: 'wrap' }}>{(seq.steps || []).map((step: any, i: number) => (<div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>{i > 0 && <div style={{ width: 12, height: 1, background: '#e2e8f0' }} />}<span style={{ padding: '2px 6px', borderRadius: 5, fontSize: 9, background: step.type === 'ai_reply' ? '#faf5ff' : surf, border: `1px solid ${step.type === 'ai_reply' ? '#e9d5ff' : '#f1f5f9'}`, color: step.type === 'ai_reply' ? accentViolet : tx2 }}>{step.type === 'ai_reply' ? 'AI' : '💬'} {step.delay_hours}s</span></div>))}</div>
+              {selectedSeq?.id === seq.id && (
+                <div style={{ marginTop: 12, padding: '12px 14px', background: surf, borderRadius: 9, border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <p style={{ color: tx2, fontSize: 11, fontWeight: 600, margin: 0 }}>Lead Sec ({selectedLeads.length})</p>
+                    <button onClick={() => enrollLeads(seq.id)} disabled={!selectedLeads.length} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: selectedLeads.length ? accentEmerald : '#e2e8f0', color: selectedLeads.length ? '#fff' : tx3, fontSize: 10, fontWeight: 600, cursor: selectedLeads.length ? 'pointer' : 'not-allowed' }}>{selectedLeads.length} Lead Ekle</button>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 120, overflowY: 'auto' }}>{leads.filter(l => l.phone).map(lead => (<button key={lead.id} onClick={() => toggleLead(lead.id)} style={{ padding: '3px 8px', borderRadius: 5, border: `1px solid ${selectedLeads.includes(lead.id) ? accentEmerald + '55' : '#e2e8f0'}`, background: selectedLeads.includes(lead.id) ? '#ecfdf5' : '#fff', color: selectedLeads.includes(lead.id) ? accentEmerald : tx2, fontSize: 9, cursor: 'pointer' }}>{lead.company_name?.slice(0, 18)}</button>))}</div>
+                </div>
+              )}
+            </div>
+          )})}
+        </div>
+      )}
+
+      {/* ═══════════ AKILLI OTOMASYON ═══════════ */}
+      {mode === 'workflow' && (
+        <div>
+          <div style={{ ...card, padding: 20, marginBottom: 14, borderLeft: `4px solid ${accentViolet}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><Sparkles size={14} style={{ color: accentViolet }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Akilli Otomasyon</h2><span style={{ background: accentViolet, color: '#fff', fontSize: 9, padding: '2px 7px', borderRadius: 8, fontWeight: 700 }}>PRO</span></div>
+            <p style={{ color: tx2, fontSize: 11, margin: '0 0 12px' }}>Gorsel akis editoru ile kosul bazli otomasyonlar — A/B test, skor esigi, otomatik atama</p>
+            <a href="/workflow" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '9px 16px', borderRadius: 9, background: 'linear-gradient(135deg,#6d28d9,#7c3aed)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}><Workflow size={13} /> Workflow Editoru Ac</a>
+          </div>
+          {workflows.length > 0 ? workflows.map((wf: any) => { const st = STATUS_COLORS[wf.status] || STATUS_COLORS.draft; return (
+            <div key={wf.id} style={{ ...card, padding: '12px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ width: 32, height: 32, borderRadius: 8, background: '#faf5ff', border: '1px solid #e9d5ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Workflow size={14} style={{ color: accentViolet }} /></div><div><p style={{ color: tx1, fontWeight: 600, fontSize: 12, margin: 0 }}>{wf.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{wf.nodes?.length || 0} node · {wf.trigger_type || 'manual'}</p></div></div>
+              <span style={{ background: st.bg, color: st.color, fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>{st.label}</span>
+            </div>
+          )}) : <div style={{ ...card, padding: 40, textAlign: 'center' }}><Workflow size={28} style={{ color: tx3, margin: '0 auto 10px' }} /><p style={{ color: tx3, fontSize: 12 }}>Henuz workflow yok</p><a href="/workflow" style={{ color: accentViolet, fontSize: 11 }}>Editore git →</a></div>}
+        </div>
+      )}
+
+      <style>{`@keyframes autoSpin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

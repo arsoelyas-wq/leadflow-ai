@@ -45,7 +45,7 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/lead-machine', label: 'nav.lead_machine', icon: Sparkles, badge: 'AI' },
   { href: '/leads',        label: 'nav.leads',        icon: Users },
   { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
-  { href: '/campaigns', label: 'nav.campaigns', icon: Megaphone },
+  { href: '/automations', label: 'nav.automations', icon: Megaphone, badge: 'AI' },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
 ]
 
@@ -64,16 +64,12 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/proposals', label: 'nav.proposals', icon: FileText },
       { href: '/products',  label: 'nav.products',  icon: Package,  badge: 'AI' },
-      { href: '/workflow',  label: 'nav.workflow',  icon: Workflow, plan: 'growth', badge: 'Yeni' },
       { href: '/agent',     label: 'nav.agent',     icon: Bot },
-      { href: '/sequences', label: 'nav.sequences', icon: ListOrdered },
     ],
   },
   {
     id: 'outreach', label: 'nav.communication',
     items: [
-      { href: '/email-campaigns', label: 'nav.email',    icon: Mail },
-      { href: '/sms-campaigns',   label: 'nav.sms',      icon: MessageCircle },
       { href: '/video-outreach',  label: 'nav.video',    icon: Video, badge: 'AI' },
     ],
   },
