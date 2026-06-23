@@ -654,36 +654,33 @@ router.post('/run-now', async (req: any, res: any) => {
     const available = (ud?.credits_total || 0) - (ud?.credits_used || 0);
     if (available < 5) return res.status(400).json({ error: `Yetersiz kredi. Mevcut: ${available}` });
 
-    res.json({ message: 'Hunter baslatildi — arka planda calisiyor' });
+    // Sync mode — wait for result so errors are visible
+    try {
+      const result = await runHunt(userId, config);
 
-    (async () => {
-      try {
-        const result = await runHunt(userId, config);
-
-        if (result.added > 0) {
-          const { data: fresh } = await supabase.from('users').select('credits_used').eq('id', userId).single();
-          await supabase.from('users').update({ credits_used: (fresh?.credits_used || 0) + result.added }).eq('id', userId);
-        }
-
-        await supabase.from('lead_hunter_logs').insert([{
-          user_id: userId, config_id: config?.id || null,
-          ran_at: new Date().toISOString(),
-          leads_found: result.added,
-          skipped: result.skipped,
-          sources: result.sources || {},
-          errors: result.errors?.slice(0, 5) || [],
-        }]).catch((logErr: any) => console.error('[Hunter] Log insert failed:', logErr.message));
-
-        console.log(`[Hunter] Manual run done: ${result.added} added, ${result.skipped} skipped, emails: ${result.emailsFound} for ${userId.slice(0, 8)}`);
-      } catch (e: any) {
-        console.error('[Hunter] Manual run failed:', e.message, e.stack?.slice(0, 200));
-        await supabase.from('lead_hunter_logs').insert([{
-          user_id: userId, config_id: config?.id || null,
-          ran_at: new Date().toISOString(), leads_found: 0,
-          skipped: 0, sources: {}, errors: [e.message?.slice(0, 200)],
-        }]).catch((logErr: any) => console.error('[Hunter] Log insert also failed:', logErr.message));
+      if (result.added > 0) {
+        const { data: fresh } = await supabase.from('users').select('credits_used').eq('id', userId).single();
+        await supabase.from('users').update({ credits_used: (fresh?.credits_used || 0) + result.added }).eq('id', userId);
       }
-    })();
+
+      await supabase.from('lead_hunter_logs').insert([{
+        user_id: userId, config_id: config?.id || null,
+        ran_at: new Date().toISOString(),
+        leads_found: result.added,
+        skipped: result.skipped,
+        sources: result.sources || {},
+        errors: result.errors?.slice(0, 5) || [],
+      }]).catch(() => {});
+
+      res.json({ message: `Hunt tamamlandi: ${result.added} lead eklendi, ${result.skipped} atlandi`, result });
+    } catch (e: any) {
+      console.error('[Hunter] Run failed:', e.message);
+      await supabase.from('lead_hunter_logs').insert([{
+        user_id: userId, ran_at: new Date().toISOString(), leads_found: 0,
+        skipped: 0, sources: {}, errors: [e.message?.slice(0, 200)],
+      }]).catch(() => {});
+      res.status(500).json({ error: e.message });
+    }
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
