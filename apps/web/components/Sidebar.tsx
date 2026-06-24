@@ -93,14 +93,6 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'team', label: 'nav.group_team',
-    items: [
-      { href: '/team-intelligence',   label: 'nav.team_intelligence',   icon: Brain },
-      { href: '/team-reports',        label: 'nav.team_reports',        icon: ClipboardList },
-      { href: '/sales-coach',         label: 'nav.sales_coach',         icon: GraduationCap },
-    ],
-  },
-  {
     id: 'automation', label: 'nav.group_automation',
     items: [
       { href: '/automations', label: 'nav.automations', icon: Cog },
