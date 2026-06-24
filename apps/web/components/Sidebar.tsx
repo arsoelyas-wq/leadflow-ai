@@ -47,7 +47,6 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
   { href: '/automations', label: 'nav.automations', icon: Megaphone, badge: 'AI' },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
-  { href: '/invoices',  label: 'nav.invoices',  icon: FileSpreadsheet },
 ]
 
 const GROUPS: NavGroup[] = [
@@ -131,6 +130,7 @@ const SPECIAL_TOOLS = [
   { href: '/competitor',     label: 'nav.competitor', icon: Swords,     color: '#e11d48', badge: 'AI' },
   { href: '/tenders', label: 'nav.tenders', icon: ScrollText,  color: '#d97706', badge: 'PRO' },
   { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
+  { href: '/invoices', label: 'nav.invoices', icon: FileSpreadsheet, color: '#64748b' },
 ]
 
 // Komut paleti için düzleştirilmiş arama indeksi — tüm öğeler tek listede
