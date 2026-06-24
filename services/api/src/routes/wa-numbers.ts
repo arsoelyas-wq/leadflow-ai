@@ -69,22 +69,30 @@ router.post('/connect', async (req: any, res: any) => {
 
     if (error) throw error;
 
-    // WhatsApp bağlantısını başlat
+    // WhatsApp baglantisini baslat
     try {
-      const { initWhatsApp } = require('./settings');
-      const result = await initWhatsApp(userId, newNumber.id);
+      const { initWhatsApp, waState } = require('./settings');
+      await initWhatsApp(userId);
 
-      if (result.qr) {
-        return res.json({ number: newNumber, qr: result.qr, status: 'qr_pending' });
+      // QR kodu bekle (max 10sn)
+      let qr = null;
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        if (waState[userId]?.qr) { qr = waState[userId].qr; break; }
+        if (waState[userId]?.status === 'connected') break;
       }
-      if (result.status === 'connected') {
+
+      if (waState[userId]?.status === 'connected') {
         await supabase.from('wa_numbers')
-          .update({ status: 'connected', phone_number: result.phone })
+          .update({ status: 'connected' })
           .eq('id', newNumber.id);
         return res.json({ number: newNumber, status: 'connected' });
       }
+      if (qr) {
+        return res.json({ number: newNumber, qr, status: 'qr_pending' });
+      }
     } catch (e: any) {
-      console.error('WA init error:', e.message);
+      console.error('[WA Numbers] Init error:', e.message?.slice(0, 80));
     }
 
     res.json({ number: newNumber, status: 'pending' });
@@ -142,7 +150,20 @@ router.delete('/:id', async (req: any, res: any) => {
   }
 });
 
-// GET /api/wa-numbers/stats — Günlük gönderim istatistikleri
+// GET /api/wa-numbers/qr-status — QR polling
+router.get('/qr-status', async (req: any, res: any) => {
+  try {
+    const { waState } = require('./settings');
+    const state = waState[req.userId];
+    res.json({
+      status: state?.status || 'disconnected',
+      qr: state?.qr || null,
+      connected: state?.status === 'connected',
+    });
+  } catch { res.json({ status: 'disconnected', qr: null, connected: false }); }
+});
+
+// GET /api/wa-numbers/stats — Gunluk gonderim istatistikleri
 router.get('/stats', async (req: any, res: any) => {
   try {
     const userId = req.userId;

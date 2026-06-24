@@ -383,11 +383,60 @@ router.post('/email/test', async (req: any, res: any) => {
 });
 
 const sendWhatsAppMessage = async (userId: string, phone: string, message: string) => {
-  const state = waState[userId];
-  if (!state || state.status !== 'connected') throw new Error('WhatsApp bağlı değil');
   const cleanPhone = phone.replace(/\D/g, '');
   const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
     : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
+
+  // Safe hours check (09:00-20:00)
+  const hour = new Date().getHours();
+  if (hour < 9 || hour >= 20) {
+    console.log('[WA] Safe hours disinda — mesaj ertelendi');
+    throw new Error('WhatsApp mesajlari sadece 09:00-20:00 arasi gonderilir');
+  }
+
+  // Multi-number routing: pick number with lowest usage + available capacity
+  let sent = false;
+  try {
+    const { data: numbers } = await supabase.from('wa_numbers')
+      .select('id, phone_number, daily_limit, sent_today, status, is_primary')
+      .eq('user_id', userId).eq('status', 'connected')
+      .order('is_primary', { ascending: false });
+
+    if (numbers?.length) {
+      // Sort by usage ratio (lowest first = most capacity)
+      const available = numbers.filter((n: any) => (n.sent_today || 0) < (n.daily_limit || 100));
+      if (available.length) {
+        available.sort((a: any, b: any) => (a.sent_today || 0) / (a.daily_limit || 100) - (b.sent_today || 0) / (b.daily_limit || 100));
+        const chosen = available[0];
+
+        // Try Green API gateway first
+        const WA_GATEWAY = process.env.WA_GATEWAY_URL || 'http://207.154.248.119:3003';
+        try {
+          const { data: instance } = await supabase.from('wa_instances')
+            .select('instance_id').eq('phone', chosen.phone_number).eq('status', 'connected').maybeSingle();
+          if (instance?.instance_id) {
+            await require('axios').post(`${WA_GATEWAY}/send`, {
+              instanceId: instance.instance_id,
+              phone: formattedPhone,
+              message,
+            }, { timeout: 15000 });
+            sent = true;
+          }
+        } catch {}
+
+        // Increment sent_today
+        await supabase.from('wa_numbers').update({
+          sent_today: (chosen.sent_today || 0) + 1,
+        }).eq('id', chosen.id);
+
+        if (sent) return;
+      }
+    }
+  } catch {}
+
+  // Fallback: direct Baileys socket (single connection)
+  const state = waState[userId];
+  if (!state || state.status !== 'connected') throw new Error('WhatsApp bagli degil — Ayarlar > WhatsApp\'tan baglanti kurun');
   await state.sock.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: message });
 };
 
@@ -407,4 +456,4 @@ const sendEmail = async (userId: string, to: string, subject: string, html: stri
   await transporter.sendMail({ from: settings.email_from || settings.email_user, to, subject, html });
 };
 
-module.exports = { router, sendWhatsAppMessage, sendEmail, waState };
+module.exports = { router, sendWhatsAppMessage, sendEmail, waState, initWhatsApp: startWhatsApp };
