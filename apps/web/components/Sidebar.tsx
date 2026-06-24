@@ -93,17 +93,11 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'automation', label: 'nav.group_automation',
-    items: [
-      { href: '/automations', label: 'nav.automations', icon: Cog },
-      { href: '/webhooks',    label: 'nav.webhooks',    icon: Webhook },
-      { href: '/developer',   label: 'nav.developer',   icon: Code },
-      { href: '/wa-numbers',  label: 'nav.wa_numbers',  icon: Phone },
-    ],
-  },
-  {
     id: 'system', label: 'nav.system',
     items: [
+      { href: '/wa-numbers',  label: 'nav.wa_numbers',  icon: Phone },
+      { href: '/webhooks',    label: 'nav.webhooks',    icon: Webhook },
+      { href: '/developer',   label: 'nav.developer',   icon: Code },
       { href: '/whitelabel', label: 'nav.whitelabel', icon: Crown,      badge: 'ENT' },
       { href: '/billing',    label: 'nav.billing',    icon: CreditCard },
       { href: '/export',     label: 'nav.export',     icon: Globe2,     badge: 'ENT' },
