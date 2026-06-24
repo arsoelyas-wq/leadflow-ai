@@ -422,33 +422,30 @@ export default function AnalyticsPage() {
       </>)}
 
       {tab === 'reports' && (<>
-      {/* ── REPORTS HERO */}
-      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid #ede9fe' }}>
-        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(124,58,237,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(79,70,229,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
-        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:24 }}>
-            <ReportPrism size={82} spinning={reportGenerating} />
-            <div>
-              <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('reports.performans_raporlari', 'Performans Raporları')}</h1>
-              <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('reports.haftalik_aylik_satis_kars', 'Haftalık & aylık satış — karşılaştırmalı analiz')}</p>
-              <div style={{ display:'flex', gap:6 }}>
-                {(['weekly','monthly'] as const).map(v => (
-                  <button key={v} onClick={() => setReportView(v)} style={{ padding:'6px 18px', borderRadius:20, border:`1px solid ${reportView===v?'rgba(124,58,237,0.4)':'#e2e8f0'}`, background:reportView===v?'rgba(124,58,237,0.1)':'transparent', color:reportView===v?'#7c3aed':'#475569', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-                    {v==='weekly'?'Haftalık':'Aylık'}
-                  </button>
-                ))}
-              </div>
-            </div>
+      {/* ── REPORTS CONTROLS (no separate hero — uses main hero) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, padding: '14px 18px', background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Trophy size={18} style={{ color: '#7c3aed' }} />
+          <div>
+            <p style={{ color: '#0f172a', fontSize: 15, fontWeight: 700, margin: 0 }}>Performans Raporları</p>
+            <p style={{ color: '#64748b', fontSize: 11, margin: 0 }}>Haftalık & aylık satış karşılaştırması</p>
           </div>
-          <div style={{ display:'flex', gap:10 }}>
-            <button onClick={async()=>{setReportGenerating(true);await new Promise(r=>setTimeout(r,1500));setReportGenerating(false)}} disabled={reportGenerating}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:11, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:700 }}>
-              <RefreshCw size={13} style={{ animation:reportGenerating?'rp-spin 1s linear infinite':'none' }} />{reportGenerating?'Oluşturuluyor...':'Rapor Oluştur'}
-            </button>
-            <button onClick={exportReportsCSV} style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:11, border:'1px solid rgba(124,58,237,0.3)', background:'rgba(124,58,237,0.08)', color:'#7c3aed', fontSize:12, cursor:'pointer' }}>
-              <Download size={13} /> CSV
-            </button>
+          <div style={{ display: 'flex', gap: 5, marginLeft: 16 }}>
+            {(['weekly','monthly'] as const).map(v => (
+              <button key={v} onClick={() => setReportView(v)} style={{ padding: '5px 14px', borderRadius: 8, border: `1px solid ${reportView===v?'rgba(124,58,237,0.4)':'#e2e8f0'}`, background: reportView===v?'rgba(124,58,237,0.1)':'transparent', color: reportView===v?'#7c3aed':'#475569', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                {v==='weekly'?'Haftalık':'Aylık'}
+              </button>
+            ))}
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={async()=>{setReportGenerating(true);await new Promise(r=>setTimeout(r,1500));setReportGenerating(false)}} disabled={reportGenerating}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#4c1d95,#7c3aed)', color: '#fff', fontSize: 11, fontWeight: 700 }}>
+            <RefreshCw size={12} style={{ animation: reportGenerating?'rp-spin 1s linear infinite':'none' }} />{reportGenerating?'Oluşturuluyor...':'Rapor Oluştur'}
+          </button>
+          <button onClick={exportReportsCSV} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', borderRadius: 9, border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(124,58,237,0.08)', color: '#7c3aed', fontSize: 11, cursor: 'pointer' }}>
+            <Download size={12} /> CSV
+          </button>
         </div>
       </div>
 

@@ -89,6 +89,7 @@ const GROUPS: NavGroup[] = [
     id: 'analytics', label: 'nav.group_analytics',
     items: [
       { href: '/analytics', label: 'nav.analytics', icon: PieChart, badge: 'AI' },
+      { href: '/financial', label: 'nav.financial', icon: Banknote, badge: 'Pro' },
     ],
   },
   {
