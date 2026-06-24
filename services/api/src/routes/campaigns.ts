@@ -167,7 +167,7 @@ router.get('/segments', async (req: any, res: any) => {
 router.get('/analytics', async (req: any, res: any) => {
   try {
     const { data: camps } = await supabase.from('campaigns').select('id, name, channel, status, total_sent, total_replied, created_at').eq('user_id', req.userId).order('created_at', { ascending: false });
-    const { data: msgs } = await supabase.from('messages').select('channel, direction, sent_at').eq('user_id', req.userId).order('sent_at', { ascending: false }).limit(500);
+    const { data: msgs } = await supabase.from('messages').select('channel, direction, sent_at').eq('user_id', req.userId).order('sent_at', { ascending: false });
     const out = (msgs || []).filter((m: any) => m.direction === 'out');
     const inc = (msgs || []).filter((m: any) => m.direction === 'in');
     const hourlyDist: Record<number, number> = {}; const hourlyReply: Record<number, number> = {};
@@ -184,7 +184,7 @@ router.get('/analytics', async (req: any, res: any) => {
 
 router.get('/smart-timing', async (req: any, res: any) => {
   try {
-    const { data: msgs } = await supabase.from('messages').select('direction, sent_at').eq('user_id', req.userId).limit(1000);
+    const { data: msgs } = await supabase.from('messages').select('direction, sent_at').eq('user_id', req.userId);
     const out = (msgs || []).filter((m: any) => m.direction === 'out');
     const inc = (msgs || []).filter((m: any) => m.direction === 'in');
     const hs: Record<number, { sent: number; replied: number }> = {};

@@ -102,7 +102,7 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
       .select('company_name,contact_name,phone,email,website,instagram,facebook,linkedin_url,youtube,twitter,city,sector,source,score,status,notes,created_at')
       .eq('user_id', req.userId)
       .order('created_at', { ascending: false })
-      .limit(5000);
+      ;
 
     if (ids) {
       const idList = String(ids).split(',').filter(Boolean);
@@ -169,7 +169,7 @@ router.get('/lists', authMiddleware, async (req: any, res: any) => {
       .select('notes')
       .eq('user_id', req.userId)
       .ilike('notes', '[📁%')
-      .limit(2000);
+      ;
     if (error) throw error;
 
     const listSet = new Set<string>();

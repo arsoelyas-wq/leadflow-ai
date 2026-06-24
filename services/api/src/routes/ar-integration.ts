@@ -272,7 +272,7 @@ router.post('/send-batch/:modelId', async (req: any, res: any) => {
 
     let query = supabase.from('leads').select('*').eq('user_id', userId).not('phone', 'is', null);
     if (leadIds?.length) query = query.in('id', leadIds);
-    else query = query.limit(200);
+    ;
 
     const { data: leads } = await query;
     if (!leads?.length) return res.json({ message: 'Uygun lead yok', sent: 0 });

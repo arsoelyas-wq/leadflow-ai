@@ -1255,7 +1255,7 @@ async function runFinder(params: FinderParams): Promise<{
   // CRM deduplication — don't re-add existing leads
   const { data: existing } = await supabase
     .from('leads').select('company_name, phone')
-    .eq('user_id', userId).limit(5000);
+    .eq('user_id', userId);
 
   const crmNames  = new Set((existing || []).map((l: any) => normalizeName(l.company_name || '')));
   const crmPhones = new Set((existing || []).map((l: any) => l.phone ? normalizePhone(l.phone) : null).filter(Boolean));

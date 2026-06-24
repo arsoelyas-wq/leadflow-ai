@@ -105,7 +105,7 @@ router.get('/attribution', authMiddleware, async (req: any, res: any) => {
       .eq('user_id', req.userId)
       .or('gclid.not.is.null,utm_source.eq.google,utm_source.eq.google-ads,utm_source.eq.adwords')
       .order('created_at', { ascending: false })
-      .limit(5000);
+      ;
 
     if (error) throw error;
 

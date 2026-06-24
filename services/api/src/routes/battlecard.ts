@@ -71,7 +71,7 @@ async function getCommunityStats(sector: string | null) {
       .select('status, score, ai_grade');
 
     if (sector) query = query.ilike('sector', `%${sector}%`);
-    query = query.limit(2000);
+    ;
 
     const { data } = await query;
     if (!data?.length) return null;

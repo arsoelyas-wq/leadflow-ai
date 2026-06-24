@@ -69,7 +69,7 @@ async function calculateHealthScore(lead: any, messages: any[], proposals: any[]
 router.get('/scores', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { data: leads } = await supabase.from('leads').select('*').eq('user_id', userId).limit(100);
+    const { data: leads } = await supabase.from('leads').select('*').eq('user_id', userId);
     if (!leads?.length) return res.json({ leads: [], summary: {} });
 
     const results = await Promise.all(leads.map(async (lead: any) => {
