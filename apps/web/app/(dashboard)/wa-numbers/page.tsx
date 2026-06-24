@@ -1,73 +1,14 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { Plus, Trash2, RefreshCw, Star, QrCode, Wifi, WifiOff, Settings2, ShieldCheck } from 'lucide-react'
+import { Plus, Trash2, RefreshCw, Star, QrCode, Wifi, WifiOff, Settings2, ShieldCheck, Phone, MessageCircle, AlertTriangle, CheckCircle } from 'lucide-react'
 
-// ── PHONE CONSTELLATION — rotating phone nodes in orbit ───────────────────────
-function PhoneConstellation({ size = 100, connected = 0, total = 0 }: { size?: number; connected?: number; total?: number }) {
-  const [mounted, setMounted] = useState(false)
-  const [tick, setTick] = useState(0)
-  useEffect(() => { setMounted(true) }, [])
-  useEffect(() => {
-    if (!mounted) return
-    const t = setInterval(() => setTick(p => p + 1), 45)
-    return () => clearInterval(t)
-  }, [mounted])
-  if (!mounted) return <div style={{ width: size * 2.2, height: size * 2.2, flexShrink: 0 }} />
+const card = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } as const
+const tx1 = '#0f172a', tx2 = '#64748b', tx3 = '#94a3b8'
+const accentGreen = '#22c55e'
+const inputStyle = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 13px', color: tx1, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
-  const cx = size * 1.1, s = size
-  const rot = tick * 0.5
-  const nodes = Math.max(total, 3)
-  const phoneNodes = Array.from({ length: nodes }, (_, i) => {
-    const a = (i * (360 / nodes) + rot) * Math.PI / 180
-    return { x: cx + Math.cos(a) * s * 0.7, y: cx + Math.sin(a) * s * 0.7, connected: i < connected }
-  })
-
-  // Signal rings from connected nodes
-  const signalR = s * 0.12 + Math.sin(tick * 0.15) * s * 0.03
-
-  return (
-    <div style={{ width: s * 2.2, height: s * 2.2, flexShrink: 0 }}>
-      <svg width={s * 2.2} height={s * 2.2}>
-        <defs>
-          <radialGradient id={`pcGlow${s}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(34,197,94,0)" />
-            <stop offset="100%" stopColor="rgba(34,197,94,0.14)" />
-          </radialGradient>
-          <radialGradient id={`pcHub${s}`} cx="35%" cy="28%" r="65%">
-            <stop offset="0%" stopColor="#86efac" />
-            <stop offset="40%" stopColor="#22c55e" />
-            <stop offset="100%" stopColor="#14532d" />
-          </radialGradient>
-        </defs>
-        <circle cx={cx} cy={cx} r={s * 1.05} fill={`url(#pcGlow${s})`} />
-        {[0.52, 0.78, 0.96].map((r, i) => (
-          <circle key={r} cx={cx} cy={cx} r={s * r} fill="none" stroke="rgba(34,197,94,0.1)" strokeWidth={0.8}
-            strokeDasharray="4 7" style={{ animation: `pc-ring ${9+i*3}s linear ${i%2?'reverse':''} infinite`, transformOrigin: `${cx}px ${cx}px` }} />
-        ))}
-        {phoneNodes.map((node, i) => (
-          <g key={i}>
-            <line x1={cx} y1={cx} x2={node.x} y2={node.y} stroke={node.connected ? 'rgba(34,197,94,0.25)' : 'rgba(100,116,139,0.15)'} strokeWidth={1} strokeDasharray="3 5" />
-            {node.connected && (
-              <circle cx={node.x} cy={node.y} r={signalR} fill="none" stroke="rgba(34,197,94,0.3)" strokeWidth={1} />
-            )}
-            <rect x={node.x - 9} y={node.y - 13} width={18} height={26} rx={4}
-              fill={node.connected ? '#22c55e' : '#1e293b'} stroke={node.connected ? 'rgba(34,197,94,0.5)' : 'rgba(100,116,139,0.3)'} strokeWidth={1.5}
-              style={{ filter: node.connected ? 'drop-shadow(0 0 6px #22c55e99)' : 'none' }} />
-            {node.connected && <circle cx={node.x} cy={node.y + 8} r={2} fill="rgba(255,255,255,0.6)" />}
-          </g>
-        ))}
-        <circle cx={cx} cy={cx} r={s * 0.36} fill={`url(#pcHub${s})`} style={{ filter: 'drop-shadow(0 0 14px #22c55e99)' }} />
-        <text x={cx} y={cx - 4} fill="white" fontSize={s * 0.18} textAnchor="middle" dominantBaseline="middle" fontWeight="900">{connected}</text>
-        <text x={cx} y={cx + s * 0.14} fill="rgba(255,255,255,0.6)" fontSize={s * 0.07} textAnchor="middle">BAĞLI</text>
-      </svg>
-      <style>{`@keyframes pc-ring{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
-    </div>
-  )
-}
-
-// Health score for a number
 function getHealthColor(sentToday: number, limit: number) {
   const pct = sentToday / limit
   if (pct > 0.85) return '#ef4444'
@@ -77,9 +18,9 @@ function getHealthColor(sentToday: number, limit: number) {
 
 function getBanRisk(sentToday: number, limit: number) {
   const pct = sentToday / limit
-  if (pct > 0.85) return { label: 'Yüksek Risk', color: '#ef4444' }
-  if (pct > 0.55) return { label: 'Orta Risk', color: '#f59e0b' }
-  return { label: 'Güvenli', color: '#10b981' }
+  if (pct > 0.85) return { label: 'Yüksek Risk', color: '#ef4444', bg: '#fef2f2' }
+  if (pct > 0.55) return { label: 'Orta Risk', color: '#f59e0b', bg: '#fffbeb' }
+  return { label: 'Güvenli', color: '#10b981', bg: '#ecfdf5' }
 }
 
 export default function WANumbersPage() {
@@ -92,177 +33,204 @@ export default function WANumbersPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [dailyLimit, setDailyLimit] = useState(100)
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const qrPollRef = useRef<any>(null)
+
+  const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 5000) }
 
   const load = async () => {
     setLoading(true)
     try { const data = await api.get('/api/wa-numbers/stats'); setStats(data) } catch {}
     setLoading(false)
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); return () => { if (qrPollRef.current) clearInterval(qrPollRef.current) } }, [])
 
   const connectNumber = async () => {
     setConnecting(true); setQrCode(null)
     try {
       const data = await api.post('/api/wa-numbers/connect', { displayName, dailyLimit })
-      if (data.qr) setQrCode(data.qr)
-      else { setShowAdd(false); load() }
-    } catch {}
+      if (data.qr) {
+        setQrCode(data.qr)
+        // Start QR polling every 5 seconds
+        qrPollRef.current = setInterval(async () => {
+          try {
+            const status = await api.get('/api/wa-numbers/qr-status')
+            if (status.connected) {
+              clearInterval(qrPollRef.current)
+              setQrCode(null); setShowAdd(false)
+              showMsg('success', 'WhatsApp bağlandı!')
+              load()
+            } else if (status.qr && status.qr !== qrCode) {
+              setQrCode(status.qr)
+            }
+          } catch {}
+        }, 5000)
+        // Stop polling after 2 minutes
+        setTimeout(() => { if (qrPollRef.current) { clearInterval(qrPollRef.current); setQrCode(null); showMsg('error', 'QR süresi doldu — tekrar deneyin') } }, 120000)
+      } else if (data.status === 'connected') {
+        showMsg('success', 'Bağlandı!'); setShowAdd(false); load()
+      } else {
+        showMsg('error', 'QR oluşturulamadı — Ayarlar > WhatsApp bağlantısını kontrol edin')
+      }
+    } catch (e: any) { showMsg('error', e.message) }
     setConnecting(false)
   }
 
   const disconnectNumber = async (id: string) => {
-    await api.post(`/api/wa-numbers/${id}/disconnect`, {}); load()
+    await api.post(`/api/wa-numbers/${id}/disconnect`, {}); showMsg('success', 'Bağlantı kesildi'); load()
   }
-
   const setPrimary = async (id: string) => {
-    await api.patch(`/api/wa-numbers/${id}`, { isPrimary: true }); load()
+    await api.patch(`/api/wa-numbers/${id}`, { isPrimary: true }); showMsg('success', 'Birincil numara ayarlandı'); load()
   }
-
   const deleteNumber = async (id: string) => {
     if (!confirm('Numara silinsin mi?')) return
-    await api.delete(`/api/wa-numbers/${id}`); load()
+    await api.delete(`/api/wa-numbers/${id}`); showMsg('success', 'Numara silindi'); load()
   }
-
   const updateLimit = async (id: string, limit: number) => {
-    await api.patch(`/api/wa-numbers/${id}`, { dailyLimit: limit })
-    setEditId(null); load()
+    await api.patch(`/api/wa-numbers/${id}`, { dailyLimit: limit }); setEditId(null); showMsg('success', 'Limit güncellendi'); load()
   }
 
   const numbers = stats?.numbers || []
   const connected = numbers.filter((n: any) => n.status === 'connected').length
-  const inputStyle = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 9, padding: '10px 12px', color: '#0f172a', fontSize: 13, outline: 'none' }
+  const totalCapacity = stats?.totalCapacity || 0
+  const usedToday = stats?.usedToday || 0
 
   return (
     <div style={{ padding: 0 }}>
-      {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f0fdf4 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #bbf7d0' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(34,197,94,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(34,197,94,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <PhoneConstellation size={90} connected={connected} total={numbers.length} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>WhatsApp Numaralar</h1>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('wa_numbers.coklu_numara_yonetimi_ban', 'Çoklu numara yönetimi — ban riskini dağıt, kapasiteyi artır')}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-              {[{l:'Toplam',v:numbers.length,c:'#94a3b8'},{l:'Bağlı',v:connected,c:'#22c55e'},{l:'Günlük Kapasite',v:stats?.totalCapacity||0,c:'#06b6d4'},{l:'Bugün Gönderilen',v:stats?.usedToday||0,c:'#f59e0b'}].map(m => (
-                <div key={m.l} style={{ textAlign:'center' }}>
-                  <p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p>
-                  <p style={{ color:'#475569', fontSize:10, margin:0 }}>{m.l}</p>
-                </div>
-              ))}
-            </div>
+      {/* ── HERO ──────────────────────────────────────────────── */}
+      <div style={{ ...card, padding: '22px 24px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Phone size={24} style={{ color: accentGreen }} />
           </div>
-          <button onClick={() => setShowAdd(!showAdd)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#14532d,#22c55e)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-            <Plus size={15} /> Numara Ekle
-          </button>
+          <div>
+            <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>WhatsApp Numaralar</h1>
+            <p style={{ color: tx2, fontSize: 12, margin: 0 }}>Çoklu numara yönetimi — ban riskini dağıt, kapasiteyi artır</p>
+          </div>
         </div>
+        <button onClick={() => setShowAdd(!showAdd)}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#14532d,#22c55e)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+          <Plus size={14} /> Numara Ekle
+        </button>
       </div>
 
-      {/* Add Form */}
-      {showAdd && (
-        <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: 18, padding: 22, marginBottom: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 16px' }}>{t('wa_numbers.yeni_numara_bagla', '➕ Yeni Numara Bağla')}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-            <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('wa_numbers.isim_opsiyonel', 'İsim (opsiyonel)')}</label>
-              <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder={t('wa_numbers.orn_satis_hatti_1', 'örn: Satış Hattı 1')} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
+      {msg && <div style={{ marginBottom: 14, padding: '10px 16px', borderRadius: 11, fontSize: 12, background: msg.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: msg.type === 'success' ? '#059669' : '#dc2626' }}>{msg.text}</div>}
+
+      {/* ── STATS ─────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+        {[
+          { label: 'Toplam', value: numbers.length, color: '#64748b', Icon: Phone },
+          { label: 'Bağlı', value: connected, color: accentGreen, Icon: Wifi },
+          { label: 'Günlük Kapasite', value: totalCapacity, color: '#2563eb', Icon: MessageCircle },
+          { label: 'Bugün Gönderilen', value: usedToday, color: usedToday > totalCapacity * 0.8 ? '#ef4444' : '#f59e0b', Icon: CheckCircle },
+        ].map(({ label, value, color, Icon }) => (
+          <div key={label} style={{ ...card, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon size={16} style={{ color }} />
             </div>
             <div>
-              <label style={{ color: '#64748b', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('wa_numbers.gunluk_mesaj_limiti', 'Günlük Mesaj Limiti')}</label>
-              <input type="number" value={dailyLimit} onChange={e => setDailyLimit(Number(e.target.value))} min={10} max={500} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' as const }} />
+              <p style={{ color: tx1, fontSize: 20, fontWeight: 800, margin: 0 }}>{value}</p>
+              <p style={{ color: tx3, fontSize: 10, margin: 0 }}>{label}</p>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* ── ADD FORM ──────────────────────────────────────────── */}
+      {showAdd && (
+        <div style={{ ...card, padding: 20, marginBottom: 18 }}>
+          <h3 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <QrCode size={16} style={{ color: accentGreen }} /> Yeni Numara Bağla
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div>
+              <label style={{ color: tx2, fontSize: 11, display: 'block', marginBottom: 5 }}>İsim (opsiyonel)</label>
+              <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="örn: Satış Hattı 1" style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ color: tx2, fontSize: 11, display: 'block', marginBottom: 5 }}>Günlük Mesaj Limiti</label>
+              <input type="number" value={dailyLimit} onChange={e => setDailyLimit(Number(e.target.value))} min={10} max={500} style={inputStyle} />
+            </div>
+          </div>
+
           {qrCode ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '20px', background: '#f0fdf4', borderRadius: 14, border: '1px solid #bbf7d0' }}>
-              <p style={{ color: '#0f172a', fontWeight: 700, margin: 0 }}>{t('wa_numbers.whatsapp_ile_qri_okutun', '📱 WhatsApp ile QR\'ı okutun')}</p>
-              <img src={qrCode} alt="QR" style={{ width: 200, height: 200, borderRadius: 12 }} />
-              <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>{t('wa_numbers.baglanti_bekleniyor', 'Bağlantı bekleniyor...')}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 24, background: '#f0fdf4', borderRadius: 14, border: '1px solid #a7f3d0' }}>
+              <p style={{ color: tx1, fontWeight: 700, fontSize: 14, margin: 0 }}>📱 WhatsApp ile QR'ı okutun</p>
+              <img src={qrCode} alt="QR" style={{ width: 220, height: 220, borderRadius: 14, border: '4px solid #a7f3d0' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <RefreshCw size={12} style={{ color: accentGreen, animation: 'waSpin 2s linear infinite' }} />
+                <p style={{ color: accentGreen, fontSize: 12, fontWeight: 600, margin: 0 }}>Bağlantı bekleniyor... (otomatik kontrol her 5sn)</p>
+              </div>
+              <p style={{ color: tx3, fontSize: 10, margin: 0 }}>QR 2 dakika geçerlidir</p>
             </div>
           ) : (
             <button onClick={connectNumber} disabled={connecting}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 24px', borderRadius: 11, border: '1px solid #86efac', background: '#dcfce7', color: '#059669', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              {connecting ? <RefreshCw size={14} style={{ animation: 'wa-spin 1s linear infinite' }} /> : <QrCode size={14} />}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, border: 'none', background: connecting ? '#f1f5f9' : 'linear-gradient(135deg,#14532d,#22c55e)', color: connecting ? tx3 : '#fff', fontSize: 13, fontWeight: 700, cursor: connecting ? 'not-allowed' : 'pointer' }}>
+              {connecting ? <RefreshCw size={14} style={{ animation: 'waSpin 1s linear infinite' }} /> : <QrCode size={14} />}
               {connecting ? 'QR oluşturuluyor...' : 'QR Oluştur & Bağla'}
             </button>
           )}
         </div>
       )}
 
-      {/* Numbers List */}
+      {/* ── NUMBERS LIST ──────────────────────────────────────── */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', height: 100, alignItems: 'center' }}><RefreshCw size={22} style={{ color: '#475569', animation: 'wa-spin 1s linear infinite' }} /></div>
+        <div style={{ display: 'flex', justifyContent: 'center', height: 100, alignItems: 'center' }}><RefreshCw size={20} style={{ color: tx3, animation: 'waSpin 1s linear infinite' }} /></div>
       ) : numbers.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 48, color: '#475569' }}>
-          <p style={{ fontSize: 40, margin: '0 0 12px' }}>📱</p>
-          <p style={{ fontSize: 14, margin: 0 }}>{t('wa_numbers.henuz_numara_yok_antiban', 'Henüz numara yok — anti-ban için birden fazla numara ekleyin')}</p>
+        <div style={{ ...card, padding: 48, textAlign: 'center' }}>
+          <Phone size={32} style={{ color: tx3, margin: '0 auto 12px' }} />
+          <p style={{ color: tx2, fontSize: 13, margin: 0 }}>Henüz numara yok — "Numara Ekle" ile başlayın</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {numbers.map((num: any) => {
             const banRisk = getBanRisk(num.sent_today || 0, num.daily_limit || 100)
             const healthColor = getHealthColor(num.sent_today || 0, num.daily_limit || 100)
             const pct = Math.min(((num.sent_today || 0) / (num.daily_limit || 100)) * 100, 100)
             return (
-              <div key={num.id} style={{ background: '#ffffff', border: `1px solid ${num.is_primary ? '#86efac' : '#e2e8f0'}`, borderRadius: 16, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  {/* Status indicator */}
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: num.status === 'connected' ? 'rgba(34,197,94,0.12)' : 'rgba(100,116,139,0.12)', border: `1px solid ${num.status === 'connected' ? 'rgba(34,197,94,0.3)' : 'rgba(100,116,139,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {num.status === 'connected' ? <Wifi size={20} color="#22c55e" /> : <WifiOff size={20} color="#64748b" />}
+              <div key={num.id} style={{ ...card, padding: '16px 18px', borderLeft: num.is_primary ? '4px solid #22c55e' : undefined }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 11, background: num.status === 'connected' ? '#ecfdf5' : '#f8fafc', border: `1px solid ${num.status === 'connected' ? '#a7f3d0' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {num.status === 'connected' ? <Wifi size={18} color="#22c55e" /> : <WifiOff size={18} color="#94a3b8" />}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <p style={{ color: '#0f172a', fontWeight: 700, fontSize: 14, margin: 0 }}>{num.display_name || 'WhatsApp Hattı'}</p>
-                      {num.is_primary && <span style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>⭐ Birincil</span>}
-                      <span style={{ background: `${banRisk.color}12`, border: `1px solid ${banRisk.color}30`, color: banRisk.color, fontSize: 10, padding: '2px 7px', borderRadius: 20, fontWeight: 700 }}>
-                        <ShieldCheck size={9} style={{ display: 'inline', marginRight: 3 }} />{banRisk.label}
-                      </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <p style={{ color: tx1, fontWeight: 700, fontSize: 13, margin: 0 }}>{num.display_name || 'WhatsApp Hattı'}</p>
+                      {num.is_primary && <span style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', fontSize: 9, padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>⭐ Birincil</span>}
+                      <span style={{ background: banRisk.bg, border: `1px solid ${banRisk.color}30`, color: banRisk.color, fontSize: 9, padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>{banRisk.label}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#475569' }}>
+                    <div style={{ display: 'flex', gap: 10, fontSize: 10, color: tx3 }}>
                       {num.phone_number && <span>{num.phone_number}</span>}
-                      <span style={{ color: num.status === 'connected' ? '#059669' : '#64748b' }}>{num.status === 'connected' ? '🟢 Bağlı' : '⚫ Bağlı Değil'}</span>
+                      <span style={{ color: num.status === 'connected' ? '#059669' : tx3 }}>{num.status === 'connected' ? '● Bağlı' : '○ Bağlı Değil'}</span>
                     </div>
                   </div>
-                  {/* Usage bar */}
-                  <div style={{ width: 120, flexShrink: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: '#475569', fontSize: 10 }}>{t('wa_numbers.bugun', 'Bugün')}</span>
-                      <span style={{ color: healthColor, fontSize: 10, fontWeight: 700 }}>{num.sent_today || 0}/{num.daily_limit || 100}</span>
+                  <div style={{ width: 110, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                      <span style={{ color: tx3, fontSize: 9 }}>Bugün</span>
+                      <span style={{ color: healthColor, fontSize: 9, fontWeight: 700 }}>{num.sent_today || 0}/{num.daily_limit || 100}</span>
                     </div>
-                    <div style={{ height: 6, background: '#e2e8f0', borderRadius: 3 }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: healthColor, borderRadius: 3, boxShadow: `0 0 6px ${healthColor}60`, transition: 'width 0.6s' }} />
+                    <div style={{ height: 5, background: '#f1f5f9', borderRadius: 3 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: healthColor, borderRadius: 3, transition: 'width 0.6s' }} />
                     </div>
                   </div>
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     {!num.is_primary && num.status === 'connected' && (
-                      <button onClick={() => setPrimary(num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.08)', color: '#fbbf24', cursor: 'pointer' }} title="Birincil Yap">
-                        <Star size={13} />
-                      </button>
+                      <button onClick={() => setPrimary(num.id)} title="Birincil Yap" style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #fde68a', background: '#fffbeb', color: '#b45309', cursor: 'pointer' }}><Star size={12} /></button>
                     )}
-                    <button onClick={() => setEditId(editId === num.id ? null : num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', cursor: 'pointer' }}>
-                      <Settings2 size={13} />
-                    </button>
+                    <button onClick={() => setEditId(editId === num.id ? null : num.id)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#f8fafc', color: tx2, cursor: 'pointer' }}><Settings2 size={12} /></button>
                     {num.status === 'connected' ? (
-                      <button onClick={() => disconnectNumber(num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', cursor: 'pointer' }}>
-                        <WifiOff size={13} />
-                      </button>
+                      <button onClick={() => disconnectNumber(num.id)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><WifiOff size={12} /></button>
                     ) : (
-                      <button onClick={() => deleteNumber(num.id)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: '#f87171', cursor: 'pointer' }}>
-                        <Trash2 size={13} />
-                      </button>
+                      <button onClick={() => deleteNumber(num.id)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={12} /></button>
                     )}
                   </div>
                 </div>
-                {/* Edit limit */}
                 {editId === num.id && (
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ color: '#64748b', fontSize: 12 }}>{t('wa_numbers.gunluk_limit', 'Günlük limit:')}</span>
-                    <input type="number" defaultValue={num.daily_limit} id={`lim-${num.id}`} min={10} max={500}
-                      style={{ width: 80, ...inputStyle }} />
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: tx2, fontSize: 11 }}>Günlük limit:</span>
+                    <input type="number" defaultValue={num.daily_limit} id={`lim-${num.id}`} min={10} max={500} style={{ width: 70, ...inputStyle, padding: '6px 10px', fontSize: 12 }} />
                     <button onClick={() => { const el = document.getElementById(`lim-${num.id}`) as HTMLInputElement; updateLimit(num.id, parseInt(el.value)) }}
-                      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#14532d,#22c55e)', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                      Kaydet
-                    </button>
+                      style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: accentGreen, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Kaydet</button>
                   </div>
                 )}
               </div>
@@ -271,25 +239,25 @@ export default function WANumbersPage() {
         </div>
       )}
 
-      {/* Anti-ban guide */}
-      <div style={{ marginTop: 20, background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: 18, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-        <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>🛡️ Anti-Ban Stratejisi</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+      {/* ── ANTI-BAN GUIDE ────────────────────────────────────── */}
+      <div style={{ ...card, padding: '16px 18px', marginTop: 16 }}>
+        <p style={{ color: tx1, fontSize: 13, fontWeight: 700, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}><ShieldCheck size={14} style={{ color: accentGreen }} /> Anti-Ban Stratejisi</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
           {[
-            { icon: '📊', text: t('Numara başına günde max 100-150 mesaj gönderin','Numara başına günde max 100-150 mesaj gönderin'), color: '#06b6d4' },
-            { icon: '⏱️', text: t('Mesajlar arasında 10-30 saniye bekleme aktif','Mesajlar arasında 10-30 saniye bekleme aktif'), color: '#10b981' },
-            { icon: '🔄', text: t('Sistem otomatik round-robin rotasyon yapıyor','Sistem otomatik round-robin rotasyon yapıyor'), color: '#8b5cf6' },
-            { icon: '🎯', text: t('Kişiselleştirilmiş mesajlar toplu mesajdan 3x güvenli','Kişiselleştirilmiş mesajlar toplu mesajdan 3x güvenli'), color: '#f59e0b' },
+            { icon: '📊', text: 'Numara başına günde max 100-150 mesaj', color: '#0d9488' },
+            { icon: '⏱️', text: 'Mesajlar arası 15-45sn otomatik bekleme', color: '#059669' },
+            { icon: '🔄', text: 'Çoklu numara arasında akıllı rotasyon', color: '#7c3aed' },
+            { icon: '🕐', text: '09:00-20:00 dışında gönderim engelli', color: '#2563eb' },
           ].map(tip => (
-            <div key={tip.text} style={{ display: 'flex', gap: 10, padding: '10px 14px', background: `${tip.color}08`, border: `1px solid ${tip.color}18`, borderRadius: 10 }}>
-              <span style={{ fontSize: 16 }}>{tip.icon}</span>
-              <p style={{ color: '#0f172a', fontSize: 12, margin: 0, lineHeight: 1.5 }}>{tip.text}</p>
+            <div key={tip.text} style={{ display: 'flex', gap: 8, padding: '8px 12px', background: `${tip.color}06`, border: `1px solid ${tip.color}15`, borderRadius: 9 }}>
+              <span style={{ fontSize: 14, flexShrink: 0 }}>{tip.icon}</span>
+              <p style={{ color: tx1, fontSize: 11, margin: 0, lineHeight: 1.5 }}>{tip.text}</p>
             </div>
           ))}
         </div>
       </div>
 
-      <style>{`@keyframes wa-spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes waSpin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
