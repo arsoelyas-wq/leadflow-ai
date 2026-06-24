@@ -228,7 +228,7 @@ export default function WANumbersPage() {
                 {editId === num.id && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: tx2, fontSize: 11 }}>Günlük limit:</span>
-                    <input type="number" defaultValue={num.daily_limit} id={`lim-${num.id}`} min={10} max={500} style={{ width: 70, ...inputStyle, padding: '6px 10px', fontSize: 12 }} />
+                    <input type="number" defaultValue={num.daily_limit} id={`lim-${num.id}`} min={10} max={500} style={{ ...inputStyle, width: 70, padding: '6px 10px', fontSize: 12 }} />
                     <button onClick={() => { const el = document.getElementById(`lim-${num.id}`) as HTMLInputElement; updateLimit(num.id, parseInt(el.value)) }}
                       style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: accentGreen, color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Kaydet</button>
                   </div>
