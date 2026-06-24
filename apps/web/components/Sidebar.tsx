@@ -47,6 +47,7 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
   { href: '/automations', label: 'nav.automations', icon: Megaphone, badge: 'AI' },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
+  { href: '/invoices',  label: 'nav.invoices',  icon: FileSpreadsheet },
 ]
 
 const GROUPS: NavGroup[] = [
@@ -90,13 +91,6 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/analytics', label: 'nav.analytics', icon: PieChart, badge: 'AI' },
       { href: '/financial', label: 'nav.financial', icon: Banknote, badge: 'Pro' },
-    ],
-  },
-  {
-    id: 'customer', label: 'nav.group_customer',
-    items: [
-      { href: '/loyalty',        label: 'nav.loyalty',        icon: Award },
-      { href: '/invoices',       label: 'nav.invoices',       icon: FileSpreadsheet },
     ],
   },
   {
