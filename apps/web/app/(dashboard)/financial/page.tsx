@@ -270,33 +270,31 @@ export default function FinancialPage() {
 
   return (
     <div style={{ padding: 0 }}>
-      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid #ede9fe' }}>
-        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(139,92,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(79,70,229,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
-        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', justifyContent:'space-between', gap:24 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:24 }}>
-            <NeuralConstellation size={95} analyzing={analyzing} metrics={metrics} />
-            <div>
-              <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>{t('financial.buyume_zekasi', 'Büyüme Zekası')}</h1>
-              <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('financial.6_aylik_trend_churn_tespi', '6 aylık trend, churn tespiti, AI büyüme önerileri')}</p>
-              <div style={{ display:'flex', gap:8 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:6, background:growth>=0?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)', border:`1px solid ${growth>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:20, padding:'4px 12px' }}>
-                  {growth >= 0 ? <TrendingUp size={13} style={{ color:'#047857' }} /> : <TrendingDown size={13} style={{ color:'#dc2626' }} />}
-                  <span style={{ color:growth>=0?'#047857':'#dc2626', fontSize:12, fontWeight:700 }}>{growth>=0?'+':''}{growth.toFixed(1)}% büyüme</span>
-                </div>
-                {churn.total > 0 && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, background:'rgba(180,83,9,0.1)', border:'1px solid rgba(180,83,9,0.3)', borderRadius:20, padding:'4px 12px' }}>
-                    <AlertTriangle size={13} style={{ color:'#b45309' }} />
-                    <span style={{ color:'#b45309', fontSize:12, fontWeight:700 }}>{churn.total} churn riski</span>
-                  </div>
-                )}
-              </div>
-            </div>
+      {/* ── COMPACT HERO (no heavy animation) */}
+      <div style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Brain size={22} style={{ color: '#7c3aed' }} />
           </div>
-          <button onClick={load} disabled={loading} style={{ display:'flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:11, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:12, fontWeight:700 }}>
-            <Brain size={14} style={{ animation:analyzing?'fn-spin 1s linear infinite':'none' }} />
-            {analyzing?'AI Analiz Ediyor...':'AI Yenile'}
-          </button>
+          <div>
+            <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Büyüme Zekası</h1>
+            <p style={{ color: '#64748b', fontSize: 12, margin: 0 }}>6 aylık trend, churn tespiti, AI büyüme önerileri</p>
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginLeft: 16 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: growth >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${growth >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: growth >= 0 ? '#047857' : '#dc2626' }}>
+              {growth >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />} {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
+            </span>
+            {churn.total > 0 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(180,83,9,0.1)', border: '1px solid rgba(180,83,9,0.3)', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#b45309' }}>
+                <AlertTriangle size={11} /> {churn.total} risk
+              </span>
+            )}
+          </div>
         </div>
+        <button onClick={load} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#4c1d95,#7c3aed)', color: '#fff', fontSize: 12, fontWeight: 700 }}>
+          <Brain size={13} style={{ animation: analyzing ? 'fn-spin 1s linear infinite' : 'none' }} />
+          {analyzing ? 'AI Analiz...' : 'AI Yenile'}
+        </button>
       </div>
 
       {/* ── TAB BAR */}
@@ -405,27 +403,28 @@ export default function FinancialPage() {
       </>)}
 
       {tab === 'forecast' && (<>
-      {/* ── FORECAST HERO */}
-      <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid #d1fae5' }}>
-        <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(217,119,6,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
-        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
-          <RevenueCandlestick size={100} data={actual} forecastData={forecast.slice(0,3)} />
-          <div style={{ flex:1 }}>
-            <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Gelir Tahmini</h1>
-            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('revenue.gercek_fatura_verisiyle_3', 'Gerçek fatura verisiyle 3 aylık projeksiyon')}</p>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-              {(['base','best','worst'] as const).map(s => (
-                <button key={s} onClick={()=>setScenario(s)} style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${scenario===s?s==='best'?'rgba(16,185,129,0.4)':s==='worst'?'rgba(220,38,38,0.4)':'rgba(217,119,6,0.4)':'#e2e8f0'}`, background:scenario===s?s==='best'?'rgba(16,185,129,0.1)':s==='worst'?'rgba(220,38,38,0.1)':'rgba(217,119,6,0.1)':'transparent', color:scenario===s?s==='best'?'#059669':s==='worst'?'#dc2626':'#b45309':'#475569', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                  {s==='best'?'En İyi Senaryo':s==='worst'?'En Kötü':'Temel'} {s!=='base'?'(±20%)':''}
-                </button>
-              ))}
-              {(['monthly','quarterly','annual'] as const).map(p => (
-                <button key={p} onClick={()=>setRevenuePeriod(p)} style={{ padding:'6px 14px', borderRadius:20, border:`1px solid ${revenuePeriod===p?'rgba(99,102,241,0.5)':'rgba(255,255,255,0.08)'}`, background:revenuePeriod===p?'rgba(99,102,241,0.15)':'transparent', color:revenuePeriod===p?'#a5b4fc':'#64748b', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                  {p==='monthly'?'Aylık':p==='quarterly'?'Çeyreklik':'Yıllık'}
-                </button>
-              ))}
-            </div>
+      {/* ── FORECAST CONTROLS (compact, no animation) */}
+      <div style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 14, padding: '16px 20px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <TrendingUp size={18} style={{ color: '#059669' }} />
           </div>
+          <div>
+            <p style={{ color: '#0f172a', fontSize: 16, fontWeight: 700, margin: 0 }}>Gelir Tahmini</p>
+            <p style={{ color: '#64748b', fontSize: 11, margin: 0 }}>3 aylık projeksiyon</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {(['base','best','worst'] as const).map(s => (
+            <button key={s} onClick={()=>setScenario(s)} style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${scenario===s?s==='best'?'rgba(16,185,129,0.4)':s==='worst'?'rgba(220,38,38,0.4)':'rgba(217,119,6,0.4)':'#e2e8f0'}`, background: scenario===s?s==='best'?'rgba(16,185,129,0.1)':s==='worst'?'rgba(220,38,38,0.1)':'rgba(217,119,6,0.1)':'transparent', color: scenario===s?s==='best'?'#059669':s==='worst'?'#dc2626':'#b45309':'#475569', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+              {s==='best'?'En İyi':s==='worst'?'En Kötü':'Temel'}{s!=='base'?' (±20%)':''}
+            </button>
+          ))}
+          {(['monthly','quarterly','annual'] as const).map(p => (
+            <button key={p} onClick={()=>setRevenuePeriod(p)} style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${revenuePeriod===p?'rgba(99,102,241,0.4)':'#e2e8f0'}`, background: revenuePeriod===p?'rgba(99,102,241,0.1)':'transparent', color: revenuePeriod===p?'#6366f1':'#64748b', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+              {p==='monthly'?'Aylık':p==='quarterly'?'Çeyreklik':'Yıllık'}
+            </button>
+          ))}
         </div>
       </div>
 
