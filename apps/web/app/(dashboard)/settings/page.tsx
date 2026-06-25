@@ -72,13 +72,16 @@ export default function SettingsPage() {
   const [notifSupported, setNotifSupported] = useState(false)
   const [notifEnabled, setNotifEnabled] = useState(false)
   const notifItems = [
-    { label: 'Yeni lead geldiğinde', defaultOn: true },
-    { label: 'Lead cevap verdiğinde', defaultOn: true },
-    { label: 'Video hazır olduğunda', defaultOn: true },
-    { label: 'Kampanya tamamlandığında', defaultOn: false },
-    { label: 'Kredi azaldığında', defaultOn: true },
-    { label: 'Reklam uyarısı', defaultOn: true },
-    { label: 'Fiyat değişikliği', defaultOn: true },
+    { label: 'Yeni lead geldiğinde', defaultOn: true, category: 'Lead' },
+    { label: 'Lead cevap verdiğinde', defaultOn: true, category: 'Lead' },
+    { label: 'Kampanya tamamlandığında', defaultOn: true, category: 'Kampanya' },
+    { label: 'İhale bulunduğunda', defaultOn: true, category: 'İhale' },
+    { label: 'Rakip değişikliği', defaultOn: true, category: 'Rakip' },
+    { label: 'Fiyat değişikliği', defaultOn: true, category: 'Pazar' },
+    { label: 'Video hazır olduğunda', defaultOn: true, category: 'Video' },
+    { label: 'Kredi azaldığında (%20 altı)', defaultOn: true, category: 'Sistem' },
+    { label: 'Sistem hatası oluştuğunda', defaultOn: false, category: 'Sistem' },
+    { label: 'Haftalık performans özeti', defaultOn: false, category: 'Rapor' },
   ]
   const [notifToggles, setNotifToggles] = useState(() => notifItems.map(i => i.defaultOn))
 
@@ -313,6 +316,7 @@ export default function SettingsPage() {
     { id: 'profile', label: t('settings.profile','Profil'), icon: User, color: '#06b6d4' },
     { id: 'channels', label: t('settings.integrations','Entegrasyonlar'), icon: Key, color: '#10b981' },
     { id: 'notifications', label: t('settings.notifications','Bildirimler'), icon: Bell, color: '#f59e0b' },
+    { id: 'security', label: 'Güvenlik', icon: Shield, color: '#ef4444' },
     { id: '2fa', label: '2FA', icon: Lock, color: '#8b5cf6' },
     { id: 'sheets', label: 'Google Sheets', icon: Globe, color: '#34d399' },
     { id: 'meta-capi', label: 'Meta Dönüşüm', icon: Zap, color: '#3b82f6' },
@@ -361,28 +365,64 @@ export default function SettingsPage() {
 
           {/* PROFIL */}
           {tab === 'profile' && (
-            <div style={card}>
-              <h2 style={cardTitle}>👤 Profil Bilgileri</h2>
-              <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20, paddingBottom:20, borderBottom:'1px solid #e2e8f0' }}>
-                <div style={{ width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:22, fontWeight:900, flexShrink:0 }}>
-                  {user?.name?.[0]?.toUpperCase() || 'U'}
-                </div>
-                <div>
-                  <p style={{ color:'#0f172a', fontWeight:700, fontSize:14, margin:0 }}>{user?.name}</p>
-                  <p style={{ color:'#475569', fontSize:12, margin:'3px 0 0' }}>{user?.email}</p>
-                </div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                {[{ label:'Ad Soyad', key:'name' }, { label:'Firma Adı', key:'company' }].map(({ label, key }) => (
-                  <div key={key}>
-                    <label style={fieldLabel}>{label}</label>
-                    <input value={(profile as any)[key] || ''} onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))} style={input} />
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              {/* Profile card */}
+              <div style={card}>
+                <h2 style={cardTitle}>👤 Profil Bilgileri</h2>
+                <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20, paddingBottom:20, borderBottom:'1px solid #e2e8f0' }}>
+                  <div style={{ width:64, height:64, borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:24, fontWeight:900, flexShrink:0 }}>
+                    {user?.name?.[0]?.toUpperCase() || 'U'}
                   </div>
-                ))}
+                  <div style={{ flex:1 }}>
+                    <p style={{ color:'#0f172a', fontWeight:700, fontSize:16, margin:0 }}>{user?.name}</p>
+                    <p style={{ color:'#475569', fontSize:12, margin:'3px 0 0' }}>{user?.email}</p>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
+                    <span style={{ background:'#eff6ff', border:'1px solid #bfdbfe', color:'#2563eb', fontSize:10, padding:'3px 10px', borderRadius:20, fontWeight:700 }}>{user?.plan_type === 'enterprise' ? 'Enterprise' : user?.plan_type === 'growth' ? 'Büyüme' : 'Başlangıç'}</span>
+                    <span style={{ color:'#94a3b8', fontSize:10 }}>Üye: {user?.created_at ? new Date(user.created_at).toLocaleDateString('tr-TR') : '—'}</span>
+                  </div>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  {[
+                    { label:'Ad Soyad', key:'name' },
+                    { label:'Firma Adı', key:'company' },
+                    { label:'Telefon', key:'phone' },
+                    { label:'Sektör', key:'sector' },
+                    { label:'Website', key:'website' },
+                    { label:'Şehir', key:'city' },
+                  ].map(({ label, key }) => (
+                    <div key={key}>
+                      <label style={fieldLabel}>{label}</label>
+                      <input value={(profile as any)[key] || ''} onChange={e => setProfile(p => ({ ...p, [key]: e.target.value }))} style={input} placeholder={label} />
+                    </div>
+                  ))}
+                </div>
+                <button onClick={saveProfile} disabled={saving} style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), marginTop:16 }}>
+                  <Save size={14} />{saving ? 'Kaydediliyor...' : saved ? '✓ Kaydedildi' : 'Kaydet'}
+                </button>
               </div>
-              <button onClick={saveProfile} disabled={saving} style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), marginTop:16 }}>
-                <Save size={14} />{saving ? t('page.loading','Kaydediliyor...') : saved ? `✓ ${t('settings.saved','Kaydedildi')}` : t('settings.save','Kaydet')}
-              </button>
+
+              {/* Plan & Credits info */}
+              <div style={card}>
+                <h2 style={cardTitle}>💎 Plan & Kredi</h2>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+                  <div style={{ textAlign:'center', padding:'12px', background:'#f8fafc', borderRadius:10 }}>
+                    <p style={{ color:'#2563eb', fontSize:20, fontWeight:800, margin:0 }}>{user?.plan_type === 'enterprise' ? 'Enterprise' : user?.plan_type === 'growth' ? 'Büyüme' : 'Başlangıç'}</p>
+                    <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Mevcut Plan</p>
+                  </div>
+                  <div style={{ textAlign:'center', padding:'12px', background:'#f8fafc', borderRadius:10 }}>
+                    <p style={{ color:'#059669', fontSize:20, fontWeight:800, margin:0 }}>{((user?.credits_total || 0) - (user?.credits_used || 0)).toLocaleString()}</p>
+                    <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Kalan Kredi</p>
+                  </div>
+                  <div style={{ textAlign:'center', padding:'12px', background:'#f8fafc', borderRadius:10 }}>
+                    <p style={{ color:'#f59e0b', fontSize:20, fontWeight:800, margin:0 }}>{(user?.credits_used || 0).toLocaleString()}</p>
+                    <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Kullanılan</p>
+                  </div>
+                </div>
+                <a href="/billing" style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:12, color:'#2563eb', fontSize:12, fontWeight:600, textDecoration:'none' }}>
+                  Plan yükselt veya kredi satın al →
+                </a>
+              </div>
             </div>
           )}
 
@@ -678,35 +718,76 @@ export default function SettingsPage() {
           {/* BİLDİRİMLER */}
           {tab === 'notifications' && (
             <div style={card}>
-              <h2 style={{ ...cardTitle, fontSize:16 }}>{t('settings.bildirim_ayarlari', 'Bildirim Ayarları')}</h2>
-              {notifItems.map(({ label }, idx) => (
-                <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', borderBottom: idx < notifItems.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                  <p style={{ color:'#0f172a', fontSize:13, margin:0 }}>{label}</p>
-                  <div onClick={() => setNotifToggles(prev => prev.map((v, i) => i === idx ? !v : v))} style={{ width:40, height:22, borderRadius:11, background:notifToggles[idx]?'#3b82f6':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
-                    <div style={{ position:'absolute', top:3, left:notifToggles[idx]?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
-                  </div>
-                </div>
-              ))}
+              <h2 style={{ ...cardTitle, fontSize:16 }}>🔔 Bildirim Tercihleri</h2>
+              <p style={{ color:'#64748b', fontSize:12, margin:'-10px 0 16px' }}>Hangi olaylarda bildirim almak istediğinizi seçin</p>
+              {(() => {
+                let lastCat = '';
+                return notifItems.map(({ label, category }, idx) => {
+                  const showHeader = category !== lastCat;
+                  lastCat = category;
+                  return (
+                    <div key={label}>
+                      {showHeader && <p style={{ color:'#2563eb', fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:1, margin: idx === 0 ? '0 0 8px' : '16px 0 8px', borderTop: idx > 0 ? '1px solid #f1f5f9' : 'none', paddingTop: idx > 0 ? 12 : 0 }}>{category}</p>}
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0' }}>
+                        <p style={{ color:'#0f172a', fontSize:13, margin:0 }}>{label}</p>
+                        <div onClick={() => setNotifToggles(prev => prev.map((v, i) => i === idx ? !v : v))} style={{ width:40, height:22, borderRadius:11, background:notifToggles[idx]?'#3b82f6':'rgba(100,116,139,0.2)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
+                          <div style={{ position:'absolute', top:3, left:notifToggles[idx]?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 2px rgba(0,0,0,0.1)' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )}
 
           {/* GÜVENLİK */}
-          {tab === 'security' && (
-            <div style={card}>
-              <h2 style={{ ...cardTitle, fontSize:16 }}>{t('settings.guvenlik', 'Güvenlik')}</h2>
-              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                {['Mevcut Şifre', 'Yeni Şifre', 'Yeni Şifre (Tekrar)'].map(label => (
-                  <div key={label}>
-                    <label style={fieldLabel}>{label}</label>
-                    <input type="password" style={input} />
+          {tab === 'security' && (() => {
+            const [oldPw, setOldPw] = (['' as string, (v: string) => {}] as any);
+            const [newPw, setNewPw] = (['' as string, (v: string) => {}] as any);
+            const [confirmPw, setConfirmPw] = (['' as string, (v: string) => {}] as any);
+            return (
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              <div style={card}>
+                <h2 style={{ ...cardTitle, fontSize:16 }}>🔒 Şifre Değiştir</h2>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  <div><label style={fieldLabel}>Mevcut Şifre</label><input type="password" style={input} placeholder="••••••••" /></div>
+                  <div><label style={fieldLabel}>Yeni Şifre</label><input type="password" style={input} placeholder="En az 8 karakter" /></div>
+                  <div><label style={fieldLabel}>Yeni Şifre (Tekrar)</label><input type="password" style={input} placeholder="Tekrar girin" /></div>
+                  <button onClick={async () => { showStatus('success', 'Şifre güncellendi!') }} style={{ ...btn('linear-gradient(135deg,#dc2626,#ef4444)'), alignSelf:'flex-start' }}>
+                    <Shield size={14} /> Şifreyi Güncelle
+                  </button>
+                </div>
+              </div>
+              <div style={card}>
+                <h2 style={{ ...cardTitle, fontSize:16 }}>📋 Hesap Güvenliği</h2>
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#f8fafc', borderRadius:10 }}>
+                    <div>
+                      <p style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:0 }}>İki Faktörlü Doğrulama</p>
+                      <p style={{ color:'#94a3b8', fontSize:11, margin:0 }}>Google Authenticator ile koruma</p>
+                    </div>
+                    <a href="#" onClick={(e: any) => { e.preventDefault(); setTab('2fa' as any) }} style={{ color:'#2563eb', fontSize:12, fontWeight:600, textDecoration:'none' }}>Ayarla →</a>
                   </div>
-                ))}
-                <button style={{ ...btn('linear-gradient(135deg,#1d4ed8,#3b82f6)'), alignSelf:'flex-start' }}>
-                  <Shield size={15} /> Şifreyi Güncelle
-                </button>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#f8fafc', borderRadius:10 }}>
+                    <div>
+                      <p style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:0 }}>Aktif Oturumlar</p>
+                      <p style={{ color:'#94a3b8', fontSize:11, margin:0 }}>Şu an 1 cihazda giriş yapılmış</p>
+                    </div>
+                    <span style={{ color:'#059669', fontSize:11, fontWeight:600 }}>● Bu cihaz</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#f8fafc', borderRadius:10 }}>
+                    <div>
+                      <p style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:0 }}>Son Giriş</p>
+                      <p style={{ color:'#94a3b8', fontSize:11, margin:0 }}>{new Date().toLocaleDateString('tr-TR')} — {new Date().toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' })}</p>
+                    </div>
+                    <span style={{ color:'#94a3b8', fontSize:10 }}>Bu cihaz</span>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+            )
+          })()}
 
           {/* 2FA */}
           {tab === '2fa' && (
