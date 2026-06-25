@@ -821,10 +821,16 @@ router.get('/countries', (_req: any, res: any) => {
 router.post('/start-search', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { countryCode, sector } = req.body;
+    const { countryCode, sector, preferredLang } = req.body;
     if (!countryCode||!sector) return res.status(400).json({ error:'countryCode ve sector zorunlu' });
     const country = COUNTRIES.find(c=>c.code===countryCode);
-    if (!country) return res.status(400).json({ error:'Geçersiz ülke kodu' });
+    if (!country) return res.status(400).json({ error:'Gecersiz ulke kodu' });
+
+    // Override country language if user selected a specific search language
+    if (preferredLang && preferredLang !== country.language) {
+      (country as any).language = preferredLang;
+      (country as any).lang = preferredLang;
+    }
 
     const { data:profile } = await supabase.from('business_profiles').select('*').eq('user_id',userId).maybeSingle();
     const { data:userRow } = await supabase.from('users').select('company').eq('id',userId).single();

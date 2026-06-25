@@ -317,6 +317,7 @@ export default function ExportPage() {
   const [selectedRegion, setSelectedRegion] = useState('Tümü')
   const REGIONS = EXPORT_REGIONS[lang] || EXPORT_REGIONS.tr
   const [sector, setSector] = useState('')
+  const [searchLang, setSearchLang] = useState('auto')
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
   const [selectedChannel, setSelectedChannel] = useState('whatsapp')
   const [campaignName, setCampaignName] = useState('')
@@ -385,7 +386,7 @@ export default function ExportPage() {
     const key = `${sector} — ${selectedCountry.name}`
     setSearchHistory(prev => [key, ...prev.filter(h => h !== key)].slice(0, 5))
     try {
-      const d: any = await api.post('/api/export/start-search', { countryCode: selectedCountry.code, sector })
+      const d: any = await api.post('/api/export/start-search', { countryCode: selectedCountry.code, sector, preferredLang: searchLang !== 'auto' ? searchLang : undefined })
       setActiveSessionId(d.sessionId || null)
       if (!d.sessionId) showMsg('error', 'Oturum başlatılamadı')
     } catch (e: any) { showMsg('error', e.message) }
@@ -530,7 +531,7 @@ export default function ExportPage() {
 
                 return (
                   <button key={country.code}
-                    onClick={() => { setSelectedCountry(isSelected ? null : country); setLastIntel(null); if (!isSelected) loadCountryIntel(country) }}
+                    onClick={() => { setSelectedCountry(isSelected ? null : country); setLastIntel(null); setSearchLang('auto'); if (!isSelected) loadCountryIntel(country) }}
                     style={{
                       display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 80px', gap: 0,
                       width: '100%', padding: '12px 16px', border: 'none', borderBottom: '1px solid #f1f5f9',
@@ -600,12 +601,31 @@ export default function ExportPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                 <input value={sector} onChange={e => setSector(e.target.value)} onKeyDown={e => e.key === 'Enter' && startSearch()}
                   placeholder={`${selectedCountry.name}'de hangi sektörde alıcı arıyorsunuz?`}
                   style={{ ...inp, flex: 1 }} />
+                <select value={searchLang} onChange={e => setSearchLang(e.target.value)}
+                  title="Arama dili"
+                  style={{ ...inp, width: 130, padding: '8px 10px', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}>
+                  <option value="auto">🌐 Otomatik ({selectedCountry?.language?.toUpperCase() || 'EN'})</option>
+                  <option value="en">🇬🇧 İngilizce</option>
+                  <option value="de">🇩🇪 Almanca</option>
+                  <option value="fr">🇫🇷 Fransızca</option>
+                  <option value="es">🇪🇸 İspanyolca</option>
+                  <option value="pt">🇧🇷 Portekizce</option>
+                  <option value="ar">🇸🇦 Arapça</option>
+                  <option value="ru">🇷🇺 Rusça</option>
+                  <option value="zh">🇨🇳 Çince</option>
+                  <option value="ja">🇯🇵 Japonca</option>
+                  <option value="it">🇮🇹 İtalyanca</option>
+                  <option value="nl">🇳🇱 Hollandaca</option>
+                  <option value="pl">🇵🇱 Lehçe</option>
+                  <option value="ko">🇰🇷 Korece</option>
+                  <option value="tr">🇹🇷 Türkçe</option>
+                </select>
                 <button onClick={startSearch} disabled={!!activeSessionId || !sector.trim()}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${accentTeal},${accentEmerald})`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: !!activeSessionId || !sector.trim() ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(13,148,136,0.25)', flexShrink: 0, opacity: !!activeSessionId || !sector.trim() ? 0.6 : 1 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 22px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg,${accentTeal},${accentEmerald})`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: !!activeSessionId || !sector.trim() ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(13,148,136,0.25)', flexShrink: 0, opacity: !!activeSessionId || !sector.trim() ? 0.6 : 1 }}>
                   <Search size={14} /> Alıcı Bul
                 </button>
               </div>
