@@ -104,9 +104,9 @@ router.post('/connected', async (req: any, res: any) => {
       .update({ status: 'connected', phone, connected_at: new Date().toISOString() })
       .eq('instance_id', instanceId);
 
-    // ti_members tablosunda wa_phone güncelle
+    // ti_members tablosunda wa_phone guncelle
     const { data: instance } = await supabase
-      .from('wa_instances').select('member_id').eq('instance_id', instanceId).single();
+      .from('wa_instances').select('member_id, user_id').eq('instance_id', instanceId).single();
 
     if (instance?.member_id) {
       await supabase.from('ti_members')
@@ -114,7 +114,19 @@ router.post('/connected', async (req: any, res: any) => {
         .eq('id', instance.member_id);
     }
 
-    console.log(`Instance baglandi: ${instanceId} - ${phone}`);
+    // wa_numbers tablosunu da senkronize et
+    if (instance?.user_id && phone) {
+      const { data: waNum } = await supabase.from('wa_numbers')
+        .select('id').eq('user_id', instance.user_id).eq('status', 'connecting')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (waNum) {
+        await supabase.from('wa_numbers').update({
+          status: 'connected', phone_number: phone,
+        }).eq('id', waNum.id);
+      }
+    }
+
+    console.log(`[GreenAPI] Instance baglandi: ${instanceId} - ${phone}`);
     res.json({ ok: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
