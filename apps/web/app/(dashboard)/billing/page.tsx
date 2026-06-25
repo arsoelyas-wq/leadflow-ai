@@ -108,8 +108,12 @@ export default function BillingPage() {
       if (!r.ok) throw new Error(d.error)
       setPromoResult({type:'ok',text:d.message||'Promo kodu uygulandı!'})
       setPromoCode('')
-      // Refresh credits
-      setTimeout(() => window.location.reload(), 1500)
+      // Refresh credits without page reload
+      try {
+        const dash = await api.get('/api/dashboard')
+        const s = (dash as any).stats || {}
+        setCredits({ total: s.credits_total || 0, used: s.credits_used || 0 })
+      } catch {}
     } catch(e:any) { setPromoResult({type:'err',text:e.message}) }
     finally { setPromoLoading(false) }
   }
@@ -138,28 +142,26 @@ export default function BillingPage() {
 
   return (
     <div style={{ padding: 0 }}>
-      {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #d1fae5' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <CreditOrb size={90} pct={pct} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('billing.title','Abonelik & Kredi')}</h1>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('billing.credits','Kredinizi yönetin, geçmişinizi takip edin, yeni paket satın alın')}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
-              {[{l:t('billing.credits','Toplam Kredi'),v:creditsTotal,c:'#94a3b8'},{l:t('billing.credits_remaining','Kalan Kredi'),v:creditsLeft,c:pctColor},{l:t('billing.credits_used','Kullanılan'),v:creditsUsed,c:'#f59e0b'}].map(m => (
-                <div key={m.l} style={{ textAlign:'center' }}>
-                  <p style={{ color:m.c, fontSize:22, fontWeight:800, margin:0 }}>{m.v}</p>
-                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.l}</p>
-                </div>
-              ))}
+      {/* Hero — compact */}
+      <div style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>💳</div>
+            <div>
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>{t('billing.title','Abonelik & Kredi')}</h1>
+              <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Kredinizi yönetin, paket satın alın</p>
             </div>
           </div>
+          <div style={{ display: 'flex', gap: 20 }}>
+            {[{l:'Toplam',v:creditsTotal,c:'#94a3b8'},{l:'Kalan',v:creditsLeft,c:pctColor},{l:'Kullanılan',v:creditsUsed,c:'#f59e0b'}].map(m => (
+              <div key={m.l} style={{ textAlign:'center' }}><p style={{ color:m.c, fontSize:20, fontWeight:800, margin:0 }}>{m.v.toLocaleString()}</p><p style={{ color:'#94a3b8', fontSize:9, margin:0 }}>{m.l}</p></div>
+            ))}
+          </div>
         </div>
-        <div style={{ position: 'relative', zIndex: 2, marginTop: 20, height: 6, background: '#d1fae5', borderRadius: 3 }}>
-          <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 3, boxShadow: `0 0 10px ${pctColor}60`, transition: 'width 0.8s' }} />
+        <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3 }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 3, transition: 'width 0.8s' }} />
         </div>
-        {pct <= 20 && <p style={{ position: 'relative', zIndex: 2, color: '#dc2626', fontSize: 12, margin: '8px 0 0' }}>{t('billing.krediniz_azaliyor_paket_s', '⚠️ Krediniz azalıyor — paket satın almayı düşünün!')}</p>}
+        {pct <= 20 && <p style={{ color: '#dc2626', fontSize: 11, margin: '6px 0 0' }}>⚠️ Krediniz azalıyor — paket satın alın!</p>}
       </div>
 
       {msg && <div style={{ marginBottom: 16, padding: '12px 18px', background: msg.type==='success'?'#ecfdf5':'#fef2f2', border: `1px solid ${msg.type==='success'?'#a7f3d0':'#fca5a5'}`, borderRadius: 12 }}><p style={{ color: msg.type==='success'?'#059669':'#dc2626', fontSize: 13, margin: 0 }}>{msg.text}</p></div>}

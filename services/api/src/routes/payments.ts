@@ -88,4 +88,19 @@ router.get('/plans', (_req: any, res: any) => {
   res.json({ packages: PACKAGES });
 });
 
+// GET /api/payments/history
+router.get('/history', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('credit_logs')
+      .select('*').eq('user_id', req.userId)
+      .order('created_at', { ascending: false }).limit(50);
+    const payments = (data || []).map((l: any) => ({
+      id: l.id, action: l.action, credits: l.cost || l.credits || 0,
+      description: l.description || l.action,
+      date: l.created_at, amount: (l.cost || 0) * 2,
+    }));
+    res.json({ payments });
+  } catch (e: any) { res.json({ payments: [] }); }
+});
+
 module.exports = router;

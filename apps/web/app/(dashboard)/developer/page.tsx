@@ -131,23 +131,19 @@ export default function DeveloperPage() {
 
   return (
     <div style={{ padding: 0 }}>
-      {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfeff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #cffafe' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <KeyVault size={88} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('developer.api_erisimi', 'API Erişimi')}</h1>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('developer.kendi_uygulamalarinizi_le', 'Kendi uygulamalarınızı Sovlo AI ile entegre edin — güvenli, kapsamlı')}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-              {[{l:'Toplam İstek',v:usage?.totalRequests||0,c:'#06b6d4'},{l:'Kalan Limit',v:usage?.remaining||0,c:'#10b981'},{l:'Aktif Key',v:keys.filter(k=>k.is_active).length,c:'#8b5cf6'}].map(m => (
-                <div key={m.l} style={{ textAlign:'center' }}>
-                  <p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p>
-                  <p style={{ color:'#475569', fontSize:11, margin:0 }}>{m.l}</p>
-                </div>
-              ))}
-            </div>
+      {/* Hero — compact, no animation */}
+      <div style={{ background: '#ffffff', border: '1px solid #cffafe', borderRadius: 16, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: '#ecfeff', border: '1px solid #a5f3fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🔑</div>
+          <div>
+            <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>{t('developer.api_erisimi', 'API Erişimi')}</h1>
+            <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Uygulamalarınızı Sovlo AI ile entegre edin</p>
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {[{l:'İstek',v:usage?.totalRequests||0,c:'#06b6d4'},{l:'Kalan',v:usage?.remaining||0,c:'#10b981'},{l:'Key',v:keys.filter((k: any)=>k.is_active).length,c:'#8b5cf6'}].map(m => (
+            <div key={m.l} style={{ textAlign:'center' }}><p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p><p style={{ color:'#94a3b8', fontSize:9, margin:0 }}>{m.l}</p></div>
+          ))}
         </div>
       </div>
 

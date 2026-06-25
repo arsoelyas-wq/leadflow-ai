@@ -130,33 +130,27 @@ export default function MonitoringPage() {
 
   return (
     <div style={{ padding: 0 }}>
-      {/* Hero */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #d1fae5' }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.02) 1px,transparent 1px)', backgroundSize: '38px 38px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <SystemPulse size={90} health={health} scanning={loading} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('monitoring.sistem_monitoru', 'Sistem Monitörü')}</h1>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px' }}>{t('monitoring.gercek_zamanli_sistem_sag', 'Gerçek zamanlı sistem sağlığı, hata takibi ve performans metrikleri')}</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid #a7f3d0', background: '#ecfdf5', color: '#059669', fontSize: 11, cursor: 'pointer' }}>
-                <RefreshCw size={12} style={{ animation: loading ? 'sp-spin 1s linear infinite' : 'none' }} /> Yenile
-              </button>
-              <button onClick={() => setAutoRefresh(!autoRefresh)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: `1px solid ${autoRefresh ? '#a5f3fc' : 'rgba(100,116,139,0.2)'}`, background: autoRefresh ? '#ecfeff' : 'transparent', color: autoRefresh ? '#0d9488' : '#64748b', fontSize: 11, cursor: 'pointer' }}>
-                <Zap size={12} /> {autoRefresh ? '30s Oto-Yenileme Aktif' : 'Oto-Yenileme Kapalı'}
-              </button>
-              {lastUpdate && <span style={{ color: '#475569', fontSize: 10 }}>Son: {lastUpdate.toLocaleTimeString()}</span>}
-            </div>
+      {/* Hero — compact */}
+      <div style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 16, padding: '18px 22px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: health > 80 ? '#ecfdf5' : health > 50 ? '#fffbeb' : '#fef2f2', border: `1px solid ${health > 80 ? '#a7f3d0' : health > 50 ? '#fde68a' : '#fecaca'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{health > 80 ? '💚' : health > 50 ? '🟡' : '🔴'}</div>
+          <div>
+            <h1 style={{ color: '#0f172a', fontSize: 20, fontWeight: 800, margin: '0 0 3px' }}>Sistem Monitörü</h1>
+            <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>Sağlık: %{health} {lastUpdate ? `· Son: ${lastUpdate.toLocaleTimeString()}` : ''}</p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-            {[{l:'Hata (1s)',v:status?.errors?.lastHour||0,c:status?.errors?.lastHour>0?'#ef4444':'#10b981'},{l:'Uptime %',v:`%${status?.uptime?.percent24h||100}`,c:'#22c55e'},{l:'Ort. Yanıt',v:`${status?.uptime?.avgResponseMs||0}ms`,c:'#06b6d4'}].map(m => (
-              <div key={m.l} style={{ textAlign: 'center' }}>
-                <p style={{ color: m.c, fontSize: 16, fontWeight: 800, margin: 0 }}>{m.v}</p>
-                <p style={{ color: '#475569', fontSize: 10, margin: 0 }}>{m.l}</p>
-              </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 14 }}>
+            {[{l:'Hata',v:status?.errors?.lastHour||0,c:status?.errors?.lastHour>0?'#ef4444':'#10b981'},{l:'Uptime',v:`%${status?.uptime?.percent24h||100}`,c:'#22c55e'},{l:'Yanıt',v:`${status?.uptime?.avgResponseMs||0}ms`,c:'#06b6d4'}].map(m => (
+              <div key={m.l} style={{ textAlign:'center' }}><p style={{ color:m.c, fontSize:16, fontWeight:800, margin:0 }}>{m.v}</p><p style={{ color:'#94a3b8', fontSize:9, margin:0 }}>{m.l}</p></div>
             ))}
           </div>
+          <button onClick={load} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:9, border:'1px solid #a7f3d0', background:'#ecfdf5', color:'#059669', fontSize:11, cursor:'pointer' }}>
+            <RefreshCw size={12} style={{ animation: loading ? 'sp-spin 1s linear infinite' : 'none' }} /> Yenile
+          </button>
+          <button onClick={() => setAutoRefresh(!autoRefresh)} style={{ padding:'7px 12px', borderRadius:9, border:`1px solid ${autoRefresh?'#a5f3fc':'#e2e8f0'}`, background:autoRefresh?'#ecfeff':'transparent', color:autoRefresh?'#0d9488':'#64748b', fontSize:10, cursor:'pointer' }}>
+            {autoRefresh ? '⚡ 30s' : '○ Oto'}
+          </button>
         </div>
       </div>
 

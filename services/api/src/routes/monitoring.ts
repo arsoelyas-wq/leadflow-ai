@@ -154,6 +154,19 @@ async function checkUptime() {
 // Her 5 dakikada uptime check
 setInterval(checkUptime, 5 * 60 * 1000);
 
+// Log retention — 30 gunluk logları temizle (gunluk calis)
+async function cleanOldLogs() {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    await supabase.from('error_logs').delete().lt('created_at', thirtyDaysAgo);
+    await supabase.from('uptime_logs').delete().lt('checked_at', thirtyDaysAgo);
+    await supabase.from('performance_logs').delete().lt('created_at', thirtyDaysAgo);
+    console.log('[Monitoring] Old logs cleaned (30 day retention)');
+  } catch {}
+}
+setInterval(cleanOldLogs, 24 * 60 * 60 * 1000);
+setTimeout(cleanOldLogs, 60000);
+
 // ── MIDDLEWARE: Performance tracking ─────────────────────
 function performanceMiddleware(req: any, res: any, next: any) {
   const start = Date.now();

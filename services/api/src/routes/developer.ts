@@ -88,4 +88,26 @@ router.get('/usage', async (req: any, res: any) => {
   }
 });
 
+// ── API KEY AUTH MIDDLEWARE ───────────────────────────────────────────────────
+async function apiKeyAuth(req: any, res: any, next: any) {
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+  if (!apiKey || !apiKey.startsWith('lf_')) return next();
+  try {
+    const crypto = require('crypto');
+    const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
+    const { data: key } = await supabase.from('api_keys')
+      .select('id, user_id, is_active, requests_count')
+      .eq('key_hash', keyHash).eq('is_active', true).maybeSingle();
+    if (!key) return res.status(401).json({ error: 'Invalid API key' });
+    req.userId = key.user_id;
+    req.apiKeyId = key.id;
+    await supabase.from('api_keys').update({
+      requests_count: (key.requests_count || 0) + 1,
+      last_used_at: new Date().toISOString(),
+    }).eq('id', key.id);
+    next();
+  } catch { return res.status(500).json({ error: 'API key validation failed' }); }
+}
+
 module.exports = router;
+module.exports.apiKeyAuth = apiKeyAuth;
