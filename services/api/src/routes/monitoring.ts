@@ -384,7 +384,7 @@ router.get('/sla', async (req: any, res: any) => {
       .select('status, checked_at').order('checked_at', { ascending: false }).limit(8640);
 
     const total = logs?.length || 0;
-    const up = logs?.filter((l: any) => l.status === 'online' || l.status === 'ok').length || 0;
+    const up = logs?.filter((l: any) => l.status === 'up' || l.status === 'online' || l.status === 'ok').length || 0;
     const uptime30d = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
 
     const slaTargets = [
