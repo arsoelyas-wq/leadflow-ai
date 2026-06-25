@@ -252,7 +252,7 @@ async function searchWebImporters(searchTerms: Record<string, string>, country: 
           if (rawName.length < 3) continue;
           const content = r.text || '';
           // Extract phone and email directly from Exa content
-          const phoneMatch = content.match(/(?:\+|00)?[\d\s\-().]{9,18}(?=\s|$|,)/);
+          const phoneMatch = content.match(/(?:\+|00)\d[\d\s\-().]{8,16}\d/);
           const emailMatch = content.match(/[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}/);
           addResult({
             company_name: rawName, website: r.url||null,
@@ -344,7 +344,9 @@ async function searchLinkedInDecisionMakers(sector: string, companyName: string,
     if (!result) return null;
     // Extract name from LinkedIn URL pattern: linkedin.com/in/firstname-lastname
     const nameMatch = result.url?.match(/linkedin\.com\/in\/([\w-]+)/);
-    const name = nameMatch ? nameMatch[1].replace(/-/g,' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : null;
+    let name = nameMatch ? nameMatch[1].replace(/-/g,' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : null;
+    // Remove trailing hash/ID suffixes (e.g., "John Smith 5a1b2c3")
+    if (name) name = name.replace(/\s+[a-f0-9]{6,}$/i, '').trim() || null;
     const titleMatch = (result.text||'').match(/(director|manager|buyer|head|chief|president|owner|CEO|CFO|procurement)[^\n]*/i);
     return { name: name||undefined, title: titleMatch?.[0]?.substring(0,80)||undefined, linkedin: result.url||undefined };
   } catch { return null; }
@@ -790,20 +792,24 @@ router.post('/start-search', async (req: any, res: any) => {
 
     const { codes:hsCodes, names:hsCodeNames, searchTerms, searchTermsLocal } = await mapSectorToHSCodes(sector);
 
-    // Create session — use fallback UUID if insert fails
+    // Create session — multiple fallback strategies
     let sessionId = `temp-${Date.now()}`;
     try {
-      const { data:session, error:sessErr } = await supabase.from('export_search_sessions').insert([{
-        user_id:userId, country_code:countryCode, sector, status:'running', step:'starting', progress:5,
+      // Try with user_id FK
+      const { data: session, error: sessErr } = await supabase.from('export_search_sessions').insert([{
+        user_id: userId, country_code: countryCode, sector, status: 'running', step: 'starting', progress: 5,
       }]).select().single();
       if (!sessErr && session?.id) {
         sessionId = session.id;
-      } else {
-        // FK constraint veya başka bir hata — session tracking devre dışı
-        // Arama arka planda devam eder, frontend temp ID ile polling yapar
-        console.log('[ExportSearch] Session tracking unavailable (FK constraint?), using temp ID:', sessErr?.message?.substring(0, 80));
+      } else if (sessErr?.message?.includes('constraint') || sessErr?.message?.includes('foreign')) {
+        // FK constraint fail — try without user_id FK (use text field)
+        const { data: s2, error: e2 } = await supabase.from('export_search_sessions').insert([{
+          country_code: countryCode, sector, status: 'running', step: 'starting', progress: 5,
+        }]).select().single();
+        if (!e2 && s2?.id) sessionId = s2.id;
+        else console.log('[ExportSearch] Session insert failed:', (e2 || sessErr)?.message?.slice(0, 80));
       }
-    } catch(sessEx:any) { console.error('[ExportSearch] Session exception:', sessEx.message); }
+    } catch (sessEx: any) { console.log('[ExportSearch] Session exception:', sessEx.message?.slice(0, 60)); }
 
     res.json({
       ok:true, sessionId, hsCodes, hsCodeNames,
@@ -844,7 +850,7 @@ router.post('/generate-message', async (req: any, res: any) => {
     const { data:userRow } = await supabase.from('users').select('company').eq('id',req.userId).single();
     const senderCompany = (typeof profile?.company==='string'?profile.company:profile?.company?.name)||userRow?.company||'Şirketimiz';
     const senderProduct = (typeof profile?.product==='string'?profile.product:profile?.product?.description)||lead.sector||'';
-    const hsCodes = lead.hs_codes ? JSON.parse(lead.hs_codes) : [];
+    const hsCodes = (() => { try { return lead.hs_codes ? (typeof lead.hs_codes === 'string' ? JSON.parse(lead.hs_codes) : lead.hs_codes) : [] } catch { return [] } })();
     const message = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
     const msgData = { user_id:req.userId, lead_id:leadId, country_code:country.code, channel, subject:message.subject||null, body:message.body, language:country.language, status:'draft' };
     // Try upsert first, fall back to insert if unique constraint missing
@@ -881,7 +887,7 @@ router.post('/bulk-messages', async (req: any, res: any) => {
         try {
           const { data:lead } = await supabase.from('leads').select('*').eq('id',leadId).eq('user_id',req.userId).single();
           if (!lead) continue;
-          const hsCodes = lead.hs_codes ? JSON.parse(lead.hs_codes) : [];
+          const hsCodes = (() => { try { return lead.hs_codes ? (typeof lead.hs_codes === 'string' ? JSON.parse(lead.hs_codes) : lead.hs_codes) : [] } catch { return [] } })();
           const msg = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
           const bmData = { user_id:req.userId, lead_id:leadId, country_code:countryCode, channel, subject:msg.subject||null, body:msg.body, language:country.language, status:'draft' };
           const { error: bmErr } = await supabase.from('export_messages').upsert([bmData], { onConflict:'user_id,lead_id,channel' });
@@ -915,7 +921,7 @@ router.post('/campaigns/:id/send', async (req: any, res: any) => {
       try {
         const { sendWhatsAppMessage } = require('./settings');
         const leadIds: string[] = camp.lead_ids||[];
-        let sent = 0;
+        let sent = 0, failed = 0;
         for (const leadId of leadIds) {
           try {
             const { data:lead } = await supabase.from('leads').select('*').eq('id',leadId).single();
@@ -923,14 +929,31 @@ router.post('/campaigns/:id/send', async (req: any, res: any) => {
             const { data:existingMsg } = await supabase.from('export_messages').select('body').eq('lead_id',leadId).eq('channel',camp.channel).eq('user_id',req.userId).maybeSingle();
             if (!existingMsg?.body) continue;
             if (camp.channel==='whatsapp') {
-              await sendWhatsAppMessage(req.userId, lead.phone, existingMsg.body);
-              await supabase.from('messages').insert([{ user_id:req.userId, lead_id:leadId, direction:'out', content:existingMsg.body, channel:'whatsapp', sent_at:new Date().toISOString(), metadata:JSON.stringify({ type:'export_campaign', campaign_id:camp.id }) }]);
+              let sendOk = false;
+              for (let retry = 0; retry < 2; retry++) {
+                try {
+                  await sendWhatsAppMessage(req.userId, lead.phone, existingMsg.body);
+                  sendOk = true; break;
+                } catch (retryErr: any) {
+                  if (retry === 0) { await sleep(3000); continue; }
+                  console.error('[ExportCampaign] Send failed after retry:', retryErr.message?.slice(0, 60));
+                }
+              }
+              if (sendOk) {
+                await supabase.from('messages').insert([{ user_id:req.userId, lead_id:leadId, direction:'out', content:existingMsg.body, channel:'whatsapp', sent_at:new Date().toISOString(), metadata:JSON.stringify({ type:'export_campaign', campaign_id:camp.id }) }]);
+                await supabase.from('export_messages').update({ status:'sent', sent_at:new Date().toISOString() }).eq('lead_id',leadId).eq('user_id',req.userId);
+                sent++;
+              } else {
+                failed++;
+              }
             }
-            await supabase.from('export_messages').update({ status:'sent', sent_at:new Date().toISOString() }).eq('lead_id',leadId).eq('user_id',req.userId);
-            sent++; await sleep(8000);
-          } catch(e:any) { console.error('send error:', e.message); }
+            // Update progress mid-campaign
+            await supabase.from('export_campaigns').update({ sent_count: sent }).eq('id', req.params.id);
+            await sleep(8000 + Math.random() * 4000);
+          } catch(e:any) { failed++; console.error('[ExportCampaign] Send error:', e.message?.slice(0, 60)); }
         }
-        await supabase.from('export_campaigns').update({ status:'completed', sent_count:sent, completed_at:new Date().toISOString() }).eq('id',req.params.id);
+        const finalStatus = sent > 0 ? (failed > sent ? 'failed' : 'completed') : 'failed';
+        await supabase.from('export_campaigns').update({ status: finalStatus, sent_count: sent, completed_at: new Date().toISOString() }).eq('id', req.params.id);
       } catch(e:any) {
         await supabase.from('export_campaigns').update({ status:'failed' }).eq('id',req.params.id);
       }

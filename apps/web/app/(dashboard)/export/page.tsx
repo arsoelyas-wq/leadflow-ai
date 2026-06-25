@@ -435,28 +435,24 @@ export default function ExportPage() {
   return (
     <div style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
 
-      {/* HERO */}
-      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f0fdf4 65%,#ffffff)', borderRadius: 20, padding: '26px 28px', marginBottom: 18, border: '1px solid #d1fae5', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0 }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.04) 1px,transparent 1px)', backgroundSize: '42px 42px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 22 }}>
-          <GlobeOrb size={84} scanning={!!activeSessionId} countryCode={selectedCountry?.code || ''} />
-          <div style={{ flex: 1 }}>
-            <h1 style={{ color: tx1, fontSize: 23, fontWeight: 800, margin: '0 0 5px' }}>{t('export.ihracat_zekasi', 'İhracat Zekası')}</h1>
-            <p style={{ color: tx2, fontSize: 13, margin: '0 0 14px' }}>{ET.subtitle}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-              {[
-                { l: t('export.buyers_with_contact','İletişimli Alıcı'), v: leadsWithContact.length, c: accentEmerald },
-                { l: t('export.total_buyers','Toplam Alıcı'), v: exportLeads.length, c: tx2 },
-                { l: t('export.campaign','Kampanya'), v: campaigns.length, c: '#7c3aed' },
-                { l: t('export.target_market','Hedef Pazar'), v: countries.length, c: '#b45309' },
-              ].map(m => (
-                <div key={m.l} style={{ textAlign: 'center' }}>
-                  <p style={{ color: m.c, fontSize: 20, fontWeight: 800, margin: 0 }}>{m.v}</p>
-                  <p style={{ color: tx2, fontSize: 10, margin: 0 }}>{m.l}</p>
-                </div>
-              ))}
-            </div>
+      {/* HERO — compact */}
+      <div style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 16, padding: '20px 24px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌍</div>
+          <div>
+            <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>{t('export.ihracat_zekasi', 'İhracat Zekası')}</h1>
+            <p style={{ color: tx2, fontSize: 12, margin: 0 }}>{ET.subtitle}</p>
           </div>
+        </div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {[
+            { l: 'İletişimli', v: leadsWithContact.length, c: accentEmerald },
+            { l: 'Toplam', v: exportLeads.length, c: tx2 },
+            { l: 'Kampanya', v: campaigns.length, c: '#7c3aed' },
+            { l: 'Pazar', v: countries.length, c: '#b45309' },
+          ].map(m => (
+            <div key={m.l} style={{ textAlign: 'center' }}><p style={{ color: m.c, fontSize: 18, fontWeight: 800, margin: 0 }}>{m.v}</p><p style={{ color: '#94a3b8', fontSize: 9, margin: 0 }}>{m.l}</p></div>
+          ))}
         </div>
       </div>
 
