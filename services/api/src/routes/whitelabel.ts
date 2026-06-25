@@ -172,4 +172,50 @@ router.get('/summary', async (req: any, res: any) => {
   }
 });
 
+// ── FEATURE GATING PER PLAN ──────────────────────────────────────────────────
+const PLAN_FEATURES: Record<string, string[]> = {
+  basic: ['leads', 'messages', 'campaigns'],
+  pro: ['leads', 'messages', 'campaigns', 'analytics', 'voice', 'video', 'ai_agent'],
+  enterprise: ['leads', 'messages', 'campaigns', 'analytics', 'voice', 'video', 'ai_agent', 'competitor', 'tenders', 'team', 'whitelabel', 'api'],
+};
+
+router.get('/features/:brandId', async (req: any, res: any) => {
+  try {
+    const { data: brand } = await supabase.from('whitelabel_brands')
+      .select('plan_type').eq('id', req.params.brandId).eq('owner_id', req.userId).single();
+    if (!brand) return res.status(404).json({ error: 'Bayi bulunamadi' });
+    const features = PLAN_FEATURES[brand.plan_type] || PLAN_FEATURES.basic;
+    res.json({ plan: brand.plan_type, features, allFeatures: Object.keys(PLAN_FEATURES.enterprise) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── REAL REVENUE FROM CREDIT LOGS ────────────────────────────────────────────
+router.get('/revenue/:brandId', async (req: any, res: any) => {
+  try {
+    const { data: brand } = await supabase.from('whitelabel_brands')
+      .select('revenue_share, admin_email').eq('id', req.params.brandId).eq('owner_id', req.userId).single();
+    if (!brand) return res.status(404).json({ error: 'Bayi bulunamadi' });
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: logs } = await supabase.from('credit_logs')
+      .select('cost, created_at')
+      .eq('user_id', req.params.brandId)
+      .gte('created_at', thirtyDaysAgo);
+
+    const totalCreditsUsed = (logs || []).reduce((s: number, l: any) => s + (l.cost || 0), 0);
+    const creditValue = 2; // 1 kredi = ~2 TL
+    const grossRevenue = totalCreditsUsed * creditValue;
+    const ownerShare = Math.round(grossRevenue * (brand.revenue_share / 100));
+
+    res.json({
+      totalCreditsUsed,
+      grossRevenue,
+      revenueShare: brand.revenue_share,
+      ownerRevenue: ownerShare,
+      bayiRevenue: grossRevenue - ownerShare,
+      period: '30 gun',
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
