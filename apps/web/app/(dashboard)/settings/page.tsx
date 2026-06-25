@@ -311,9 +311,8 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'profile', label: t('settings.profile','Profil'), icon: User, color: '#06b6d4' },
-    { id: 'channels', label: t('settings.integrations','Kanallar'), icon: Key, color: '#10b981' },
+    { id: 'channels', label: t('settings.integrations','Entegrasyonlar'), icon: Key, color: '#10b981' },
     { id: 'notifications', label: t('settings.notifications','Bildirimler'), icon: Bell, color: '#f59e0b' },
-    { id: 'security', label: t('settings.security','Güvenlik'), icon: Shield, color: '#ef4444' },
     { id: '2fa', label: '2FA', icon: Lock, color: '#8b5cf6' },
     { id: 'sheets', label: 'Google Sheets', icon: Globe, color: '#34d399' },
     { id: 'meta-capi', label: 'Meta Dönüşüm', icon: Zap, color: '#3b82f6' },
@@ -390,7 +389,10 @@ export default function SettingsPage() {
           {/* KANALLAR */}
           {tab === 'channels' && (
             <>
-              {/* WhatsApp */}
+              {/* WhatsApp — link to dedicated page */}
+              <a href="/wa-numbers" style={{ display:'block', padding:'14px 18px', background:'#ecfdf5', border:'1px solid #a7f3d0', borderRadius:12, marginBottom:16, textDecoration:'none', color:'#059669', fontSize:13, fontWeight:600 }}>
+                📱 Çoklu WhatsApp numara yönetimi için <span style={{ textDecoration:'underline' }}>WhatsApp Hatlarım</span> sayfasına gidin →
+              </a>
               <div style={card}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
