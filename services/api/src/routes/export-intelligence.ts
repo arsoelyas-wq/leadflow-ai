@@ -134,7 +134,10 @@ async function mapSectorToHSCodes(sector: string): Promise<{ codes: string[]; na
     "it": "importatore mobili grossista",
     "es": "importador muebles mayorista",
     "nl": "meubel importeur groothandel",
-    "pl": "importer mebli hurtownik"
+    "pl": "importer mebli hurtownik",
+    "pt": "importador moveis atacadista distribuidor",
+    "az": "mebel idxalci topdan satici",
+    "ko": "가구 수입업자 도매"
   },
   "googleMapsType": "furniture store"
 }
@@ -183,14 +186,18 @@ async function getMarketIntelligence(hsCodes: string[], countryCode: string, cou
 }
 
 // ── 3. GOOGLE MAPS MÜŞTERİ ARAMA ─────────────────────────────────────────────
-async function searchGoogleMaps(sector: string, sectorLocal: string, country: any): Promise<any[]> {
+async function searchGoogleMaps(sector: string, sectorLocal: string, country: any, searchTerms?: Record<string, string>): Promise<any[]> {
   const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY;
   if (!GOOGLE_KEY) return [];
   const results: any[] = [];
+  // Use language-appropriate search term for the target country
+  const lang = country.language || 'en';
+  const localizedSector = searchTerms?.[lang] || searchTerms?.['en'] || sectorLocal || sector;
+  const enSector = searchTerms?.['en'] || sector;
   const queries = [
-    `${sectorLocal} importer ${country.name}`,
-    `${sectorLocal} wholesale ${country.name}`,
-    `${sector} distributor ${country.name}`,
+    `${localizedSector} importer ${country.name}`,
+    `${enSector} wholesale distributor ${country.name}`,
+    `${localizedSector} supplier ${country.name}`,
   ];
   for (const query of queries) {
     try {
@@ -531,7 +538,7 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
     // Parallel: market data + Google Maps + Web search
     const [marketIntel, mapsResults, webResults] = await Promise.allSettled([
       getMarketIntelligence(hsCodes, countryCode, country),
-      searchGoogleMaps(sector, searchTermsLocal, country),
+      searchGoogleMaps(sector, searchTermsLocal, country, searchTerms),
       searchWebImporters(searchTerms, country, sector),
     ]);
 
