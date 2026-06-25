@@ -100,7 +100,7 @@ const GROUPS: NavGroup[] = [
       { href: '/developer',   label: 'nav.developer',   icon: Code },
       { href: '/whitelabel', label: 'nav.whitelabel', icon: Crown,      badge: 'ENT' },
       { href: '/billing',    label: 'nav.billing',    icon: CreditCard },
-      { href: '/export',     label: 'nav.export',     icon: Globe2,     badge: 'ENT' },
+      { href: '/invoices',   label: 'nav.invoices',   icon: FileSpreadsheet },
       { href: '/kvkk',       label: 'nav.kvkk',       icon: Shield },
       { href: '/monitoring', label: 'nav.monitoring', icon: Activity },
     ],
@@ -115,8 +115,8 @@ const AI_CLONE_ITEMS = [
 const SPECIAL_TOOLS = [
   { href: '/competitor',     label: 'nav.competitor', icon: Swords,     color: '#e11d48', badge: 'AI' },
   { href: '/tenders', label: 'nav.tenders', icon: ScrollText,  color: '#d97706', badge: 'PRO' },
+  { href: '/export',  label: 'nav.export',  icon: Globe2,      color: '#059669', badge: 'AI' },
   { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
-  { href: '/invoices', label: 'nav.invoices', icon: FileSpreadsheet, color: '#64748b' },
 ]
 
 // Komut paleti için düzleştirilmiş arama indeksi — tüm öğeler tek listede
