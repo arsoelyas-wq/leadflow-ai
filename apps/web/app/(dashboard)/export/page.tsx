@@ -511,70 +511,70 @@ export default function ExportPage() {
             </div>
           </div>
 
-          {/* ── COUNTRY GRID — Professional Design ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
-            {filteredCountries.map(country => {
-              const risk = country.paymentRisk
-              const isSelected = selectedCountry?.code === country.code
-              const leadCount = leadsByCountry[country.code] || 0
-              const oppScore = opportunityScore(country, leadCount)
+          {/* ── COUNTRY TABLE — Professional List Design ── */}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
+            {/* Table header */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 80px', gap: 0, padding: '10px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              {['Ülke', 'Bölge', 'Para Birimi', 'Alıcı', 'Güvenlik', 'Fırsat'].map(h => (
+                <span key={h} style={{ color: '#94a3b8', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</span>
+              ))}
+            </div>
+            {/* Table rows */}
+            <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+              {filteredCountries.map(country => {
+                const risk = country.paymentRisk
+                const isSelected = selectedCountry?.code === country.code
+                const leadCount = leadsByCountry[country.code] || 0
+                const oppScore = opportunityScore(country, leadCount)
+                const riskClr = riskColor(risk?.score || 60)
 
-              return (
-                <button key={country.code}
-                  onClick={() => { setSelectedCountry(isSelected ? null : country); setLastIntel(null); if (!isSelected) loadCountryIntel(country) }}
-                  style={{
-                    padding: '16px 16px', borderRadius: 16,
-                    border: `1px solid ${isSelected ? 'rgba(16,185,129,0.5)' : '#e2e8f0'}`,
-                    background: isSelected
-                      ? 'linear-gradient(135deg,#ecfdf5,#d1fae5)'
-                      : '#ffffff',
-                    cursor: 'pointer', textAlign: 'left', position: 'relative',
-                    transition: 'all 0.18s', boxShadow: isSelected ? '0 0 0 1px rgba(16,185,129,0.3)' : '0 1px 3px rgba(0,0,0,0.06)',
-                  }}>
-
-                  {/* Top bar: flag + lead badge */}
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <div style={{ borderRadius: 6, overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.12)', flexShrink: 0 }}>
-                      <FlagImg code={country.code} size={40} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                      {leadCount > 0 && (
-                        <span style={{ background: 'rgba(16,185,129,0.14)', border: '1px solid rgba(16,185,129,0.35)', color: accentEmerald, fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20 }}>
-                          {leadCount} alıcı
-                        </span>
-                      )}
-                      {/* Risk dot */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: riskColor(risk?.score || 60) }} />
-                        <span style={{ color: riskColor(risk?.score || 60), fontSize: 9, fontWeight: 600 }}>{riskLabel(risk?.score || 60, TRUST)}</span>
+                return (
+                  <button key={country.code}
+                    onClick={() => { setSelectedCountry(isSelected ? null : country); setLastIntel(null); if (!isSelected) loadCountryIntel(country) }}
+                    style={{
+                      display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 80px', gap: 0,
+                      width: '100%', padding: '12px 16px', border: 'none', borderBottom: '1px solid #f1f5f9',
+                      background: isSelected ? '#ecfdf5' : '#ffffff',
+                      cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                    onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#ffffff' }}>
+                    {/* Country */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                        <FlagImg code={country.code} size={24} />
                       </div>
+                      <span style={{ color: tx1, fontSize: 13, fontWeight: 600 }}>{country.name}</span>
+                      {isSelected && <CheckCircle size={12} style={{ color: accentEmerald, flexShrink: 0 }} />}
                     </div>
-                  </div>
-
-                  {/* Country name + currency */}
-                  <p style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{country.name}</p>
-                  <p style={{ color: tx2, fontSize: 11, margin: '0 0 10px' }}>{country.currency} · {country.region}</p>
-
-                  {/* Opportunity bar */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: tx2, fontSize: 9 }}>{t('export.opportunity_score','Fırsat Skoru')}</span>
-                      <span style={{ color: oppScore >= 75 ? accentEmerald : oppScore >= 55 ? '#b45309' : '#dc2626', fontSize: 9, fontWeight: 700 }}>{oppScore}</span>
+                    {/* Region */}
+                    <span style={{ color: tx2, fontSize: 11, display: 'flex', alignItems: 'center' }}>{country.region}</span>
+                    {/* Currency */}
+                    <span style={{ color: tx2, fontSize: 11, display: 'flex', alignItems: 'center' }}>{country.currency}</span>
+                    {/* Lead count */}
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      {leadCount > 0 ? (
+                        <span style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: accentEmerald, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{leadCount}</span>
+                      ) : (
+                        <span style={{ color: '#d1d5db', fontSize: 11 }}>—</span>
+                      )}
                     </div>
-                    <div style={{ height: 3, background: '#e2e8f0', borderRadius: 2 }}>
-                      <div style={{ height: '100%', width: `${oppScore}%`, background: oppScore >= 75 ? 'linear-gradient(90deg,#10b981,#34d399)' : oppScore >= 55 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#ef4444,#f97316)', borderRadius: 2, transition: 'width 0.6s' }} />
+                    {/* Risk */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: riskClr }} />
+                      <span style={{ color: riskClr, fontSize: 10, fontWeight: 600 }}>{riskLabel(risk?.score || 60, TRUST)}</span>
                     </div>
-                  </div>
-
-                  {isSelected && (
-                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 5, color: accentEmerald }}>
-                      <CheckCircle size={11} />
-                      <span style={{ fontSize: 10, fontWeight: 600 }}>{t('export.secildi', 'Seçildi')}</span>
+                    {/* Opportunity */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ flex: 1, height: 4, background: '#f1f5f9', borderRadius: 2 }}>
+                        <div style={{ height: '100%', width: `${oppScore}%`, background: oppScore >= 75 ? '#10b981' : oppScore >= 55 ? '#f59e0b' : '#ef4444', borderRadius: 2 }} />
+                      </div>
+                      <span style={{ color: tx1, fontSize: 10, fontWeight: 700, width: 20, textAlign: 'right' }}>{oppScore}</span>
                     </div>
-                  )}
-                </button>
-              )
-            })}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* Search form */}
