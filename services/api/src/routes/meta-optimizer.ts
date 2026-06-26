@@ -520,4 +520,257 @@ router.post('/ai-campaign/create', async (req: any, res: any) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREATIVE FATIGUE DETECTION + AUTO-PAUSE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/creative-fatigue', async (req: any, res: any) => {
+  try {
+    const creds = await getMetaCreds(req.userId);
+    if (!creds) return res.json({ fatigued: [], healthy: 0 });
+
+    const { token, adAccountId } = creds;
+    const r = await axios.get(`${GRAPH}/${adAccountId}/ads`, {
+      params: { access_token: token, fields: 'id,name,status,creative{title},insights{frequency,ctr,cpm,spend,impressions,actions}', effective_status: '["ACTIVE"]', limit: 50 },
+      timeout: 15000,
+    });
+
+    const fatigued: any[] = [];
+    const ads = r.data?.data || [];
+
+    for (const ad of ads) {
+      const ins = ad.insights?.data?.[0] || {};
+      const freq = parseFloat(ins.frequency || '0');
+      const ctr = parseFloat(ins.ctr || '0');
+      const spend = parseFloat(ins.spend || '0');
+      const createdDays = Math.floor((Date.now() - new Date(ad.created_time || Date.now()).getTime()) / (24 * 60 * 60 * 1000));
+
+      let fatigueScore = 0;
+      let reasons: string[] = [];
+
+      if (freq >= 5) { fatigueScore += 40; reasons.push(`Frekans ${freq.toFixed(1)} — ayni kisiler tekrar goruyor`); }
+      if (freq >= 3 && ctr < 0.5) { fatigueScore += 30; reasons.push(`CTR %${ctr.toFixed(2)} — tiklanma dustu`); }
+      if (createdDays >= 21) { fatigueScore += 20; reasons.push(`${createdDays} gundur aktif — yenileme zamani`); }
+      if (spend > 200 && ctr < 0.3) { fatigueScore += 10; reasons.push(`₺${spend.toFixed(0)} harcanmis ama CTR cok dusuk`); }
+
+      if (fatigueScore >= 30) {
+        fatigued.push({
+          adId: ad.id, name: ad.name, fatigueScore: Math.min(100, fatigueScore),
+          frequency: freq, ctr, spend, createdDays, reasons,
+          action: fatigueScore >= 70 ? 'Hemen durdur + yeni kreatif' : fatigueScore >= 50 ? 'Yenileme planla' : 'Izle',
+        });
+      }
+    }
+
+    fatigued.sort((a, b) => b.fatigueScore - a.fatigueScore);
+    res.json({ fatigued, healthy: ads.length - fatigued.length, total: ads.length });
+  } catch (e: any) { res.json({ fatigued: [], healthy: 0, error: e.message?.slice(0, 80) }); }
+});
+
+// Auto-pause fatigued ads
+router.post('/creative-fatigue/auto-pause', async (req: any, res: any) => {
+  try {
+    const creds = await getMetaCreds(req.userId);
+    if (!creds) return res.status(400).json({ error: 'Meta bagli degil' });
+
+    const { adIds } = req.body;
+    if (!adIds?.length) return res.status(400).json({ error: 'adIds zorunlu' });
+
+    let paused = 0;
+    for (const adId of adIds) {
+      try {
+        await axios.post(`${GRAPH}/${adId}`, { status: 'PAUSED', access_token: creds.token }, { timeout: 10000 });
+        paused++;
+      } catch {}
+    }
+    res.json({ ok: true, paused, message: `${paused} yorgun reklam durduruldu` });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WASTED SPEND DETECTION + ACCOUNT HEALTH SCORE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/account-health', async (req: any, res: any) => {
+  try {
+    const creds = await getMetaCreds(req.userId);
+    if (!creds) return res.json({ score: 0, connected: false });
+
+    const { token, adAccountId } = creds;
+    const r = await axios.get(`${GRAPH}/${adAccountId}/campaigns`, {
+      params: { access_token: token, fields: 'id,name,status,daily_budget,insights{spend,impressions,clicks,ctr,cpm,actions,frequency}', effective_status: '["ACTIVE","PAUSED"]', limit: 30 },
+      timeout: 15000,
+    });
+
+    const campaigns = r.data?.data || [];
+    let totalSpend = 0, totalLeads = 0, wastedSpend = 0;
+    let healthScore = 100;
+    const issues: any[] = [];
+    const wastedCampaigns: any[] = [];
+
+    for (const c of campaigns) {
+      const ins = c.insights?.data?.[0] || {};
+      const spend = parseFloat(ins.spend || '0');
+      const leads = parseInt((ins.actions || []).find((a: any) => a.action_type === 'lead')?.value || '0');
+      const ctr = parseFloat(ins.ctr || '0');
+      const freq = parseFloat(ins.frequency || '0');
+      totalSpend += spend;
+      totalLeads += leads;
+
+      // Wasted spend: spend > 50 ama 0 lead
+      if (spend > 50 && leads === 0) {
+        wastedSpend += spend;
+        wastedCampaigns.push({ name: c.name, spend, message: `₺${spend.toFixed(0)} harcanmis — 0 lead` });
+        healthScore -= 10;
+        issues.push({ type: 'wasted_spend', severity: 'critical', campaign: c.name, message: `₺${spend.toFixed(0)} israf — durdurun veya optimize edin` });
+      }
+      // Low CTR
+      if (ctr < 0.5 && spend > 20) {
+        healthScore -= 5;
+        issues.push({ type: 'low_ctr', severity: 'warning', campaign: c.name, message: `CTR %${ctr.toFixed(2)} — reklam metni/gorseli iyilestirin` });
+      }
+      // Ad fatigue
+      if (freq > 5) {
+        healthScore -= 8;
+        issues.push({ type: 'ad_fatigue', severity: 'warning', campaign: c.name, message: `Frekans ${freq.toFixed(1)} — ayni kisiler cok goruyor` });
+      }
+    }
+
+    // CAPI kontrolu
+    const { data: events } = await supabase.from('meta_capi_events').select('id').eq('user_id', req.userId).limit(1);
+    if (!events?.length) {
+      healthScore -= 15;
+      issues.push({ type: 'no_capi', severity: 'critical', message: 'CAPI aktif degil — algoritma doğru ogrenemez' });
+    }
+
+    // Pixel kontrolu
+    const { data: settings } = await supabase.from('user_settings').select('meta_pixel_id').eq('user_id', req.userId).maybeSingle();
+    if (!settings?.meta_pixel_id) {
+      healthScore -= 10;
+      issues.push({ type: 'no_pixel', severity: 'warning', message: 'Pixel tanimli degil — web donusumleri izlenemiyor' });
+    }
+
+    healthScore = Math.max(0, Math.min(100, healthScore));
+    const grade = healthScore >= 80 ? 'A' : healthScore >= 60 ? 'B' : healthScore >= 40 ? 'C' : 'D';
+
+    res.json({
+      score: healthScore, grade,
+      totalSpend, totalLeads, wastedSpend,
+      wastedCampaigns,
+      issues: issues.sort((a, b) => (a.severity === 'critical' ? 0 : 1) - (b.severity === 'critical' ? 0 : 1)),
+      campaigns: campaigns.length,
+      costPerLead: totalLeads > 0 ? Math.round(totalSpend / totalLeads) : 0,
+      connected: true,
+    });
+  } catch (e: any) { res.json({ score: 0, connected: false, error: e.message?.slice(0, 80) }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTO BID MANAGEMENT (CPA/ROAS hedef bazli)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.post('/auto-bid', async (req: any, res: any) => {
+  try {
+    const { targetCPA, targetROAS } = req.body;
+    const creds = await getMetaCreds(req.userId);
+    if (!creds) return res.status(400).json({ error: 'Meta bagli degil' });
+
+    const { token, adAccountId } = creds;
+    const r = await axios.get(`${GRAPH}/${adAccountId}/adsets`, {
+      params: { access_token: token, fields: 'id,name,daily_budget,optimization_goal,insights{spend,actions,action_values}', effective_status: '["ACTIVE"]', limit: 20 },
+      timeout: 15000,
+    });
+
+    const adsets = r.data?.data || [];
+    const adjustments: any[] = [];
+
+    for (const adset of adsets) {
+      const ins = adset.insights?.data?.[0] || {};
+      const spend = parseFloat(ins.spend || '0');
+      const leads = parseInt((ins.actions || []).find((a: any) => a.action_type === 'lead')?.value || '0');
+      const currentCPA = leads > 0 ? spend / leads : 0;
+      const currentBudget = parseInt(adset.daily_budget || '0') / 100;
+
+      if (targetCPA && currentCPA > 0) {
+        const ratio = targetCPA / currentCPA;
+        let action = 'keep';
+        let newBudget = currentBudget;
+
+        if (ratio < 0.7) { action = 'decrease'; newBudget = Math.round(currentBudget * 0.8); }
+        else if (ratio > 1.3 && leads >= 3) { action = 'increase'; newBudget = Math.round(currentBudget * 1.2); }
+
+        if (action !== 'keep') {
+          adjustments.push({
+            adsetId: adset.id, name: adset.name,
+            currentBudget, newBudget, currentCPA: Math.round(currentCPA), targetCPA,
+            action, reason: action === 'increase' ? 'CPA hedefin altinda — butce arttir' : 'CPA hedefin ustunde — butce azalt',
+          });
+        }
+      }
+    }
+
+    res.json({ adjustments, totalAdsets: adsets.length, message: `${adjustments.length} adset icin butce onerisi` });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Apply bid adjustments
+router.post('/auto-bid/apply', async (req: any, res: any) => {
+  try {
+    const creds = await getMetaCreds(req.userId);
+    if (!creds) return res.status(400).json({ error: 'Meta bagli degil' });
+
+    const { adjustments } = req.body;
+    if (!adjustments?.length) return res.status(400).json({ error: 'adjustments zorunlu' });
+
+    let applied = 0;
+    for (const adj of adjustments) {
+      try {
+        await axios.post(`${GRAPH}/${adj.adsetId}`, {
+          daily_budget: Math.round(adj.newBudget * 100),
+          access_token: creds.token,
+        }, { timeout: 10000 });
+        applied++;
+      } catch {}
+    }
+    res.json({ ok: true, applied, message: `${applied} adset butcesi guncellendi` });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREATIVE REFRESH ALERT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/creative-refresh-alerts', async (req: any, res: any) => {
+  try {
+    const creds = await getMetaCreds(req.userId);
+    if (!creds) return res.json({ alerts: [] });
+
+    const { token, adAccountId } = creds;
+    const r = await axios.get(`${GRAPH}/${adAccountId}/ads`, {
+      params: { access_token: token, fields: 'id,name,created_time,status,insights{frequency,ctr,spend}', effective_status: '["ACTIVE"]', limit: 30 },
+      timeout: 15000,
+    });
+
+    const alerts: any[] = [];
+    for (const ad of (r.data?.data || [])) {
+      const createdDays = Math.floor((Date.now() - new Date(ad.created_time || Date.now()).getTime()) / (24 * 60 * 60 * 1000));
+      const ins = ad.insights?.data?.[0] || {};
+      const freq = parseFloat(ins.frequency || '0');
+      const ctr = parseFloat(ins.ctr || '0');
+
+      if (createdDays >= 21) {
+        alerts.push({
+          adId: ad.id, name: ad.name, daysActive: createdDays,
+          frequency: freq, ctr,
+          urgency: createdDays >= 35 ? 'critical' : createdDays >= 28 ? 'high' : 'medium',
+          message: `${createdDays} gundur aktif${freq >= 4 ? `, frekans ${freq.toFixed(1)}` : ''} — yeni kreatif yukleyin`,
+        });
+      }
+    }
+
+    alerts.sort((a, b) => b.daysActive - a.daysActive);
+    res.json({ alerts, total: alerts.length });
+  } catch (e: any) { res.json({ alerts: [], error: e.message?.slice(0, 80) }); }
+});
+
 module.exports = router;
