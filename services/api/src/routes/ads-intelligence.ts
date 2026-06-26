@@ -589,7 +589,7 @@ router.post('/ai-optimize', async (req: any, res: any) => {
     const { campaignId, campaignName, metrics } = req.body;
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
     const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1000,
       messages: [{
         role: 'user',
@@ -714,7 +714,7 @@ router.post('/ai-create-campaign', async (req: any, res: any) => {
     } catch {}
 
     const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       system: `You are Meta's top advertising strategist with 10+ years managing campaigns for businesses in Turkey. Expert in Facebook/Instagram audience targeting, scroll-stopping ad copy, and budget optimization.
 
