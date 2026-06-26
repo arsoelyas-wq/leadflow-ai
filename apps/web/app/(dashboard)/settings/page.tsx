@@ -379,7 +379,7 @@ export default function SettingsPage() {
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
                     <span style={{ background:'#eff6ff', border:'1px solid #bfdbfe', color:'#2563eb', fontSize:10, padding:'3px 10px', borderRadius:20, fontWeight:700 }}>{user?.planType === 'enterprise' ? 'Enterprise' : user?.planType === 'growth' ? 'Büyüme' : 'Başlangıç'}</span>
-                    <span style={{ color:'#94a3b8', fontSize:10 }}>Üye: {(user as any)?.created_at ? new Date(user.created_at).toLocaleDateString('tr-TR') : '—'}</span>
+                    <span style={{ color:'#94a3b8', fontSize:10 }}>Üye: {(user as any)?.created_at ? new Date((user as any).created_at).toLocaleDateString('tr-TR') : '—'}</span>
                   </div>
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
