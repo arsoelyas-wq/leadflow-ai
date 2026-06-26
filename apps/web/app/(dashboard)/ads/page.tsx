@@ -710,12 +710,25 @@ export default function AdsPage() {
               <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" style={{ width: `${onboardingData.progress}%` }} />
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {(onboardingData.steps || []).map((s: any) => (
-                <div key={s.id} className={`flex items-center gap-1.5 text-[10px] font-medium ${s.done ? 'text-emerald-600' : 'text-slate-400'}`}>
-                  {s.done ? <CheckCircle className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
-                  {s.label}
-                </div>
-              ))}
+              {(onboardingData.steps || []).map((s: any) => {
+                const stepLinks: Record<string, string> = { connect: '', extract: '', capi: '/settings', campaign: '' };
+                const stepActions: Record<string, string> = { extract: 'Lead Çek', capi: 'CAPI Ayarla', campaign: 'Kampanya Oluştur' };
+                return (
+                  <div key={s.id} className={`flex items-center gap-1.5 text-[10px] font-medium ${s.done ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    {s.done ? <CheckCircle className="w-3 h-3" /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
+                    {s.label}
+                    {!s.done && stepActions[s.id] && (
+                      s.id === 'capi' ? (
+                        <a href="/settings" className="ml-1 text-[9px] font-bold text-blue-600 hover:underline">{stepActions[s.id]} →</a>
+                      ) : s.id === 'extract' ? (
+                        <button onClick={extractLeads} className="ml-1 text-[9px] font-bold text-blue-600 hover:underline">{stepActions[s.id]} →</button>
+                      ) : s.id === 'campaign' ? (
+                        <button onClick={openWizard} className="ml-1 text-[9px] font-bold text-blue-600 hover:underline">{stepActions[s.id]} →</button>
+                      ) : null
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
@@ -746,12 +759,26 @@ export default function AdsPage() {
                   <span className="text-xs font-bold text-red-600">⚠️ ₺{accountHealth.wastedSpend.toFixed(0)} israf tespit edildi</span>
                 </div>
               )}
-              {(accountHealth.issues || []).slice(0, 3).map((issue: any, i: number) => (
-                <div key={i} className={`flex items-start gap-2 text-xs mb-1.5 ${issue.severity === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>
-                  <span>{issue.severity === 'critical' ? '🔴' : '🟡'}</span>
-                  <span>{issue.message}</span>
-                </div>
-              ))}
+              {(accountHealth.issues || []).slice(0, 4).map((issue: any, i: number) => {
+                const fixLink = issue.type === 'no_capi' ? '/settings' : issue.type === 'no_pixel' ? '/settings' : issue.type === 'wasted_spend' ? undefined : undefined;
+                const fixTab = issue.type === 'no_capi' ? 'meta-capi' : issue.type === 'no_pixel' ? 'meta-capi' : undefined;
+                return (
+                  <div key={i} className={`flex items-center justify-between text-xs mb-2 p-2 rounded-lg ${issue.severity === 'critical' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
+                    <div className="flex items-start gap-2 flex-1">
+                      <span>{issue.severity === 'critical' ? '🔴' : '🟡'}</span>
+                      <span className={issue.severity === 'critical' ? 'text-red-700' : 'text-amber-700'}>{issue.message}</span>
+                    </div>
+                    {fixLink && (
+                      <a href={`${fixLink}${fixTab ? `#${fixTab}` : ''}`}
+                        className={`flex-shrink-0 ml-2 px-2.5 py-1 rounded-md text-[10px] font-bold transition ${
+                          issue.severity === 'critical' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-amber-500 text-white hover:bg-amber-400'
+                        }`}>
+                        Düzelt →
+                      </a>
+                    )}
+                  </div>
+                )
+              })}
               {accountHealth.costPerLead > 0 && (
                 <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
                   Ort. Lead Maliyeti: <span className="font-bold text-slate-700">₺{accountHealth.costPerLead}</span>
