@@ -10,10 +10,10 @@ const APP_ID = process.env.META_APP_ID;
 const APP_SECRET = process.env.META_APP_SECRET;
 const REDIRECT_URI = process.env.META_REDIRECT_URI || 'https://leadflow-ai-web-kappa.vercel.app/api/auth/meta/callback';
 
-// OAuth URL
+// OAuth URL — includes CAPI + Pixel permissions
 router.get('/oauth-url', async (req: any, res: any) => {
   const scopes = 'ads_read,ads_management,business_management,pages_read_engagement,leads_retrieval,pages_manage_ads';
-  const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&state=${req.userId}&response_type=code`;
+  const url = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&state=${req.userId}&response_type=code`;
   res.json({ url });
 });
 
@@ -32,17 +32,42 @@ router.post('/exchange-token', async (req: any, res: any) => {
     const meResp = await axios.get(`https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${longToken}`);
     const adAccountsResp = await axios.get(`https://graph.facebook.com/v20.0/me/adaccounts?fields=id,name,account_status,currency,balance&access_token=${longToken}`);
 
+    // Auto-fetch Pixel IDs from ad accounts
+    let pixelIds: string[] = [];
+    try {
+      for (const acc of (adAccountsResp.data.data || []).slice(0, 3)) {
+        const pixelResp = await axios.get(`https://graph.facebook.com/v20.0/${acc.id}/adspixels`, {
+          params: { access_token: longToken, fields: 'id,name,is_unavailable' }, timeout: 10000,
+        });
+        for (const p of (pixelResp.data?.data || [])) {
+          if (!p.is_unavailable) pixelIds.push(p.id);
+        }
+      }
+    } catch {}
+
     await supabase.from('meta_connections').upsert([{
       user_id: req.userId,
       meta_user_id: meResp.data.id,
       meta_user_name: meResp.data.name,
       access_token: longToken,
       ad_accounts: JSON.stringify(adAccountsResp.data.data || []),
+      pixel_ids: JSON.stringify(pixelIds),
       connected_at: new Date().toISOString(),
       token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
     }], { onConflict: 'user_id' });
 
-    res.json({ success: true, userName: meResp.data.name, adAccounts: adAccountsResp.data.data || [], message: 'Meta hesabi baglandi!' });
+    // Auto-save CAPI settings if pixel found
+    if (pixelIds.length > 0) {
+      await supabase.from('user_settings').upsert([{
+        user_id: req.userId,
+        meta_pixel_id: pixelIds[0],
+        meta_capi_token: longToken,
+        meta_capi_enabled: true,
+        updated_at: new Date().toISOString(),
+      }], { onConflict: 'user_id' });
+    }
+
+    res.json({ success: true, userName: meResp.data.name, adAccounts: adAccountsResp.data.data || [], pixelIds, capiAutoSetup: pixelIds.length > 0, message: pixelIds.length > 0 ? 'Meta + CAPI otomatik kuruldu!' : 'Meta hesabi baglandi!' });
   } catch (e: any) {
     res.status(500).json({ error: e.response?.data?.error?.message || e.message });
   }
@@ -81,6 +106,7 @@ router.get('/connection', async (req: any, res: any) => {
       connected: true,
       userName: data.meta_user_name,
       adAccounts: JSON.parse(data.ad_accounts || '[]'),
+      pixelIds: JSON.parse(data.pixel_ids || '[]'),
       connectedAt: data.connected_at,
       expiresAt: data.token_expires_at,
       daysLeft,

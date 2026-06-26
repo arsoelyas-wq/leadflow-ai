@@ -909,63 +909,136 @@ export default function SettingsPage() {
           {tab === 'meta-capi' && (
             <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
               {/* Header card */}
-              <div style={{ background:'rgba(59,130,246,0.08)', border:'1px solid rgba(59,130,246,0.25)', borderRadius:16, padding:'18px 20px' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
-                  <div style={{ width:40, height:40, background:'#1d4ed8', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>📊</div>
+              <div style={{ background:'linear-gradient(135deg, #eff6ff, #eef2ff)', border:'1px solid #bfdbfe', borderRadius:16, padding:'20px 24px' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+                  <div style={{ width:44, height:44, background:'linear-gradient(135deg,#1d4ed8,#7c3aed)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>📡</div>
                   <div style={{ flex:1 }}>
-                    <h2 style={{ color:'#0f172a', fontWeight:600, fontSize:14, margin:0 }}>{t('settings.reklam_donusum_takibi', 'Reklam Dönüşüm Takibi')}</h2>
-                    <p style={{ color:'#93c5fd', fontSize:12, margin:'2px 0 0' }}>{t('settings.hangi_reklamin_musteriye_don', 'Hangi reklamın müşteriye dönüştüğünü Meta&apos;ya otomatik bildir')}</p>
+                    <h2 style={{ color:'#0f172a', fontWeight:700, fontSize:15, margin:0 }}>Meta Dönüşüm API (CAPI)</h2>
+                    <p style={{ color:'#6366f1', fontSize:12, margin:'2px 0 0' }}>Reklam algoritmasını eğit — lead kalitesini %44 artır, maliyeti %15 düşür</p>
                   </div>
-                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <span style={{ width:8, height:8, borderRadius:'50%', background:(capi.enabled && capi.hasToken)?'#34d399':'#475569', display:'inline-block', boxShadow:(capi.enabled && capi.hasToken)?'0 0 6px #34d399':undefined }} />
-                    <span style={{ fontSize:12, color:(capi.enabled && capi.hasToken)?'#34d399':'#475569' }}>
-                      {capi.enabled && capi.hasToken ? 'Aktif' : 'Pasif'}
+                  <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, background:(capi.enabled && capi.hasToken)?'#dcfce7':'#fef3c7', border:(capi.enabled && capi.hasToken)?'1px solid #86efac':'1px solid #fde68a' }}>
+                    <span style={{ width:8, height:8, borderRadius:'50%', background:(capi.enabled && capi.hasToken)?'#22c55e':'#f59e0b' }} />
+                    <span style={{ fontSize:12, fontWeight:600, color:(capi.enabled && capi.hasToken)?'#166534':'#92400e' }}>
+                      {capi.enabled && capi.hasToken ? 'Aktif' : 'Kurulum Gerekli'}
                     </span>
                   </div>
                 </div>
-                <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
-                  Sovlo&apos;da bir lead&apos;i &quot;Kazanıldı&quot; olarak işaretlediğinizde Meta otomatik öğrenir.
-                  Böylece reklamlarınız zamanla daha doğru kişilere, daha düşük maliyetle ulaşır.
+                <p style={{ color:'#475569', fontSize:12, margin:0, lineHeight:1.6 }}>
+                  CAPI, lead&apos;lerinizi &quot;Kazanıldı&quot; veya &quot;Kaybedildi&quot; olarak işaretlediğinizde Meta&apos;ya otomatik sinyal gönderir.
+                  Böylece Meta algoritması gerçek müşterilerinizi öğrenir ve reklamlarınız doğru kişilere gösterilir.
                 </p>
               </div>
 
-              {/* Configuration */}
-              <div style={card}>
-                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.baglanti_ayarlari', 'Bağlantı Ayarları')}</h3>
+              {/* ONE-CLICK AUTO SETUP */}
+              {!(capi.enabled && capi.hasToken) && (
+                <div style={{ background:'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border:'2px solid #86efac', borderRadius:16, padding:'20px 24px' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+                    <span style={{ fontSize:22 }}>⚡</span>
+                    <div>
+                      <h3 style={{ color:'#166534', fontSize:14, fontWeight:700, margin:0 }}>Otomatik Kurulum (Önerilen)</h3>
+                      <p style={{ color:'#15803d', fontSize:12, margin:'2px 0 0' }}>Meta hesabınızı bağlayın — Pixel ID ve Token otomatik alınır</p>
+                    </div>
+                  </div>
+                  <button onClick={async () => {
+                    try {
+                      const d = await api.get('/api/ads/oauth-url')
+                      if (d.url) window.location.href = d.url
+                    } catch (e: any) { showMsg('error', 'OAuth URL alinamadi: ' + e.message) }
+                  }} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 20px', background:'linear-gradient(135deg,#1877F2,#0866FF)', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:700, cursor:'pointer', justifyContent:'center' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    Meta ile Bağlan ve CAPI&apos;yi Otomatik Kur
+                  </button>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12 }}>
+                    {['Pixel ID otomatik alınır', 'Access Token otomatik oluşur', 'CAPI aktifleşir'].map(t => (
+                      <span key={t} style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:'#166534', background:'#dcfce7', padding:'3px 8px', borderRadius:6 }}>✓ {t}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                <div style={{ marginBottom:12 }}>
+              {/* Manual Configuration */}
+              <div style={card}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                  <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0 }}>
+                    {capi.enabled && capi.hasToken ? 'CAPI Ayarları' : 'Manuel Kurulum'}
+                  </h3>
+                  {!(capi.enabled && capi.hasToken) && <span style={{ fontSize:11, color:'#94a3b8' }}>Otomatik kurulum yapamıyorsanız</span>}
+                </div>
+
+                <div style={{ marginBottom:14 }}>
                   <label style={fieldLabel}>Pixel ID</label>
                   <input value={capi.pixelId} onChange={e => setCapi(p => ({ ...p, pixelId: e.target.value }))}
                     placeholder="123456789012345"
                     style={{ ...input, fontFamily:'monospace' }} />
-                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Meta Business Manager → Events Manager → Pixel → Settings</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
+                    <span style={{ fontSize:11, color:'#64748b' }}>Pixel ID&apos;nizi nereden bulacağınız:</span>
+                    <a href="https://business.facebook.com/events_manager2" target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize:11, color:'#2563eb', fontWeight:600, textDecoration:'none' }}>
+                      Events Manager →
+                    </a>
+                  </div>
+                  <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'10px 12px', marginTop:6 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                      {['Events Manager aç', 'Sol menüden Data Sources', 'Pixel seç', 'Settings', 'Pixel ID kopyala'].map((s, i) => (
+                        <span key={i} style={{ display:'flex', alignItems:'center', gap:4, fontSize:10 }}>
+                          {i > 0 && <span style={{ color:'#cbd5e1' }}>→</span>}
+                          <span style={{ background:'#e0e7ff', color:'#3730a3', padding:'2px 6px', borderRadius:4, fontWeight:500 }}>{s}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ marginBottom:12 }}>
+                <div style={{ marginBottom:14 }}>
                   <label style={fieldLabel}>
                     Access Token{' '}
-                    {capi.hasToken && <span style={{ color:'#047857', marginLeft:6 }}>{t('settings.kayitli', '✓ Kayıtlı')}</span>}
+                    {capi.hasToken && <span style={{ color:'#047857', marginLeft:6 }}>✓ Kayıtlı</span>}
                   </label>
                   <input value={capiNewToken} onChange={e => setCapiNewToken(e.target.value)}
                     type="password"
                     placeholder={capi.hasToken ? '••••••••••••• (değiştirmek için yeni token girin)' : 'EAAxxxxxxx...'}
                     style={{ ...input, fontFamily:'monospace' }} />
-                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Events Manager → Settings → Generate Access Token</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
+                    <span style={{ fontSize:11, color:'#64748b' }}>Token oluşturma:</span>
+                    <a href="https://business.facebook.com/events_manager2" target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize:11, color:'#2563eb', fontWeight:600, textDecoration:'none' }}>
+                      Events Manager →
+                    </a>
+                  </div>
+                  <div style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'10px 12px', marginTop:6 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                      {['Events Manager aç', 'Pixel seç', 'Settings', 'Conversions API', 'Generate Access Token'].map((s, i) => (
+                        <span key={i} style={{ display:'flex', alignItems:'center', gap:4, fontSize:10 }}>
+                          {i > 0 && <span style={{ color:'#cbd5e1' }}>→</span>}
+                          <span style={{ background:'#e0e7ff', color:'#3730a3', padding:'2px 6px', borderRadius:4, fontWeight:500 }}>{s}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ marginBottom:12 }}>
-                  <label style={fieldLabel}>Test Event Code <span style={{ color:'#475569' }}>(opsiyonel)</span></label>
+                <div style={{ marginBottom:14 }}>
+                  <label style={fieldLabel}>Test Event Code <span style={{ color:'#94a3b8', fontWeight:400 }}>(opsiyonel)</span></label>
                   <input value={capi.testCode} onChange={e => setCapi(p => ({ ...p, testCode: e.target.value }))}
                     placeholder="TEST12345"
                     style={{ ...input, fontFamily:'monospace' }} />
-                  <p style={{ color:'#475569', fontSize:11, margin:'4px 0 0' }}>Events Manager → Test Events → Server Events</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
+                    <span style={{ fontSize:11, color:'#64748b' }}>Test kodu:</span>
+                    <a href="https://business.facebook.com/events_manager2" target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize:11, color:'#2563eb', fontWeight:600, textDecoration:'none' }}>
+                      Events Manager → Test Events →
+                    </a>
+                  </div>
                 </div>
 
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-                  <div onClick={() => setCapi(p => ({ ...p, enabled: !p.enabled }))} style={{ width:40, height:22, borderRadius:11, background:capi.enabled?'#3b82f6':'rgba(100,116,139,0.3)', position:'relative', cursor:'pointer', transition:'background 0.2s' }}>
-                    <div style={{ position:'absolute', top:3, left:capi.enabled?20:3, width:16, height:16, borderRadius:'50%', background:'#fff', transition:'left 0.2s' }} />
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16, padding:'10px 14px', background:'#f8fafc', borderRadius:10, border:'1px solid #e2e8f0' }}>
+                  <div onClick={() => setCapi(p => ({ ...p, enabled: !p.enabled }))} style={{ width:44, height:24, borderRadius:12, background:capi.enabled?'#3b82f6':'#cbd5e1', position:'relative', cursor:'pointer', transition:'background 0.2s', flexShrink:0 }}>
+                    <div style={{ position:'absolute', top:3, left:capi.enabled?22:3, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.15)' }} />
                   </div>
-                  <span style={{ color:'#cbd5e1', fontSize:13 }}>CAPI Aktif</span>
+                  <div>
+                    <span style={{ fontSize:13, fontWeight:600, color:'#0f172a' }}>CAPI {capi.enabled ? 'Aktif' : 'Pasif'}</span>
+                    <p style={{ fontSize:11, color:'#64748b', margin:'1px 0 0' }}>Açıldığında lead durumu değiştiğinde otomatik Meta&apos;ya sinyal gönderilir</p>
+                  </div>
                 </div>
 
                 <div style={{ display:'flex', gap:10 }}>
@@ -996,36 +1069,37 @@ export default function SettingsPage() {
                     } catch (e: any) { showMsg('error', e.message) }
                     finally { setCapiTesting(false) }
                   }} disabled={capiTesting || !capi.hasToken}
-                    style={{ ...btn('rgba(100,116,139,0.25)'), border:'1px solid #e2e8f0', opacity:(capiTesting || !capi.hasToken)?0.4:1 }}>
+                    style={{ ...btn('rgba(100,116,139,0.15)'), border:'1px solid #e2e8f0', color:'#475569', opacity:(capiTesting || !capi.hasToken)?0.4:1 }}>
                     {capiTesting ? <RefreshCw size={14} style={{ animation:'settings-spin 1s linear infinite' }} /> : <FlaskConical size={14} />}
                     Test Gönder
                   </button>
                 </div>
               </div>
 
-              {/* How it works */}
+              {/* How it works — visual pipeline */}
               <div style={card}>
-                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:'0 0 14px' }}>{t('settings.nasil_calisir', 'Nasıl Çalışır?')}</h3>
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:'0 0 14px' }}>CAPI Nasıl Çalışır?</h3>
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                   {[
-                    { step: '1', label: 'Lead Geldi', desc: 'Yeni bir müşteri adayı oluştuğunda Meta\'ya bildirilir', dotColor: '#60a5fa' },
-                    { step: '2', label: 'İletişim Kuruldu', desc: 'İlk mesaj veya arama yapıldığında', dotColor: '#22d3ee' },
-                    { step: '3', label: 'Teklif Gönderildi', desc: 'Fiyat teklifi oluşturulduğunda', dotColor: '#fbbf24' },
-                    { step: '4', label: 'Teklif Görüntülendi', desc: 'Müşteri teklifi incelediğinde', dotColor: '#a78bfa' },
-                    { step: '5', label: 'Satış Kapandı', desc: 'Lead "Kazanıldı" olarak işaretlendiğinde — en önemli sinyal', dotColor: '#34d399' },
-                  ].map(({ step, label, desc, dotColor }) => (
-                    <div key={step} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-                      <div style={{ width:20, height:20, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#ffffff', flexShrink:0, marginTop:1 }}>{step}</div>
-                      <div>
-                        <span style={{ fontSize:13, fontWeight:500, color:'#0f172a' }}>{label}</span>
-                        <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>{desc}</p>
+                    { step: '1', label: 'Lead Geldi', desc: 'Meta\'ya "Lead" sinyali gönderilir', dotColor: '#3b82f6', event: 'Lead' },
+                    { step: '2', label: 'İletişim Kuruldu', desc: '"Contact" sinyali — ilgilendiğini bildir', dotColor: '#06b6d4', event: 'Contact' },
+                    { step: '3', label: 'Teklif Gönderildi', desc: '"InitiateCheckout" — ciddi müşteri sinyali', dotColor: '#f59e0b', event: 'InitiateCheckout' },
+                    { step: '4', label: 'Pazarlık Aşaması', desc: '"AddToCart" — deal değeriyle birlikte', dotColor: '#8b5cf6', event: 'AddToCart' },
+                    { step: '5', label: 'Satış Kapandı', desc: '"Purchase" — EN ÖNEMLİ sinyal, algoritma bunu öğrenir', dotColor: '#22c55e', event: 'Purchase' },
+                  ].map(({ step, label, desc, dotColor, event }) => (
+                    <div key={step} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', background:'#f8fafc', borderRadius:10, border:'1px solid #f1f5f9' }}>
+                      <div style={{ width:24, height:24, borderRadius:'50%', background:dotColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'#fff', flexShrink:0 }}>{step}</div>
+                      <div style={{ flex:1 }}>
+                        <span style={{ fontSize:12, fontWeight:600, color:'#0f172a' }}>{label}</span>
+                        <span style={{ fontSize:11, color:'#64748b', marginLeft:6 }}>{desc}</span>
                       </div>
+                      <span style={{ fontSize:10, fontWeight:600, color:dotColor, background:`${dotColor}18`, padding:'2px 8px', borderRadius:6 }}>{event}</span>
                     </div>
                   ))}
                 </div>
-                <div style={{ marginTop:14, padding:'10px 12px', background:'#f8fafc', borderRadius:10 }}>
-                  <p style={{ color:'#64748b', fontSize:12, margin:0 }}>
-                    Tüm veriler güvenli şekilde şifrelenerek Meta&apos;ya iletilir. Kişisel bilgiler (isim, telefon, e-posta) şifrelenmeden gönderilmez.
+                <div style={{ marginTop:12, padding:'10px 14px', background:'linear-gradient(135deg, #f0fdf4, #ecfdf5)', borderRadius:10, border:'1px solid #bbf7d0' }}>
+                  <p style={{ color:'#166534', fontSize:11, margin:0, fontWeight:500 }}>
+                    🔒 Tüm veriler SHA-256 ile şifrelenerek gönderilir. Kişisel bilgiler asla açık metin olarak iletilmez.
                   </p>
                 </div>
               </div>
