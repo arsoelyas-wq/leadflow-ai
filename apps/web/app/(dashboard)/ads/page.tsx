@@ -18,10 +18,10 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
 const GOALS = [
-  { id: 'LEADS', label: 'Lead Toplama', desc: 'Form dolduran müşteri adayları', Icon: Users },
-  { id: 'AWARENESS', label: 'Marka Farkındalığı', desc: 'Daha fazla kişiye ulaş', Icon: Megaphone },
-  { id: 'TRAFFIC', label: 'Web Trafiği', desc: 'Siteye ziyaretçi çek', Icon: Globe },
-  { id: 'SALES', label: 'Satış', desc: 'Ürün ve hizmet sat', Icon: ShoppingCart },
+  { id: 'LEADS', label: 'Lead Toplama', desc: 'WhatsApp/form ile potansiyel müşteri topla', detail: 'Meta Lead Form veya Messenger ile müşteri adayı bilgilerini toplar. AI otomatik lead çekme + 5dk kuralı ile anında arama.', Icon: Users, color: '#2563eb', estimate: '₺15-40 / lead' },
+  { id: 'AWARENESS', label: 'Marka Bilinirliği', desc: 'Binlerce kişiye markanı göster', detail: 'Hedef kitlenin feed ve hikayelerinde markanız görünür. Erişim ve frekans optimizasyonu yapılır.', Icon: Megaphone, color: '#7c3aed', estimate: '₺2-8 / 1000 gösterim' },
+  { id: 'TRAFFIC', label: 'Web Trafiği', desc: 'Siteye veya kataloğa trafik çek', detail: 'Landing page, ürün sayfası veya online kataloğunuza tıklama optimizasyonu. Link tıklama bazlı faturalandırma.', Icon: Globe, color: '#059669', estimate: '₺1-5 / tıklama' },
+  { id: 'SALES', label: 'Satış & Dönüşüm', desc: 'Doğrudan satış veya teklif oluştur', detail: 'Satın alma veya teklif formu doldurma hedefli. CAPI ile dönüşüm takibi + değer bazlı optimizasyon.', Icon: ShoppingCart, color: '#dc2626', estimate: '₺30-100 / dönüşüm' },
 ]
 
 const AI_MSGS = [
@@ -1176,27 +1176,39 @@ export default function AdsPage() {
                 </div>
               )}
 
-              {/* Step 2 */}
+              {/* Step 2 — Kampanya Tipi */}
               {step === 2 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Kampanya Hedefi</h2>
-                    <p className="text-sm text-slate-600 mt-1">Ne elde etmek istiyorsun?</p>
+                    <h2 className="text-lg font-semibold text-slate-900">Kampanya Tipi Seçin</h2>
+                    <p className="text-sm text-slate-500 mt-1">Hedefinize göre en uygun kampanya tipini seçin</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2.5">
                     {GOALS.map(g => (
-                      <button
-                        key={g.id}
-                        onClick={() => setGoal(g.id)}
-                        className={`p-4 rounded-xl border text-left transition-all ${goal === g.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}
-                      >
-                        <g.Icon className="w-6 h-6 mb-2 text-blue-600" />
-                        <div className="text-sm font-medium text-slate-900">{g.label}</div>
-                        <div className="text-xs text-slate-600 mt-0.5 leading-snug">{g.desc}</div>
+                      <button key={g.id} onClick={() => setGoal(g.id)}
+                        className={`w-full p-4 rounded-xl border text-left transition-all ${goal === g.id ? 'border-blue-400 bg-blue-50/50 shadow-md shadow-blue-500/10' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${g.color}15` }}>
+                            <g.Icon className="w-5 h-5" style={{ color: g.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold text-slate-900">{g.label}</span>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${g.color}12`, color: g.color }}>{g.estimate}</span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">{g.desc}</p>
+                            {goal === g.id && (
+                              <p className="text-[11px] text-slate-600 mt-2 leading-relaxed bg-slate-50 rounded-lg p-2.5 border border-slate-100">{g.detail}</p>
+                            )}
+                          </div>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${goal === g.id ? 'border-blue-500 bg-blue-500' : 'border-slate-300'}`}>
+                            {goal === g.id && <CheckCircle className="w-3 h-3 text-white" />}
+                          </div>
+                        </div>
                       </button>
                     ))}
                   </div>
-                  <button onClick={() => setStep(3)} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition">
+                  <button onClick={() => setStep(3)} className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-500/25">
                     Devam <ChevronRight className="w-4 h-4 inline ml-1" />
                   </button>
                 </div>
