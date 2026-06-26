@@ -8,7 +8,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 const APP_ID = process.env.META_APP_ID;
 const APP_SECRET = process.env.META_APP_SECRET;
-const REDIRECT_URI = process.env.META_REDIRECT_URI || 'https://leadflow-ai-web-kappa.vercel.app/api/auth/meta/callback';
+const REDIRECT_URI = process.env.META_REDIRECT_URI || 'https://sovlo.io/api/auth/meta/callback';
 
 // OAuth URL — includes CAPI + Pixel permissions
 router.get('/oauth-url', async (req: any, res: any) => {
