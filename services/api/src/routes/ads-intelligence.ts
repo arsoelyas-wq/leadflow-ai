@@ -758,7 +758,8 @@ Return ONLY valid JSON, no markdown, no explanation.`,
 
     res.json({ ok: true, draft: { id: savedId, ...plan } });
   } catch (e: any) {
-    res.json({ ok: false, error: 'Kampanya planı oluşturulamadı, lütfen tekrar deneyin.' });
+    console.error('[AI Campaign] Error:', e.message?.slice(0, 120));
+    res.json({ ok: false, error: `Kampanya planı oluşturulamadı: ${e.message?.slice(0, 80)}` });
   }
 });
 
