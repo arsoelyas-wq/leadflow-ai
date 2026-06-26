@@ -1124,4 +1124,207 @@ router.get('/onboarding-status', async (req: any, res: any) => {
   } catch { res.json({ connected: false, onboarded: false, progress: 0, steps: [] }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// KATMAN 1: ONBOARDING — Meta baglandiginda otomatik analiz
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.post('/onboarding-run', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const results: any = { leadsExtracted: 0, campaignsAnalyzed: 0, insights: [], alerts: [] };
+
+    // 1. Lead extraction
+    try {
+      const extRes = await fetch(`${process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app'}/api/ads-intelligence/extract-leads`, {
+        headers: { Authorization: req.headers.authorization },
+      });
+      const extData = await extRes.json();
+      results.leadsExtracted = extData.new_leads || extData.total_found || 0;
+    } catch {}
+
+    // 2. Campaign analysis
+    const { data: conn } = await supabase.from('meta_connections').select('access_token, ad_accounts').eq('user_id', userId).maybeSingle();
+    if (conn?.access_token) {
+      try {
+        const accs = typeof conn.ad_accounts === 'string' ? JSON.parse(conn.ad_accounts) : conn.ad_accounts || [];
+        const adAccountId = accs[0]?.id;
+        if (adAccountId) {
+          const campRes = await axios.get(`${GRAPH}/${adAccountId}/campaigns`, {
+            params: { access_token: conn.access_token, fields: 'id,name,status,daily_budget,insights{spend,impressions,clicks,ctr,cpm,actions}', limit: 10 },
+            timeout: 15000,
+          });
+          const campaigns = campRes.data?.data || [];
+          results.campaignsAnalyzed = campaigns.length;
+
+          // Generate insights
+          let totalSpend = 0, totalLeads = 0, wastedSpend = 0;
+          for (const c of campaigns) {
+            const insights = c.insights?.data?.[0] || {};
+            const spend = parseFloat(insights.spend || '0');
+            const leads = (insights.actions || []).find((a: any) => a.action_type === 'lead')?.value || 0;
+            totalSpend += spend;
+            totalLeads += parseInt(leads);
+            if (spend > 50 && parseInt(leads) === 0) {
+              wastedSpend += spend;
+              results.alerts.push({ type: 'waste', campaign: c.name, spend, message: `${c.name}: ₺${spend.toFixed(0)} harcanmis ama 0 lead` });
+            }
+            if (parseFloat(insights.ctr || '0') < 0.5 && parseFloat(insights.spend || '0') > 20) {
+              results.alerts.push({ type: 'low_ctr', campaign: c.name, ctr: insights.ctr, message: `${c.name}: CTR %${insights.ctr} — cok dusuk` });
+            }
+          }
+          if (wastedSpend > 0) results.insights.push(`Kampanyalarinizda ₺${wastedSpend.toFixed(0)} israf tespit edildi — duzeltebiliriz!`);
+          if (totalLeads > 0) results.insights.push(`Son donemde ${totalLeads} lead geldi — CAPI ile kaliteyi arttirabiliriz`);
+          if (totalSpend > 0 && totalLeads > 0) results.insights.push(`Ortalama lead maliyeti: ₺${(totalSpend / totalLeads).toFixed(0)} — optimize edilebilir`);
+        }
+      } catch {}
+    }
+
+    // 3. Save onboarding result
+    await supabase.from('ad_activity').insert([{
+      user_id: userId, platform: 'meta', type: 'onboarding',
+      message: `Onboarding: ${results.leadsExtracted} lead cekildi, ${results.campaignsAnalyzed} kampanya analiz edildi, ${results.alerts.length} uyari`,
+      created_at: new Date().toISOString(),
+    }]);
+
+    res.json({ ok: true, ...results, message: `${results.leadsExtracted} lead cekildi, ${results.alerts.length} sorun tespit edildi` });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// KATMAN 2: 7/24 MOTOR — saatlik/gunluk/haftalik cron isler
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Saatlik kampanya sagligi kontrolu
+async function hourlyHealthCheck() {
+  try {
+    const { data: connections } = await supabase.from('meta_connections').select('user_id, access_token, ad_accounts');
+    for (const conn of (connections || [])) {
+      try {
+        const accs = typeof conn.ad_accounts === 'string' ? JSON.parse(conn.ad_accounts) : conn.ad_accounts || [];
+        const adAccountId = accs[0]?.id;
+        if (!adAccountId || !conn.access_token) continue;
+
+        const campRes = await axios.get(`${GRAPH}/${adAccountId}/campaigns`, {
+          params: { access_token: conn.access_token, fields: 'id,name,status,insights{spend,impressions,clicks,actions}', limit: 10, effective_status: '["ACTIVE"]' },
+          timeout: 15000,
+        });
+
+        for (const c of (campRes.data?.data || [])) {
+          const ins = c.insights?.data?.[0] || {};
+          const spend = parseFloat(ins.spend || '0');
+          const leads = (ins.actions || []).find((a: any) => a.action_type === 'lead')?.value || 0;
+
+          if (spend > 100 && parseInt(leads) === 0) {
+            await supabase.from('ad_alerts').upsert([{
+              user_id: conn.user_id, platform: 'meta', campaign_id: c.id,
+              alert_type: 'no_results', severity: 'critical',
+              message: `${c.name}: ₺${spend.toFixed(0)} harcanmis ama 0 lead — kampanya durdurulmali mi?`,
+              created_at: new Date().toISOString(), is_read: false,
+            }], { onConflict: 'user_id,campaign_id,alert_type' });
+          }
+        }
+      } catch {}
+    }
+  } catch (e: any) { console.error('[Meta Hourly] Error:', e.message?.slice(0, 60)); }
+}
+setInterval(hourlyHealthCheck, 60 * 60 * 1000);
+
+// Haftalik otomatik rapor (Pazartesi 09:00)
+async function weeklyAutoReport() {
+  try {
+    const { data: connections } = await supabase.from('meta_connections').select('user_id');
+    for (const conn of (connections || [])) {
+      try {
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: leads } = await supabase.from('leads').select('id, source, status').eq('user_id', conn.user_id).gte('created_at', weekAgo);
+        const { data: won } = await supabase.from('leads').select('deal_value, total_value').eq('user_id', conn.user_id).eq('status', 'won').gte('won_at', weekAgo);
+        const { data: events } = await supabase.from('meta_capi_events').select('success').eq('user_id', conn.user_id).gte('fired_at', weekAgo);
+
+        const totalLeads = leads?.length || 0;
+        const wonCount = won?.length || 0;
+        const revenue = (won || []).reduce((s: number, l: any) => s + (l.deal_value || l.total_value || 0), 0);
+        const capiOk = (events || []).filter((e: any) => e.success).length;
+
+        if (totalLeads === 0 && wonCount === 0) continue;
+
+        const msg = `📊 *Haftalik Meta Rapor*\n\n📋 ${totalLeads} lead\n🏆 ${wonCount} satis\n💰 ${revenue > 0 ? revenue.toLocaleString('tr-TR') + ' TL' : '—'}\n📡 CAPI: ${capiOk} basarili event\n\nDetay: sovlo.io/ads`;
+
+        try {
+          const { data: us } = await supabase.from('user_settings').select('phone').eq('user_id', conn.user_id).single();
+          if (us?.phone) {
+            const { sendWhatsAppMessage } = require('./settings');
+            sendWhatsAppMessage(conn.user_id, us.phone, msg).catch(() => {});
+          }
+        } catch {}
+      } catch {}
+    }
+    console.log('[Meta Weekly] Reports sent');
+  } catch {}
+}
+
+// Pazartesi 09:00'da haftalik rapor
+const scheduleWeekly = () => {
+  const now = new Date();
+  const next = new Date();
+  next.setDate(now.getDate() + ((8 - now.getDay()) % 7 || 7));
+  next.setHours(9, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 7);
+  setTimeout(() => { weeklyAutoReport(); setInterval(weeklyAutoReport, 7 * 24 * 60 * 60 * 1000); }, next.getTime() - now.getTime());
+  console.log(`[Meta] Haftalik rapor ${next.toLocaleString('tr-TR')}'de planlandir`);
+};
+scheduleWeekly();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// KATMAN 4: RETENTION — musteri basari metrikleri + tahmin
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/success-metrics', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [leadsRes, prevLeadsRes, wonRes, eventsRes, campaignsRes] = await Promise.allSettled([
+      supabase.from('leads').select('id, score, source').eq('user_id', userId).gte('created_at', thirtyDaysAgo),
+      supabase.from('leads').select('id').eq('user_id', userId).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
+      supabase.from('leads').select('deal_value, total_value, won_at').eq('user_id', userId).eq('status', 'won'),
+      supabase.from('meta_capi_events').select('event_name, success').eq('user_id', userId),
+      supabase.from('ad_campaigns').select('id, daily_budget').eq('user_id', userId),
+    ]);
+
+    const leads30 = leadsRes.status === 'fulfilled' ? leadsRes.value.data || [] : [];
+    const prevLeads = prevLeadsRes.status === 'fulfilled' ? prevLeadsRes.value.data || [] : [];
+    const wonAll = wonRes.status === 'fulfilled' ? wonRes.value.data || [] : [];
+    const allEvents = eventsRes.status === 'fulfilled' ? eventsRes.value.data || [] : [];
+
+    const totalRevenue = wonAll.reduce((s: number, l: any) => s + (l.deal_value || l.total_value || 0), 0);
+    const avgScore = leads30.length > 0 ? Math.round(leads30.reduce((s: number, l: any) => s + (l.score || 0), 0) / leads30.length) : 0;
+    const leadGrowth = prevLeads.length > 0 ? Math.round(((leads30.length - prevLeads.length) / prevLeads.length) * 100) : 0;
+    const capiSuccess = allEvents.filter((e: any) => e.success).length;
+    const convRate = leads30.length > 0 ? Math.round((wonAll.filter((w: any) => new Date(w.won_at || '') >= new Date(thirtyDaysAgo)).length / leads30.length) * 100) : 0;
+
+    // Tahmin: sonraki ay
+    const projectedLeads = Math.round(leads30.length * (1 + leadGrowth / 100));
+    const projectedRevenue = projectedLeads > 0 && convRate > 0 ? Math.round(projectedLeads * (convRate / 100) * (totalRevenue / Math.max(1, wonAll.length))) : 0;
+
+    // Sovlo ile kazanim
+    const metaLeads = leads30.filter((l: any) => (l.source || '').toLowerCase().includes('meta') || (l.source || '').toLowerCase().includes('facebook'));
+
+    res.json({
+      period: '30 gun',
+      leads: { current: leads30.length, previous: prevLeads.length, growth: leadGrowth },
+      revenue: { total: totalRevenue, wonCount: wonAll.length, convRate },
+      quality: { avgScore, capiEvents: allEvents.length, capiSuccess },
+      metaLeads: metaLeads.length,
+      prediction: { nextMonthLeads: projectedLeads, nextMonthRevenue: projectedRevenue },
+      sovloValue: {
+        leadsFound: leads30.length,
+        metaLeadsFound: metaLeads.length,
+        capiEventsFired: capiSuccess,
+        message: `Sovlo ile ${leads30.length} lead buldunuz${totalRevenue > 0 ? `, ${totalRevenue.toLocaleString('tr-TR')} TL gelir elde ettiniz` : ''}. CAPI ile Meta algoritmaniz ${capiSuccess} sinyal ile egitildi.`,
+      },
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
