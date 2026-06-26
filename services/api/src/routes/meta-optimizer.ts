@@ -773,4 +773,68 @@ router.get('/creative-refresh-alerts', async (req: any, res: any) => {
   } catch (e: any) { res.json({ alerts: [], error: e.message?.slice(0, 80) }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREATIVE UPLOAD — gorsel/video yukle → Meta Ad Account'a otomatik yukle
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const multer = require('multer');
+const creativeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+router.post('/upload-creative', creativeUpload.single('file'), async (req: any, res: any) => {
+  try {
+    const creds = await getMetaCreds(req.userId);
+    if (!creds) return res.status(400).json({ error: 'Meta bagli degil' });
+
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Dosya yuklenmedi' });
+
+    const { token, adAccountId } = creds;
+    const isVideo = file.mimetype.startsWith('video/');
+    let metaId = '', metaUrl = '';
+
+    if (isVideo) {
+      const FormData = require('form-data');
+      const form = new FormData();
+      form.append('source', file.buffer, { filename: file.originalname, contentType: file.mimetype });
+      form.append('access_token', token);
+      const r = await axios.post(`${GRAPH}/${adAccountId}/advideos`, form, {
+        headers: form.getHeaders(), timeout: 120000, maxContentLength: 50 * 1024 * 1024,
+      });
+      metaId = r.data?.id || '';
+    } else {
+      const FormData = require('form-data');
+      const form = new FormData();
+      form.append('filename', file.originalname);
+      form.append('bytes', file.buffer.toString('base64'));
+      form.append('access_token', token);
+      const r = await axios.post(`${GRAPH}/${adAccountId}/adimages`, form, {
+        headers: form.getHeaders(), timeout: 60000,
+      });
+      const images = r.data?.images || {};
+      const firstKey = Object.keys(images)[0];
+      if (firstKey) { metaId = images[firstKey].hash; metaUrl = images[firstKey].url; }
+    }
+
+    const { data: saved } = await supabase.from('ad_creatives').insert([{
+      user_id: req.userId, platform: 'meta',
+      type: isVideo ? 'video' : 'image',
+      filename: file.originalname, file_size: file.size, mime_type: file.mimetype,
+      meta_id: metaId, meta_url: metaUrl,
+      created_at: new Date().toISOString(),
+    }]).select().single();
+
+    res.json({ ok: true, id: saved?.id, metaId, metaUrl, type: isVideo ? 'video' : 'image', message: `${isVideo ? 'Video' : 'Gorsel'} Meta'ya yuklendi!` });
+  } catch (e: any) {
+    console.error('[Creative Upload]', e.response?.data || e.message);
+    res.status(500).json({ error: e.message?.slice(0, 80) });
+  }
+});
+
+router.get('/creatives', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('ad_creatives').select('*').eq('user_id', req.userId).order('created_at', { ascending: false }).limit(20);
+    res.json({ creatives: data || [] });
+  } catch { res.json({ creatives: [] }); }
+});
+
 module.exports = router;

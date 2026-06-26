@@ -353,6 +353,8 @@ export default function AdsPage() {
   const [budget, setBudget] = useState('200')
   const [avgDeal, setAvgDeal] = useState('')
   const [draft, setDraft] = useState<any>(null)
+  const [creatives, setCreatives] = useState<any[]>([])
+  const [uploading, setUploading] = useState(false)
   const [aiMsgIdx, setAiMsgIdx] = useState(0)
   const [launching, setLaunching] = useState(false)
   const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -465,7 +467,7 @@ export default function AdsPage() {
   }
 
   async function runAiStep() {
-    setStep(4); setAiMsgIdx(0)
+    setStep(5); setAiMsgIdx(0)
     let idx = 0
     animIntervalRef.current = setInterval(() => {
       idx++
@@ -477,7 +479,7 @@ export default function AdsPage() {
     let animDone = false
     let draftData: any = null
 
-    const advanceIfBoth = () => { if (apiDone && animDone && draftData) setStep(5) }
+    const advanceIfBoth = () => { if (apiDone && animDone && draftData) setStep(6) }
 
     setTimeout(() => { animDone = true; advanceIfBoth() }, AI_MSGS.length * 1600)
 
@@ -1348,44 +1350,59 @@ export default function AdsPage() {
       {/* Campaign Wizard Modal */}
       {wizardOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-blue-600" />
-                <span className="font-semibold text-slate-900">{t('ads.ai_kampanya_olustur', 'AI Kampanya Oluştur')}</span>
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <span className="font-bold text-slate-900 text-sm">AI Kampanya Oluştur</span>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {step <= 3 ? `Adım ${step}/6` : step === 4 ? 'Kreatif Yükle' : step === 5 ? 'AI Hazırlıyor' : 'Önizleme'}
+                  </p>
+                </div>
               </div>
-              <button onClick={closeWizard} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition">
+              <button onClick={closeWizard} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Progress */}
-            <div className="flex items-center gap-1.5 px-6 pt-4">
-              {[1, 2, 3, 4, 5].map(s => (
-                <div key={s} className={`h-1 rounded-full flex-1 transition-all duration-500 ${s <= step ? 'bg-blue-500' : 'bg-slate-200'}`} />
+            <div className="flex items-center gap-1 px-6 pt-3 shrink-0">
+              {[1, 2, 3, 4, 5, 6].map(s => (
+                <div key={s} className="flex-1 flex flex-col items-center gap-1">
+                  <div className={`h-1.5 w-full rounded-full transition-all duration-500 ${s <= step ? 'bg-gradient-to-r from-blue-500 to-indigo-500' : 'bg-slate-100'}`} />
+                  <span className={`text-[8px] ${s <= step ? 'text-blue-600 font-semibold' : 'text-slate-300'}`}>
+                    {['İşletme', 'Hedef', 'Bütçe', 'Kreatif', 'AI', 'Yayınla'][s - 1]}
+                  </span>
+                </div>
               ))}
             </div>
 
-            <div className="p-6">
-              {/* Step 1 */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* Step 1: İşletme */}
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">{t('ads.isletmeni_anlat', 'İşletmeni Anlat')}</h2>
-                    <p className="text-sm text-slate-600 mt-1">{t('ads.ne_sattigini_ve_kime_satt', 'Ne sattığını ve kime sattığını kısaca yaz')}</p>
+                    <h2 className="text-lg font-bold text-slate-900">İşletmenizi Tanıtın</h2>
+                    <p className="text-sm text-slate-500 mt-1">Ne sattığınızı, kime sattığınızı ve sektörünüzü anlatın</p>
                   </div>
                   <textarea
                     value={desc}
                     onChange={e => setDesc(e.target.value)}
-                    placeholder={t('ads.orn_istanbulda_mutfak_dol', 'Örn: İstanbul\'da mutfak dolabı satan bir firmayız. 30-55 yaş ev yenileyen müşterilere ulaşmak istiyoruz. Ortalama sipariş değerimiz 15.000 TL...')}
-                    className="w-full h-36 bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 text-sm resize-none focus:outline-none focus:border-blue-500 transition"
+                    placeholder="Örn: İstanbul'da mutfak dolabı satan bir firmayız. 30-55 yaş ev yenileyen müşterilere ulaşmak istiyoruz. Ortalama sipariş değerimiz 15.000 TL..."
+                    className="w-full h-32 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 text-sm resize-none focus:outline-none focus:border-blue-400 focus:bg-white transition"
                   />
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                    <p className="text-[11px] text-blue-700 font-medium">💡 Ne kadar detay verirseniz AI o kadar iyi kampanya oluşturur. Hedef kitle yaşı, şehri, bütçe aralığı gibi bilgiler ekleyin.</p>
+                  </div>
                   <button
                     onClick={() => setStep(2)}
                     disabled={desc.trim().length < 20}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-medium transition"
+                    className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
                   >
-                    Devam <ChevronRight className="w-4 h-4 inline ml-1" />
+                    Devam <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
@@ -1471,17 +1488,106 @@ export default function AdsPage() {
                     </div>
                   </div>
                   <button
-                    onClick={runAiStep}
+                    onClick={() => setStep(4)}
                     disabled={!budget || Number(budget) < 10}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
                   >
-                    <Sparkles className="w-4 h-4" /> AI ile Oluştur
+                    Devam <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               )}
 
-              {/* Step 4: AI Animation */}
+              {/* Step 4: Kreatif Yükleme */}
               {step === 4 && (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">Reklam Kreatifleri</h2>
+                    <p className="text-sm text-slate-500 mt-1">Fotoğraf veya video yükleyin — otomatik Meta&apos;ya aktarılır</p>
+                  </div>
+
+                  {/* Upload Zone */}
+                  <label className="relative flex flex-col items-center justify-center h-36 border-2 border-dashed border-slate-300 hover:border-blue-400 rounded-2xl cursor-pointer transition-all hover:bg-blue-50/30 group">
+                    <input type="file" accept="image/*,video/*" multiple className="absolute inset-0 opacity-0 cursor-pointer"
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (!files?.length) return;
+                        setUploading(true);
+                        for (const file of Array.from(files)) {
+                          try {
+                            const form = new FormData();
+                            form.append('file', file);
+                            const token = localStorage.getItem('token');
+                            const r = await fetch(`${API}/api/meta-opt/upload-creative`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: form });
+                            const d = await r.json();
+                            if (d.ok) setCreatives(prev => [{ ...d, filename: file.name, preview: URL.createObjectURL(file) }, ...prev]);
+                            else showMsg('error', d.error || 'Yükleme başarısız');
+                          } catch { showMsg('error', 'Yükleme hatası'); }
+                        }
+                        setUploading(false);
+                        e.target.value = '';
+                      }}
+                    />
+                    {uploading ? (
+                      <RefreshCw className="w-8 h-8 text-blue-500 animate-spin mb-2" />
+                    ) : (
+                      <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-2 group-hover:bg-blue-200 transition">
+                        <ArrowUpRight className="w-5 h-5 text-blue-600" />
+                      </div>
+                    )}
+                    <p className="text-sm font-semibold text-slate-700">{uploading ? 'Yükleniyor...' : 'Fotoğraf veya Video Yükle'}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">JPG, PNG, MP4 — maks. 50MB — çoklu seçim desteklenir</p>
+                  </label>
+
+                  {/* Uploaded Creatives */}
+                  {creatives.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-slate-500">{creatives.length} kreatif yüklendi</span>
+                        <span className="text-[10px] text-emerald-600 font-semibold">✓ Meta&apos;ya aktarıldı</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {creatives.map((c, i) => (
+                          <div key={i} className="relative group">
+                            {c.type === 'video' ? (
+                              <div className="h-20 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
+                                <Eye className="w-5 h-5 text-slate-400" />
+                              </div>
+                            ) : (
+                              <img src={c.preview || c.metaUrl} alt="" className="h-20 w-full object-cover rounded-xl border border-slate-200" />
+                            )}
+                            <div className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
+                              <CheckCircle className="w-3 h-3 text-white" />
+                            </div>
+                            <span className={`absolute bottom-1 left-1 text-[8px] font-bold px-1 py-0.5 rounded ${c.type === 'video' ? 'bg-violet-500 text-white' : 'bg-blue-500 text-white'}`}>
+                              {c.type === 'video' ? 'VIDEO' : 'IMG'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-[11px] text-amber-700 font-medium">💡 Kreatif eklemezseniz AI metinle kampanya oluşturur. Görsel eklerseniz dönüşüm oranı ortalama %60 artar.</p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button onClick={() => setStep(3)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition">
+                      ← Geri
+                    </button>
+                    <button
+                      onClick={runAiStep}
+                      disabled={uploading}
+                      className="flex-1 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" /> AI ile Oluştur
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: AI Animation (was step 4) */}
+              {step === 5 && (
                 <div className="py-10 text-center space-y-6">
                   <div className="relative w-20 h-20 mx-auto">
                     <div className="absolute inset-0 bg-blue-200 rounded-full animate-ping" />
@@ -1501,8 +1607,8 @@ export default function AdsPage() {
                 </div>
               )}
 
-              {/* Step 5: Preview & Launch */}
-              {step === 5 && draft && (
+              {/* Step 6: Preview & Launch */}
+              {step === 6 && draft && (
                 <div className="space-y-4">
                   <div>
                     <h2 className="text-lg font-semibold text-slate-900">{t('ads.kampanya_onizleme', 'Kampanya Önizleme')}</h2>
