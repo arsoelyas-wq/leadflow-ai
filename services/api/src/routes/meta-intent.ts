@@ -21,7 +21,7 @@ const META_CAPI_TOKEN = process.env.META_CAPI_TOKEN
 const META_PIXEL_ID   = process.env.META_PIXEL_ID;
 const META_AD_ACCOUNT = process.env.META_AD_ACCOUNT_ID; // act_XXXXX
 
-const META_API_BASE   = 'https://graph.facebook.com/v19.0'; // latest stable
+const META_API_BASE   = 'https://graph.facebook.com/v20.0';
 const isConfigured    = !!(META_CAPI_TOKEN && META_PIXEL_ID);
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }

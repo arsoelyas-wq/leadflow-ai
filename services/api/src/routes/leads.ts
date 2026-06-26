@@ -231,6 +231,8 @@ router.patch('/:id', authMiddleware, async (req: any, res: any) => {
           await fireGoogleConversion(supabase, req.userId, data, 'LeadFormSubmit');
         } else if (updates.status === 'proposal') {
           await fireCapiEvent(supabase, req.userId, data, 'InitiateCheckout');
+        } else if (updates.status === 'lost') {
+          await fireCapiEvent(supabase, req.userId, data, 'ViewContent');
         }
       } catch {}
     }

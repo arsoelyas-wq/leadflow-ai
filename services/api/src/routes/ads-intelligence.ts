@@ -8,7 +8,7 @@ const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const GRAPH = 'https://graph.facebook.com/v18.0';
+const GRAPH = 'https://graph.facebook.com/v20.0';
 
 async function getMetaToken(userId: string): Promise<string> {
   const { data } = await supabase.from('meta_connections').select('access_token').eq('user_id', userId).single();

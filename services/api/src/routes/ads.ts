@@ -21,16 +21,16 @@ router.get('/oauth-url', async (req: any, res: any) => {
 router.post('/exchange-token', async (req: any, res: any) => {
   try {
     const { code } = req.body;
-    const tokenResp = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+    const tokenResp = await axios.get('https://graph.facebook.com/v20.0/oauth/access_token', {
       params: { client_id: APP_ID, client_secret: APP_SECRET, redirect_uri: REDIRECT_URI, code }
     });
     const shortToken = tokenResp.data.access_token;
-    const longResp = await axios.get('https://graph.facebook.com/v18.0/oauth/access_token', {
+    const longResp = await axios.get('https://graph.facebook.com/v20.0/oauth/access_token', {
       params: { grant_type: 'fb_exchange_token', client_id: APP_ID, client_secret: APP_SECRET, fb_exchange_token: shortToken }
     });
     const longToken = longResp.data.access_token;
-    const meResp = await axios.get(`https://graph.facebook.com/v18.0/me?fields=id,name&access_token=${longToken}`);
-    const adAccountsResp = await axios.get(`https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,balance&access_token=${longToken}`);
+    const meResp = await axios.get(`https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${longToken}`);
+    const adAccountsResp = await axios.get(`https://graph.facebook.com/v20.0/me/adaccounts?fields=id,name,account_status,currency,balance&access_token=${longToken}`);
 
     await supabase.from('meta_connections').upsert([{
       user_id: req.userId,
@@ -48,12 +48,45 @@ router.post('/exchange-token', async (req: any, res: any) => {
   }
 });
 
-// Connection
+// Connection + auto token refresh
 router.get('/connection', async (req: any, res: any) => {
   try {
     const { data } = await supabase.from('meta_connections').select('*').eq('user_id', req.userId).single();
     if (!data) return res.json({ connected: false });
-    res.json({ connected: true, userName: data.meta_user_name, adAccounts: JSON.parse(data.ad_accounts || '[]'), connectedAt: data.connected_at, expiresAt: data.token_expires_at });
+
+    // Token expiry check — refresh if < 7 days remaining
+    const expiresAt = data.token_expires_at ? new Date(data.token_expires_at).getTime() : 0;
+    const daysLeft = Math.max(0, Math.round((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
+    let tokenRefreshed = false;
+
+    if (daysLeft < 7 && daysLeft > 0 && data.access_token) {
+      try {
+        const refreshResp = await axios.get('https://graph.facebook.com/v20.0/oauth/access_token', {
+          params: { grant_type: 'fb_exchange_token', client_id: APP_ID, client_secret: APP_SECRET, fb_exchange_token: data.access_token },
+        });
+        if (refreshResp.data?.access_token) {
+          await supabase.from('meta_connections').update({
+            access_token: refreshResp.data.access_token,
+            token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+          }).eq('user_id', req.userId);
+          tokenRefreshed = true;
+          console.log(`[Meta] Token refreshed for ${req.userId.slice(0, 8)}, ${daysLeft} days remaining`);
+        }
+      } catch (refreshErr: any) {
+        console.log('[Meta] Token refresh failed:', refreshErr.message?.slice(0, 60));
+      }
+    }
+
+    res.json({
+      connected: true,
+      userName: data.meta_user_name,
+      adAccounts: JSON.parse(data.ad_accounts || '[]'),
+      connectedAt: data.connected_at,
+      expiresAt: data.token_expires_at,
+      daysLeft,
+      tokenRefreshed,
+      tokenWarning: daysLeft <= 7 && daysLeft > 0 ? `Token ${daysLeft} gun sonra expire olacak` : daysLeft === 0 ? 'Token expired — tekrar baglanin' : null,
+    });
   } catch { res.json({ connected: false }); }
 });
 
@@ -64,7 +97,7 @@ router.get('/analyze/:adAccountId', async (req: any, res: any) => {
     if (!conn) return res.status(401).json({ error: 'Meta hesabi bagli degil' });
 
     const campResp = await axios.get(
-      `https://graph.facebook.com/v18.0/${req.params.adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,insights{impressions,clicks,spend,ctr,cpm,reach}&access_token=${conn.access_token}&limit=20`
+      `https://graph.facebook.com/v20.0/${req.params.adAccountId}/campaigns?fields=id,name,status,objective,daily_budget,insights{impressions,clicks,spend,ctr,cpm,reach}&access_token=${conn.access_token}&limit=20`
     );
     const campaigns = campResp.data?.data || [];
 
@@ -130,7 +163,7 @@ router.post('/create-campaign', async (req: any, res: any) => {
 
     // Sadece kampanya olustur
     const campResp = await axios.post(
-      `https://graph.facebook.com/v18.0/${adAccountId}/campaigns`,
+      `https://graph.facebook.com/v20.0/${adAccountId}/campaigns`,
       {
         name,
         objective,
@@ -166,7 +199,7 @@ router.patch('/campaign/:id/status', async (req: any, res: any) => {
     const { data: conn } = await supabase.from('meta_connections').select('access_token').eq('user_id', req.userId).single();
     if (!conn) return res.status(401).json({ error: 'Meta hesabi bagli degil' });
     const { status } = req.body;
-    await axios.post(`https://graph.facebook.com/v18.0/${req.params.id}`, { status }, { params: { access_token: conn.access_token } });
+    await axios.post(`https://graph.facebook.com/v20.0/${req.params.id}`, { status }, { params: { access_token: conn.access_token } });
     await supabase.from('ad_campaigns').update({ status: status.toLowerCase() }).eq('campaign_id', req.params.id).eq('user_id', req.userId);
     res.json({ message: `Kampanya ${status === 'ACTIVE' ? 'baslatildi' : 'durduruldu'}` });
   } catch (e: any) {
@@ -181,13 +214,13 @@ router.get('/leads/:adAccountId', async (req: any, res: any) => {
     if (!conn) return res.status(401).json({ error: 'Meta hesabi bagli degil' });
 
     const formsResp = await axios.get(
-      `https://graph.facebook.com/v18.0/${req.params.adAccountId}/leadgen_forms?fields=id,name,leads_count&access_token=${conn.access_token}&limit=10`
+      `https://graph.facebook.com/v20.0/${req.params.adAccountId}/leadgen_forms?fields=id,name,leads_count&access_token=${conn.access_token}&limit=10`
     );
 
     let totalAdded = 0;
     for (const form of formsResp.data?.data || []) {
       const leadsResp = await axios.get(
-        `https://graph.facebook.com/v18.0/${form.id}/leads?fields=field_data,created_time&access_token=${conn.access_token}&limit=50`
+        `https://graph.facebook.com/v20.0/${form.id}/leads?fields=field_data,created_time&access_token=${conn.access_token}&limit=50`
       );
       for (const lead of leadsResp.data?.data || []) {
         const fields: any = {};
@@ -225,7 +258,7 @@ router.get('/monitor/:adAccountId', async (req: any, res: any) => {
     if (!conn) return res.status(401).json({ error: 'Meta hesabi bagli degil' });
 
     const campResp = await axios.get(
-      `https://graph.facebook.com/v18.0/${req.params.adAccountId}/campaigns?fields=id,name,status,insights{impressions,clicks,spend,ctr}&access_token=${conn.access_token}&limit=20`
+      `https://graph.facebook.com/v20.0/${req.params.adAccountId}/campaigns?fields=id,name,status,insights{impressions,clicks,spend,ctr}&access_token=${conn.access_token}&limit=20`
     );
 
     const alerts: any[] = [];

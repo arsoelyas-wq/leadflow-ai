@@ -478,7 +478,7 @@ router.post('/ai-campaign/create', async (req: any, res: any) => {
         await metaPost(`/${adAccountId}/ads`, token, {
           name: firstAd.headline || plan.campaignName,
           adset_id: adSetId,
-          status: 'PAUSED',
+          status: 'ACTIVE',
           creative: {
             object_story_spec: {
               page_id: '',
