@@ -923,4 +923,205 @@ require('node-cron').schedule('0 9 1 * *', async () => {
   }
 });
 
+// ── 1-CLICK QUALITY LEAD (Privyr-style) ──────────────────────────────────────
+router.post('/quality-signal', async (req: any, res: any) => {
+  try {
+    const { leadId, quality } = req.body;
+    if (!leadId) return res.status(400).json({ error: 'leadId zorunlu' });
+
+    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadi' });
+
+    const qualityType = quality || 'qualified';
+    const eventMap: Record<string, { event: string; value: number }> = {
+      'qualified': { event: 'Lead', value: 0 },
+      'meeting_booked': { event: 'Schedule', value: 0 },
+      'proposal_sent': { event: 'InitiateCheckout', value: 0 },
+      'negotiating': { event: 'AddToCart', value: lead.deal_value || 0 },
+      'won': { event: 'Purchase', value: lead.deal_value || lead.total_value || 0 },
+      'unqualified': { event: 'ViewContent', value: 0 },
+    };
+
+    const mapped = eventMap[qualityType] || eventMap['qualified'];
+
+    // Fire CAPI event
+    try {
+      const { fireCapiEvent } = require('../services/meta-capi');
+      await fireCapiEvent(supabase, req.userId, lead, mapped.event, { value: mapped.value });
+    } catch {}
+
+    // Update lead status
+    const statusMap: Record<string, string> = {
+      'qualified': 'interested', 'meeting_booked': 'contacted',
+      'proposal_sent': 'proposal', 'negotiating': 'negotiating',
+      'won': 'won', 'unqualified': 'lost',
+    };
+    if (statusMap[qualityType]) {
+      const updates: any = { status: statusMap[qualityType], updated_at: new Date().toISOString() };
+      if (qualityType === 'won') updates.won_at = new Date().toISOString();
+      await supabase.from('leads').update(updates).eq('id', leadId);
+    }
+
+    // Log
+    await supabase.from('ad_lead_events').insert([{
+      user_id: req.userId, lead_id: leadId,
+      event_type: 'quality_signal', event_data: { quality: qualityType, capiEvent: mapped.event },
+      created_at: new Date().toISOString(),
+    }]);
+
+    res.json({ ok: true, quality: qualityType, capiEvent: mapped.event, message: `Lead "${qualityType}" olarak isaretlendi ve Meta'ya sinyal gonderildi` });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── CONFIGURABLE FUNNEL STAGES ───────────────────────────────────────────────
+router.get('/funnel-config', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('ad_settings').select('funnel_stages').eq('user_id', req.userId).maybeSingle();
+    const defaultStages = [
+      { id: 'new', label: 'Yeni Lead', capiEvent: 'Lead', isPositive: true },
+      { id: 'contacted', label: 'Iletisim Kuruldu', capiEvent: 'Contact', isPositive: true },
+      { id: 'interested', label: 'Ilgileniyor', capiEvent: 'Lead', isPositive: true },
+      { id: 'meeting_booked', label: 'Toplanti Ayarlandi', capiEvent: 'Schedule', isPositive: true },
+      { id: 'proposal', label: 'Teklif Gonderildi', capiEvent: 'InitiateCheckout', isPositive: true },
+      { id: 'negotiating', label: 'Pazarlik', capiEvent: 'AddToCart', isPositive: true },
+      { id: 'won', label: 'Kazanildi', capiEvent: 'Purchase', isPositive: true },
+      { id: 'lost', label: 'Kaybedildi', capiEvent: 'ViewContent', isPositive: false },
+    ];
+    res.json({ stages: data?.funnel_stages || defaultStages });
+  } catch { res.json({ stages: [] }); }
+});
+
+router.post('/funnel-config', async (req: any, res: any) => {
+  try {
+    const { stages } = req.body;
+    if (!stages?.length) return res.status(400).json({ error: 'stages zorunlu' });
+    const { data: existing } = await supabase.from('ad_settings').select('id').eq('user_id', req.userId).maybeSingle();
+    if (existing) await supabase.from('ad_settings').update({ funnel_stages: stages, updated_at: new Date().toISOString() }).eq('user_id', req.userId);
+    else await supabase.from('ad_settings').insert([{ user_id: req.userId, funnel_stages: stages }]);
+    res.json({ ok: true, message: 'Funnel stage\'ler kaydedildi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── WEEKLY META PERFORMANCE REPORT ───────────────────────────────────────────
+router.get('/weekly-report', async (req: any, res: any) => {
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const prevWeek = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [leadsRes, prevLeadsRes, eventsRes, wonRes] = await Promise.allSettled([
+      supabase.from('leads').select('id, source, score, status').eq('user_id', req.userId).gte('created_at', weekAgo),
+      supabase.from('leads').select('id').eq('user_id', req.userId).gte('created_at', prevWeek).lt('created_at', weekAgo),
+      supabase.from('meta_capi_events').select('event_name, success').eq('user_id', req.userId).gte('fired_at', weekAgo),
+      supabase.from('leads').select('id, deal_value, total_value').eq('user_id', req.userId).eq('status', 'won').gte('won_at', weekAgo),
+    ]);
+
+    const leads = leadsRes.status === 'fulfilled' ? leadsRes.value.data || [] : [];
+    const prevLeads = prevLeadsRes.status === 'fulfilled' ? prevLeadsRes.value.data || [] : [];
+    const events = eventsRes.status === 'fulfilled' ? eventsRes.value.data || [] : [];
+    const wonLeads = wonRes.status === 'fulfilled' ? wonRes.value.data || [] : [];
+
+    const metaLeads = leads.filter((l: any) => (l.source || '').toLowerCase().includes('meta') || (l.source || '').toLowerCase().includes('facebook'));
+    const revenue = wonLeads.reduce((s: number, l: any) => s + (l.deal_value || l.total_value || 0), 0);
+    const successEvents = events.filter((e: any) => e.success).length;
+    const leadGrowth = prevLeads.length > 0 ? Math.round(((leads.length - prevLeads.length) / prevLeads.length) * 100) : 0;
+
+    const report = {
+      period: 'Haftalik',
+      totalLeads: leads.length,
+      metaLeads: metaLeads.length,
+      prevWeekLeads: prevLeads.length,
+      leadGrowth,
+      wonCount: wonLeads.length,
+      revenue,
+      capiEvents: events.length,
+      capiSuccess: successEvents,
+      avgScore: leads.length > 0 ? Math.round(leads.reduce((s: number, l: any) => s + (l.score || 0), 0) / leads.length) : 0,
+      summary: `Bu hafta ${leads.length} lead geldi (${leadGrowth > 0 ? '+' : ''}${leadGrowth}% onceki haftaya gore). ${wonLeads.length} satis kapandi${revenue > 0 ? `, toplam ${revenue.toLocaleString('tr-TR')} TL gelir` : ''}. Meta CAPI ${successEvents}/${events.length} event basariyla gonderildi.`,
+    };
+
+    res.json(report);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── SEND WEEKLY REPORT VIA WHATSAPP ──────────────────────────────────────────
+router.post('/send-weekly-report', async (req: any, res: any) => {
+  try {
+    // Get report data
+    const reportRes = await fetch(`${process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app'}/api/ads-intelligence/weekly-report`, {
+      headers: { Authorization: req.headers.authorization },
+    });
+    const report = await reportRes.json();
+
+    const msg = `📊 *Haftalik Meta Reklam Raporu*\n\n` +
+      `📋 Lead: ${report.totalLeads} (${report.leadGrowth > 0 ? '+' : ''}${report.leadGrowth}%)\n` +
+      `📘 Meta Lead: ${report.metaLeads}\n` +
+      `🏆 Satis: ${report.wonCount}\n` +
+      `💰 Gelir: ${report.revenue > 0 ? report.revenue.toLocaleString('tr-TR') + ' TL' : '—'}\n` +
+      `📡 CAPI: ${report.capiSuccess}/${report.capiEvents} basarili\n` +
+      `⭐ Ort. Skor: ${report.avgScore}/100\n\n` +
+      `sovlo.io/ads`;
+
+    try {
+      const { data: us } = await supabase.from('user_settings').select('phone').eq('user_id', req.userId).single();
+      if (us?.phone) {
+        const { sendWhatsAppMessage } = require('./settings');
+        await sendWhatsAppMessage(req.userId, us.phone, msg);
+      }
+    } catch {}
+
+    res.json({ ok: true, report, message: 'Haftalik rapor gonderildi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── INSTANT LEAD ALERT (on new Meta lead) ────────────────────────────────────
+router.post('/instant-alert', async (req: any, res: any) => {
+  try {
+    const { leadId } = req.body;
+    const { data: lead } = await supabase.from('leads').select('company_name, contact_name, phone, email, source, score')
+      .eq('id', leadId).eq('user_id', req.userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadi' });
+
+    const msg = `🚨 *Yeni Lead!*\n\n` +
+      `🏢 ${lead.company_name || '—'}\n` +
+      `👤 ${lead.contact_name || '—'}\n` +
+      `📱 ${lead.phone || '—'}\n` +
+      `📧 ${lead.email || '—'}\n` +
+      `📊 Skor: ${lead.score || 0}/100\n` +
+      `📌 Kaynak: ${lead.source || '—'}\n\n` +
+      `⚡ Hemen iletisime gecin!`;
+
+    try {
+      const { data: us } = await supabase.from('user_settings').select('phone').eq('user_id', req.userId).single();
+      if (us?.phone) {
+        const { sendWhatsAppMessage } = require('./settings');
+        await sendWhatsAppMessage(req.userId, us.phone, msg);
+      }
+    } catch {}
+
+    res.json({ ok: true, message: 'Alert gonderildi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── META ONBOARDING — auto-analyze on first connect ─────────────────────────
+router.get('/onboarding-status', async (req: any, res: any) => {
+  try {
+    const { data: conn } = await supabase.from('meta_connections').select('connected_at, ad_accounts').eq('user_id', req.userId).maybeSingle();
+    if (!conn) return res.json({ connected: false, onboarded: false });
+
+    const { data: campaigns } = await supabase.from('ad_campaigns').select('id').eq('user_id', req.userId).limit(1);
+    const { data: events } = await supabase.from('meta_capi_events').select('id').eq('user_id', req.userId).limit(1);
+    const { data: leads } = await supabase.from('leads').select('id').eq('user_id', req.userId).ilike('source', '%meta%').limit(1);
+
+    const steps = [
+      { id: 'connect', label: 'Meta Baglantisi', done: true },
+      { id: 'extract', label: 'Lead Cekme', done: (leads?.length || 0) > 0 },
+      { id: 'capi', label: 'CAPI Aktivasyonu', done: (events?.length || 0) > 0 },
+      { id: 'campaign', label: 'Ilk Kampanya', done: (campaigns?.length || 0) > 0 },
+    ];
+    const progress = Math.round((steps.filter(s => s.done).length / steps.length) * 100);
+
+    res.json({ connected: true, onboarded: progress === 100, progress, steps });
+  } catch { res.json({ connected: false, onboarded: false, progress: 0, steps: [] }); }
+});
+
 module.exports = router;
