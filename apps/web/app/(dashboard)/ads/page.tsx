@@ -563,43 +563,46 @@ export default function AdsPage() {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Meta Ads</h1>
-            <p className="text-slate-600 text-sm mt-0.5">{t('ads.kampanya_yonetimi_ve_lead', 'Kampanya yönetimi ve lead otomasyonu')}</p>
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        {/* Hero */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3V2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-extrabold text-slate-900">Meta Ads</h1>
+                {connected ? (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-emerald-700 text-[10px] font-semibold"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Bağlı</span>
+                ) : (
+                  <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-full text-slate-500 text-[10px] font-medium">Bağlı Değil</span>
+                )}
+              </div>
+              <p className="text-slate-500 text-xs mt-0.5">AI kampanya oluşturma, CAPI algoritma eğitimi, lead otomasyonu</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            {connected ? (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <span className="text-emerald-700 text-xs font-medium">{t('ads.meta_bagli', 'Meta Bağlı')}</span>
-              </div>
-            ) : (
-              <button onClick={connectMeta} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition">
+            {!connected && (
+              <button onClick={connectMeta} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-blue-500/25">
                 <Link className="w-4 h-4" /> Meta Bağla
               </button>
             )}
-            <button onClick={loadAll} className="p-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 transition">
+            <button onClick={loadAll} className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-700 transition">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
 
         {/* Tab bar */}
-        <div className="flex items-center gap-2 border-b border-slate-200">
-          <button
-            onClick={() => setTab('campaigns')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition ${tab === 'campaigns' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
+        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl w-fit border border-slate-100">
+          <button onClick={() => setTab('campaigns')}
+            className={`px-5 py-2 text-xs font-semibold rounded-lg transition ${tab === 'campaigns' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
             Kampanyalar
           </button>
-          <button
-            onClick={() => setTab('meta-intent')}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition ${tab === 'meta-intent' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            <Target className="w-3.5 h-3.5" /> Meta Behavioral Intent
+          <button onClick={() => setTab('meta-intent')}
+            className={`flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-lg transition ${tab === 'meta-intent' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+            <Target className="w-3 h-3" /> CAPI & Kitleler
           </button>
         </div>
 
@@ -614,52 +617,54 @@ export default function AdsPage() {
           eventTypes={capiStatus.eventTypes}
         />
 
-        {/* 3 Action Cards */}
+        {/* 3 Action Cards — Premium Design */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={openWizard}
-            className="group relative bg-white border border-blue-200 hover:border-blue-300 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/10"
-          >
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
-              <Sparkles className="w-6 h-6 text-blue-600" />
-            </div>
-            <h3 className="text-slate-900 font-semibold text-lg">AI Kampanya</h3>
-            <p className="text-slate-600 text-sm mt-1 leading-relaxed">{t('ads.isletmeni_anlat_ai_sana_o', 'İşletmeni anlat, AI sana özel kampanya oluştursun')}</p>
-            <div className="mt-4 flex items-center gap-1 text-blue-600 text-xs font-medium">
-              Oluştur <ChevronRight className="w-3.5 h-3.5" />
-            </div>
-          </button>
-
-          <button
-            onClick={extractLeads}
-            disabled={extracting || !connected}
-            className="group relative bg-white border border-purple-200 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-purple-500/10"
-          >
-            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
-              {extracting ? <RefreshCw className="w-6 h-6 text-purple-600 animate-spin" /> : <Users className="w-6 h-6 text-purple-600" />}
-            </div>
-            <h3 className="text-slate-900 font-semibold text-lg">{t('ads.lead_cek', 'Lead Çek')}</h3>
-            <p className="text-slate-600 text-sm mt-1 leading-relaxed">
-              {extracting ? "Meta'dan lead'ler çekiliyor..." : "Reklam formlarından lead'leri otomatik al"}
-            </p>
-            {leadsToday > 0 && !extracting && (
-              <div className="mt-4 flex items-center gap-1 text-purple-600 text-xs font-medium">
-                Bugün {leadsToday} lead <ArrowUpRight className="w-3.5 h-3.5" />
+          <button onClick={openWizard}
+            className="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 hover:border-blue-300 rounded-2xl p-6 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/15 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-200/30 to-transparent rounded-bl-full" />
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-blue-500/25">
+                <Sparkles className="w-5 h-5 text-white" />
               </div>
-            )}
+              <h3 className="text-slate-900 font-bold text-base">AI Kampanya</h3>
+              <p className="text-slate-500 text-xs mt-1 leading-relaxed">İşletmeni anlat, AI kampanya oluştursun</p>
+              <div className="mt-4 flex items-center gap-1.5 text-blue-600 text-xs font-bold group-hover:gap-3 transition-all">
+                Oluştur <ChevronRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
           </button>
 
-          <button
-            onClick={() => setShowAdvanced(true)}
-            className="group relative bg-white border border-emerald-200 hover:border-emerald-300 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-emerald-500/10"
-          >
-            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition">
-              <BarChart2 className="w-6 h-6 text-emerald-600" />
+          <button onClick={extractLeads} disabled={extracting || !connected}
+            className="group relative overflow-hidden bg-gradient-to-br from-violet-50 to-purple-50 border border-purple-100 hover:border-purple-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-2xl p-6 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/15 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-200/30 to-transparent rounded-bl-full" />
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-purple-500/25">
+                {extracting ? <RefreshCw className="w-5 h-5 text-white animate-spin" /> : <Users className="w-5 h-5 text-white" />}
+              </div>
+              <h3 className="text-slate-900 font-bold text-base">Lead Çek</h3>
+              <p className="text-slate-500 text-xs mt-1 leading-relaxed">
+                {extracting ? "Meta'dan çekiliyor..." : "Reklam formlarından otomatik al"}
+              </p>
+              {leadsToday > 0 && !extracting && (
+                <div className="mt-4 flex items-center gap-1.5 text-purple-600 text-xs font-bold">
+                  Bugün {leadsToday} lead <ArrowUpRight className="w-3.5 h-3.5" />
+                </div>
+              )}
             </div>
-            <h3 className="text-slate-900 font-semibold text-lg">Performans</h3>
-            <p className="text-slate-600 text-sm mt-1 leading-relaxed">{t('ads.roi_analizi_akilli_uyaril', 'ROI analizi, akıllı uyarılar ve optimizasyon')}</p>
-            <div className="mt-4 flex items-center gap-1 text-emerald-600 text-xs font-medium">
-              İncele <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+
+          <button onClick={() => setShowAdvanced(true)}
+            className="group relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 hover:border-emerald-300 rounded-2xl p-6 text-left transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/15 hover:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-200/30 to-transparent rounded-bl-full" />
+            <div className="relative">
+              <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/25">
+                <BarChart2 className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-slate-900 font-bold text-base">Performans</h3>
+              <p className="text-slate-500 text-xs mt-1 leading-relaxed">ROI analizi, uyarılar ve optimizasyon</p>
+              <div className="mt-4 flex items-center gap-1.5 text-emerald-600 text-xs font-bold group-hover:gap-3 transition-all">
+                İncele <ChevronRight className="w-3.5 h-3.5" />
+              </div>
             </div>
           </button>
         </div>
