@@ -754,7 +754,7 @@ export default function SettingsPage() {
                   <div><label style={fieldLabel}>Mevcut Şifre</label><input type="password" style={input} placeholder="••••••••" /></div>
                   <div><label style={fieldLabel}>Yeni Şifre</label><input type="password" style={input} placeholder="En az 8 karakter" /></div>
                   <div><label style={fieldLabel}>Yeni Şifre (Tekrar)</label><input type="password" style={input} placeholder="Tekrar girin" /></div>
-                  <button onClick={async () => { showStatus('success', 'Şifre güncellendi!') }} style={{ ...btn('linear-gradient(135deg,#dc2626,#ef4444)'), alignSelf:'flex-start' }}>
+                  <button onClick={async () => { showMsg('success', 'Şifre güncellendi!') }} style={{ ...btn('linear-gradient(135deg,#dc2626,#ef4444)'), alignSelf:'flex-start' }}>
                     <Shield size={14} /> Şifreyi Güncelle
                   </button>
                 </div>
