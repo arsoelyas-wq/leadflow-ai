@@ -13,7 +13,9 @@ import {
 export default function SettingsPage() {
   const { t } = useI18n()
   const { user } = useAuth()
-  const [tab, setTab] = useState<'profile' | 'channels' | 'notifications' | 'security' | '2fa' | 'sheets' | 'meta-capi' | 'google-capi'>('profile')
+  const validTabs = ['profile', 'channels', 'notifications', 'security', '2fa', 'sheets', 'meta-capi', 'google-capi'] as const
+  const hashTab = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : ''
+  const [tab, setTab] = useState<typeof validTabs[number]>((validTabs as readonly string[]).includes(hashTab) ? hashTab as any : 'profile')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [profile, setProfile] = useState({ name: user?.name || '', company: user?.company || '' })
