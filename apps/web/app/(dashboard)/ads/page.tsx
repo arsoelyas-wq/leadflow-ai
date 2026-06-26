@@ -760,21 +760,44 @@ export default function AdsPage() {
                 </div>
               )}
               {(accountHealth.issues || []).slice(0, 4).map((issue: any, i: number) => {
-                const fixLink = issue.type === 'no_capi' ? '/settings' : issue.type === 'no_pixel' ? '/settings' : issue.type === 'wasted_spend' ? undefined : undefined;
-                const fixTab = issue.type === 'no_capi' ? 'meta-capi' : issue.type === 'no_pixel' ? 'meta-capi' : undefined;
+                const fixMap: Record<string, { label: string; desc: string; href: string; steps: string[] }> = {
+                  'no_capi': { label: 'CAPI Aktifleştir', desc: 'Meta algoritmasının doğru öğrenmesi için CAPI bağlantısı gerekli', href: '/settings#meta-capi', steps: ['Ayarlar → Meta Dönüşüm', 'Pixel ID girin', 'Access Token girin', 'CAPI toggle açın → Kaydet'] },
+                  'no_pixel': { label: 'Pixel Ekle', desc: 'Web sitenize Pixel ekleyerek ziyaretçileri takip edin', href: '/settings#meta-capi', steps: ['Ayarlar → Meta Dönüşüm', 'Meta Business → Events Manager → Pixel ID kopyalayın', 'Pixel ID alanına yapıştırın → Kaydet'] },
+                  'wasted_spend': { label: 'Kampanyayı Durdur', desc: 'Sonuç üretmeyen kampanyayı durdurun veya optimize edin', href: '', steps: ['Meta Ads Manager\'da bu kampanyayı bulun', 'Durdurun veya hedeflemeyi daraltın'] },
+                  'low_ctr': { label: 'Reklam İyileştir', desc: 'Reklam görseli veya metni ilgi çekici değil', href: '', steps: ['Reklam görselini değiştirin', 'Başlık ve açıklamayı güncelleyin', 'A/B test başlatın'] },
+                  'ad_fatigue': { label: 'Kreatif Yenile', desc: 'Aynı kişiler reklamı çok fazla görüyor', href: '', steps: ['Yeni reklam görseli yükleyin', 'Hedef kitleyi genişletin', 'Eski reklamı durdurun'] },
+                };
+                const fix = fixMap[issue.type];
                 return (
-                  <div key={i} className={`flex items-center justify-between text-xs mb-2 p-2 rounded-lg ${issue.severity === 'critical' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
-                    <div className="flex items-start gap-2 flex-1">
-                      <span>{issue.severity === 'critical' ? '🔴' : '🟡'}</span>
-                      <span className={issue.severity === 'critical' ? 'text-red-700' : 'text-amber-700'}>{issue.message}</span>
+                  <div key={i} className={`text-xs mb-2 rounded-xl overflow-hidden border ${issue.severity === 'critical' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                    <div className="flex items-center justify-between p-3">
+                      <div className="flex items-start gap-2 flex-1">
+                        <span className="mt-0.5">{issue.severity === 'critical' ? '🔴' : '🟡'}</span>
+                        <div>
+                          <span className={`font-semibold ${issue.severity === 'critical' ? 'text-red-700' : 'text-amber-700'}`}>{issue.message}</span>
+                          {fix && <p className="text-[10px] text-slate-500 mt-0.5">{fix.desc}</p>}
+                        </div>
+                      </div>
+                      {fix?.href && (
+                        <a href={fix.href}
+                          className={`flex-shrink-0 ml-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${
+                            issue.severity === 'critical' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-amber-500 text-white hover:bg-amber-400'
+                          }`}>
+                          {fix.label} <ChevronRight className="w-3 h-3" />
+                        </a>
+                      )}
                     </div>
-                    {fixLink && (
-                      <a href={`${fixLink}${fixTab ? `#${fixTab}` : ''}`}
-                        className={`flex-shrink-0 ml-2 px-2.5 py-1 rounded-md text-[10px] font-bold transition ${
-                          issue.severity === 'critical' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-amber-500 text-white hover:bg-amber-400'
-                        }`}>
-                        Düzelt →
-                      </a>
+                    {fix?.steps && (
+                      <div className={`px-3 pb-2.5 pt-0 ${issue.severity === 'critical' ? 'border-t border-red-100' : 'border-t border-amber-100'}`}>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                          {fix.steps.map((step, si) => (
+                            <span key={si} className="flex items-center gap-1 text-[10px] text-slate-600">
+                              {si > 0 && <ChevronRight className="w-2.5 h-2.5 text-slate-400" />}
+                              <span className={`px-1.5 py-0.5 rounded ${issue.severity === 'critical' ? 'bg-red-100' : 'bg-amber-100'}`}>{step}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )
