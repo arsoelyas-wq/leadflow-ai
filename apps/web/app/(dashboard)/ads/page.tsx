@@ -1550,9 +1550,24 @@ export default function AdsPage() {
                   </div>
 
                   {!connected && (
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span className="text-amber-700 text-xs">{t('ads.yayinlamak_icin_meta_hesa', 'Yayınlamak için Meta hesabınızı bağlayın')}</span>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span className="text-blue-800 text-xs font-semibold">Kampanyayı yayınlamak için Meta hesabınızı bağlayın</span>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const d = await fetch(`${API}/api/ads/oauth-url`, { headers: authH() }).then(r => r.json())
+                            if (d.url) window.location.href = d.url
+                          } catch {}
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-[#1877F2] hover:bg-[#0866FF] text-white rounded-xl text-sm font-bold transition"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        Meta ile Bağlan
+                      </button>
+                      <p className="text-[10px] text-blue-600 text-center">Bağlandıktan sonra kampanyanız otomatik yayınlanacak</p>
                     </div>
                   )}
 
@@ -1563,10 +1578,10 @@ export default function AdsPage() {
                     <button
                       onClick={launchCampaign}
                       disabled={!connected || launching}
-                      className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition flex items-center justify-center gap-2"
+                      className={`flex-1 py-3 text-white rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 ${connected ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-300 cursor-not-allowed'}`}
                     >
                       {launching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                      {launching ? 'Yayınlanıyor...' : 'Yayınla'}
+                      {launching ? 'Yayınlanıyor...' : connected ? 'Yayınla' : 'Önce Meta Bağlayın'}
                     </button>
                   </div>
                 </div>
