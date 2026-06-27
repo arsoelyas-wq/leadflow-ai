@@ -12,8 +12,10 @@ const REDIRECT_URI = process.env.META_REDIRECT_URI || 'https://sovlo.io/api/auth
 
 // OAuth URL — includes CAPI + Pixel permissions
 router.get('/oauth-url', async (req: any, res: any) => {
+  const source = req.query.source || 'ads';
   const scopes = 'ads_read,ads_management,business_management,pages_read_engagement,leads_retrieval,pages_manage_ads';
-  const url = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&state=${req.userId}&response_type=code`;
+  const state = source === 'settings' ? 'settings' : 'meta';
+  const url = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scopes}&state=${state}&response_type=code`;
   res.json({ url });
 });
 

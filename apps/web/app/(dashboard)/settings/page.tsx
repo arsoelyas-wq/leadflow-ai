@@ -1,6 +1,7 @@
 ﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useEffect, useState, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import {
@@ -13,6 +14,8 @@ import {
 export default function SettingsPage() {
   const { t } = useI18n()
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
   const validTabs = ['profile', 'channels', 'notifications', 'security', '2fa', 'sheets', 'meta-capi', 'google-capi'] as const
   const hashTab = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : ''
   const [tab, setTab] = useState<typeof validTabs[number]>((validTabs as readonly string[]).includes(hashTab) ? hashTab as any : 'profile')
@@ -114,6 +117,29 @@ export default function SettingsPage() {
       setAvatarStatus(data)
     } catch {}
   }
+
+  // Handle Meta OAuth callback on settings page
+  useEffect(() => {
+    const metaCode = searchParams.get('meta_code')
+    if (metaCode) {
+      setTab('meta-capi')
+      const token = localStorage.getItem('token')
+      fetch(`${API}/api/ads/exchange-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code: metaCode }),
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            showMsg('success', d.capiAutoSetup ? `CAPI otomatik kuruldu! (${d.pixelIds?.length || 0} Pixel)` : 'Meta bağlandı!')
+            api.get('/api/meta-capi/settings').then(s => setCapi(s)).catch(() => {})
+          } else { showMsg('error', d.error || 'Meta bağlantısı başarısız') }
+          window.history.replaceState({}, '', '/settings#meta-capi')
+        })
+        .catch(() => showMsg('error', 'Meta bağlantı hatası'))
+    }
+  }, [])
 
   useEffect(() => {
     if (tab === 'channels') {
@@ -941,7 +967,7 @@ export default function SettingsPage() {
                   </div>
                   <button onClick={async () => {
                     try {
-                      const d = await api.get('/api/ads/oauth-url')
+                      const d = await api.get('/api/ads/oauth-url?source=settings')
                       if (d.url) window.location.href = d.url
                     } catch (e: any) { showMsg('error', 'OAuth URL alinamadi: ' + e.message) }
                   }} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 20px', background:'linear-gradient(135deg,#1877F2,#0866FF)', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:700, cursor:'pointer', justifyContent:'center' }}>

@@ -2,17 +2,19 @@ import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code")
+  const state = request.nextUrl.searchParams.get("state") || ""
   const error = request.nextUrl.searchParams.get("error")
 
   if (error || !code) {
-    return NextResponse.redirect(new URL("/ads?error=meta_denied", request.url))
+    const returnPage = state.startsWith("settings") ? "/settings#meta-capi" : "/ads"
+    return NextResponse.redirect(new URL(`${returnPage}?error=meta_denied`, request.url))
   }
 
   try {
-    // Token cookie veya localStorage'dan gelemiyor — code'u ads sayfasına ilet
-    // Ads sayfası client-side'da exchange yapacak
+    const returnPage = state.startsWith("settings") ? "/settings" : "/ads"
+    const hash = state.startsWith("settings") ? "#meta-capi" : ""
     return NextResponse.redirect(
-      new URL(`/ads?meta_code=${encodeURIComponent(code)}`, request.url)
+      new URL(`${returnPage}?meta_code=${encodeURIComponent(code)}${hash}`, request.url)
     )
   } catch {
     return NextResponse.redirect(new URL("/ads?error=meta_failed", request.url))
