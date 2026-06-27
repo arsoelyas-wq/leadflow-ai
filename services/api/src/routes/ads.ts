@@ -60,18 +60,23 @@ router.post('/exchange-token', async (req: any, res: any) => {
     const { error: connErr } = await supabase.from('meta_connections').upsert([connData], { onConflict: 'user_id' });
     if (connErr) console.error('[Meta] Connection save error:', connErr.message);
 
-    // Auto-save CAPI settings if pixel found
+    // Auto-save CAPI settings — always update with real pixel + token
     let capiAutoSetup = false;
     if (pixelIds.length > 0) {
-      const { error: capiErr } = await supabase.from('user_settings').upsert([{
-        user_id: req.userId,
-        meta_pixel_id: pixelIds[0],
-        meta_capi_token: longToken,
-        meta_capi_enabled: true,
-        updated_at: new Date().toISOString(),
-      }], { onConflict: 'user_id' });
-      if (capiErr) console.error('[Meta] CAPI save error:', capiErr.message);
-      else capiAutoSetup = true;
+      const { error: capiErr } = await supabase.from('user_settings')
+        .update({ meta_pixel_id: pixelIds[0], meta_capi_token: longToken, meta_capi_enabled: true, updated_at: new Date().toISOString() })
+        .eq('user_id', req.userId);
+      if (capiErr) {
+        // Row doesn't exist yet — insert
+        await supabase.from('user_settings').insert([{ user_id: req.userId, meta_pixel_id: pixelIds[0], meta_capi_token: longToken, meta_capi_enabled: true }]);
+      }
+      capiAutoSetup = true;
+      console.log(`[Meta] CAPI auto-setup: pixel=${pixelIds[0]}`);
+    } else {
+      // No pixel found but save token anyway
+      await supabase.from('user_settings')
+        .update({ meta_capi_token: longToken, updated_at: new Date().toISOString() })
+        .eq('user_id', req.userId);
     }
 
     console.log(`[Meta] Connected: ${meResp.data.name}, pixels: ${pixelIds.length}, capi: ${capiAutoSetup}`);
