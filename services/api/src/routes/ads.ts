@@ -47,30 +47,37 @@ router.post('/exchange-token', async (req: any, res: any) => {
       }
     } catch {}
 
-    await supabase.from('meta_connections').upsert([{
+    // Save connection (without pixel_ids column — may not exist)
+    const connData: any = {
       user_id: req.userId,
       meta_user_id: meResp.data.id,
       meta_user_name: meResp.data.name,
       access_token: longToken,
       ad_accounts: JSON.stringify(adAccountsResp.data.data || []),
-      pixel_ids: JSON.stringify(pixelIds),
       connected_at: new Date().toISOString(),
       token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-    }], { onConflict: 'user_id' });
+    };
+    const { error: connErr } = await supabase.from('meta_connections').upsert([connData], { onConflict: 'user_id' });
+    if (connErr) console.error('[Meta] Connection save error:', connErr.message);
 
     // Auto-save CAPI settings if pixel found
+    let capiAutoSetup = false;
     if (pixelIds.length > 0) {
-      await supabase.from('user_settings').upsert([{
+      const { error: capiErr } = await supabase.from('user_settings').upsert([{
         user_id: req.userId,
         meta_pixel_id: pixelIds[0],
         meta_capi_token: longToken,
         meta_capi_enabled: true,
         updated_at: new Date().toISOString(),
       }], { onConflict: 'user_id' });
+      if (capiErr) console.error('[Meta] CAPI save error:', capiErr.message);
+      else capiAutoSetup = true;
     }
 
-    res.json({ success: true, userName: meResp.data.name, adAccounts: adAccountsResp.data.data || [], pixelIds, capiAutoSetup: pixelIds.length > 0, message: pixelIds.length > 0 ? 'Meta + CAPI otomatik kuruldu!' : 'Meta hesabi baglandi!' });
+    console.log(`[Meta] Connected: ${meResp.data.name}, pixels: ${pixelIds.length}, capi: ${capiAutoSetup}`);
+    res.json({ success: true, userName: meResp.data.name, adAccounts: adAccountsResp.data.data || [], pixelIds, capiAutoSetup, message: capiAutoSetup ? 'Meta + CAPI otomatik kuruldu!' : 'Meta hesabi baglandi!' });
   } catch (e: any) {
+    console.error('[Meta Exchange] Error:', e.response?.data || e.message);
     res.status(500).json({ error: e.response?.data?.error?.message || e.message });
   }
 });
@@ -104,11 +111,14 @@ router.get('/connection', async (req: any, res: any) => {
       }
     }
 
+    let pixelIds: string[] = [];
+    try { pixelIds = JSON.parse(data.pixel_ids || '[]'); } catch {}
+
     res.json({
       connected: true,
       userName: data.meta_user_name,
       adAccounts: JSON.parse(data.ad_accounts || '[]'),
-      pixelIds: JSON.parse(data.pixel_ids || '[]'),
+      pixelIds,
       connectedAt: data.connected_at,
       expiresAt: data.token_expires_at,
       daysLeft,
