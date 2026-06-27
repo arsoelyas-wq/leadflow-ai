@@ -392,10 +392,12 @@ export default function AdsPage() {
   }
 
   useEffect(() => {
-    const code = searchParams.get('code')
-    const metaCode = searchParams.get('meta_code')
+    if (typeof window === 'undefined') { loadAll(); return }
+    const params = new URLSearchParams(window.location.search)
+    const metaCode = params.get('meta_code')
+    const code = params.get('code')
     if (metaCode) exchangeToken(metaCode)
-    else if (code && searchParams.get('state') === 'meta') exchangeToken(code)
+    else if (code && params.get('state') === 'meta') exchangeToken(code)
     else loadAll()
   }, [])
 
