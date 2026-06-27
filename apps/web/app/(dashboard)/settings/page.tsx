@@ -957,14 +957,13 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* ONE-CLICK AUTO SETUP */}
-              {!(capi.enabled && capi.hasToken) && (
-                <div style={{ background:'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border:'2px solid #86efac', borderRadius:16, padding:'20px 24px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
-                    <span style={{ fontSize:22 }}>⚡</span>
-                    <div>
-                      <h3 style={{ color:'#166534', fontSize:14, fontWeight:700, margin:0 }}>Otomatik Kurulum (Önerilen)</h3>
-                      <p style={{ color:'#15803d', fontSize:12, margin:'2px 0 0' }}>Meta hesabınızı bağlayın — Pixel ID ve Token otomatik alınır</p>
+              {/* ONE-CLICK AUTO SETUP / RECONNECT — always visible */}
+              <div style={{ background: (capi.enabled && capi.hasToken) ? 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' : 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: (capi.enabled && capi.hasToken) ? '1px solid #86efac' : '2px solid #86efac', borderRadius:16, padding:'16px 24px' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                    <span style={{ fontSize:20 }}>⚡</span>
+                    <div style={{ flex:1 }}>
+                      <h3 style={{ color:'#166534', fontSize:13, fontWeight:700, margin:0 }}>{capi.enabled && capi.hasToken ? 'Meta Bağlantısı' : 'Otomatik Kurulum (Önerilen)'}</h3>
+                      <p style={{ color:'#15803d', fontSize:11, margin:'2px 0 0' }}>{capi.enabled && capi.hasToken ? 'Bağlantıyı yenilemek veya Pixel ID güncellemek için tekrar bağlanın' : 'Meta hesabınızı bağlayın — Pixel ID ve Token otomatik alınır'}</p>
                     </div>
                   </div>
                   <button onClick={async () => {
@@ -972,17 +971,16 @@ export default function SettingsPage() {
                       const d = await api.get('/api/ads/oauth-url?source=settings')
                       if (d.url) window.location.href = d.url
                     } catch (e: any) { showMsg('error', 'OAuth URL alinamadi: ' + e.message) }
-                  }} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'14px 20px', background:'linear-gradient(135deg,#1877F2,#0866FF)', color:'#fff', border:'none', borderRadius:12, fontSize:14, fontWeight:700, cursor:'pointer', justifyContent:'center' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                    Meta ile Bağlan ve CAPI&apos;yi Otomatik Kur
+                  }} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'12px 20px', background:'linear-gradient(135deg,#1877F2,#0866FF)', color:'#fff', border:'none', borderRadius:12, fontSize:13, fontWeight:700, cursor:'pointer', justifyContent:'center' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    {capi.enabled && capi.hasToken ? 'Tekrar Bağlan / Pixel Güncelle' : 'Meta ile Bağlan ve CAPI\'yi Otomatik Kur'}
                   </button>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12 }}>
+                  {!(capi.enabled && capi.hasToken) && <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:12 }}>
                     {['Pixel ID otomatik alınır', 'Access Token otomatik oluşur', 'CAPI aktifleşir'].map(t => (
                       <span key={t} style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:'#166534', background:'#dcfce7', padding:'3px 8px', borderRadius:6 }}>✓ {t}</span>
                     ))}
-                  </div>
-                </div>
-              )}
+                  </div>}
+              </div>
 
               {/* Manual Configuration */}
               <div style={card}>
