@@ -120,25 +120,27 @@ export default function SettingsPage() {
 
   // Handle Meta OAuth callback on settings page
   useEffect(() => {
-    const metaCode = searchParams.get('meta_code')
-    if (metaCode) {
-      setTab('meta-capi')
-      const token = localStorage.getItem('token')
-      fetch(`${API}/api/ads/exchange-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ code: metaCode }),
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const metaCode = params.get('meta_code')
+    if (!metaCode) return
+    setTab('meta-capi')
+    const authToken = localStorage.getItem('token')
+    if (!authToken) return
+    fetch(`${API}/api/ads/exchange-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+      body: JSON.stringify({ code: metaCode }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          showMsg('success', d.capiAutoSetup ? `CAPI otomatik kuruldu! (${d.pixelIds?.length || 0} Pixel)` : 'Meta bağlandı!')
+          setTimeout(() => api.get('/api/meta-capi/settings').then(s => setCapi(s)).catch(() => {}), 500)
+        } else { showMsg('error', d.error || 'Meta bağlantısı başarısız') }
+        window.history.replaceState({}, '', '/settings#meta-capi')
       })
-        .then(r => r.json())
-        .then(d => {
-          if (d.success) {
-            showMsg('success', d.capiAutoSetup ? `CAPI otomatik kuruldu! (${d.pixelIds?.length || 0} Pixel)` : 'Meta bağlandı!')
-            api.get('/api/meta-capi/settings').then(s => setCapi(s)).catch(() => {})
-          } else { showMsg('error', d.error || 'Meta bağlantısı başarısız') }
-          window.history.replaceState({}, '', '/settings#meta-capi')
-        })
-        .catch(() => showMsg('error', 'Meta bağlantı hatası'))
-    }
+      .catch(() => showMsg('error', 'Meta bağlantı hatası'))
   }, [])
 
   useEffect(() => {
