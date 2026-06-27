@@ -393,7 +393,9 @@ export default function AdsPage() {
 
   useEffect(() => {
     const code = searchParams.get('code')
-    if (code && searchParams.get('state') === 'meta') exchangeToken(code)
+    const metaCode = searchParams.get('meta_code')
+    if (metaCode) exchangeToken(metaCode)
+    else if (code && searchParams.get('state') === 'meta') exchangeToken(code)
     else loadAll()
   }, [])
 
@@ -401,8 +403,16 @@ export default function AdsPage() {
     try {
       const r = await fetch(`${API}/api/ads/exchange-token`, { method: 'POST', headers: authH(), body: JSON.stringify({ code }) })
       const d = await r.json()
-      if (d.success) { showMsg('success', 'Meta bağlandı!'); window.history.replaceState({}, '', window.location.pathname); loadAll() }
-    } catch {}
+      if (d.success) {
+        const msg = d.capiAutoSetup ? `Meta + CAPI otomatik kuruldu! (${d.pixelIds?.length || 0} Pixel bulundu)` : 'Meta hesabı bağlandı!'
+        showMsg('success', msg)
+        window.history.replaceState({}, '', window.location.pathname)
+        loadAll()
+      } else {
+        showMsg('error', d.error || 'Meta bağlantısı başarısız')
+        loadAll()
+      }
+    } catch { showMsg('error', 'Meta bağlantı hatası'); loadAll() }
   }
 
   async function loadAll() {
