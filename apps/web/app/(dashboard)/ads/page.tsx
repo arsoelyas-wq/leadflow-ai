@@ -627,44 +627,7 @@ export default function AdsPage() {
           </div>
         )}
 
-        {/* ── META CAPI & HEDEFLEME ── */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Target className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-slate-900">Meta CAPI & Hedefleme</span>
-                <p className="text-xs text-slate-500">{t('ads.conversion_api_ile_leadle', 'Conversion API ile leadleri hedef kitleye dönüştür')}</p>
-              </div>
-            </div>
-            <button onClick={() => setTab('meta-intent')}
-              className="flex items-center gap-1 text-blue-600 text-xs font-medium hover:text-blue-700 transition">
-              Tam Ekran <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <button onClick={() => setTab('meta-intent')}
-              className="bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl p-3 transition group block w-full text-left">
-              <Radio className="w-5 h-5 mb-1 text-blue-600" />
-              <p className="text-slate-900 text-xs font-semibold">{t('ads.event_gonder', 'Event Gönder')}</p>
-              <p className="text-slate-500 text-xs">Leadleri CAPI ile bildir</p>
-            </button>
-            <button onClick={() => setTab('meta-intent')}
-              className="bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl p-3 transition group block w-full text-left">
-              <Target className="w-5 h-5 mb-1 text-purple-600" />
-              <p className="text-slate-900 text-xs font-semibold">Custom Audience</p>
-              <p className="text-slate-500 text-xs">{t('ads.lead_listenden_kitle_olus', 'Lead listenden kitle oluştur')}</p>
-            </button>
-            <button onClick={() => setTab('meta-intent')}
-              className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl p-3 transition group block w-full text-left">
-              <Code2 className="w-5 h-5 mb-1 text-emerald-600" />
-              <p className="text-slate-900 text-xs font-semibold">Pixel Kodu</p>
-              <p className="text-slate-500 text-xs">Site takip kodunu al</p>
-            </button>
-          </div>
-        </div>
+        {/* CAPI section removed — quality signals now on lead detail page */}
 
         {/* Activity Feed */}
         {activities.length > 0 && (
