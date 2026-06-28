@@ -502,8 +502,29 @@ export default function AdsPage() {
       })
       const d = await r.json()
       if (d.ok && d.draft) { draftData = d.draft; setDraft(d.draft); apiDone = true; advanceIfBoth() }
-      else { showMsg('error', d.error || 'AI kampanya planı oluşturulamadı'); closeWizard() }
-    } catch { showMsg('error', 'Bağlantı hatası'); closeWizard() }
+      else {
+        // AI failed — create manual draft so user can still edit & publish
+        const fallback = {
+          campaign_name: `${goal === 'LEADS' ? 'Lead' : goal === 'AWARENESS' ? 'Bilinirlik' : goal === 'TRAFFIC' ? 'Trafik' : 'Satis'} Kampanyası`,
+          budget: budget,
+          target_audience: desc.slice(0, 200),
+          ad_copies: [{ headline: '', primary_text: '', description: '', cta: 'Daha Fazla' }],
+        }
+        setDraft(fallback); draftData = fallback; apiDone = true
+        showMsg('error', 'AI şu an kullanılamıyor — metinleri kendiniz yazabilirsiniz')
+        advanceIfBoth()
+      }
+    } catch {
+      const fallback = {
+        campaign_name: `${goal} Kampanyası`,
+        budget: budget,
+        target_audience: desc.slice(0, 200),
+        ad_copies: [{ headline: '', primary_text: '', description: '', cta: 'Daha Fazla' }],
+      }
+      setDraft(fallback); draftData = fallback; apiDone = true
+      showMsg('error', 'AI bağlantı hatası — metinleri kendiniz yazabilirsiniz')
+      advanceIfBoth()
+    }
   }
 
   async function launchCampaign() {
