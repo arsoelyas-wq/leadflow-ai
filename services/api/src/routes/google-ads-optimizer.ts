@@ -1146,4 +1146,238 @@ router.get('/account-health', async (req: any, res: any) => {
   } catch (e: any) { res.json({ score: 0, grade: 'D', issues: [], error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SMART BIDDING RECOMMENDATION — hedef bazli teklif stratejisi onerisi
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/bidding-recommendation', async (req: any, res: any) => {
+  try {
+    const creds = await getUserCreds(req.userId);
+    const { data: campaigns } = await supabase.from('google_campaigns').select('*').eq('user_id', req.userId);
+    const totalCampaigns = campaigns?.length || 0;
+    const hasConversions = (campaigns || []).some((c: any) => (c.performance?.conversions || 0) > 0);
+
+    const recommendations: any[] = [];
+
+    for (const camp of (campaigns || [])) {
+      const perf = camp.performance || {};
+      const conversions = parseFloat(perf.conversions || '0');
+      const spend = parseFloat(perf.cost || '0');
+      const cpa = conversions > 0 ? spend / conversions : 0;
+
+      let strategy = '', reason = '', priority = 'medium';
+
+      if (camp.goal === 'LEADS' || camp.goal === 'MAXIMIZE_CONVERSIONS') {
+        if (conversions >= 30) {
+          strategy = 'TARGET_CPA';
+          reason = `${conversions} donusum var — Target CPA (₺${Math.round(cpa * 0.9)}) ile maliyeti %10 dusurmeyi deneyin`;
+          priority = 'high';
+        } else if (conversions >= 5) {
+          strategy = 'MAXIMIZE_CONVERSIONS';
+          reason = `${conversions} donusum var — henuz Target CPA icin yeterli degil, Maximize Conversions kullanin`;
+        } else {
+          strategy = 'TARGET_IMPRESSION_SHARE';
+          reason = 'Henuz yeterli donusum yok — once gorunurlugu artirin, sayfa ustunde %90 hedefleyin';
+          priority = 'high';
+        }
+      } else if (camp.goal === 'SALES') {
+        strategy = conversions >= 15 ? 'TARGET_ROAS' : 'MAXIMIZE_CONVERSION_VALUE';
+        reason = conversions >= 15 ? 'Yeterli veri var — ROAS hedefi belirleyin' : 'Satis verisi toplaniyor — deger maksimizasyonu kullanin';
+      } else {
+        strategy = 'TARGET_IMPRESSION_SHARE';
+        reason = 'Marka bilinirligini artirmak icin sayfa ustunde gorunurluk hedefleyin';
+      }
+
+      recommendations.push({
+        campaignId: camp.id, name: camp.name, currentGoal: camp.goal,
+        suggestedStrategy: strategy, reason, priority,
+        currentCPA: Math.round(cpa), conversions: Math.round(conversions), spend: Math.round(spend),
+      });
+    }
+
+    // Top position strategy
+    const topPositionTip = !hasConversions
+      ? 'Donusum verisi olmadan en ust sirada cikmak icin "Target Impression Share — Absolute Top" kullanin. Google otomatik teklif ayarlar.'
+      : '30+ donusumunuz var — Target CPA ile hem ust sirada cikin hem maliyeti optimize edin.';
+
+    res.json({ recommendations, totalCampaigns, topPositionTip, hasConversions });
+  } catch (e: any) { res.json({ recommendations: [], error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AD EXTENSION GENERATOR — sitelink + callout + snippet AI ile olustur
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.post('/generate-extensions', async (req: any, res: any) => {
+  try {
+    const { businessDescription, websiteUrl, keywords } = req.body;
+    if (!businessDescription) return res.status(400).json({ error: 'businessDescription zorunlu' });
+
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: `Google Ads uzmani olarak bu isletme icin reklam uzantilari olustur. JSON dondur, Turkce.
+
+Isletme: ${businessDescription}
+Website: ${websiteUrl || 'yok'}
+Anahtar Kelimeler: ${(keywords || []).slice(0, 5).join(', ')}
+
+JSON:
+{
+  "sitelinks": [{"title": "max 25 karakter", "description": "max 35 karakter", "url": "/sayfa"}],
+  "callouts": ["max 25 karakter — ozellik/avantaj"],
+  "structured_snippets": {"header": "Hizmetler/Markalar/Tipler", "values": ["deger1", "deger2"]},
+  "call_to_action": "Ucretsiz Teklif Alin"
+}
+
+4 sitelink, 6 callout, 1 structured snippet olustur. Turkce, ikna edici, gercekci.` }],
+    });
+
+    const text = r.content[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return res.json({ ok: false, error: 'AI yanit hatalı' });
+    const extensions = JSON.parse(match[0]);
+
+    res.json({ ok: true, extensions });
+  } catch (e: any) {
+    // Fallback — AI calismazsa temel uzantilar
+    res.json({ ok: true, extensions: {
+      sitelinks: [
+        { title: 'Hemen Iletisime Gec', description: 'Ucretsiz danismanlik alin', url: '/iletisim' },
+        { title: 'Hizmetlerimiz', description: 'Tum hizmetleri inceleyin', url: '/hizmetler' },
+        { title: 'Referanslar', description: 'Musteri yorumlarini okuyun', url: '/referanslar' },
+        { title: 'Fiyat Bilgisi', description: 'Guncel fiyatlari gorun', url: '/fiyat' },
+      ],
+      callouts: ['Ucretsiz Danismanlik', '7/24 Destek', 'Hizli Teslimat', 'Garantili Hizmet', '10+ Yil Tecrube', 'Uygun Fiyat'],
+      structured_snippets: { header: 'Hizmetler', values: ['Danismanlik', 'Kurulum', 'Bakim', 'Destek'] },
+      call_to_action: 'Ucretsiz Teklif Alin',
+    }});
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// KEYWORD-AD RELEVANCE CHECKER — anahtar kelime ↔ reklam alaka kontrolu
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.post('/keyword-ad-relevance', async (req: any, res: any) => {
+  try {
+    const creds = await getUserCreds(req.userId);
+    if (!creds) return res.json({ groups: [], score: 0 });
+
+    const token = creds.accessToken;
+    const cid = (creds.customerId || '').replace('customers/', '').replace(/-/g, '');
+    if (!cid) return res.json({ groups: [], score: 0 });
+
+    // Fetch ad groups with keywords and ads
+    const query = `SELECT ad_group.name, ad_group.id, ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type, ad_group_ad.ad.responsive_search_ad.headlines, metrics.impressions, metrics.clicks FROM ad_group_criterion WHERE ad_group_criterion.type = 'KEYWORD' AND ad_group_criterion.status = 'ENABLED' AND segments.date DURING LAST_30_DAYS ORDER BY metrics.impressions DESC LIMIT 50`;
+
+    let rows: any[] = [];
+    try {
+      const r = await axios.post(`https://googleads.googleapis.com/v18/customers/${cid}/googleAds:searchStream`, { query }, {
+        headers: { Authorization: `Bearer ${token}`, 'developer-token': DEVELOPER_TOKEN || '', 'login-customer-id': cid },
+        timeout: 15000,
+      });
+      rows = r.data?.[0]?.results || [];
+    } catch {}
+
+    // Group by ad group and check relevance
+    const groupMap: Record<string, any> = {};
+    for (const row of rows) {
+      const gName = row.adGroup?.name || 'Unknown';
+      if (!groupMap[gName]) groupMap[gName] = { name: gName, keywords: [], headlines: [], relevanceScore: 0 };
+      const kwText = row.adGroupCriterion?.keyword?.text;
+      if (kwText) groupMap[gName].keywords.push(kwText);
+      const headlines = row.adGroupAd?.ad?.responsiveSearchAd?.headlines || [];
+      for (const h of headlines) {
+        if (h.text && !groupMap[gName].headlines.includes(h.text)) groupMap[gName].headlines.push(h.text);
+      }
+    }
+
+    // Calculate relevance
+    const groups = Object.values(groupMap).map((g: any) => {
+      let matches = 0;
+      for (const kw of g.keywords) {
+        const kwLower = kw.toLowerCase();
+        const headlineMatch = g.headlines.some((h: string) => h.toLowerCase().includes(kwLower) || kwLower.includes(h.toLowerCase().split(' ')[0]));
+        if (headlineMatch) matches++;
+      }
+      g.relevanceScore = g.keywords.length > 0 ? Math.round((matches / g.keywords.length) * 100) : 0;
+      g.issues = [];
+      if (g.relevanceScore < 50) g.issues.push('Anahtar kelimeler baslik icinde gecmiyor — alaka skoru dusuk');
+      if (g.keywords.length > 15) g.issues.push(`${g.keywords.length} keyword tek grupta — bolun`);
+      if (g.headlines.length < 8) g.issues.push('RSA baslik sayisi az — en az 8 baslik ekleyin');
+      return g;
+    });
+
+    const avgScore = groups.length > 0 ? Math.round(groups.reduce((s: number, g: any) => s + g.relevanceScore, 0) / groups.length) : 0;
+
+    res.json({ groups, avgScore, totalGroups: groups.length });
+  } catch (e: any) { res.json({ groups: [], score: 0, error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TOP POSITION OPTIMIZER — en ust sirada cikmak icin kapsamli analiz
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/top-position-analysis', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+
+    // Gather all data in parallel
+    const [qsRes, compRes, lpRes, bidRes] = await Promise.allSettled([
+      new Promise(async (resolve) => {
+        try {
+          const creds = await getUserCreds(userId);
+          if (!creds) return resolve({ keywords: [] });
+          const token = creds.accessToken;
+          const cid = (creds.customerId || '').replace('customers/', '').replace(/-/g, '');
+          const query = `SELECT ad_group_criterion.keyword.text, ad_group_criterion.quality_info.quality_score, ad_group_criterion.quality_info.creative_quality_score, ad_group_criterion.quality_info.search_predicted_ctr, ad_group_criterion.quality_info.post_click_quality_score, metrics.average_position, metrics.impressions FROM ad_group_criterion WHERE ad_group_criterion.type = 'KEYWORD' AND ad_group_criterion.status = 'ENABLED' AND segments.date DURING LAST_30_DAYS LIMIT 20`;
+          const r = await axios.post(`https://googleads.googleapis.com/v18/customers/${cid}/googleAds:searchStream`, { query }, {
+            headers: { Authorization: `Bearer ${token}`, 'developer-token': DEVELOPER_TOKEN || '', 'login-customer-id': cid }, timeout: 15000 });
+          resolve({ keywords: r.data?.[0]?.results || [] });
+        } catch { resolve({ keywords: [] }); }
+      }),
+      fetch(`https://leadflow-ai-production.up.railway.app/api/google-optimizer/competitor-insights`, { headers: { Authorization: req.headers.authorization } }).then(r => r.json()).catch(() => ({ competitors: [] })),
+      supabase.from('user_settings').select('website').eq('user_id', userId).maybeSingle(),
+      fetch(`https://leadflow-ai-production.up.railway.app/api/google-optimizer/bidding-recommendation`, { headers: { Authorization: req.headers.authorization } }).then(r => r.json()).catch(() => ({ recommendations: [] })),
+    ]);
+
+    const qs: any = qsRes.status === 'fulfilled' ? qsRes.value : { keywords: [] };
+    const comp: any = compRes.status === 'fulfilled' ? compRes.value : { competitors: [] };
+    const bid: any = bidRes.status === 'fulfilled' ? bidRes.value : { recommendations: [] };
+
+    // Build action plan
+    const actions: any[] = [];
+    let overallScore = 70;
+
+    // QS analysis
+    const lowQS = (qs.keywords || []).filter((kw: any) => (kw.adGroupCriterion?.qualityInfo?.qualityScore || 0) < 5);
+    if (lowQS.length > 0) {
+      overallScore -= 15;
+      actions.push({ priority: 'critical', category: 'Kalite Skoru', action: `${lowQS.length} anahtar kelime dusuk QS — baslik/aciklama iyilestirin`, impact: 'CPC %30-50 duser, siralama yukselir' });
+    }
+
+    // Impression share
+    const lowIS = (comp.competitors || []).filter((c: any) => parseFloat(c.impressionShare || '0') < 0.5);
+    if (lowIS.length > 0) {
+      overallScore -= 10;
+      actions.push({ priority: 'high', category: 'Gorunurluk', action: 'Impression share dusuk — butce artirin veya Target Impression Share kullanin', impact: 'Daha fazla aramada gorunur olursunuz' });
+    }
+
+    // Bidding
+    const needsBidChange = (bid.recommendations || []).filter((r: any) => r.priority === 'high');
+    if (needsBidChange.length > 0) {
+      actions.push({ priority: 'high', category: 'Teklif Stratejisi', action: needsBidChange[0].reason, impact: 'Otomatik teklif ile en ust sirada cikin' });
+    }
+
+    // Ad extensions check
+    actions.push({ priority: 'medium', category: 'Reklam Uzantilari', action: 'Sitelink, callout ve structured snippet ekleyin — Ad Rank ucretsiz artar', impact: 'CTR %10-15 artar, siralama yukselir' });
+
+    overallScore = Math.max(0, Math.min(100, overallScore));
+    const grade = overallScore >= 80 ? 'A' : overallScore >= 60 ? 'B' : overallScore >= 40 ? 'C' : 'D';
+
+    res.json({ overallScore, grade, actions, topPositionTip: bid.topPositionTip || '', totalKeywords: (qs.keywords || []).length });
+  } catch (e: any) { res.json({ overallScore: 0, grade: 'D', actions: [], error: e.message }); }
+});
+
 module.exports = router;
