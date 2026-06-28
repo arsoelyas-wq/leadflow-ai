@@ -1136,9 +1136,9 @@ export default function AdsPage() {
           </div>
 
           {/* ── TOAST ─────────────────────────────────────────────────────────── */}
-          {metaMsg && (
-            <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: metaMsgColors[metaMsg.type].bg, border: `1px solid ${metaMsgColors[metaMsg.type].border}`, color: metaMsgColors[metaMsg.type].text }}>
-              {metaMsg.text}
+          {metaMsg && metaMsg.type && (
+            <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, fontSize: 13, background: metaMsgColors[metaMsg!.type].bg, border: `1px solid ${metaMsgColors[metaMsg!.type].border}`, color: metaMsgColors[metaMsg!.type].text }}>
+              {metaMsg!.text}
             </div>
           )}
 
