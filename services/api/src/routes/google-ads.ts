@@ -69,7 +69,7 @@ router.get('/callback', async (req: any, res: any) => {
       user_id: state,
       access_token,
       refresh_token,
-      customer_id: customerId || null,
+      customer_name: customerId || null,
     }]);
     if (insertErr) console.error('[GoogleAds] Kayit hatasi:', insertErr.message);
 

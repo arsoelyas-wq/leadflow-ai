@@ -20,12 +20,12 @@ router.get('/settings', authMiddleware, async (req: any, res: any) => {
 
     const { data: conn } = await supabase
       .from('google_ads_connections')
-      .select('customer_id, access_token, created_at')
+      .select('access_token, customer_name, connected_at')
       .eq('user_id', req.userId)
-      .single();
+      .maybeSingle();
 
     res.json({
-      customerId:         data?.google_customer_id         || conn?.customer_id || '',
+      customerId:         data?.google_customer_id || '',
       conversionActionId: data?.google_conversion_action_id || '',
       enabled:            data?.google_capi_enabled          ?? false,
       hasConnection:      !!(conn?.access_token),
