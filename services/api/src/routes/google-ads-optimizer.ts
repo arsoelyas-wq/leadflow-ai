@@ -986,4 +986,164 @@ async function dailyAutoMine(): Promise<void> {
 setInterval(dailyAutoMine, 24 * 60 * 60 * 1000);
 setTimeout(dailyAutoMine, 15 * 60 * 1000);
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SMART BUDGET REALLOCATION — dusuk CTR'den yuksek ROAS'a butce kaydir
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/smart-budget', async (req: any, res: any) => {
+  try {
+    const creds = await getUserCreds(req.userId);
+    if (!creds) return res.json({ suggestions: [], error: 'Google bagli degil' });
+
+    const { data: campaigns } = await supabase.from('google_campaigns').select('*').eq('user_id', req.userId).eq('status', 'active');
+    if (!campaigns?.length) return res.json({ suggestions: [], message: 'Aktif kampanya yok' });
+
+    const suggestions: any[] = [];
+    const sorted = campaigns.sort((a: any, b: any) => (b.roi || 0) - (a.roi || 0));
+
+    for (const camp of sorted) {
+      const perf = camp.performance || {};
+      const ctr = parseFloat(perf.ctr || '0');
+      const roas = camp.roi || 0;
+      const spend = parseFloat(perf.cost || '0');
+      const budget = camp.daily_budget || 0;
+
+      if (ctr < 1 && spend > 50) {
+        suggestions.push({ campaignId: camp.id, name: camp.name, action: 'decrease', reason: `CTR %${ctr.toFixed(1)} — cok dusuk`, currentBudget: budget, suggestedBudget: Math.round(budget * 0.7) });
+      } else if (roas > 300 && ctr > 3) {
+        suggestions.push({ campaignId: camp.id, name: camp.name, action: 'increase', reason: `ROAS %${roas} — cok iyi performans`, currentBudget: budget, suggestedBudget: Math.round(budget * 1.3) });
+      }
+    }
+
+    res.json({ suggestions, totalCampaigns: campaigns.length });
+  } catch (e: any) { res.json({ suggestions: [], error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPETITOR BID TRACKING — rakip teklif degisimi izleme
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/competitor-insights', async (req: any, res: any) => {
+  try {
+    const creds = await getUserCreds(req.userId);
+    if (!creds) return res.json({ competitors: [], error: 'Google bagli degil' });
+
+    const token = creds.accessToken;
+    const cid = (creds.customerId || '').replace('customers/', '').replace(/-/g, '');
+    if (!cid) return res.json({ competitors: [] });
+
+    try {
+      const query = `SELECT metrics.search_impression_share, metrics.search_top_impression_share, metrics.search_absolute_top_impression_share, campaign.name FROM campaign WHERE segments.date DURING LAST_7_DAYS`;
+      const r = await axios.post(`https://googleads.googleapis.com/v18/customers/${cid}/googleAds:searchStream`, { query }, {
+        headers: { Authorization: `Bearer ${token}`, 'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '', 'login-customer-id': cid },
+        timeout: 15000,
+      });
+      const rows = r.data?.[0]?.results || [];
+      const competitors = rows.map((row: any) => ({
+        campaign: row.campaign?.name,
+        impressionShare: row.metrics?.searchImpressionShare,
+        topShare: row.metrics?.searchTopImpressionShare,
+        absTopShare: row.metrics?.searchAbsoluteTopImpressionShare,
+        lostToBudget: 1 - (parseFloat(row.metrics?.searchImpressionShare || '0')),
+      }));
+      res.json({ competitors });
+    } catch { res.json({ competitors: [], message: 'Auction data cekilemedi' }); }
+  } catch (e: any) { res.json({ competitors: [], error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LANDING PAGE SCORER — sayfa hizi + mobil uyum + donusum elementleri
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.post('/landing-page-score', async (req: any, res: any) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL zorunlu' });
+
+    const checks: any = { url, score: 0, issues: [], strengths: [] };
+
+    // Basic checks
+    try {
+      const start = Date.now();
+      const r = await axios.get(url, { timeout: 10000, maxRedirects: 3, headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)' } });
+      const loadTime = Date.now() - start;
+      const html = r.data || '';
+
+      checks.loadTime = loadTime;
+      if (loadTime < 2000) { checks.score += 20; checks.strengths.push(`Hizli yukleme: ${(loadTime / 1000).toFixed(1)}s`); }
+      else if (loadTime < 4000) { checks.score += 10; checks.issues.push(`Yukleme suresi: ${(loadTime / 1000).toFixed(1)}s — 2s altina dusurmeye calisin`); }
+      else { checks.issues.push(`Yavas yukleme: ${(loadTime / 1000).toFixed(1)}s — ciddi iyilestirme gerekli`); }
+
+      // Mobile viewport
+      if (html.includes('viewport')) { checks.score += 15; checks.strengths.push('Mobil uyumlu (viewport meta)'); }
+      else checks.issues.push('viewport meta tagi yok — mobil goruntuleme bozuk olabilir');
+
+      // HTTPS
+      if (url.startsWith('https')) { checks.score += 10; checks.strengths.push('HTTPS guvenli baglanti'); }
+      else checks.issues.push('HTTPS kullanilmiyor — Google kalite skoru duser');
+
+      // Form / CTA
+      if (html.includes('<form') || html.includes('type="submit"')) { checks.score += 15; checks.strengths.push('Form/CTA mevcut'); }
+      else checks.issues.push('Form veya CTA butonu bulunamadi — donusum orani duser');
+
+      // Phone number
+      if (html.includes('tel:') || /0[0-9]{3}.*[0-9]{3}.*[0-9]{2}/.test(html)) { checks.score += 10; checks.strengths.push('Telefon numarasi mevcut'); }
+      else checks.issues.push('Telefon numarasi gorunmuyor — guven azalir');
+
+      // WhatsApp
+      if (html.includes('wa.me') || html.includes('whatsapp')) { checks.score += 10; checks.strengths.push('WhatsApp baglantisi var'); }
+
+      // Social proof
+      if (html.includes('yorum') || html.includes('review') || html.includes('müşteri') || html.includes('referans')) { checks.score += 10; checks.strengths.push('Sosyal kanit (yorum/referans) mevcut'); }
+      else checks.issues.push('Musteri yorumu/referans yok — guven artirmak icin ekleyin');
+
+      // Images
+      const imgCount = (html.match(/<img/g) || []).length;
+      if (imgCount >= 3) { checks.score += 10; checks.strengths.push(`${imgCount} gorsel mevcut`); }
+      else if (imgCount === 0) checks.issues.push('Hic gorsel yok — gorsel eklenmeli');
+
+      checks.score = Math.min(100, checks.score);
+      checks.grade = checks.score >= 80 ? 'A' : checks.score >= 60 ? 'B' : checks.score >= 40 ? 'C' : 'D';
+    } catch (fetchErr: any) {
+      checks.score = 0; checks.grade = 'F';
+      checks.issues.push(`Sayfa acilamadi: ${fetchErr.message?.slice(0, 60)}`);
+    }
+
+    res.json(checks);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ACCOUNT HEALTH — Google Ads hesap sagligi skoru
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/account-health', async (req: any, res: any) => {
+  try {
+    let score = 100;
+    const issues: any[] = [];
+
+    const { data: campaigns } = await supabase.from('google_campaigns').select('*').eq('user_id', req.userId);
+    const totalCampaigns = campaigns?.length || 0;
+
+    if (totalCampaigns === 0) { score -= 20; issues.push({ type: 'no_campaigns', severity: 'warning', message: 'Hic kampanya yok — ilk kampanyanizi olusturun' }); }
+
+    // CAPI check
+    const { data: gcapi } = await supabase.from('user_settings').select('google_capi_enabled').eq('user_id', req.userId).maybeSingle();
+    if (!gcapi?.google_capi_enabled) { score -= 15; issues.push({ type: 'no_capi', severity: 'warning', message: 'Google Conversion API aktif degil' }); }
+
+    // Active campaigns with low performance
+    for (const c of (campaigns || [])) {
+      const perf = c.performance || {};
+      if (parseFloat(perf.ctr || '0') < 1 && parseFloat(perf.cost || '0') > 100) {
+        score -= 10;
+        issues.push({ type: 'low_ctr', severity: 'warning', campaign: c.name, message: `${c.name}: CTR %${perf.ctr} — iyilestirme gerekli` });
+      }
+    }
+
+    score = Math.max(0, Math.min(100, score));
+    const grade = score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D';
+    res.json({ score, grade, issues, totalCampaigns });
+  } catch (e: any) { res.json({ score: 0, grade: 'D', issues: [], error: e.message }); }
+});
+
 module.exports = router;

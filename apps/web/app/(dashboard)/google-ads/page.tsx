@@ -258,10 +258,12 @@ export default function GoogleAdsPage() {
   async function extractLeads() {
     setExtracting(true)
     try {
-      const r = await fetch(`${API}/api/google-campaign/extract-leads`, { method: 'POST', headers: authH() })
+      const r = await fetch(`${API}/api/google-intelligence/extract-leads`, { headers: authH() })
       const d = await r.json()
-      if (d.ok || d.saved !== undefined) { showMsg('success', `${d.saved ?? 0} yeni lead eklendi`); loadAll() }
-      else showMsg('error', d.error || 'Lead çekim başarısız')
+      if (d.ok || d.new_leads !== undefined || d.total_found !== undefined) {
+        showMsg('success', `${d.new_leads ?? d.total_found ?? 0} yeni lead eklendi`)
+        loadAll()
+      } else showMsg('error', d.error || 'Lead çekim başarısız')
     } catch { showMsg('error', 'Lead çekim başarısız') }
     setExtracting(false)
   }
@@ -291,8 +293,26 @@ export default function GoogleAdsPage() {
       })
       const d = await r.json()
       if (d.ok && d.draft) { setDraft(d.draft) }
-      else { showMsg('error', d.error || 'AI kampanya planı oluşturulamadı'); closeWizard(); return }
-    } catch { showMsg('error', 'Bağlantı hatası'); closeWizard(); return }
+      else {
+        const fb = {
+          campaign_name: `${goal === 'LEADS' ? 'Lead' : goal === 'SALES' ? 'Satis' : 'Trafik'} Kampanyası`,
+          budget_recommendation: { daily_budget: Number(budget) },
+          ad_groups: [{ name: 'Genel', keywords: [], ads: [{ headlines: ['', '', ''], descriptions: ['', ''] }] }],
+          negative_keywords: [],
+        }
+        setDraft(fb)
+        showMsg('success', 'Anahtar kelime ve reklam metinlerini kendiniz yazabilirsiniz')
+      }
+    } catch {
+      const fb = {
+        campaign_name: `${goal} Kampanyası`,
+        budget_recommendation: { daily_budget: Number(budget) },
+        ad_groups: [{ name: 'Genel', keywords: [], ads: [{ headlines: ['', '', ''], descriptions: ['', ''] }] }],
+        negative_keywords: [],
+      }
+      setDraft(fb)
+      showMsg('success', 'Anahtar kelime ve reklam metinlerini kendiniz yazabilirsiniz')
+    }
     finally {
       if (animIntervalRef.current) clearInterval(animIntervalRef.current)
       setKeywordsLoading(false)
@@ -306,14 +326,9 @@ export default function GoogleAdsPage() {
       const r = await fetch(`${API}/api/google-campaign/create`, {
         method: 'POST', headers: authH(),
         body: JSON.stringify({
-          campaignName: draft.campaign_name || 'AI Kampanya',
+          campaignPlan: draft,
           goal,
-          dailyBudget: Number(budget),
-          keywords: (draft.ad_groups?.[0]?.keywords || draft.keywords || []).slice(0, 10),
-          headlines: (draft.ad_groups?.[0]?.ads?.[0]?.headlines || draft.headlines || []).slice(0, 3),
-          descriptions: (draft.ad_groups?.[0]?.ads?.[0]?.descriptions || draft.descriptions || []).slice(0, 2),
-          location: location || 'Turkey',
-          avgDealValue: avgDeal ? Number(avgDeal) : 0,
+          finalUrl: websiteUrl || '',
         }),
       })
       const d = await r.json()
