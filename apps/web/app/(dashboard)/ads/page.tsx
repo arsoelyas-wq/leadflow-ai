@@ -1620,87 +1620,152 @@ export default function AdsPage() {
                 </div>
               )}
 
-              {/* Step 6: Preview & Launch */}
+              {/* Step 6: Full Preview & Edit & Launch */}
               {step === 6 && draft && (
                 <div className="space-y-4">
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">{t('ads.kampanya_onizleme', 'Kampanya Önizleme')}</h2>
-                    <p className="text-sm text-slate-600 mt-1">{t('ads.ai_planini_incele_ve_yayi', 'AI planını incele ve yayınla')}</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">Önizleme & Düzenle</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">AI tarafından oluşturuldu — istediğiniz alanı düzenleyebilirsiniz</p>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">AI Taslak</span>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl divide-y divide-slate-200 max-h-60 overflow-y-auto">
-                    <div className="flex justify-between items-center px-4 py-2.5 text-xs">
-                      <span className="text-slate-500">{t('ads.kampanya_adi', 'Kampanya Adı')}</span>
-                      <span className="text-slate-900 font-medium truncate ml-4 max-w-[60%] text-right">{draft.campaign_name || 'AI Kampanya'}</span>
+                  {/* Kampanya Bilgileri */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Kampanya Adı</label>
+                      <input value={draft.campaign_name || ''} onChange={e => setDraft({...draft, campaign_name: e.target.value})}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-400" />
                     </div>
-                    {draft.target_audience && (
-                      <div className="flex justify-between items-start px-4 py-2.5 text-xs">
-                        <span className="text-slate-500 shrink-0">Hedef Kitle</span>
-                        <span className="text-slate-900 ml-4 text-right max-w-[65%]">
-                          {typeof draft.target_audience === 'object'
-                            ? (draft.target_audience.description || draft.target_audience.age_range || JSON.stringify(draft.target_audience))
-                            : draft.target_audience}
-                        </span>
-                      </div>
-                    )}
-                    {draft.budget && (
-                      <div className="flex justify-between items-center px-4 py-2.5 text-xs">
-                        <span className="text-slate-500">{t('ads.gunluk_butce', 'Günlük Bütçe')}</span>
-                        <span className="text-slate-900">{typeof draft.budget === 'object' ? `₺${draft.budget.daily_budget || draft.budget.amount}` : `₺${draft.budget}`}</span>
-                      </div>
-                    )}
-                    {draft.ad_copies?.[0] && (
-                      <div className="px-4 py-3 space-y-2">
-                        <p className="text-xs text-slate-500">{t('ads.reklam_metni_onizleme', 'Reklam Metni Önizleme')}</p>
-                        <div className="bg-white border border-slate-200 rounded-lg p-3">
-                          <p className="text-sm font-medium text-slate-900 leading-snug">
-                            {(draft.ad_copies[0].headline || draft.ad_copies[0].title || '').slice(0, 40)}
-                          </p>
-                          <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                            {(draft.ad_copies[0].primary_text || draft.ad_copies[0].body || '').slice(0, 125)}
-                          </p>
-                          <div className="flex gap-4 mt-2 text-xs text-slate-400">
-                            <span>Başlık: {(draft.ad_copies[0].headline || draft.ad_copies[0].title || '').length}/40</span>
-                            <span>Metin: {(draft.ad_copies[0].primary_text || draft.ad_copies[0].body || '').length}/125</span>
-                          </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Günlük Bütçe</label>
+                        <div className="flex items-center bg-white border border-slate-200 rounded-lg px-3 py-2">
+                          <span className="text-sm text-slate-400 mr-1">₺</span>
+                          <input type="number" value={typeof draft.budget === 'object' ? draft.budget.daily_budget || draft.budget.amount || '' : draft.budget || budget}
+                            onChange={e => setDraft({...draft, budget: e.target.value})}
+                            className="flex-1 text-sm text-slate-900 focus:outline-none bg-transparent" />
                         </div>
                       </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Hedef</label>
+                        <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700">{goal === 'LEADS' ? 'Lead Toplama' : goal === 'AWARENESS' ? 'Marka Bilinirliği' : goal === 'TRAFFIC' ? 'Web Trafiği' : 'Satış'}</div>
+                      </div>
+                    </div>
+                    {draft.target_audience && (
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Hedef Kitle</label>
+                        <textarea value={typeof draft.target_audience === 'object' ? (draft.target_audience.description || JSON.stringify(draft.target_audience)) : draft.target_audience}
+                          onChange={e => setDraft({...draft, target_audience: e.target.value})}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 h-14 resize-none focus:outline-none focus:border-blue-400" />
+                      </div>
                     )}
                   </div>
 
+                  {/* Facebook Reklam Önizleme */}
+                  {draft.ad_copies?.[0] && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Reklam Önizleme</label>
+                        <span className="text-[9px] text-slate-400">Tıklayarak düzenleyin</span>
+                      </div>
+                      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                        {/* FB Header */}
+                        <div className="flex items-center gap-2.5 px-3 py-2.5 border-b border-slate-100">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">S</div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-900">İşletmeniz</p>
+                            <p className="text-[10px] text-slate-400">Sponsorlu</p>
+                          </div>
+                        </div>
+                        {/* Primary Text — editable */}
+                        <div className="px-3 py-2">
+                          <textarea value={draft.ad_copies[0].primary_text || draft.ad_copies[0].body || ''}
+                            onChange={e => { const copies = [...draft.ad_copies]; copies[0] = {...copies[0], primary_text: e.target.value, body: e.target.value}; setDraft({...draft, ad_copies: copies}) }}
+                            className="w-full text-xs text-slate-800 leading-relaxed resize-none focus:outline-none focus:bg-blue-50/30 rounded p-1 min-h-[48px] transition"
+                            placeholder="Reklam metni..." />
+                        </div>
+                        {/* Image placeholder */}
+                        <div className="bg-gradient-to-br from-slate-100 to-slate-50 h-36 flex items-center justify-center border-y border-slate-100">
+                          {creatives.length > 0 && creatives[0].preview ? (
+                            <img src={creatives[0].preview} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="text-center">
+                              <Eye className="w-6 h-6 text-slate-300 mx-auto mb-1" />
+                              <p className="text-[10px] text-slate-400">Reklam görseli alanı</p>
+                            </div>
+                          )}
+                        </div>
+                        {/* Headline + CTA */}
+                        <div className="px-3 py-2.5 bg-slate-50/50 flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <input value={draft.ad_copies[0].headline || draft.ad_copies[0].title || ''}
+                              onChange={e => { const copies = [...draft.ad_copies]; copies[0] = {...copies[0], headline: e.target.value, title: e.target.value}; setDraft({...draft, ad_copies: copies}) }}
+                              className="w-full text-sm font-bold text-slate-900 bg-transparent focus:outline-none focus:bg-blue-50/30 rounded px-1 py-0.5 transition"
+                              placeholder="Başlık..." />
+                            <input value={draft.ad_copies[0].description || draft.ad_copies[0].link_description || ''}
+                              onChange={e => { const copies = [...draft.ad_copies]; copies[0] = {...copies[0], description: e.target.value, link_description: e.target.value}; setDraft({...draft, ad_copies: copies}) }}
+                              className="w-full text-[10px] text-slate-500 bg-transparent focus:outline-none focus:bg-blue-50/30 rounded px-1 py-0.5 transition mt-0.5"
+                              placeholder="Alt açıklama..." />
+                          </div>
+                          <div className="px-3 py-1.5 bg-slate-200 rounded-lg text-[10px] font-bold text-slate-600 shrink-0">
+                            {draft.ad_copies[0].cta || 'Daha Fazla'}
+                          </div>
+                        </div>
+                        {/* Character counts */}
+                        <div className="flex gap-4 px-3 py-1.5 border-t border-slate-100 text-[9px] text-slate-400">
+                          <span>Başlık: {(draft.ad_copies[0].headline || draft.ad_copies[0].title || '').length}/40</span>
+                          <span>Metin: {(draft.ad_copies[0].primary_text || draft.ad_copies[0].body || '').length}/125</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Multiple ad copies */}
+                  {draft.ad_copies?.length > 1 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                      <p className="text-[10px] font-bold text-blue-700 mb-2">+{draft.ad_copies.length - 1} alternatif reklam metni</p>
+                      {draft.ad_copies.slice(1).map((copy: any, i: number) => (
+                        <div key={i} className="bg-white rounded-lg p-2 mb-1.5 last:mb-0">
+                          <input value={copy.headline || copy.title || ''} onChange={e => { const copies = [...draft.ad_copies]; copies[i+1] = {...copies[i+1], headline: e.target.value, title: e.target.value}; setDraft({...draft, ad_copies: copies}) }}
+                            className="w-full text-xs font-semibold text-slate-900 bg-transparent focus:outline-none mb-0.5" placeholder="Başlık..." />
+                          <textarea value={copy.primary_text || copy.body || ''} onChange={e => { const copies = [...draft.ad_copies]; copies[i+1] = {...copies[i+1], primary_text: e.target.value, body: e.target.value}; setDraft({...draft, ad_copies: copies}) }}
+                            className="w-full text-[10px] text-slate-600 bg-transparent focus:outline-none resize-none h-8" placeholder="Metin..." />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Meta connection */}
                   {!connected && (
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-blue-600 shrink-0" />
                         <span className="text-blue-800 text-xs font-semibold">Kampanyayı yayınlamak için Meta hesabınızı bağlayın</span>
                       </div>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const d = await fetch(`${API}/api/ads/oauth-url`, { headers: authH() }).then(r => r.json())
-                            if (d.url) window.location.href = d.url
-                          } catch {}
-                        }}
-                        className="w-full flex items-center justify-center gap-2 py-3 bg-[#1877F2] hover:bg-[#0866FF] text-white rounded-xl text-sm font-bold transition"
-                      >
+                      <button onClick={async () => { try { const d = await fetch(`${API}/api/ads/oauth-url`, { headers: authH() }).then(r => r.json()); if (d.url) window.location.href = d.url } catch {} }}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-[#1877F2] hover:bg-[#0866FF] text-white rounded-xl text-sm font-bold transition">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                         Meta ile Bağlan
                       </button>
-                      <p className="text-[10px] text-blue-600 text-center">Bağlandıktan sonra kampanyanız otomatik yayınlanacak</p>
                     </div>
                   )}
 
                   <div className="flex gap-3">
+                    <button onClick={() => setStep(4)} className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition">
+                      ← Geri
+                    </button>
                     <button onClick={closeWizard} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition">
-                      Kaydet & Kapat
+                      Taslak Kaydet
                     </button>
                     <button
                       onClick={launchCampaign}
                       disabled={!connected || launching}
-                      className={`flex-1 py-3 text-white rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 ${connected ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-300 cursor-not-allowed'}`}
+                      className={`flex-1 py-3 text-white rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 shadow-lg ${connected ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-500/20' : 'bg-slate-300 cursor-not-allowed shadow-none'}`}
                     >
                       {launching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                      {launching ? 'Yayınlanıyor...' : connected ? 'Yayınla' : 'Önce Meta Bağlayın'}
+                      {launching ? 'Yayınlanıyor...' : connected ? 'Meta\'da Yayınla' : 'Önce Meta Bağlayın'}
                     </button>
                   </div>
                 </div>
