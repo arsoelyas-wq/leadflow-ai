@@ -159,6 +159,12 @@ export default function GoogleAdsPage() {
   // Google CAPI algorithm training status
   const [gcapiStatus, setGcapiStatus] = useState<{ eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[] }>({ eventsToday: 0, eventsTotal: 0, lastAt: null, eventTypes: [] })
 
+  // New features
+  const [topPosition, setTopPosition] = useState<any>(null)
+  const [biddingRecs, setBiddingRecs] = useState<any>(null)
+  const [extensions, setExtensions] = useState<any>(null)
+  const [extLoading, setExtLoading] = useState(false)
+
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
   }
@@ -234,6 +240,15 @@ export default function GoogleAdsPage() {
       }
     } catch {}
     setLoading(false)
+
+    // Load new features in background
+    Promise.allSettled([
+      fetch(`${API}/api/google-optimizer/top-position-analysis`, { headers: authH() }).then(r => r.json()),
+      fetch(`${API}/api/google-optimizer/bidding-recommendation`, { headers: authH() }).then(r => r.json()),
+    ]).then(([tp, br]) => {
+      if (tp.status === 'fulfilled') setTopPosition(tp.value)
+      if (br.status === 'fulfilled') setBiddingRecs(br.value)
+    })
   }
 
   async function loadQs() {
@@ -442,6 +457,108 @@ export default function GoogleAdsPage() {
             </div>
           </button>
         </div>
+
+        {/* ── TOP POSITION + BIDDING ── */}
+        {topPosition && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Top Position Score */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-bold text-slate-900">🎯 En Üst Sıra Skoru</span>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black ${
+                  topPosition.overallScore >= 80 ? 'bg-emerald-50 text-emerald-600' :
+                  topPosition.overallScore >= 60 ? 'bg-amber-50 text-amber-600' :
+                  'bg-red-50 text-red-600'
+                }`}>{topPosition.grade}</div>
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-1 h-3 bg-slate-100 rounded-full">
+                  <div className={`h-full rounded-full transition-all ${
+                    topPosition.overallScore >= 80 ? 'bg-emerald-500' : topPosition.overallScore >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                  }`} style={{ width: `${topPosition.overallScore}%` }} />
+                </div>
+                <span className="text-sm font-bold text-slate-700">{topPosition.overallScore}/100</span>
+              </div>
+              {topPosition.topPositionTip && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
+                  <p className="text-[11px] text-blue-700 font-medium">💡 {topPosition.topPositionTip}</p>
+                </div>
+              )}
+              {(topPosition.actions || []).slice(0, 3).map((a: any, i: number) => (
+                <div key={i} className={`text-xs mb-2 p-2.5 rounded-lg border ${a.priority === 'critical' ? 'bg-red-50 border-red-200' : a.priority === 'high' ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`font-semibold ${a.priority === 'critical' ? 'text-red-700' : a.priority === 'high' ? 'text-amber-700' : 'text-slate-700'}`}>{a.category}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${a.priority === 'critical' ? 'bg-red-100 text-red-600' : a.priority === 'high' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>{a.priority}</span>
+                  </div>
+                  <p className="text-slate-600">{a.action}</p>
+                  <p className="text-[10px] text-emerald-600 mt-1">{a.impact}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Smart Bidding Recommendations */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <span className="text-sm font-bold text-slate-900 block mb-4">⚡ Teklif Stratejisi Önerisi</span>
+              {biddingRecs?.recommendations?.length > 0 ? (
+                <div className="space-y-3">
+                  {biddingRecs.recommendations.slice(0, 3).map((rec: any, i: number) => (
+                    <div key={i} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-slate-900 truncate max-w-[65%]">{rec.name}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{rec.suggestedStrategy.replace(/_/g, ' ')}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">{rec.reason}</p>
+                      {rec.currentCPA > 0 && (
+                        <p className="text-[10px] text-slate-400 mt-1">Mevcut CPA: ₺{rec.currentCPA} · {rec.conversions} dönüşüm</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-slate-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-slate-500">Henüz kampanya verisi yok</p>
+                </div>
+              )}
+
+              {/* Ad Extension Generator */}
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-700">📎 Reklam Uzantıları</span>
+                  <button onClick={async () => {
+                    setExtLoading(true)
+                    try {
+                      const r = await fetch(`${API}/api/google-optimizer/generate-extensions`, {
+                        method: 'POST', headers: authH(),
+                        body: JSON.stringify({ businessDescription: desc || 'Genel isletme', websiteUrl: '', keywords: [] }),
+                      })
+                      const d = await r.json()
+                      if (d.ok) { setExtensions(d.extensions); showMsg('success', 'Uzantılar oluşturuldu!') }
+                    } catch {} setExtLoading(false)
+                  }} disabled={extLoading}
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                    {extLoading ? 'Oluşturuluyor...' : 'AI ile Oluştur →'}
+                  </button>
+                </div>
+                {extensions ? (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-1">
+                      {extensions.sitelinks?.map((s: any, i: number) => (
+                        <span key={i} className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded-lg">{s.title}</span>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {extensions.callouts?.slice(0, 4).map((c: string, i: number) => (
+                        <span key={i} className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded">{c}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400">Sitelink, callout ve snippet uzantıları oluşturun — Ad Rank ücretsiz artar</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quality Score Panel */}
         {showQs && (
