@@ -36,16 +36,24 @@ router.post('/exchange-token', async (req: any, res: any) => {
 
     // Auto-fetch Pixel IDs from ad accounts
     let pixelIds: string[] = [];
-    try {
-      for (const acc of (adAccountsResp.data.data || []).slice(0, 3)) {
+    const adAccounts = adAccountsResp.data.data || [];
+    console.log(`[Meta] ${adAccounts.length} ad accounts found`);
+    for (const acc of adAccounts.slice(0, 5)) {
+      try {
+        console.log(`[Meta] Fetching pixels for ${acc.id} (status: ${acc.account_status})`);
         const pixelResp = await axios.get(`https://graph.facebook.com/v20.0/${acc.id}/adspixels`, {
           params: { access_token: longToken, fields: 'id,name,is_unavailable' }, timeout: 10000,
         });
-        for (const p of (pixelResp.data?.data || [])) {
+        const pixels = pixelResp.data?.data || [];
+        console.log(`[Meta] ${acc.id}: ${pixels.length} pixels found`);
+        for (const p of pixels) {
           if (!p.is_unavailable) pixelIds.push(p.id);
         }
+      } catch (pixErr: any) {
+        console.log(`[Meta] ${acc.id} pixel fetch error: ${pixErr.response?.data?.error?.message || pixErr.message}`);
       }
-    } catch {}
+    }
+    console.log(`[Meta] Total pixels: ${pixelIds.length}`, pixelIds);
 
     // Save connection (without pixel_ids column — may not exist)
     const connData: any = {
