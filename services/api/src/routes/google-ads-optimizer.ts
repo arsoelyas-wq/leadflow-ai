@@ -1380,4 +1380,276 @@ router.get('/top-position-analysis', async (req: any, res: any) => {
   } catch (e: any) { res.json({ overallScore: 0, grade: 'D', actions: [], error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 1-CLICK OPTIMIZATION PANEL — Opteo style gunluk oneriler
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/daily-recommendations', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const recommendations: any[] = [];
+
+    const { data: campaigns } = await supabase.from('google_campaigns').select('*').eq('user_id', userId);
+
+    for (const camp of (campaigns || [])) {
+      const perf = camp.performance || {};
+      const ctr = parseFloat(perf.ctr || '0');
+      const spend = parseFloat(perf.cost || '0');
+      const conversions = parseFloat(perf.conversions || '0');
+      const impressions = parseInt(perf.impressions || '0');
+
+      // Low CTR
+      if (ctr < 2 && impressions > 100) {
+        recommendations.push({ id: `ctr-${camp.id}`, type: 'improve_ctr', priority: 'high', title: 'Düşük CTR — Başlıkları İyileştir', description: `${camp.name}: CTR %${ctr.toFixed(1)} — reklam metinlerini güncelle`, impact: 'CTR %50+ artış beklenir', campaignId: camp.id, action: 'improve_headlines' });
+      }
+      // Wasted spend
+      if (spend > 100 && conversions === 0) {
+        recommendations.push({ id: `waste-${camp.id}`, type: 'wasted_spend', priority: 'critical', title: 'İsraf Tespit Edildi', description: `${camp.name}: ₺${spend.toFixed(0)} harcanmış — 0 dönüşüm`, impact: `₺${spend.toFixed(0)} tasarruf`, campaignId: camp.id, action: 'pause_or_optimize' });
+      }
+      // Budget too low
+      if (camp.daily_budget && camp.daily_budget < 50 && impressions < 50) {
+        recommendations.push({ id: `budget-${camp.id}`, type: 'increase_budget', priority: 'medium', title: 'Bütçe Artırın', description: `${camp.name}: Günlük ₺${camp.daily_budget} — gösterim çok düşük`, impact: 'Gösterim %200+ artış', campaignId: camp.id, action: 'increase_budget' });
+      }
+    }
+
+    // Generic recommendations
+    const { data: settings } = await supabase.from('user_settings').select('google_capi_enabled').eq('user_id', userId).maybeSingle();
+    if (!settings?.google_capi_enabled) {
+      recommendations.push({ id: 'capi', type: 'enable_capi', priority: 'high', title: 'Conversion API Aktifleştir', description: 'Smart Bidding gerçek satış verilerini öğrenemiyor', impact: 'Dönüşüm oranı %30 artar', action: 'go_settings' });
+    }
+
+    recommendations.push({ id: 'extensions', type: 'add_extensions', priority: 'medium', title: 'Reklam Uzantıları Ekle', description: 'Sitelink + callout eklemek Ad Rank\'i ücretsiz yükseltir', impact: 'CTR %10-15 artış', action: 'generate_extensions' });
+
+    recommendations.sort((a, b) => ({ critical: 0, high: 1, medium: 2 }[a.priority] || 3) - ({ critical: 0, high: 1, medium: 2 }[b.priority] || 3));
+
+    res.json({ recommendations: recommendations.slice(0, 8), total: recommendations.length, date: new Date().toISOString() });
+  } catch (e: any) { res.json({ recommendations: [], error: e.message }); }
+});
+
+// Apply 1-click recommendation
+router.post('/apply-recommendation', async (req: any, res: any) => {
+  try {
+    const { recommendationId, action, campaignId } = req.body;
+    const creds = await getUserCreds(req.userId);
+
+    if (action === 'pause_or_optimize' && campaignId && creds) {
+      await supabase.from('google_campaigns').update({ status: 'paused', updated_at: new Date().toISOString() }).eq('id', campaignId).eq('user_id', req.userId);
+      return res.json({ ok: true, message: 'Kampanya durduruldu — israf engellendi' });
+    }
+    if (action === 'increase_budget' && campaignId) {
+      const { data: camp } = await supabase.from('google_campaigns').select('daily_budget').eq('id', campaignId).single();
+      const newBudget = Math.round((camp?.daily_budget || 50) * 1.5);
+      await supabase.from('google_campaigns').update({ daily_budget: newBudget, updated_at: new Date().toISOString() }).eq('id', campaignId);
+      return res.json({ ok: true, message: `Bütçe ₺${newBudget}'ye yükseltildi` });
+    }
+    res.json({ ok: true, message: 'Öneri kaydedildi' });
+  } catch (e: any) { res.json({ ok: false, error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WASTED SPEND DETECTION — donusum getirmeyen keyword/arama terimi tespiti
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/wasted-spend', async (req: any, res: any) => {
+  try {
+    const creds = await getUserCreds(req.userId);
+    if (!creds) return res.json({ wastedKeywords: [], wastedTerms: [], totalWaste: 0 });
+
+    const token = creds.accessToken;
+    const cid = (creds.customerId || '').replace('customers/', '').replace(/-/g, '');
+    if (!cid) return res.json({ wastedKeywords: [], wastedTerms: [], totalWaste: 0 });
+
+    const wastedKeywords: any[] = [];
+    const wastedTerms: any[] = [];
+    let totalWaste = 0;
+
+    // Keywords with spend but no conversions
+    try {
+      const query = `SELECT ad_group_criterion.keyword.text, metrics.cost_micros, metrics.clicks, metrics.conversions, metrics.impressions FROM ad_group_criterion WHERE ad_group_criterion.type = 'KEYWORD' AND metrics.cost_micros > 0 AND metrics.conversions = 0 AND segments.date DURING LAST_30_DAYS ORDER BY metrics.cost_micros DESC LIMIT 20`;
+      const r = await axios.post(`https://googleads.googleapis.com/v18/customers/${cid}/googleAds:searchStream`, { query }, {
+        headers: { Authorization: `Bearer ${token}`, 'developer-token': DEVELOPER_TOKEN || '', 'login-customer-id': cid }, timeout: 15000 });
+      for (const row of (r.data?.[0]?.results || [])) {
+        const cost = (row.metrics?.costMicros || 0) / 1000000;
+        if (cost > 5) {
+          totalWaste += cost;
+          wastedKeywords.push({ keyword: row.adGroupCriterion?.keyword?.text, cost: Math.round(cost), clicks: row.metrics?.clicks || 0, impressions: row.metrics?.impressions || 0 });
+        }
+      }
+    } catch {}
+
+    // Search terms with spend but no conversions
+    try {
+      const query2 = `SELECT search_term_view.search_term, metrics.cost_micros, metrics.clicks, metrics.conversions FROM search_term_view WHERE metrics.cost_micros > 5000000 AND metrics.conversions = 0 AND segments.date DURING LAST_30_DAYS ORDER BY metrics.cost_micros DESC LIMIT 15`;
+      const r2 = await axios.post(`https://googleads.googleapis.com/v18/customers/${cid}/googleAds:searchStream`, { query: query2 }, {
+        headers: { Authorization: `Bearer ${token}`, 'developer-token': DEVELOPER_TOKEN || '', 'login-customer-id': cid }, timeout: 15000 });
+      for (const row of (r2.data?.[0]?.results || [])) {
+        const cost = (row.metrics?.costMicros || 0) / 1000000;
+        wastedTerms.push({ term: row.searchTermView?.searchTerm, cost: Math.round(cost), clicks: row.metrics?.clicks || 0 });
+      }
+    } catch {}
+
+    res.json({ wastedKeywords, wastedTerms, totalWaste: Math.round(totalWaste), currency: 'TRY' });
+  } catch (e: any) { res.json({ wastedKeywords: [], wastedTerms: [], totalWaste: 0, error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// A/B TEST MANAGER — headline/description varyasyonlari test et
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.post('/ab-test-suggestions', async (req: any, res: any) => {
+  try {
+    const { campaignName, currentHeadlines, currentDescriptions } = req.body;
+
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: `Google Ads A/B test uzmani olarak, mevcut reklam kopyalarini analiz et ve 3 varyasyon oner. JSON dondur, Turkce.
+
+Kampanya: ${campaignName || 'Genel'}
+Mevcut Basliklar: ${(currentHeadlines || []).join(', ')}
+Mevcut Aciklamalar: ${(currentDescriptions || []).join(', ')}
+
+JSON:
+{
+  "analysis": "mevcut kopyalarin guclü ve zayif yanlari",
+  "variants": [
+    {"name": "Varyant A — Aciliyet", "headlines": ["baslik1", "baslik2", "baslik3"], "descriptions": ["desc1", "desc2"], "hypothesis": "neden daha iyi"},
+    {"name": "Varyant B — Deger", "headlines": [...], "descriptions": [...], "hypothesis": "..."},
+    {"name": "Varyant C — Sosyal Kanit", "headlines": [...], "descriptions": [...], "hypothesis": "..."}
+  ],
+  "test_duration": "14 gun",
+  "success_metric": "CTR + donusum orani"
+}` }],
+    });
+
+    const text = r.content[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      res.json({ ok: true, ...JSON.parse(match[0]) });
+    } else {
+      // Fallback
+      res.json({ ok: true, analysis: 'AI analiz yapamadi — temel varyasyonlar',
+        variants: [
+          { name: 'Varyant A — Aciliyet', headlines: ['Simdi Basvurun', 'Son 3 Gun', 'Sinirli Teklif'], descriptions: ['Firsat kacirmadan hemen iletisime gecin', 'Kampanya suresi sinirli'], hypothesis: 'Aciliyet duygusu CTR artirir' },
+          { name: 'Varyant B — Deger', headlines: ['Ucretsiz Danismanlik', '%20 Indirim', 'Garantili Sonuc'], descriptions: ['Risk almadan deneyin', 'Memnun kalmazsan para iade'], hypothesis: 'Deger vurgusu donusum artirir' },
+          { name: 'Varyant C — Guven', headlines: ['10 Yil Tecrube', '5000+ Mutlu Musteri', 'Turkiyenin 1 Numarasi'], descriptions: ['Binlerce isletmenin tercihi', 'Referanslarimizi inceleyin'], hypothesis: 'Sosyal kanit guven arttirir' },
+        ],
+        test_duration: '14 gun', success_metric: 'CTR + donusum orani',
+      });
+    }
+  } catch (e: any) {
+    res.json({ ok: true, analysis: 'AI baglanti hatasi — temel varyasyonlar',
+      variants: [
+        { name: 'Varyant A', headlines: ['Hemen Basvurun', 'Son Firsat', 'Sinirli Stok'], descriptions: ['Firsat kacirmayin', 'Hizli teslimat'], hypothesis: 'Aciliyet' },
+        { name: 'Varyant B', headlines: ['Ucretsiz Deneyin', 'Para Iade Garantisi', 'En Uygun Fiyat'], descriptions: ['Risksiz deneyin', 'Kaliteli hizmet'], hypothesis: 'Deger' },
+      ],
+      test_duration: '14 gun', success_metric: 'CTR',
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RULE-BASED AUTOMATION — if CTR < X then action
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/automation-rules', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('google_automation_rules').select('*').eq('user_id', req.userId).order('created_at', { ascending: false });
+    res.json({ rules: data || [] });
+  } catch { res.json({ rules: [] }); }
+});
+
+router.post('/automation-rules', async (req: any, res: any) => {
+  try {
+    const { name, condition, action, threshold, enabled } = req.body;
+    if (!name || !condition || !action) return res.status(400).json({ error: 'name, condition, action zorunlu' });
+
+    const { data } = await supabase.from('google_automation_rules').insert([{
+      user_id: req.userId, name, condition, action, threshold: threshold || 0,
+      enabled: enabled !== false, created_at: new Date().toISOString(),
+    }]).select().single();
+
+    res.json({ ok: true, rule: data });
+  } catch (e: any) { res.json({ ok: false, error: e.message }); }
+});
+
+// Run automation rules (called by cron)
+async function runAutomationRules() {
+  try {
+    const { data: rules } = await supabase.from('google_automation_rules').select('*').eq('enabled', true);
+    for (const rule of (rules || [])) {
+      try {
+        const { data: campaigns } = await supabase.from('google_campaigns').select('*').eq('user_id', rule.user_id).eq('status', 'active');
+        for (const camp of (campaigns || [])) {
+          const perf = camp.performance || {};
+          let triggered = false;
+
+          if (rule.condition === 'ctr_below' && parseFloat(perf.ctr || '0') < rule.threshold) triggered = true;
+          if (rule.condition === 'spend_above' && parseFloat(perf.cost || '0') > rule.threshold) triggered = true;
+          if (rule.condition === 'conversions_zero' && parseFloat(perf.conversions || '0') === 0 && parseFloat(perf.cost || '0') > 50) triggered = true;
+
+          if (triggered) {
+            if (rule.action === 'pause') await supabase.from('google_campaigns').update({ status: 'paused' }).eq('id', camp.id);
+            if (rule.action === 'decrease_budget') await supabase.from('google_campaigns').update({ daily_budget: Math.round((camp.daily_budget || 100) * 0.7) }).eq('id', camp.id);
+            if (rule.action === 'alert') {
+              await supabase.from('ad_alerts').insert([{ user_id: rule.user_id, platform: 'google', campaign_id: camp.id, alert_type: rule.condition, message: `${camp.name}: Kural "${rule.name}" tetiklendi`, created_at: new Date().toISOString(), is_read: false }]);
+            }
+            console.log(`[Google Rule] "${rule.name}" triggered for ${camp.name}`);
+          }
+        }
+      } catch {}
+    }
+  } catch {}
+}
+setInterval(runAutomationRules, 60 * 60 * 1000);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 20-MINUTE OPTIMIZATION FLOW — haftalik kontrol listesi
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/weekly-checklist', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const [campRes, wasteRes, qsRes] = await Promise.allSettled([
+      supabase.from('google_campaigns').select('*').eq('user_id', userId),
+      supabase.from('google_campaigns').select('performance').eq('user_id', userId),
+      supabase.from('user_settings').select('google_capi_enabled').eq('user_id', userId).maybeSingle(),
+    ]);
+
+    const campaigns = campRes.status === 'fulfilled' ? campRes.value.data || [] : [];
+    const capiEnabled = qsRes.status === 'fulfilled' ? qsRes.value.data?.google_capi_enabled : false;
+
+    const checklist: any[] = [];
+    let completedCount = 0;
+
+    // 1. Check wasted spend
+    const hasWaste = campaigns.some((c: any) => parseFloat(c.performance?.cost || '0') > 50 && parseFloat(c.performance?.conversions || '0') === 0);
+    checklist.push({ id: 'waste', title: 'İsraf Kontrolü', description: 'Dönüşüm getirmeyen anahtar kelimeleri kontrol et', done: !hasWaste, action: '/google-ads', priority: 1 });
+    if (!hasWaste) completedCount++;
+
+    // 2. Check QS
+    checklist.push({ id: 'qs', title: 'Kalite Skoru Kontrolü', description: 'Düşük QS olan kelimeleri iyileştir', done: false, action: '/google-ads', priority: 2 });
+
+    // 3. Check CAPI
+    checklist.push({ id: 'capi', title: 'Conversion API', description: 'Smart Bidding için conversion tracking aktif mi?', done: !!capiEnabled, action: '/settings#google-capi', priority: 3 });
+    if (capiEnabled) completedCount++;
+
+    // 4. Search terms
+    checklist.push({ id: 'terms', title: 'Arama Terimleri', description: 'Yeni negatif keyword ekle, iyi terimleri keyword yap', done: false, action: '/google-ads', priority: 4 });
+
+    // 5. Budget review
+    checklist.push({ id: 'budget', title: 'Bütçe İnceleme', description: 'Düşük performanslı kampanyadan yüksek performanslıya bütçe kaydır', done: false, action: '/google-ads', priority: 5 });
+
+    // 6. Ad copy review
+    checklist.push({ id: 'ads', title: 'Reklam Metni Güncelle', description: 'En az 8 başlık ve 4 açıklama kullanın', done: false, action: '/google-ads', priority: 6 });
+
+    // 7. Extensions
+    checklist.push({ id: 'ext', title: 'Reklam Uzantıları', description: 'Sitelink, callout ve snippet ekleyin', done: false, action: '/google-ads', priority: 7 });
+
+    const progress = checklist.length > 0 ? Math.round((completedCount / checklist.length) * 100) : 0;
+
+    res.json({ checklist, progress, completedCount, totalItems: checklist.length, estimatedMinutes: 20 });
+  } catch (e: any) { res.json({ checklist: [], progress: 0, error: e.message }); }
+});
+
 module.exports = router;

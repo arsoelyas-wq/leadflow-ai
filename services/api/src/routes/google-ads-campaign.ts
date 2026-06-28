@@ -144,7 +144,7 @@ async function createGoogleCampaign(
         {
           create: {
             name,
-            status: 'PAUSED',
+            status: 'ENABLED',
             advertisingChannelType: 'SEARCH',
             campaignBudget: budgetResource,
             networkSettings: {
