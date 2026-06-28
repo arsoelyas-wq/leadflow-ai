@@ -10,13 +10,21 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_ADS_CLIENT_SECRET;
 const GOOGLE_DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 const REDIRECT_URI = process.env.GOOGLE_ADS_REDIRECT_URI || 'https://leadflow-ai-production.up.railway.app/api/google-ads/callback';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://leadflow-ai-web-kappa.vercel.app';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://sovlo.io';
 
-// OAuth URL
+// OAuth URL (JSON response)
 router.get('/oauth-url', async (req: any, res: any) => {
   const scopes = 'https://www.googleapis.com/auth/adwords email profile';
   const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent&state=${req.userId}`;
   res.json({ url });
+});
+
+// Direct auth redirect (browser navigates here)
+router.get('/auth', async (req: any, res: any) => {
+  const scopes = 'https://www.googleapis.com/auth/adwords email profile';
+  const userId = req.userId || req.query.state || '';
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${encodeURIComponent(scopes)}&access_type=offline&prompt=consent&state=${userId}`;
+  res.redirect(url);
 });
 
 
