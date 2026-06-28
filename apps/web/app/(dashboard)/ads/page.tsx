@@ -137,9 +137,7 @@ function AlgorithmTrainingBanner({ platform, eventsToday, eventsTotal, lastAt, e
   )
 }
 
-// ── META SIGNAL ORB — Behavioral data flowing to Meta ────────────────────────
-// Theme: data signals, behavioral targeting, Facebook blue → electric
-function MetaSignalOrb({ size = 110, sending = false, configured = false }: { size?: number; sending?: boolean; configured?: boolean }) {
+function _RemovedOrb(_p: any) {
   const [mounted, setMounted] = useState(false)
   const [angle, setAngle] = useState(0)
   const [signals, setSignals] = useState<Array<{ x: number; y: number; tx: number; ty: number; age: number; id: number; color: string }>>([])
@@ -301,34 +299,12 @@ function MetaSignalOrb({ size = 110, sending = false, configured = false }: { si
 }
 
 // ── META EVENT TYPE CONFIG ────────────────────────────────────────────────────
-const META_EVENT_TYPES = [
-  { value: 'Lead',                  label: 'Lead',            Icon: User, color: '#2563eb', desc: 'Yeni lead bildirimi' },
-  { value: 'Contact',               label: 'İletişim',        Icon: Phone, color: '#059669', desc: 'İletişim kuruldu' },
-  { value: 'ViewContent',           label: 'İçerik Görüntüleme', Icon: Eye, color: '#7c3aed', desc: 'Katalog/içerik görüntülendi' },
-  { value: 'InitiateCheckout',      label: 'Teklif Başladı',  Icon: FileText, color: '#b45309', desc: 'Teklif süreci başladı' },
-  { value: 'Purchase',              label: 'Satış',           Icon: ShoppingCart, color: '#dc2626', desc: 'Satış gerçekleşti' },
-  { value: 'CompleteRegistration',  label: 'Kayıt Tamamlandı',Icon: CheckCircle, color: '#0d9488', desc: 'Müşteri kaydı tamamlandı' },
-]
-
-const META_LEAD_STATUSES = ['Tüm leadler', 'new', 'contacted', 'replied', 'won', 'lost']
-const META_SECTORS = ['Tüm sektörler', 'mobilya', 'dekorasyon', 'inşaat', 'tekstil', 'elektronik']
 
 // ── META STAT CARD ────────────────────────────────────────────────────────────
-function MetaStatCard({ label, value, color, Icon }: any) {
-  return (
-    <div style={{ background: '#ffffff', border: `1px solid ${color}33`, borderRadius: 14, padding: '16px 14px', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-      <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', width: 56, height: 56, background: `radial-gradient(circle,${color}18 0%,transparent 70%)` }} />
-      <Icon size={20} style={{ color, marginBottom: 4 }} />
-      <p style={{ color, fontSize: 22, fontWeight: 800, margin: '0 0 3px', lineHeight: 1 }}>{value}</p>
-      <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{label}</p>
-    </div>
-  )
-}
-
 export default function AdsPage() {
   const { t } = useI18n()
   const searchParams = useSearchParams()
-  const [tab, setTab] = useState<'campaigns' | 'meta-intent'>('campaigns')
+  const [tab, setTab] = useState<'campaigns'>('campaigns')
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [campaigns, setCampaigns] = useState<any[]>([])
@@ -359,26 +335,7 @@ export default function AdsPage() {
   const [launching, setLaunching] = useState(false)
   const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // ── Meta Behavioral Intent tab state ──
-  const [metaLoaded, setMetaLoaded] = useState(false)
-  const [metaStats, setMetaStats] = useState<any>(null)
-  const [metaSending, setMetaSending] = useState(false)
-  const [metaCreating, setMetaCreating] = useState(false)
-  const [metaMsg, setMetaMsg] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
-  const [metaCopied, setMetaCopied] = useState(false)
-  const [metaEventName, setMetaEventName] = useState('Lead')
-  const [metaStatusFilter, setMetaStatusFilter] = useState('')
-  const [metaSectorFilter, setMetaSectorFilter] = useState('')
-  const [metaTestCode, setMetaTestCode] = useState('')
-  const [metaBatchLimit, setMetaBatchLimit] = useState(500)
-  const [metaSendResult, setMetaSendResult] = useState<any>(null)
-  const [metaAudienceName, setMetaAudienceName] = useState('')
-  const [metaAudienceResult, setMetaAudienceResult] = useState<any>(null)
-  const [metaPixelCode, setMetaPixelCode] = useState<any>(null)
-  const [metaShowPixel, setMetaShowPixel] = useState(false)
-  const [metaEventHistory, setMetaEventHistory] = useState<any[]>([])
-
-  // New feature states
+  // Feature states
   const [accountHealth, setAccountHealth] = useState<any>(null)
   const [fatigue, setFatigue] = useState<any>(null)
   const [refreshAlerts, setRefreshAlerts] = useState<any[]>([])
@@ -537,70 +494,6 @@ export default function AdsPage() {
     window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirect}&scope=ads_read,leads_retrieval,ads_management&state=meta&response_type=code`
   }
 
-  // ── Meta Behavioral Intent tab logic ──
-  useEffect(() => {
-    if (tab === 'meta-intent' && !metaLoaded) loadMeta()
-  }, [tab, metaLoaded])
-
-  const showMetaMsg = (type: 'success' | 'error' | 'warning', text: string) => {
-    setMetaMsg({ type, text }); setTimeout(() => setMetaMsg(null), 8000)
-  }
-
-  const loadMeta = async () => {
-    setMetaLoaded(true)
-    try {
-      const [s, h] = await Promise.allSettled([
-        api.get('/api/meta/stats'),
-        api.get('/api/meta/event-history'),
-      ])
-      if (s.status === 'fulfilled') setMetaStats(s.value)
-      if (h.status === 'fulfilled') setMetaEventHistory(h.value.events || [])
-    } catch {}
-  }
-
-  const metaTrackBatch = async () => {
-    setMetaSending(true); setMetaSendResult(null)
-    try {
-      const data = await api.post('/api/meta/track-batch', {
-        eventName: metaEventName,
-        status: metaStatusFilter || undefined,
-        sector: metaSectorFilter || undefined,
-        limit: metaBatchLimit,
-        testCode: metaTestCode || undefined,
-      })
-      setMetaSendResult(data)
-      if (data.errors?.length > 0) {
-        showMetaMsg('warning', `${data.message} — ${data.errors[0]}`)
-      } else {
-        showMetaMsg('success', data.message)
-      }
-      loadMeta()
-    } catch (e: any) { showMetaMsg('error', e.message) }
-    finally { setMetaSending(false) }
-  }
-
-  const metaCreateAudience = async () => {
-    if (!metaAudienceName) return
-    setMetaCreating(true); setMetaAudienceResult(null)
-    try {
-      const data = await api.post('/api/meta/custom-audience', {
-        name: metaAudienceName,
-        status: metaStatusFilter || undefined,
-        sector: metaSectorFilter || undefined,
-      })
-      setMetaAudienceResult(data)
-      showMetaMsg(data.metaAudienceId ? 'success' : data.metaError ? 'warning' : 'warning', data.message)
-    } catch (e: any) { showMetaMsg('error', e.message) }
-    finally { setMetaCreating(false) }
-  }
-
-  const loadMetaPixelCode = async () => {
-    try { const d = await api.get('/api/meta/pixel-code'); setMetaPixelCode(d); setMetaShowPixel(true) } catch {}
-  }
-
-  const metaConfigured = metaStats?.configured ?? false
-  const metaMsgColors = { success: { bg: '#ecfdf5', border: '#a7f3d0', text: '#047857' }, error: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' }, warning: { bg: '#fffbeb', border: '#fde68a', text: '#b45309' } }
-  const metaInp = { width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 13px', color: '#0f172a' as const, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-white">
