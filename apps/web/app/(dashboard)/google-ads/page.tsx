@@ -39,10 +39,10 @@ const GEVENT_LABELS: Record<string, string> = {
   Lead: 'Yeni Lead', Contact: 'İletişim', Purchase: 'Satış',
 }
 
-function GoogleAlgorithmBanner({ eventsToday, eventsTotal, lastAt, eventTypes }: {
-  eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[]
+function GoogleAlgorithmBanner({ eventsToday, eventsTotal, lastAt, eventTypes, connected }: {
+  eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[]; connected?: boolean
 }) {
-  const isActive = eventsTotal > 0
+  const isActive = eventsTotal > 0 || !!connected
 
   function relativeTime(iso: string | null) {
     if (!iso) return '—'
@@ -421,6 +421,7 @@ export default function GoogleAdsPage() {
           eventsTotal={gcapiStatus.eventsTotal}
           lastAt={gcapiStatus.lastAt}
           eventTypes={gcapiStatus.eventTypes}
+          connected={connected}
         />
 
         {/* 3 Action Cards */}

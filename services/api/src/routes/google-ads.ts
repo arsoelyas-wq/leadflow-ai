@@ -50,11 +50,26 @@ router.get('/callback', async (req: any, res: any) => {
 
     const { access_token, refresh_token } = tokenResp.data;
 
+    // Fetch Google Ads customer ID automatically
+    let customerId = '';
+    try {
+      const custResp = await axios.get('https://googleads.googleapis.com/v18/customers:listAccessibleCustomers', {
+        headers: { Authorization: `Bearer ${access_token}`, 'developer-token': GOOGLE_DEVELOPER_TOKEN || '' },
+        timeout: 10000,
+      });
+      const resourceNames = custResp.data?.resourceNames || [];
+      if (resourceNames.length > 0) customerId = resourceNames[0].replace('customers/', '');
+      console.log('[GoogleAds] Customer IDs found:', resourceNames.length, 'using:', customerId);
+    } catch (custErr: any) {
+      console.log('[GoogleAds] Customer ID fetch error:', custErr.response?.data?.error?.message || custErr.message);
+    }
+
     await supabase.from('google_ads_connections').delete().eq('user_id', state);
     const { error: insertErr } = await supabase.from('google_ads_connections').insert([{
       user_id: state,
       access_token,
       refresh_token,
+      customer_id: customerId || null,
     }]);
     if (insertErr) console.error('[GoogleAds] Kayit hatasi:', insertErr.message);
 
