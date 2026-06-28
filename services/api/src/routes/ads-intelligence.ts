@@ -1110,13 +1110,15 @@ router.get('/onboarding-status', async (req: any, res: any) => {
     if (!conn) return res.json({ connected: false, onboarded: false });
 
     const { data: campaigns } = await supabase.from('ad_campaigns').select('id').eq('user_id', req.userId).limit(1);
-    const { data: events } = await supabase.from('meta_capi_events').select('id').eq('user_id', req.userId).limit(1);
+    const { data: capiSettings } = await supabase.from('user_settings').select('meta_pixel_id, meta_capi_enabled').eq('user_id', req.userId).maybeSingle();
     const { data: leads } = await supabase.from('leads').select('id').eq('user_id', req.userId).ilike('source', '%meta%').limit(1);
+
+    const capiActive = capiSettings?.meta_capi_enabled && capiSettings?.meta_pixel_id && capiSettings.meta_pixel_id.length > 5;
 
     const steps = [
       { id: 'connect', label: 'Meta Baglantisi', done: true },
       { id: 'extract', label: 'Lead Cekme', done: (leads?.length || 0) > 0 },
-      { id: 'capi', label: 'CAPI Aktivasyonu', done: (events?.length || 0) > 0 },
+      { id: 'capi', label: 'CAPI Aktivasyonu', done: !!capiActive },
       { id: 'campaign', label: 'Ilk Kampanya', done: (campaigns?.length || 0) > 0 },
     ];
     const progress = Math.round((steps.filter(s => s.done).length / steps.length) * 100);

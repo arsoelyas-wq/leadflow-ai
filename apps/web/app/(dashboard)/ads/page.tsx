@@ -41,12 +41,12 @@ const EVENT_LABELS: Record<string, string> = {
   Lead: 'Yeni Lead', Contact: 'İletişim', InitiateCheckout: 'Teklif', Purchase: 'Satış', ViewContent: 'Görüntüleme',
 }
 
-function AlgorithmTrainingBanner({ platform, eventsToday, eventsTotal, lastAt, eventTypes }: {
+function AlgorithmTrainingBanner({ platform, eventsToday, eventsTotal, lastAt, eventTypes, capiEnabled }: {
   platform: 'meta' | 'google'
-  eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[]
+  eventsToday: number; eventsTotal: number; lastAt: string | null; eventTypes: string[]; capiEnabled?: boolean
 }) {
   const isMeta = platform === 'meta'
-  const isActive = eventsTotal > 0
+  const isActive = eventsTotal > 0 || !!capiEnabled
 
   function relativeTime(iso: string | null) {
     if (!iso) return '—'
@@ -653,6 +653,7 @@ export default function AdsPage() {
           eventsTotal={capiStatus.eventsTotal}
           lastAt={capiStatus.lastAt}
           eventTypes={capiStatus.eventTypes}
+          capiEnabled={accountHealth?.score >= 80}
         />
 
         {/* 3 Action Cards — Premium Design */}
