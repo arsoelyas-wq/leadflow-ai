@@ -172,6 +172,11 @@ export default function AdsPage() {
   const animIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Feature states
+  const [competitorAds, setCompetitorAds] = useState<any[]>([])
+  const [compSearching, setCompSearching] = useState(false)
+  const [compKeyword, setCompKeyword] = useState('')
+  const [compAnalysis, setCompAnalysis] = useState<any>(null)
+  const [roasPrediction, setRoasPrediction] = useState<any>(null)
   const [accountHealth, setAccountHealth] = useState<any>(null)
   const [fatigue, setFatigue] = useState<any>(null)
   const [refreshAlerts, setRefreshAlerts] = useState<any[]>([])
@@ -242,12 +247,14 @@ export default function AdsPage() {
       fetch(`${API}/api/meta-opt/creative-refresh-alerts`, { headers: authH() }).then(r => r.json()),
       fetch(`${API}/api/ads-intelligence/success-metrics`, { headers: authH() }).then(r => r.json()),
       fetch(`${API}/api/ads-intelligence/onboarding-status`, { headers: authH() }).then(r => r.json()),
-    ]).then(([h, f, cr, sm, ob]) => {
+      fetch(`${API}/api/ads-intelligence/predict-roas`, { headers: authH() }).then(r => r.json()),
+    ]).then(([h, f, cr, sm, ob, roas]) => {
       if (h.status === 'fulfilled') setAccountHealth(h.value)
       if (f.status === 'fulfilled') setFatigue(f.value)
       if (cr.status === 'fulfilled') setRefreshAlerts(cr.value?.alerts || [])
       if (sm.status === 'fulfilled') setSuccessMetrics(sm.value)
       if (ob.status === 'fulfilled') setOnboardingData(ob.value)
+      if (roas.status === 'fulfilled') setRoasPrediction(roas.value?.prediction)
     })
   }
 
@@ -627,7 +634,79 @@ export default function AdsPage() {
           </div>
         )}
 
-        {/* CAPI section removed — quality signals now on lead detail page */}
+        {/* ── COMPETITOR ADS + ROAS PREDICTION ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Competitor Ad Search */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <span className="text-sm font-bold text-slate-900 block mb-3">🔍 Rakip Reklam Analizi</span>
+            <div className="flex gap-2 mb-3">
+              <input value={compKeyword} onChange={e => setCompKeyword(e.target.value)} placeholder="Rakip adı veya anahtar kelime..."
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-400" />
+              <button onClick={async () => {
+                if (!compKeyword.trim()) return; setCompSearching(true)
+                try {
+                  const r = await fetch(`${API}/api/ads-intelligence/competitor-ads?keywords=${encodeURIComponent(compKeyword)}&country=TR`, { headers: authH() })
+                  const d = await r.json()
+                  setCompetitorAds(d.ads || [])
+                  if (d.ads?.length > 0) {
+                    const ar = await fetch(`${API}/api/ads-intelligence/competitor-ads/analyze`, { method: 'POST', headers: authH(), body: JSON.stringify({ ads: d.ads }) })
+                    setCompAnalysis((await ar.json()).analysis)
+                  }
+                } catch {} setCompSearching(false)
+              }} disabled={compSearching || !compKeyword.trim()}
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition">
+                {compSearching ? '...' : 'Ara'}
+              </button>
+            </div>
+            {competitorAds.length > 0 ? (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {competitorAds.slice(0, 4).map((ad, i) => (
+                  <div key={i} className="bg-slate-50 border border-slate-100 rounded-lg p-2">
+                    <p className="text-[10px] font-bold text-blue-600">{ad.pageName}</p>
+                    <p className="text-[10px] text-slate-700 mt-0.5 line-clamp-2">{ad.title || ad.body?.slice(0, 80)}</p>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="text-[10px] text-slate-400 text-center py-3">Rakip anahtar kelimesini yazıp arayın</p>}
+            {compAnalysis && (
+              <div className="mt-3 bg-violet-50 border border-violet-200 rounded-lg p-2.5">
+                <p className="text-[10px] font-bold text-violet-700 mb-1">AI Analiz</p>
+                <p className="text-[9px] text-violet-600">Önerilen Açı: {compAnalysis.suggestedAngle}</p>
+                <p className="text-[9px] text-violet-600">Başlık Fikri: {compAnalysis.hookIdea}</p>
+              </div>
+            )}
+          </div>
+
+          {/* ROAS Prediction */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <span className="text-sm font-bold text-slate-900 block mb-3">📈 ROAS Tahmini</span>
+            {roasPrediction ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-emerald-600">{roasPrediction.predictedROAS}x</p>
+                    <p className="text-[9px] text-emerald-500">ROAS</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-blue-600">₺{roasPrediction.costPerLead}</p>
+                    <p className="text-[9px] text-blue-500">Lead Maliyeti</p>
+                  </div>
+                  <div className="bg-violet-50 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-violet-600">₺{roasPrediction.avgDealValue}</p>
+                    <p className="text-[9px] text-violet-500">Ort. Satış</p>
+                  </div>
+                </div>
+                <div className={`text-[10px] px-3 py-2 rounded-lg ${roasPrediction.confidence === 'high' ? 'bg-emerald-50 text-emerald-700' : roasPrediction.confidence === 'medium' ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-600'}`}>
+                  {roasPrediction.tip}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-xl p-6 text-center">
+                <p className="text-xs text-slate-500">Kampanya verisi toplandığında ROAS tahmini gösterilecek</p>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Activity Feed */}
         {activities.length > 0 && (

@@ -1330,4 +1330,90 @@ router.get('/success-metrics', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPETITOR AD ANALYSIS — Meta Ad Library'den rakip reklam analizi
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/competitor-ads', async (req: any, res: any) => {
+  try {
+    const { keywords, country } = req.query;
+    const { data: conn } = await supabase.from('meta_connections').select('access_token').eq('user_id', req.userId).maybeSingle();
+    if (!conn?.access_token) return res.json({ ads: [], error: 'Meta bagli degil' });
+
+    const params: any = {
+      access_token: conn.access_token,
+      ad_type: 'ALL', ad_active_status: 'ACTIVE', limit: 15,
+      fields: 'id,ad_creative_body,ad_creative_link_title,ad_delivery_start_time,page_name',
+    };
+    if (keywords) params.search_terms = keywords;
+    if (country) params.ad_reached_countries = [country || 'TR'];
+
+    const resp = await axios.get('https://graph.facebook.com/v20.0/ads_archive', { params, timeout: 15000 });
+    const ads = (resp.data?.data || []).map((ad: any) => ({
+      id: ad.id, pageName: ad.page_name, body: ad.ad_creative_body,
+      title: ad.ad_creative_link_title, startDate: ad.ad_delivery_start_time,
+    }));
+    res.json({ ads, total: ads.length });
+  } catch (e: any) { res.json({ ads: [], error: e.response?.data?.error?.message || e.message }); }
+});
+
+router.post('/competitor-ads/analyze', async (req: any, res: any) => {
+  try {
+    const { ads } = req.body;
+    if (!ads?.length) return res.status(400).json({ error: 'ads zorunlu' });
+    const summary = ads.slice(0, 5).map((a: any) => `${a.pageName}: "${a.title}" - ${(a.body || '').slice(0, 80)}`).join('\n');
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 400,
+      messages: [{ role: 'user', content: `Rakip reklamlari analiz et, JSON dondur Turkce:\n${summary}\n\n{"patterns":["tema1"],"weaknesses":["zayiflik1"],"opportunities":["firsat1"],"suggestedAngle":"onerilen aci","hookIdea":"dikkat cekici baslik"}` }],
+    });
+    const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+    res.json({ analysis: m ? JSON.parse(m[0]) : null });
+  } catch (e: any) {
+    res.json({ analysis: { patterns: ['Analiz yapilamadi'], weaknesses: [], opportunities: [], suggestedAngle: 'Deger odakli yaklasim', hookIdea: 'Ucretsiz deneyin' } });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROAS PREDICTION — 30 gunluk ROAS tahmini
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/predict-roas', async (req: any, res: any) => {
+  try {
+    const { data: conn } = await supabase.from('meta_connections').select('access_token, ad_accounts').eq('user_id', req.userId).maybeSingle();
+    if (!conn?.access_token) return res.json({ prediction: null, error: 'Meta bagli degil' });
+
+    const accs = typeof conn.ad_accounts === 'string' ? JSON.parse(conn.ad_accounts) : conn.ad_accounts || [];
+    const adAccountId = accs[0]?.id;
+    if (!adAccountId) return res.json({ prediction: null });
+
+    const campResp = await axios.get(`${GRAPH}/${adAccountId}/campaigns`, {
+      params: { access_token: conn.access_token, fields: 'id,name,insights.date_preset(last_30d){spend,impressions,clicks,actions}', limit: 5 },
+      timeout: 15000,
+    });
+
+    const campaigns = campResp.data?.data || [];
+    let totalSpend = 0, totalLeads = 0;
+    for (const c of campaigns) {
+      const ins = c.insights?.data?.[0] || {};
+      totalSpend += parseFloat(ins.spend || '0');
+      totalLeads += parseInt((ins.actions || []).find((a: any) => a.action_type === 'lead')?.value || '0');
+    }
+
+    const costPerLead = totalLeads > 0 ? totalSpend / totalLeads : 0;
+    const { data: wonLeads } = await supabase.from('leads').select('deal_value').eq('user_id', req.userId).eq('status', 'won').gte('won_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString());
+    const avgDealValue = wonLeads?.length ? wonLeads.reduce((s: number, l: any) => s + (l.deal_value || 0), 0) / wonLeads.length : 0;
+    const predictedROAS = costPerLead > 0 && avgDealValue > 0 ? Math.round((avgDealValue / costPerLead) * 100) / 100 : 0;
+
+    res.json({
+      prediction: {
+        predictedROAS, costPerLead: Math.round(costPerLead),
+        avgDealValue: Math.round(avgDealValue), totalSpend: Math.round(totalSpend),
+        totalLeads, campaigns: campaigns.length,
+        confidence: totalLeads >= 20 ? 'high' : totalLeads >= 5 ? 'medium' : 'low',
+        tip: predictedROAS > 3 ? 'ROAS cok iyi — butceyi artirin' : predictedROAS > 1 ? 'Karlisiniz — optimize edin' : 'ROAS dusuk — hedefleme ve metin iyilestirin',
+      },
+    });
+  } catch (e: any) { res.json({ prediction: null, error: e.message }); }
+});
+
 module.exports = router;
