@@ -642,17 +642,7 @@ export default function AdsPage() {
           </div>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl w-fit border border-slate-100">
-          <button onClick={() => setTab('campaigns')}
-            className={`px-5 py-2 text-xs font-semibold rounded-lg transition ${tab === 'campaigns' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-            Kampanyalar
-          </button>
-          <button onClick={() => setTab('meta-intent')}
-            className={`flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-lg transition ${tab === 'meta-intent' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-            <Target className="w-3 h-3" /> CAPI & Kitleler
-          </button>
-        </div>
+        {/* Tab bar — single tab, CAPI moved to lead detail */}
 
       {tab === 'campaigns' && (
         <>
@@ -1099,7 +1089,8 @@ export default function AdsPage() {
         </>
       )}
 
-      {tab === 'meta-intent' && (
+      {/* CAPI tab removed — quality signals moved to lead detail page */}
+      {false && (
         <div style={{ padding: 0 }}>
 
           {/* ── HERO ──────────────────────────────────────────────────────────── */}

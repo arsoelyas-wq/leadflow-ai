@@ -1129,6 +1129,41 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
+          {/* Meta Kalite Sinyali */}
+          <div className="bg-gradient-to-b from-blue-900/30 to-slate-800/50 border border-blue-700/50 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="w-3.5 h-3.5 text-blue-400" />
+              <h3 className="text-blue-300 text-xs font-bold">Meta Algoritma Sinyali</h3>
+            </div>
+            <p className="text-[10px] text-slate-400 mb-3">Bu lead kaliteli mi? Meta&apos;ya bildirin — algoritma benzer lead&apos;leri bulsun</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { q: 'qualified', label: 'Kaliteli Lead', icon: '✅', color: 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border-emerald-700/50' },
+                { q: 'meeting_booked', label: 'Toplantı Var', icon: '📅', color: 'bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border-blue-700/50' },
+                { q: 'won', label: 'Satış Oldu', icon: '🏆', color: 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border-amber-700/50' },
+                { q: 'unqualified', label: 'Kalitesiz', icon: '❌', color: 'bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-700/50' },
+              ].map(s => (
+                <button key={s.q} onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token')
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+                    const r = await fetch(`${API_URL}/api/ads-intelligence/quality-signal`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({ leadId: lead.id, quality: s.q }),
+                    })
+                    const d = await r.json()
+                    if (d.ok) { showMsg('success', d.message || 'Meta\'ya sinyal gönderildi!'); if (s.q === 'won') updateStatus('won') }
+                    else showMsg('error', d.error || 'Sinyal gönderilemedi')
+                  } catch { showMsg('error', 'Bağlantı hatası') }
+                }}
+                  className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-[11px] font-medium border transition ${s.color}`}>
+                  <span>{s.icon}</span> {s.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] text-slate-500 mt-2 text-center">Sinyal gönderince Meta benzer profilde reklam gösterir</p>
+          </div>
+
           {/* Hızlı Aksiyonlar */}
           <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5">
             <h3 className="text-slate-400 text-xs mb-3">{t('leads.hizli_aksiyon', 'Hızlı Aksiyon')}</h3>

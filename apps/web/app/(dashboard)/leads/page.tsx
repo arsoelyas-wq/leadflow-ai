@@ -4,7 +4,7 @@ import { api } from '@/lib/api'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 import {
-  Search, Plus, Trash2, ExternalLink, Crosshair, RefreshCw,
+  Search, Plus, Trash2, ExternalLink, Crosshair, RefreshCw, Target,
   Download, Flame, Globe, ChevronDown, ChevronUp, Copy, CheckCircle2, X,
   Instagram, Users, TrendingUp, Zap, SlidersHorizontal, Phone, Star, MapPin, ChevronsUpDown,
 } from 'lucide-react'
@@ -659,7 +659,13 @@ export default function LeadsPage() {
                     </td>
                     {/* Status */}
                     <td className="px-3 py-3 align-middle">
-                      <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)}/>
+                      <div className="flex items-center gap-1">
+                        <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)}/>
+                        <button title="Meta'ya kaliteli lead sinyali gönder" onClick={async(e)=>{e.stopPropagation();try{const d=await api.post('/api/ads-intelligence/quality-signal',{leadId:lead.id,quality:'qualified'});toast('success',d.message||'Meta sinyali gönderildi!')}catch{toast('error','Sinyal gönderilemedi')}}}
+                          className="opacity-0 group-hover/row:opacity-100 w-5 h-5 flex items-center justify-center rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-all shrink-0">
+                          <Target size={10}/>
+                        </button>
+                      </div>
                     </td>
                     {/* Date */}
                     <td className="px-3 py-3 align-middle text-slate-400 text-[11px] whitespace-nowrap">
