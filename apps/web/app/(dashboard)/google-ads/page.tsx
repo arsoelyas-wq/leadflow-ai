@@ -164,6 +164,13 @@ export default function GoogleAdsPage() {
   const [biddingRecs, setBiddingRecs] = useState<any>(null)
   const [extensions, setExtensions] = useState<any>(null)
   const [extLoading, setExtLoading] = useState(false)
+  const [dailyRecs, setDailyRecs] = useState<any>(null)
+  const [weeklyCheck, setWeeklyCheck] = useState<any>(null)
+  const [wastedSpend, setWastedSpend] = useState<any>(null)
+  const [abTest, setAbTest] = useState<any>(null)
+  const [abLoading, setAbLoading] = useState(false)
+  const [gHealth, setGHealth] = useState<any>(null)
+  const [applyingRec, setApplyingRec] = useState<string | null>(null)
 
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
@@ -245,9 +252,17 @@ export default function GoogleAdsPage() {
     Promise.allSettled([
       fetch(`${API}/api/google-optimizer/top-position-analysis`, { headers: authH() }).then(r => r.json()),
       fetch(`${API}/api/google-optimizer/bidding-recommendation`, { headers: authH() }).then(r => r.json()),
-    ]).then(([tp, br]) => {
+      fetch(`${API}/api/google-optimizer/daily-recommendations`, { headers: authH() }).then(r => r.json()),
+      fetch(`${API}/api/google-optimizer/weekly-checklist`, { headers: authH() }).then(r => r.json()),
+      fetch(`${API}/api/google-optimizer/wasted-spend`, { headers: authH() }).then(r => r.json()),
+      fetch(`${API}/api/google-optimizer/account-health`, { headers: authH() }).then(r => r.json()),
+    ]).then(([tp, br, dr, wc, ws, gh]) => {
       if (tp.status === 'fulfilled') setTopPosition(tp.value)
       if (br.status === 'fulfilled') setBiddingRecs(br.value)
+      if (dr.status === 'fulfilled') setDailyRecs(dr.value)
+      if (wc.status === 'fulfilled') setWeeklyCheck(wc.value)
+      if (ws.status === 'fulfilled') setWastedSpend(ws.value)
+      if (gh.status === 'fulfilled') setGHealth(gh.value)
     })
   }
 
@@ -458,104 +473,200 @@ export default function GoogleAdsPage() {
           </button>
         </div>
 
-        {/* ── TOP POSITION + BIDDING ── */}
-        {topPosition && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Top Position Score */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-bold text-slate-900">🎯 En Üst Sıra Skoru</span>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black ${
-                  topPosition.overallScore >= 80 ? 'bg-emerald-50 text-emerald-600' :
-                  topPosition.overallScore >= 60 ? 'bg-amber-50 text-amber-600' :
-                  'bg-red-50 text-red-600'
-                }`}>{topPosition.grade}</div>
-              </div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex-1 h-3 bg-slate-100 rounded-full">
-                  <div className={`h-full rounded-full transition-all ${
-                    topPosition.overallScore >= 80 ? 'bg-emerald-500' : topPosition.overallScore >= 60 ? 'bg-amber-500' : 'bg-red-500'
-                  }`} style={{ width: `${topPosition.overallScore}%` }} />
+        {/* ── DAILY RECOMMENDATIONS (Opteo style) ── */}
+        {dailyRecs?.recommendations?.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#4285F4] to-[#34A853] rounded-lg flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-sm font-bold text-slate-700">{topPosition.overallScore}/100</span>
-              </div>
-              {topPosition.topPositionTip && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
-                  <p className="text-[11px] text-blue-700 font-medium">💡 {topPosition.topPositionTip}</p>
+                <div>
+                  <span className="text-sm font-bold text-slate-900">Bugün Yapılacaklar</span>
+                  <span className="ml-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{dailyRecs.total} öneri</span>
                 </div>
-              )}
-              {(topPosition.actions || []).slice(0, 3).map((a: any, i: number) => (
-                <div key={i} className={`text-xs mb-2 p-2.5 rounded-lg border ${a.priority === 'critical' ? 'bg-red-50 border-red-200' : a.priority === 'high' ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`font-semibold ${a.priority === 'critical' ? 'text-red-700' : a.priority === 'high' ? 'text-amber-700' : 'text-slate-700'}`}>{a.category}</span>
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${a.priority === 'critical' ? 'bg-red-100 text-red-600' : a.priority === 'high' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>{a.priority}</span>
+              </div>
+              <span className="text-[10px] text-slate-400">1 tıkla uygula</span>
+            </div>
+            <div className="space-y-2">
+              {dailyRecs.recommendations.slice(0, 5).map((rec: any) => (
+                <div key={rec.id} className={`flex items-center justify-between p-3 rounded-xl border transition ${rec.priority === 'critical' ? 'bg-red-50 border-red-200' : rec.priority === 'high' ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex-1 min-w-0 mr-3">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${rec.priority === 'critical' ? 'bg-red-100 text-red-600' : rec.priority === 'high' ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>{rec.priority === 'critical' ? 'ACİL' : rec.priority === 'high' ? 'ÖNEMLİ' : 'ÖNERİ'}</span>
+                      <span className="text-xs font-semibold text-slate-900 truncate">{rec.title}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 truncate">{rec.description}</p>
+                    <p className="text-[9px] text-emerald-600 mt-0.5">{rec.impact}</p>
                   </div>
-                  <p className="text-slate-600">{a.action}</p>
-                  <p className="text-[10px] text-emerald-600 mt-1">{a.impact}</p>
+                  {rec.action && rec.action !== 'go_settings' && (
+                    <button onClick={async () => {
+                      setApplyingRec(rec.id)
+                      try {
+                        const r = await fetch(`${API}/api/google-optimizer/apply-recommendation`, { method: 'POST', headers: authH(), body: JSON.stringify({ recommendationId: rec.id, action: rec.action, campaignId: rec.campaignId }) })
+                        const d = await r.json()
+                        if (d.ok) { showMsg('success', d.message); loadAll() }
+                      } catch {} setApplyingRec(null)
+                    }} disabled={applyingRec === rec.id}
+                      className="shrink-0 px-3 py-1.5 bg-[#4285F4] hover:bg-[#3367D6] text-white rounded-lg text-[10px] font-bold transition disabled:opacity-50">
+                      {applyingRec === rec.id ? '...' : 'Uygula'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
+          </div>
+        )}
 
-            {/* Smart Bidding Recommendations */}
+        {/* ── HEALTH + TOP POSITION + WASTED SPEND ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Health Score */}
+          {gHealth && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5">
-              <span className="text-sm font-bold text-slate-900 block mb-4">⚡ Teklif Stratejisi Önerisi</span>
-              {biddingRecs?.recommendations?.length > 0 ? (
-                <div className="space-y-3">
-                  {biddingRecs.recommendations.slice(0, 3).map((rec: any, i: number) => (
-                    <div key={i} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-900 truncate max-w-[65%]">{rec.name}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{rec.suggestedStrategy.replace(/_/g, ' ')}</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">{rec.reason}</p>
-                      {rec.currentCPA > 0 && (
-                        <p className="text-[10px] text-slate-400 mt-1">Mevcut CPA: ₺{rec.currentCPA} · {rec.conversions} dönüşüm</p>
-                      )}
-                    </div>
-                  ))}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-bold text-slate-900">🏥 Hesap Sağlığı</span>
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-black ${gHealth.score >= 80 ? 'bg-emerald-50 text-emerald-600' : gHealth.score >= 60 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>{gHealth.grade}</div>
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 h-2.5 bg-slate-100 rounded-full">
+                  <div className={`h-full rounded-full ${gHealth.score >= 80 ? 'bg-emerald-500' : gHealth.score >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${gHealth.score}%` }} />
                 </div>
+                <span className="text-xs font-bold text-slate-700">{gHealth.score}</span>
+              </div>
+              {(gHealth.issues || []).slice(0, 2).map((issue: any, i: number) => (
+                <p key={i} className="text-[10px] text-slate-500 mb-1">• {issue.message}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Top Position */}
+          {topPosition && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-bold text-slate-900">🎯 Üst Sıra Skoru</span>
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-black ${topPosition.overallScore >= 80 ? 'bg-emerald-50 text-emerald-600' : topPosition.overallScore >= 60 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>{topPosition.grade}</div>
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 h-2.5 bg-slate-100 rounded-full">
+                  <div className={`h-full rounded-full ${topPosition.overallScore >= 80 ? 'bg-emerald-500' : topPosition.overallScore >= 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${topPosition.overallScore}%` }} />
+                </div>
+                <span className="text-xs font-bold text-slate-700">{topPosition.overallScore}</span>
+              </div>
+              {topPosition.topPositionTip && <p className="text-[10px] text-blue-600 bg-blue-50 rounded-lg p-2">{topPosition.topPositionTip}</p>}
+            </div>
+          )}
+
+          {/* Wasted Spend */}
+          {wastedSpend && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <span className="text-sm font-bold text-slate-900 block mb-3">💸 İsraf Tespiti</span>
+              {wastedSpend.totalWaste > 0 ? (
+                <>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 text-center">
+                    <p className="text-2xl font-black text-red-600">₺{wastedSpend.totalWaste}</p>
+                    <p className="text-[10px] text-red-500">son 30 günde israf</p>
+                  </div>
+                  <div className="space-y-1">
+                    {(wastedSpend.wastedKeywords || []).slice(0, 3).map((kw: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-[10px] bg-slate-50 rounded-lg p-1.5">
+                        <span className="text-slate-700 truncate max-w-[60%]">{kw.keyword}</span>
+                        <span className="text-red-500 font-bold">₺{kw.cost}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="bg-slate-50 rounded-xl p-4 text-center">
-                  <p className="text-xs text-slate-500">Henüz kampanya verisi yok</p>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                  <p className="text-xs text-emerald-600 font-medium">✅ İsraf tespit edilmedi</p>
                 </div>
               )}
+            </div>
+          )}
+        </div>
 
-              {/* Ad Extension Generator */}
-              <div className="mt-4 pt-4 border-t border-slate-100">
+        {/* ── BIDDING + EXTENSIONS + A/B TEST ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Smart Bidding */}
+          {biddingRecs?.recommendations?.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-5">
+              <span className="text-sm font-bold text-slate-900 block mb-3">⚡ Teklif Stratejisi</span>
+              <div className="space-y-2">
+                {biddingRecs.recommendations.slice(0, 2).map((rec: any, i: number) => (
+                  <div key={i} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-slate-900 truncate max-w-[60%]">{rec.name}</span>
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{rec.suggestedStrategy.replace(/_/g, ' ')}</span>
+                    </div>
+                    <p className="text-[10px] text-slate-600">{rec.reason}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Extensions */}
+              <div className="mt-3 pt-3 border-t border-slate-100">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-700">📎 Reklam Uzantıları</span>
-                  <button onClick={async () => {
-                    setExtLoading(true)
-                    try {
-                      const r = await fetch(`${API}/api/google-optimizer/generate-extensions`, {
-                        method: 'POST', headers: authH(),
-                        body: JSON.stringify({ businessDescription: desc || 'Genel isletme', websiteUrl: '', keywords: [] }),
-                      })
-                      const d = await r.json()
-                      if (d.ok) { setExtensions(d.extensions); showMsg('success', 'Uzantılar oluşturuldu!') }
-                    } catch {} setExtLoading(false)
-                  }} disabled={extLoading}
-                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50">
-                    {extLoading ? 'Oluşturuluyor...' : 'AI ile Oluştur →'}
-                  </button>
+                  <button onClick={async () => { setExtLoading(true); try { const r = await fetch(`${API}/api/google-optimizer/generate-extensions`, { method: 'POST', headers: authH(), body: JSON.stringify({ businessDescription: desc || 'isletme' }) }); const d = await r.json(); if (d.ok) setExtensions(d.extensions) } catch {} setExtLoading(false) }} disabled={extLoading}
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50">{extLoading ? '...' : 'AI Oluştur →'}</button>
                 </div>
                 {extensions ? (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1">
-                      {extensions.sitelinks?.map((s: any, i: number) => (
-                        <span key={i} className="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded-lg">{s.title}</span>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {extensions.callouts?.slice(0, 4).map((c: string, i: number) => (
-                        <span key={i} className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded">{c}</span>
-                      ))}
-                    </div>
+                  <div className="flex flex-wrap gap-1">
+                    {extensions.sitelinks?.map((s: any, i: number) => (<span key={i} className="text-[9px] bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded">{s.title}</span>))}
+                    {extensions.callouts?.slice(0, 3).map((c: string, i: number) => (<span key={i} className="text-[9px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-0.5 rounded">{c}</span>))}
                   </div>
-                ) : (
-                  <p className="text-[10px] text-slate-400">Sitelink, callout ve snippet uzantıları oluşturun — Ad Rank ücretsiz artar</p>
-                )}
+                ) : <p className="text-[9px] text-slate-400">Ad Rank ücretsiz yükseltir</p>}
               </div>
+            </div>
+          )}
+
+          {/* A/B Test */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-bold text-slate-900">🧪 A/B Test Önerileri</span>
+              <button onClick={async () => { setAbLoading(true); try { const r = await fetch(`${API}/api/google-optimizer/ab-test-suggestions`, { method: 'POST', headers: authH(), body: JSON.stringify({ campaignName: campaigns[0]?.name || '', currentHeadlines: [], currentDescriptions: [] }) }); setAbTest(await r.json()) } catch {} setAbLoading(false) }} disabled={abLoading}
+                className="text-[10px] font-bold text-violet-600 hover:text-violet-700 disabled:opacity-50">{abLoading ? 'Oluşturuluyor...' : 'AI Varyasyon Oluştur →'}</button>
+            </div>
+            {abTest?.variants ? (
+              <div className="space-y-2">
+                {abTest.variants.slice(0, 3).map((v: any, i: number) => (
+                  <div key={i} className="bg-violet-50 border border-violet-200 rounded-xl p-2.5">
+                    <span className="text-[10px] font-bold text-violet-700">{v.name}</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(v.headlines || []).slice(0, 2).map((h: string, hi: number) => (<span key={hi} className="text-[9px] bg-white border border-violet-100 text-slate-700 px-1.5 py-0.5 rounded">{h}</span>))}
+                    </div>
+                    <p className="text-[9px] text-violet-500 mt-1">{v.hypothesis}</p>
+                  </div>
+                ))}
+                {abTest.test_duration && <p className="text-[9px] text-slate-400 mt-1">Test süresi: {abTest.test_duration}</p>}
+              </div>
+            ) : (
+              <div className="bg-slate-50 rounded-xl p-4 text-center">
+                <p className="text-xs text-slate-500">AI ile headline/description varyasyonları oluşturun</p>
+                <p className="text-[9px] text-slate-400 mt-1">Kazanan varyasyon CTR&apos;ı %30-50 artırabilir</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── WEEKLY CHECKLIST (WordStream 20-min style) ── */}
+        {weeklyCheck && (
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-900">📋 Haftalık Optimizasyon</span>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">~{weeklyCheck.estimatedMinutes} dk</span>
+              </div>
+              <span className="text-xs font-bold text-emerald-700">{weeklyCheck.completedCount}/{weeklyCheck.totalItems}</span>
+            </div>
+            <div className="h-2 bg-emerald-100 rounded-full mb-3">
+              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${weeklyCheck.progress}%` }} />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {(weeklyCheck.checklist || []).slice(0, 8).map((item: any) => (
+                <div key={item.id} className={`flex items-center gap-1.5 text-[10px] p-2 rounded-lg ${item.done ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-slate-600 border border-slate-200'}`}>
+                  {item.done ? <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" /> : <div className="w-3 h-3 rounded-full border border-slate-300 shrink-0" />}
+                  <span className="truncate">{item.title}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
