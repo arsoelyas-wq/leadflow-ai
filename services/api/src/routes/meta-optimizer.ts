@@ -637,15 +637,16 @@ router.get('/account-health', async (req: any, res: any) => {
     }
 
     // CAPI + Pixel kontrolu
-    const { data: settings } = await supabase.from('user_settings').select('meta_pixel_id, meta_capi_enabled, meta_capi_token').eq('user_id', req.userId).maybeSingle();
-    const capiConfigured = settings?.meta_capi_enabled && settings?.meta_capi_token && settings?.meta_pixel_id && !settings.meta_pixel_id.includes('@');
+    const { data: settings } = await supabase.from('user_settings').select('meta_pixel_id, meta_capi_enabled').eq('user_id', req.userId).maybeSingle();
+    const hasRealPixel = settings?.meta_pixel_id && !settings.meta_pixel_id.includes('@') && settings.meta_pixel_id.length > 5;
+    const capiConfigured = settings?.meta_capi_enabled && hasRealPixel;
 
     if (!capiConfigured) {
       healthScore -= 15;
       issues.push({ type: 'no_capi', severity: 'critical', message: 'CAPI aktif degil — algoritma doğru ogrenemez' });
     }
 
-    if (!settings?.meta_pixel_id || settings.meta_pixel_id.includes('@')) {
+    if (!hasRealPixel) {
       healthScore -= 10;
       issues.push({ type: 'no_pixel', severity: 'warning', message: 'Pixel tanimli degil — web donusumleri izlenemiyor' });
     }
