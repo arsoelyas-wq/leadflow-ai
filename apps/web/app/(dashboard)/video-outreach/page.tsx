@@ -102,6 +102,14 @@ function StepAvatar({ selected, onSelect }: any) {
         </div>
       )}
 
+      {stockLoading && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="h-40 bg-slate-800 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
         <span className="text-violet-400 text-sm">⚡</span>
         <p className="text-violet-300 text-xs">Kendi AI altyapımız — <strong>MuseTalk motoru</strong> ile dudak senkronizasyonu ve yüz restorasyonu</p>
@@ -354,7 +362,7 @@ function StepLead({ selected, onSelect, leads, language, onLanguageChange, aspec
           {overLimit ? <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0"/> : <CheckCircle className="w-4 h-4 text-blue-400 shrink-0"/>}
           <div className="flex-1">
             <p className={`text-sm font-medium ${overLimit ? 'text-amber-300' : 'text-blue-300'}`}>
-              {selected.length} lead seçildi {overLimit && `— maksimum ${MAX_CAMPAIGN}, ilk ${MAX_CAMPAIGN} kullanılacak`}
+              {selected.length} lead seçildi {overLimit && <span className="text-amber-400 font-bold"> — Dikkat: Sadece ilk {MAX_CAMPAIGN} lead işlenecek!</span>}
             </p>
             <p className="text-blue-400/60 text-xs">{selected.map((l: any) => l.company_name).slice(0,3).join(', ')}{selected.length > 3 ? ` +${selected.length-3} daha` : ''}</p>
           </div>
@@ -998,6 +1006,17 @@ export default function VideoOutreachPage() {
       .then(r => r.json()).then(d => setDuplicates(d.existing || [])).catch(() => {})
   }, [selectedLead.length])
 
+  // Auto-poll when videos are processing
+  useEffect(() => {
+    const hasProcessing = videos.some(v => ['processing', 'generating', 'researching'].includes(v.status))
+    if (!hasProcessing) return
+    const interval = setInterval(() => {
+      fetch(`${API}/api/video-outreach/videos?limit=20`, { headers: authH() })
+        .then(r => r.json()).then(d => setVideos(d.videos || [])).catch(() => {})
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [videos])
+
   async function loadAll() {
     try {
       const [l, v, s] = await Promise.allSettled([
@@ -1234,10 +1253,12 @@ export default function VideoOutreachPage() {
                       {v.research_quality === 'web_search' && (
                         <span className="text-xs px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded shrink-0">{t('video_outreach.arastirildi', '🔍 Araştırıldı')}</span>
                       )}
-                      {v.script_score > 0 && (
+                      {v.script_score != null && v.script_score > 0 ? (
                         <span className="flex items-center gap-0.5 text-xs text-purple-400 shrink-0">
                           <Star className="w-3 h-3"/> {v.script_score}/10
                         </span>
+                      ) : v.script && (
+                        <span className="text-[10px] text-slate-500">~{(v.script || '').split(/\s+/).length} kelime · ~{Math.round((v.script || '').split(/\s+/).length / 2.5)}sn</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">

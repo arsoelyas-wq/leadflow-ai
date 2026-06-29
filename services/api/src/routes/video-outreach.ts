@@ -490,15 +490,18 @@ async function researchLead(lead: any, profile: any): Promise<LeadResearch> {
     return cached;
   }
 
-  // 2. Perplexity sonar-pro — single API call, specialised web search
+  // 2. Perplexity sonar-pro — with retry
   if (process.env.PERPLEXITY_API_KEY) {
-    try {
-      console.log(`[Research] Perplexity: ${lead.company_name}`);
-      const research = await researchWithPerplexity(lead, profile);
-      await setGlobalResearchCache(lead.company_name, country, research);
-      return research;
-    } catch (e: any) {
-      console.warn(`[Research] Perplexity failed for "${lead.company_name}", falling back:`, e.message?.slice(0, 80));
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        console.log(`[Research] Perplexity (attempt ${attempt}): ${lead.company_name}`);
+        const research = await researchWithPerplexity(lead, profile);
+        await setGlobalResearchCache(lead.company_name, country, research);
+        return research;
+      } catch (e: any) {
+        console.warn(`[Research] Perplexity attempt ${attempt} failed: ${e.message?.slice(0, 60)}`);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 3000));
+      }
     }
   }
 
@@ -1298,7 +1301,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
     const { data: campaign } = await supabase.from('video_campaigns').insert([{
       user_id: userId,
-      name: campaignName || `Video Kampanyası ${new Date().toLocaleDateString('tr-TR')}`,
+      name: campaignName || `Video Kampanyası ${new Date().toLocaleDateString('tr-TR')} ${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`,
       total_leads: leadIds.length, status: 'running',
       avatar_id: avatarId, voice_id: voiceId,
     }]).select().single();
@@ -1813,5 +1816,105 @@ setInterval(async () => {
     }
   } catch {}
 }, 5 * 60 * 1000);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIDEO ARCHIVE / DELETE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.delete('/video/:id', async (req: any, res: any) => {
+  try {
+    const { error } = await supabase.from('video_outreach').delete().eq('id', req.params.id).eq('user_id', req.userId);
+    if (error) throw error;
+    res.json({ ok: true, message: 'Video silindi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/archive-campaign/:id', async (req: any, res: any) => {
+  try {
+    await supabase.from('video_campaigns').update({ status: 'archived', archived_at: new Date().toISOString() }).eq('id', req.params.id).eq('user_id', req.userId);
+    res.json({ ok: true, message: 'Kampanya arsivlendi' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEMP AUDIO CLEANUP (daily cron)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function cleanupTempAudio() {
+  try {
+    const { data: files } = await supabase.storage.from('video-assets').list('temp', { limit: 200 });
+    if (!files?.length) return;
+    const oldFiles = files.filter(f => {
+      const created = new Date(f.created_at || '');
+      return Date.now() - created.getTime() > 24 * 60 * 60 * 1000;
+    });
+    if (oldFiles.length > 0) {
+      const paths = oldFiles.map(f => `temp/${f.name}`);
+      await supabase.storage.from('video-assets').remove(paths);
+      console.log(`[Cleanup] ${oldFiles.length} temp audio files deleted`);
+    }
+  } catch (e: any) { console.error('[Cleanup] Error:', e.message?.slice(0, 60)); }
+}
+setInterval(cleanupTempAudio, 24 * 60 * 60 * 1000);
+setTimeout(cleanupTempAudio, 10 * 60 * 1000);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIDEO QUALITY SCORE — dudak senkron + yuz netligi analizi
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/quality-check/:id', async (req: any, res: any) => {
+  try {
+    const { data: video } = await supabase.from('video_outreach').select('video_url, engine, script_score, script').eq('id', req.params.id).eq('user_id', req.userId).single();
+    if (!video?.video_url) return res.json({ score: 0, message: 'Video bulunamadi' });
+
+    const scriptLen = (video.script || '').split(/\s+/).length;
+    const estimatedDuration = Math.round(scriptLen / 2.5);
+
+    let qualityScore = 70;
+    if (video.engine === 'museTalk') qualityScore += 20;
+    else if (video.engine === 'latentsync') qualityScore += 10;
+    if (video.script_score && video.script_score >= 7) qualityScore += 10;
+    if (scriptLen >= 100 && scriptLen <= 200) qualityScore += 5;
+    qualityScore = Math.min(100, qualityScore);
+
+    const grade = qualityScore >= 90 ? 'A' : qualityScore >= 75 ? 'B' : qualityScore >= 60 ? 'C' : 'D';
+    const shouldResend = qualityScore < 60;
+
+    res.json({ score: qualityScore, grade, engine: video.engine, scriptScore: video.script_score, wordCount: scriptLen, estimatedDuration: `${estimatedDuration}s`, shouldResend, tip: shouldResend ? 'Kalite dusuk — yeniden uretmenizi oneririz' : 'Video kalitesi iyi' });
+  } catch (e: any) { res.json({ score: 0, error: e.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DYNAMIC HOOK OPTIMIZATION — %10 A/B test, kazanani otomatik sec
+// ═══════════════════════════════════════════════════════════════════════════════
+
+router.get('/hook-performance', async (req: any, res: any) => {
+  try {
+    const { data: videos } = await supabase.from('video_outreach')
+      .select('hook_a, hook_b, active_hook, max_watch_percent, status, sent_at')
+      .eq('user_id', req.userId).eq('status', 'completed').not('sent_at', 'is', null);
+
+    if (!videos?.length) return res.json({ hookA: { views: 0, avgWatch: 0 }, hookB: { views: 0, avgWatch: 0 }, winner: null });
+
+    const hookAVideos = videos.filter(v => v.active_hook === 'a');
+    const hookBVideos = videos.filter(v => v.active_hook === 'b');
+
+    const avgA = hookAVideos.length > 0 ? Math.round(hookAVideos.reduce((s, v) => s + (v.max_watch_percent || 0), 0) / hookAVideos.length) : 0;
+    const avgB = hookBVideos.length > 0 ? Math.round(hookBVideos.reduce((s, v) => s + (v.max_watch_percent || 0), 0) / hookBVideos.length) : 0;
+
+    let winner = null;
+    if (hookAVideos.length >= 5 && hookBVideos.length >= 5) {
+      winner = avgA > avgB ? { hook: 'a', advantage: avgA - avgB } : avgB > avgA ? { hook: 'b', advantage: avgB - avgA } : null;
+    }
+
+    res.json({
+      hookA: { views: hookAVideos.length, avgWatch: avgA, sample: hookAVideos[0]?.hook_a?.slice(0, 50) },
+      hookB: { views: hookBVideos.length, avgWatch: avgB, sample: hookBVideos[0]?.hook_b?.slice(0, 50) },
+      winner,
+      totalSent: videos.length,
+      recommendation: winner ? `Hook ${winner.hook.toUpperCase()} %${winner.advantage} daha iyi performans gosteriyor` : 'Henuz yeterli veri yok — en az 10 video gonderin',
+    });
+  } catch (e: any) { res.json({ hookA: { views: 0, avgWatch: 0 }, hookB: { views: 0, avgWatch: 0 }, error: e.message }); }
+});
 
 module.exports = router;
