@@ -40,15 +40,15 @@ const STEPS = [
 
 function StepIndicator({ current }: { current: number }) {
   return (
-    <div className="flex items-center justify-center gap-0 mb-8">
+    <div className="flex items-center justify-center gap-0 mb-6">
       {STEPS.map((step, idx) => (
         <div key={step.id} className="flex items-center">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${current === step.id ? 'bg-purple-600 text-white' : current > step.id ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
-            <span className="text-base">{current > step.id ? '✓' : step.icon}</span>
-            <span className="text-xs font-medium hidden sm:block">{step.label}</span>
-          </div>
+          <button className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs ${current === step.id ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-500/25' : current > step.id ? 'bg-purple-500/15 text-purple-400 border border-purple-500/20' : 'bg-slate-800/50 text-slate-500 border border-slate-700/50'}`}>
+            <span className="text-sm">{current > step.id ? '✓' : step.icon}</span>
+            <span className="font-medium hidden sm:block">{step.label}</span>
+          </button>
           {idx < STEPS.length - 1 && (
-            <div className={`w-8 h-0.5 ${current > step.id ? 'bg-emerald-500' : 'bg-slate-700'}`}/>
+            <div className={`w-6 h-0.5 ${current > step.id ? 'bg-purple-500' : 'bg-slate-700/50'}`}/>
           )}
         </div>
       ))}
@@ -1124,34 +1124,58 @@ export default function VideoOutreachPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-              <Video className="w-4 h-4"/>
+      {/* Premium Hero */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-purple-900/40 via-slate-900 to-violet-900/30 border border-purple-500/20 rounded-2xl p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.15),transparent_60%)]" />
+        <div className="relative flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+                <Video className="w-5 h-5 text-white"/>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">AI Video Outreach</h1>
+                <p className="text-purple-300/70 text-xs">MuseTalk + ElevenLabs · Kişisel AI video mesajları</p>
+              </div>
             </div>
-            AI Video Outreach
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">{t('video_outreach.musetalk_elevenlabs_ai_av', 'MuseTalk + ElevenLabs · AI Avatar Kütüphanesi · Kişisel video mesajları')}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { setShowAnalytics(!showAnalytics); if (!showAnalytics) loadAnalytics() }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${showAnalytics ? 'bg-purple-600 text-white' : 'bg-white/5 border border-white/10 text-purple-300 hover:bg-white/10'}`}>
+              <TrendingUp className="w-3.5 h-3.5"/> Analitik
+            </button>
+            <button onClick={() => { setShowVideos(!showVideos); if (!showVideos) loadAll() }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${showVideos ? 'bg-purple-600 text-white' : 'bg-white/5 border border-white/10 text-purple-300 hover:bg-white/10'}`}>
+              <Eye className="w-3.5 h-3.5"/> Videolar ({videos.length})
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {stats && (
-            <div className="flex items-center gap-3 text-xs text-slate-500">
-              <span className="text-emerald-400 font-medium">{stats.completed} hazır</span>
-              <span>{stats.viewed} izlendi</span>
-              <span>{stats.total} toplam</span>
+
+        {/* Stat Cards */}
+        <div className="relative grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+          {[
+            { label: 'Hazır', value: stats?.completed || 0, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+            { label: 'İzlendi', value: stats?.viewed || 0, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+            { label: 'Gönderildi', value: stats?.sent || 0, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
+            { label: 'Toplam', value: stats?.total || 0, color: 'text-slate-300', bg: 'bg-white/5 border-white/10' },
+          ].map(s => (
+            <div key={s.label} className={`${s.bg} border rounded-xl p-3 text-center`}>
+              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">{s.label}</p>
             </div>
-          )}
-          <button onClick={() => { setShowAnalytics(!showAnalytics); if (!showAnalytics) loadAnalytics() }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${showAnalytics ? 'bg-blue-600 text-white' : 'bg-slate-800 border border-slate-700 text-slate-300'}`}>
-            <TrendingUp className="w-4 h-4"/> Analitik
-          </button>
-          <button onClick={() => { setShowVideos(!showVideos); if (!showVideos) loadAll() }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${showVideos ? 'bg-purple-600 text-white' : 'bg-slate-800 border border-slate-700 text-slate-300'}`}>
-            <Eye className="w-4 h-4"/> Videolar ({videos.length})
-          </button>
+          ))}
         </div>
+
+        {/* Empty state CTA */}
+        {(stats?.total || 0) === 0 && !generating && step === 1 && (
+          <div className="relative mt-4 bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-center">
+            <p className="text-purple-300 text-sm font-medium mb-2">Henüz video oluşturmadınız</p>
+            <p className="text-purple-400/60 text-xs mb-3">Avatar seçin, ses belirleyin, lead seçin — AI kişiselleştirilmiş video oluştursun</p>
+            <button onClick={() => setStep(1)} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition">
+              İlk Videonuzu Oluşturun →
+            </button>
+          </div>
+        )}
       </div>
 
       {msg && (
