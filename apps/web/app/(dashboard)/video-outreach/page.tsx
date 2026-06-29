@@ -3,7 +3,7 @@ import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
 import {
-  Video, Play, Square, RefreshCw, Send, CheckCircle,
+  Video, Play, Square, RefreshCw, Send, CheckCircle, Copy,
   AlertTriangle, Zap, Search, ChevronLeft, ChevronRight,
   Mic, Volume2, ArrowRight, ArrowLeft, Users, Globe2,
   BarChart2, Clock, Eye, RotateCcw, CreditCard, TrendingUp, Star, Timer
@@ -686,9 +686,9 @@ function StepPreview({ avatar, voice, leads, scripts, language, aspectRatio, aut
 }
 
 const STATUS_MESSAGES: Record<string, { label: string; desc: string; color: string }> = {
-  researching: { label: 'Araştırılıyor', desc: 'Web sitesi, sosyal medya ve müşteri yorumları analiz ediliyor...', color: 'text-amber-400' },
-  generating:  { label: 'Script Yazılıyor', desc: 'Claude PAS çerçevesinde kişisel script yazıyor...', color: 'text-blue-400' },
-  processing:  { label: 'Video Oluşturuluyor', desc: 'AI video motoru render ediyor...', color: 'text-purple-400' },
+  researching: { label: 'Derin Araştırma', desc: 'Şirket analizi, müşteri yorumları ve sorun tespiti yapılıyor — bu 1-2 dk sürebilir', color: 'text-amber-400' },
+  generating:  { label: 'Script Yazılıyor', desc: 'AI kişiselleştirilmiş script oluşturuyor (PAS framework)', color: 'text-blue-400' },
+  processing:  { label: 'Video Üretiliyor', desc: 'MuseTalk video motoru render ediyor — yüz senkronizasyonu yapılıyor', color: 'text-purple-400' },
 }
 
 // ADIM 6: Sonuç — single video
@@ -1262,6 +1262,7 @@ export default function VideoOutreachPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${v.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' : v.status === 'researching' ? 'bg-amber-500/15 text-amber-400' : ['processing','generating'].includes(v.status) ? 'bg-blue-500/15 text-blue-400' : 'bg-red-500/15 text-red-400'}`}>
                       {v.status === 'completed' ? 'Hazır' : v.status === 'researching' ? 'Araştırılıyor' : ['processing','generating'].includes(v.status) ? 'İşleniyor' : 'Başarısız'}
                     </span>
+                    {v.tracking_code && <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/v/${v.tracking_code}`); }} title="Video linkini kopyala" className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition"><Copy className="w-3.5 h-3.5 text-white"/></button>}
                     {v.video_url && <a href={v.video_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-slate-700 hover:bg-purple-600 rounded-lg transition"><Play className="w-3.5 h-3.5 text-white"/></a>}
                     {v.status === 'completed' && !v.sent_at && v.leads?.phone && (
                       <button onClick={() => sendVideo(v.id)} className="p-1.5 bg-teal-600 hover:bg-teal-500 rounded-lg">

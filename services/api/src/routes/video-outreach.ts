@@ -900,11 +900,14 @@ async function generateAudio(text: string, voiceId: string, emotionProfile?: any
     );
     return Buffer.from(r.data);
   } catch (err: any) {
-    if (err?.response?.status === 402) throw new Error('ElevenLabs ses kotası doldu — hesabınızda yeterli karakter kredisi yok.');
-    if (err?.response?.status === 401) throw new Error('ElevenLabs API anahtarı geçersiz veya eksik.');
-    // Fallback to Azure if ElevenLabs fails
-    console.warn('[Audio] ElevenLabs failed, falling back to Azure TTS');
-    return ttsSynthesize({ text, language, provider: 'azure' });
+    console.warn(`[Audio] ElevenLabs failed (${err?.response?.status || 'network'}): ${err.message?.slice(0, 60)}`);
+    // Auto-fallback: try Azure, then free Google TTS
+    try {
+      return await ttsSynthesize({ text, language, provider: 'azure' });
+    } catch {
+      console.warn('[Audio] Azure TTS also failed — using free Google TTS');
+      return generateFreeAudio(text, language);
+    }
   }
 }
 
@@ -1157,7 +1160,7 @@ router.post('/generate/single', async (req: any, res: any) => {
           scoreScript(script, research),
         ]);
         const hooks = hooksResult.status === 'fulfilled' ? hooksResult.value : { hookA: '', hookB: '' };
-        const score = scoreResult.status === 'fulfilled' ? scoreResult.value : 0;
+        const score = scoreResult.status === 'fulfilled' && scoreResult.value > 0 ? scoreResult.value : null;
         const timing = getOptimalSendTime(lead, research);
 
         const now = new Date();
@@ -1170,7 +1173,7 @@ router.post('/generate/single', async (req: any, res: any) => {
           script,
           hook_a: hooks.hookA,
           hook_b: hooks.hookB,
-          active_hook: 'a',
+          active_hook: Math.random() < 0.5 ? 'a' : 'b',
           script_score: score,
           optimal_send_at: optimalAt.toISOString(),
           send_time_reason: timing.reason,
@@ -1332,13 +1335,16 @@ router.post('/generate/campaign', async (req: any, res: any) => {
         await sleep(1500); // Rate limit buffer between batches
       }
 
-      // Phase 2: Generate videos sequentially
+      // Phase 2: Generate videos in parallel batches of 3
       let created = 0;
-      for (const leadId of leadIds) {
+      const VIDEO_BATCH = 3;
+      for (let bi = 0; bi < leadIds.length; bi += VIDEO_BATCH) {
+        const batchIds = leadIds.slice(bi, bi + VIDEO_BATCH);
+        await Promise.allSettled(batchIds.map(async (leadId) => {
         try {
           const lead     = leadDataMap[leadId];
           const research = researchMap[leadId];
-          if (!lead) { created++; continue; }
+          if (!lead) { created++; return; }
 
           const callLang = language || getLanguageByCountry(lead.country_code || '') || 'tr';
           const script   = await generateScript(lead, profile, callLang, research);
@@ -1347,7 +1353,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             scoreScript(script, research),
           ]);
           const hooks   = hooksR.status === 'fulfilled' ? hooksR.value : { hookA: '', hookB: '' };
-          const score   = scoreR.status === 'fulfilled' ? scoreR.value : 0;
+          const score   = scoreR.status === 'fulfilled' && scoreR.value > 0 ? scoreR.value : null;
           const timing  = getOptimalSendTime(lead, research);
           const nowC    = new Date();
           const [ch, cm] = timing.time.split(':').map(Number);
@@ -1428,7 +1434,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             tracking_code: code,
             research_data: research || null,
             research_quality: research?.quality || null,
-            hook_a: hooks.hookA, hook_b: hooks.hookB, active_hook: 'a',
+            hook_a: hooks.hookA, hook_b: hooks.hookB, active_hook: Math.random() < 0.5 ? 'a' : 'b',
             script_score: score,
             optimal_send_at: optAt.toISOString(),
             send_time_reason: timing.reason,
@@ -1439,11 +1445,12 @@ router.post('/generate/campaign', async (req: any, res: any) => {
 
           created++;
           await supabase.from('video_campaigns').update({ videos_created: created }).eq('id', campaign?.id);
-          await sleep(2000);
         } catch (err: any) {
           console.error(`[Campaign] Lead ${leadId}:`, err.message);
           created++;
         }
+        }));
+        await sleep(1500);
       }
       await supabase.from('video_campaigns').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', campaign?.id);
       console.log(`[Campaign] Tamamlandı: ${campaign?.id}, ${created} video`);

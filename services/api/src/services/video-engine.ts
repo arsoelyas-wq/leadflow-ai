@@ -42,10 +42,28 @@ export async function generateVideo(params: VideoEngineParams): Promise<VideoEng
   // MuseTalk (RunPod) — highest quality, requires RUNPOD_API_KEY + RUNPOD_ENDPOINT_ID
   if (params.engine === 'museTalk' || params.engine === 'gaussian') {
     if (process.env.RUNPOD_API_KEY && process.env.RUNPOD_ENDPOINT_ID) {
-      const result = await generateWithMuseTalk(params);
-      return { ...result, durationMs: Date.now() - t0 };
+      // Auto-retry up to 2 times for GPU queue issues
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const result = await generateWithMuseTalk(params);
+          return { ...result, durationMs: Date.now() - t0 };
+        } catch (mErr: any) {
+          console.warn(`[VideoEngine] MuseTalk attempt ${attempt} failed: ${mErr.message?.slice(0, 80)}`);
+          if (attempt < 2 && mErr.message?.includes('timed out')) {
+            console.log('[VideoEngine] Retrying MuseTalk in 10s...');
+            await new Promise(r => setTimeout(r, 10000));
+            continue;
+          }
+          // Final fallback to LatentSync
+          console.warn('[VideoEngine] MuseTalk failed — falling back to LatentSync');
+          try {
+            const url = await generateWithLatentSync(params);
+            return { videoUrl: url, engine: 'latentsync', durationMs: Date.now() - t0 };
+          } catch { throw mErr; }
+        }
+      }
     }
-    // Fallback: LatentSync if RunPod not configured
+    // RunPod not configured — use LatentSync
     console.warn('[VideoEngine] RunPod not configured — falling back to LatentSync');
     const url = await generateWithLatentSync(params);
     return { videoUrl: url, engine: 'latentsync', durationMs: Date.now() - t0 };
@@ -237,21 +255,31 @@ async function pollReplicatePrediction(id: string, timeoutMs: number): Promise<s
 
 async function pollRunPodJob(id: string, timeoutMs: number): Promise<any> {
   const deadline = Date.now() + timeoutMs;
+  let pollInterval = 5000;
+  let lastStatus = '';
   while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 8000));
-    const res = await axios.get(
-      `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/status/${id}`,
-      { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}` } }
-    );
-    const { status, output } = res.data;
-    if (status === 'COMPLETED') {
-      if (output?.error) throw new Error(`RunPod worker error: ${output.error}`);
-      if (output?.video_url) return output;
-      throw new Error('RunPod completed but no video_url in output');
+    await new Promise(r => setTimeout(r, pollInterval));
+    try {
+      const res = await axios.get(
+        `https://api.runpod.ai/v2/${process.env.RUNPOD_ENDPOINT_ID}/status/${id}`,
+        { headers: { Authorization: `Bearer ${process.env.RUNPOD_API_KEY}` }, timeout: 10000 }
+      );
+      const { status, output } = res.data;
+      if (status !== lastStatus) { console.log(`[RunPod] Job ${id.slice(0,8)}: ${status}`); lastStatus = status; }
+      if (status === 'COMPLETED') {
+        if (output?.error) throw new Error(`RunPod worker error: ${output.error}`);
+        if (output?.video_url) return output;
+        throw new Error('RunPod completed but no video_url in output');
+      }
+      if (status === 'FAILED') throw new Error('RunPod job failed');
+      if (status === 'IN_QUEUE') pollInterval = Math.min(pollInterval + 2000, 15000);
+      else pollInterval = 8000;
+    } catch (pollErr: any) {
+      if (pollErr.message?.includes('worker error') || pollErr.message?.includes('failed')) throw pollErr;
+      console.warn(`[RunPod] Poll error (retrying): ${pollErr.message?.slice(0, 60)}`);
     }
-    if (status === 'FAILED') throw new Error('RunPod job failed');
   }
-  throw new Error('RunPod job timed out');
+  throw new Error('RunPod job timed out after ' + Math.round(timeoutMs / 1000) + 's');
 }
 
 // ─── TRAINING ─────────────────────────────────────────────────────────────────
