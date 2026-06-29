@@ -107,8 +107,11 @@ async function generateWithMuseTalk(params: VideoEngineParams): Promise<Omit<Vid
           audio_url:      audioUrl,
           user_id:        userId || 'anon',
           skip_enhance:   skipEnhance ?? false,
-          fidelity:       0.7,
-          upscale:        2,
+          fidelity:       0.5,
+          upscale:        4,
+          fps:            30,
+          codeformer_weight: 0.5,
+          video_quality:  5,
         },
       },
       {

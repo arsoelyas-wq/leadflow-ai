@@ -536,9 +536,12 @@ async function generateScript(lead: any, profile: any, language: string, researc
   const techStack   = (research?.techStack || []).join(', ');
   const jobSignals  = (research?.jobSignals || []).join(', ');
 
+  const contactName = normalizeText(lead.contact_name || lead.company_name?.split(' ')[0] || '');
+
   const lines: string[] = [
-    lang + ' dilinde, 55-65 saniyelik (150-180 kelime) kisisellestirilmis video satis scripti yaz.',
+    lang + ' dilinde, 45-60 saniyelik (100-150 kelime) kisisellestirilmis video satis scripti yaz.',
     'Bu script gercek arastirmaya dayali olmali — her cumle bu sirkete OZGU bilgi icermeli.',
+    'KRITIK: Ilk 5 saniyede mutlaka "' + (contactName || brandName) + '" ismi gecmeli — alici hemen ilgilensin.',
     '',
     '=== HEDEF SIRKET ===',
     'Marka adi: ' + brandName,
@@ -575,13 +578,11 @@ async function generateScript(lead: any, profile: any, language: string, researc
   if (reviewNote) lines.push('Musteri yorumu / sikayet bilgisi: ' + reviewNote);
 
   lines.push('');
-  lines.push('=== SCRIPT YAPISI (bu 6 bolumu bu sirada yaz) ===');
-  lines.push('1. HOOK (0-6sn, ~15 kelime): ' + (hookLine ? '"' + hookLine + '" ifadesini guclendir.' : '"' + brandName + '" ile baslayan, sikirici istatistik veya goz aci bir soru. "Merhaba" ile KESINLIKLE baslanmaz.'));
-  lines.push('2. SORUN TESPITI (6-18sn, ~35 kelime): Arastirmadan gelen sorunlari somut sekilde adlandir. "Musterilerinizin yuzde kaci...", "Gecen yil kac kisi...", "Rakipleriniz bu konuda..." tarzi spesifik ifadeler kullan.');
-  lines.push('3. COZUM MEKANIZMASI (18-32sn, ~35 kelime): Urunumuz bu sorunu nasil coziyor — 2 somut adim veya ozellik. Teknik terim degil, sonuc odakli anlat.');
-  lines.push('4. KANIT / REFERANS (32-44sn, ~30 kelime): Benzer bir marka veya sektorden somut bir sonuc. "X sektorunde bir musteri 3 ayda Y sonuc aldi" tarzi. Uydurma istatistik yazma, somut ima yap.');
-  lines.push('5. SIRKETE OZEL FAYDA (44-55sn, ~25 kelime): ' + (opportunity ? opportunity : '"' + brandName + '" icin ozellestir — rakipler ne yapiy veya ne kaybediyorlar?'));
-  lines.push('6. CTA (55-65sn, ~20 kelime): 15 dakikalik bir keşif gorusmesi talep et. Nazik, basınçsız, spesifik: "Hafta ici 15 dakikanız var mi?"');
+  lines.push('=== SCRIPT YAPISI — 5-15-20-10 FORMULU (toplam 50 saniye) ===');
+  lines.push('1. ACILIS HOOK (0-5sn, ~12 kelime): "' + (contactName || brandName) + '" ismiyle basla + sarsici istatistik veya soru. "Merhaba" ile KESINLIKLE baslanmaz. Ornek: "' + (contactName || brandName) + ', ' + (hookLine || 'sektorunuzde firmalarin %67si bu hatay yapiyor') + '"');
+  lines.push('2. SORUN (5-20sn, ~35 kelime): Arastirmadan gelen 1-2 somut sorunu adlandir. "Musterilerinizin yuzde kaci...", "Gecen ay rakibiniz X yapti ama siz..." tarzi spesifik. GENEL IFADE YASAK.');
+  lines.push('3. COZUM + KANIT (20-40sn, ~50 kelime): Urunumuz bu sorunu nasil coziyor (2 adim) + benzer bir sirketin sonucu. "X sektorunde bir musteri 3 ayda Y sonuc aldi — ' + brandName + ' icin de ayni seyi yapabiliriz."');
+  lines.push('4. CTA (40-50sn, ~15 kelime): Yumusak, baskisiz: "' + (contactName || brandName) + ', bu hafta 15 dakikanizi ayirabilir misiniz? Takvimimi paylasayim." Agresif satis tonu YASAK.');
   lines.push('');
   lines.push('=== KURALAR ===');
   lines.push('- Her cumle "' + brandName + '" adresine konusuyor gibi yaz.');
@@ -589,8 +590,9 @@ async function generateScript(lead: any, profile: any, language: string, researc
   lines.push('- "cok sayida sirket", "bircok isletme" gibi genelleme YASAK — ozellestir.');
   lines.push('- Tam hukuki sirket ismi yerine "' + brandName + '" kullan.');
   lines.push('- Sadece konusma metnini yaz, baslik veya bolum etiketi ekleme.');
-  lines.push('- Dil: ' + lang + '. Dogal, samimi, satis yapiyormus gibi degil.');
-  lines.push('- Hedef: 150-180 kelime, 55-65 saniye.');
+  lines.push('- Dil: ' + lang + '. Dogal, samimi, arkadas tavsiyesi gibi — satis tonu YASAK.');
+  lines.push('- Hedef: 100-150 kelime, 45-60 saniye. 60 saniyeyi GECME.');
+  lines.push('- ILK 5 SANIYEDE "' + (contactName || brandName) + '" ismini MUTLAKA soy.');
 
   const prompt = lines.filter(l => l !== '').join('\n');
 
@@ -653,23 +655,30 @@ async function generateWhatsAppIntro(lead: any, profile: any, research?: LeadRes
   const pain       = normalizeText(research?.pains?.[0] || '');
 
   try {
+    const contactFirst = normalizeText(lead.contact_name?.split(' ')[0] || brandName.split(' ')[0]);
     const r = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
+      max_tokens: 120,
       messages: [{
         role: 'user',
-        content: `Kısa WhatsApp mesajı yaz.
-Alıcı marka adı: ${brandName}
-Bizim şirket: ${profile?.company?.name || ''}
-${pain ? `Onların tespit edilen sorunu: ${pain}` : `Ürün: ${profile?.product?.description || ''}`}
-${opportunity ? `Bağlam: ${opportunity}` : ''}
-Amaç: kişiye özel hazırladığımız videoyu izlemesini istemek.
-Samimi, doğal, 1-2 cümle. Emoji yok, link yok. Sadece mesaj metni. "${brandName}" olarak hitap et.`,
+        content: `WhatsApp mesaji yaz — 3 satir, cok kisa.
+
+Alici: ${contactFirst} (${brandName})
+Bizim sirket: ${profile?.company?.name || ''}
+${pain ? `Sorun: ${pain}` : ''}
+
+FORMAT (bu 3 satiri aynen kullan):
+Satir 1: "${contactFirst} bey/hanim, ${brandName} icin kisa bir video hazirladik." (hook — merak uyandiran)
+Satir 2: [VIDEO LINKI BURAYA GELECEK — yazma]
+Satir 3: "15 dakikaniz varsa bu hafta konusalim mi?" (yumusak CTA)
+
+KURALLAR: Emoji yok. Link yok. Sadece satir 1 ve satir 3'u yaz. Dogal, samimi, 2 cumle.`,
       }],
     });
     return ((r.content[0] as any)?.text || '').trim();
   } catch {
-    return `Merhaba ${brandName.split(' ')[0]}! Sizin için özel bir video hazırladık, izlemenizi isteriz.`;
+    const contactFirst = (lead.contact_name?.split(' ')[0] || brandName.split(' ')[0]);
+    return `${contactFirst}, ${brandName} icin kisa bir video hazirladik — 45 saniyenizi alir.\n\nBu hafta 15 dakika konusabilir miyiz?`;
   }
 }
 
