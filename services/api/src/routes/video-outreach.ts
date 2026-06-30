@@ -7,7 +7,10 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const router    = express.Router();
 const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// maxRetries:0 — SDK varsayilani (2 retry) her timeout'u sessizce 3 katina cikarir.
+// generateScript() zaten 3 katmanli fallback (Sonnet->Haiku->minimal->statik) sagliyor,
+// SDK-seviyesi retry'lar gereksiz gecikme ekliyordu (video pipeline'i dakikalarca takiliyordu).
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
 const { synthesizeXtts } = require('../services/xtts-engine');
 
 const HEYGEN_KEY  = process.env.HEYGEN_API_KEY;
