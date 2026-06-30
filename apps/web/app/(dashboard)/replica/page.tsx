@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Video, Upload, Mic, Play, Trash2, Star, CheckCircle,
   AlertTriangle, RefreshCw, Camera, StopCircle, Loader2,
-  Cpu, Brain, Sparkles, Clock, ChevronRight, Info
+  Brain, Clock, ChevronRight, Info
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -19,7 +19,7 @@ interface Replica {
   name: string
   language: string
   status: 'pending' | 'processing' | 'ready' | 'failed'
-  engine: 'latentsync' | 'gaussian' | 'heygen' | 'elevenlabs'
+  engine: 'museTalk' | 'latentsync' | 'gaussian' | 'heygen' | 'elevenlabs'
   elevenlabs_voice_id?: string
   gaussian_model_url?: string
   preview_video_url?: string
@@ -52,21 +52,6 @@ function StatusBadge({ status }: { status: Replica['status'] }) {
   return <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>{label}</span>
 }
 
-function EngineTag({ engine }: { engine: Replica['engine'] }) {
-  const map: Record<string, { label: string; color: string }> = {
-    latentsync:  { label: 'LatentSync', color: 'text-cyan-400 bg-cyan-500/10' },
-    gaussian:    { label: '3D Gaussian', color: 'text-purple-400 bg-purple-500/10' },
-    heygen:      { label: 'HeyGen',     color: 'text-blue-400 bg-blue-500/10' },
-    elevenlabs:  { label: 'ElevenLabs', color: 'text-orange-400 bg-orange-500/10' },
-  }
-  const { label, color } = map[engine] || { label: engine, color: 'text-slate-400 bg-slate-500/10' }
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${color}`}>
-      <Cpu className="w-2.5 h-2.5" />{label}
-    </span>
-  )
-}
-
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
 export default function ReplicaPage() {
@@ -78,7 +63,6 @@ export default function ReplicaPage() {
   // Create form state
   const [name, setName]             = useState('')
   const [language, setLanguage]     = useState('tr')
-  const [engine, setEngine]         = useState<'latentsync' | 'gaussian'>('latentsync')
   const [sceneType, setSceneType]   = useState<NonNullable<Replica['scene_type']>>('studio')
   const [characterGroup, setCharacterGroup] = useState('')
   const [recordMode, setRecordMode] = useState<'upload' | 'camera'>('upload')
@@ -265,7 +249,7 @@ export default function ReplicaPage() {
       const trainRes = await fetch(`${API}/api/replica/train`, {
         method: 'POST',
         headers: authH(),
-        body: JSON.stringify({ name: name.trim(), language, engine, seedVideoPath: path, cloneVoice: true, durationSec: videoDuration ?? undefined, sceneType, characterGroup: characterGroup.trim() || undefined }),
+        body: JSON.stringify({ name: name.trim(), language, engine: 'museTalk', seedVideoPath: path, cloneVoice: true, durationSec: videoDuration ?? undefined, sceneType, characterGroup: characterGroup.trim() || undefined }),
       })
       const trainData = await trainRes.json()
       if (!trainRes.ok) throw new Error(trainData.error || 'Eğitim başlatılamadı')
@@ -407,7 +391,6 @@ export default function ReplicaPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap mb-2">
                           <StatusBadge status={replica.status} />
-                          <EngineTag engine={replica.engine} />
                           {replica.scene_type && (
                             <span className="text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full">
                               {SCENE_OPTIONS.find(s => s.value === replica.scene_type)?.icon} {SCENE_OPTIONS.find(s => s.value === replica.scene_type)?.label}
@@ -514,33 +497,6 @@ export default function ReplicaPage() {
                   <option key={c} value={c}>{l}</option>
                 ))}
               </select>
-            </div>
-
-            {/* Engine */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-3">Video Motoru</label>
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { value: 'latentsync', label: 'LatentSync', sub: t('Hızlı · $0.09/video · Çok yüksek kalite','Hızlı · $0.09/video · Çok yüksek kalite'), color: 'cyan', icon: Cpu },
-                  { value: 'gaussian',   label: '3D Gaussian', sub: t('Ultra yüksek · Kendi altyapın gerekli','Ultra yüksek · Kendi altyapın gerekli'), color: 'purple', icon: Sparkles },
-                ] as const).map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setEngine(opt.value)}
-                    className={`p-4 rounded-xl border text-left transition-colors ${
-                      engine === opt.value
-                        ? opt.color === 'cyan'
-                          ? 'border-cyan-500/60 bg-cyan-500/10'
-                          : 'border-purple-500/60 bg-purple-500/10'
-                        : 'border-slate-700 hover:border-slate-600'
-                    }`}
-                  >
-                    <opt.icon className={`w-5 h-5 mb-2 ${opt.color === 'cyan' ? 'text-cyan-400' : 'text-purple-400'}`} />
-                    <p className="text-white text-sm font-semibold mb-0.5">{opt.label}</p>
-                    <p className="text-slate-400 text-xs leading-relaxed">{opt.sub}</p>
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Scene / Environment */}

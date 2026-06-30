@@ -104,7 +104,7 @@ router.post('/train', async (req: any, res: any) => {
     const {
       name,
       language    = 'tr',
-      engine      = 'latentsync',
+      engine      = 'museTalk',     // kendi RunPod altyapımız — yegane secenek (LatentSync sadece otomatik fallback)
       seedVideoPath,               // path in replica-seeds bucket
       cloneVoice  = true,
       durationSec,                 // measured client-side from recorded/uploaded video
@@ -350,7 +350,7 @@ async function runTrainingPipeline(
         seedVideoUrl,
         replicaId,
         userId,
-        engine: engine as 'latentsync' | 'gaussian',
+        engine: engine as 'latentsync' | 'gaussian' | 'museTalk',
       });
 
       await supabase.from('replica_jobs').insert([{
