@@ -135,20 +135,29 @@ router.post('/train', async (req: any, res: any) => {
     if (!seedVideoUrl) return res.status(400).json({ error: 'Could not access seed video' });
 
     // Create replica record
-    const { data: replica, error: insertErr } = await supabase
-      .from('user_replicas')
-      .insert([{
-        user_id:       req.userId,
-        name,
-        language,
-        engine,
-        status:        'processing',
-        seed_video_url: seedVideoUrl,
-        scene_type:     sceneType,
-        character_group: (characterGroup || name).toLowerCase().split(' - ')[0].trim(),
-      }])
-      .select()
-      .single();
+    const baseInsert: any = {
+      user_id:       req.userId,
+      name,
+      language,
+      engine,
+      status:        'processing',
+      seed_video_url: seedVideoUrl,
+    };
+    const sceneFields = {
+      scene_type:     sceneType,
+      character_group: (characterGroup || name).toLowerCase().split(' - ')[0].trim(),
+    };
+
+    let replica: any, insertErr: any;
+    ({ data: replica, error: insertErr } = await supabase
+      .from('user_replicas').insert([{ ...baseInsert, ...sceneFields }]).select().single());
+
+    // Migration 20260630_avatar_scenes.sql not yet applied — retry without new columns
+    if (insertErr && /column .*(scene_type|character_group)/i.test(insertErr.message || '')) {
+      console.warn('[Replica] scene_type/character_group columns missing — run migrations/20260630_avatar_scenes.sql. Falling back.');
+      ({ data: replica, error: insertErr } = await supabase
+        .from('user_replicas').insert([baseInsert]).select().single());
+    }
 
     if (insertErr || !replica) throw insertErr || new Error('Insert failed');
 

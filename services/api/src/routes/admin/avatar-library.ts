@@ -66,24 +66,24 @@ router.post('/upsert', async (req: any, res: any) => {
     if (!name)         return res.status(400).json({ error: 'name gerekli (benzersiz kod, orn: ayse_ofis)' });
     if (!display_name) return res.status(400).json({ error: 'display_name gerekli (orn: Ayşe — Ofis)' });
 
-    const payload: any = {
-      name, display_name,
-      character_group: character_group || name,
-      gender, age_group, style, languages, scene_type,
+    const basePayload: any = {
+      name, display_name, gender, age_group, style, languages,
       thumbnail_url, latentsync_video_url, preview_video_url,
       tags, is_featured, sort_order, is_active,
     };
+    const scenePayload = { character_group: character_group || name, scene_type };
 
-    let result;
-    if (id) {
-      const { data, error } = await supabase.from('stock_avatars').update(payload).eq('id', id).select().single();
-      if (error) throw error;
-      result = data;
-    } else {
-      const { data, error } = await supabase.from('stock_avatars').upsert([payload], { onConflict: 'name' }).select().single();
-      if (error) throw error;
-      result = data;
+    async function write(payload: any) {
+      if (id) return supabase.from('stock_avatars').update(payload).eq('id', id).select().single();
+      return supabase.from('stock_avatars').upsert([payload], { onConflict: 'name' }).select().single();
     }
+
+    let { data: result, error } = await write({ ...basePayload, ...scenePayload });
+    if (error && /column .*(scene_type|character_group)/i.test(error.message || '')) {
+      console.warn('[AvatarLibrary] scene_type/character_group columns missing — run migrations/20260630_avatar_scenes.sql. Falling back.');
+      ({ data: result, error } = await write(basePayload));
+    }
+    if (error) throw error;
 
     res.json({ ok: true, avatar: result });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
