@@ -6,7 +6,7 @@ import {
   Video, Play, Square, RefreshCw, Send, CheckCircle, Copy,
   AlertTriangle, Zap, Search, ChevronLeft, ChevronRight,
   Mic, Volume2, ArrowRight, ArrowLeft, Users, Globe2,
-  BarChart2, Clock, Eye, RotateCcw, CreditCard, TrendingUp, Star, Timer
+  BarChart2, Clock, Eye, RotateCcw, CreditCard, TrendingUp, Star, Timer, Sparkles
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
