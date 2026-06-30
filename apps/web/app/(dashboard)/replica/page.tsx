@@ -83,6 +83,26 @@ export default function ReplicaPage() {
   const chunksRef     = useRef<Blob[]>([])
   const streamRef     = useRef<MediaStream | null>(null)
   const fileInputRef  = useRef<HTMLInputElement>(null)
+  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recordedDurationRef = useRef<number>(0)
+
+  // Guided recording state
+  const [countdown, setCountdown]     = useState<number | null>(null)
+  const [recordSeconds, setRecordSeconds] = useState(0)
+  const [videoDuration, setVideoDuration] = useState<number | null>(null)
+  const [scriptIdx, setScriptIdx]     = useState(0)
+
+  const MIN_RECORD_SEC = 8
+  const RECOMMENDED_SEC = 30
+  const MAX_RECORD_SEC = 180
+
+  const TELEPROMPTER_SCRIPT = [
+    'Merhaba, ben sizin AI video replikanız olacağım.',
+    'Lütfen kameraya doğal bir şekilde bakın ve normal hızda konuşun.',
+    'İşletmenizi, ürününüzü veya kendinizi birkaç cümleyle tanıtabilirsiniz.',
+    'Ara sıra elinizi hareket ettirin, gülümseyin — bu doğallığı artırır.',
+    'En az 30 saniye konuşmanız ses klonu kalitesini büyük ölçüde iyileştirir.',
+  ]
 
   // Test video state
   const [testingId, setTestingId]   = useState<string | null>(null)
@@ -132,9 +152,29 @@ export default function ReplicaPage() {
     if (videoRef.current) videoRef.current.srcObject = null
   }
 
-  function startRecording() {
+  // Begin 3-2-1 countdown, then auto-start recording
+  function beginGuidedRecording() {
+    if (!streamRef.current) return
+    setScriptIdx(0)
+    setCountdown(3)
+    const cd = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === null) return null
+        if (prev <= 1) {
+          clearInterval(cd)
+          actuallyStartRecording()
+          return null
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  function actuallyStartRecording() {
     if (!streamRef.current) return
     chunksRef.current = []
+    recordedDurationRef.current = 0
+    setRecordSeconds(0)
     const mr = new MediaRecorder(streamRef.current, { mimeType: 'video/webm;codecs=vp9,opus' })
     mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     mr.onstop = () => {
@@ -142,16 +182,29 @@ export default function ReplicaPage() {
       const file = new File([blob], `recording_${Date.now()}.webm`, { type: 'video/webm' })
       setVideoFile(file)
       setVideoPreview(URL.createObjectURL(blob))
+      setVideoDuration(recordedDurationRef.current)
       stopCamera()
     }
     mediaRef.current = mr
     mr.start(1000)
     setRecording(true)
+
+    // Timer: tracks seconds, advances teleprompter line, auto-stops at MAX
+    timerRef.current = setInterval(() => {
+      recordedDurationRef.current += 1
+      setRecordSeconds(s => {
+        const next = s + 1
+        if (next % 6 === 0) setScriptIdx(i => Math.min(i + 1, TELEPROMPTER_SCRIPT.length - 1))
+        if (next >= MAX_RECORD_SEC) stopRecording()
+        return next
+      })
+    }, 1000)
   }
 
   function stopRecording() {
     mediaRef.current?.stop()
     setRecording(false)
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
   }
 
   useEffect(() => {
@@ -167,12 +220,17 @@ export default function ReplicaPage() {
     if (!file) return
     setVideoFile(file)
     setVideoPreview(URL.createObjectURL(file))
+    setVideoDuration(null) // measured on <video onLoadedMetadata>
   }
 
   // ─── TRAIN ────────────────────────────────────────────────────────────────
 
   async function handleCreate() {
     if (!name.trim() || !videoFile) { setCreateError('İsim ve video gerekli'); return }
+    if (videoDuration != null && videoDuration < MIN_RECORD_SEC) {
+      setCreateError(`Video çok kısa (${Math.round(videoDuration)}sn) — kalite için en az ${MIN_RECORD_SEC} saniye gerekli.`)
+      return
+    }
     setCreating(true)
     setCreateError('')
     try {
@@ -195,15 +253,20 @@ export default function ReplicaPage() {
       const trainRes = await fetch(`${API}/api/replica/train`, {
         method: 'POST',
         headers: authH(),
-        body: JSON.stringify({ name: name.trim(), language, engine, seedVideoPath: path, cloneVoice: true }),
+        body: JSON.stringify({ name: name.trim(), language, engine, seedVideoPath: path, cloneVoice: true, durationSec: videoDuration ?? undefined }),
       })
       const trainData = await trainRes.json()
       if (!trainRes.ok) throw new Error(trainData.error || 'Eğitim başlatılamadı')
+      if (trainData.qualityWarning) {
+        // Non-blocking heads-up, training already started
+        setCreateError('') // clear any prior error
+      }
 
       // Reset form
       setName('')
       setVideoFile(null)
       setVideoPreview(null)
+      setVideoDuration(null)
       setTab('list')
       load()
     } catch (e: any) {
@@ -495,25 +558,81 @@ export default function ReplicaPage() {
                 </div>
               )}
 
-              {/* Camera mode */}
+              {/* Camera mode — guided recording */}
               {recordMode === 'camera' && !videoPreview && (
                 <div className="space-y-3">
                   <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
                     <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
-                    {recording && (
-                      <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-600 rounded-full px-2.5 py-1">
-                        <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                        <span className="text-white text-xs font-bold">KAYIT</span>
+
+                    {/* Face-frame guide oval — helps user center themselves */}
+                    {!recording && countdown === null && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-[42%] aspect-[3/4] rounded-[50%] border-2 border-dashed border-white/40" />
                       </div>
                     )}
+
+                    {/* Countdown overlay */}
+                    {countdown !== null && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span className="text-white text-7xl font-black animate-pulse">{countdown}</span>
+                      </div>
+                    )}
+
+                    {/* Recording indicator + timer */}
+                    {recording && (
+                      <>
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-red-600 rounded-full px-2.5 py-1">
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                          <span className="text-white text-xs font-bold">KAYIT</span>
+                        </div>
+                        <div className="absolute top-3 right-3 bg-black/60 rounded-full px-2.5 py-1">
+                          <span className={`text-xs font-bold ${recordSeconds >= RECOMMENDED_SEC ? 'text-emerald-400' : recordSeconds >= MIN_RECORD_SEC ? 'text-amber-400' : 'text-white'}`}>
+                            {Math.floor(recordSeconds / 60)}:{String(recordSeconds % 60).padStart(2, '0')}
+                          </span>
+                        </div>
+                        {/* Teleprompter */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 pt-10">
+                          <p className="text-white text-sm font-medium text-center leading-relaxed drop-shadow-lg">
+                            {TELEPROMPTER_SCRIPT[scriptIdx]}
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </div>
+
+                  {/* Quality progress bar */}
+                  {recording && (
+                    <div className="space-y-1">
+                      <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${recordSeconds >= RECOMMENDED_SEC ? 'bg-emerald-500' : recordSeconds >= MIN_RECORD_SEC ? 'bg-amber-500' : 'bg-slate-500'}`}
+                          style={{ width: `${Math.min(100, (recordSeconds / RECOMMENDED_SEC) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-slate-500 text-center">
+                        {recordSeconds < MIN_RECORD_SEC
+                          ? `En az ${MIN_RECORD_SEC} saniye devam edin`
+                          : recordSeconds < RECOMMENDED_SEC
+                            ? `İyi gidiyor — ${RECOMMENDED_SEC}sn'ye kadar devam edin (önerilen)`
+                            : 'Kalite hedefine ulaşıldı — istediğiniz zaman durdurabilirsiniz'}
+                      </p>
+                    </div>
+                  )}
+
                   <button
-                    onClick={recording ? stopRecording : startRecording}
-                    className={`w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+                    onClick={recording ? stopRecording : beginGuidedRecording}
+                    disabled={countdown !== null}
+                    className={`w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${
                       recording ? 'bg-red-600 hover:bg-red-700' : 'bg-violet-600 hover:bg-violet-700'
                     }`}
                   >
-                    {recording ? <><StopCircle className="w-4 h-4" />{t('replica.kaydi_durdur', 'Kaydı Durdur')}</> : <><Mic className="w-4 h-4" />{t('replica.kaydi_baslat', 'Kaydı Başlat')}</>}
+                    {countdown !== null ? (
+                      <>Hazırlanın...</>
+                    ) : recording ? (
+                      <><StopCircle className="w-4 h-4" />{t('replica.kaydi_durdur', 'Kaydı Durdur')} ({Math.floor(recordSeconds / 60)}:{String(recordSeconds % 60).padStart(2, '0')})</>
+                    ) : (
+                      <><Mic className="w-4 h-4" />Kayda Başla (3-2-1)</>
+                    )}
                   </button>
                 </div>
               )}
@@ -522,15 +641,40 @@ export default function ReplicaPage() {
               {videoPreview && (
                 <div className="space-y-3">
                   <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
-                    <video src={videoPreview} controls className="w-full h-full object-cover" />
+                    <video
+                      src={videoPreview}
+                      controls
+                      className="w-full h-full object-cover"
+                      onLoadedMetadata={e => {
+                        const d = (e.target as HTMLVideoElement).duration
+                        if (isFinite(d)) setVideoDuration(d)
+                      }}
+                    />
                   </div>
+                  {videoDuration != null && (
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
+                      videoDuration < MIN_RECORD_SEC ? 'bg-red-500/10 text-red-400' :
+                      videoDuration < RECOMMENDED_SEC ? 'bg-amber-500/10 text-amber-400' :
+                      'bg-emerald-500/10 text-emerald-400'
+                    }`}>
+                      {videoDuration < MIN_RECORD_SEC ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                      <span>
+                        {Math.round(videoDuration)} saniye —{' '}
+                        {videoDuration < MIN_RECORD_SEC
+                          ? `çok kısa, en az ${MIN_RECORD_SEC}sn gerekli`
+                          : videoDuration < RECOMMENDED_SEC
+                            ? `kabul edilir, ${RECOMMENDED_SEC}sn+ daha iyi sonuç verir`
+                            : 'kalite için yeterli süre'}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-emerald-400 text-sm">
                       <CheckCircle className="w-4 h-4" />
                       <span>{videoFile?.name || 'Video hazır'}</span>
                     </div>
                     <button
-                      onClick={() => { setVideoFile(null); setVideoPreview(null) }}
+                      onClick={() => { setVideoFile(null); setVideoPreview(null); setVideoDuration(null) }}
                       className="text-slate-400 hover:text-slate-300 text-xs"
                     >
                       Değiştir
@@ -567,7 +711,7 @@ export default function ReplicaPage() {
             {/* Submit */}
             <button
               onClick={handleCreate}
-              disabled={creating || !name.trim() || !videoFile}
+              disabled={creating || !name.trim() || !videoFile || (videoDuration != null && videoDuration < MIN_RECORD_SEC)}
               className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               {creating ? (

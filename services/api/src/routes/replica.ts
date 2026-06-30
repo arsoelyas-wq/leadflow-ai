@@ -62,6 +62,9 @@ router.post('/upload-seed', async (req: any, res: any) => {
 
 // ─── POST /api/replica/train — Create replica & start training ────────────────
 
+const MIN_SEED_DURATION_SEC = 8;
+const RECOMMENDED_MIN_SEC = 30;
+
 router.post('/train', async (req: any, res: any) => {
   try {
     const {
@@ -70,10 +73,17 @@ router.post('/train', async (req: any, res: any) => {
       engine      = 'latentsync',
       seedVideoPath,               // path in replica-seeds bucket
       cloneVoice  = true,
+      durationSec,                 // measured client-side from recorded/uploaded video
     } = req.body || {};
 
     if (!name || !seedVideoPath)
       return res.status(400).json({ error: 'name and seedVideoPath required' });
+
+    if (typeof durationSec === 'number') {
+      if (durationSec < MIN_SEED_DURATION_SEC) {
+        return res.status(400).json({ error: `Video en az ${MIN_SEED_DURATION_SEC} saniye olmalı — kalite için yeterli yüz/ses verisi gerekiyor.` });
+      }
+    }
 
     // Get public URL of seed video (signed)
     const { data: signedData } = await supabase.storage
@@ -102,7 +112,11 @@ router.post('/train', async (req: any, res: any) => {
     // Kick off parallel tasks (non-blocking)
     void runTrainingPipeline(replica.id, req.userId, seedVideoUrl, engine, cloneVoice);
 
-    res.json({ replica, message: 'Eğitim başlatıldı' });
+    const qualityWarning = typeof durationSec === 'number' && durationSec < RECOMMENDED_MIN_SEC
+      ? `Video ${Math.round(durationSec)}sn — ${RECOMMENDED_MIN_SEC}sn+ önerilir, ses klonu kalitesi düşük olabilir.`
+      : null;
+
+    res.json({ replica, message: 'Eğitim başlatıldı', qualityWarning });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
