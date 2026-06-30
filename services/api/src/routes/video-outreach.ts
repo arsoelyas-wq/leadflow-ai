@@ -817,6 +817,15 @@ async function generateReviewCardBackground(research: LeadResearch, brandName: s
 const { analyzeEmotion, buildElevenLabsVoiceSettings, enrichScriptWithPauses, serializeProfile } = require('../services/emotion-engine');
 const { generateVideo: generateVideoEngine } = require('../services/video-engine');
 
+// Yardımcı: migration 20260630_video_outreach_columns.sql çalışana kadar
+// eksik kolonlarla INSERT/UPDATE yapıldığında fallback sağlar.
+const OPTIONAL_VO_COLS = ['hook_a','hook_b','active_hook','script_score','optimal_send_at','send_time_reason','tech_stack','job_signals','growth_stage','completed_at'];
+function stripOptionalCols(payload: Record<string,any>) {
+  const p = { ...payload };
+  for (const k of OPTIONAL_VO_COLS) delete p[k];
+  return p;
+}
+
 // ─── FREE TTS (Google Translate, no API key needed) ──────────────────────────
 
 function splitIntoTtsChunks(text: string, maxLen = 190): string[] {
@@ -1199,7 +1208,9 @@ router.post('/generate/single', async (req: any, res: any) => {
         optimalAt.setHours(th, tm, 0, 0);
         if (optimalAt <= now) optimalAt.setDate(optimalAt.getDate() + 1);
 
-        await supabase.from('video_outreach').update({
+        // Önce tam update — eksik kolon varsa sessizce başarısız olur (PGRST204)
+        // Fallback: sadece 'script' kolonu garantilidır (migration 20260630_video_outreach_columns.sql bekleniyor)
+        const { error: phase2Err } = await supabase.from('video_outreach').update({
           script,
           hook_a: hooks.hookA,
           hook_b: hooks.hookB,
@@ -1211,6 +1222,11 @@ router.post('/generate/single', async (req: any, res: any) => {
           job_signals: research.jobSignals || null,
           growth_stage: research.growthStage || null,
         }).eq('id', videoRecord?.id);
+
+        if (phase2Err) {
+          console.warn('[Video] Phase2 full update failed (eksik kolon?), sadece script kaydediliyor:', phase2Err.message?.slice(0, 80));
+          await supabase.from('video_outreach').update({ script }).eq('id', videoRecord?.id);
+        }
 
         // Phase 2.5: Emotion analysis + Review card background (PIP mode)
         const emotionProfile = await analyzeEmotion(script, { sector: lead.sector, pain: research.pains?.[0], brandName: research.brandName }).catch(() => null);
@@ -1296,8 +1312,8 @@ router.post('/generate/single', async (req: any, res: any) => {
           }).eq('id', videoRecord?.id);
           console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName}) score:${score}${backgroundUrl ? ' +reviewCard' : ''}`);
         } else {
-          // Direct video URL from VideoEngine
-          await supabase.from('video_outreach').update({
+          // Direct video URL from VideoEngine — fallback olmadan status asla 'completed' olmaz
+          const { error: phase3Err } = await supabase.from('video_outreach').update({
             video_url: finalVideoUrl,
             status: 'completed',
             engine: usedEngine,
@@ -1305,6 +1321,11 @@ router.post('/generate/single', async (req: any, res: any) => {
             replica_id: replica?.id || null,
             completed_at: new Date().toISOString(),
           }).eq('id', videoRecord?.id);
+
+          if (phase3Err) {
+            console.warn('[Video] Phase3 full update failed (eksik kolon?), minimal update:', phase3Err.message?.slice(0, 80));
+            await supabase.from('video_outreach').update({ video_url: finalVideoUrl, status: 'completed', engine: usedEngine }).eq('id', videoRecord?.id);
+          }
           console.log(`[Video] ${usedEngine} complete (${research.brandName}) score:${score} emotion:${emotionProfile?.primary}`);
         }
       } catch (err: any) {
@@ -1449,7 +1470,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             campEngine   = 'heygen';
           }
 
-          await supabase.from('video_outreach').insert([{
+          const campPayload = {
             user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
             avatar_id: avatarId, voice_id: voiceId,
             heygen_video_id: campHeygenId,
@@ -1471,7 +1492,12 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             tech_stack: research?.techStack || null,
             job_signals: research?.jobSignals || null,
             growth_stage: research?.growthStage || null,
-          }]);
+          };
+          const { error: campInsErr } = await supabase.from('video_outreach').insert([campPayload]);
+          if (campInsErr) {
+            console.warn('[Campaign] Full INSERT failed (eksik kolon?), minimal insert:', campInsErr.message?.slice(0, 80));
+            await supabase.from('video_outreach').insert([stripOptionalCols(campPayload)]);
+          }
 
           created++;
           await supabase.from('video_campaigns').update({ videos_created: created }).eq('id', campaign?.id);
@@ -1550,11 +1576,12 @@ router.post('/retry/:id', async (req: any, res: any) => {
             emotion_profile: retryEmotion ? serializeProfile(retryEmotion) : null,
           }).eq('id', video.id);
         } else {
-          await supabase.from('video_outreach').update({
+          const { error: retryErr } = await supabase.from('video_outreach').update({
             video_url: retryFinalUrl, status: 'completed', engine: retryEngine,
             emotion_profile: retryEmotion ? serializeProfile(retryEmotion) : null,
             completed_at: new Date().toISOString(),
           }).eq('id', video.id);
+          if (retryErr) await supabase.from('video_outreach').update({ video_url: retryFinalUrl, status: 'completed', engine: retryEngine }).eq('id', video.id);
         }
       } catch (err: any) {
         await supabase.from('video_outreach').update({ status: 'failed', error_message: err.message }).eq('id', video.id);
