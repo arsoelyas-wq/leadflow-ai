@@ -7,6 +7,8 @@ const { ADMIN_EMAILS, ADMIN_SECRET } = require('../../middleware/adminAuth');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+router.use('/avatar-library', require('./avatar-library'));
+
 // ── Helper: audit log ─────────────────────────────────────────────────────────
 async function audit(email: string, action: string, targetId?: string, details?: object, ip?: string) {
   try {

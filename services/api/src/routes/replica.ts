@@ -21,6 +21,40 @@ router.get('/', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── GET /api/replica/grouped — ready replicas grouped by person/character ───
+
+router.get('/grouped', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_replicas')
+      .select('*')
+      .eq('user_id', req.userId)
+      .eq('status', 'ready')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const groups: Record<string, any> = {};
+    for (const r of (data || [])) {
+      const key = r.character_group || r.name;
+      if (!groups[key]) {
+        groups[key] = {
+          character_group: key,
+          display_name: (r.name || '').split(' - ')[0].trim() || r.name,
+          is_default: false,
+          scenes: [],
+        };
+      }
+      groups[key].scenes.push({
+        id: r.id, scene_type: r.scene_type || 'studio', name: r.name,
+        preview_video_url: r.preview_video_url, is_default: r.is_default,
+      });
+      if (r.is_default) groups[key].is_default = true;
+    }
+
+    res.json({ characters: Object.values(groups) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── GET /api/replica/:id ─────────────────────────────────────────────────────
 
 router.get('/:id', async (req: any, res: any) => {
@@ -74,10 +108,17 @@ router.post('/train', async (req: any, res: any) => {
       seedVideoPath,               // path in replica-seeds bucket
       cloneVoice  = true,
       durationSec,                 // measured client-side from recorded/uploaded video
+      sceneType   = 'studio',      // studio | office | home | outdoor | field
+      characterGroup,              // optional — groups multiple scenes of the same person
     } = req.body || {};
 
     if (!name || !seedVideoPath)
       return res.status(400).json({ error: 'name and seedVideoPath required' });
+
+    const validScenes = ['studio', 'office', 'home', 'outdoor', 'field'];
+    if (!validScenes.includes(sceneType)) {
+      return res.status(400).json({ error: `Geçersiz sahne tipi. Geçerli: ${validScenes.join(', ')}` });
+    }
 
     if (typeof durationSec === 'number') {
       if (durationSec < MIN_SEED_DURATION_SEC) {
@@ -103,6 +144,8 @@ router.post('/train', async (req: any, res: any) => {
         engine,
         status:        'processing',
         seed_video_url: seedVideoUrl,
+        scene_type:     sceneType,
+        character_group: (characterGroup || name).toLowerCase().split(' - ')[0].trim(),
       }])
       .select()
       .single();

@@ -27,7 +27,17 @@ interface Replica {
   is_default: boolean
   error_message?: string
   created_at: string
+  scene_type?: 'studio' | 'office' | 'home' | 'outdoor' | 'field'
+  character_group?: string
 }
+
+const SCENE_OPTIONS: { value: Replica['scene_type']; label: string; icon: string; tip: string }[] = [
+  { value: 'studio',  label: 'Stüdyo',    icon: '🎬', tip: 'Düz arka plan, kontrollü ışık' },
+  { value: 'office',  label: 'Ofis',      icon: '🏢', tip: 'Masa/toplantı odası arka planı' },
+  { value: 'home',    label: 'Ev',        icon: '🏠', tip: 'Samimi, rahat ortam' },
+  { value: 'field',   label: 'Saha',      icon: '👔', tip: 'Saha/müşteri ziyareti havası' },
+  { value: 'outdoor', label: 'Dış Mekan', icon: '🌳', tip: 'Açık alan, doğal ışık' },
+]
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -69,6 +79,8 @@ export default function ReplicaPage() {
   const [name, setName]             = useState('')
   const [language, setLanguage]     = useState('tr')
   const [engine, setEngine]         = useState<'latentsync' | 'gaussian'>('latentsync')
+  const [sceneType, setSceneType]   = useState<NonNullable<Replica['scene_type']>>('studio')
+  const [characterGroup, setCharacterGroup] = useState('')
   const [recordMode, setRecordMode] = useState<'upload' | 'camera'>('upload')
   const [videoFile, setVideoFile]   = useState<File | null>(null)
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
@@ -253,7 +265,7 @@ export default function ReplicaPage() {
       const trainRes = await fetch(`${API}/api/replica/train`, {
         method: 'POST',
         headers: authH(),
-        body: JSON.stringify({ name: name.trim(), language, engine, seedVideoPath: path, cloneVoice: true, durationSec: videoDuration ?? undefined }),
+        body: JSON.stringify({ name: name.trim(), language, engine, seedVideoPath: path, cloneVoice: true, durationSec: videoDuration ?? undefined, sceneType, characterGroup: characterGroup.trim() || undefined }),
       })
       const trainData = await trainRes.json()
       if (!trainRes.ok) throw new Error(trainData.error || 'Eğitim başlatılamadı')
@@ -267,6 +279,8 @@ export default function ReplicaPage() {
       setVideoFile(null)
       setVideoPreview(null)
       setVideoDuration(null)
+      setSceneType('studio')
+      setCharacterGroup('')
       setTab('list')
       load()
     } catch (e: any) {
@@ -394,6 +408,11 @@ export default function ReplicaPage() {
                         <div className="flex items-center gap-2 flex-wrap mb-2">
                           <StatusBadge status={replica.status} />
                           <EngineTag engine={replica.engine} />
+                          {replica.scene_type && (
+                            <span className="text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded-full">
+                              {SCENE_OPTIONS.find(s => s.value === replica.scene_type)?.icon} {SCENE_OPTIONS.find(s => s.value === replica.scene_type)?.label}
+                            </span>
+                          )}
                           <span className="text-slate-500 text-xs">{replica.language.toUpperCase()}</span>
                         </div>
                         {replica.status === 'processing' && (
@@ -523,6 +542,52 @@ export default function ReplicaPage() {
                 ))}
               </div>
             </div>
+
+            {/* Scene / Environment */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Bu Kayıt Hangi Ortamda?</label>
+              <p className="text-slate-500 text-xs mb-3">Aynı kişiyi farklı ortamlarda kaydedip videolarda ortama göre seçim yapabilirsiniz.</p>
+              <div className="grid grid-cols-5 gap-2">
+                {SCENE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSceneType(opt.value!)}
+                    title={opt.tip}
+                    className={`flex flex-col items-center gap-1 py-3 rounded-xl border text-center transition-colors ${
+                      sceneType === opt.value ? 'border-violet-500/60 bg-violet-500/10 text-violet-300' : 'border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                  >
+                    <span className="text-lg">{opt.icon}</span>
+                    <span className="text-[10px] font-medium">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Character group — link multiple scenes of same person */}
+            {replicas.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Kişi Grubu <span className="text-slate-500 font-normal">(opsiyonel — aynı kişinin farklı sahnelerini birbirine bağlar)</span>
+                </label>
+                <input
+                  value={characterGroup}
+                  onChange={e => setCharacterGroup(e.target.value)}
+                  placeholder="Örn: ahmet (boş bırakılırsa replika adından otomatik oluşur)"
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:border-violet-500"
+                />
+                {[...new Set(replicas.map(r => r.character_group).filter(Boolean))].length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {[...new Set(replicas.map(r => r.character_group).filter(Boolean))].map(g => (
+                      <button key={g} onClick={() => setCharacterGroup(g!)}
+                        className="text-[10px] px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-full transition-colors">
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Video source */}
             <div>

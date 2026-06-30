@@ -13,6 +13,7 @@ const NAV = [
   { href: '/admin/landing', icon: '🏠', label: 'Ana Sayfa Editörü' },
   { href: '/admin/content', icon: '🌍', label: 'Pazar Sayfaları' },
   { href: '/admin/content/banners', icon: '🎬', label: 'Banner & Video' },
+  { href: '/admin/avatar-library', icon: '🎭', label: 'Avatar Kütüphanesi' },
   { href: '/admin/notifications', icon: '📢', label: 'Duyuru Gönder' },
   { href: '/admin/promo', icon: '🎁', label: 'Promo Kodları' },
   { group: 'ANALİTİK' },

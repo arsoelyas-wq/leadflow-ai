@@ -31,6 +31,61 @@ router.get('/', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── GET /api/avatar-library/grouped — characters grouped with their scenes ──
+// Returns one card per character_group, each with its available scene variants
+// (studio/office/home/outdoor/field). UI lets user pick character → scene.
+
+router.get('/grouped', async (req: any, res: any) => {
+  try {
+    const { gender, style, language } = req.query;
+
+    let query = supabase
+      .from('stock_avatars')
+      .select('*')
+      .eq('is_active', true)
+      .order('is_featured', { ascending: false })
+      .order('sort_order',  { ascending: true });
+
+    if (gender)   query = query.eq('gender', gender);
+    if (style)    query = query.eq('style', style);
+    if (language) query = query.contains('languages', [language]);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const groups: Record<string, any> = {};
+    for (const avatar of (data || [])) {
+      const key = avatar.character_group || avatar.name;
+      if (!groups[key]) {
+        groups[key] = {
+          character_group: key,
+          display_name: avatar.display_name,
+          gender: avatar.gender,
+          age_group: avatar.age_group,
+          style: avatar.style,
+          languages: avatar.languages,
+          is_featured: avatar.is_featured,
+          tags: avatar.tags,
+          scenes: [],
+        };
+      }
+      groups[key].scenes.push({
+        id: avatar.id,
+        scene_type: avatar.scene_type,
+        thumbnail_url: avatar.thumbnail_url,
+        preview_video_url: avatar.preview_video_url,
+        has_seed_video: !!avatar.latentsync_video_url,
+      });
+    }
+
+    const result = Object.values(groups).sort((a: any, b: any) =>
+      (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0)
+    );
+
+    res.json({ characters: result });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── GET /api/avatar-library/:id — single avatar ─────────────────────────────
 
 router.get('/:id', async (req: any, res: any) => {
@@ -134,97 +189,9 @@ router.get('/replicate/status/:predId', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Admin: POST /api/avatar-library/admin/upload-url ────────────────────────
-// Get a signed Supabase upload URL for a seed video
-
-router.post('/admin/upload-url', async (req: any, res: any) => {
-  try {
-    const { filename, contentType = 'video/mp4' } = req.body || {};
-    if (!filename) return res.status(400).json({ error: 'filename gerekli' });
-
-    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path     = `avatar-seeds/${Date.now()}_${safeName}`;
-
-    const { data, error } = await supabase.storage
-      .from('video-assets')
-      .createSignedUploadUrl(path, { upsert: true });
-
-    if (error) throw error;
-
-    const { data: pubData } = supabase.storage.from('video-assets').getPublicUrl(path);
-
-    res.json({ uploadUrl: data.signedUrl, publicUrl: pubData.publicUrl, path });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── Admin: POST /api/avatar-library/admin/upsert ────────────────────────────
-// Create or update a stock avatar record
-
-router.post('/admin/upsert', async (req: any, res: any) => {
-  try {
-    const {
-      id, name, display_name, gender = 'neutral', age_group = 'adult',
-      style = 'professional', languages = ['tr', 'en'],
-      thumbnail_url, latentsync_video_url, preview_video_url,
-      tags = [], is_featured = false, sort_order = 99, is_active = true,
-    } = req.body || {};
-
-    if (!name)         return res.status(400).json({ error: 'name gerekli' });
-    if (!display_name) return res.status(400).json({ error: 'display_name gerekli' });
-
-    const payload: any = {
-      name, display_name, gender, age_group, style, languages,
-      thumbnail_url, latentsync_video_url, preview_video_url,
-      tags, is_featured, sort_order, is_active,
-    };
-
-    let result;
-    if (id) {
-      const { data, error } = await supabase
-        .from('stock_avatars')
-        .update(payload)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      result = data;
-    } else {
-      const { data, error } = await supabase
-        .from('stock_avatars')
-        .upsert([payload], { onConflict: 'name' })
-        .select()
-        .single();
-      if (error) throw error;
-      result = data;
-    }
-
-    res.json({ ok: true, avatar: result });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-// ─── Admin: POST /api/avatar-library/admin/test-latentsync ───────────────────
-// Quick test: run LatentSync on an avatar with a sample audio to verify quality
-
-router.post('/admin/test-latentsync', async (req: any, res: any) => {
-  try {
-    const { avatarId, testAudioUrl } = req.body || {};
-    if (!avatarId || !testAudioUrl) return res.status(400).json({ error: 'avatarId ve testAudioUrl gerekli' });
-    if (!process.env.REPLICATE_API_TOKEN) return res.status(400).json({ error: 'REPLICATE_API_TOKEN eksik' });
-
-    const { data: avatar } = await supabase.from('stock_avatars').select('*').eq('id', avatarId).single();
-    if (!avatar?.latentsync_video_url) return res.status(400).json({ error: 'Avatar seed video yok' });
-
-    const r = await axios.post(
-      'https://api.replicate.com/v1/predictions',
-      {
-        version: 'a84b0568a4ef50a63d0e9e1d2e7b47daed1b17e35fed7e8fbe4b70bce3a2bea5',
-        input: { video: avatar.latentsync_video_url, audio: testAudioUrl, sync_conf: 0.85, fps: 25 },
-      },
-      { headers: { Authorization: `Token ${process.env.REPLICATE_API_TOKEN}`, 'Content-Type': 'application/json' } }
-    );
-
-    res.json({ predictionId: r.data?.id, message: `Test başlatıldı — /api/avatar-library/replicate/status/${r.data?.id} ile takip edin` });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
+// NOTE: Admin management (upload/upsert/test) moved to /api/admin/avatar-library
+// — protected by adminAuthMiddleware. Previously these lived here under regular
+// user authMiddleware, which meant any logged-in customer could write to the
+// shared stock_avatars table. See routes/admin/avatar-library.ts.
 
 module.exports = router;

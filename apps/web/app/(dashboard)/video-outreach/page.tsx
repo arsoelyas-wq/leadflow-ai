@@ -62,52 +62,131 @@ const STYLE_LABELS: Record<string, string> = {
 const LANG_FLAGS_VO: Record<string, string> = {
   tr: '🇹🇷', en: '🇬🇧', de: '🇩🇪', ar: '🇸🇦', fr: '🇫🇷', ru: '🇷🇺', es: '🇪🇸',
 }
+const SCENE_LABELS: Record<string, { label: string; icon: string }> = {
+  studio:  { label: 'Stüdyo',       icon: '🎬' },
+  office:  { label: 'Ofis',         icon: '🏢' },
+  home:    { label: 'Ev',           icon: '🏠' },
+  outdoor: { label: 'Dış Mekan',    icon: '🌳' },
+  field:   { label: 'Saha',         icon: '👔' },
+}
 
 // ADIM 1: Avatar Seç
 function StepAvatar({ selected, onSelect }: any) {
-  const [stockAvatars, setStockAvatars] = useState<any[]>([])
+  const [myCharacters, setMyCharacters] = useState<any[]>([])
+  const [myLoading, setMyLoading] = useState(false)
+  const [stockCharacters, setStockCharacters] = useState<any[]>([])
   const [stockLoading, setStockLoading] = useState(false)
   const [stockFilter, setStockFilter] = useState('')
+  const [activeScene, setActiveScene] = useState<Record<string, string>>({}) // character_group -> scene id picked in UI before confirm
 
-  useEffect(() => { loadStock() }, [])
+  useEffect(() => { loadMy(); loadStock() }, [])
+
+  async function loadMy() {
+    setMyLoading(true)
+    try {
+      const r = await fetch(`${API}/api/replica/grouped`, { headers: authH() })
+      const d = await r.json()
+      setMyCharacters(d.characters || [])
+    } catch {}
+    setMyLoading(false)
+  }
 
   async function loadStock() {
     setStockLoading(true)
     try {
-      const r = await fetch(`${API}/api/avatar-library`, { headers: authH() })
+      const r = await fetch(`${API}/api/avatar-library/grouped`, { headers: authH() })
       const d = await r.json()
-      setStockAvatars(d.avatars || [])
+      setStockCharacters(d.characters || [])
     } catch {}
     setStockLoading(false)
   }
 
-  const filteredStock = stockAvatars.filter(a =>
-    !stockFilter || a.display_name.toLowerCase().includes(stockFilter.toLowerCase()) ||
-    a.style.includes(stockFilter) || a.gender.includes(stockFilter)
+  const filteredStock = stockCharacters.filter((c: any) =>
+    !stockFilter || c.display_name.toLowerCase().includes(stockFilter.toLowerCase()) ||
+    c.style?.includes(stockFilter) || c.gender?.includes(stockFilter)
   )
 
+  function pickReplicaScene(character: any, scene: any) {
+    onSelect({ id: scene.id, display_name: character.display_name, _source: 'replica', scene_type: scene.scene_type })
+  }
+  function pickStockScene(character: any, scene: any) {
+    onSelect({ id: scene.id, display_name: character.display_name, _source: 'stock', scene_type: scene.scene_type })
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-white mb-1">Avatar Seç</h2>
-        <p className="text-slate-400 text-sm">Videonuzda görünecek avatar karakteri seçin.</p>
+        <p className="text-slate-400 text-sm">Videonuzda görünecek avatar karakteri ve ortamını seçin.</p>
       </div>
 
       {selected && (
         <div className="flex items-center gap-3 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
           <CheckCircle className="w-4 h-4 text-purple-400 shrink-0"/>
           <span className="text-purple-300 text-sm font-medium">Seçili: {selected.display_name || selected.name}</span>
-          <span className="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">MuseTalk AI</span>
+          {selected.scene_type && (
+            <span className="text-xs text-slate-300 bg-slate-700/60 px-2 py-0.5 rounded-full">
+              {SCENE_LABELS[selected.scene_type]?.icon} {SCENE_LABELS[selected.scene_type]?.label}
+            </span>
+          )}
+          <span className="text-xs text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">
+            {selected._source === 'replica' ? 'Kendi Replikam' : 'MuseTalk AI'}
+          </span>
           <button onClick={() => onSelect(null)} className="ml-auto text-xs text-slate-500 hover:text-slate-300">Değiştir</button>
         </div>
       )}
 
-      {stockLoading && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[1,2,3,4,5].map(i => (
-            <div key={i} className="h-40 bg-slate-800 rounded-xl animate-pulse" />
-          ))}
+      {/* ── KENDİ REPLİKALARIM — öncelikli, üstte ── */}
+      {!myLoading && myCharacters.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-400"/>
+            <span className="text-sm font-bold text-white">Kendi Replikalarım</span>
+            <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-bold">EN İYİ SONUÇ</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {myCharacters.map((character: any) => (
+              <div key={character.character_group} className="bg-slate-800/60 border border-amber-500/20 rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-9 h-9 rounded-full bg-amber-500/15 flex items-center justify-center text-base shrink-0">🧑‍💼</div>
+                  <span className="text-white text-sm font-semibold truncate">{character.display_name}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {character.scenes.map((scene: any) => {
+                    const isSelected = selected?.id === scene.id && selected?._source === 'replica'
+                    return (
+                      <button
+                        key={scene.id}
+                        onClick={() => pickReplicaScene(character, scene)}
+                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          isSelected ? 'bg-amber-500/20 border-amber-500/60 text-amber-300' : 'bg-slate-900/60 border-slate-700 text-slate-300 hover:border-slate-600'
+                        }`}
+                      >
+                        <span>{SCENE_LABELS[scene.scene_type]?.icon || '🎬'}</span>
+                        {SCENE_LABELS[scene.scene_type]?.label || scene.scene_type}
+                        {isSelected && <CheckCircle className="w-3 h-3 ml-0.5"/>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <a href="/replica" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300">
+            + Yeni sahne/ortam ekle (Replika sayfası) <ChevronRight className="w-3 h-3"/>
+          </a>
         </div>
+      )}
+
+      {!myLoading && myCharacters.length === 0 && (
+        <a href="/replica" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/20 rounded-xl hover:border-amber-500/40 transition">
+          <Sparkles className="w-5 h-5 text-amber-400 shrink-0"/>
+          <div className="flex-1">
+            <p className="text-amber-300 text-sm font-semibold">Kendi sesiniz ve yüzünüzle daha etkili videolar</p>
+            <p className="text-amber-400/60 text-xs">10 saniyelik rehberli kayıt ile kendi AI replikanızı oluşturun</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-amber-400"/>
+        </a>
       )}
 
       <div className="flex items-center gap-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
@@ -115,59 +194,85 @@ function StepAvatar({ selected, onSelect }: any) {
         <p className="text-violet-300 text-xs">Kendi AI altyapımız — <strong>MuseTalk motoru</strong> ile dudak senkronizasyonu ve yüz restorasyonu</p>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
-        <input
-          value={stockFilter}
-          onChange={e => setStockFilter(e.target.value)}
-          placeholder="Avatar ara..."
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"
-        />
-      </div>
-
-      {stockLoading ? (
-        <div className="flex justify-center py-12"><RefreshCw className="w-6 h-6 animate-spin text-violet-400"/></div>
-      ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-          {filteredStock.map((avatar: any) => {
-            const isSelected = selected?.id === avatar.id
-            return (
-              <div
-                key={avatar.id}
-                onClick={() => onSelect({ ...avatar, _source: 'stock' })}
-                className={`relative rounded-2xl overflow-hidden cursor-pointer border-2 transition-all group ${isSelected ? 'border-violet-500 ring-2 ring-violet-500/30' : 'border-transparent hover:border-slate-600'}`}
-              >
-                {avatar.thumbnail_url ? (
-                  <img src={avatar.thumbnail_url} alt={avatar.display_name} className="w-full aspect-[3/4] object-cover object-top group-hover:scale-105 transition-transform duration-300"/>
-                ) : (
-                  <div className="w-full aspect-[3/4] bg-slate-800 flex items-center justify-center text-4xl">
-                    {avatar.gender === 'female' ? '👩‍💼' : avatar.gender === 'male' ? '👨‍💼' : '🧑‍💼'}
-                  </div>
-                )}
-                {avatar.is_featured && (
-                  <div className="absolute top-2 left-2 bg-violet-600/90 rounded-full px-1.5 py-0.5 text-[9px] text-white font-bold">★ ÖNERILEN</div>
-                )}
-                {isSelected && (
-                  <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1">
-                    <CheckCircle className="w-3 h-3 text-white"/>
-                  </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2">
-                  <p className="text-white text-xs font-medium truncate">{avatar.display_name}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-slate-400 text-[10px]">{STYLE_LABELS[avatar.style]}</span>
-                    <span className="text-slate-600 text-[10px]">·</span>
-                    <span className="text-[10px]">{avatar.languages?.slice(0, 3).map((l: string) => LANG_FLAGS_VO[l] || l).join(' ')}</span>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+      {/* ── STOK KÜTÜPHANE ── */}
+      <div className="space-y-2.5">
+        <span className="text-sm font-bold text-white">Stok Kütüphane</span>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"/>
+          <input
+            value={stockFilter}
+            onChange={e => setStockFilter(e.target.value)}
+            placeholder="Avatar ara..."
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-violet-500"
+          />
         </div>
-      )}
-      {filteredStock.length === 0 && !stockLoading && (
-        <p className="text-center text-slate-500 text-sm py-8">Avatar bulunamadı</p>
-      )}
+
+        {stockLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {[1,2,3,4,5].map(i => <div key={i} className="h-40 bg-slate-800 rounded-xl animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            {filteredStock.map((character: any) => {
+              const defaultScene = character.scenes.find((s: any) => s.has_seed_video) || character.scenes[0]
+              const isSelected = character.scenes.some((s: any) => s.id === selected?.id && selected?._source === 'stock')
+              const hasMultipleScenes = character.scenes.length > 1
+              return (
+                <div
+                  key={character.character_group}
+                  className={`relative rounded-2xl overflow-hidden border-2 transition-all group ${isSelected ? 'border-violet-500 ring-2 ring-violet-500/30' : 'border-transparent hover:border-slate-600'}`}
+                >
+                  <div onClick={() => pickStockScene(character, defaultScene)} className="cursor-pointer">
+                    {defaultScene?.thumbnail_url ? (
+                      <img src={defaultScene.thumbnail_url} alt={character.display_name} className="w-full aspect-[3/4] object-cover object-top group-hover:scale-105 transition-transform duration-300"/>
+                    ) : (
+                      <div className="w-full aspect-[3/4] bg-slate-800 flex items-center justify-center text-4xl">
+                        {character.gender === 'female' ? '👩‍💼' : character.gender === 'male' ? '👨‍💼' : '🧑‍💼'}
+                      </div>
+                    )}
+                    {character.is_featured && (
+                      <div className="absolute top-2 left-2 bg-violet-600/90 rounded-full px-1.5 py-0.5 text-[9px] text-white font-bold">★ ÖNERILEN</div>
+                    )}
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 bg-violet-600 rounded-full p-1">
+                        <CheckCircle className="w-3 h-3 text-white"/>
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2">
+                      <p className="text-white text-xs font-medium truncate">{character.display_name}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-slate-400 text-[10px]">{STYLE_LABELS[character.style]}</span>
+                        <span className="text-slate-600 text-[10px]">·</span>
+                        <span className="text-[10px]">{character.languages?.slice(0, 3).map((l: string) => LANG_FLAGS_VO[l] || l).join(' ')}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {hasMultipleScenes && (
+                    <div className="flex flex-wrap gap-1 p-1.5 bg-slate-900">
+                      {character.scenes.map((scene: any) => {
+                        const sceneSelected = selected?.id === scene.id && selected?._source === 'stock'
+                        return (
+                          <button
+                            key={scene.id}
+                            onClick={() => pickStockScene(character, scene)}
+                            title={SCENE_LABELS[scene.scene_type]?.label}
+                            className={`text-[10px] px-1.5 py-0.5 rounded ${sceneSelected ? 'bg-violet-500/30 text-violet-300' : 'bg-slate-800 text-slate-400 hover:text-slate-200'}`}
+                          >
+                            {SCENE_LABELS[scene.scene_type]?.icon}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {filteredStock.length === 0 && !stockLoading && (
+          <p className="text-center text-slate-500 text-sm py-8">Avatar bulunamadı</p>
+        )}
+      </div>
     </div>
   )
 }
@@ -1051,9 +1156,12 @@ export default function VideoOutreachPage() {
     setGenerating(true)
     try {
       const isStockAvatar  = selectedAvatar?._source === 'stock'
+      const isReplica      = selectedAvatar?._source === 'replica'
       const avatarPayload  = isStockAvatar
         ? { stockAvatarId: selectedAvatar.id }
-        : { avatarId: selectedAvatar?.avatar_id }
+        : isReplica
+          ? { replicaId: selectedAvatar.id, avatarId: 'replica' } // avatarId kept for legacy not-null checks
+          : { avatarId: selectedAvatar?.avatar_id }
 
       if (selectedLead.length === 1) {
         const leadScript = scripts.find((s: any) => s.leadId === selectedLead[0].id)
