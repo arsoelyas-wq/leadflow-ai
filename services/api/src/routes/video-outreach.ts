@@ -119,7 +119,7 @@ JSON formatında yanıt ver (başka hiçbir şey yazma, sadece JSON):
       max_tokens: 2500,
       tools: [{ type: 'web_search_20250305', name: 'web_search' }] as any,
       messages,
-    });
+    }, { timeout: 40000 });
 
     messages.push({ role: 'assistant', content: response.content });
 
@@ -341,7 +341,7 @@ Bu sektördeki şirketlerin yaşadığı en yaygın 2-3 spesifik sorunu ve bu ş
   "hookLine": "dikkat çekici opener"
 }`,
       }],
-    });
+    }, { timeout: 20000 });
     const text = ((r.content[0] as any)?.text || '');
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -451,7 +451,7 @@ Hook A: Şaşırtıcı istatistik veya sorunu vurgulayan yaklaşım
 Hook B: Fırsat ve kazancı öne çıkaran yaklaşım
 JSON: {"hookA":"...","hookB":"..."}`,
       }],
-    });
+    }, { timeout: 15000 });
     const match = ((r.content[0] as any)?.text || '').match(/\{[\s\S]*\}/);
     if (match) {
       const p = JSON.parse(match[0]);
@@ -475,7 +475,7 @@ Script: "${script.slice(0, 350)}"
 ${research?.pains?.[0] ? `Beklenen spesifik sorun: ${research.pains[0]}` : ''}
 Sadece sayı (1-10):`,
       }],
-    });
+    }, { timeout: 15000 });
     const num = parseInt(((r.content[0] as any)?.text || '').match(/\d+/)?.[0] || '0', 10);
     return Math.min(10, Math.max(1, num));
   } catch { return 0; }
@@ -675,7 +675,7 @@ Satir 3: "15 dakikaniz varsa bu hafta konusalim mi?" (yumusak CTA)
 
 KURALLAR: Emoji yok. Link yok. Sadece satir 1 ve satir 3'u yaz. Dogal, samimi, 2 cumle.`,
       }],
-    });
+    }, { timeout: 15000 });
     return ((r.content[0] as any)?.text || '').trim();
   } catch {
     const contactFirst = (lead.contact_name?.split(' ')[0] || brandName.split(' ')[0]);
