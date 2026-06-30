@@ -189,11 +189,6 @@ function StepAvatar({ selected, onSelect }: any) {
         </a>
       )}
 
-      <div className="flex items-center gap-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
-        <span className="text-violet-400 text-sm">⚡</span>
-        <p className="text-violet-300 text-xs">Kendi AI altyapımız — <strong>MuseTalk motoru</strong> ile dudak senkronizasyonu ve yüz restorasyonu</p>
-      </div>
-
       {/* ── STOK KÜTÜPHANE ── */}
       <div className="space-y-2.5">
         <span className="text-sm font-bold text-white">Stok Kütüphane</span>
