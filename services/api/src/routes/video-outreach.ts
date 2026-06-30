@@ -8,6 +8,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const router    = express.Router();
 const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const { synthesizeXtts } = require('../services/xtts-engine');
 
 const HEYGEN_KEY  = process.env.HEYGEN_API_KEY;
 const ELEVEN_KEY  = process.env.ELEVENLABS_API_KEY;
@@ -874,7 +875,21 @@ async function generateFreeAudio(text: string, language = 'tr'): Promise<Buffer>
 
 const { synthesize: ttsSynthesize } = require('../services/tts-engine');
 
-async function generateAudio(text: string, voiceId: string, emotionProfile?: any, language = 'tr'): Promise<Buffer> {
+async function generateAudio(text: string, voiceId: string, emotionProfile?: any, language = 'tr', userId?: string): Promise<Buffer> {
+  // Cloned voice path (Sesli Ajan / XTTS-v2 — kendi sistemimiz, "clone:<cloned_voices.id>")
+  if (voiceId.startsWith('clone:')) {
+    const cloneId = voiceId.slice('clone:'.length);
+    try {
+      const query = supabase.from('cloned_voices').select('sample_url').eq('id', cloneId);
+      const { data: cv } = userId ? await query.eq('user_id', userId).single() : await query.single();
+      if (!cv?.sample_url) throw new Error('Klonlanmış ses bulunamadı');
+      return await synthesizeXtts(text, cv.sample_url, language);
+    } catch (err: any) {
+      console.warn(`[Audio] XTTS clone failed (${err.message?.slice(0, 60)}) — falling back to free TTS`);
+      return generateFreeAudio(text, language);
+    }
+  }
+
   // Free TTS path (Google Translate)
   if (voiceId === 'free_tts') {
     return generateFreeAudio(text, language);
@@ -1216,7 +1231,7 @@ router.post('/generate/single', async (req: any, res: any) => {
           const audioRes = await axios.get(testAudioUrl, { responseType: 'arraybuffer' });
           audioBuffer = Buffer.from(audioRes.data);
         } else {
-          audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile, language);
+          audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile, language, userId);
         }
 
         let finalVideoUrl: string | undefined;
@@ -1383,10 +1398,10 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             if (bgUrl) campaignBgUrl = bgUrl;
           }
 
-          const campReplica       = await getUserReplica(userId);
+          const campReplica       = await getUserReplica(userId, req.body.replicaId);
           const campStockAvatarId = req.body.stockAvatarId as string | undefined;
           const campStockSeedUrl  = campStockAvatarId ? await getStockAvatarVideoUrl(campStockAvatarId) : null;
-          const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id || voiceId, campEmotion, callLang);
+          const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id || voiceId, campEmotion, callLang, userId);
           const code  = makeTrackingCode();
 
           let campFinalUrl: string | undefined;
@@ -1505,7 +1520,7 @@ router.post('/retry/:id', async (req: any, res: any) => {
         }
 
         const retryReplica = await getUserReplica(req.userId, video.replica_id);
-        const audio = await generateAudio(retryScript, retryReplica?.elevenlabs_voice_id || video.voice_id, retryEmotion, video.language || 'tr');
+        const audio = await generateAudio(retryScript, retryReplica?.elevenlabs_voice_id || video.voice_id, retryEmotion, video.language || 'tr', req.userId);
 
         let retryFinalUrl: string | undefined;
         let retryEngine = 'heygen';

@@ -290,7 +290,77 @@ function StepVoice({ selected, onSelect }: any) {
   const [search, setSearch] = useState('')
   const [showEleven, setShowEleven] = useState(false)
 
+  // Kayıtlı klonlanmış seslerim (Sesli Ajan ile paylaşılan sistem — cloned_voices)
+  const [clonedVoices, setClonedVoices] = useState<any[]>([])
+  const [clonedLoading, setClonedLoading] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [recordSeconds, setRecordSeconds] = useState(0)
+  const [newVoiceName, setNewVoiceName] = useState('')
+  const [savingVoice, setSavingVoice] = useState(false)
+  const [showRecorder, setShowRecorder] = useState(false)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null)
+  const MIN_VOICE_SEC = 10
+
+  useEffect(() => { loadClonedVoices() }, [])
   useEffect(() => { if (showEleven) load(voiceLang) }, [voiceLang, showEleven])
+
+  async function loadClonedVoices() {
+    setClonedLoading(true)
+    try {
+      const r = await fetch(`${API}/api/voice/my-voices`, { headers: authH() })
+      const d = await r.json()
+      setClonedVoices(d.voices || [])
+    } catch {}
+    setClonedLoading(false)
+  }
+
+  async function startVoiceRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      streamRef.current = stream
+      chunksRef.current = []
+      setRecordedBlob(null)
+      setRecordSeconds(0)
+      const mr = new MediaRecorder(stream)
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = () => {
+        setRecordedBlob(new Blob(chunksRef.current, { type: 'audio/webm' }))
+        stream.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+      }
+      mediaRef.current = mr
+      mr.start()
+      setRecording(true)
+      timerRef.current = setInterval(() => setRecordSeconds(s => s + 1), 1000)
+    } catch { alert('Mikrofon erişimi reddedildi') }
+  }
+
+  function stopVoiceRecording() {
+    mediaRef.current?.stop()
+    setRecording(false)
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+  }
+
+  async function saveNewVoice() {
+    if (!recordedBlob || !newVoiceName.trim()) return
+    setSavingVoice(true)
+    try {
+      const fd = new FormData()
+      fd.append('audio', recordedBlob, 'voice_sample.webm')
+      fd.append('name', newVoiceName.trim())
+      const r = await fetch(`${API}/api/voice/clone`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: fd })
+      const d = await r.json()
+      if (d.ok) {
+        await loadClonedVoices()
+        onSelect({ voice_id: `clone:${d.voiceId}`, name: d.voiceName, _source: 'clone' })
+        setShowRecorder(false); setRecordedBlob(null); setNewVoiceName(''); setRecordSeconds(0)
+      }
+    } catch {} finally { setSavingVoice(false) }
+  }
 
   async function load(lang: string) {
     setLoading(true)
@@ -317,26 +387,92 @@ function StepVoice({ selected, onSelect }: any) {
 
   const filtered = voices.filter(v => !search || v.name?.toLowerCase().includes(search.toLowerCase()))
   const isFreeTTS = selected?.voice_id === 'free_tts'
+  const isCloned = selected?._source === 'clone'
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-bold text-white mb-1">Ses Seç</h2>
-        <p className="text-slate-400 text-sm">Ücretsiz TTS ile hemen başlayın veya ElevenLabs ile premium ses kullanın.</p>
+        <p className="text-slate-400 text-sm">Kendi sesinizi kaydedin, Sesli Ajan'daki sesinizi kullanın veya premium ses seçin.</p>
       </div>
 
       {selected && (
-        <div className={`flex items-center gap-3 p-3 border rounded-xl ${isFreeTTS ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-teal-500/10 border-teal-500/20'}`}>
-          <CheckCircle className={`w-4 h-4 shrink-0 ${isFreeTTS ? 'text-emerald-400' : 'text-teal-400'}`}/>
-          <span className={`text-sm font-medium ${isFreeTTS ? 'text-emerald-300' : 'text-teal-300'}`}>
+        <div className={`flex items-center gap-3 p-3 border rounded-xl ${isCloned ? 'bg-amber-500/10 border-amber-500/20' : isFreeTTS ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-teal-500/10 border-teal-500/20'}`}>
+          <CheckCircle className={`w-4 h-4 shrink-0 ${isCloned ? 'text-amber-400' : isFreeTTS ? 'text-emerald-400' : 'text-teal-400'}`}/>
+          <span className={`text-sm font-medium ${isCloned ? 'text-amber-300' : isFreeTTS ? 'text-emerald-300' : 'text-teal-300'}`}>
             Seçili: {selected.name}
+            {isCloned && <span className="ml-2 text-xs text-amber-500/70">• Klonlanmış sesiniz</span>}
             {isFreeTTS && <span className="ml-2 text-xs text-emerald-500/70">• ElevenLabs gerektirmez</span>}
           </span>
           <button onClick={() => onSelect(null)} className="ml-auto text-xs text-slate-500 hover:text-slate-300">Değiştir</button>
         </div>
       )}
 
-      {/* Free TTS card */}
+      {/* ── KAYITLI SESLERİM (Sesli Ajan ile paylaşılan klonlanmış sesler) ── */}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-2">
+          <Mic className="w-4 h-4 text-amber-400"/>
+          <span className="text-sm font-bold text-white">Kayıtlı Seslerim</span>
+          <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full font-bold">EN DOĞAL SONUÇ</span>
+        </div>
+
+        {!clonedLoading && clonedVoices.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {clonedVoices.map((v: any) => {
+              const sel = selected?.voice_id === `clone:${v.id}`
+              return (
+                <button key={v.id} onClick={() => onSelect({ voice_id: `clone:${v.id}`, name: v.name, _source: 'clone' })}
+                  className={`flex items-center gap-3 p-3 rounded-xl border text-left transition ${sel ? 'bg-amber-600/20 border-amber-500/50' : 'bg-slate-800/60 border-slate-700 hover:border-amber-500/30'}`}>
+                  <div className="w-9 h-9 bg-amber-500/15 rounded-lg flex items-center justify-center text-base shrink-0">🎙️</div>
+                  <span className="text-white text-sm font-medium flex-1 truncate">{v.name}</span>
+                  {sel && <CheckCircle className="w-4 h-4 text-amber-400 shrink-0"/>}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Inline recorder */}
+        {!showRecorder ? (
+          <button onClick={() => setShowRecorder(true)}
+            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-500/30 hover:border-amber-500/50 rounded-xl text-amber-400 text-sm font-medium transition">
+            <Mic className="w-4 h-4"/> + Yeni Ses Kaydet (10sn+)
+          </button>
+        ) : (
+          <div className="p-4 bg-slate-800/60 border border-amber-500/20 rounded-xl space-y-3">
+            {!recordedBlob ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-300">{recording ? 'Kaydediliyor... doğal konuşun' : 'Mikrofona net ve doğal konuşun'}</span>
+                  {recording && <span className={`text-xs font-bold ${recordSeconds >= MIN_VOICE_SEC ? 'text-emerald-400' : 'text-amber-400'}`}>{recordSeconds}sn</span>}
+                </div>
+                <button onClick={recording ? stopVoiceRecording : startVoiceRecording}
+                  className={`w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition ${recording ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700'}`}>
+                  {recording ? <><Square className="w-4 h-4"/> Durdur</> : <><Mic className="w-4 h-4"/> Kayda Başla</>}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-emerald-400 text-xs">
+                  <CheckCircle className="w-3.5 h-3.5"/> {recordSeconds}sn kaydedildi {recordSeconds < MIN_VOICE_SEC && <span className="text-amber-400">— {MIN_VOICE_SEC}sn+ önerilir</span>}
+                </div>
+                <input value={newVoiceName} onChange={e => setNewVoiceName(e.target.value)} placeholder="Ses adı (örn: Benim Sesim)"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"/>
+                <div className="flex gap-2">
+                  <button onClick={() => { setRecordedBlob(null); setRecordSeconds(0) }} className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-slate-300">Yeniden Kaydet</button>
+                  <button onClick={saveNewVoice} disabled={!newVoiceName.trim() || savingVoice}
+                    className="flex-1 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-lg text-xs font-semibold text-white">
+                    {savingVoice ? 'Kaydediliyor...' : 'Kaydet ve Kullan'}
+                  </button>
+                </div>
+              </>
+            )}
+            <button onClick={() => { setShowRecorder(false); setRecordedBlob(null); setRecordSeconds(0) }} className="text-[11px] text-slate-500 hover:text-slate-400">İptal</button>
+          </div>
+        )}
+      </div>
+
+      {/* Free TTS card — fallback, ücretsiz */}
       <div
         onClick={() => onSelect(FREE_TTS_VOICE)}
         className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition ${isFreeTTS ? 'bg-emerald-600/20 border-emerald-500/50' : 'bg-slate-800/60 border-slate-700 hover:border-emerald-500/30'}`}
