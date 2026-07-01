@@ -20,8 +20,18 @@ const { synthesizeXtts, warmUpXtts } = require('../services/xtts-engine');
 
 const router    = express.Router();
 const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
 const upload    = multer({ dest: '/tmp/voice/' });
+
+// ─── 5 KONUŞMA TARZI ─────────────────────────────────────────────────────────
+// Her tarzın ElevenLabs ses ayarları (stability=sakin↔enerjik, style=duygusal yoğunluk)
+const STYLE_VOICE_SETTINGS: Record<string, { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean }> = {
+  consultant: { stability: 0.72, similarity_boost: 0.87, style: 0.20, use_speaker_boost: true },   // sakin, güven verici
+  challenger: { stability: 0.48, similarity_boost: 0.82, style: 0.62, use_speaker_boost: true },   // dinamik, provokatif
+  rapport:    { stability: 0.65, similarity_boost: 0.92, style: 0.38, use_speaker_boost: true },   // sıcak, samimi
+  direct:     { stability: 0.42, similarity_boost: 0.80, style: 0.70, use_speaker_boost: true },   // net, hızlı
+  corporate:  { stability: 0.88, similarity_boost: 0.96, style: 0.08, use_speaker_boost: false },  // resmi, kurumsal
+};
 
 const ELEVEN_KEY      = process.env.ELEVENLABS_API_KEY;
 const ELEVEN_BASE     = 'https://api.elevenlabs.io/v1';
@@ -133,75 +143,167 @@ Kural:
   }
 }
 
-// ─── VAPI SİSTEM PROMPT ───────────────────────────────────────────────────────
+// ─── ARAMA HAFIZASI: Aynı lead'e önceki aramalar ─────────────────────────────
+
+async function getCallMemory(userId: string, leadId: string): Promise<string> {
+  try {
+    const { data } = await supabase
+      .from('call_intelligence')
+      .select('outcome, next_action, transcript_summary, conversation_style, created_at')
+      .eq('user_id', userId)
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    if (!data?.length) return '';
+
+    const memories = data.map((c: any) => {
+      const date = new Date(c.created_at).toLocaleDateString('tr-TR');
+      return `• ${date}: ${c.outcome === 'appointment' ? 'Randevu alındı ✓' : c.outcome === 'callback' ? 'Geri aranacak' : c.outcome === 'rejected' ? 'İlgilenmedi' : 'Tamamlandı'} — ${c.transcript_summary || ''}${c.next_action ? ` → Sonraki adım: ${c.next_action}` : ''}`;
+    }).join('\n');
+
+    return `\n═══ ÖNCEKİ ARAMALAR (bu lead'e) ═══\n${memories}\nBu bilgileri doğal şekilde referans al — "geçen sefer konuşmuştuk" gibi.\n`;
+  } catch { return ''; }
+}
+
+// ─── TARZ ÖNERİ MOTORU: Geçmiş performanstan öğren ──────────────────────────
+
+async function getStyleRecommendation(userId: string, sector: string): Promise<{ style: string; reason: string; confidence: number }> {
+  try {
+    const { data } = await supabase
+      .from('call_intelligence')
+      .select('conversation_style, outcome, interest_score, duration_sec, sector')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (!data?.length) return { style: 'consultant', reason: 'Varsayılan başlangıç tarzı', confidence: 0 };
+
+    // Sektör bazlı filtrele, yoksa genel
+    const relevant = data.filter((c: any) => c.sector === sector);
+    const pool = relevant.length >= 5 ? relevant : data;
+
+    // Her tarz için başarı skoru hesapla
+    const scores: Record<string, number[]> = {};
+    pool.forEach((c: any) => {
+      if (!c.conversation_style) return;
+      if (!scores[c.conversation_style]) scores[c.conversation_style] = [];
+      const s = c.outcome === 'appointment' ? 10 : c.outcome === 'callback' ? 6 :
+                c.outcome === 'rejected' ? 1 : 3;
+      scores[c.conversation_style].push(s + (c.interest_score || 5));
+    });
+
+    let bestStyle = 'consultant', bestAvg = 0;
+    for (const [style, arr] of Object.entries(scores)) {
+      if (!arr.length) continue;
+      const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+      if (avg > bestAvg) { bestAvg = avg; bestStyle = style; }
+    }
+
+    const styleNames: Record<string, string> = {
+      consultant: 'Danışman', challenger: 'Meydan Okuyucu',
+      rapport: 'İlişki Kurucu', direct: 'Direkt', corporate: 'Kurumsal',
+    };
+
+    const confidence = pool.length >= 20 ? 90 : pool.length >= 10 ? 70 : pool.length >= 5 ? 50 : 0;
+    const sectorLabel = relevant.length >= 5 ? `"${sector}" sektöründe` : 'genel verilerinizde';
+    return {
+      style: bestStyle,
+      reason: `${sectorLabel} en iyi sonuç veren tarz (${pool.length} arama analizi)`,
+      confidence,
+    };
+  } catch { return { style: 'consultant', reason: 'Varsayılan tarz', confidence: 0 }; }
+}
+
+// ─── VAPI SİSTEM PROMPT — 5 KONUŞMA TARZI ────────────────────────────────────
 
 function buildVapiSystemPrompt(params: {
   agentName: string; companyName: string; productDesc: string;
   leadName: string; leadCompany: string; language: string;
   pain1?: string; pain2?: string; signal?: string; avoidWords?: string;
-  transferNumber?: string;
+  transferNumber?: string; style?: string; callMemory?: string;
 }): string {
-  const { agentName, companyName, productDesc, leadName, leadCompany, language, pain1, pain2, signal, avoidWords, transferNumber } = params;
+  const { agentName, companyName, productDesc, leadName, leadCompany, language, pain1, pain2, signal, avoidWords, transferNumber, style = 'consultant', callMemory = '' } = params;
 
-  const persona: Record<string, string> = {
-    tr: `Sen ${agentName}. ${companyName} adına ${leadCompany}'yi arıyorsun. Sunduğun: ${productDesc}.
+  // ─── 5 TARZ: Türkçe sahne bazlı prompt zinciri ─────────────────────────────
+  const STYLE_RULES: Record<string, string> = {
+    consultant: `
+═══ TARZ: DANIŞMAN ═══
+Soru soran, dinleyen, Sokrates yöntemi. Hiç satış yapma — sadece sorularla müşteriyi kendi sorununu keşfetmeye götür.
+Aşama 2 soru örnekleri: "Şu an ${pain1 ? `"${pain1}"` : 'bu konuyu'} nasıl yönetiyorsunuz?" / "Bu sizin için ne kadar öncelikli?" / "Neden şimdiye kadar değiştirmediniz?"
+İtiraz gelince: "Anlıyorum — peki şu an bu sizin için gerçekten sorun mu yoksa 'yapsak iyi olur' düzeyinde mi?"`,
 
+    challenger: `
+═══ TARZ: MEYDAN OKUYUCU ═══
+İçgörü-önce, varsayım-sorgulayan yaklaşım. Karşı tarafın mevcut yöntemini nazikçe sorgula.
+Aşama 2 örneği: "${leadCompany} gibi şirketlerin çoğu ${pain1 ? `'${pain1.slice(0,50)}'` : 'bu konuda'} eski yöntemle devam ediyor — sektörde baktığımda başarılı olanlar bunu çoktan değiştirdi."
+İtiraz gelince: "Bunu duyuyorum — ama tam olarak bu yüzden arıyorum. Mevcut yaklaşımınızı bir gözden geçirelim mi?"`,
+
+    rapport: `
+═══ TARZ: İLİŞKİ KURUCU ═══
+Önce bağ kur, sonra iş. İnsan tarafını öncele. Kişisel bir gözlem veya şirkete özel bir iltifatla başla.
+Aşama 1 ek: "${leadCompany}'yi araştırdım, ${signal ? signal.slice(0,60) + '.' : 'etkileyici çalışmalar yapıyorsunuz.'} Bu büyümeyi nasıl yönetiyorsunuz?"
+İtiraz gelince: "Kesinlikle zor bir dönemde arıyorum — ne zaman daha uygun olur sizin için?"`,
+
+    direct: `
+═══ TARZ: DİREKT ═══
+Kısa, net, zamanına saygılı. Her cevap 1 cümle. Hızlı değer → hızlı karar.
+Aşama 1: "Merhaba ${leadName?.split(' ')[0] || ''}, 2 dakika — ${pain1 ? `"${pain1.slice(0,40)}"` : productDesc.slice(0,40)} hakkında kısa bir şey paylaşmak istiyorum."
+Aşama 2'yi atla. Doğrudan Aşama 3'e: Tek cümle değer → Aşama 4: randevu.
+İtiraz gelince: Tek cümle, direkt: "Anlıyorum. Çarşamba 10 dakika?"`,
+
+    corporate: `
+═══ TARZ: KURUMSAL ═══
+Resmi dil, enterprise-grade sunum. "Siz" hitabı. Veri ve referanslarla konuş.
+Aşama 2: "Şirketinizin ${pain1 ? `"${pain1}"` : 'bu alandaki'} süreçlerini incelediğimizde, kurumsal ölçekte çalışan firmalarla ortaklaştığımız noktalar var. Bunu sizinle değerlendirmek istiyorum."
+İtiraz gelince: "Saygıyla anlıyorum. Yönetim ekibinizden kim bu konuya bakıyor? Kendilerine yönelik bir brifing hazırlayayım."`,
+  };
+
+  const TRANSFER_NOTE = transferNumber
+    ? `\nEğer karşı taraf çok ilgiliyse ve HEMEN görüşmek isterse: "Sizi hemen uzman arkadaşıma aktarıyorum" de ve ${transferNumber} numarasına transfer et.`
+    : '';
+
+  const COMMON_RULES = `
 ═══ KİMLİK ═══
-Sen gerçek bir insansın. Yapay zeka, bot, sistem, otomatik kelimelerini ASLA kullanma. Birisi "robot musun?" derse: "Hayır hayır, ben ${agentName}, ${companyName}'den arıyorum" de.
+Sen ${agentName}. ${companyName} adına ${leadCompany}'yi arıyorsun. Sunduğun: ${productDesc}.
+Sen gerçek bir insansın. Yapay zeka, bot, sistem, otomatik kelimelerini ASLA kullanma. "Robot musun?" → "Hayır, ben ${agentName}, ${companyName}'den arıyorum."
 
-═══ KONUŞMA STİLİ ═══
-- HER CEVAP MAKSIMUM 1-2 CÜMLE. Uzun konuşma. Telefonda insanlar kısa konuşur.
-- Doğal dolgu: "Şey...", "Yani...", "Anlıyorum", "Tabii", "Hmm" — ama her cümlede değil, 3-4 cümlede bir.
+═══ TELEFON KURALLARI (değişmez) ═══
+- HER CEVAP MAKSİMUM 2 CÜMLE. Telefonda insanlar kısa konuşur.
+- Doğal dolgu: "Şey...", "Anlıyorum", "Tabii", "Hmm" — 3-4 cümlede bir, hep değil.
 - Karşı taraf konuşurken SUS. Sözünü keserse HEMEN dur, "buyurun" de.
-- Ses tonun: samimi ama profesyonel. Arkadaşça ama saygılı. Satışçı gibi değil, danışman gibi.
-- Soru sorduğunda cevabı BEKLE. Hemen başka soru sorma.
+- Soru sorduğunda cevabı BEKLE.
+${avoidWords ? `- ASLA şunları kullanma: ${avoidWords}` : ''}
 
 ═══ KONUŞMA AŞAMALARI ═══
+AŞAMA 1 — AÇILIŞ: Açılış cümlesi zaten verildi (firstMessage). Devamında: "30 saniyenizi alabilir miyim?" Eğer müsait değillerse: "Anlıyorum, ne zaman uygun olur?"
 
-AŞAMA 1 — AÇILIŞ (ilk 15 saniye):
-Açılış cümlesi zaten verildi (firstMessage). Karşı taraf "evet?" veya "buyurun" derse:
-→ "Merhaba, ben ${agentName}. Sizi kısa bir konuda aramak istedim — 30 saniyenizi alabilir miyim?"
-Eğer "evet" → Aşama 2'ye geç. Eğer "müsait değilim" → "Anlıyorum, ne zaman daha uygun olur sizin için?"
+AŞAMA 2 — KEŞİF (30-60 sn): SATIŞ YAPMA. Sadece soru sor ve dinle.
+${pain1 ? `→ "${leadName?.split(' ')[0] || leadCompany}, ${pain1.slice(0,60)} konusunda nasıl bir süreciniz var?"` : `→ "${leadName?.split(' ')[0] || leadCompany}, ${productDesc.slice(0,50)} konusunda şu an nasıl bir çözüm kullanıyorsunuz?"`}
+${pain2 ? `Takip: "${pain2.slice(0,60)} sizi etkiliyor mu?"` : ''}
 
-AŞAMA 2 — KEŞİF (30-60 saniye):
-Burada SATIŞ YAPMA. Sadece soru sor:
-${pain1 ? `→ "${leadName}, ${pain1} konusunda nasıl bir süreciniz var şu an?"` : `→ "${leadName}, ${productDesc} konusunda şu an nasıl bir çözüm kullanıyorsunuz?"`}
-Cevabı dinle, "Anlıyorum" de, takip sorusu sor: "Peki bu sizin için ne kadar öncelikli bir konu?"
-
-AŞAMA 3 — DEĞER (15-20 saniye):
-Sadece karşı tarafın söylediği sorunla ilgili KISA bir değer cümlesi:
-→ "Aslında tam da bu konuda farklı bir yaklaşımımız var. Benzer firmalarla çalışıyoruz."
-DETAY VERME. Merak uyandır.
+AŞAMA 3 — DEĞER (15-20 sn): Tek kısa cümle, merak uyandır. Detay verme.
+→ "Tam da bu konuda farklı bir yaklaşımımız var. Benzer şirketlerle çalışıyoruz."
 
 AŞAMA 4 — KAPANIŞ:
-→ "Bu hafta 15 dakikalık kısa bir görüşme ayarlasak, size detaylı gösterebilirim. Çarşamba veya perşembe hangisi uygun?"
-Somut gün/saat öner. "Bir ara konuşalım" deme.
-${transferNumber ? `\nEğer karşı taraf çok ilgiliyse ve HEMEN konuşmak isterse: "Sizi hemen uzman arkadaşıma aktarıyorum" de ve ${transferNumber} numarasına transfer et.` : ''}
+→ "Bu hafta 15 dakikalık bir görüşme ayarlasak, detaylı gösterebilirim. Çarşamba veya Perşembe hangisi uygun?"
+${TRANSFER_NOTE}
 
-═══ İTİRAZ KARŞILAMA ═══
+═══ İTİRAZ KARŞILAMA (genel) ═══
+"Mail atın" → "Tabii, atarım. Hangi konuya özel bakıyorsunuz, ona göre hazırlayayım?"
+İki kez "hayır" → "Anlıyorum, teşekkür ederim. İyi günler." ve kapat.
 
-"İlgilenmiyorum" → "Anlıyorum, merak etmeyin. Sadece şunu sormak istiyorum — ${pain1 || productDesc} konusunda şu an memnun musunuz mevcut çözümünüzden?"
-"Vaktim yok" → "Tabii, çok kısa tutacağım. Ne zaman 2 dakikanız olur?"
-"Bize uygun değil" → "Anlıyorum. Peki hangi çözümü kullanıyorsunuz şu an?" (bilgi topla)
-"Fiyat çok yüksek" → "Henüz fiyattan bahsetmedik aslında — ihtiyacınıza göre farklı seçeneklerimiz var. Bir göz atalım mı?"
-"Mail atın" → "Tabii, hemen atarım. Ama çok kısa — hangi konuya özel bakıyorsunuz ki ona göre hazırlayayım?"
-İKİNCİ KEZ "hayır" derse → "Anlıyorum, teşekkür ederim. İyi günler dilerim." de ve kapat.
-
-═══ ARAŞTIRMA BİLGİSİ ═══
-- Kişi: ${leadName}
-- Şirket: ${leadCompany}
-${pain1 ? `- Tespit edilen sorun: ${pain1}` : ''}
+═══ ARAŞTIRMA VERİSİ ═══
+${pain1 ? `- Sorun: ${pain1}` : ''}
 ${pain2 ? `- 2. sorun: ${pain2}` : ''}
 ${signal ? `- Büyüme sinyali: ${signal}` : ''}
-${avoidWords ? `- Kullanma: ${avoidWords}` : ''}
+${callMemory}`;
 
-═══ KRİTİK KURALLAR ═══
-1. ASLA 3 cümleden uzun konuşma
-2. ASLA pitch yapma — soru sor
-3. ASLA "yapay zeka", "AI", "bot", "otomatik", "sistem" deme
-4. Karşı taraf konuşurken SUS
-5. 2 kez "hayır" → saygıyla kapat
-6. Randevu al veya bilgi topla — ikisinden biri olmalı`,
+  // ─── TR: tarz seçilmiş prompt ────────────────────────────────────────────────
+  const trPrompt = `${COMMON_RULES}${STYLE_RULES[style] || STYLE_RULES.consultant}`;
+
+  const persona: Record<string, string> = {
+    tr: trPrompt,
 
     en: `You are ${agentName}, calling on behalf of ${companyName}. You offer: ${productDesc}.
 
@@ -370,8 +472,10 @@ async function dispatchCall(params: {
   libraryVoiceId?: string;
   transferNumber?: string;
   userPhoneId?: string;
+  conversationStyle?: string;
+  callMemory?: string;
 }): Promise<{ conversationId: string; callSid: string; provider: string }> {
-  const { language, lead, researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId } = params;
+  const { language, lead, researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, conversationStyle = 'consultant', callMemory = '' } = params;
 
   const openingLine = await generatePersonalizedOpening({
     lead, agentName: params.agentName, companyName: params.companyName,
@@ -390,9 +494,12 @@ async function dispatchCall(params: {
         signal: researchData?.jobSignals?.[0],
         avoidWords,
         transferNumber: params.transferNumber,
+        style: conversationStyle,
+        callMemory,
       });
 
       // XTTS mevcut ise klonlanmış ses, değilse Cartesia fallback
+      const styleVoiceSettings = STYLE_VOICE_SETTINGS[conversationStyle] || STYLE_VOICE_SETTINGS.consultant;
       let voiceConfig: any;
       if (process.env.RUNPOD_XTTS_ENDPOINT_ID) {
         voiceConfig = {
@@ -400,12 +507,15 @@ async function dispatchCall(params: {
           server: { url: `${API_BASE}/api/voice/tts-xtts/${clonedVoiceId}` },
         };
       } else {
-        // XTTS yoksa Cartesia ile devam et
+        // ElevenLabs ile ses tarzı ayarları
         voiceConfig = {
-          provider: 'cartesia',
-          voiceId: CALL_VOICES[language] || CALL_VOICES.default,
-          model: 'sonic-multilingual',
-          language,
+          provider: '11labs',
+          voiceId: clonedVoiceId,
+          stability: styleVoiceSettings.stability,
+          similarityBoost: styleVoiceSettings.similarity_boost,
+          style: styleVoiceSettings.style,
+          useSpeakerBoost: styleVoiceSettings.use_speaker_boost,
+          model: 'eleven_turbo_v2_5',
         };
       }
 
@@ -658,7 +768,7 @@ router.post('/preview-voice', async (req: any, res: any) => {
 router.post('/call/single', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { leadId, language } = req.body;
+    const { leadId, language, conversationStyle = 'consultant' } = req.body;
     if (!leadId) return res.status(400).json({ error: 'leadId zorunlu' });
 
     const [{ data: lead }, { data: settings }, { data: profile }, { data: userRow }] = await Promise.all([
@@ -681,23 +791,26 @@ router.post('/call/single', async (req: any, res: any) => {
     const clonedVoiceId   = voiceType === 'cloned' ? settings?.elevenlabs_voice_id : undefined;
     const libraryVoiceId  = voiceType === 'library' ? settings?.elevenlabs_voice_id : undefined;
 
-    const { data: latestVideo } = await supabase
-      .from('video_outreach')
-      .select('research_data')
-      .eq('lead_id', leadId)
-      .not('research_data', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const [{ data: latestVideo }, callMemory] = await Promise.all([
+      supabase.from('video_outreach')
+        .select('research_data')
+        .eq('lead_id', leadId)
+        .not('research_data', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      getCallMemory(userId, leadId),  // PolyAI tarzı: önceki aramaları AI'ya ver
+    ]);
 
     const { data: callRecord } = await supabase.from('voice_calls').insert([{
       user_id: userId, lead_id: leadId,
       callee_number: lead.phone,
       caller_number: process.env.VAPI_PHONE_NUMBER || process.env.ELEVENLABS_CALLER_NUMBER || '',
       status: 'initiating', language: callLang,
+      conversation_style: conversationStyle,
     }]).select().single();
 
-    res.json({ ok: true, callId: callRecord?.id, message: 'Arama başlatılıyor...' });
+    res.json({ ok: true, callId: callRecord?.id, message: 'Arama başlatılıyor...', style: conversationStyle });
 
     (async () => {
       try {
@@ -706,7 +819,11 @@ router.post('/call/single', async (req: any, res: any) => {
           leadName: lead.contact_name || lead.company_name,
           leadCompany: lead.company_name, language: callLang, lead,
           researchData: latestVideo?.research_data || null,
-          avoidWords, voiceType, clonedVoiceId, libraryVoiceId, transferNumber: settings?.transfer_number, userPhoneId: settings?.vapi_phone_id,
+          avoidWords, voiceType, clonedVoiceId, libraryVoiceId,
+          transferNumber: settings?.transfer_number,
+          userPhoneId: settings?.vapi_phone_id,
+          conversationStyle,
+          callMemory,
         });
         await supabase.from('voice_calls').update({
           eleven_conversation_id: result.conversationId,
@@ -917,32 +1034,36 @@ router.post('/webhook/vapi', async (req: any, res: any) => {
       cost_cents: costCents,
     };
 
-    // AI analiz: konuşma transkriptinden sonuç çıkar
-    if (transcript.length > 50 && call.leads) {
+    // AI analiz: geliştirilmiş — call_intelligence tablosuna öğrenme verisi kaydeder
+    let analysisData: any = null;
+    if (transcript.length > 50) {
       try {
         const analysisResult = await anthropic.messages.create({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 200,
-          messages: [{ role: 'user', content: `Aşağıdaki telefon konuşmasını analiz et ve JSON döndür:
-Transkript: "${transcript.slice(0, 3000)}"
+          max_tokens: 400,
+          messages: [{ role: 'user', content: `Aşağıdaki telefon satış görüşmesini analiz et ve JSON döndür:
+Transkript: "${transcript.slice(0, 4000)}"
 
-Döndür:
+JSON (tüm alanları doldur):
 {
-  "outcome": "positive|negative|callback|no_answer",
-  "interest_level": 1-10,
+  "outcome": "appointment|callback|rejected|no_answer|unknown",
+  "sentiment_score": 1-10,
+  "interest_score": 1-10,
   "appointment_set": true/false,
-  "objections": ["itiraz1"],
-  "next_step": "sonraki adım",
-  "summary": "1 cümle özet"
+  "objections": ["itiraz1", "itiraz2"],
+  "next_action": "sonraki adım (1 cümle)",
+  "transcript_summary": "konuşmanın 1-2 cümle özeti"
 }` }],
-        });
+        }, { timeout: 25000 });
         const txt = (analysisResult.content[0] as any)?.text || '';
         const m = txt.match(/\{[\s\S]*\}/);
         if (m) {
-          const parsed = JSON.parse(m[0]);
-          updates.analysis = parsed;
-          updates.outcome = parsed.outcome || 'negative';
-          if (parsed.appointment_set && call.lead_id) {
+          analysisData = JSON.parse(m[0]);
+          updates.analysis = analysisData;
+          updates.outcome = analysisData.outcome === 'appointment' ? 'positive'
+                          : analysisData.outcome === 'callback' ? 'callback'
+                          : analysisData.outcome === 'rejected' ? 'negative' : 'negative';
+          if (analysisData.appointment_set && call.lead_id) {
             await supabase.from('leads').update({ status: 'replied' }).eq('id', call.lead_id);
           }
         }
@@ -951,6 +1072,29 @@ Döndür:
 
     await supabase.from('voice_calls').update(updates).eq('eleven_conversation_id', callId);
     console.log(`[Vapi Webhook] Call ${callId}: ${updates.outcome || 'completed'}, ${durationSec}s, reason=${endReason}`);
+
+    // Call Intelligence: öğrenme verisini kaydet
+    if (analysisData && call.lead_id) {
+      try {
+        const ciPayload: any = {
+          user_id: call.user_id,
+          lead_id: call.lead_id,
+          call_id: call.id,
+          conversation_style: call.conversation_style || 'consultant',
+          duration_sec: durationSec,
+          outcome: analysisData.outcome || 'unknown',
+          sentiment_score: analysisData.sentiment_score,
+          interest_score: analysisData.interest_score,
+          objections: analysisData.objections || [],
+          next_action: analysisData.next_action,
+          transcript_summary: analysisData.transcript_summary,
+          sector: call.leads?.sector || null,
+        };
+        const { error: ciErr } = await supabase.from('call_intelligence').insert([ciPayload]);
+        if (ciErr) console.warn('[CallIntelligence] Insert failed (migration needed?):', ciErr.message?.slice(0, 60));
+        else console.log(`[CallIntelligence] Saved: style=${ciPayload.conversation_style}, outcome=${ciPayload.outcome}`);
+      } catch {}
+    }
   } catch (e: any) { console.error('Vapi webhook error:', e.message); }
 });
 
@@ -989,6 +1133,45 @@ router.get('/stats', async (req: any, res: any) => {
       totalMinutes: Math.round(calls.reduce((s: number, c: any) => s + (c.duration_seconds || 0), 0) / 60),
       byLanguage: byLang,
     });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/voice/style-recommendation — geçmiş performanstan en iyi tarzı öner
+router.get('/style-recommendation', async (req: any, res: any) => {
+  try {
+    const sector = (req.query.sector as string) || '';
+    const rec = await getStyleRecommendation(req.userId, sector);
+    res.json(rec);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/voice/call-intelligence — öğrenme verileri özeti
+router.get('/call-intelligence', async (req: any, res: any) => {
+  try {
+    const { data: rows } = await supabase
+      .from('call_intelligence')
+      .select('conversation_style, outcome, interest_score, duration_sec, sector, created_at')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    const items = rows || [];
+    const byStyle: Record<string, { total: number; appointments: number; avgInterest: number; avgDuration: number }> = {};
+    for (const r of items) {
+      const s = r.conversation_style || 'consultant';
+      if (!byStyle[s]) byStyle[s] = { total: 0, appointments: 0, avgInterest: 0, avgDuration: 0 };
+      byStyle[s].total++;
+      if (r.outcome === 'appointment') byStyle[s].appointments++;
+      byStyle[s].avgInterest += (r.interest_score || 5);
+      byStyle[s].avgDuration += (r.duration_sec || 0);
+    }
+    for (const s of Object.keys(byStyle)) {
+      const v = byStyle[s];
+      v.avgInterest = Math.round((v.avgInterest / v.total) * 10) / 10;
+      v.avgDuration = Math.round(v.avgDuration / v.total);
+    }
+
+    res.json({ total: items.length, byStyle, recent: items.slice(0, 10) });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

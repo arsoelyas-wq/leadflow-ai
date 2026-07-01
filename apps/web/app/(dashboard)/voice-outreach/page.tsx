@@ -173,7 +173,15 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 // ─── STEP 1: SES SEÇ ─────────────────────────────────────────────────────────
-function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSettings }: any) {
+const CONV_STYLES = [
+  { id: 'consultant', emoji: '🎯', label: 'Danışman', desc: 'Soru soran, dinleyen. Sokrates yöntemi — müşteriyi kendi sorununa götür.', color: '#0d9488', badge: 'EN DOĞAL' },
+  { id: 'challenger', emoji: '💪', label: 'Meydan Okuyucu', desc: 'İçgörü-önce. Mevcut yöntemi nazikçe sorgular, yeni bakış açısı sunar.', color: '#7c3aed' },
+  { id: 'rapport',    emoji: '🤝', label: 'İlişki Kurucu', desc: 'Önce bağ, sonra iş. Warm lead\'lerde en yüksek dönüşüm.', color: '#d97706' },
+  { id: 'direct',     emoji: '⚡', label: 'Direkt',    desc: 'Kısa ve net. Hızlı karar beklenen soğuk outbound için ideal.', color: '#2563eb' },
+  { id: 'corporate',  emoji: '💼', label: 'Kurumsal',  desc: 'Resmi dil, enterprise ton. KDV & ihale süreçli büyük hesaplar.', color: '#475569' },
+]
+
+function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSettings, conversationStyle, setConversationStyle, styleRec }: any) {
   const [voiceSubTab, setVoiceSubTab] = useState<'mine' | 'library'>('mine')
   const [voices, setVoices] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -695,6 +703,50 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
           )}
         </div>
       )}
+
+      {/* ── KONUŞMA TARZI ──────────────────────────────────────────────────── */}
+      <div className="space-y-3 pt-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold" style={{ color: '#f8fafc' }}>Konuşma Tarzı</span>
+          {styleRec && styleRec.confidence >= 50 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(16,185,129,0.12)', color: '#34d399', border: '1px solid rgba(16,185,129,0.25)' }}>
+              🧠 AI Önerisi
+            </span>
+          )}
+        </div>
+        {styleRec && styleRec.confidence >= 50 && (
+          <p className="text-xs" style={{ color: '#64748b' }}>
+            ✦ {styleRec.reason} → <strong style={{ color: '#a78bfa' }}>{CONV_STYLES.find(s => s.id === styleRec.style)?.label}</strong> öneriliyor
+          </p>
+        )}
+        <div className="grid grid-cols-1 gap-2">
+          {CONV_STYLES.map(st => {
+            const active = conversationStyle === st.id
+            const isRec = styleRec?.style === st.id && styleRec.confidence >= 50
+            return (
+              <button key={st.id} onClick={() => setConversationStyle(st.id)}
+                className="flex items-start gap-3 p-3 rounded-xl text-left transition-all"
+                style={{
+                  background: active ? `${st.color}14` : 'rgba(255,255,255,0.02)',
+                  border: active ? `1.5px solid ${st.color}60` : '1.5px solid rgba(255,255,255,0.07)',
+                }}>
+                <span className="text-xl shrink-0 mt-0.5">{st.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold" style={{ color: active ? st.color : '#cbd5e1' }}>{st.label}</span>
+                    {st.badge && active && <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: `${st.color}20`, color: st.color }}>{st.badge}</span>}
+                    {isRec && !active && <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ background: 'rgba(16,185,129,0.1)', color: '#34d399' }}>🧠 ÖNERİLEN</span>}
+                  </div>
+                  <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>{st.desc}</p>
+                </div>
+                {active && <div className="w-4 h-4 rounded-full shrink-0 mt-0.5 flex items-center justify-center" style={{ background: st.color }}>
+                  <svg viewBox="0 0 12 12" fill="none" className="w-2.5 h-2.5"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                </div>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
@@ -1125,6 +1177,8 @@ export default function VoicePage() {
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
   const [selectedVoiceName, setSelectedVoiceName] = useState('')
   const [selectedVoiceType, setSelectedVoiceType] = useState<'cloned' | 'library'>('library')
+  const [conversationStyle, setConversationStyle] = useState('consultant')
+  const [styleRec, setStyleRec] = useState<{ style: string; reason: string; confidence: number } | null>(null)
   const [calling, setCalling] = useState(false)
   const [campaignRunning, setCampaignRunning] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -1144,12 +1198,13 @@ export default function VoicePage() {
 
   async function loadAll() {
     try {
-      const [l, c, ca, s, st] = await Promise.allSettled([
+      const [l, c, ca, s, st, sr] = await Promise.allSettled([
         fetch(`${API}/api/leads/with-phone`, { headers: authH() }),
         fetch(`${API}/api/voice/calls?limit=30`, { headers: authH() }),
         fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
         fetch(`${API}/api/voice/settings`, { headers: authH() }),
         fetch(`${API}/api/voice/stats`, { headers: authH() }),
+        fetch(`${API}/api/voice/style-recommendation`, { headers: authH() }),
       ])
       if (l.status === 'fulfilled') { const d = await (l.value as any).json(); setLeads(d.leads || []) }
       if (c.status === 'fulfilled') { const d = await (c.value as any).json(); setCalls(d.calls || []) }
@@ -1160,6 +1215,7 @@ export default function VoicePage() {
         setSelectedVoiceName(sv.voice_name || ''); setSelectedVoiceType(sv.voice_provider === 'cloned' ? 'cloned' : 'library')
       }
       if (st.status === 'fulfilled') { const d = await (st.value as any).json(); setStats(d) }
+      if (sr.status === 'fulfilled') { const d = await (sr.value as any).json(); setStyleRec(d); if (d.confidence >= 50) setConversationStyle(d.style) }
     } catch {}
   }
 
@@ -1175,7 +1231,7 @@ export default function VoicePage() {
     if (!selectedLead) return showMsg('error', 'Lead seçin')
     setCalling(true)
     try {
-      const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage }) })
+      const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage, conversationStyle }) })
       const d = await r.json()
       if (d.ok) { showMsg('success', 'Arama başladı!'); setTimeout(loadAll, 3000) }
       else showMsg('error', d.error)
@@ -1187,7 +1243,7 @@ export default function VoicePage() {
     if (!selectedLeads.length) return showMsg('error', 'En az 1 lead seçin')
     setCampaignRunning(true)
     try {
-      const r = await fetch(`${API}/api/voice/call/campaign`, { method:'POST', headers:authH(), body:JSON.stringify({ leadIds:selectedLeads, campaignName, delayMinutes, language:selectedLanguage||undefined }) })
+      const r = await fetch(`${API}/api/voice/call/campaign`, { method:'POST', headers:authH(), body:JSON.stringify({ leadIds:selectedLeads, campaignName, delayMinutes, language:selectedLanguage||undefined, conversationStyle }) })
       const d = await r.json()
       if (d.ok) { showMsg('success', d.message); loadAll(); setSelectedLeads([]) }
       else showMsg('error', d.error)
@@ -1338,7 +1394,7 @@ export default function VoicePage() {
 
           {/* Step content */}
           <div key={step}>
-            {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg} settings={settings} setSettings={setSettings}/>}
+            {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg} settings={settings} setSettings={setSettings} conversationStyle={conversationStyle} setConversationStyle={setConversationStyle} styleRec={styleRec}/>}
             {step===2 && <StepLead leads={leads} callMode={callMode} setCallMode={setCallMode} selectedLead={selectedLead} setSelectedLead={setSelectedLead} selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads} campaignName={campaignName} setCampaignName={setCampaignName} filterCountry={filterCountry} setFilterCountry={setFilterCountry}/>}
             {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings} onMsg={showMsg} setHasVerifiedPhone={setHasVerifiedPhone}/>}
             {step===4 && <StepLaunch selectedVoiceName={selectedVoiceName} selectedVoiceType={selectedVoiceType} callMode={callMode} selectedLead={selectedLead} selectedLeads={selectedLeads} selectedLanguage={selectedLanguage} leads={leads} calling={calling} campaignRunning={campaignRunning} onCall={makeSingleCall} onCampaign={startCampaign}/>}
