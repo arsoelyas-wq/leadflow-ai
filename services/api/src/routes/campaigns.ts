@@ -288,13 +288,18 @@ router.post('/:id/start', async (req: any, res: any) => {
 
     if (campaign.channel === 'whatsapp') {
       const dailyCount = await getDailyCount(userId, 'whatsapp');
-      if (dailyCount >= 150) {
-        return res.status(400).json({ error: `Günlük WhatsApp limiti doldu (150/gün).` });
+      // Kullanıcı planından günlük limiti al, yoksa varsayılan 150 (HARDCODED LİMİT KALDIRILDI)
+      const { data: voiceSettings } = await supabase
+        .from('voice_settings').select('daily_wa_limit').eq('user_id', userId).maybeSingle();
+      const dailyLimit = voiceSettings?.daily_wa_limit ?? 150;
+
+      if (dailyCount >= dailyLimit) {
+        return res.status(400).json({ error: `Günlük WhatsApp limiti doldu (${dailyLimit}/gün). Limit Ayarlar'dan artırılabilir.` });
       }
-      const remaining = 150 - dailyCount;
+      const remaining = dailyLimit - dailyCount;
       if (leads.length > remaining) {
         return res.status(400).json({
-          error: `Bugün sadece ${remaining} mesaj daha gönderebilirsiniz.`
+          error: `Bugün sadece ${remaining} mesaj daha gönderebilirsiniz (${dailyLimit}/gün limiti).`
         });
       }
     }
@@ -460,5 +465,58 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
 
   console.log(`Campaign ${campaign.id} done: ${sent} sent, ${failed} failed`);
 }
+
+// GET /api/campaigns/:id/funnel — Kampanya funnel analizi
+router.get('/:id/funnel', async (req: any, res: any) => {
+  try {
+    const { data: campaign } = await supabase.from('campaigns').select('*')
+      .eq('id', req.params.id).eq('user_id', req.userId).single();
+    if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
+
+    const { data: messages } = await supabase.from('messages')
+      .select('lead_id, direction, sent_at, status')
+      .eq('campaign_id', req.params.id)
+      .order('sent_at');
+
+    const { data: events } = await supabase.from('message_events')
+      .select('lead_id, event_type, occurred_at')
+      .in('lead_id', campaign.lead_ids || [])
+      .gte('occurred_at', campaign.created_at);
+
+    const funnel = { sent: 0, delivered: 0, opened: 0, replied: 0 };
+    const sentLeads = new Set<string>();
+    const openedLeads = new Set<string>();
+    const repliedLeads = new Set<string>();
+
+    for (const m of (messages || [])) {
+      if (m.direction === 'out') {
+        sentLeads.add(m.lead_id); funnel.sent++;
+        if (m.status === 'delivered' || m.status === 'read') funnel.delivered++;
+      } else { repliedLeads.add(m.lead_id); funnel.replied++; }
+    }
+    for (const e of (events || [])) {
+      if (e.event_type === 'email_opened') openedLeads.add(e.lead_id);
+    }
+    funnel.opened = openedLeads.size;
+
+    const byHour: Record<number, number> = {};
+    for (const m of (messages || [])) {
+      if (m.direction === 'out') {
+        const h = new Date(m.sent_at).getHours();
+        byHour[h] = (byHour[h] || 0) + 1;
+      }
+    }
+    const bestHour = Object.entries(byHour).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+    res.json({
+      funnel,
+      replyRate: funnel.sent ? +(funnel.replied / funnel.sent * 100).toFixed(1) : 0,
+      openRate:  funnel.sent ? +(funnel.opened  / funnel.sent * 100).toFixed(1) : 0,
+      bestHour: bestHour ? `${bestHour}:00` : null,
+      uniqueSent: sentLeads.size,
+      uniqueReplied: repliedLeads.size,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 
 module.exports = router;

@@ -75,6 +75,13 @@ export default function AutomationsPage() {
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [activeSubTab, setActiveSubTab] = useState<'compose' | 'templates' | 'analytics'>('compose')
 
+  // Canlı Monitör & Funnel Analytics
+  const [liveMonitor, setLiveMonitor] = useState<any>(null)
+  const [liveLoading, setLiveLoading] = useState(false)
+  const [showLive, setShowLive] = useState(false)
+  const [campaignFunnel, setCampaignFunnel] = useState<any>(null)
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
+
   const showMsg = (type: 'success' | 'error', text: string) => { setMsg({ type, text }); setTimeout(() => setMsg(null), 6000) }
 
   const loadAll = async () => {
@@ -113,6 +120,30 @@ export default function AutomationsPage() {
     })
   }
   useEffect(() => { loadAll() }, [])
+
+  // Canlı monitör — seçili sekans varsa 10sn'de bir güncelle
+  useEffect(() => {
+    if (!selectedSeq || !showLive) return
+    const loadLive = async () => {
+      setLiveLoading(true)
+      try {
+        const data = await api.get(`/api/sequences/${selectedSeq.id}/live`)
+        setLiveMonitor(data)
+      } catch {} finally { setLiveLoading(false) }
+    }
+    loadLive()
+    const iv = setInterval(loadLive, 10000)
+    return () => clearInterval(iv)
+  }, [selectedSeq, showLive])
+
+  // Kampanya funnel yükle
+  const loadCampaignFunnel = async (campaignId: string) => {
+    setSelectedCampaignId(campaignId)
+    try {
+      const data = await api.get(`/api/campaigns/${campaignId}/funnel`)
+      setCampaignFunnel(data)
+    } catch {}
+  }
 
   const optimizeMessage = async () => {
     if (!bcMessage) return
@@ -398,19 +429,47 @@ export default function AutomationsPage() {
                   ))}
                 </div>
               )}
-              {/* Kampanya listesi */}
+              {/* Kampanya listesi + Funnel */}
               <div style={{ ...card, padding: '14px 16px', gridColumn: 'span 2' }}>
                 <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kampanya Geçmişi</p>
                 {(analytics.campaigns || []).slice(0, 8).map((c: any) => {
                   const st = STATUS_COLORS[c.status] || STATUS_COLORS.draft
+                  const isSelected = selectedCampaignId === c.id
                   return (
-                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
-                      <div><p style={{ color: tx1, fontSize: 11, fontWeight: 600, margin: 0 }}>{c.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{c.channel} · {new Date(c.created_at).toLocaleDateString('tr-TR')}</p></div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <span style={{ color: tx2, fontSize: 10 }}>{c.total_sent} gönderildi</span>
-                        <span style={{ color: accentEmerald, fontSize: 10, fontWeight: 700 }}>%{c.replyRate} cevap</span>
-                        <span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
+                    <div key={c.id}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <div><p style={{ color: tx1, fontSize: 11, fontWeight: 600, margin: 0 }}>{c.name}</p><p style={{ color: tx3, fontSize: 9, margin: 0 }}>{c.channel} · {new Date(c.created_at).toLocaleDateString('tr-TR')}</p></div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ color: tx2, fontSize: 10 }}>{c.total_sent} gönderildi</span>
+                          <span style={{ color: accentEmerald, fontSize: 10, fontWeight: 700 }}>%{c.replyRate} cevap</span>
+                          <span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
+                          <button onClick={() => { isSelected ? setSelectedCampaignId(null) : loadCampaignFunnel(c.id) }}
+                            style={{ padding: '2px 7px', borderRadius: 5, border: '1px solid #bfdbfe', background: isSelected ? '#eff6ff' : '#fff', color: accentBlue, fontSize: 9, fontWeight: 600, cursor: 'pointer' }}>Funnel</button>
+                        </div>
                       </div>
+                      {/* Funnel Widget */}
+                      {isSelected && campaignFunnel && (
+                        <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px', margin: '6px 0', border: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
+                            {[
+                              { label: 'Gönderilen', val: campaignFunnel.funnel.sent, color: accentBlue },
+                              { label: 'Teslim', val: campaignFunnel.funnel.delivered, color: accentViolet },
+                              { label: 'Açıldı', val: campaignFunnel.funnel.opened, color: '#f59e0b' },
+                              { label: 'Cevap', val: campaignFunnel.funnel.replied, color: accentEmerald },
+                            ].map(f => (
+                              <div key={f.label} style={{ textAlign: 'center', padding: '6px 4px', background: '#fff', borderRadius: 7, border: '1px solid #f1f5f9' }}>
+                                <div style={{ color: f.color, fontSize: 14, fontWeight: 800 }}>{f.val}</div>
+                                <div style={{ color: tx3, fontSize: 9 }}>{f.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', gap: 12 }}>
+                            <span style={{ color: accentEmerald, fontSize: 10, fontWeight: 700 }}>Cevap oranı: %{campaignFunnel.replyRate}</span>
+                            <span style={{ color: '#f59e0b', fontSize: 10, fontWeight: 700 }}>Açılma: %{campaignFunnel.openRate}</span>
+                            {campaignFunnel.bestHour && <span style={{ color: tx2, fontSize: 10 }}>En iyi saat: {campaignFunnel.bestHour}</span>}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -447,6 +506,19 @@ export default function AutomationsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={10} style={{ color: tx3 }} /><input type="number" value={step.delay_hours} min={0} onChange={e => { const s = [...seqSteps]; s[idx].delay_hours = Number(e.target.value); setSeqSteps(s) }} style={{ width: 40, padding: '3px 5px', borderRadius: 5, border: '1px solid #e2e8f0', fontSize: 10, color: tx1 }} /><span style={{ color: tx3, fontSize: 9 }}>saat</span></div>
                       </div>
                       <textarea value={step.type === 'message' ? step.message : step.ai_prompt} onChange={e => { const s = [...seqSteps]; s[idx][step.type === 'message' ? 'message' : 'ai_prompt'] = e.target.value; setSeqSteps(s) }} rows={2} style={{ ...inputStyle, fontSize: 10, padding: '5px 8px' }} />
+                      {/* Koşullu dallanma (YENI ÖZELLIK) */}
+                      {step.condition !== 'any' && (
+                        <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginTop: 2 }}>
+                          <span style={{ color: tx3, fontSize: 9 }}>Şart sağlanırsa → adım:</span>
+                          <input type="number" value={step.nextIfTrue ?? ''} placeholder="—" min={1} max={seqSteps.length}
+                            onChange={e => { const s = [...seqSteps]; s[idx].nextIfTrue = e.target.value ? Number(e.target.value) - 1 : undefined; setSeqSteps(s) }}
+                            style={{ width: 35, padding: '2px 4px', borderRadius: 4, border: '1px solid #a7f3d0', fontSize: 9, textAlign: 'center' }} />
+                          <span style={{ color: tx3, fontSize: 9 }}>Sağlanmazsa → adım:</span>
+                          <input type="number" value={step.nextIfFalse ?? ''} placeholder="—" min={1} max={seqSteps.length}
+                            onChange={e => { const s = [...seqSteps]; s[idx].nextIfFalse = e.target.value ? Number(e.target.value) - 1 : undefined; setSeqSteps(s) }}
+                            style={{ width: 35, padding: '2px 4px', borderRadius: 4, border: '1px solid #fecaca', fontSize: 9, textAlign: 'center' }} />
+                        </div>
+                      )}
                     </div>
                     <button onClick={() => setSeqSteps(p => p.filter((_, i) => i !== idx))} style={{ color: tx3, cursor: 'pointer', background: 'none', border: 'none' }}><Trash2 size={11} /></button>
                   </div>
@@ -469,12 +541,52 @@ export default function AutomationsPage() {
                   <div><p style={{ color: tx1, fontWeight: 700, fontSize: 12, margin: 0 }}>{seq.name}</p><div style={{ display: 'flex', gap: 6, marginTop: 2 }}><span style={{ color: tx3, fontSize: 9 }}>{seq.channel === 'whatsapp' ? 'WA' : 'Email'}</span><span style={{ color: tx3, fontSize: 9 }}>{seq.steps?.length || 0} adım</span><span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span></div></div>
                 </div>
                 <div style={{ display: 'flex', gap: 5 }}>
-                  <button onClick={() => setSelectedSeq(selectedSeq?.id === seq.id ? null : seq)} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 10px', borderRadius: 6, border: '1px solid #a7f3d0', background: '#ecfdf5', color: accentEmerald, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><Users size={11} /> Lead</button>
+                  <button onClick={() => { setSelectedSeq(selectedSeq?.id === seq.id ? null : seq); setShowLive(false) }} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 10px', borderRadius: 6, border: '1px solid #a7f3d0', background: '#ecfdf5', color: accentEmerald, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><Users size={11} /> Lead</button>
+                  <button onClick={() => { setSelectedSeq(seq); setShowLive(v => !v) }} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 8px', borderRadius: 6, border: '1px solid #bfdbfe', background: showLive && selectedSeq?.id === seq.id ? '#eff6ff' : '#fff', color: accentBlue, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><BarChart2 size={11} /></button>
                   <button onClick={async () => { await api.delete(`/api/sequences/${seq.id}`); loadAll() }} style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={11} /></button>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 3, marginTop: 8, flexWrap: 'wrap' }}>{(seq.steps || []).map((step: any, i: number) => (<div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>{i > 0 && <div style={{ width: 12, height: 1, background: '#e2e8f0' }} />}<span style={{ padding: '2px 6px', borderRadius: 5, fontSize: 9, background: step.type === 'ai_reply' ? '#faf5ff' : surf, border: `1px solid ${step.type === 'ai_reply' ? '#e9d5ff' : '#f1f5f9'}`, color: step.type === 'ai_reply' ? accentViolet : tx2 }}>{step.type === 'ai_reply' ? 'AI' : '💬'} {step.delay_hours}s</span></div>))}</div>
-              {selectedSeq?.id === seq.id && (
+              {/* Canlı Monitör Widget */}
+              {showLive && selectedSeq?.id === seq.id && (
+                <div style={{ marginTop: 10, padding: '12px 14px', background: '#eff6ff', borderRadius: 9, border: '1px solid #bfdbfe' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'autoSpin 2s linear infinite' }} />
+                      <span style={{ color: accentBlue, fontSize: 11, fontWeight: 700 }}>Canlı İzleme</span>
+                    </div>
+                    {liveLoading && <RefreshCw size={11} style={{ color: accentBlue, animation: 'autoSpin 1s linear infinite' }} />}
+                  </div>
+                  {liveMonitor?.summary && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
+                      {[
+                        { label: 'Aktif', val: liveMonitor.summary.active, color: accentBlue },
+                        { label: '⚡ Hazır', val: liveMonitor.summary.readyNow, color: '#f59e0b' },
+                        { label: '5dk\'da', val: liveMonitor.summary.next5min, color: accentViolet },
+                        { label: '✓ Bitti', val: liveMonitor.summary.completed, color: accentEmerald },
+                      ].map(s => (
+                        <div key={s.label} style={{ background: '#fff', borderRadius: 7, padding: '6px 8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                          <div style={{ color: s.color, fontSize: 14, fontWeight: 800 }}>{s.val}</div>
+                          <div style={{ color: tx3, fontSize: 9 }}>{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {liveMonitor?.enrollments?.filter((e: any) => e.isReadyNow).length > 0 && (
+                    <div>
+                      <p style={{ color: tx2, fontSize: 10, fontWeight: 600, margin: '0 0 4px' }}>Şu an işlenecekler:</p>
+                      {liveMonitor.enrollments.filter((e: any) => e.isReadyNow).slice(0, 5).map((e: any) => (
+                        <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #e2e8f0' }}>
+                          <span style={{ color: tx2, fontSize: 9 }}>{e.leadName}</span>
+                          <span style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600 }}>⚡ Hazır</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedSeq?.id === seq.id && !showLive && (
                 <div style={{ marginTop: 12, padding: '12px 14px', background: surf, borderRadius: 9, border: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <p style={{ color: tx2, fontSize: 11, fontWeight: 600, margin: 0 }}>Lead Seç ({selectedLeads.length})</p>

@@ -73,8 +73,9 @@ async function sendMessage(lead: any, node: WorkflowNode, userId: string, abVari
 
   let body = abVariant === 'B' ? (abVariants?.b || template || '') : (abVariants?.a || template || '');
 
-  // AI personalisation
+  // AI personalisation — fallback to template if AI fails or returns empty
   if (useAI && body && process.env.ANTHROPIC_API_KEY) {
+    const originalBody = body;
     try {
       const msg = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
@@ -89,9 +90,11 @@ Sektör: ${lead.sector || ''}
 Şehir: ${lead.city || ''}
 Sadece mesaj metnini döndür, başka bir şey yazma.`,
         }],
-      });
-      body = (msg.content[0] as any).text?.trim() || body;
-    } catch {}
+      }, { timeout: 15000 });
+      const aiText = (msg.content[0] as any).text?.trim() || '';
+      // Boş veya çok kısa dönerse template'i koru (BUG #3 düzeltmesi)
+      body = aiText.length >= 10 ? aiText : originalBody;
+    } catch { body = originalBody; } // API hatasında template fallback
   }
 
   // Variable substitution
@@ -215,11 +218,46 @@ async function execAction(lead: any, node: WorkflowNode, userId: string): Promis
 
     case 'webhook':
       if (webhookUrl) {
-        await fetch(webhookUrl, {
-          method: webhookMethod || 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lead, trigger: 'workflow_action', userId }),
-        }).catch(() => {});
+        // Dead webhook kontrolü — devre dışı bırakıldıysa atla
+        const { data: wfail } = await supabase.from('webhook_failures').select('disabled_at,fail_count')
+          .eq('user_id', userId).eq('webhook_url', webhookUrl).maybeSingle().catch(() => ({ data: null }));
+        if (wfail?.disabled_at) {
+          console.warn(`[Workflow] Skipping disabled webhook: ${webhookUrl}`);
+          break;
+        }
+
+        let webhookOk = false;
+        const delays = [1000, 5000, 30000]; // Exponential backoff: 1s → 5s → 30s
+        for (let attempt = 0; attempt < 3 && !webhookOk; attempt++) {
+          try {
+            const wr = await fetch(webhookUrl, {
+              method: webhookMethod || 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                lead, trigger: 'workflow_action', userId,
+                nodeId: node.id, nodeLabel: node.label, nodeType: node.type,
+              }),
+              signal: AbortSignal.timeout(10000),
+            });
+            webhookOk = wr.ok;
+          } catch {}
+          if (!webhookOk && attempt < 2) await new Promise(r => setTimeout(r, delays[attempt]));
+        }
+
+        if (!webhookOk) {
+          // Başarısız webhook'u kaydet, 3+ hatada devre dışı bırak
+          const newCount = (wfail?.fail_count || 0) + 1;
+          await supabase.from('webhook_failures').upsert([{
+            user_id: userId, webhook_url: webhookUrl,
+            fail_count: newCount, last_error: `Workflow action failed`, last_failed_at: new Date(),
+            disabled_at: newCount >= 3 ? new Date() : null,
+          }], { onConflict: 'user_id,webhook_url' }).catch(() => {});
+          console.error(`[Workflow] Webhook failed (attempt ${(wfail?.fail_count||0)+1}/3): ${webhookUrl}`);
+        } else if (wfail?.fail_count) {
+          // Başarılıysa hata sayacını sıfırla
+          await supabase.from('webhook_failures').update({ fail_count: 0, disabled_at: null })
+            .eq('user_id', userId).eq('webhook_url', webhookUrl).catch(() => {});
+        }
       }
       break;
   }
@@ -301,6 +339,16 @@ async function processEnrollment(enrollment: any): Promise<void> {
   try {
     switch (node.type) {
       case 'message': {
+        // Dedup: ayni mesaji son 1 saatte gonderdik mi?
+        const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+        const { data: recentMsg } = await supabase.from('workflow_step_logs')
+          .select('id').eq('lead_id', lead_id).eq('node_id', node.id).eq('status', 'executed')
+          .gte('created_at', oneHourAgo).maybeSingle();
+        if (recentMsg) {
+          logStatus = 'skipped';
+          nextNodeId = node.next || null;
+          break;
+        }
         messageSent = await sendMessage(lead, node, user_id, currentVariant || undefined);
         nextNodeId = node.next || null;
         break;
@@ -414,18 +462,42 @@ function startWorkflowScheduler(): void {
   nodeCron.schedule('* * * * *', async () => {
     try {
       const now = new Date().toISOString();
+      // 5 dakikadan eski processing_since'leri serbest bırak (orphan kilit temizliği)
+      await supabase.from('workflow_enrollments')
+        .update({ processing_since: null })
+        .eq('status', 'active')
+        .lt('processing_since', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+        .catch(() => {});
+
+      // Sadece kilit almamış kayıtları al (RACE CONDITION DÜZELTMESİ)
       const { data: pending } = await supabase
         .from('workflow_enrollments')
         .select('*')
         .eq('status', 'active')
         .not('workflow_def_id', 'is', null)
         .lte('next_step_at', now)
+        .is('processing_since', null)   // ← Kilitli olanları atla
         .limit(50);
 
       if (!pending?.length) return;
 
-      await Promise.allSettled(pending.map((e: any) => processEnrollment(e)));
-    } catch {}
+      // Seçilen kayıtlara kilit koy (başka process aynı anda işlemesin)
+      const enrollIds = pending.map((e: any) => e.id);
+      await supabase.from('workflow_enrollments')
+        .update({ processing_since: now })
+        .in('id', enrollIds)
+        .is('processing_since', null); // Sadece hâlâ kilitsiz olanları al
+
+      await Promise.allSettled(pending.map(async (e: any) => {
+        try {
+          await processEnrollment(e);
+        } finally {
+          // İşlem bitince kilidi serbest bırak
+          await supabase.from('workflow_enrollments')
+            .update({ processing_since: null }).eq('id', e.id).catch(() => {});
+        }
+      }));
+    } catch (err: any) { console.error('[WorkflowCron]', err.message?.slice(0, 80)); }
   });
 
   // Cron trigger type: check workflow_definitions with cron trigger
@@ -1001,4 +1073,6 @@ router.get('/meta/leads-all', async (req: any, res: any) => {
 // Start the scheduler when this module is first loaded
 startWorkflowScheduler();
 
-module.exports = { router, triggerWorkflowEvent };
+// Alias for tracking.ts compatibility
+const triggerWorkflowByEvent = triggerWorkflowEvent;
+module.exports = { router, triggerWorkflowEvent, triggerWorkflowByEvent };

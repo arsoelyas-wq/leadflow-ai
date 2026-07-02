@@ -68,12 +68,15 @@ async function executeStep(
           ],
         });
 
-        messageText = response.content[0]?.text || '';
+        const aiText = response.content[0]?.text?.trim() || '';
+        // AI boş veya çok kısa döndürürse template'e düş (BUG #3 FIX)
+        messageText = aiText.length >= 10 ? aiText : personalizeMessage(step.message || '', lead);
       } else {
         messageText = personalizeMessage(step.message || '', lead);
       }
 
-      if (!messageText) return { success: false, message: 'Mesaj üretilemedi' };
+      // Boş mesaj hiçbir zaman gönderilmesin
+      if (!messageText?.trim()) return { success: false, message: 'Mesaj üretilemedi veya boş' };
 
       // Mesajı gönder
       if (step.channel === 'whatsapp' || !step.channel) {
@@ -143,13 +146,18 @@ async function processSequences() {
       .from('sequence_enrollments')
       .select('*, sequences(*), leads(*)')
       .eq('status', 'active')
-      .lt('last_action_at', new Date(now.getTime() - 60 * 60 * 1000).toISOString()); // 1 saat önce
+      .lt('last_action_at', new Date(now.getTime() - 60 * 60 * 1000).toISOString()) // 1 saat önce
+      .not('sequences', 'is', null); // Sequence silinmişse atla
+    // NOT: sequences.status === 'paused' olan kayıtları da filtrelemeliyiz
+    // Ama Supabase join filtresi için enrollments döndükten sonra filtrele:
 
-    if (!enrollments?.length) return;
+    // Duraklatılmış sequence'ları filtrele (PAUSED BUG FIX)
+    const activeEnrollments = (enrollments || []).filter((e: any) => e.sequences?.status !== 'paused');
+    if (!activeEnrollments.length) return;
 
-    console.log(`Processing ${enrollments.length} sequence enrollments`);
+    console.log(`Processing ${activeEnrollments.length} sequence enrollments`);
 
-    for (const enrollment of enrollments) {
+    for (const enrollment of activeEnrollments) {
       try {
         const sequence = enrollment.sequences;
         const lead = enrollment.leads;
@@ -174,18 +182,22 @@ async function processSequences() {
         const hour = now.getHours();
         if (step.channel === 'whatsapp' && (hour < 9 || hour >= 20)) continue;
 
-        // Koşul kontrolü
+        // Koşul kontrolü — on_condition_fail undefined ise 'skip' varsayılır (BUG FIX)
         const conditionMet = await checkCondition(enrollment, step, lead);
         if (!conditionMet) {
-          // Koşul sağlanmadı — atla veya durdur
-          if (step.on_condition_fail === 'stop') {
+          const failAction = step.on_condition_fail || 'skip'; // Artık varsayılan 'skip'
+          if (failAction === 'stop') {
             await supabase.from('sequence_enrollments')
-              .update({ status: 'stopped' })
+              .update({ status: 'stopped', last_action_at: now.toISOString() })
               .eq('id', enrollment.id);
           } else {
-            // Sonraki adıma geç
+            // Koşullu dallanma: nextIfFalse belirtilmişse oraya git (BRANCHING FEATURE)
+            const nextIdx = typeof step.nextIfFalse === 'number' ? step.nextIfFalse : currentStep + 1;
+            const nextStepAt = steps[nextIdx]
+              ? new Date(now.getTime() + ((steps[nextIdx].delay_hours || 0) * 3600000)).toISOString()
+              : null;
             await supabase.from('sequence_enrollments')
-              .update({ current_step: currentStep + 1, last_action_at: now.toISOString() })
+              .update({ current_step: nextIdx, last_action_at: now.toISOString(), next_step_at: nextStepAt })
               .eq('id', enrollment.id);
           }
           continue;
@@ -195,21 +207,39 @@ async function processSequences() {
         const result = await executeStep(enrollment, step, lead, enrollment.user_id);
 
         if (result.success) {
+          // Koşullu dallanma: koşul sağlandıysa nextIfTrue'a git (BRANCHING FEATURE)
+          const nextIdx = typeof step.nextIfTrue === 'number' ? step.nextIfTrue : currentStep + 1;
+          const nextStepDef = steps[nextIdx];
+          const nextStepAt = nextStepDef
+            ? new Date(now.getTime() + ((nextStepDef.delay_hours || 0) * 3600000)).toISOString()
+            : null;
+
           await supabase.from('sequence_enrollments')
             .update({
-              current_step: currentStep + 1,
+              current_step: nextIdx,
               last_action_at: now.toISOString(),
+              next_step_at: nextStepAt, // Canlı monitör için
             })
             .eq('id', enrollment.id);
 
-          console.log(`Sequence step ${currentStep + 1} executed for lead ${lead.company_name}`);
+          console.log(`[Seq] Step ${currentStep + 1} → ${nextIdx} for ${lead.company_name}`);
         } else {
+          // Hata sayacını artır, 3 denemede durdur
+          const errCount = (enrollment.error_count || 0) + 1;
+          const shouldStop = errCount >= 3;
+          await supabase.from('sequence_enrollments')
+            .update({
+              error_count: errCount,
+              last_error: result.message,
+              status: shouldStop ? 'stopped' : 'active',
+            }).eq('id', enrollment.id);
+
           if (!result.message?.includes('bağlı') && !result.message?.includes('WhatsApp')) {
-  console.error(`Step failed for ${lead.company_name}: ${result.message}`);
-}
+            console.error(`[Seq] Step failed (${errCount}/3) for ${lead.company_name}: ${result.message}`);
+          }
         }
 
-        await sleep(3000);
+        await sleep(2000); // WhatsApp rate limit için
       } catch (e: any) {
         console.error(`Enrollment processing error:`, e.message);
       }
@@ -363,6 +393,71 @@ router.get('/stats/overview', async (req: any, res: any) => {
 router.post('/process/run', async (req: any, res: any) => {
   processSequences().catch(console.error);
   res.json({ message: 'Sequence processor tetiklendi' });
+});
+
+// GET /api/sequences/:id/live — Canlı monitör
+router.get('/:id/live', async (req: any, res: any) => {
+  try {
+    const { data: enrollments } = await supabase
+      .from('sequence_enrollments')
+      .select('id, lead_id, current_step, status, last_action_at, next_step_at, error_count, last_error, leads(company_name, status)')
+      .eq('sequence_id', req.params.id)
+      .eq('user_id', req.userId)
+      .order('last_action_at', { ascending: false })
+      .limit(100);
+
+    const now = Date.now();
+    const enriched = (enrollments || []).map((e: any) => {
+      const nextTime = e.next_step_at ? new Date(e.next_step_at).getTime() : 0;
+      return {
+        ...e,
+        nextInMinutes: nextTime > now ? Math.round((nextTime - now) / 60000) : 0,
+        isReadyNow: nextTime <= now && e.status === 'active',
+        leadName: e.leads?.company_name,
+        leadStatus: e.leads?.status,
+      };
+    });
+
+    const summary = {
+      total: enriched.length,
+      active: enriched.filter((e: any) => e.status === 'active').length,
+      readyNow: enriched.filter((e: any) => e.isReadyNow).length,
+      next5min: enriched.filter((e: any) => e.nextInMinutes <= 5 && e.status === 'active').length,
+      completed: enriched.filter((e: any) => e.status === 'completed').length,
+      stopped: enriched.filter((e: any) => e.status === 'stopped').length,
+      withErrors: enriched.filter((e: any) => (e.error_count || 0) > 0).length,
+    };
+
+    res.json({ enrollments: enriched, summary });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/sequences/:id/analytics — Sekans performans analizi
+router.get('/:id/analytics', async (req: any, res: any) => {
+  try {
+    const { data: seq } = await supabase.from('sequences').select('*')
+      .eq('id', req.params.id).eq('user_id', req.userId).single();
+    if (!seq) return res.status(404).json({ error: 'Bulunamadı' });
+
+    const { data: enrollments } = await supabase.from('sequence_enrollments')
+      .select('current_step, status').eq('sequence_id', req.params.id).eq('user_id', req.userId);
+
+    const steps: any[] = seq.steps || [];
+    const stepStats = steps.map((_: any, i: number) => ({
+      step: i + 1,
+      reached: (enrollments || []).filter((e: any) => (e.current_step || 0) >= i + 1).length,
+      completed: (enrollments || []).filter((e: any) => e.current_step > i + 1 || e.status === 'completed').length,
+    }));
+
+    const total = enrollments?.length || 0;
+    const completed = (enrollments || []).filter((e: any) => e.status === 'completed').length;
+
+    res.json({
+      total, completed,
+      completionRate: total ? Math.round(completed / total * 100) : 0,
+      stepStats,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
