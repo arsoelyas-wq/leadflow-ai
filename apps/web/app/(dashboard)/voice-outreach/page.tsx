@@ -1190,21 +1190,65 @@ export default function VoicePage() {
   const [filterCountry, setFilterCountry] = useState('')
   const [showCalls, setShowCalls] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showIntelligence, setShowIntelligence] = useState(false)
+  const [intelligence, setIntelligence] = useState<any>(null)
+  const [abResults, setAbResults] = useState<any>(null)
+  const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null)
+  const [campaignProgress, setCampaignProgress] = useState<any>(null)
+  const [liveCallId, setLiveCallId] = useState<string | null>(null)
+  const [liveCallStatus, setLiveCallStatus] = useState<string>('')
 
   function showMsg(type: 'success' | 'error', text: string) {
-    setMsg({ type, text }); setTimeout(() => setMsg(null), 5000)
+    setMsg({ type, text }); setTimeout(() => setMsg(null), 6000)
   }
   useEffect(() => { loadAll() }, [])
 
+  // Gerçek zamanlı arama durumu polling (10sn)
+  useEffect(() => {
+    if (!liveCallId) return
+    const iv = setInterval(async () => {
+      const r = await fetch(`${API}/api/voice/calls?limit=1`, { headers: authH() })
+      const d = await r.json()
+      const c = d.calls?.find((c: any) => c.id === liveCallId)
+      if (c) {
+        setLiveCallStatus(c.status)
+        if (['completed', 'failed', 'no-answer'].includes(c.status)) {
+          setLiveCallId(null)
+          setCalling(false)
+          loadAll()
+        }
+      }
+    }, 8000)
+    return () => clearInterval(iv)
+  }, [liveCallId])
+
+  // Kampanya ilerleme polling (15sn)
+  useEffect(() => {
+    if (!activeCampaignId) return
+    const iv = setInterval(async () => {
+      const r = await fetch(`${API}/api/voice/campaign/${activeCampaignId}/progress`, { headers: authH() })
+      const d = await r.json()
+      setCampaignProgress(d.progress)
+      if (d.campaign?.status === 'completed') {
+        setActiveCampaignId(null)
+        setCampaignRunning(false)
+        loadAll()
+      }
+    }, 15000)
+    return () => clearInterval(iv)
+  }, [activeCampaignId])
+
   async function loadAll() {
     try {
-      const [l, c, ca, s, st, sr] = await Promise.allSettled([
+      const [l, c, ca, s, st, sr, ci, ab] = await Promise.allSettled([
         fetch(`${API}/api/leads/with-phone`, { headers: authH() }),
         fetch(`${API}/api/voice/calls?limit=30`, { headers: authH() }),
         fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
         fetch(`${API}/api/voice/settings`, { headers: authH() }),
         fetch(`${API}/api/voice/stats`, { headers: authH() }),
         fetch(`${API}/api/voice/style-recommendation`, { headers: authH() }),
+        fetch(`${API}/api/voice/call-intelligence`, { headers: authH() }),
+        fetch(`${API}/api/voice/ab-results`, { headers: authH() }),
       ])
       if (l.status === 'fulfilled') { const d = await (l.value as any).json(); setLeads(d.leads || []) }
       if (c.status === 'fulfilled') { const d = await (c.value as any).json(); setCalls(d.calls || []) }
@@ -1216,6 +1260,8 @@ export default function VoicePage() {
       }
       if (st.status === 'fulfilled') { const d = await (st.value as any).json(); setStats(d) }
       if (sr.status === 'fulfilled') { const d = await (sr.value as any).json(); setStyleRec(d); if (d.confidence >= 50) setConversationStyle(d.style) }
+      if (ci.status === 'fulfilled') { const d = await (ci.value as any).json(); setIntelligence(d) }
+      if (ab.status === 'fulfilled') { const d = await (ab.value as any).json(); setAbResults(d) }
     } catch {}
   }
 
@@ -1233,10 +1279,16 @@ export default function VoicePage() {
     try {
       const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage, conversationStyle }) })
       const d = await r.json()
-      if (d.ok) { showMsg('success', 'Arama başladı!'); setTimeout(loadAll, 3000) }
-      else showMsg('error', d.error)
-    } catch (e: any) { showMsg('error', e.message) }
-    setCalling(false)
+      if (d.ok) {
+        setLiveCallId(d.callId)
+        setLiveCallStatus('calling')
+        showMsg('success', `Arama başladı! Tarz: ${d.style || conversationStyle}`)
+        setTimeout(loadAll, 5000)
+      } else {
+        showMsg('error', d.error || 'Arama başlatılamadı')
+        setCalling(false)
+      }
+    } catch (e: any) { showMsg('error', e.message); setCalling(false) }
   }
 
   async function startCampaign() {
@@ -1245,10 +1297,16 @@ export default function VoicePage() {
     try {
       const r = await fetch(`${API}/api/voice/call/campaign`, { method:'POST', headers:authH(), body:JSON.stringify({ leadIds:selectedLeads, campaignName, delayMinutes, language:selectedLanguage||undefined, conversationStyle }) })
       const d = await r.json()
-      if (d.ok) { showMsg('success', d.message); loadAll(); setSelectedLeads([]) }
-      else showMsg('error', d.error)
-    } catch (e: any) { showMsg('error', e.message) }
-    setCampaignRunning(false)
+      if (d.ok) {
+        setActiveCampaignId(d.campaignId)
+        showMsg('success', d.message)
+        loadAll()
+        setSelectedLeads([])
+      } else {
+        showMsg('error', d.error || 'Kampanya başlatılamadı')
+        setCampaignRunning(false)
+      }
+    } catch (e: any) { showMsg('error', e.message); setCampaignRunning(false) }
   }
 
   async function saveSettings() {
@@ -1348,6 +1406,39 @@ export default function VoicePage() {
           color: msg.type==='success' ? '#059669' : '#dc2626',
         }}>
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: msg.type==='success' ? '#34d399' : '#f87171' }}/>{msg.text}
+        </div>
+      )}
+
+      {/* ── CANLI ARAMA DURUMU ────────────────────────────────────────────────── */}
+      {liveCallId && (
+        <div className="fade-in-up rounded-2xl p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#ecfdf5,#f0fdf4)', border: '1.5px solid #6ee7b7' }}>
+          <div className="w-3 h-3 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10b981' }}/>
+          <div className="flex-1">
+            <p className="font-semibold text-sm" style={{ color: '#065f46' }}>Arama Aktif</p>
+            <p className="text-xs" style={{ color: '#059669' }}>Durum: {liveCallStatus === 'calling' ? 'Çalıyor...' : liveCallStatus === 'completed' ? 'Tamamlandı' : liveCallStatus} · Tarz: {conversationStyle}</p>
+          </div>
+          <button onClick={() => { setLiveCallId(null); setCalling(false) }} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.1)', color: '#059669' }}>Kapat</button>
+        </div>
+      )}
+
+      {/* ── KAMPANYA PROGRESS ─────────────────────────────────────────────────── */}
+      {activeCampaignId && campaignProgress && (
+        <div className="fade-in-up rounded-2xl p-4 space-y-2" style={{ background: 'linear-gradient(135deg,#eff6ff,#f0f9ff)', border: '1.5px solid #93c5fd' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: '#3b82f6' }}/>
+              <span className="font-semibold text-sm" style={{ color: '#1e40af' }}>Kampanya Devam Ediyor</span>
+            </div>
+            <span className="text-xs font-bold" style={{ color: '#3b82f6' }}>{campaignProgress.percent}%</span>
+          </div>
+          <div className="w-full rounded-full h-2" style={{ background: '#dbeafe' }}>
+            <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${campaignProgress.percent}%`, background: 'linear-gradient(90deg,#3b82f6,#06b6d4)' }}/>
+          </div>
+          <div className="flex gap-4 text-xs" style={{ color: '#64748b' }}>
+            <span>✅ Tamamlanan: {campaignProgress.done}</span>
+            <span>⏳ Bekleyen: {campaignProgress.pending}</span>
+            <span>❌ Başarısız: {campaignProgress.failed}</span>
+          </div>
         </div>
       )}
 
@@ -1525,6 +1616,69 @@ export default function VoicePage() {
           </div>
         )}
       </div>
+
+      {/* ── CALL INTELLIGENCE PANELİ ──────────────────────────────────────────── */}
+      {intelligence && (intelligence.total > 0 || (abResults?.totalTests ?? 0) > 0) && (
+        <div className="rounded-2xl overflow-hidden" style={{ background:'#ffffff', border:'1px solid #e2e8f0', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+          <button onClick={() => setShowIntelligence((v: boolean)=>!v)} className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base" style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.12),rgba(167,139,250,0.08))' }}>🧠</div>
+              <div className="text-left">
+                <p className="font-bold text-sm" style={{ color:'#0f172a' }}>AI Öğrenme Raporu</p>
+                <p className="text-xs" style={{ color:'#94a3b8' }}>{intelligence.total} arama analizi · Tarz performansı</p>
+              </div>
+            </div>
+            <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${showIntelligence ? 'rotate-90' : ''}`} style={{ color:'#94a3b8' }}/>
+          </button>
+
+          {showIntelligence && (
+            <div className="px-6 pb-6 space-y-5">
+              {abResults?.totalTests > 0 && (
+                <div className="p-4 rounded-xl" style={{ background: 'linear-gradient(135deg,rgba(124,58,237,0.05),rgba(167,139,250,0.03))', border: '1px solid rgba(124,58,237,0.12)' }}>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <span className="text-sm font-bold" style={{ color:'#7c3aed' }}>⚡ A/B Test Sonuçları</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background:'rgba(124,58,237,0.1)', color:'#7c3aed' }}>{abResults.totalTests} test</span>
+                    {abResults.winner && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background:'rgba(16,185,129,0.1)', color:'#10b981' }}>🏆 {abResults.winner.style} %{abResults.winner.rate}</span>}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(abResults.byVariant || {}).map(([style, data]: [string, any]) => (
+                      <div key={style} className="p-3 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(124,58,237,0.08)' }}>
+                        <p className="text-[10px] font-semibold capitalize" style={{ color:'#374151' }}>{style}</p>
+                        <p className="text-lg font-bold" style={{ color: data.rate >= 20 ? '#10b981' : '#64748b' }}>%{data.rate}</p>
+                        <p className="text-[10px]" style={{ color:'#94a3b8' }}>{data.wins}/{data.total}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {Object.keys(intelligence.byStyle || {}).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color:'#94a3b8' }}>Konuşma Tarzı Performansı</p>
+                  {Object.entries(intelligence.byStyle).map(([style, data]: [string, any]) => (
+                    <div key={style} className="flex items-center gap-3 p-3 rounded-xl" style={{ background:'#f8fafc', border:'1px solid #e2e8f0' }}>
+                      <span className="text-lg">{style==='consultant'?'🎯':style==='challenger'?'💪':style==='rapport'?'🤝':style==='direct'?'⚡':'💼'}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold capitalize" style={{ color:'#0f172a' }}>{style}</span>
+                          <span className="text-xs font-bold" style={{ color: data.appointments > 0 ? '#10b981' : '#64748b' }}>{data.appointments} randevu / {data.total} arama</span>
+                        </div>
+                        <div className="w-full rounded-full h-1.5" style={{ background:'#e2e8f0' }}>
+                          <div className="h-1.5 rounded-full" style={{ width:`${Math.round(data.appointments/data.total*100)}%`, background:'linear-gradient(90deg,#10b981,#06b6d4)' }}/>
+                        </div>
+                        <div className="flex gap-3 mt-1 text-[10px]" style={{ color:'#94a3b8' }}>
+                          <span>⏱ {Math.round(data.avgDuration/60)}dk</span>
+                          <span>❤️ {data.avgInterest}/10</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {intelligence.total === 0 && <p className="text-sm text-center py-4" style={{ color:'#94a3b8' }}>Aramalar bittikçe AI analizi burada birikecek.</p>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
