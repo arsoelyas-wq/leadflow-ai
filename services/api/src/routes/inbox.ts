@@ -1,150 +1,271 @@
 export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const axios = require('axios');
+const multer = require('multer');
+const Anthropic = require('@anthropic-ai/sdk');
 
-const router = express.Router();
+const router  = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-// GET /api/inbox/messages — Tüm kanallardan mesajlar
+// ─── GET /api/inbox/messages — Belirli lead için mesajlar ─────────────────────
+// KRİTİK BUG DÜZELTMESİ: Önceden leadId filtresi yok sayılıyordu → tüm mesajlar geliyordu
 router.get('/messages', async (req: any, res: any) => {
   try {
-    const { channel, unread, limit = 50, offset = 0 } = req.query;
+    const { leadId, channel, limit = 100 } = req.query;
     const userId = req.userId;
 
-    let query = supabase.from('messages')
-      .select('*, leads(id, company_name, contact_name, phone, source)')
+    let query = supabase
+      .from('messages')
+      .select('id, content, direction, channel, sent_at, read, status, media, reply_to_id, metadata')
       .eq('user_id', userId)
-      .order('sent_at', { ascending: false })
-      .limit(parseInt(limit as string))
-      .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+      .order('sent_at', { ascending: true })
+      .limit(parseInt(limit as string));
 
+    if (leadId) query = query.eq('lead_id', leadId);
     if (channel) query = query.eq('channel', channel);
-    if (unread === 'true') query = query.eq('read', false);
 
     const { data, error } = await query;
     if (error) throw error;
 
-    // Kanallardan özet
-    const { data: channels } = await supabase.from('messages')
-      .select('channel').eq('user_id', userId);
-
-    const channelCounts: Record<string, number> = {};
-    (channels || []).forEach((m: any) => {
-      channelCounts[m.channel || 'whatsapp'] = (channelCounts[m.channel || 'whatsapp'] || 0) + 1;
-    });
-
-    res.json({ messages: data || [], channelCounts, total: data?.length || 0 });
+    res.json({ messages: data || [] });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/inbox/conversations — Lead bazlı konuşmalar
+// ─── GET /api/inbox/conversations — Lead bazlı konuşmalar (N+1 DÜZELTİLDİ) ──
 router.get('/conversations', async (req: any, res: any) => {
   try {
-    const { channel, limit = 30 } = req.query;
+    const { limit = 50 } = req.query;
     const userId = req.userId;
 
-    // Her lead için son mesajı al
-    const { data: leads } = await supabase.from('leads')
-      .select('id, company_name, contact_name, phone, source, status')
+    // 1. Tüm leadleri al
+    const { data: leads, error: leadErr } = await supabase
+      .from('leads')
+      .select('id, company_name, contact_name, phone, email, source, status, score')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
       .limit(parseInt(limit as string));
+    if (leadErr) throw leadErr;
+    if (!leads?.length) return res.json({ conversations: [] });
 
-    const conversations = await Promise.all((leads || []).map(async (lead: any) => {
-      let query = supabase.from('messages')
-        .select('content, direction, sent_at, channel, read')
-        .eq('lead_id', lead.id)
-        .order('sent_at', { ascending: false })
-        .limit(1);
+    const leadIds = leads.map((l: any) => l.id);
 
-      if (channel) query = query.eq('channel', channel);
-      const { data: lastMsg } = await query;
+    // 2. Tüm leadler için son mesaj — TEK sorgu (N+1 kaldırıldı)
+    const { data: lastMsgs } = await supabase
+      .from('messages')
+      .select('id, lead_id, content, direction, sent_at, channel, read')
+      .eq('user_id', userId)
+      .in('lead_id', leadIds)
+      .order('sent_at', { ascending: false });
 
-      const { data: unreadCount } = await supabase.from('messages')
-        .select('id').eq('lead_id', lead.id).eq('direction', 'in').eq('read', false);
+    // 3. Lead başına son mesajı ve okunmamış sayısını hesapla
+    const lastMsgMap: Record<string, any>  = {};
+    const unreadMap:  Record<string, number> = {};
+    for (const m of (lastMsgs || [])) {
+      if (!lastMsgMap[m.lead_id]) lastMsgMap[m.lead_id] = m;
+      if (m.direction === 'in' && !m.read) {
+        unreadMap[m.lead_id] = (unreadMap[m.lead_id] || 0) + 1;
+      }
+    }
 
-      return {
-        lead,
-        lastMessage: lastMsg?.[0] || null,
-        unreadCount: unreadCount?.length || 0,
-      };
+    const conversations = leads.map((lead: any) => ({
+      lead,
+      lastMessage:  lastMsgMap[lead.id]  || null,
+      unreadCount:  unreadMap[lead.id]   || 0,
     }));
 
-    // Son mesajı olanlara göre sırala
-    const sorted = conversations
-      .filter(c => c.lastMessage)
-      .sort((a, b) => new Date(b.lastMessage!.sent_at).getTime() - new Date(a.lastMessage!.sent_at).getTime());
+    // 4. Önce okunmamış olanlar, sonra son mesaj tarihine göre (mesajı olmayanlar sona)
+    conversations.sort((a: any, b: any) => {
+      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+      if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+      const ta = a.lastMessage ? new Date(a.lastMessage.sent_at).getTime() : 0;
+      const tb = b.lastMessage ? new Date(b.lastMessage.sent_at).getTime() : 0;
+      return tb - ta;
+    });
 
-    res.json({ conversations: sorted });
+    res.json({ conversations });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/inbox/send — Tüm kanallardan mesaj gönder
+// ─── POST /api/inbox/send — Mesaj gönder ─────────────────────────────────────
 router.post('/send', async (req: any, res: any) => {
   try {
-    const { leadId, content, channel = 'whatsapp' } = req.body;
-    if (!leadId || !content) return res.status(400).json({ error: 'leadId ve content zorunlu' });
+    const { leadId, content, channel = 'whatsapp', replyToId } = req.body;
+    if (!leadId || !content?.trim()) return res.status(400).json({ error: 'leadId ve content zorunlu' });
 
     const { data: lead } = await supabase.from('leads').select('*')
       .eq('id', leadId).eq('user_id', req.userId).single();
     if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
-
-    const now = new Date().toISOString();
 
     if (channel === 'whatsapp') {
       if (!lead.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
       const { sendWhatsAppMessage } = require('./settings');
       await sendWhatsAppMessage(req.userId, lead.phone, content);
     } else if (channel === 'email') {
-      // Email gönder — Resend API
+      if (!lead.email) return res.status(400).json({ error: 'Email adresi yok' });
       const resendKey = process.env.RESEND_API_KEY;
-      if (!resendKey || !lead.email) return res.status(400).json({ error: 'Email veya Resend API key yok' });
-      const axios = require('axios');
+      if (!resendKey) return res.status(400).json({ error: 'RESEND_API_KEY ayarlanmamış' });
+      const { data: profile } = await supabase.from('business_profiles')
+        .select('company').eq('user_id', req.userId).single();
       await axios.post('https://api.resend.com/emails', {
-        from: 'onboarding@resend.dev',
+        from: `${profile?.company?.name || 'LeadFlow'} <noreply@sovlo.io>`,
         to: lead.email,
         subject: `${lead.company_name} için mesaj`,
         text: content,
       }, { headers: { Authorization: `Bearer ${resendKey}` } });
     }
 
+    const now = new Date().toISOString();
     const { data: msg } = await supabase.from('messages').insert([{
       user_id: req.userId, lead_id: leadId,
-      direction: 'out', content, channel,
+      direction: 'out', content: content.trim(), channel,
       sent_at: now, read: true,
+      reply_to_id: replyToId || null,
     }]).select().single();
 
-    // Lead son iletişim tarihini güncelle
-    await supabase.from('leads').update({ last_contacted_at: now }).eq('id', leadId);
-
+    await supabase.from('leads').update({ last_contacted_at: now, status: 'contacted' }).eq('id', leadId);
     res.json({ message: msg, success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// PATCH /api/inbox/read/:leadId — Okundu işaretle
+// ─── POST /api/inbox/send-media — Dosya/görsel gönder ────────────────────────
+router.post('/send-media', upload.single('file'), async (req: any, res: any) => {
+  try {
+    const { leadId, channel = 'whatsapp', caption } = req.body;
+    const file = req.file;
+    if (!leadId || !file) return res.status(400).json({ error: 'leadId ve file zorunlu' });
+
+    const { data: lead } = await supabase.from('leads').select('*')
+      .eq('id', leadId).eq('user_id', req.userId).single();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
+
+    // Supabase Storage'a yükle
+    const ext  = file.originalname?.split('.').pop() || 'bin';
+    const path = `message-media/${req.userId}/${leadId}/${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from('message-media')
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: false });
+    if (upErr) throw new Error(upErr.message);
+
+    const { data: { publicUrl } } = supabase.storage.from('message-media').getPublicUrl(path);
+
+    // Medya tipini tespit et
+    const mime = file.mimetype || '';
+    const mediaType = mime.startsWith('image/') ? 'image'
+                    : mime.startsWith('video/') ? 'video'
+                    : mime.startsWith('audio/') ? 'audio'
+                    : 'document';
+
+    const media = {
+      type:      mediaType,
+      url:       publicUrl,
+      name:      file.originalname,
+      size:      file.size,
+      mime_type: mime,
+    };
+
+    // WhatsApp'a medya gönder (mümkünse)
+    if (channel === 'whatsapp' && lead.phone) {
+      try {
+        const { sendWhatsAppMessage } = require('./settings');
+        const captionText = caption ? `${caption}\n${publicUrl}` : publicUrl;
+        await sendWhatsAppMessage(req.userId, lead.phone, captionText);
+      } catch { /* Medya linki gönder yeterli */ }
+    }
+
+    const { data: msg } = await supabase.from('messages').insert([{
+      user_id: req.userId, lead_id: leadId,
+      direction: 'out', content: caption || '', channel,
+      sent_at: new Date().toISOString(), read: true,
+      media,
+    }]).select().single();
+
+    res.json({ message: msg, mediaUrl: publicUrl, success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── GET /api/inbox/ai-suggest/:leadId — AI yanıt önerileri ──────────────────
+router.get('/ai-suggest/:leadId', async (req: any, res: any) => {
+  try {
+    const { leadId } = req.params;
+
+    const [{ data: messages }, { data: lead }, { data: profile }] = await Promise.all([
+      supabase.from('messages').select('content,direction,sent_at').eq('lead_id', leadId)
+        .eq('user_id', req.userId).order('sent_at', { ascending: false }).limit(10),
+      supabase.from('leads').select('*').eq('id', leadId).eq('user_id', req.userId).single(),
+      supabase.from('business_profiles').select('company,product').eq('user_id', req.userId).single(),
+    ]);
+
+    if (!messages?.length || !lead) return res.json({ suggestions: [] });
+
+    const history = (messages || []).reverse();
+    const lastIncoming = history.filter((m: any) => m.direction === 'in').pop();
+    if (!lastIncoming) return res.json({ suggestions: [] });
+
+    const convoText = history.slice(-6).map((m: any) =>
+      `[${m.direction === 'out' ? 'BEN' : 'MÜŞTERİ'}]: ${m.content}`
+    ).join('\n');
+
+    const companyName = profile?.company?.name || 'Şirketimiz';
+    const productDesc = profile?.product?.description || 'ürün ve hizmetlerimiz';
+
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: `Satış temsilcisisin. ${companyName} adına ${lead.company_name} ile konuşuyorsun.
+Sunduğun: ${productDesc}
+
+Konuşma geçmişi:
+${convoText}
+
+MÜŞTERİ son mesajı: "${lastIncoming.content}"
+
+3 farklı, kısa ve doğal Türkçe cevap seçeneği yaz.
+FORMAT (sadece bu 3 satır, başka hiçbir şey ekleme):
+1. [cevap 1]
+2. [cevap 2]
+3. [cevap 3]`,
+      }],
+    }, { timeout: 20000 });
+
+    const text = (r.content[0] as any)?.text || '';
+    const suggestions = text.split('\n')
+      .filter((l: string) => /^\d+\./.test(l.trim()))
+      .map((l: string) => l.replace(/^\d+\.\s*/, '').trim())
+      .filter((l: string) => l.length > 3)
+      .slice(0, 3);
+
+    res.json({ suggestions });
+  } catch { res.json({ suggestions: [] }); }
+});
+
+// ─── PATCH /api/inbox/read/:leadId — Okundu işaretle ─────────────────────────
 router.patch('/read/:leadId', async (req: any, res: any) => {
   try {
     await supabase.from('messages').update({ read: true })
-      .eq('lead_id', req.params.leadId).eq('direction', 'in');
+      .eq('lead_id', req.params.leadId).eq('user_id', req.userId).eq('direction', 'in');
     res.json({ success: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/inbox/stats
+// ─── GET /api/inbox/stats ─────────────────────────────────────────────────────
 router.get('/stats', async (req: any, res: any) => {
   try {
-    const { data: unread } = await supabase.from('messages')
-      .select('id').eq('user_id', req.userId).eq('direction', 'in').eq('read', false);
-    const { data: today } = await supabase.from('messages')
-      .select('id').eq('user_id', req.userId)
-      .gte('sent_at', new Date().toISOString().split('T')[0]);
-    const { data: total } = await supabase.from('messages')
-      .select('id').eq('user_id', req.userId);
-
+    const [unread, today, total] = await Promise.all([
+      supabase.from('messages').select('id', { count: 'exact' })
+        .eq('user_id', req.userId).eq('direction', 'in').eq('read', false),
+      supabase.from('messages').select('id', { count: 'exact' })
+        .eq('user_id', req.userId).gte('sent_at', new Date().toISOString().split('T')[0]),
+      supabase.from('messages').select('id', { count: 'exact' }).eq('user_id', req.userId),
+    ]);
     res.json({
-      unread: unread?.length || 0,
-      today: today?.length || 0,
-      total: total?.length || 0,
+      unread: (unread as any).count || 0,
+      today:  (today  as any).count || 0,
+      total:  (total  as any).count || 0,
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

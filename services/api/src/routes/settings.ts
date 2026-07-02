@@ -40,19 +40,34 @@ async function handleIncomingMessage(userId: string, msg: any) {
       .maybeSingle();
 
     if (!lead) {
-      const { data: newLead } = await supabase
-        .from('leads')
-        .insert([{
-          user_id: userId,
-          phone,
-          company_name: phone,
-          source: 'WhatsApp Gelen',
-          status: 'new',
-          score: 50,
-        }])
-        .select()
-        .single();
+      // Lead dedup: telefon numarasının farklı formatlarını da dene
+      const phoneVariants = [phone, '0' + phone.slice(-10), '90' + phone.slice(-10), phone.slice(-10)];
+      for (const v of phoneVariants) {
+        const { data: found } = await supabase.from('leads').select('id, company_name, status')
+          .eq('user_id', userId).eq('phone', v).maybeSingle();
+        if (found) { lead = found; break; }
+      }
+    }
+
+    if (!lead) {
+      // Yeni lead — telefon numarasını şirket adı yapma, daha akıllı bir isim üret
+      const displayName = `+${phone.startsWith('90') ? phone : '90' + phone.slice(-10)}`;
+      const { data: newLead } = await supabase.from('leads').insert([{
+        user_id: userId,
+        phone,
+        company_name: displayName,  // Telefon formatlanmış, şirketi öğrenince güncellenecek
+        source: 'WhatsApp Gelen',
+        status: 'new',
+        score: 50,
+        channel_contacts: { whatsapp: phone },
+      }]).select().single();
       lead = newLead;
+    } else if (lead) {
+      // Varsa durumu güncelle
+      await supabase.from('leads').update({
+        status: lead.status === 'new' ? 'replied' : lead.status,
+        last_contacted_at: new Date().toISOString(),
+      }).eq('id', lead.id);
     }
 
     if (!lead) return;
@@ -65,6 +80,7 @@ async function handleIncomingMessage(userId: string, msg: any) {
       content: text,
       status: 'received',
       sent_at: new Date().toISOString(),
+      metadata: { raw_from: from, phone },
     }]);
 
     if (/^stop$/i.test(text.trim())) {
