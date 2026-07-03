@@ -11,12 +11,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// GET /api/leads — Liste (filtre + sayfalama)
+// Audit log helper — her alan değişikliğini kaydeder
+async function logFieldChange(leadId: string, userId: string, field: string, oldVal: any, newVal: any, action = 'update') {
+  await supabase.from('lead_field_history').insert([{
+    lead_id: leadId, user_id: userId,
+    field_name: field,
+    old_value: oldVal != null ? String(oldVal) : null,
+    new_value: newVal != null ? String(newVal) : null,
+    action,
+  }]).catch(() => {}); // Tablo yoksa sessiz geç
+}
+
+// GET /api/leads — Liste (filtre + sayfalama + soft delete)
 router.get('/', authMiddleware, async (req: any, res: any) => {
   try {
-    const { status, source, city, search, sector, grade, ids, list, page = 1, limit = 20, sortBy = 'created_at', sortDir = 'desc' } = req.query;
-    const offset = (page - 1) * limit;
-    const ALLOWED_SORT = ['created_at', 'score', 'company_name', 'status', 'city', 'sector', 'updated_at'];
+    const { status, source, city, search, sector, grade, ids, list, page = 1, limit = 20, sortBy = 'created_at', sortDir = 'desc', trash, min_score, tag } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
+    const ALLOWED_SORT = ['created_at', 'score', 'company_name', 'status', 'city', 'sector', 'updated_at', 'hot_score'];
     const col = ALLOWED_SORT.includes(String(sortBy)) ? String(sortBy) : 'created_at';
     const asc = sortDir === 'asc';
 
@@ -25,14 +36,23 @@ router.get('/', authMiddleware, async (req: any, res: any) => {
       .select('*', { count: 'exact' })
       .eq('user_id', req.userId)
       .order(col, { ascending: asc })
-      .range(offset, offset + limit - 1);
+      .range(offset, offset + Number(limit) - 1);
 
-    if (status) query = query.eq('status', status);
-    if (source) query = query.eq('source', source);
-    if (city)   query = query.ilike('city', `%${city}%`);
-    if (sector) query = query.ilike('sector', `%${sector}%`);
-    if (grade)  query = query.eq('ai_grade', grade);
-    if (search) query = query.ilike('company_name', `%${search}%`);
+    // Soft delete filtresi
+    if (trash === 'true') {
+      query = query.not('deleted_at', 'is', null);
+    } else {
+      query = query.is('deleted_at', null);
+    }
+
+    if (status)    query = query.eq('status', status);
+    if (source)    query = query.eq('source', source);
+    if (city)      query = query.ilike('city', `%${city}%`);
+    if (sector)    query = query.ilike('sector', `%${sector}%`);
+    if (grade)     query = query.eq('ai_grade', grade);
+    if (search)    query = query.or(`company_name.ilike.%${search}%,phone.ilike.%${search}%,contact_name.ilike.%${search}%`);
+    if (min_score) query = query.gte('score', Number(min_score));
+    if (tag)       query = query.contains('tags', [String(tag)]);
     if (ids) {
       const idList = String(ids).split(',').filter(Boolean);
       if (idList.length > 0) query = query.in('id', idList);
@@ -99,8 +119,9 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
 
     let query = supabase
       .from('leads')
-      .select('company_name,contact_name,phone,email,website,instagram,facebook,linkedin_url,youtube,twitter,city,sector,source,score,status,notes,created_at')
+      .select('company_name,contact_name,phone,email,website,instagram,facebook,linkedin_url,youtube,twitter,city,sector,source,score,ai_grade,ai_priority,hot_score,deal_value,win_probability,tags,status,notes,created_at,updated_at')
       .eq('user_id', req.userId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       ;
 
@@ -125,7 +146,10 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
       instagram: 'Instagram', facebook: 'Facebook',
       linkedin_url: 'LinkedIn', youtube: 'YouTube', twitter: 'Twitter',
       city: 'Şehir', sector: 'Sektör', source: 'Kaynak', score: 'Puan',
-      status: 'Durum', notes: 'Notlar', created_at: 'Tarih',
+      ai_grade: 'AI Notu', ai_priority: 'Öncelik', hot_score: 'Sıcaklık',
+      deal_value: 'Fırsat Değeri (₺)', win_probability: 'Kazanma İhtimali (%)',
+      tags: 'Etiketler', status: 'Durum', notes: 'Notlar',
+      created_at: 'Eklenme Tarihi', updated_at: 'Son Güncelleme',
     };
     const statusTR: Record<string, string> = {
       new: 'Yeni', contacted: 'İletişime Geçildi', qualified: 'Nitelikli',
@@ -137,7 +161,8 @@ router.get('/export', authMiddleware, async (req: any, res: any) => {
       for (const [k, label] of Object.entries(colMap)) {
         let val = l[k];
         if (k === 'status') val = statusTR[val] || val;
-        if (k === 'created_at') val = val ? new Date(val).toLocaleDateString('tr-TR') : '';
+        if (k === 'created_at' || k === 'updated_at') val = val ? new Date(val).toLocaleDateString('tr-TR') : '';
+        if (k === 'tags' && Array.isArray(val)) val = val.join(', ');
         row[label] = val ?? '';
       }
       return row;
@@ -201,14 +226,18 @@ router.get('/:id', authMiddleware, async (req: any, res: any) => {
   }
 });
 
-// PATCH /api/leads/:id — Güncelle
+// PATCH /api/leads/:id — Güncelle + Audit Log
 router.patch('/:id', authMiddleware, async (req: any, res: any) => {
   try {
-    const allowed = ['status', 'notes', 'score', 'contact_name', 'phone', 'email', 'deal_value'];
+    const allowed = ['status','notes','score','contact_name','phone','email',
+      'deal_value','win_probability','tags','city','sector','website','next_action','next_action_at'];
     const updates: any = {};
     allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
     updates.updated_at = new Date().toISOString();
     if (updates.status === 'won') updates.won_at = new Date().toISOString();
+
+    // Mevcut değerleri al (audit için)
+    const { data: before } = await supabase.from('leads').select(allowed.join(',')).eq('id', req.params.id).single();
 
     const { data, error } = await supabase
       .from('leads')
@@ -219,6 +248,17 @@ router.patch('/:id', authMiddleware, async (req: any, res: any) => {
       .single();
 
     if (error) throw error;
+
+    // Audit Log — değişen alanları kaydet
+    if (before) {
+      for (const field of Object.keys(updates).filter(k => k !== 'updated_at')) {
+        const oldVal = (before as any)[field];
+        const newVal = updates[field];
+        if (String(oldVal ?? '') !== String(newVal ?? '')) {
+          await logFieldChange(req.params.id, req.userId, field, oldVal, newVal);
+        }
+      }
+    }
 
     // Meta CAPI — fire on status transitions
     if (data && updates.status) {
@@ -243,54 +283,71 @@ router.patch('/:id', authMiddleware, async (req: any, res: any) => {
   }
 });
 
-// POST /api/leads — Manuel lead oluştur (UTM + fbc/fbp capture ile)
+// POST /api/leads — Manuel lead oluştur (duplicate detection + audit log)
 router.post('/', authMiddleware, async (req: any, res: any) => {
   try {
     const {
       company_name, contact_name, phone, email, website,
-      city, sector, source, notes, score,
+      city, sector, source, notes, score, status,
+      deal_value, win_probability, tags,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-      fbc, fbp,
+      fbc, fbp, force = false,
     } = req.body;
 
     if (!company_name) return res.status(400).json({ error: 'company_name zorunlu' });
 
-    const { data, error } = await supabase
-      .from('leads')
-      .insert([{
-        user_id: req.userId,
-        company_name, contact_name, phone, email, website,
-        city, sector, source: source || 'Manuel',
-        status: 'new', score: score || 50, notes,
-        utm_source, utm_medium, utm_campaign, utm_content, utm_term,
-        fbc, fbp,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }])
-      .select()
-      .single();
+    // Duplicate Detection — telefon veya firma adı ile kontrol et
+    if (!force) {
+      const dupChecks: any[] = [];
+      if (phone) dupChecks.push(supabase.from('leads').select('id,company_name,phone').eq('user_id', req.userId).eq('phone', phone).is('deleted_at', null).maybeSingle());
+      dupChecks.push(supabase.from('leads').select('id,company_name').eq('user_id', req.userId).ilike('company_name', company_name.trim()).is('deleted_at', null).maybeSingle());
+      const results = await Promise.allSettled(dupChecks);
+      const dupLead = results.map(r => r.status === 'fulfilled' ? r.value.data : null).find(Boolean);
+      if (dupLead) {
+        return res.status(409).json({
+          error: 'duplicate',
+          message: `Benzer lead zaten var: "${dupLead.company_name}"`,
+          existing: dupLead,
+        });
+      }
+    }
+
+    const now = new Date().toISOString();
+    const { data, error } = await supabase.from('leads').insert([{
+      user_id: req.userId,
+      company_name: company_name.trim(), contact_name, phone, email, website,
+      city, sector, source: source || 'Manuel',
+      status: status || 'new', score: score || 50, notes,
+      deal_value, win_probability, tags: tags || [],
+      utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+      fbc, fbp,
+      created_at: now, updated_at: now,
+    }]).select().single();
 
     if (error) throw error;
 
-    // Fire Lead CAPI event
-    try { await fireCapiEvent(supabase, req.userId, data, 'Lead'); } catch {}
+    // Audit log — yeni kayıt
+    await logFieldChange(data.id, req.userId, 'status', null, data.status, 'create');
 
+    try { await fireCapiEvent(supabase, req.userId, data, 'Lead'); } catch {}
     res.json({ lead: data });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// DELETE /api/leads/:id
+// DELETE /api/leads/:id — SOFT DELETE (geri alınabilir)
 router.delete('/:id', authMiddleware, async (req: any, res: any) => {
   try {
-    const { error } = await supabase
-      .from('leads')
-      .delete()
-      .eq('id', req.params.id)
-      .eq('user_id', req.userId);
+    const { data: lead } = await supabase.from('leads').select('company_name,status').eq('id', req.params.id).eq('user_id', req.userId).single();
+    const { error } = await supabase.from('leads').update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: req.userId,
+    }).eq('id', req.params.id).eq('user_id', req.userId);
 
     if (error) throw error;
+    // Audit log
+    if (lead) await logFieldChange(req.params.id, req.userId, 'deleted_at', null, new Date().toISOString(), 'delete');
     res.json({ success: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -441,6 +498,221 @@ router.get('/import/template', authMiddleware, (_req: any, res: any) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', 'attachment; filename="sovlo_lead_sablonu.xlsx"');
   res.send(buf);
+});
+
+// POST /api/leads/restore/:id — Soft delete'ten geri al
+router.post('/restore/:id', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { error } = await supabase.from('leads').update({
+      deleted_at: null, deleted_by: null, restored_at: new Date().toISOString(),
+    }).eq('id', req.params.id).eq('user_id', req.userId);
+    if (error) throw error;
+    await logFieldChange(req.params.id, req.userId, 'deleted_at', new Date().toISOString(), null, 'restore');
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/leads/trash/empty — Çöp kutusunu tamamen boşalt (seçili, kalıcı)
+router.post('/trash/empty', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { ids } = req.body;
+    if (!ids?.length) return res.status(400).json({ error: 'ids gerekli' });
+    const { error } = await supabase.from('leads').delete()
+      .in('id', ids).eq('user_id', req.userId).not('deleted_at', 'is', null);
+    if (error) throw error;
+    res.json({ success: true, deleted: ids.length });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/leads/:id/history — Audit log
+router.get('/:id/history', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase.from('lead_field_history')
+      .select('*').eq('lead_id', req.params.id).eq('user_id', req.userId)
+      .order('changed_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    res.json({ history: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/leads/:id/next-action — AI önerilen sonraki adım
+router.get('/:id/next-action', authMiddleware, async (req: any, res: any) => {
+  try {
+    const [{ data: lead }, { data: history }] = await Promise.all([
+      supabase.from('leads').select('*').eq('id', req.params.id).eq('user_id', req.userId).single(),
+      supabase.from('lead_field_history').select('field_name,new_value,changed_at').eq('lead_id', req.params.id).order('changed_at', { ascending: false }).limit(10),
+    ]);
+    if (!lead) return res.status(404).json({ error: 'Bulunamadı' });
+
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
+
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: `Sen bir B2B satış danışmanısın. Bu lead için EN ÖNEMLİ sonraki adımı söyle.
+
+Lead: ${lead.company_name} | Sektör: ${lead.sector || '?'} | Şehir: ${lead.city || '?'}
+Durum: ${lead.status} | Puan: ${lead.score} | Sıcaklık: ${lead.hot_score || 0}
+Son aktiviteler: ${(history || []).slice(0,3).map((h: any) => `${h.field_name}: ${h.new_value}`).join(', ')}
+
+Türkçe, net 1 cümle öner. Format:
+EYLEM: [Ne yapılmalı]
+ZAMAN: [Ne zaman: bugün/yarın/3 gün içinde/bu hafta]
+NEDEN: [1 cümle neden]`
+      }],
+    }, { timeout: 15000 });
+
+    const text = (r.content[0] as any)?.text || '';
+    const eylem = text.match(/EYLEM:\s*(.+)/)?.[1]?.trim() || text.split('\n')[0]?.trim();
+    const zaman = text.match(/ZAMAN:\s*(.+)/)?.[1]?.trim() || 'Bugün';
+    const neden = text.match(/NEDEN:\s*(.+)/)?.[1]?.trim() || '';
+
+    // Veritabanına kaydet
+    await supabase.from('leads').update({ next_action: eylem, next_action_at: new Date().toISOString() })
+      .eq('id', req.params.id).catch(() => {});
+
+    res.json({ action: eylem, timing: zaman, reason: neden, raw: text });
+  } catch { res.json({ action: 'Müşteriyi ara veya WhatsApp mesajı gönder', timing: 'Bugün', reason: 'AI analizi geçici olarak kullanılamıyor' }); }
+});
+
+// GET /api/leads/pipeline-stats — Pipeline hız analizi
+router.get('/pipeline/stats', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data: leads } = await supabase.from('leads').select('status,score,hot_score,deal_value,created_at,updated_at,won_at,source,sector')
+      .eq('user_id', req.userId).is('deleted_at', null);
+
+    const all = leads || [];
+    const byStatus: Record<string, number> = {};
+    let totalValue = 0, wonValue = 0, wonCount = 0;
+
+    for (const l of all) {
+      byStatus[l.status] = (byStatus[l.status] || 0) + 1;
+      if (l.deal_value) totalValue += Number(l.deal_value);
+      if (l.status === 'won') { wonValue += Number(l.deal_value || 0); wonCount++; }
+    }
+
+    const avgScore = all.length ? Math.round(all.reduce((s, l) => s + (l.score || 0), 0) / all.length) : 0;
+    const hotLeads = all.filter(l => (l.hot_score || 0) >= 30).length;
+    const conversionRate = all.length ? ((wonCount / all.length) * 100).toFixed(1) : '0';
+
+    // Kaynak bazlı dönüşüm
+    const bySource: Record<string, { total: number; won: number }> = {};
+    for (const l of all) {
+      const s = l.source || 'Diğer';
+      if (!bySource[s]) bySource[s] = { total: 0, won: 0 };
+      bySource[s].total++;
+      if (l.status === 'won') bySource[s].won++;
+    }
+
+    res.json({
+      byStatus, totalValue, wonValue, wonCount,
+      avgScore, hotLeads, conversionRate: parseFloat(conversionRate),
+      total: all.length,
+      bySource: Object.entries(bySource)
+        .map(([source, d]) => ({ source, ...d, rate: d.total ? +(d.won / d.total * 100).toFixed(1) : 0 }))
+        .sort((a, b) => b.rate - a.rate).slice(0, 10),
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/leads/bulk-enrich — Toplu zenginleştirme
+router.post('/bulk-enrich', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { ids } = req.body;
+    if (!ids?.length) return res.status(400).json({ error: 'ids gerekli' });
+    if (ids.length > 100) return res.status(400).json({ error: 'Tek seferde max 100 lead zenginleştirilebilir' });
+
+    res.json({ ok: true, total: ids.length, message: `${ids.length} lead için zenginleştirme başlatıldı` });
+
+    // Arka planda işle
+    setImmediate(async () => {
+      for (const id of ids) {
+        try {
+          const { data: lead } = await supabase.from('leads').select('*').eq('id', id).eq('user_id', req.userId).single();
+          if (!lead) continue;
+          const { triggerEnrichment } = require('./enrichment');
+          if (typeof triggerEnrichment === 'function') await triggerEnrichment(supabase, lead, req.userId);
+          else {
+            await supabase.from('leads').update({ enrichment_status: 'pending', updated_at: new Date().toISOString() }).eq('id', id);
+          }
+        } catch {}
+      }
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/leads/check-duplicate — Duplicate kontrolü
+router.post('/check-duplicate', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { company_name, phone } = req.body;
+    const checks: any[] = [];
+    if (phone) checks.push(supabase.from('leads').select('id,company_name,phone,status').eq('user_id', req.userId).eq('phone', phone).is('deleted_at', null).limit(1));
+    if (company_name) checks.push(supabase.from('leads').select('id,company_name,phone,status').eq('user_id', req.userId).ilike('company_name', company_name.trim()).is('deleted_at', null).limit(1));
+    const results = await Promise.allSettled(checks);
+    const duplicates = results.flatMap(r => r.status === 'fulfilled' ? (r.value.data || []) : []);
+    res.json({ duplicates, hasDuplicate: duplicates.length > 0 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── SMART SEGMENTS ────────────────────────────────────────────────────────────
+router.get('/segments', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('smart_segments').select('*').eq('user_id', req.userId).order('is_pinned', { ascending: false }).order('created_at');
+    res.json({ segments: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.post('/segments', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { name, filters, icon, color, description } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'name zorunlu' });
+    const { data, error } = await supabase.from('smart_segments').insert([{ user_id: req.userId, name: name.trim(), filters: filters || {}, icon, color, description }]).select().single();
+    if (error) throw error;
+    res.json({ segment: data });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.delete('/segments/:id', authMiddleware, async (req: any, res: any) => {
+  try {
+    await supabase.from('smart_segments').delete().eq('id', req.params.id).eq('user_id', req.userId);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── CUSTOM FIELDS ─────────────────────────────────────────────────────────────
+router.get('/custom-fields', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('lead_custom_field_defs').select('*').eq('user_id', req.userId).order('sort_order');
+    res.json({ fields: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.post('/custom-fields', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { field_key, field_label, field_type = 'text', options, placeholder, required } = req.body;
+    if (!field_key || !field_label) return res.status(400).json({ error: 'field_key ve field_label zorunlu' });
+    const { data, error } = await supabase.from('lead_custom_field_defs').insert([{ user_id: req.userId, field_key, field_label, field_type, options, placeholder, required }]).select().single();
+    if (error) throw error;
+    res.json({ field: data });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.get('/:id/custom-values', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('lead_custom_values').select('*').eq('lead_id', req.params.id);
+    const vals: Record<string, string> = {};
+    (data || []).forEach((r: any) => { vals[r.field_key] = r.value; });
+    res.json({ values: vals });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+router.patch('/:id/custom-values', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { values } = req.body; // { field_key: value, ... }
+    const upserts = Object.entries(values || {}).map(([field_key, value]) => ({
+      lead_id: req.params.id, user_id: req.userId, field_key, value: String(value), updated_at: new Date().toISOString(),
+    }));
+    if (upserts.length) await supabase.from('lead_custom_values').upsert(upserts, { onConflict: 'lead_id,field_key' });
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

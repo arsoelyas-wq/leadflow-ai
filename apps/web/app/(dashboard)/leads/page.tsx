@@ -355,13 +355,20 @@ function AddLeadDrawer({
 
   const set=(k:string,v:any)=>setForm(p=>({...p,[k]:v}))
 
-  const save=async()=>{
+  const [dupWarning,setDupWarning]=useState<any>(null)
+
+  const save=async(force=false)=>{
     if(!form.company_name.trim()){setError('Firma adı zorunlu'); return}
-    setSaving(true); setError('')
+    setSaving(true); setError(''); setDupWarning(null)
     try {
-      const res=await api.post('/api/leads',{...form,company_name:form.company_name.trim()})
+      const res=await api.post('/api/leads',{...form,company_name:form.company_name.trim(),force})
       onSaved(res.lead)
-    } catch(e:any){ setError(e.message||'Kayıt başarısız') }
+    } catch(e:any){
+      if(e.response?.status===409||e.message?.includes('duplicate')){
+        const data=e.response?.data||{}
+        setDupWarning(data)
+      } else { setError(e.message||'Kayıt başarısız') }
+    }
     setSaving(false)
   }
 
@@ -508,6 +515,18 @@ function AddLeadDrawer({
             </div>
           </div>
 
+          {/* Duplicate uyarısı */}
+          {dupWarning && (
+            <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-amber-800 text-sm font-semibold mb-1">⚠️ Benzer Lead Var</p>
+              <p className="text-amber-700 text-xs mb-3">"{dupWarning.existing?.company_name}" adlı lead zaten kayıtlı.</p>
+              <div className="flex gap-2">
+                <button onClick={()=>setDupWarning(null)} className="flex-1 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-600">İptal</button>
+                <button onClick={()=>{setDupWarning(null);save(true)}} className="flex-1 py-1.5 text-xs bg-amber-600 text-white rounded-lg font-semibold">Yine de Ekle</button>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
               <X size={14} className="shrink-0"/>{error}
@@ -521,7 +540,7 @@ function AddLeadDrawer({
             <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors">
               İptal
             </button>
-            <button onClick={save} disabled={saving||!form.company_name.trim()}
+            <button onClick={()=>save(false)} disabled={saving||!form.company_name.trim()}
               className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{background:form.company_name.trim()?'linear-gradient(135deg,#4F46E5,#7C3AED)':'#e2e8f0'}}>
               {saving?<><RefreshCw size={14} className="animate-spin"/>Kaydediliyor...</>:<><Plus size={14}/>Lead Ekle</>}
@@ -621,6 +640,17 @@ export default function LeadsPage() {
   const [showFilters,setShowFilters]=useState(false)
   const [showAddLead,setShowAddLead]=useState(false)
   const [showImport,setShowImport]=useState(false)
+  const [showTrash,setShowTrash]=useState(false)
+  const [trashLeads,setTrashLeads]=useState<Lead[]>([])
+  const [trashTotal,setTrashTotal]=useState(0)
+  const [pipelineStats,setPipelineStats]=useState<any>(null)
+  const [showPipeline,setShowPipeline]=useState(false)
+  const [segments,setSegments]=useState<any[]>([])
+  const [segmentName,setSegmentName]=useState('')
+  const [showSaveSegment,setShowSaveSegment]=useState(false)
+  const [loadingAI,setLoadingAI]=useState<string|null>(null)
+  const [nextActions,setNextActions]=useState<Record<string,{action:string;timing:string;reason:string}>>({})
+  const [duplicateWarning,setDuplicateWarning]=useState<any>(null)
   const [sortBy,setSortBy]=useState('created_at')
   const [sortDir,setSortDir]=useState('desc')
   const [selectAllTotal,setSelectAllTotal]=useState(false)
@@ -644,6 +674,57 @@ export default function LeadsPage() {
   useEffect(()=>{load()},[page,pageSize,status,sector,grade,list,sortBy,sortDir])
   useEffect(()=>{const t=setTimeout(load,380);return ()=>clearTimeout(t)},[search])
 
+  // Çöp kutusu yükle
+  const loadTrash=async()=>{
+    try{const d=await api.get('/api/leads?trash=true&limit=100');setTrashLeads(d.leads||[]);setTrashTotal(d.total||0)}catch{}
+  }
+  useEffect(()=>{if(showTrash)loadTrash()},[showTrash])
+
+  // Pipeline stats
+  const loadPipelineStats=async()=>{
+    try{const d=await api.get('/api/leads/pipeline/stats');setPipelineStats(d)}catch{}
+  }
+  useEffect(()=>{if(showPipeline)loadPipelineStats()},[showPipeline])
+
+  // Segments
+  useEffect(()=>{api.get('/api/leads/segments').then(d=>setSegments(d.segments||[])).catch(()=>{})},[])
+
+  // AI Sonraki Adım
+  const loadNextAction=async(leadId:string)=>{
+    if(nextActions[leadId]||loadingAI===leadId)return
+    setLoadingAI(leadId)
+    try{const d=await api.get(`/api/leads/${leadId}/next-action`);setNextActions(p=>({...p,[leadId]:d}))}catch{}
+    setLoadingAI(null)
+  }
+
+  // Restore from trash
+  const restoreLead=async(id:string)=>{
+    try{await api.post(`/api/leads/restore/${id}`,{});loadTrash();toast('success','Lead geri alındı')}catch(e:any){toast('error',e.message)}
+  }
+
+  // Permanent delete
+  const permanentDelete=async(ids:string[])=>{
+    try{await api.post('/api/leads/trash/empty',{ids});loadTrash();toast('success',`${ids.length} lead kalıcı silindi`)}catch(e:any){toast('error',e.message)}
+  }
+
+  // Save smart segment
+  const saveSegment=async()=>{
+    if(!segmentName.trim())return
+    const filters:any={}
+    if(status)filters.status=status;if(sector)filters.sector=sector;if(grade)filters.grade=grade;if(search)filters.search=search
+    try{await api.post('/api/leads/segments',{name:segmentName.trim(),filters,icon:'🎯'});setSegmentName('');setShowSaveSegment(false);api.get('/api/leads/segments').then(d=>setSegments(d.segments||[]));toast('success','Segment kaydedildi')}catch(e:any){toast('error',e.message)}
+  }
+
+  // Load a saved segment
+  const applySegment=(seg:any)=>{
+    const f=seg.filters||{}
+    if(f.status!==undefined)setStatus(f.status)
+    if(f.sector!==undefined)setSector(f.sector)
+    if(f.grade!==undefined)setGrade(f.grade)
+    if(f.search!==undefined)setSearch(f.search)
+    setPage(1)
+  }
+
   const handleSort=(col:string)=>{
     if(sortBy===col){setSortDir(d=>d==='asc'?'desc':'asc')}
     else{setSortBy(col);setSortDir('desc')}
@@ -654,8 +735,10 @@ export default function LeadsPage() {
   const allSel=leads.length>0&&selected.length===leads.length
 
   const bulkDelete=async()=>{
+    // Soft delete — geri alınabilir çöp kutusuna gönder
     await Promise.all(selected.map(id=>api.delete(`/api/leads/${id}`)))
-    setSelected([]);setShowDel(false);load()
+    setSelected([]);setShowDel(false);load();setTrashTotal(t=>t+selected.length)
+    toast('success',`${selected.length} lead çöp kutusuna taşındı (geri alınabilir)`)
   }
   const bulkStatus=async(ns:string)=>{
     await api.post('/api/leads/bulk-status',{ids:selected,status:ns})
@@ -774,7 +857,7 @@ export default function LeadsPage() {
           </Link>
           <button onClick={()=>setShowImport(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-            <Download size={14} className="rotate-180 text-emerald-600"/> Excel İçe Aktar
+            <Download size={14} className="rotate-180 text-emerald-600"/> Excel Aktar
           </button>
           <button onClick={()=>setShowAddLead(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
@@ -795,7 +878,109 @@ export default function LeadsPage() {
         <StatCard icon={Zap}        value={newToday} label="Bugün Eklenen"  iconBg="#F0FDF4" iconColor="#16A34A"/>
         <StatCard icon={TrendingUp} value={leads.filter(l=>l.status==='won').length}           label="Kazanılan"    iconBg="#FFFBEB" iconColor="#D97706"/>
         <StatCard icon={Flame}      value={leads.filter(l=>(l.hot_score||0)>=30).length}       label="Sıcak Lead"   iconBg="#FEF2F2" iconColor="#DC2626"/>
+
+      {/* Pipeline Stats + Çöp Kutusu aksiyonları */}
       </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={()=>setShowPipeline(v=>!v)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${showPipeline?'bg-indigo-50 border-indigo-200 text-indigo-700':'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+          <TrendingUp size={12}/> Pipeline Analitik
+        </button>
+        <button onClick={()=>setShowSaveSegment(v=>!v)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors">
+          <Star size={12}/> Segment Kaydet
+        </button>
+        {segments.slice(0,5).map(seg=>(
+          <button key={seg.id} onClick={()=>applySegment(seg)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors">
+            {seg.icon||'🎯'} {seg.name}
+          </button>
+        ))}
+        <button onClick={()=>setShowTrash(v=>!v)}
+          className={`ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${showTrash?'bg-red-50 border-red-200 text-red-600':'bg-white border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50'}`}>
+          <Trash2 size={12}/> Çöp Kutusu {trashTotal>0&&<span className="bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded-full font-bold">{trashTotal}</span>}
+        </button>
+      </div>
+
+      {/* Segment kaydet formu */}
+      {showSaveSegment&&(
+        <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+          <Star size={14} className="text-indigo-500 shrink-0"/>
+          <input value={segmentName} onChange={e=>setSegmentName(e.target.value)} placeholder="Segment adı (ör: Sıcak İstanbul Teknoloji)" onKeyDown={e=>e.key==='Enter'&&saveSegment()}
+            className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:border-indigo-400"/>
+          <button onClick={saveSegment} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700">Kaydet</button>
+          <button onClick={()=>setShowSaveSegment(false)} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
+        </div>
+      )}
+
+      {/* Pipeline Stats Panel */}
+      {showPipeline&&pipelineStats&&(
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2"><TrendingUp size={15} className="text-indigo-500"/> Pipeline Analitik</h3>
+            <button onClick={()=>setShowPipeline(false)} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {[
+              {label:'Toplam Lead',val:pipelineStats.total,color:'#4F46E5'},
+              {label:'Kazanılan',val:pipelineStats.wonCount,color:'#16A34A'},
+              {label:'Dönüşüm',val:`%${pipelineStats.conversionRate}`,color:'#D97706'},
+              {label:'Kazanılan Değer',val:`₺${(pipelineStats.wonValue||0).toLocaleString('tr-TR')}`,color:'#059669'},
+            ].map(s=>(
+              <div key={s.label} className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-center">
+                <div className="text-xl font-bold" style={{color:s.color}}>{s.val}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Kaynak Bazlı Dönüşüm</p>
+            <div className="space-y-1.5">
+              {(pipelineStats.bySource||[]).slice(0,5).map((s:any)=>(
+                <div key={s.source} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-600 w-32 truncate">{s.source}</span>
+                  <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                    <div className="bg-indigo-500 h-1.5 rounded-full" style={{width:`${Math.min(s.rate,100)}%`}}/>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700 w-10 text-right">%{s.rate}</span>
+                  <span className="text-xs text-slate-400 w-16 text-right">{s.total} lead</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Çöp Kutusu Panel */}
+      {showTrash&&(
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-red-800 text-sm flex items-center gap-2"><Trash2 size={14}/> Çöp Kutusu ({trashTotal} lead)</h3>
+            <div className="flex gap-2">
+              {trashLeads.length>0&&<button onClick={()=>permanentDelete(trashLeads.map(l=>l.id))} className="text-xs px-3 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">Tümünü Kalıcı Sil</button>}
+              <button onClick={()=>setShowTrash(false)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
+            </div>
+          </div>
+          {trashLeads.length===0?(
+            <p className="text-red-400 text-sm text-center py-4">Çöp kutusu boş</p>
+          ):(
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {trashLeads.map(l=>(
+                <div key={l.id} className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-red-100">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700">{l.company_name}</p>
+                    <p className="text-xs text-slate-400">{l.city||'—'} · {l.sector||'—'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={()=>restoreLead(l.id)} className="text-xs px-2.5 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg font-semibold hover:bg-emerald-100">Geri Al</button>
+                    <button onClick={()=>permanentDelete([l.id])} className="text-xs px-2.5 py-1.5 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200">Sil</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Toast ── */}
       {msg&&(
