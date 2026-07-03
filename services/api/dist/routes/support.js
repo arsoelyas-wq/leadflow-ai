@@ -96,8 +96,8 @@ router.post('/public/chat', async (req, res) => {
         res.json(result);
     }
     catch (error) {
-        console.error('Support public chat error:', error.message);
-        res.status(500).json({ error: 'Destek servisi hatası' });
+        console.error('Support public chat error:', error.message, error.status, error.error);
+        res.status(500).json({ error: 'Destek servisi hatası', _debug: error.message });
     }
 });
 // ─── AUTHENTICATED ENDPOINTS ──────────────────────────────────────────────────
