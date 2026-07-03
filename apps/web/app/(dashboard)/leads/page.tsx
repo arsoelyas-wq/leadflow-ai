@@ -145,6 +145,213 @@ function Cp({v}:{v:string}) {
   </button>
 }
 
+/* ─── Manuel Lead Ekleme Drawer ──────────────────────────────── */
+const SOURCES = ['Manuel','WhatsApp Gelen','Google Maps','Instagram','Facebook','LinkedIn','Website Formu','Referans','Soğuk Arama','Fuar / Etkinlik','Diğer']
+const STATUS_OPTS = ['new','contacted','qualified','replied','offered','won','lost']
+
+function AddLeadDrawer({
+  open, onClose, onSaved, sectors,
+}:{open:boolean; onClose:()=>void; onSaved:(lead:any)=>void; sectors:string[]}) {
+  const [form,setForm]=useState({
+    company_name:'', contact_name:'', phone:'', email:'', website:'',
+    city:'', sector:'', source:'Manuel', status:'new', notes:'', score:50,
+    instagram:'', linkedin_url:'',
+  })
+  const [saving,setSaving]=useState(false)
+  const [error,setError]=useState('')
+  const [customSector,setCustomSector]=useState(false)
+  const firstRef=useRef<HTMLInputElement>(null)
+
+  useEffect(()=>{ if(open){ setForm({company_name:'',contact_name:'',phone:'',email:'',website:'',city:'',sector:'',source:'Manuel',status:'new',notes:'',score:50,instagram:'',linkedin_url:''}); setError(''); setCustomSector(false); setTimeout(()=>firstRef.current?.focus(),80) } },[open])
+
+  const set=(k:string,v:any)=>setForm(p=>({...p,[k]:v}))
+
+  const save=async()=>{
+    if(!form.company_name.trim()){setError('Firma adı zorunlu'); return}
+    setSaving(true); setError('')
+    try {
+      const res=await api.post('/api/leads',{...form,company_name:form.company_name.trim()})
+      onSaved(res.lead)
+    } catch(e:any){ setError(e.message||'Kayıt başarısız') }
+    setSaving(false)
+  }
+
+  const inp='w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all'
+  const label='block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide'
+
+  if(!open) return null
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm" onClick={onClose}/>
+
+      {/* Drawer panel */}
+      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[480px] bg-white shadow-2xl flex flex-col"
+        style={{animation:'slideInRight 0.28s cubic-bezier(0.22,1,0.36,1)'}}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{background:'linear-gradient(135deg,#4F46E5,#7C3AED)'}}>
+              <Plus size={16} className="text-white"/>
+            </div>
+            <div>
+              <h2 className="text-slate-900 font-bold text-base leading-tight">Manuel Lead Ekle</h2>
+              <p className="text-slate-400 text-xs">Tüm alanları doldurmanıza gerek yok</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+            <X size={16}/>
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Temel bilgiler */}
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Firma Bilgileri</p>
+            <div className="space-y-3">
+              <div>
+                <label className={label}>Firma Adı <span className="text-red-400 normal-case tracking-normal font-normal">*</span></label>
+                <input ref={firstRef} value={form.company_name} onChange={e=>set('company_name',e.target.value)}
+                  placeholder="Ör: Acme Teknoloji A.Ş." className={inp}
+                  onKeyDown={e=>e.key==='Enter'&&save()}/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Şehir</label>
+                  <input value={form.city} onChange={e=>set('city',e.target.value)} placeholder="İstanbul" className={inp}/>
+                </div>
+                <div>
+                  <label className={label}>Sektör</label>
+                  {customSector ? (
+                    <div className="relative">
+                      <input value={form.sector} onChange={e=>set('sector',e.target.value)} placeholder="Sektör yaz..." className={inp} autoFocus/>
+                      <button onClick={()=>{setCustomSector(false);set('sector','')}} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={12}/></button>
+                    </div>
+                  ) : (
+                    <select value={form.sector} onChange={e=>{ if(e.target.value==='__custom__'){setCustomSector(true);set('sector','')} else set('sector',e.target.value) }}
+                      className={inp+' cursor-pointer'}>
+                      <option value="">Seç veya yaz</option>
+                      {sectors.map(s=><option key={s} value={s}>{s}</option>)}
+                      <option value="__custom__">+ Yeni sektör...</option>
+                    </select>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className={label}>Website</label>
+                <input value={form.website} onChange={e=>set('website',e.target.value)} placeholder="https://example.com" className={inp} type="url"/>
+              </div>
+            </div>
+          </div>
+
+          {/* İletişim */}
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">İletişim</p>
+            <div className="space-y-3">
+              <div>
+                <label className={label}>İlgili Kişi</label>
+                <input value={form.contact_name} onChange={e=>set('contact_name',e.target.value)} placeholder="Ahmet Yılmaz" className={inp}/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Telefon</label>
+                  <input value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="+90 5XX XXX XX XX" className={inp} type="tel"/>
+                </div>
+                <div>
+                  <label className={label}>E-posta</label>
+                  <input value={form.email} onChange={e=>set('email',e.target.value)} placeholder="info@example.com" className={inp} type="email"/>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Instagram</label>
+                  <input value={form.instagram} onChange={e=>set('instagram',e.target.value)} placeholder="@kullanici" className={inp}/>
+                </div>
+                <div>
+                  <label className={label}>LinkedIn</label>
+                  <input value={form.linkedin_url} onChange={e=>set('linkedin_url',e.target.value)} placeholder="linkedin.com/..." className={inp}/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CRM Bilgileri */}
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">CRM</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Kaynak</label>
+                  <select value={form.source} onChange={e=>set('source',e.target.value)} className={inp+' cursor-pointer'}>
+                    {SOURCES.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={label}>Başlangıç Durumu</label>
+                  <select value={form.status} onChange={e=>set('status',e.target.value)} className={inp+' cursor-pointer'}>
+                    {STATUS_OPTS.map(s=><option key={s} value={s}>{ST[s]?.label||s}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Puan slider */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={label.replace('mb-1.5','')}>Lead Puanı</label>
+                  <span className="text-sm font-bold" style={{color: form.score>=70?'#16A34A':form.score>=40?'#D97706':'#DC2626'}}>{form.score}</span>
+                </div>
+                <input type="range" min={0} max={100} value={form.score} onChange={e=>set('score',Number(e.target.value))}
+                  className="w-full accent-indigo-500 h-1.5 rounded-full cursor-pointer"/>
+                <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                  <span>Soğuk</span><span>Orta</span><span>Sıcak</span>
+                </div>
+              </div>
+
+              <div>
+                <label className={label}>Notlar</label>
+                <textarea value={form.notes} onChange={e=>set('notes',e.target.value)} rows={3}
+                  placeholder="Bu lead hakkında önemli notlar..."
+                  className={inp+' resize-none'}/>
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+              <X size={14} className="shrink-0"/>{error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 shrink-0 bg-slate-50/50">
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors">
+              İptal
+            </button>
+            <button onClick={save} disabled={saving||!form.company_name.trim()}
+              className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{background:form.company_name.trim()?'linear-gradient(135deg,#4F46E5,#7C3AED)':'#e2e8f0'}}>
+              {saving?<><RefreshCw size={14} className="animate-spin"/>Kaydediliyor...</>:<><Plus size={14}/>Lead Ekle</>}
+            </button>
+          </div>
+          <p className="text-center text-[11px] text-slate-400 mt-2">Enter tuşu ile de kaydedebilirsiniz</p>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+      `}</style>
+    </>
+  )
+}
+
 /* ─── Delete modal ───────────────────────────────────────────── */
 function DeleteModal({count,onConfirm,onCancel}:{count:number;onConfirm:()=>void;onCancel:()=>void}) {
   return (
@@ -223,6 +430,7 @@ export default function LeadsPage() {
   const [lists,setLists]=useState<string[]>([])
   const [showDel,setShowDel]=useState(false)
   const [showFilters,setShowFilters]=useState(false)
+  const [showAddLead,setShowAddLead]=useState(false)
   const [sortBy,setSortBy]=useState('created_at')
   const [sortDir,setSortDir]=useState('desc')
   const [selectAllTotal,setSelectAllTotal]=useState(false)
@@ -339,6 +547,16 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6 pb-10">
       {showDel&&<DeleteModal count={selected.length} onConfirm={bulkDelete} onCancel={()=>setShowDel(false)}/>}
+      <AddLeadDrawer
+        open={showAddLead}
+        onClose={()=>setShowAddLead(false)}
+        sectors={sectors}
+        onSaved={lead=>{
+          setShowAddLead(false)
+          toast('success',`✅ "${lead.company_name}" başarıyla eklendi`)
+          load() // Listeyi yenile
+        }}
+      />
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -356,6 +574,11 @@ export default function LeadsPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
             <Crosshair size={14}/> KV Bul
           </Link>
+          <button onClick={()=>setShowAddLead(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+            style={{background:'linear-gradient(135deg,#059669,#0d9488)'}}>
+            <Plus size={14}/> Lead Ekle
+          </button>
           <Link href="/leads/scrape"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
             style={{background:'linear-gradient(135deg,#4F46E5,#7C3AED)'}}>
