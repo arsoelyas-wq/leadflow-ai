@@ -572,7 +572,7 @@ function DeleteModal({count,onConfirm,onCancel}:{count:number;onConfirm:()=>void
           <button onClick={onCancel} className="text-slate-400 hover:text-slate-700 transition-colors"><X size={16}/></button>
         </div>
         <p className="text-slate-900 font-semibold mb-1">Lead'leri Sil</p>
-        <p className="text-slate-500 text-sm mb-6">Seçili <span className="text-slate-900 font-medium">{count} lead</span> kalıcı silinecek. Bu işlem geri alınamaz.</p>
+        <p className="text-slate-500 text-sm mb-6">Seçili <span className="text-slate-900 font-medium">{count} lead</span> çöp kutusuna taşınacak. Daha sonra geri alabilirsiniz.</p>
         <div className="flex gap-2">
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition-colors">İptal</button>
           <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors">Sil</button>
@@ -684,6 +684,7 @@ export default function LeadsPage() {
   const loadPipelineStats=async()=>{
     try{const d=await api.get('/api/leads/pipeline/stats');setPipelineStats(d)}catch{}
   }
+  useEffect(()=>{loadPipelineStats()},[]) // Stat kartlar için sayfa açılışında yükle
   useEffect(()=>{if(showPipeline)loadPipelineStats()},[showPipeline])
 
   // Segments
@@ -792,7 +793,7 @@ export default function LeadsPage() {
     try{
       const p=new URLSearchParams()
       if(selected.length>0){p.set('ids',selected.join(','))}
-      else{if(search)p.set('search',search);if(status)p.set('status',status);if(sector)p.set('sector',sector);if(list)p.set('list',list)}
+      else{if(search)p.set('search',search);if(status)p.set('status',status);if(sector)p.set('sector',sector);if(grade)p.set('grade',grade);if(list)p.set('list',list)}
       const token=localStorage.getItem('token')||''
       const API=process.env.NEXT_PUBLIC_API_URL||'https://leadflow-ai-production.up.railway.app'
       const resp=await fetch(`${API}/api/leads/export?${p}`,{headers:{Authorization:`Bearer ${token}`}})
@@ -876,8 +877,8 @@ export default function LeadsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Users}      value={total}    label="Toplam Lead"   iconBg="#EEF2FF" iconColor="#4F46E5"/>
         <StatCard icon={Zap}        value={newToday} label="Bugün Eklenen"  iconBg="#F0FDF4" iconColor="#16A34A"/>
-        <StatCard icon={TrendingUp} value={leads.filter(l=>l.status==='won').length}           label="Kazanılan"    iconBg="#FFFBEB" iconColor="#D97706"/>
-        <StatCard icon={Flame}      value={leads.filter(l=>(l.hot_score||0)>=30).length}       label="Sıcak Lead"   iconBg="#FEF2F2" iconColor="#DC2626"/>
+        <StatCard icon={TrendingUp} value={pipelineStats?.wonCount??leads.filter(l=>l.status==='won').length}       label="Kazanılan"    iconBg="#FFFBEB" iconColor="#D97706"/>
+        <StatCard icon={Flame}      value={pipelineStats?.hotLeads??leads.filter(l=>(l.hot_score||0)>=30).length} label="Sıcak Lead"   iconBg="#FEF2F2" iconColor="#DC2626"/>
 
       {/* Pipeline Stats + Çöp Kutusu aksiyonları */}
       </div>

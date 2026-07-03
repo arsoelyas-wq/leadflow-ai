@@ -82,6 +82,7 @@ router.get('/with-phone', authMiddleware, async (req: any, res: any) => {
         .not('phone', 'is', null)
         .neq('phone', '')
         .not('phone', 'ilike', '%@%')
+        .is('deleted_at', null)
         .order('company_name', { ascending: true })
         .range(from, from + PAGE - 1);
       if (error) throw error;
@@ -103,6 +104,7 @@ router.get('/sectors', authMiddleware, async (req: any, res: any) => {
       .from('leads')
       .select('sector')
       .eq('user_id', req.userId)
+      .is('deleted_at', null)
       .not('sector', 'is', null);
     if (error) throw error;
     const sectors = [...new Set((data || []).map((r: any) => r.sector).filter(Boolean))].sort();
@@ -207,6 +209,22 @@ router.get('/lists', authMiddleware, async (req: any, res: any) => {
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// GET /api/leads/segments — Kayıtlı segmentler (/:id'den ÖNCE olmalı!)
+router.get('/segments', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('smart_segments').select('*').eq('user_id', req.userId).order('is_pinned', { ascending: false }).order('created_at');
+    res.json({ segments: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/leads/custom-fields — Özel alan tanımları (/:id'den ÖNCE olmalı!)
+router.get('/custom-fields', authMiddleware, async (req: any, res: any) => {
+  try {
+    const { data } = await supabase.from('lead_custom_field_defs').select('*').eq('user_id', req.userId).order('sort_order');
+    res.json({ fields: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/leads/:id — Tek lead detayı
@@ -658,12 +676,7 @@ router.post('/check-duplicate', authMiddleware, async (req: any, res: any) => {
 });
 
 // ─── SMART SEGMENTS ────────────────────────────────────────────────────────────
-router.get('/segments', authMiddleware, async (req: any, res: any) => {
-  try {
-    const { data } = await supabase.from('smart_segments').select('*').eq('user_id', req.userId).order('is_pinned', { ascending: false }).order('created_at');
-    res.json({ segments: data || [] });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
+// GET /segments yukarıda /:id'den ÖNCE tanımlandı (route sıralaması kritik)
 router.post('/segments', authMiddleware, async (req: any, res: any) => {
   try {
     const { name, filters, icon, color, description } = req.body;
@@ -681,12 +694,7 @@ router.delete('/segments/:id', authMiddleware, async (req: any, res: any) => {
 });
 
 // ─── CUSTOM FIELDS ─────────────────────────────────────────────────────────────
-router.get('/custom-fields', authMiddleware, async (req: any, res: any) => {
-  try {
-    const { data } = await supabase.from('lead_custom_field_defs').select('*').eq('user_id', req.userId).order('sort_order');
-    res.json({ fields: data || [] });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
+// GET /custom-fields yukarıda /:id'den ÖNCE tanımlandı (route sıralaması kritik)
 router.post('/custom-fields', authMiddleware, async (req: any, res: any) => {
   try {
     const { field_key, field_label, field_type = 'text', options, placeholder, required } = req.body;
