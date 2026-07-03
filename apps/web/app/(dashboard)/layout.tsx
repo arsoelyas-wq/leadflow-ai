@@ -6,12 +6,15 @@ import { useI18n } from '@/lib/i18n'
 import Sidebar from '../../components/Sidebar'
 import TopBar from '../../components/TopBar'
 import PWAInstallBanner from '../../components/PWAInstallBanner'
+import DashboardSupportChat from '../../components/DashboardSupportChat'
+import { LifeBuoy } from 'lucide-react'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const { lang } = useI18n()
   const router = useRouter()
   const [isImpersonating, setIsImpersonating] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
 
   useEffect(() => {
     setIsImpersonating(localStorage.getItem('is_impersonating') === 'true')
@@ -107,6 +110,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           borderBottom: '1px solid #e2e8f0',
           gap: 8,
         }}>
+          {/* Support button */}
+          <button
+            onClick={() => setSupportOpen(v => !v)}
+            title="Destek"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+              border: supportOpen ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+              background: supportOpen ? '#eff6ff' : '#ffffff',
+              color: supportOpen ? '#1d4ed8' : '#475569',
+              fontSize: 12, fontWeight: 500,
+              transition: 'all 0.15s', fontFamily: 'inherit',
+              boxShadow: supportOpen ? '0 0 0 3px rgba(37,99,235,0.08)' : '0 1px 2px rgba(0,0,0,0.04)',
+            }}
+          >
+            <LifeBuoy size={13} style={{ opacity: 0.8 }} />
+            <span>Destek</span>
+          </button>
           <TopBar />
         </div>
 
@@ -121,6 +142,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <PWAInstallBanner />
+
+      {/* Dashboard support chat panel */}
+      {supportOpen && user && (
+        <DashboardSupportChat
+          user={user}
+          onClose={() => setSupportOpen(false)}
+        />
+      )}
     </div>
   )
 }

@@ -17,7 +17,7 @@ import {
   Swords, Eye, Tag, LineChart, Languages, PieChart,
   Banknote, Award, FileSpreadsheet,
   ClipboardList, GraduationCap, Cog, Webhook, Code,
-  CreditCard, Shield, Box, X, Command, Mic, LifeBuoy,
+  CreditCard, Shield, Box, X, Command, Mic,
 } from 'lucide-react'
 
 interface NavItem {
@@ -47,7 +47,6 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
   { href: '/automations', label: 'nav.automations', icon: Megaphone, badge: 'AI' },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
-  { href: '/support',   label: 'nav.support',   icon: LifeBuoy },
 ]
 
 const GROUPS: NavGroup[] = [
