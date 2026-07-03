@@ -253,7 +253,11 @@ export default function AutomationsPage() {
           ].map(({ label, value, color, Icon }) => (
             <div key={label} style={{ ...card, padding: '8px 10px', textAlign: 'center' }}>
               <Icon size={13} style={{ color, margin: '0 auto 3px' }} />
-              <p style={{ color: tx1, fontSize: 16, fontWeight: 800, margin: 0 }}>{value}</p>
+              {loading ? (
+                <div style={{ height: 22, background: '#f1f5f9', borderRadius: 6, margin: '3px auto', width: 40, animation: 'livePulse 1.2s ease-in-out infinite' }} />
+              ) : (
+                <p style={{ color: tx1, fontSize: 16, fontWeight: 800, margin: 0 }}>{value}</p>
+              )}
               <p style={{ color: tx3, fontSize: 9, margin: 0 }}>{label}</p>
             </div>
           ))}
@@ -449,7 +453,7 @@ export default function AutomationsPage() {
                       </div>
                       {/* Funnel Widget */}
                       {isSelected && campaignFunnel && (
-                        <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px', margin: '6px 0', border: '1px solid #e2e8f0' }}>
+                        <div className="fade-in" style={{ background: 'linear-gradient(135deg,#eff6ff,#f0fdf4)', borderRadius: 8, padding: '10px 12px', margin: '6px 0 2px', border: '1px solid #bfdbfe' }}>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
                             {[
                               { label: 'Gönderilen', val: campaignFunnel.funnel.sent, color: accentBlue },
@@ -506,17 +510,30 @@ export default function AutomationsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}><Clock size={10} style={{ color: tx3 }} /><input type="number" value={step.delay_hours} min={0} onChange={e => { const s = [...seqSteps]; s[idx].delay_hours = Number(e.target.value); setSeqSteps(s) }} style={{ width: 40, padding: '3px 5px', borderRadius: 5, border: '1px solid #e2e8f0', fontSize: 10, color: tx1 }} /><span style={{ color: tx3, fontSize: 9 }}>saat</span></div>
                       </div>
                       <textarea value={step.type === 'message' ? step.message : step.ai_prompt} onChange={e => { const s = [...seqSteps]; s[idx][step.type === 'message' ? 'message' : 'ai_prompt'] = e.target.value; setSeqSteps(s) }} rows={2} style={{ ...inputStyle, fontSize: 10, padding: '5px 8px' }} />
-                      {/* Koşullu dallanma (YENI ÖZELLIK) */}
-                      {step.condition !== 'any' && (
-                        <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginTop: 2 }}>
-                          <span style={{ color: tx3, fontSize: 9 }}>Şart sağlanırsa → adım:</span>
-                          <input type="number" value={step.nextIfTrue ?? ''} placeholder="—" min={1} max={seqSteps.length}
-                            onChange={e => { const s = [...seqSteps]; s[idx].nextIfTrue = e.target.value ? Number(e.target.value) - 1 : undefined; setSeqSteps(s) }}
-                            style={{ width: 35, padding: '2px 4px', borderRadius: 4, border: '1px solid #a7f3d0', fontSize: 9, textAlign: 'center' }} />
-                          <span style={{ color: tx3, fontSize: 9 }}>Sağlanmazsa → adım:</span>
-                          <input type="number" value={step.nextIfFalse ?? ''} placeholder="—" min={1} max={seqSteps.length}
-                            onChange={e => { const s = [...seqSteps]; s[idx].nextIfFalse = e.target.value ? Number(e.target.value) - 1 : undefined; setSeqSteps(s) }}
-                            style={{ width: 35, padding: '2px 4px', borderRadius: 4, border: '1px solid #fecaca', fontSize: 9, textAlign: 'center' }} />
+                      {/* Koşullu dallanma — kullanıcı dostu */}
+                      {step.condition !== 'any' && seqSteps.length > 2 && (
+                        <div style={{ marginTop: 4, padding: '6px 8px', background: '#fffbeb', borderRadius: 7, border: '1px solid #fde68a' }}>
+                          <p style={{ color: '#92400e', fontSize: 9, fontWeight: 600, margin: '0 0 5px' }}>Dal yapısı (opsiyonel)</p>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontSize: 10 }}>✅</span>
+                              <span style={{ color: tx2, fontSize: 9 }}>Şart sağlanırsa git:</span>
+                              <select value={step.nextIfTrue ?? ''} onChange={e => { const s = [...seqSteps]; s[idx].nextIfTrue = e.target.value !== '' ? Number(e.target.value) : undefined; setSeqSteps(s) }}
+                                style={{ fontSize: 9, borderRadius: 5, border: '1px solid #a7f3d0', padding: '1px 4px', color: tx1 }}>
+                                <option value="">Sıradaki</option>
+                                {seqSteps.map((_: any, i: number) => i !== idx && <option key={i} value={i}>Adım {i + 1}</option>)}
+                              </select>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontSize: 10 }}>❌</span>
+                              <span style={{ color: tx2, fontSize: 9 }}>Sağlanmazsa git:</span>
+                              <select value={step.nextIfFalse ?? ''} onChange={e => { const s = [...seqSteps]; s[idx].nextIfFalse = e.target.value !== '' ? Number(e.target.value) : undefined; setSeqSteps(s) }}
+                                style={{ fontSize: 9, borderRadius: 5, border: '1px solid #fecaca', padding: '1px 4px', color: tx1 }}>
+                                <option value="">Sıradaki</option>
+                                {seqSteps.map((_: any, i: number) => i !== idx && <option key={i} value={i}>Adım {i + 1}</option>)}
+                              </select>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -542,20 +559,27 @@ export default function AutomationsPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 5 }}>
                   <button onClick={() => { setSelectedSeq(selectedSeq?.id === seq.id ? null : seq); setShowLive(false) }} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 10px', borderRadius: 6, border: '1px solid #a7f3d0', background: '#ecfdf5', color: accentEmerald, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><Users size={11} /> Lead</button>
-                  <button onClick={() => { setSelectedSeq(seq); setShowLive(v => !v) }} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 8px', borderRadius: 6, border: '1px solid #bfdbfe', background: showLive && selectedSeq?.id === seq.id ? '#eff6ff' : '#fff', color: accentBlue, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><BarChart2 size={11} /></button>
+                  <button onClick={() => {
+                    if (selectedSeq?.id !== seq.id) { setLiveMonitor(null) } // Sekans değişince temizle
+                    setSelectedSeq(seq)
+                    setShowLive(v => selectedSeq?.id === seq.id ? !v : true)
+                  }} title="Canlı İzleme"
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 9px', borderRadius: 6, border: '1px solid #bfdbfe', background: showLive && selectedSeq?.id === seq.id ? '#eff6ff' : '#fff', color: accentBlue, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>
+                    <BarChart2 size={11} /> <span style={{ fontSize: 9 }}>İzle</span>
+                  </button>
                   <button onClick={async () => { await api.delete(`/api/sequences/${seq.id}`); loadAll() }} style={{ padding: '5px 7px', borderRadius: 6, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={11} /></button>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 3, marginTop: 8, flexWrap: 'wrap' }}>{(seq.steps || []).map((step: any, i: number) => (<div key={i} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>{i > 0 && <div style={{ width: 12, height: 1, background: '#e2e8f0' }} />}<span style={{ padding: '2px 6px', borderRadius: 5, fontSize: 9, background: step.type === 'ai_reply' ? '#faf5ff' : surf, border: `1px solid ${step.type === 'ai_reply' ? '#e9d5ff' : '#f1f5f9'}`, color: step.type === 'ai_reply' ? accentViolet : tx2 }}>{step.type === 'ai_reply' ? 'AI' : '💬'} {step.delay_hours}s</span></div>))}</div>
               {/* Canlı Monitör Widget */}
               {showLive && selectedSeq?.id === seq.id && (
-                <div style={{ marginTop: 10, padding: '12px 14px', background: '#eff6ff', borderRadius: 9, border: '1px solid #bfdbfe' }}>
+                <div className="fade-in" style={{ marginTop: 10, padding: '12px 14px', background: '#eff6ff', borderRadius: 9, border: '1px solid #bfdbfe' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'autoSpin 2s linear infinite' }} />
+                      <div className="live-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
                       <span style={{ color: accentBlue, fontSize: 11, fontWeight: 700 }}>Canlı İzleme</span>
                     </div>
-                    {liveLoading && <RefreshCw size={11} style={{ color: accentBlue, animation: 'autoSpin 1s linear infinite' }} />}
+                    {liveLoading && <RefreshCw size={11} className="auto-anim" style={{ color: accentBlue }} />}
                   </div>
                   {liveMonitor?.summary && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
@@ -617,7 +641,17 @@ export default function AutomationsPage() {
         </div>
       )}
 
-      <style>{`@keyframes autoSpin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes autoSpin { to { transform: rotate(360deg); } }
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.85); }
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .auto-anim { animation: autoSpin 1s linear infinite; }
+        .live-dot  { animation: livePulse 1.4s ease-in-out infinite; }
+        .fade-in   { animation: fadeIn 0.25s ease-out; }
+      `}</style>
     </div>
   )
 }
