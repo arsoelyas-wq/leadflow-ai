@@ -159,6 +159,31 @@ body {
   to   { stroke-dashoffset: 0; }
 }
 
+@keyframes notif-slide-right {
+  0%   { opacity: 0; transform: translateX(28px) scale(0.92); }
+  14%  { opacity: 1; transform: translateX(0) scale(1); }
+  78%  { opacity: 1; transform: translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-10px) scale(0.96); }
+}
+
+@keyframes notif-slide-left {
+  0%   { opacity: 0; transform: translateX(-28px) scale(0.92); }
+  14%  { opacity: 1; transform: translateX(0) scale(1); }
+  78%  { opacity: 1; transform: translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateX(10px) scale(0.96); }
+}
+
+@keyframes hero-badge-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  65%  { transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes hero-area-reveal {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ── ANIMATION UTILITY CLASSES ─────────────────────────────── */
 .animate-marquee {
   animation: marquee 35s linear infinite;
@@ -245,6 +270,22 @@ body {
 
 .animate-draw-stroke {
   animation: draw-stroke 1.2s ease-out both;
+}
+
+.animate-notif-right {
+  animation: notif-slide-right 5.4s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.animate-notif-left {
+  animation: notif-slide-left 5.4s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.animate-hero-badge-pop {
+  animation: hero-badge-pop 0.45s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+.animate-hero-area-reveal {
+  animation: hero-area-reveal 0.9s ease-out 0.7s both;
 }
 
 /* ── SCROLL REVEAL ─────────────────────────────────────────── */
@@ -540,7 +581,11 @@ body {
   .animate-status-in,
   .animate-ring-pulse,
   .animate-cursor-click,
-  .animate-draw-stroke {
+  .animate-draw-stroke,
+  .animate-notif-right,
+  .animate-notif-left,
+  .animate-hero-badge-pop,
+  .animate-hero-area-reveal {
     animation: none !important;
   }
 
