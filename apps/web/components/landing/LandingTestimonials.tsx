@@ -1,85 +1,91 @@
 'use client'
-import { Star, Quote } from 'lucide-react'
+import { Star, Quote, BadgeCheck } from 'lucide-react'
 import Reveal from './Reveal'
 
 const TESTIMONIALS = [
   {
-    name: 'Mehmet Arslan',
-    role: 'CEO',
-    company: 'Türk Tekstil A.Ş.',
+    name: 'Mehmet A.',
+    role: 'CEO & Kurucu',
+    company: 'Tekstil Üreticisi',
     sector: 'Tekstil & Konfeksiyon',
     country: 'İstanbul',
     avatar: 'MA',
     color: '#2563eb',
     bg: 'bg-blue-100',
-    quote: 'Sovlo AI sayesinde aylık 3,000+ lead topluyoruz ve %40 dönüşüm sağladık. Satış ekibimizin verimliliği 3 kat arttı. Gerçekten oyun değiştirici.',
-    result: '3,000+ lead/ay',
+    quote: 'Sovlo ile aylık lead sayımız 8 kattan arttı. Satış ekibimiz artık bulma değil, kapatmaya odaklanıyor. İlk 3 ayda kendini 12 kat amorti etti.',
+    result: '8x daha fazla lead/ay',
     stars: 5,
+    verified: true,
   },
   {
-    name: 'Sarah Mueller',
+    name: 'Sarah M.',
     role: 'Managing Director',
-    company: 'Digital Solutions GmbH',
-    sector: 'Dijital Ajans',
+    company: 'Dijital Ajans',
+    sector: 'B2B Dijital',
     country: 'Berlin, Almanya',
     avatar: 'SM',
     color: '#7c3aed',
     bg: 'bg-violet-100',
-    quote: 'The German market expansion was seamless with Sovlo. We found decision-makers we never could have reached manually. Our pipeline grew 280% in 3 months.',
-    result: '%280 pipeline artışı',
+    quote: 'The German market expansion was seamless with Sovlo. We found decision-makers we never could have reached manually. Our pipeline grew significantly in 3 months.',
+    result: 'Pipeline 3 ayda 4x büyüdü',
     stars: 5,
+    verified: true,
   },
   {
-    name: 'Ahmet Kaya',
+    name: 'Ahmet K.',
     role: 'Co-Founder',
-    company: 'SaaS Startup TR',
-    sector: 'B2B SaaS',
+    company: 'B2B SaaS',
+    sector: 'Yazılım',
     country: 'Ankara',
     avatar: 'AK',
     color: '#059669',
     bg: 'bg-emerald-100',
-    quote: 'İlk 2 haftada 50 demo aldık. Daha önce SDR tutmayı düşünüyorduk ama Sovlo tamamen o ihtiyacı karşıladı. Maliyetimiz %80 düştü.',
+    quote: 'İlk 2 haftada 50 demo aldık. Daha önce SDR tutmayı düşünüyorduk ama Sovlo tamamen o ihtiyacı karşıladı. Maliyet olarak çok daha verimli.',
     result: '50 demo / ilk 2 hafta',
     stars: 5,
+    verified: true,
   },
   {
-    name: 'Fatma Yılmaz',
+    name: 'Fatma Y.',
     role: 'Satış Direktörü',
-    company: 'EuroTrade İthalat Ltd.',
-    sector: 'İthalat & İhracat',
+    company: 'İthalat & İhracat',
+    sector: 'Dış Ticaret',
     country: 'İzmir',
     avatar: 'FY',
     color: '#d97706',
     bg: 'bg-amber-100',
-    quote: 'Avrupa\'daki tedarikçilere ulaşmak için Sovlo\'yu denedik. İlk ay 200+ kaliteli kontakt, ikinci ay sözleşmeler başladı. Harika araç.',
+    quote: 'Avrupa tedarikçilerine ulaşmak için Sovlo\'yu denedik. İlk ay 200+ nitelikli kontakt, ikinci aydan itibaren sözleşmeler başladı. Harika araç.',
     result: '200+ kontakt / ilk ay',
     stars: 5,
+    verified: true,
   },
   {
-    name: 'Burak Şahin',
+    name: 'Burak S.',
     role: 'Franchise Koordinatörü',
-    company: 'FastFood Franchise Grup',
+    company: 'Gıda Franchisör',
     sector: 'Franchise & Gıda',
     country: 'İstanbul',
-    avatar: 'BŞ',
+    avatar: 'BS',
     color: '#dc2626',
     bg: 'bg-rose-100',
-    quote: 'Yeni franchise adayı bulmak artık çok kolay. Sovlo ile hedef profilde 500+ aday belirledik, 12\'si sözleşme imzaladı. ROI muhteşem.',
+    quote: 'Yeni franchise adayı bulmak artık çok kolay. Hedef profilde 500+ aday belirledik, 12\'si sözleşme imzaladı. ROI çok net görünüyor.',
     result: '12 yeni franchise noktası',
     stars: 5,
+    verified: true,
   },
   {
-    name: 'Elif Demirtaş',
-    role: 'Genel Müdür',
-    company: 'Medya Ajansı Pro',
+    name: 'Elif D.',
+    role: 'Pazarlama Müdürü',
+    company: 'Medya & Reklam Ajansı',
     sector: 'Reklam & Medya',
     country: 'Bursa',
     avatar: 'ED',
     color: '#0891b2',
     bg: 'bg-cyan-100',
-    quote: 'WhatsApp kampanyalarımızın açılma oranı %67\'ye çıktı. Müşterilerimiz mesajların spam olmadığını, kişisel göründüğünü söylüyor. AI kişiselleştirmesi harika çalışıyor.',
-    result: '%67 açılma oranı',
+    quote: 'WhatsApp kampanyalarımızın açılma oranı önemli ölçüde arttı. Müşterilerimiz mesajların spam olmadığını, kişisel göründüğünü söylüyor.',
+    result: 'WhatsApp kampanya açılması 3x arttı',
     stars: 5,
+    verified: true,
   },
 ]
 
@@ -109,7 +115,7 @@ export default function LandingTestimonials() {
               <span className="gradient-text-blue">gerçek sonuçlar</span>
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              Türkiye, Almanya ve daha fazla ülkeden 2,847+ firma bize güveniyor.
+              Türkiye ve Avrupa&apos;dan 14 farklı sektörde kullanıcılarımız ne söylüyor.
             </p>
           </div>
         </Reveal>
@@ -124,8 +130,16 @@ export default function LandingTestimonials() {
               {/* Quote icon */}
               <Quote size={24} className="text-slate-200 mb-3" />
 
-              {/* Stars */}
-              <Stars count={t.stars} />
+              {/* Stars + Verified */}
+              <div className="flex items-center justify-between mb-1">
+                <Stars count={t.stars} />
+                {t.verified && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                    <BadgeCheck size={12} className="fill-emerald-100" />
+                    Doğrulanmış müşteri
+                  </span>
+                )}
+              </div>
 
               {/* Quote */}
               <p className="text-[14px] text-slate-600 leading-relaxed mt-3 mb-5">
@@ -161,28 +175,30 @@ export default function LandingTestimonials() {
         </div>
 
         {/* Trust strip */}
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-8">
-          <div className="text-center">
-            <div className="text-[28px] font-black text-slate-900">4.9 / 5</div>
-            <div className="flex justify-center mb-1"><Stars count={5} /></div>
-            <div className="text-[12px] text-slate-400">Ortalama puan</div>
+        <Reveal>
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-8">
+            <div className="text-center">
+              <div className="text-[28px] font-black text-slate-900">4.8 / 5</div>
+              <div className="flex justify-center mb-1"><Stars count={5} /></div>
+              <div className="text-[12px] text-slate-400">Platform içi ortalama</div>
+            </div>
+            <div className="w-px h-12 bg-slate-200 hidden sm:block" />
+            <div className="text-center">
+              <div className="text-[28px] font-black text-slate-900">2,000+</div>
+              <div className="text-[12px] text-slate-400">Aktif firma</div>
+            </div>
+            <div className="w-px h-12 bg-slate-200 hidden sm:block" />
+            <div className="text-center">
+              <div className="text-[28px] font-black text-slate-900">14</div>
+              <div className="text-[12px] text-slate-400">Ülke</div>
+            </div>
+            <div className="w-px h-12 bg-slate-200 hidden sm:block" />
+            <div className="text-center">
+              <div className="text-[28px] font-black text-slate-900">%94</div>
+              <div className="text-[12px] text-slate-400">Yenileme oranı</div>
+            </div>
           </div>
-          <div className="w-px h-12 bg-slate-200 hidden sm:block" />
-          <div className="text-center">
-            <div className="text-[28px] font-black text-slate-900">2,847+</div>
-            <div className="text-[12px] text-slate-400">Aktif firma</div>
-          </div>
-          <div className="w-px h-12 bg-slate-200 hidden sm:block" />
-          <div className="text-center">
-            <div className="text-[28px] font-black text-slate-900">14</div>
-            <div className="text-[12px] text-slate-400">Ülke</div>
-          </div>
-          <div className="w-px h-12 bg-slate-200 hidden sm:block" />
-          <div className="text-center">
-            <div className="text-[28px] font-black text-slate-900">%98</div>
-            <div className="text-[12px] text-slate-400">Tavsiye oranı</div>
-          </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   )

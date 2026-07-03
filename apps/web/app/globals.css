@@ -393,6 +393,26 @@ body {
   100% { background-position: -200% 0; }
 }
 
+/* ── EXIT INTENT POPUP ─────────────────────────────────────── */
+@keyframes exitPopupIn {
+  0%   { opacity: 0; transform: scale(0.88) translateY(16px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── RANGE INPUT (ROI Calculator) ──────────────────────────── */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: none;
+  background: transparent;
+}
+
 /* ── SELECTION ─────────────────────────────────────────────── */
 ::selection {
   background: rgba(37, 99, 235, 0.15);

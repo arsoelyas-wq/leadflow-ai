@@ -1,7 +1,8 @@
 'use client'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle, Zap } from 'lucide-react'
+import { ArrowRight, CheckCircle, Zap, MessageCircle } from 'lucide-react'
 import Reveal from './Reveal'
+import { whatsappUrl } from '@/lib/site-config'
 
 const TRUST_POINTS = [
   '14 gün ücretsiz deneme',
@@ -9,6 +10,12 @@ const TRUST_POINTS = [
   'İstediğin an iptal',
   'Ortalama kurulum: 8 dk',
 ]
+
+function trackCTA(label: string) {
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    ;(window as any).gtag('event', 'cta_click', { cta_label: label, page: 'landing' })
+  }
+}
 
 export default function LandingCTA() {
   return (
@@ -45,7 +52,7 @@ export default function LandingCTA() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[13px] font-semibold mb-8">
             <Zap size={13} className="fill-blue-400" />
-            Bugün başla, yarın sonuç al
+            Bugün başla, bu hafta sonuç al
           </div>
 
           {/* Headline */}
@@ -66,15 +73,16 @@ export default function LandingCTA() {
           </h2>
 
           <p className="text-[18px] text-slate-400 leading-relaxed max-w-xl mx-auto mb-10">
-            2,847+ firma Sovlo AI ile satışlarını otomatize etti.{' '}
+            2,000+ firma Sovlo AI ile satışlarını otomatize etti.{' '}
             <strong className="text-slate-200">Sizin sıranız.</strong>
           </p>
         </Reveal>
 
-        {/* CTA Button */}
+        {/* CTA Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
           <Link
             href="/register"
+            onClick={() => trackCTA('cta_section_register')}
             className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[16px] font-bold btn-glow"
             style={{ boxShadow: '0 8px 32px -6px rgba(99,102,241,0.6)' }}
           >
@@ -83,12 +91,14 @@ export default function LandingCTA() {
           </Link>
 
           <a
-            href="https://wa.me/905000000000"
+            href={whatsappUrl('Merhaba, Sovlo AI demo almak istiyorum.')}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackCTA('cta_section_whatsapp')}
             className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-[15px] font-semibold text-slate-300 border border-slate-700 hover:border-slate-600 hover:text-white transition-all"
           >
-            💬 WhatsApp Demo Al
+            <MessageCircle size={16} />
+            WhatsApp Demo Al
           </a>
         </div>
 

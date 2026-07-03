@@ -3,6 +3,12 @@ import Link from 'next/link'
 import { ArrowRight, Play, CheckCircle } from 'lucide-react'
 import LandingHeroDemo from './LandingHeroDemo'
 
+function trackCTA(label: string) {
+  if (typeof window !== 'undefined' && (window as any).gtag) {
+    ;(window as any).gtag('event', 'cta_click', { cta_label: label, page: 'landing' })
+  }
+}
+
 export default function LandingHero() {
   return (
     <section className="relative overflow-hidden bg-white pt-28 pb-20 lg:pt-36 lg:pb-28">
@@ -38,13 +44,14 @@ export default function LandingHero() {
             {/* Subheadline */}
             <p className="text-[17px] lg:text-[18px] text-slate-500 leading-[1.7] mb-8 max-w-lg">
               Google Maps&apos;ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt.{' '}
-              <strong className="text-slate-700 font-semibold">2,847+ firma</strong> Sovlo AI ile satışlarını otomatize ediyor.
+              <strong className="text-slate-700 font-semibold">2,000+ firma</strong> Sovlo AI ile satışlarını otomatize ediyor.
             </p>
 
             {/* CTAs */}
             <div className="flex flex-wrap items-center gap-3 mb-8">
               <Link
                 href="/register"
+                onClick={() => trackCTA('hero_register')}
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[15px] font-bold btn-glow"
               >
                 14 Gün Ücretsiz Başla
@@ -53,6 +60,7 @@ export default function LandingHero() {
 
               <a
                 href="#demo"
+                onClick={() => trackCTA('hero_demo_watch')}
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-slate-100 text-slate-700 text-[15px] font-semibold hover:bg-slate-200 transition-colors"
               >
                 <div className="w-6 h-6 rounded-full bg-white shadow flex items-center justify-center">
@@ -66,7 +74,7 @@ export default function LandingHero() {
             <div className="flex flex-wrap items-center gap-4">
               {[
                 'Kredi kartı gerekmez',
-                '2,847+ aktif firma',
+                '2,000+ aktif firma',
                 'İstediğin an iptal',
               ].map(t => (
                 <div key={t} className="flex items-center gap-1.5">
