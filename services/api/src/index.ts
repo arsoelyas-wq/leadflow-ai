@@ -265,6 +265,9 @@ app.use('/api/monitoring', authMiddleware, monitoringRouter);
 const { router: webhooksRouter } = require('./routes/webhooks');
 app.use('/api/webhooks',   authMiddleware, webhooksRouter);
 
+// Support chat — /public/chat is open, rest requires auth (handled inside the route)
+app.use('/api/support', require('./routes/support'));
+
 // Health check
 app.get('/health', (_req: any, res: any) => res.json({ status: 'OK', ts: Date.now() }));
 

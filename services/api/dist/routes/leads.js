@@ -84,6 +84,7 @@ router.get('/with-phone', authMiddleware, async (req, res) => {
                 .not('phone', 'is', null)
                 .neq('phone', '')
                 .not('phone', 'ilike', '%@%')
+                .is('deleted_at', null)
                 .order('company_name', { ascending: true })
                 .range(from, from + PAGE - 1);
             if (error)
@@ -108,6 +109,7 @@ router.get('/sectors', authMiddleware, async (req, res) => {
             .from('leads')
             .select('sector')
             .eq('user_id', req.userId)
+            .is('deleted_at', null)
             .not('sector', 'is', null);
         if (error)
             throw error;
@@ -212,6 +214,26 @@ router.get('/lists', authMiddleware, async (req, res) => {
                 listSet.add(m[1]);
         }
         res.json({ lists: [...listSet].sort() });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// GET /api/leads/segments — Kayıtlı segmentler (/:id'den ÖNCE olmalı!)
+router.get('/segments', authMiddleware, async (req, res) => {
+    try {
+        const { data } = await supabase.from('smart_segments').select('*').eq('user_id', req.userId).order('is_pinned', { ascending: false }).order('created_at');
+        res.json({ segments: data || [] });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// GET /api/leads/custom-fields — Özel alan tanımları (/:id'den ÖNCE olmalı!)
+router.get('/custom-fields', authMiddleware, async (req, res) => {
+    try {
+        const { data } = await supabase.from('lead_custom_field_defs').select('*').eq('user_id', req.userId).order('sort_order');
+        res.json({ fields: data || [] });
     }
     catch (e) {
         res.status(500).json({ error: e.message });
@@ -512,8 +534,8 @@ router.post('/restore/:id', authMiddleware, async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
-// DELETE /api/leads/trash/permanent — Çöp kutusunu tamamen boşalt (seçili)
-router.delete('/trash/permanent', authMiddleware, async (req, res) => {
+// POST /api/leads/trash/empty — Çöp kutusunu tamamen boşalt (seçili, kalıcı)
+router.post('/trash/empty', authMiddleware, async (req, res) => {
     try {
         const { ids } = req.body;
         if (!ids?.length)
@@ -675,15 +697,7 @@ router.post('/check-duplicate', authMiddleware, async (req, res) => {
     }
 });
 // ─── SMART SEGMENTS ────────────────────────────────────────────────────────────
-router.get('/segments', authMiddleware, async (req, res) => {
-    try {
-        const { data } = await supabase.from('smart_segments').select('*').eq('user_id', req.userId).order('is_pinned', { ascending: false }).order('created_at');
-        res.json({ segments: data || [] });
-    }
-    catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
+// GET /segments yukarıda /:id'den ÖNCE tanımlandı (route sıralaması kritik)
 router.post('/segments', authMiddleware, async (req, res) => {
     try {
         const { name, filters, icon, color, description } = req.body;
@@ -708,15 +722,7 @@ router.delete('/segments/:id', authMiddleware, async (req, res) => {
     }
 });
 // ─── CUSTOM FIELDS ─────────────────────────────────────────────────────────────
-router.get('/custom-fields', authMiddleware, async (req, res) => {
-    try {
-        const { data } = await supabase.from('lead_custom_field_defs').select('*').eq('user_id', req.userId).order('sort_order');
-        res.json({ fields: data || [] });
-    }
-    catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
+// GET /custom-fields yukarıda /:id'den ÖNCE tanımlandı (route sıralaması kritik)
 router.post('/custom-fields', authMiddleware, async (req, res) => {
     try {
         const { field_key, field_label, field_type = 'text', options, placeholder, required } = req.body;

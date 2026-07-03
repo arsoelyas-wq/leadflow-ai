@@ -8,18 +8,20 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 router.get('/overview', async (req, res) => {
     try {
         const userId = req.userId;
-        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const periodParam = req.query.period || '30d';
+        const days = periodParam === '7d' ? 7 : periodParam === '90d' ? 90 : 30;
+        const periodAgo = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
         const [{ data: leads }, { data: user }, { data: campaigns }, { data: messages },] = await Promise.all([
             supabase.from('leads').select('status, source, created_at').eq('user_id', userId),
             supabase.from('users').select('credits_total, credits_used').eq('id', userId).single(),
-            supabase.from('campaigns').select('name, channel, status, total_sent, total_replied').eq('user_id', userId),
-            supabase.from('messages').select('channel, direction').eq('user_id', userId),
+            supabase.from('campaigns').select('name, channel, status, total_sent, total_replied, created_at').eq('user_id', userId),
+            supabase.from('messages').select('channel, direction, sent_at').eq('user_id', userId),
         ]);
         const allLeads = leads || [];
         const allCampaigns = campaigns || [];
         const allMessages = messages || [];
         const totalLeads = allLeads.length;
-        const newLeads = allLeads.filter((l) => l.created_at >= weekAgo).length;
+        const newLeads = allLeads.filter((l) => l.created_at >= periodAgo).length;
         const sourceBreakdown = {};
         allLeads.forEach((l) => {
             const src = l.source || 'manual';
@@ -30,22 +32,24 @@ router.get('/overview', async (req, res) => {
             statusBreakdown[l.status] = (statusBreakdown[l.status] || 0) + 1;
         });
         const activeCampaigns = allCampaigns.filter((c) => c.status === 'active').length;
-        const totalSent = allCampaigns.reduce((s, c) => s + (c.total_sent || 0), 0);
-        const totalReplied = allCampaigns.reduce((s, c) => s + (c.total_replied || 0), 0);
+        const recentCampaigns = allCampaigns.filter((c) => c.created_at >= periodAgo || c.status === 'active');
+        const totalSent = recentCampaigns.reduce((s, c) => s + (c.total_sent || 0), 0);
+        const totalReplied = recentCampaigns.reduce((s, c) => s + (c.total_replied || 0), 0);
         const replyRate = totalSent > 0 ? Math.round((totalReplied / totalSent) * 100) : 0;
         const topCampaigns = allCampaigns
             .filter((c) => (c.total_sent || 0) > 0)
             .sort((a, b) => (b.total_sent || 0) - (a.total_sent || 0))
             .slice(0, 5);
+        const periodMessages = allMessages.filter((m) => m.sent_at >= periodAgo);
         const channelStats = {
-            whatsapp: allMessages.filter((m) => m.channel === 'whatsapp' && m.direction === 'out').length,
-            email: allMessages.filter((m) => m.channel === 'email' && m.direction === 'out').length,
+            whatsapp: periodMessages.filter((m) => m.channel === 'whatsapp' && m.direction === 'out').length,
+            email: periodMessages.filter((m) => m.channel === 'email' && m.direction === 'out').length,
         };
         const credits = (user?.credits_total || 0) - (user?.credits_used || 0);
         res.json({
             totalLeads, newLeads, replyRate, activeCampaigns, credits,
             totalSent, totalReplied, sourceBreakdown, statusBreakdown,
-            channelStats, topCampaigns,
+            channelStats, topCampaigns, period: periodParam, days,
         });
     }
     catch (error) {
@@ -98,18 +102,33 @@ router.get('/revenue', async (req, res) => {
         // Önceki 30 gün
         const prev30Leads = leads.filter((l) => l.created_at >= sixtyDaysAgo && l.created_at < thirtyDaysAgo).length;
         const prev30Messages = messages.filter((m) => m.direction === 'out' && m.sent_at >= sixtyDaysAgo && m.sent_at < thirtyDaysAgo).length;
-        // Büyüme oranları
-        const leadGrowth = prev30Leads > 0 ? ((last30Leads - prev30Leads) / prev30Leads) * 100 : 0;
-        const messageGrowth = prev30Messages > 0 ? ((last30Messages - prev30Messages) / prev30Messages) * 100 : 0;
+        // Buyume oranlari (edge case fix)
+        let leadGrowth = 0;
+        if (prev30Leads > 0 && last30Leads > 0)
+            leadGrowth = ((last30Leads - prev30Leads) / prev30Leads) * 100;
+        else if (!prev30Leads && last30Leads > 0)
+            leadGrowth = 100;
+        leadGrowth = Math.max(-99, Math.min(999, leadGrowth));
+        let messageGrowth = 0;
+        if (prev30Messages > 0 && last30Messages > 0)
+            messageGrowth = ((last30Messages - prev30Messages) / prev30Messages) * 100;
+        else if (!prev30Messages && last30Messages > 0)
+            messageGrowth = 100;
+        messageGrowth = Math.max(-99, Math.min(999, messageGrowth));
         // Reply rate
         const replyRate30 = last30Messages > 0 ? Math.round((last30Replies / last30Messages) * 100) : 0;
-        // Gelir tahmini (kullanıcı plan tipine göre ortalama müşteri değeri)
-        const planMultiplier = {
-            starter: 500,
-            professional: 1500,
-            enterprise: 5000,
-        };
-        const avgDealValue = planMultiplier[user?.plan_type || 'starter'] || 500;
+        // Gelir tahmini — gerçek fatura verisi kullan (hardcoded plan değerleri kaldırıldı)
+        const { data: invoices } = await supabase.from('invoices')
+            .select('amount, status').eq('user_id', userId)
+            .eq('status', 'paid').gte('created_at', ninetyDaysAgo);
+        const totalRevenue = (invoices || []).reduce((s, i) => s + parseFloat(i.amount || 0), 0);
+        const wonLeads90 = leads.filter((l) => l.status === 'won').length;
+        // Gerçek ortalama deal değeri; veri yoksa kullanıcı ayarından veya varsayılan 1000 TL
+        const { data: userSettings } = await supabase.from('user_settings')
+            .select('avg_deal_value').eq('user_id', userId).maybeSingle();
+        const avgDealValue = wonLeads90 > 0 && totalRevenue > 0
+            ? Math.round(totalRevenue / wonLeads90)
+            : (userSettings?.avg_deal_value || 1000);
         // Aylık potansiyel gelir = lead * win_rate * avg_deal_value
         const monthlyPotential = Math.round(last30Leads * (winRate / 100) * avgDealValue);
         const nextMonthForecast = Math.round(monthlyPotential * (1 + leadGrowth / 100));
@@ -270,7 +289,7 @@ router.get('/financial', async (req, res) => {
             won: stats.won,
             avgScore: Math.round(stats.score / stats.total),
             conversionRate: Math.round((stats.won / stats.total) * 100),
-            roi: stats.won > 0 ? 'Yüksek' : stats.total > 10 ? 'Orta' : 'Düşük',
+            roi: `${Math.round((stats.won / stats.total) * 100)}%`, // Gerçek dönüşüm oranı
         }))
             .sort((a, b) => b.conversionRate - a.conversionRate)
             .slice(0, 8);
@@ -293,13 +312,15 @@ router.get('/financial', async (req, res) => {
         }))
             .sort((a, b) => b.total - a.total)
             .slice(0, 5);
-        // ── CHURN RİSKİ ───────────────────────────────────────
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+        // ── CHURN RİSKİ (anlamli hesaplama) ─────────────────────
+        const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
         const staleLeads = leads.filter(l => l.status === 'contacted' &&
-            l.created_at < thirtyDaysAgo).length;
-        const coldLeads = leads.filter(l => l.status === 'new' &&
-            l.created_at < sixtyDaysAgo).length;
+            l.created_at < fourteenDaysAgo &&
+            l.created_at > ninetyDaysAgo).length;
+        const coldLeads = leads.filter(l => ['new', 'interested'].includes(l.status) &&
+            l.created_at < fourteenDaysAgo &&
+            l.created_at > ninetyDaysAgo).length;
         // ── KREDİ VERİMLİLİĞİ ────────────────────────────────
         const creditsUsed = user?.credits_used || 0;
         const totalLeads = leads.length;
@@ -307,12 +328,17 @@ router.get('/financial', async (req, res) => {
         const creditEfficiency = creditsUsed > 0 ? Math.round((wonLeads / creditsUsed) * 100) : 0;
         const costPerLead = creditsUsed > 0 && totalLeads > 0 ? (creditsUsed / totalLeads).toFixed(2) : '0';
         const costPerWin = creditsUsed > 0 && wonLeads > 0 ? (creditsUsed / wonLeads).toFixed(2) : '0';
-        // ── BÜYÜME HIZI ───────────────────────────────────────
+        // ── BÜYÜME HIZI (edge case fix) ─────────────────────────
         const thisMonth = monthlyTrend[monthlyTrend.length - 1];
         const lastMonth = monthlyTrend[monthlyTrend.length - 2];
-        const growthRate = lastMonth?.leads > 0
-            ? Math.round(((thisMonth.leads - lastMonth.leads) / lastMonth.leads) * 100)
-            : 0;
+        let growthRate = 0;
+        if (lastMonth?.leads > 0 && thisMonth?.leads > 0) {
+            growthRate = Math.round(((thisMonth.leads - lastMonth.leads) / lastMonth.leads) * 100);
+        }
+        else if (!lastMonth?.leads && thisMonth?.leads > 0) {
+            growthRate = 100;
+        }
+        growthRate = Math.max(-99, Math.min(999, growthRate));
         // ── HEDEF TAKİBİ ─────────────────────────────────────
         const monthlyLeadTarget = 50; // Varsayılan hedef
         const targetProgress = Math.round((thisMonth.leads / monthlyLeadTarget) * 100);

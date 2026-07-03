@@ -62,19 +62,37 @@ async function handleIncomingMessage(userId, msg) {
             .eq('phone', phone)
             .maybeSingle();
         if (!lead) {
-            const { data: newLead } = await supabase
-                .from('leads')
-                .insert([{
+            // Lead dedup: telefon numarasının farklı formatlarını da dene
+            const phoneVariants = [phone, '0' + phone.slice(-10), '90' + phone.slice(-10), phone.slice(-10)];
+            for (const v of phoneVariants) {
+                const { data: found } = await supabase.from('leads').select('id, company_name, status')
+                    .eq('user_id', userId).eq('phone', v).maybeSingle();
+                if (found) {
+                    lead = found;
+                    break;
+                }
+            }
+        }
+        if (!lead) {
+            // Yeni lead — telefon numarasını şirket adı yapma, daha akıllı bir isim üret
+            const displayName = `+${phone.startsWith('90') ? phone : '90' + phone.slice(-10)}`;
+            const { data: newLead } = await supabase.from('leads').insert([{
                     user_id: userId,
                     phone,
-                    company_name: phone,
+                    company_name: displayName, // Telefon formatlanmış, şirketi öğrenince güncellenecek
                     source: 'WhatsApp Gelen',
                     status: 'new',
                     score: 50,
-                }])
-                .select()
-                .single();
+                    channel_contacts: { whatsapp: phone },
+                }]).select().single();
             lead = newLead;
+        }
+        else if (lead) {
+            // Varsa durumu güncelle
+            await supabase.from('leads').update({
+                status: lead.status === 'new' ? 'replied' : lead.status,
+                last_contacted_at: new Date().toISOString(),
+            }).eq('id', lead.id);
         }
         if (!lead)
             return;
@@ -86,6 +104,7 @@ async function handleIncomingMessage(userId, msg) {
                 content: text,
                 status: 'received',
                 sent_at: new Date().toISOString(),
+                metadata: { raw_from: from, phone },
             }]);
         if (/^stop$/i.test(text.trim())) {
             await supabase.from('leads').update({
@@ -390,12 +409,57 @@ router.post('/email/test', async (req, res) => {
     }
 });
 const sendWhatsAppMessage = async (userId, phone, message) => {
-    const state = waState[userId];
-    if (!state || state.status !== 'connected')
-        throw new Error('WhatsApp bağlı değil');
     const cleanPhone = phone.replace(/\D/g, '');
     const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
         : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
+    // Safe hours check (09:00-20:00)
+    const hour = new Date().getHours();
+    if (hour < 9 || hour >= 20) {
+        console.log('[WA] Safe hours disinda — mesaj ertelendi');
+        throw new Error('WhatsApp mesajlari sadece 09:00-20:00 arasi gonderilir');
+    }
+    // Multi-number routing: pick number with lowest usage + available capacity
+    let sent = false;
+    try {
+        const { data: numbers } = await supabase.from('wa_numbers')
+            .select('id, phone_number, daily_limit, sent_today, status, is_primary')
+            .eq('user_id', userId).eq('status', 'connected')
+            .order('is_primary', { ascending: false });
+        if (numbers?.length) {
+            // Sort by usage ratio (lowest first = most capacity)
+            const available = numbers.filter((n) => (n.sent_today || 0) < (n.daily_limit || 100));
+            if (available.length) {
+                available.sort((a, b) => (a.sent_today || 0) / (a.daily_limit || 100) - (b.sent_today || 0) / (b.daily_limit || 100));
+                const chosen = available[0];
+                // Try Green API gateway first
+                const WA_GATEWAY = process.env.WA_GATEWAY_URL || 'http://207.154.248.119:3003';
+                try {
+                    const { data: instance } = await supabase.from('wa_instances')
+                        .select('instance_id').eq('phone', chosen.phone_number).eq('status', 'connected').maybeSingle();
+                    if (instance?.instance_id) {
+                        await require('axios').post(`${WA_GATEWAY}/send`, {
+                            instanceId: instance.instance_id,
+                            phone: formattedPhone,
+                            message,
+                        }, { timeout: 15000 });
+                        sent = true;
+                    }
+                }
+                catch { }
+                // Increment sent_today
+                await supabase.from('wa_numbers').update({
+                    sent_today: (chosen.sent_today || 0) + 1,
+                }).eq('id', chosen.id);
+                if (sent)
+                    return;
+            }
+        }
+    }
+    catch { }
+    // Fallback: direct Baileys socket (single connection)
+    const state = waState[userId];
+    if (!state || state.status !== 'connected')
+        throw new Error('WhatsApp bagli degil — Ayarlar > WhatsApp\'tan baglanti kurun');
     await state.sock.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: message });
 };
 const sendEmail = async (userId, to, subject, html) => {
@@ -414,4 +478,4 @@ const sendEmail = async (userId, to, subject, html) => {
     });
     await transporter.sendMail({ from: settings.email_from || settings.email_user, to, subject, html });
 };
-module.exports = { router, sendWhatsAppMessage, sendEmail, waState };
+module.exports = { router, sendWhatsAppMessage, sendEmail, waState, initWhatsApp: startWhatsApp };

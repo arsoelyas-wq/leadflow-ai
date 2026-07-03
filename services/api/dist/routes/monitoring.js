@@ -124,6 +124,19 @@ async function checkUptime() {
 }
 // Her 5 dakikada uptime check
 setInterval(checkUptime, 5 * 60 * 1000);
+// Log retention — 30 gunluk logları temizle (gunluk calis)
+async function cleanOldLogs() {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    try {
+        await supabase.from('error_logs').delete().lt('created_at', thirtyDaysAgo);
+        await supabase.from('uptime_logs').delete().lt('checked_at', thirtyDaysAgo);
+        await supabase.from('performance_logs').delete().lt('created_at', thirtyDaysAgo);
+        console.log('[Monitoring] Old logs cleaned (30 day retention)');
+    }
+    catch { }
+}
+setInterval(cleanOldLogs, 24 * 60 * 60 * 1000);
+setTimeout(cleanOldLogs, 60000);
 // ── MIDDLEWARE: Performance tracking ─────────────────────
 function performanceMiddleware(req, res, next) {
     const start = Date.now();
@@ -269,5 +282,83 @@ router.get('/performance', async (req, res) => {
 router.post('/check', async (req, res) => {
     await checkUptime();
     res.json({ message: 'Uptime check yapıldı' });
+});
+// ── ERROR GROUPING ───────────────────────────────────────────────────────────
+router.get('/errors/grouped', async (req, res) => {
+    try {
+        const { data } = await supabase.from('error_logs')
+            .select('message, level, endpoint, resolved, created_at')
+            .eq('resolved', false)
+            .order('created_at', { ascending: false }).limit(200);
+        const groups = {};
+        (data || []).forEach((e) => {
+            const key = (e.message || '').slice(0, 80);
+            if (!groups[key])
+                groups[key] = { message: key, level: e.level, endpoint: e.endpoint || '', count: 0, firstSeen: e.created_at, lastSeen: e.created_at };
+            groups[key].count++;
+            if (e.created_at > groups[key].lastSeen)
+                groups[key].lastSeen = e.created_at;
+            if (e.created_at < groups[key].firstSeen)
+                groups[key].firstSeen = e.created_at;
+        });
+        const grouped = Object.values(groups).sort((a, b) => b.count - a.count);
+        res.json({ groups: grouped, total: data?.length || 0 });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ── ALERT SETTINGS ───────────────────────────────────────────────────────────
+router.get('/alert-settings', async (req, res) => {
+    try {
+        const { data } = await supabase.from('monitoring_settings')
+            .select('*').eq('user_id', req.userId).maybeSingle();
+        res.json({ settings: data || { memory_threshold: 80, response_threshold: 500, alert_channels: ['console'], alert_email: '' } });
+    }
+    catch {
+        res.json({ settings: { memory_threshold: 80, response_threshold: 500, alert_channels: ['console'], alert_email: '' } });
+    }
+});
+router.patch('/alert-settings', async (req, res) => {
+    try {
+        const { memory_threshold, response_threshold, alert_channels, alert_email } = req.body;
+        const settings = {
+            user_id: req.userId,
+            memory_threshold: memory_threshold || 80,
+            response_threshold: response_threshold || 500,
+            alert_channels: alert_channels || ['console'],
+            alert_email: alert_email || '',
+            updated_at: new Date().toISOString(),
+        };
+        const { data: existing } = await supabase.from('monitoring_settings').select('id').eq('user_id', req.userId).maybeSingle();
+        if (existing)
+            await supabase.from('monitoring_settings').update(settings).eq('user_id', req.userId);
+        else
+            await supabase.from('monitoring_settings').insert([settings]);
+        res.json({ message: 'Alert ayarlari kaydedildi' });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+// ── SLA DASHBOARD ────────────────────────────────────────────────────────────
+router.get('/sla', async (req, res) => {
+    try {
+        const { data: logs } = await supabase.from('uptime_logs')
+            .select('status, checked_at').order('checked_at', { ascending: false }).limit(8640);
+        const total = logs?.length || 0;
+        const up = logs?.filter((l) => l.status === 'up' || l.status === 'online' || l.status === 'ok').length || 0;
+        const uptime30d = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+        const slaTargets = [
+            { target: 99.9, label: '%99.9 SLA', met: uptime30d >= 99.9 },
+            { target: 99.5, label: '%99.5 SLA', met: uptime30d >= 99.5 },
+            { target: 99.0, label: '%99.0 SLA', met: uptime30d >= 99.0 },
+        ];
+        const allowedDowntime30d = Math.round((100 - uptime30d) * 30 * 24 * 60 / 100);
+        res.json({ uptime30d, slaTargets, totalChecks: total, allowedDowntimeMinutes: allowedDowntime30d });
+    }
+    catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 module.exports = { router, logError, logPerformance, performanceMiddleware, checkUptime };

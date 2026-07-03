@@ -75,4 +75,21 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 router.get('/plans', (_req, res) => {
     res.json({ packages: PACKAGES });
 });
+// GET /api/payments/history
+router.get('/history', async (req, res) => {
+    try {
+        const { data } = await supabase.from('credit_logs')
+            .select('*').eq('user_id', req.userId)
+            .order('created_at', { ascending: false }).limit(50);
+        const payments = (data || []).map((l) => ({
+            id: l.id, action: l.action, credits: l.cost || l.credits || 0,
+            description: l.description || l.action,
+            date: l.created_at, amount: (l.cost || 0) * 2,
+        }));
+        res.json({ payments });
+    }
+    catch (e) {
+        res.json({ payments: [] });
+    }
+});
 module.exports = router;

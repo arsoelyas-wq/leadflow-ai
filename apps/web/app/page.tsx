@@ -16,7 +16,7 @@ import LandingPricing from '@/components/landing/LandingPricing'
 import LandingFAQ from '@/components/landing/LandingFAQ'
 import LandingCTA from '@/components/landing/LandingCTA'
 import LandingFooter from '@/components/landing/LandingFooter'
-import ChatWidget from '@/components/ChatWidget'
+import SupportWidget from '@/components/SupportWidget'
 import ExitIntentPopup from '@/components/landing/ExitIntentPopup'
 import { SITE_CONFIG } from '@/lib/site-config'
 
@@ -148,8 +148,8 @@ export default function LandingPage() {
 
       <LandingFooter />
 
-      {/* Chat widget */}
-      <ChatWidget />
+      {/* Support widget */}
+      <SupportWidget />
 
       {/* Exit intent popup — çıkış niyeti yakalama */}
       <ExitIntentPopup />

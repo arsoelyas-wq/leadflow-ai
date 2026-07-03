@@ -351,7 +351,6 @@ async function escalateToHuman(convId: string, leadId: string, userId: string, r
     updated_at: new Date().toISOString(),
   }).eq('id', convId);
 
-  // Increment deals_escalated
   const { data: prof } = await supabase.from('ai_agent_profiles')
     .select('deals_escalated').eq('user_id', userId).single();
   if (prof) {
@@ -360,8 +359,43 @@ async function escalateToHuman(convId: string, leadId: string, userId: string, r
       .eq('user_id', userId);
   }
 
+  // Kullaniciya bildirim gonder
+  try {
+    const { data: lead } = await supabase.from('leads').select('company_name, contact_name, phone').eq('id', leadId).single();
+    const companyName = lead?.company_name || 'Bilinmeyen';
+
+    // Notification kaydi
+    await supabase.from('notifications').insert([{
+      user_id: userId,
+      title: `AI Ajan: ${companyName} devralmanizi bekliyor!`,
+      body: `Sebep: ${reason}. Hemen kontrol edin!`,
+      read: false,
+    }]).catch(() => {});
+
+    // WhatsApp bildirim
+    try {
+      const { data: us } = await supabase.from('user_settings').select('phone').eq('user_id', userId).single();
+      if (us?.phone) {
+        const { sendWhatsAppMessage } = require('./settings');
+        sendWhatsAppMessage(userId, us.phone,
+          `🔔 *AI Ajan Devralma!*\n\n🏢 ${companyName}\n📋 ${reason}\n${lead?.phone ? '📞 ' + lead.phone : ''}\n\nSovlo.io/agent adresinden devralin!`
+        ).catch(() => {});
+      }
+    } catch {}
+
+    // Workflow tetikleme — escalation workflow varsa baslat
+    try {
+      const { data: workflows } = await supabase.from('workflow_definitions')
+        .select('id').eq('user_id', userId).eq('is_active', true)
+        .eq('trigger_type', 'stage_changed').limit(1);
+      if (workflows?.length) {
+        await supabase.from('leads').update({ status: 'responded' }).eq('id', leadId);
+      }
+    } catch {}
+  } catch {}
+
   await logRun(userId, leadId, 'escalated', { content: reason, metadata: { conversationId: convId } });
-  console.log(`AI Agent: Escalated conv ${convId} for lead ${leadId}: ${reason}`);
+  console.log(`[AI Agent] Escalated: ${leadId} — ${reason}`);
 }
 
 async function sendAutoProposal(convId: string, leadId: string, userId: string, lead: any, profile: any) {
@@ -384,6 +418,9 @@ async function sendAutoProposal(convId: string, leadId: string, userId: string, 
     await supabase.from('ai_agent_profiles')
       .update({ proposals_sent: (prof.proposals_sent || 0) + 1 }).eq('user_id', userId);
   }
+
+  // Lead status'u "proposal" yap
+  await supabase.from('leads').update({ status: 'proposal' }).eq('id', leadId).eq('user_id', userId);
 
   await logRun(userId, leadId, 'proposal_sent', { channel: 'whatsapp' });
 }
@@ -505,6 +542,29 @@ export async function processIncomingMessage(
     }
 
     if (sent) await logRun(userId, leadId, 'ai_reply_sent', { content: aiReply.slice(0, 300), intent, channel });
+
+    // Conversation summary — her 3 turda bir AI ile ozet uret
+    const newTurnCount = (conv.turn_count || 0) + 1;
+    if (newTurnCount % 3 === 0 && process.env.ANTHROPIC_API_KEY) {
+      try {
+        const summaryResp = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001', max_tokens: 100,
+          messages: [{ role: 'user', content: `Bu konusmayi 2 cumlede ozetle. Musteri ne istiyor? Niyeti ne?
+Son mesajlar: ${history.slice(-6).map((m: any) => `${m.direction}: ${m.content?.slice(0, 40)}`).join(' | ')}
+Intent: ${intent}
+SADECE ozet yaz, baska bir sey ekleme.` }],
+        });
+        const summary = summaryResp.content[0]?.text?.trim() || '';
+        if (summary) {
+          await supabase.from('ai_agent_conversations').update({ conversation_summary: summary }).eq('id', conv.id);
+          // Lead notes'a da yaz
+          await supabase.from('leads').update({
+            notes: `[AI Ozet] ${summary}`,
+            updated_at: new Date().toISOString(),
+          }).eq('id', leadId).eq('user_id', userId);
+        }
+      } catch {}
+    }
 
     // Auto proposal on price inquiry
     if (profile.auto_proposal_enabled && intent === 'price_inquiry' && !conv.proposal_sent) {

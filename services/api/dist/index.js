@@ -120,6 +120,8 @@ app.use('/api/google-adv', authMiddleware, require('./routes/google-ads-advanced
 app.use('/api/meta-opt', authMiddleware, require('./routes/meta-optimizer'));
 app.use('/api/coaching', authMiddleware, require('./routes/coaching'));
 app.use('/api/inbox', authMiddleware, require('./routes/inbox'));
+app.use('/api/quick-replies', authMiddleware, require('./routes/quick-replies'));
+app.use('/api/tracking', require('./routes/tracking')); // Public — auth yok (email pixel)
 app.use('/api/pipeline', authMiddleware, require('./routes/pipeline'));
 app.use('/api/crisis', authMiddleware, require('./routes/crisis'));
 // Public microsite view (no auth — customer-facing catalog link)
@@ -246,6 +248,8 @@ const { router: monitoringRouter } = require('./routes/monitoring');
 app.use('/api/monitoring', authMiddleware, monitoringRouter);
 const { router: webhooksRouter } = require('./routes/webhooks');
 app.use('/api/webhooks', authMiddleware, webhooksRouter);
+// Support chat — /public/chat is open, rest requires auth (handled inside the route)
+app.use('/api/support', require('./routes/support'));
 // Health check
 app.get('/health', (_req, res) => res.json({ status: 'OK', ts: Date.now() }));
 // Daily tender scan
