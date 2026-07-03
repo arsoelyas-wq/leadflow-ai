@@ -109,8 +109,8 @@ router.post('/public/chat', async (req: any, res: any) => {
     const result = await callClaude(systemPrompt, messages);
     res.json(result);
   } catch (error: any) {
-    console.error('Support public chat error:', error.message, error.status, error.error);
-    res.status(500).json({ error: 'Destek servisi hatası', _debug: error.message });
+    console.error('Support public chat error:', error.message);
+    res.status(500).json({ error: 'Destek servisi hatası' });
   }
 });
 
