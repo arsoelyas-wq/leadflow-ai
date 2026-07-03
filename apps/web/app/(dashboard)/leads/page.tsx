@@ -145,6 +145,195 @@ function Cp({v}:{v:string}) {
   </button>
 }
 
+/* ─── Excel / CSV Import Modal ───────────────────────────────── */
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+
+function ExcelImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: (count: number) => void }) {
+  const [file, setFile] = useState<File | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [result, setResult] = useState<any>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const dropRef = useRef<HTMLDivElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const reset = () => { setFile(null); setResult(null); setError('') }
+  useEffect(() => { if (open) reset() }, [open])
+
+  const handleFile = (f: File) => {
+    const ok = /\.(xlsx|xls|csv)$/i.test(f.name)
+    if (!ok) { setError('Sadece .xlsx, .xls veya .csv dosyası yükleyebilirsiniz'); return }
+    if (f.size > 10 * 1024 * 1024) { setError('Dosya boyutu 10 MB\'ı geçemez'); return }
+    setFile(f); setError('')
+  }
+
+  const upload = async () => {
+    if (!file) return
+    setUploading(true); setError(''); setResult(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''
+      const r = await fetch(`${API_BASE}/api/leads/import`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Yükleme başarısız')
+      setResult(d)
+    } catch (e: any) { setError(e.message) }
+    setUploading(false)
+  }
+
+  const downloadTemplate = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : ''
+    const a = document.createElement('a')
+    a.href = `${API_BASE}/api/leads/import/template`
+    a.download = 'sovlo_lead_sablonu.xlsx'
+    // Bearer token — fetch ile indir
+    fetch(a.href, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(b => { const url = URL.createObjectURL(b); a.href = url; a.click(); URL.revokeObjectURL(url) })
+  }
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" style={{ animation: 'slideInUp 0.25s cubic-bezier(0.22,1,0.36,1)' }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+              <Download size={16} className="text-emerald-600 rotate-180"/>
+            </div>
+            <div>
+              <h2 className="text-slate-900 font-bold text-base">Excel / CSV ile İçe Aktar</h2>
+              <p className="text-slate-400 text-xs">Toplu lead yükleme — maks 2.000 satır</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"><X size={16}/></button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Şablon indir */}
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-100">
+            <div>
+              <p className="text-indigo-800 text-sm font-semibold">Şablon Excel indir</p>
+              <p className="text-indigo-500 text-xs mt-0.5">Doğru kolon başlıklarını görmek için</p>
+            </div>
+            <button onClick={downloadTemplate}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors">
+              <Download size={12}/> İndir
+            </button>
+          </div>
+
+          {/* Desteklenen kolonlar */}
+          <div className="px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-slate-500 text-xs font-semibold mb-2">Tanınan kolon başlıkları:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {['Firma Adı','İlgili Kişi','Telefon','E-posta','Website','Şehir','Sektör','Kaynak','Notlar','Puan','Instagram','LinkedIn'].map(c => (
+                <span key={c} className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-xs text-slate-600">{c}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Drop zone */}
+          {!result && (
+            <div
+              ref={dropRef}
+              onDragOver={e => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+              onClick={() => fileRef.current?.click()}
+              className={`relative border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${dragging ? 'border-indigo-400 bg-indigo-50' : file ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50'}`}>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}/>
+
+              {file ? (
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <CheckCircle2 size={20} className="text-emerald-600"/>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-slate-800 font-semibold text-sm">{file.name}</p>
+                    <p className="text-slate-400 text-xs">{(file.size / 1024).toFixed(0)} KB · Yüklenmeye hazır</p>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); reset() }} className="ml-auto text-slate-400 hover:text-slate-600"><X size={14}/></button>
+                </div>
+              ) : (
+                <>
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-slate-100 flex items-center justify-center">
+                    <Download size={22} className="text-slate-400 rotate-180"/>
+                  </div>
+                  <p className="text-slate-700 font-semibold text-sm mb-1">Dosyayı buraya sürükleyin</p>
+                  <p className="text-slate-400 text-xs">veya tıklayın · Excel (.xlsx, .xls) ve CSV desteklenir</p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Sonuç */}
+          {result && (
+            <div className="space-y-3" style={{ animation: 'slideInUp 0.2s ease-out' }}>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
+                  <div className="text-2xl font-bold text-emerald-700">{result.inserted}</div>
+                  <div className="text-xs text-emerald-600 mt-0.5">Eklendi</div>
+                </div>
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 text-center">
+                  <div className="text-2xl font-bold text-amber-700">{result.skipped}</div>
+                  <div className="text-xs text-amber-600 mt-0.5">Atlandı</div>
+                </div>
+                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 text-center">
+                  <div className="text-2xl font-bold text-blue-700">{result.total}</div>
+                  <div className="text-xs text-blue-600 mt-0.5">Toplam Satır</div>
+                </div>
+              </div>
+              {result.errors?.length > 0 && (
+                <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-amber-800 text-xs font-semibold mb-1.5">Atlanan satırlar:</p>
+                  {result.errors.slice(0, 5).map((e: any) => (
+                    <p key={e.row} className="text-amber-700 text-xs">• Satır {e.row}: {e.reason}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center gap-2">
+              <X size={14} className="shrink-0"/>{error}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-3">
+          {result ? (
+            <>
+              <button onClick={reset} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition-colors">Yeni Dosya</button>
+              <button onClick={() => { onDone(result.inserted); onClose() }}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg,#059669,#0d9488)' }}>
+                <CheckCircle2 size={14}/> Tamamla
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition-colors">İptal</button>
+              <button onClick={upload} disabled={!file || uploading}
+                className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: file && !uploading ? 'linear-gradient(135deg,#059669,#0d9488)' : '#e2e8f0' }}>
+                {uploading ? <><RefreshCw size={14} className="animate-spin"/>Yükleniyor...</> : <><Download size={14} className="rotate-180"/>İçe Aktar</>}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      <style>{`@keyframes slideInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }`}</style>
+    </div>
+  )
+}
+
 /* ─── Manuel Lead Ekleme Drawer ──────────────────────────────── */
 const SOURCES = ['Manuel','WhatsApp Gelen','Google Maps','Instagram','Facebook','LinkedIn','Website Formu','Referans','Soğuk Arama','Fuar / Etkinlik','Diğer']
 const STATUS_OPTS = ['new','contacted','qualified','replied','offered','won','lost']
@@ -431,6 +620,7 @@ export default function LeadsPage() {
   const [showDel,setShowDel]=useState(false)
   const [showFilters,setShowFilters]=useState(false)
   const [showAddLead,setShowAddLead]=useState(false)
+  const [showImport,setShowImport]=useState(false)
   const [sortBy,setSortBy]=useState('created_at')
   const [sortDir,setSortDir]=useState('desc')
   const [selectAllTotal,setSelectAllTotal]=useState(false)
@@ -554,7 +744,15 @@ export default function LeadsPage() {
         onSaved={lead=>{
           setShowAddLead(false)
           toast('success',`✅ "${lead.company_name}" başarıyla eklendi`)
-          load() // Listeyi yenile
+          load()
+        }}
+      />
+      <ExcelImportModal
+        open={showImport}
+        onClose={()=>setShowImport(false)}
+        onDone={count=>{
+          toast('success',`✅ ${count.toLocaleString('tr-TR')} lead başarıyla içe aktarıldı`)
+          load()
         }}
       />
 
@@ -574,6 +772,10 @@ export default function LeadsPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
             <Crosshair size={14}/> KV Bul
           </Link>
+          <button onClick={()=>setShowImport(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+            <Download size={14} className="rotate-180 text-emerald-600"/> Excel İçe Aktar
+          </button>
           <button onClick={()=>setShowAddLead(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
             style={{background:'linear-gradient(135deg,#059669,#0d9488)'}}>

@@ -316,4 +316,131 @@ router.post('/bulk-status', authMiddleware, async (req: any, res: any) => {
   }
 });
 
+// POST /api/leads/import — Excel / CSV toplu import
+const multer = require('multer');
+const XLSX   = require('xlsx');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Kolon isim normalize (türkçe → ingilizce field)
+const COL_MAP: Record<string, string> = {
+  'firma':          'company_name', 'firma adi':       'company_name', 'firma adı':      'company_name', 'company':        'company_name', 'company name':   'company_name', 'şirket':         'company_name', 'sirket':         'company_name',
+  'ilgili kisi':    'contact_name', 'ilgili kişi':     'contact_name', 'kisi':           'contact_name', 'kişi':           'contact_name', 'contact':        'contact_name', 'isim':           'contact_name', 'ad':             'contact_name', 'yetkili':        'contact_name',
+  'telefon':        'phone',        'tel':             'phone',        'gsm':            'phone',        'mobil':          'phone',        'phone':          'phone',
+  'eposta':         'email',        'e-posta':         'email',        'email':          'email',        'mail':           'email',
+  'website':        'website',      'web':             'website',      'url':            'website',      'site':           'website',
+  'sehir':          'city',         'şehir':           'city',         'city':           'city',         'il':             'city',
+  'sektor':         'sector',       'sektör':          'sector',       'sector':         'sector',       'endüstri':       'sector',
+  'kaynak':         'source',       'source':          'source',       'kanal':          'source',
+  'not':            'notes',        'notlar':          'notes',        'notes':          'notes',        'açıklama':       'notes',        'aciklama':       'notes',
+  'puan':           'score',        'skor':            'score',        'score':          'score',
+  'durum':          'status',       'status':          'status',
+  'instagram':      'instagram',
+  'linkedin':       'linkedin_url',  'linkedin url':   'linkedin_url',
+  'facebook':       'facebook',
+  'website maps':   'maps_url',     'harita':         'maps_url',
+};
+
+function normalizeColName(raw: string): string {
+  return raw.toString().toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+router.post('/import', authMiddleware, upload.single('file'), async (req: any, res: any) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'Dosya yüklenmedi' });
+
+    const isCSV = file.originalname?.endsWith('.csv') || file.mimetype === 'text/csv';
+    let rows: any[] = [];
+
+    if (isCSV) {
+      // CSV parse
+      const text = file.buffer.toString('utf8');
+      const lines = text.split('\n').filter(l => l.trim());
+      const sep = lines[0].includes('\t') ? '\t' : ',';
+      const headers = lines[0].split(sep).map((h: string) => h.trim().replace(/^"|"$/g, ''));
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(sep).map((v: string) => v.trim().replace(/^"|"$/g, ''));
+        const row: Record<string, string> = {};
+        headers.forEach((h: string, idx: number) => { row[h] = vals[idx] || '' });
+        rows.push(row);
+      }
+    } else {
+      // Excel parse
+      const wb = XLSX.read(file.buffer, { type: 'buffer', cellText: true, cellDates: false });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+    }
+
+    if (!rows.length) return res.status(400).json({ error: 'Dosyada veri bulunamadı' });
+    if (rows.length > 2000) return res.status(400).json({ error: 'Tek seferde maksimum 2.000 lead yüklenebilir' });
+
+    // Kolon mapping: her satırın key'lerini normalize et → lead field
+    const now = new Date().toISOString();
+    const toInsert: any[] = [];
+    const errors: { row: number; reason: string }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const raw = rows[i];
+      const lead: any = { user_id: req.userId, source: 'Excel Import', status: 'new', score: 50, created_at: now, updated_at: now };
+
+      for (const [rawKey, rawVal] of Object.entries(raw)) {
+        const normKey = normalizeColName(rawKey);
+        const field = COL_MAP[normKey];
+        if (field && rawVal != null && String(rawVal).trim()) {
+          const v = String(rawVal).trim();
+          if (field === 'score') {
+            const s = parseInt(v);
+            if (!isNaN(s)) lead.score = Math.max(0, Math.min(100, s));
+          } else {
+            lead[field] = v;
+          }
+        }
+      }
+
+      if (!lead.company_name?.trim()) {
+        errors.push({ row: i + 2, reason: 'Firma adı boş' });
+        continue;
+      }
+
+      // Telefon dedup kontrolü (same user)
+      toInsert.push(lead);
+    }
+
+    if (!toInsert.length) {
+      return res.status(400).json({ error: 'Yüklenebilecek geçerli satır yok', errors: errors.slice(0, 20) });
+    }
+
+    // Toplu insert — 100'er batch
+    let inserted = 0;
+    const BATCH = 100;
+    for (let b = 0; b < toInsert.length; b += BATCH) {
+      const batch = toInsert.slice(b, b + BATCH);
+      const { error: insErr } = await supabase.from('leads').insert(batch);
+      if (!insErr) inserted += batch.length;
+      else console.warn('[Import] Batch error:', insErr.message?.slice(0, 80));
+    }
+
+    res.json({ ok: true, inserted, skipped: errors.length, total: rows.length, errors: errors.slice(0, 10) });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/leads/import/template — Şablon Excel indir
+router.get('/import/template', authMiddleware, (_req: any, res: any) => {
+  const XLSX2 = require('xlsx');
+  const ws = XLSX2.utils.aoa_to_sheet([
+    ['Firma Adı','İlgili Kişi','Telefon','E-posta','Website','Şehir','Sektör','Kaynak','Notlar','Puan'],
+    ['Acme Teknoloji A.Ş.','Ahmet Yılmaz','05321234567','ahmet@acme.com','https://acme.com','İstanbul','Teknoloji','Referans','Öncelikli müşteri',75],
+    ['Beta İnşaat','Fatma Kaya','05559876543','','','Ankara','İnşaat','Soğuk Arama','',50],
+  ]);
+  ws['!cols'] = [20,18,15,25,25,12,15,15,25,8].map(w => ({ wch: w }));
+  const wb = XLSX2.utils.book_new();
+  XLSX2.utils.book_append_sheet(wb, ws, 'Leads');
+  const buf = XLSX2.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="sovlo_lead_sablonu.xlsx"');
+  res.send(buf);
+});
+
 module.exports = router;
