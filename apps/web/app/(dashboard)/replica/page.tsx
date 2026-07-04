@@ -324,7 +324,7 @@ export default function ReplicaPage() {
             key={key}
             onClick={() => setTab(key)}
             style={{
-              padding:'8px 18px', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', border:'none', transition:'all 0.15s',
+              padding:'8px 18px', borderRadius:10, fontSize:13, fontWeight:600, cursor:'pointer', transition:'all 0.15s',
               background: tab === key ? purple : '#fff',
               color:      tab === key ? '#fff'  : tx2,
               boxShadow:  tab === key ? '0 2px 8px rgba(124,58,237,0.25)' : 'none',
