@@ -1,304 +1,644 @@
-﻿'use client'
-import { useI18n } from '@/lib/i18n'
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+'use client'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useSearchParams } from 'next/navigation'
-import { RefreshCw, CheckCircle, Zap, TrendingUp, Star, Download } from 'lucide-react'
+import { CheckCircle, Zap, RefreshCw, Download, TrendingUp, Star, BarChart2, History, Gift, CreditCard, ChevronRight } from 'lucide-react'
 
-// ── CREDIT ORB — energy sphere with plasma fill ───────────────────────────────
-function CreditOrb({ size = 100, pct = 100 }: { size?: number; pct?: number }) {
-  const [mounted, setMounted] = useState(false)
-  const [tick, setTick] = useState(0)
-  useEffect(() => { setMounted(true) }, [])
-  useEffect(() => {
-    if (!mounted) return
-    const t = setInterval(() => setTick(p => p + 1), 50)
-    return () => clearInterval(t)
-  }, [mounted])
-  if (!mounted) return <div style={{ width: size * 2.1, height: size * 2.1, flexShrink: 0 }} />
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-  const cx = size * 1.05, s = size
+interface PlanInfo {
+  id: string; name: string; nameLocal: string
+  monthlyCredits: number; rolloverMonths: number
+  priceMonthly: number; priceAnnual: number
+  color: string; popular: boolean; features: string[]
+}
+
+interface TopupPackage {
+  id: string; name: string; credits: number; price: number
+  badge?: string; popular: boolean; pricePerCredit: number
+}
+
+interface CreditBalance {
+  monthly: number; used: number; rollover: number; remaining: number
+  plan: string; renewsAt?: string; usagePercent: number
+  transactions: TxRecord[]
+}
+
+interface TxRecord {
+  id: string; action: string; amount: number; description: string; created_at: string
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+
+const CREDIT_ACTION_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  lead_scrape:          { label: 'Lead Scraping',          color: '#06b6d4', icon: '🔍' },
+  ai_message:           { label: 'AI Kişiselleştirme',     color: '#8b5cf6', icon: '🤖' },
+  email_enrichment:     { label: 'İletişim Bul',           color: '#10b981', icon: '📧' },
+  decision_maker:       { label: 'Karar Verici',           color: '#3b82f6', icon: '👤' },
+  competitor_analysis:  { label: 'Rakip Analizi',          color: '#f59e0b', icon: '📊' },
+  voice_call_per_min:   { label: 'AI Sesli Arama',         color: '#ec4899', icon: '📞' },
+  video_generate:       { label: 'AI Video',               color: '#ef4444', icon: '🎬' },
+  ai_coach:             { label: 'Satış Koçu',             color: '#6366f1', icon: '🏋️' },
+  topup:                { label: 'Kredi Satın Alındı',     color: '#10b981', icon: '💳' },
+  subscription:         { label: 'Abonelik',               color: '#10b981', icon: '⭐' },
+  monthly_refresh:      { label: 'Aylık Yenileme',         color: '#10b981', icon: '🔄' },
+  battlecard:           { label: 'Rakip Kartı',            color: '#f97316', icon: '⚔️' },
+  proposal_pdf:         { label: 'Teklif PDF',             color: '#64748b', icon: '📄' },
+  qr_generate:          { label: 'QR Kod',                 color: '#64748b', icon: '⬛' },
+}
+
+const PLAN_COLORS: Record<string, string> = {
+  trial: '#64748b', starter: '#06b6d4', growth: '#8b5cf6',
+  scale: '#f59e0b', enterprise: '#ec4899',
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatPrice(kurus: number): string {
+  return (kurus / 100).toLocaleString('tr-TR', { maximumFractionDigits: 0 }) + ' ₺'
+}
+
+function formatNum(n: number): string {
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'K'
+  return n.toString()
+}
+
+function apiRequest(path: string, opts?: RequestInit) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') || '' : ''
+  return fetch(`${API_URL}${path}`, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(opts?.headers || {}) },
+  }).then(async r => {
+    const d = await r.json()
+    if (!r.ok) throw new Error(d.error || 'İstek başarısız')
+    return d
+  })
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function CreditRing({ pct, remaining, rollover }: { pct: number; remaining: number; rollover: number }) {
+  const r = 52
+  const circ = 2 * Math.PI * r
   const color = pct > 50 ? '#10b981' : pct > 20 ? '#f59e0b' : '#ef4444'
-  const rot = tick * 0.6
-  const fillY = cx + s * 0.38 - (pct / 100) * s * 0.76
-  const wavePoints: string[] = []
-  for (let i = 0; i <= 80; i++) {
-    const x = cx - s * 0.38 + (i / 80) * s * 0.76
-    const wave = Math.sin((i / 80) * Math.PI * 3 + tick * 0.15) * s * 0.025
-    wavePoints.push(`${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${(fillY + wave).toFixed(1)}`)
-  }
-  const particles = [0, 1, 2, 3].map(i => {
-    const phase = (tick * 1.2 + i * 25) % 100
-    return { x: cx - s * 0.22 + (i * s * 0.16), y: fillY + s * 0.38 - (phase / 100) * s * 0.72, op: Math.max(0, 1 - Math.abs(phase - 50) / 50) * 0.6 }
-  })
-  const credits = [0, 120, 240].map((deg) => {
-    const a = (deg + rot) * Math.PI / 180
-    return { x: cx + Math.cos(a) * s * 0.86, y: cx + Math.sin(a) * s * 0.86 }
-  })
+  const fill = circ * (1 - pct / 100)
 
   return (
-    <div style={{ width: s * 2.1, height: s * 2.1, flexShrink: 0 }}>
-      <svg width={s * 2.1} height={s * 2.1}>
-        <defs>
-          <radialGradient id={`coGlow${s}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={`${color}00`} />
-            <stop offset="100%" stopColor={`${color}14`} />
-          </radialGradient>
-          <clipPath id={`coClip${s}`}>
-            <circle cx={cx} cy={cx} r={s * 0.38} />
-          </clipPath>
-        </defs>
-        <circle cx={cx} cy={cx} r={s} fill={`url(#coGlow${s})`} />
-        {[0.58, 0.78, 0.96].map((r, i) => (
-          <circle key={r} cx={cx} cy={cx} r={s * r} fill="none" stroke={`${color}12`} strokeWidth={0.8}
-            strokeDasharray="4 7" style={{ animation: `co-ring ${8+i*3}s linear ${i%2?'reverse':''} infinite`, transformOrigin: `${cx}px ${cx}px` }} />
-        ))}
-        <circle cx={cx} cy={cx} r={s * 0.38} fill="rgba(3,8,22,0.8)" stroke={`${color}50`} strokeWidth={2}
-          style={{ filter: `drop-shadow(0 0 ${s*0.18}px ${color}80)` }} />
-        <g clipPath={`url(#coClip${s})`}>
-          <rect x={cx - s * 0.38} y={fillY} width={s * 0.76} height={cx + s * 0.38 - fillY} fill={`${color}30`} />
-          <path d={[...wavePoints, `L${(cx + s * 0.38).toFixed(1)} ${(cx + s * 0.38).toFixed(1)}`, `L${(cx - s * 0.38).toFixed(1)} ${(cx + s * 0.38).toFixed(1)}`, 'Z'].join(' ')} fill={`${color}40`} />
-          {particles.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2} fill={color} opacity={p.op} />)}
-        </g>
-        <text x={cx} y={cx - 3} fill="white" fontSize={s * 0.18} textAnchor="middle" dominantBaseline="middle" fontWeight="900">%{Math.round(pct)}</text>
-        <text x={cx} y={cx + s * 0.13} fill={color} fontSize={s * 0.07} textAnchor="middle" fontWeight="700">KREDİ</text>
-        {credits.map((c, i) => (
-          <g key={i}>
-            <circle cx={c.x} cy={c.y} r={10} fill={`${color}20`} stroke={`${color}50`} strokeWidth={1.5} />
-            <text x={c.x} y={c.y} fill={color} fontSize={8} textAnchor="middle" dominantBaseline="middle" fontWeight="800">₺</text>
-          </g>
-        ))}
+    <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
+      <svg width={140} height={140} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={70} cy={70} r={r} fill="none" stroke="#e2e8f0" strokeWidth={10} />
+        <circle cx={70} cy={70} r={r} fill="none" stroke={color} strokeWidth={10}
+          strokeDasharray={circ} strokeDashoffset={fill} strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 1s ease' }} />
       </svg>
-      <style>{`@keyframes co-ring{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: '#0f172a', fontSize: 22, fontWeight: 900, lineHeight: 1 }}>{formatNum(remaining)}</span>
+        <span style={{ color: '#94a3b8', fontSize: 9, fontWeight: 600, letterSpacing: '0.05em', marginTop: 2 }}>KREDİ</span>
+        {rollover > 0 && <span style={{ color, fontSize: 8, fontWeight: 700, marginTop: 1 }}>+{formatNum(rollover)} rollover</span>}
+      </div>
     </div>
   )
 }
 
-const PLANS = [
-  { id:'starter', name:'Başlangıç', credits:100, price:'₺200', period:'ay', color:'#06b6d4', features:['100 lead kredisi','Google Maps scraping','WhatsApp gönderim','Email gönderim','7 gün destek'], popular:false, icon:'🚀' },
-  { id:'growth', name:'Büyüme', credits:300, price:'₺450', period:'ay', color:'#8b5cf6', features:['300 lead kredisi','Tüm kaynaklar','AI analiz','A/B test','Öncelikli destek','Webhook entegrasyonu'], popular:true, icon:'⚡' },
-  { id:'enterprise', name:'İşletme', credits:700, price:'₺800', period:'ay', color:'#f59e0b', features:['700 lead kredisi','Tüm özellikler','White-label','API erişimi','7/24 destek','Özel entegrasyon','Multi-numara'], popular:false, icon:'🏆' },
-]
+function PlanBadge({ plan }: { plan: string }) {
+  const labels: Record<string, string> = { trial: 'Ücretsiz', starter: 'Starter', growth: 'Growth', scale: 'Scale', enterprise: 'Enterprise' }
+  const color = PLAN_COLORS[plan] || '#64748b'
+  return (
+    <span style={{ background: `${color}15`, border: `1px solid ${color}30`, color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+      {labels[plan] || plan}
+    </span>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+type Tab = 'plans' | 'topup' | 'usage' | 'history' | 'promo'
 
 export default function BillingPage() {
-  const { t } = useI18n()
   const { user } = useAuth()
   const searchParams = useSearchParams()
-  const [loading, setLoading] = useState<string | null>(null)
-  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [credits, setCredits] = useState<{ total: number; used: number } | null>(null)
-  const [history, setHistory] = useState<any[]>([])
-  const [activeTab, setActiveTab] = useState<'plans'|'usage'|'history'|'promo'>('plans')
+  const [tab, setTab] = useState<Tab>('plans')
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [loadingBtn, setLoadingBtn] = useState<string | null>(null)
+  const [balance, setBalance] = useState<CreditBalance | null>(null)
+  const [plans, setPlans] = useState<PlanInfo[]>([])
+  const [topups, setTopups] = useState<TopupPackage[]>([])
+  const [history, setHistory] = useState<TxRecord[]>([])
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [promoCode, setPromoCode] = useState('')
-  const [promoLoading, setPromoLoading] = useState(false)
-  const [promoResult, setPromoResult] = useState<{type:'ok'|'err';text:string}|null>(null)
+  const [promoResult, setPromoResult] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
-  const redeemPromo = async () => {
-    if (!promoCode.trim()) return
-    setPromoLoading(true); setPromoResult(null)
+  // ── Load data ───────────────────────────────────────────────────────────────
+
+  const loadAll = useCallback(async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
-      const token = localStorage.getItem('token') || ''
-      const r = await fetch(`${API_URL}/api/admin/promo/redeem`, {
-        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
-        body: JSON.stringify({code:promoCode.toUpperCase()})
-      })
-      const d = await r.json()
-      if (!r.ok) throw new Error(d.error)
-      setPromoResult({type:'ok',text:d.message||'Promo kodu uygulandı!'})
-      setPromoCode('')
-      // Refresh credits without page reload
-      try {
-        const dash = await api.get('/api/dashboard')
-        const s = (dash as any).stats || {}
-        setCredits({ total: s.credits_total || 0, used: s.credits_used || 0 })
-      } catch {}
-    } catch(e:any) { setPromoResult({type:'err',text:e.message}) }
-    finally { setPromoLoading(false) }
-  }
-
-  useEffect(() => {
-    const payment = searchParams.get('payment'), success = searchParams.get('success')
-    if (payment === 'success' || success === 'true') setMsg({ type: 'success', text: 'Ödeme başarılı! Krediniz hesabınıza eklendi.' })
-    else if (payment === 'cancelled') setMsg({ type: 'error', text: 'Ödeme iptal edildi.' })
-    Promise.allSettled([api.get('/api/dashboard'), api.get('/api/payments/history').catch(() => ({ payments: [] }))]).then(([dash, hist]) => {
-      if (dash.status === 'fulfilled') { const s = (dash.value as any).stats || {}; setCredits({ total: s.credits_total || s.credits || 0, used: s.credits_used || 0 }) }
-      if (hist.status === 'fulfilled') setHistory((hist.value as any).payments || [])
-    })
+      const [bal, pln, hist] = await Promise.allSettled([
+        apiRequest('/api/credits/balance'),
+        apiRequest('/api/payments/plans'),
+        apiRequest('/api/payments/history'),
+      ])
+      if (bal.status === 'fulfilled') setBalance(bal.value)
+      if (pln.status === 'fulfilled') {
+        setPlans(pln.value.subscriptionPlans || [])
+        setTopups(pln.value.topupPackages || [])
+      }
+      if (hist.status === 'fulfilled') setHistory(hist.value.payments || [])
+    } catch {}
   }, [])
 
-  const handlePurchase = async (packageId: string) => {
-    setLoading(packageId)
-    try { const data = await api.post('/api/payments/topup', { packageId }); if ((data as any).url) window.location.href = (data as any).url } catch (err: any) { setMsg({ type: 'error', text: err.message || 'Ödeme sayfası açılamadı' }) }
-    setLoading(null)
+  useEffect(() => {
+    loadAll()
+    const payment = searchParams.get('payment')
+    const success  = searchParams.get('success')
+    if (payment === 'success' || success === 'true') {
+      setMsg({ type: 'ok', text: '✓ Ödeme başarılı! Krediniz hesabınıza eklendi.' })
+    } else if (payment === 'cancelled') {
+      setMsg({ type: 'err', text: 'Ödeme iptal edildi.' })
+    }
+  }, [loadAll, searchParams])
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
+
+  async function handleSubscribe(planId: string) {
+    setLoadingBtn(`sub_${planId}`)
+    try {
+      const data = await apiRequest('/api/payments/subscribe', {
+        method: 'POST', body: JSON.stringify({ planId, billing }),
+      })
+      if (data.url) window.location.href = data.url
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message || 'Hata oluştu' })
+    }
+    setLoadingBtn(null)
   }
 
-  const creditsTotal = credits?.total ?? (user as any)?.creditsTotal ?? 50
-  const creditsUsed = credits?.used ?? (user as any)?.creditsUsed ?? 0
-  const creditsLeft = Math.max(0, creditsTotal - creditsUsed)
-  const pct = creditsTotal > 0 ? Math.round((creditsLeft / creditsTotal) * 100) : 0
+  async function handleTopup(packageId: string) {
+    setLoadingBtn(`topup_${packageId}`)
+    try {
+      const data = await apiRequest('/api/payments/topup', {
+        method: 'POST', body: JSON.stringify({ packageId }),
+      })
+      if (data.url) window.location.href = data.url
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message || 'Hata oluştu' })
+    }
+    setLoadingBtn(null)
+  }
+
+  async function redeemPromo() {
+    if (!promoCode.trim()) return
+    setLoadingBtn('promo')
+    setPromoResult(null)
+    try {
+      const data = await apiRequest('/api/admin/promo/redeem', {
+        method: 'POST', body: JSON.stringify({ code: promoCode.toUpperCase() }),
+      })
+      setPromoResult({ type: 'ok', text: data.message || 'Promo kodu uygulandı!' })
+      setPromoCode('')
+      loadAll()
+    } catch (e: any) {
+      setPromoResult({ type: 'err', text: e.message || 'Geçersiz kod' })
+    }
+    setLoadingBtn(null)
+  }
+
+  // ── Derived values ───────────────────────────────────────────────────────────
+
+  const rem     = balance?.remaining ?? 0
+  const monthly = balance?.monthly   ?? 0
+  const used    = balance?.used      ?? 0
+  const rollover = balance?.rollover ?? 0
+  const pct     = monthly > 0 ? Math.max(0, Math.min(100, Math.round(((monthly - used) / monthly) * 100))) : 0
   const pctColor = pct > 50 ? '#10b981' : pct > 20 ? '#f59e0b' : '#ef4444'
+  const currentPlan = balance?.plan || (user as any)?.planType || 'trial'
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
+  const TABS: { id: Tab; label: string; icon: any }[] = [
+    { id: 'plans',   label: 'Planlar',    icon: CreditCard },
+    { id: 'topup',   label: 'Kredi Al',   icon: Zap },
+    { id: 'usage',   label: 'Kullanım',   icon: BarChart2 },
+    { id: 'history', label: 'Geçmiş',     icon: History },
+    { id: 'promo',   label: 'Promo',      icon: Gift },
+  ]
 
   return (
-    <div style={{ padding: 0 }}>
-      {/* Hero — compact */}
-      <div style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>💳</div>
-            <div>
-              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>{t('billing.title','Abonelik & Kredi')}</h1>
-              <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Kredinizi yönetin, paket satın alın</p>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 20, padding: '24px 28px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
+          <CreditRing pct={pct} remaining={rem} rollover={rollover} />
+
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <h1 style={{ color: '#0f172a', fontSize: 20, fontWeight: 800, margin: 0 }}>Abonelik & Kredi</h1>
+              <PlanBadge plan={currentPlan} />
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 20 }}>
-            {[{l:'Toplam',v:creditsTotal,c:'#94a3b8'},{l:'Kalan',v:creditsLeft,c:pctColor},{l:'Kullanılan',v:creditsUsed,c:'#f59e0b'}].map(m => (
-              <div key={m.l} style={{ textAlign:'center' }}><p style={{ color:m.c, fontSize:20, fontWeight:800, margin:0 }}>{m.v.toLocaleString()}</p><p style={{ color:'#94a3b8', fontSize:9, margin:0 }}>{m.l}</p></div>
-            ))}
-          </div>
-        </div>
-        <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3 }}>
-          <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 3, transition: 'width 0.8s' }} />
-        </div>
-        {pct <= 20 && <p style={{ color: '#dc2626', fontSize: 11, margin: '6px 0 0' }}>⚠️ Krediniz azalıyor — paket satın alın!</p>}
-      </div>
-
-      {msg && <div style={{ marginBottom: 16, padding: '12px 18px', background: msg.type==='success'?'#ecfdf5':'#fef2f2', border: `1px solid ${msg.type==='success'?'#a7f3d0':'#fca5a5'}`, borderRadius: 12 }}><p style={{ color: msg.type==='success'?'#059669':'#dc2626', fontSize: 13, margin: 0 }}>{msg.text}</p></div>}
-
-      {/* Tabs */}
-      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
-        {[{id:'plans',label:'💎 Paketler'},{id:'usage',label:'📊 Kullanım'},{id:'history',label:'🧾 Geçmiş'},{id:'promo',label:'🎁 Promo Kodu'}].map(tabItem => (
-          <button key={tabItem.id} onClick={()=>setActiveTab(tabItem.id as any)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tabItem.id?'linear-gradient(135deg,#14532d,#10b981)':'transparent', color:activeTab===tabItem.id?'#fff':'#64748b', boxShadow:activeTab===tabItem.id?'0 3px 12px rgba(16,185,129,0.25)':'none' }}>
-            {tabItem.label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'plans' && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16 }}>
-          {PLANS.map(plan => (
-            <div key={plan.id} style={{ position:'relative', background:'#ffffff', border:`1px solid ${plan.color}${plan.popular?'50':'20'}`, borderRadius:20, padding:24, overflow:'hidden' }}>
-              {plan.popular && <>
-                <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${plan.color},transparent)` }} />
-                <div style={{ position:'absolute', top:14, right:14, background:`${plan.color}20`, border:`1px solid ${plan.color}40`, color:plan.color, fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:20 }}>
-                  <Star size={9} style={{ display:'inline', marginRight:3 }} />EN POPÜLER
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 12 }}>
+              {[
+                { label: 'Aylık Tahsis', value: monthly.toLocaleString('tr-TR'), color: '#64748b' },
+                { label: 'Kalan Kredi', value: rem.toLocaleString('tr-TR'), color: pctColor },
+                { label: 'Bu Ay Kullanıldı', value: used.toLocaleString('tr-TR'), color: '#f59e0b' },
+              ].map(m => (
+                <div key={m.label}>
+                  <p style={{ color: m.color, fontSize: 18, fontWeight: 900, margin: 0 }}>{m.value}</p>
+                  <p style={{ color: '#94a3b8', fontSize: 10, margin: '2px 0 0', fontWeight: 600 }}>{m.label}</p>
                 </div>
-              </>}
-              <div style={{ fontSize:28, marginBottom:8 }}>{plan.icon}</div>
-              <h3 style={{ color:'#0f172a', fontSize:18, fontWeight:800, margin:'0 0 4px' }}>{plan.name}</h3>
-              <div style={{ display:'flex', alignItems:'baseline', gap:4, marginBottom:6 }}>
-                <span style={{ color:plan.color, fontSize:28, fontWeight:900 }}>{plan.price}</span>
-                <span style={{ color:'#475569', fontSize:12 }}>/{plan.period}</span>
-              </div>
-              <p style={{ color:'#64748b', fontSize:12, margin:'0 0 16px' }}>{plan.credits} lead kredisi</p>
-              <div style={{ marginBottom:20 }}>
-                {plan.features.map(f => (
-                  <div key={f} style={{ display:'flex', alignItems:'center', gap:8, marginBottom:7 }}>
-                    <CheckCircle size={13} color={plan.color} />
-                    <span style={{ color:'#475569', fontSize:12 }}>{f}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={()=>handlePurchase(plan.id)} disabled={loading===plan.id}
-                style={{ width:'100%', padding:'11px', borderRadius:12, border:'none', background:plan.popular?`linear-gradient(135deg,${plan.color}cc,${plan.color})`:`${plan.color}15`, color:plan.popular?'#fff':plan.color, fontSize:13, fontWeight:700, cursor:loading===plan.id?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow:plan.popular?`0 4px 16px ${plan.color}40`:'none' }}>
-                {loading===plan.id?<RefreshCw size={14} style={{ animation:'bi-spin 1s linear infinite' }} />:<Zap size={14} />}
-                {loading===plan.id?'Yönlendiriliyor...':'Satın Al'}
-              </button>
+              ))}
             </div>
-          ))}
+            <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3 }}>
+              <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 3, transition: 'width 1s ease' }} />
+            </div>
+            {pct <= 15 && (
+              <p style={{ color: '#dc2626', fontSize: 11, margin: '6px 0 0', fontWeight: 600 }}>
+                Krediniz kritik seviyede — hemen topup yapın
+              </p>
+            )}
+            {balance?.renewsAt && (
+              <p style={{ color: '#94a3b8', fontSize: 11, margin: '4px 0 0' }}>
+                Yenileme: {new Date(balance.renewsAt).toLocaleDateString('tr-TR')}
+                {rollover > 0 && ` · ${rollover.toLocaleString()} rollover kredi mevcut`}
+              </p>
+            )}
+          </div>
+
+          <button onClick={loadAll}
+            style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <RefreshCw size={15} color="#64748b" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Alert ──────────────────────────────────────────────────────────── */}
+      {msg && (
+        <div style={{ marginBottom: 16, padding: '12px 18px', background: msg.type === 'ok' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${msg.type === 'ok' ? '#a7f3d0' : '#fca5a5'}`, borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ color: msg.type === 'ok' ? '#059669' : '#dc2626', fontSize: 13, margin: 0, fontWeight: 600 }}>{msg.text}</p>
+          <button onClick={() => setMsg(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18, lineHeight: 1 }}>×</button>
         </div>
       )}
 
-      {activeTab === 'usage' && (
-        <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18, padding:24 }}>
-          <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 20px' }}>{t('billing.kredi_kullanim_dokumu', '📊 Kredi Kullanım Dökümü')}</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14 }}>
-            {[
-              { label:'Lead Scraping', used:Math.round(creditsUsed*0.45), color:'#06b6d4', icon:'🔍' },
-              { label:'WhatsApp Gönderim', used:Math.round(creditsUsed*0.28), color:'#10b981', icon:'💬' },
-              { label:'AI Analiz', used:Math.round(creditsUsed*0.15), color:'#8b5cf6', icon:'🤖' },
-              { label:'Email Gönderim', used:Math.round(creditsUsed*0.12), color:'#f59e0b', icon:'📧' },
-            ].map(item => {
-              const ip = creditsUsed > 0 ? Math.round((item.used/creditsUsed)*100) : 0
+      {/* ── Tabs ───────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', padding: 4, borderRadius: 14, width: 'fit-content', marginBottom: 20, border: '1px solid #e2e8f0' }}>
+        {TABS.map(t => {
+          const Icon = t.icon
+          const active = tab === t.id
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', background: active ? '#fff' : 'transparent', color: active ? '#0f172a' : '#64748b', boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.15s' }}>
+              <Icon size={13} />
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ══ PLANLAR ════════════════════════════════════════════════════════════ */}
+      {tab === 'plans' && (
+        <div>
+          {/* Annual toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginBottom: 20 }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Aylık</span>
+            <button onClick={() => setBilling(b => b === 'monthly' ? 'annual' : 'monthly')}
+              style={{ width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer', background: billing === 'annual' ? '#8b5cf6' : '#e2e8f0', position: 'relative', transition: 'background 0.2s' }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: billing === 'annual' ? 23 : 3, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+            </button>
+            <span style={{ fontSize: 12, color: billing === 'annual' ? '#8b5cf6' : '#64748b', fontWeight: 600 }}>
+              Yıllık <span style={{ background: '#ede9fe', color: '#7c3aed', fontSize: 10, padding: '2px 6px', borderRadius: 6, fontWeight: 700 }}>%20 İndirim</span>
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 16 }}>
+            {plans.map(plan => {
+              const price = billing === 'annual' ? plan.priceAnnual : plan.priceMonthly
+              const isCurrent = currentPlan === plan.id
+              const isLoading = loadingBtn === `sub_${plan.id}`
+
               return (
-                <div key={item.label} style={{ padding:'14px 16px', background:`${item.color}08`, border:`1px solid ${item.color}18`, borderRadius:12 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                    <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                      <span>{item.icon}</span><span style={{ color:'#94a3b8', fontSize:12 }}>{item.label}</span>
+                <div key={plan.id} style={{ position: 'relative', background: '#fff', border: `2px solid ${isCurrent ? plan.color : `${plan.color}25`}`, borderRadius: 20, padding: 24, transition: 'border-color 0.2s' }}>
+                  {plan.popular && !isCurrent && (
+                    <div style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 14px', borderRadius: '0 0 12px 12px', whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Star size={9} fill="currentColor" />  ÖNERİLEN
                     </div>
-                    <span style={{ color:item.color, fontWeight:800, fontSize:14 }}>{item.used}</span>
+                  )}
+                  {isCurrent && (
+                    <div style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', background: plan.color, color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 14px', borderRadius: '0 0 12px 12px', whiteSpace: 'nowrap' as const }}>
+                      AKTİF PLANIN
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: isCurrent || plan.popular ? 10 : 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div>
+                        <h3 style={{ color: '#0f172a', fontSize: 17, fontWeight: 800, margin: '0 0 2px' }}>{plan.nameLocal}</h3>
+                        <p style={{ color: '#64748b', fontSize: 11, margin: 0 }}>
+                          {plan.monthlyCredits === -1 ? 'Sınırsız kredi' : `${plan.monthlyCredits.toLocaleString('tr-TR')} kredi/ay`}
+                          {plan.rolloverMonths > 0 && ` · ${plan.rolloverMonths}ay rollover`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      {price > 0 ? (
+                        <>
+                          <span style={{ color: plan.color, fontSize: 26, fontWeight: 900 }}>{formatPrice(price)}</span>
+                          <span style={{ color: '#94a3b8', fontSize: 11 }}>/ay</span>
+                          {billing === 'annual' && (
+                            <p style={{ color: '#64748b', fontSize: 10, margin: '2px 0 0' }}>Yıllık ödenir: {formatPrice(price * 12)}</p>
+                          )}
+                        </>
+                      ) : (
+                        <span style={{ color: plan.color, fontSize: 26, fontWeight: 900 }}>Ücretsiz</span>
+                      )}
+                    </div>
+
+                    <div style={{ marginBottom: 20, minHeight: 140 }}>
+                      {plan.features.map(f => (
+                        <div key={f} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'flex-start' }}>
+                          <CheckCircle size={12} color={plan.color} style={{ flexShrink: 0, marginTop: 2 }} />
+                          <span style={{ color: '#475569', fontSize: 11, lineHeight: 1.4 }}>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {plan.id !== 'trial' && (
+                      <button
+                        onClick={() => handleSubscribe(plan.id)}
+                        disabled={isLoading || isCurrent}
+                        style={{
+                          width: '100%', padding: '11px', borderRadius: 12, border: 'none', fontFamily: 'inherit',
+                          background: isCurrent ? '#f1f5f9' : plan.popular ? `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)` : `${plan.color}15`,
+                          color: isCurrent ? '#94a3b8' : plan.popular ? '#fff' : plan.color,
+                          fontSize: 13, fontWeight: 700, cursor: isLoading || isCurrent ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                          boxShadow: plan.popular && !isCurrent ? `0 4px 14px ${plan.color}35` : 'none',
+                        }}>
+                        {isLoading ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <ChevronRight size={13} />}
+                        {isCurrent ? 'Mevcut Plan' : isLoading ? 'Yönlendiriliyor...' : `${plan.nameLocal} Seç`}
+                      </button>
+                    )}
                   </div>
-                  <div style={{ height:5, background:'#f1f5f9', borderRadius:3 }}>
-                    <div style={{ height:'100%', width:`${ip}%`, background:item.color, borderRadius:3 }} />
+                </div>
+              )
+            })}
+
+            {/* Enterprise card */}
+            <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: '2px solid #334155', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ color: '#f8fafc', fontSize: 17, fontWeight: 800, margin: '0 0 4px' }}>Enterprise</h3>
+                <p style={{ color: '#94a3b8', fontSize: 11, margin: '0 0 16px' }}>Büyük ekipler için özel çözüm</p>
+                <span style={{ color: '#ec4899', fontSize: 26, fontWeight: 900 }}>Özel Fiyat</span>
+                <div style={{ marginTop: 16 }}>
+                  {['Sınırsız kredi & ekip', 'White-Label & API', 'SLA %99.9 garantisi', 'Dedicated Account Manager'].map(f => (
+                    <div key={f} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                      <CheckCircle size={12} color="#ec4899" />
+                      <span style={{ color: '#cbd5e1', fontSize: 11 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <a href="mailto:enterprise@sovlo.io"
+                style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 12, background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                <ChevronRight size={13} /> Bizimle İletişime Geçin
+              </a>
+            </div>
+          </div>
+
+          {/* Competitor comparison */}
+          <div style={{ marginTop: 24, padding: '20px 24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16 }}>
+            <p style={{ color: '#64748b', fontSize: 12, fontWeight: 700, margin: '0 0 12px' }}>Neden Sovlo?</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              {[
+                { label: 'Apollo Pro + Smartlead + WA aracı', price: '≈ ₺10.500/ay', icon: '🔴' },
+                { label: 'Sovlo Growth — hepsi tek pakette', price: '₺2.990/ay', icon: '🟢' },
+                { label: 'Kredi rollover (rakipler sıfırlıyor)', price: '2 ay taşınır', icon: '✅' },
+                { label: 'WhatsApp mesajı (rakipler +₺0.50/msj)', price: 'Sınırsız ücretsiz', icon: '✅' },
+              ].map(c => (
+                <div key={c.label} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 12 }}>{c.icon}</span>
+                  <div>
+                    <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{c.label}</p>
+                    <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 700, margin: '2px 0 0' }}>{c.price}</p>
                   </div>
-                  <p style={{ color:'#475569', fontSize:10, margin:'4px 0 0' }}>Toplam kullanımın %{ip}'i</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ KREDİ SATIN AL ═════════════════════════════════════════════════════ */}
+      {tab === 'topup' && (
+        <div>
+          <p style={{ color: '#475569', fontSize: 13, marginBottom: 20 }}>
+            Abonelik kredinize ek olarak her zaman kredi satın alabilirsiniz. Satın alınan krediler sona ermez.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+            {topups.map(pkg => {
+              const priceStr = formatPrice(pkg.price)
+              const perCr   = (pkg.price / pkg.credits / 100).toFixed(2)
+              const isLoad  = loadingBtn === `topup_${pkg.id}`
+
+              return (
+                <div key={pkg.id} style={{ background: '#fff', border: `2px solid ${pkg.popular ? '#8b5cf6' : '#e2e8f0'}`, borderRadius: 18, padding: 22, position: 'relative' }}>
+                  {pkg.badge && (
+                    <div style={{ position: 'absolute', top: -1, right: 16, background: pkg.popular ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)' : '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: '0 0 10px 10px' }}>
+                      {pkg.badge}
+                    </div>
+                  )}
+                  <p style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, margin: '0 0 4px' }}>{pkg.name}</p>
+                  <p style={{ color: '#0f172a', fontSize: 28, fontWeight: 900, margin: '0 0 2px' }}>{pkg.credits.toLocaleString('tr-TR')}</p>
+                  <p style={{ color: '#64748b', fontSize: 11, margin: '0 0 16px' }}>kredi · ₺{perCr}/kredi</p>
+                  <p style={{ color: pkg.popular ? '#8b5cf6' : '#0f172a', fontSize: 22, fontWeight: 900, margin: '0 0 16px' }}>{priceStr}</p>
+
+                  <div style={{ marginBottom: 16 }}>
+                    {[
+                      `${Math.floor(pkg.credits / 5).toLocaleString('tr-TR')} lead scrape`,
+                      `${pkg.credits.toLocaleString('tr-TR')} AI mesaj`,
+                      `${Math.floor(pkg.credits / 15).toLocaleString('tr-TR')} dk sesli arama`,
+                    ].map(f => (
+                      <div key={f} style={{ display: 'flex', gap: 6, marginBottom: 5, alignItems: 'center' }}>
+                        <CheckCircle size={11} color={pkg.popular ? '#8b5cf6' : '#10b981'} />
+                        <span style={{ color: '#475569', fontSize: 11 }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button onClick={() => handleTopup(pkg.id)} disabled={isLoad}
+                    style={{ width: '100%', padding: '10px', borderRadius: 11, border: 'none', fontFamily: 'inherit', background: pkg.popular ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)' : '#f1f5f9', color: pkg.popular ? '#fff' : '#0f172a', fontSize: 13, fontWeight: 700, cursor: isLoad ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, boxShadow: pkg.popular ? '0 4px 14px rgba(139,92,246,0.35)' : 'none' }}>
+                    {isLoad ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Zap size={13} />}
+                    {isLoad ? 'Yönlendiriliyor...' : 'Satın Al'}
+                  </button>
                 </div>
               )
             })}
           </div>
-          <div style={{ marginTop:16, padding:'12px 16px', background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.15)', borderRadius:10 }}>
-            <p style={{ color:'#047857', fontSize:12, margin:0 }}>💡 <strong>Tavsiye:</strong> {pct<=30?'Krediniz azalıyor, Büyüme paketine geçerek %40 tasarruf edin.':'Krediniz yeterli. Daha fazla lead için paket yükseltebilirsiniz.'}</p>
+
+          {/* Credit cost table */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: 0 }}>Kredi Maliyet Tablosu</h3>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+              {[
+                { action: 'Lead Scraping (Google Maps)', cost: 5, free: false },
+                { action: 'AI Mesaj Kişiselleştirme', cost: 1, free: false },
+                { action: 'Email/Telefon Bulma', cost: 3, free: false },
+                { action: 'Karar Verici Profili', cost: 5, free: false },
+                { action: 'Rakip Analizi Raporu', cost: 10, free: false },
+                { action: 'AI Sesli Arama (dk)', cost: 15, free: false },
+                { action: 'AI Video Üretimi', cost: 80, free: false },
+                { action: 'WhatsApp Mesajı', cost: 0, free: true },
+                { action: 'Email Gönderimi', cost: 0, free: true },
+                { action: 'QR Kod Üretimi', cost: 1, free: false },
+              ].map((item, i) => (
+                <div key={item.action} style={{ padding: '11px 20px', borderBottom: i < 9 ? '1px solid #f1f5f9' : 'none', borderRight: i % 2 === 0 ? '1px solid #f1f5f9' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#475569', fontSize: 12 }}>{item.action}</span>
+                  <span style={{ color: item.free ? '#10b981' : '#0f172a', fontSize: 12, fontWeight: 700 }}>
+                    {item.free ? 'Ücretsiz' : `${item.cost} kr`}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {activeTab === 'history' && (
-        <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:18, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0 }}>{t('billing.odeme_gecmisi', '🧾 Ödeme Geçmişi')}</h3>
-            {history.length>0 && <button style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:8, border:'1px solid rgba(16,185,129,0.25)', background:'rgba(16,185,129,0.06)', color:'#047857', fontSize:11, cursor:'pointer' }}><Download size={12} />{t('billing.csv_indir', 'CSV İndir')}</button>}
+      {/* ══ KULLANIM ═══════════════════════════════════════════════════════════ */}
+      {tab === 'usage' && (
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
+            <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: '0 0 20px' }}>Bu Ay Kredi Kullanımı</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              {[
+                { key: 'lead_scrape', pct: 45 },
+                { key: 'ai_message', pct: 28 },
+                { key: 'email_enrichment', pct: 15 },
+                { key: 'voice_call_per_min', pct: 8 },
+                { key: 'competitor_analysis', pct: 4 },
+              ].map(item => {
+                const info = CREDIT_ACTION_LABELS[item.key]
+                const spent = Math.round(used * item.pct / 100)
+                return (
+                  <div key={item.key} style={{ padding: '14px 16px', background: `${info?.color ?? '#64748b'}08`, border: `1px solid ${info?.color ?? '#64748b'}18`, borderRadius: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 14 }}>{info?.icon}</span>
+                        <span style={{ color: '#64748b', fontSize: 11 }}>{info?.label}</span>
+                      </div>
+                      <span style={{ color: info?.color, fontWeight: 800, fontSize: 13 }}>{spent}</span>
+                    </div>
+                    <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2 }}>
+                      <div style={{ height: '100%', width: `${item.pct}%`, background: info?.color, borderRadius: 2 }} />
+                    </div>
+                    <p style={{ color: '#94a3b8', fontSize: 10, margin: '4px 0 0' }}>Toplam kullanımın %{item.pct}&apos;i</p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Son işlemler */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: 0 }}>Son Kredi Hareketleri</h3>
+            </div>
+            {(balance?.transactions || []).slice(0, 10).length === 0 ? (
+              <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Henüz hareket yok</div>
+            ) : (balance?.transactions || []).slice(0, 10).map((t, i) => {
+              const info = CREDIT_ACTION_LABELS[t.action] || { label: t.action, color: '#64748b', icon: '📌' }
+              const isPositive = t.amount > 0
+              return (
+                <div key={t.id || i} style={{ display: 'flex', gap: 12, padding: '12px 20px', borderBottom: '1px solid #f8fafc', alignItems: 'center' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: `${info.color}15`, border: `1px solid ${info.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
+                    {info.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 600, margin: 0 }}>{t.description || info.label}</p>
+                    <p style={{ color: '#94a3b8', fontSize: 10, margin: '2px 0 0' }}>{new Date(t.created_at).toLocaleString('tr-TR')}</p>
+                  </div>
+                  <span style={{ color: isPositive ? '#10b981' : '#ef4444', fontWeight: 800, fontSize: 13 }}>
+                    {isPositive ? '+' : ''}{t.amount} kr
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ══ GEÇMİŞ ════════════════════════════════════════════════════════════ */}
+      {tab === 'history' && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: 0 }}>Ödeme Geçmişi</h3>
+            {history.length > 0 && (
+              <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <Download size={11} /> CSV İndir
+              </button>
+            )}
           </div>
           {history.length === 0 ? (
-            <div style={{ padding:40, textAlign:'center', color:'#475569' }}>
-              <p style={{ fontSize:28, margin:'0 0 10px' }}>🧾</p>
-              <p style={{ fontSize:13, margin:0 }}>{t('billing.henuz_odeme_gecmisi_yok', 'Henüz ödeme geçmişi yok')}</p>
+            <div style={{ padding: 48, textAlign: 'center' }}>
+              <div style={{ width: 56, height: 56, borderRadius: 16, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: 24 }}>🧾</div>
+              <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 600, margin: '0 0 4px' }}>Henüz ödeme geçmişi yok</p>
+              <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>Bir plan seçin veya kredi satın alın</p>
             </div>
           ) : history.map((p: any, i: number) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid #f1f5f9' }}>
-              <div style={{ width:38, height:38, borderRadius:10, background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <TrendingUp size={16} color="#10b981" />
+            <div key={p.id || i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', borderBottom: '1px solid #f8fafc' }}>
+              <div style={{ width: 38, height: 38, borderRadius: 11, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={15} color="#10b981" />
               </div>
-              <div style={{ flex:1 }}>
-                <p style={{ color:'#0f172a', fontWeight:600, fontSize:13, margin:0 }}>{p.package_name||'Kredi Paketi'}</p>
-                <p style={{ color:'#475569', fontSize:11, margin:'2px 0 0' }}>{new Date(p.created_at).toLocaleDateString()} · {p.credits||0} kredi</p>
+              <div style={{ flex: 1 }}>
+                <p style={{ color: '#0f172a', fontWeight: 600, fontSize: 13, margin: 0 }}>{p.description || 'Kredi Paketi'}</p>
+                <p style={{ color: '#94a3b8', fontSize: 11, margin: '2px 0 0' }}>
+                  {new Date(p.date || p.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' })} · {(p.credits || p.amount || 0).toLocaleString('tr-TR')} kredi
+                </p>
               </div>
-              <div style={{ textAlign:'right' }}>
-                <p style={{ color:'#10b981', fontWeight:800, fontSize:14, margin:0 }}>₺{p.amount}</p>
-                <span style={{ background:'rgba(16,185,129,0.12)', border:'1px solid rgba(16,185,129,0.25)', color:'#047857', fontSize:10, padding:'2px 7px', borderRadius:20 }}>{t('billing.tamamlandi', 'Tamamlandı')}</span>
-              </div>
+              <span style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20 }}>Tamamlandı</span>
             </div>
           ))}
         </div>
       )}
 
-      {activeTab === 'promo' && (
-        <div style={{ background: '#ffffff', border: '1px solid #fde68a', borderRadius: 18, padding: '28px 24px', maxWidth: 500, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ color:'#0f172a', fontSize:16, fontWeight:800, margin:'0 0 8px' }}>🎁 Promo Kodu Kullan</h3>
-          <p style={{ color:'#475569', fontSize:13, margin:'0 0 20px' }}>Promo kodunuzu girin ve kredinizi anında alın</p>
+      {/* ══ PROMO ══════════════════════════════════════════════════════════════ */}
+      {tab === 'promo' && (
+        <div style={{ maxWidth: 480 }}>
+          <div style={{ background: '#fff', border: '1px solid #fde68a', borderRadius: 18, padding: '28px 24px' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: '#fef9c3', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 14 }}>🎁</div>
+            <h3 style={{ color: '#0f172a', fontSize: 16, fontWeight: 800, margin: '0 0 6px' }}>Promo Kodu Kullan</h3>
+            <p style={{ color: '#475569', fontSize: 13, margin: '0 0 22px' }}>Kodunuzu girin ve kredinizi anında alın. Tek kullanımlık veya sınırlı kullanım hakkı olabilir.</p>
 
-          {promoResult && (
-            <div style={{ padding:'12px 16px', borderRadius:10, marginBottom:16, background:promoResult.type==='ok'?'#ecfdf5':'#fef2f2', border:`1px solid ${promoResult.type==='ok'?'#a7f3d0':'#fca5a5'}`, color:promoResult.type==='ok'?'#059669':'#dc2626', fontSize:13 }}>
-              {promoResult.text}
+            {promoResult && (
+              <div style={{ padding: '12px 16px', borderRadius: 10, marginBottom: 16, background: promoResult.type === 'ok' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${promoResult.type === 'ok' ? '#a7f3d0' : '#fca5a5'}`, color: promoResult.type === 'ok' ? '#059669' : '#dc2626', fontSize: 13, fontWeight: 600 }}>
+                {promoResult.text}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                value={promoCode}
+                onChange={e => setPromoCode(e.target.value.toUpperCase())}
+                onKeyDown={e => e.key === 'Enter' && redeemPromo()}
+                placeholder="LAUNCH50, SOVLO100..."
+                maxLength={30}
+                style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '13px 16px', color: '#0f172a', fontSize: 15, outline: 'none', fontFamily: 'inherit', letterSpacing: '0.08em', fontWeight: 700 }}
+              />
+              <button
+                onClick={redeemPromo}
+                disabled={loadingBtn === 'promo' || !promoCode.trim()}
+                style={{ padding: '13px 20px', borderRadius: 12, border: 'none', background: loadingBtn === 'promo' || !promoCode.trim() ? '#f1f5f9' : 'linear-gradient(135deg,#f59e0b,#f97316)', color: loadingBtn === 'promo' || !promoCode.trim() ? '#94a3b8' : '#fff', cursor: loadingBtn === 'promo' || !promoCode.trim() ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap' as const }}>
+                {loadingBtn === 'promo' ? '⏳' : '✓ Uygula'}
+              </button>
             </div>
-          )}
-
-          <div style={{ display:'flex', gap:10 }}>
-            <input value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())}
-              placeholder="LAUNCH50, BONUS100..." maxLength={30}
-              onKeyDown={e=>e.key==='Enter'&&redeemPromo()}
-              style={{ flex:1, background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:12, padding:'13px 16px', color:'#0f172a', fontSize:15, outline:'none', fontFamily:'inherit', letterSpacing:'0.05em', fontWeight:600 }} />
-            <button onClick={redeemPromo} disabled={promoLoading||!promoCode.trim()}
-              style={{ padding:'13px 22px', borderRadius:12, border:'none', background:promoLoading?'rgba(245,158,11,0.4)':'linear-gradient(135deg,#f59e0b,#f97316)', color:'#fff', cursor:promoLoading||!promoCode.trim()?'not-allowed':'pointer', fontSize:14, fontWeight:700, fontFamily:'inherit', whiteSpace:'nowrap' as const }}>
-              {promoLoading ? '⏳' : '✓ Uygula'}
-            </button>
           </div>
-          <p style={{ color:'#475569', fontSize:11, marginTop:12 }}>Promo kodları tek kullanımlık veya sınırlı kullanım hakkına sahip olabilir.</p>
         </div>
       )}
 
-      <style>{`@keyframes bi-spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }
