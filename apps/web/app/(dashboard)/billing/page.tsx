@@ -56,8 +56,8 @@ const PLAN_COLORS: Record<string, string> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatPrice(kurus: number): string {
-  return (kurus / 100).toLocaleString('tr-TR', { maximumFractionDigits: 0 }) + ' ₺'
+function formatPrice(cents: number): string {
+  return '$' + (cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
 function formatNum(n: number): string {
@@ -346,7 +346,7 @@ export default function BillingPage() {
                           <span style={{ color: plan.color, fontSize: 26, fontWeight: 900 }}>{formatPrice(price)}</span>
                           <span style={{ color: '#94a3b8', fontSize: 11 }}>/ay</span>
                           {billing === 'annual' && (
-                            <p style={{ color: '#64748b', fontSize: 10, margin: '2px 0 0' }}>Yıllık ödenir: {formatPrice(price * 12)}</p>
+                            <p style={{ color: '#64748b', fontSize: 10, margin: '2px 0 0' }}>Billed annually: {formatPrice(price * 12)}/yr</p>
                           )}
                         </>
                       ) : (

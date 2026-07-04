@@ -68,8 +68,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     nameLocal: 'Başlangıç',
     monthlyCredits: 1000,
     rolloverMonths: 1,
-    priceMonthly: 99900,
-    priceAnnual: 79900,
+    priceMonthly: 7900,
+    priceAnnual: 6300,
     color: '#06b6d4',
     popular: false,
     features: [
@@ -98,8 +98,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     nameLocal: 'Büyüme',
     monthlyCredits: 5000,
     rolloverMonths: 2,
-    priceMonthly: 299000,
-    priceAnnual: 239000,
+    priceMonthly: 19900,
+    priceAnnual: 15900,
     color: '#8b5cf6',
     popular: true,
     features: [
@@ -132,8 +132,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     nameLocal: 'Kurumsal',
     monthlyCredits: 20000,
     rolloverMonths: 3,
-    priceMonthly: 799000,
-    priceAnnual: 639000,
+    priceMonthly: 49900,
+    priceAnnual: 39900,
     color: '#f59e0b',
     popular: false,
     features: [
