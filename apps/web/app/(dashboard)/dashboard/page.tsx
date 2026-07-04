@@ -298,7 +298,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <Link href="/campaigns/new" style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(59,130,246,0.35)', transition:'all 0.15s' }}>
+          <Link href="/automations" style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(59,130,246,0.35)', transition:'all 0.15s' }}>
             <Zap size={14}/> {t('dashboard.new_campaign')}
           </Link>
         </div>
@@ -422,7 +422,7 @@ export default function DashboardPage() {
             <div style={{ height:120, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10 }}>
               <BarChart2 size={28} color="#cbd5e1"/>
               <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{t('dashboard.no_messages')}</p>
-              <Link href="/campaigns/new" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+              <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
                 {t('dashboard.start_campaign')} <ArrowRight size={12}/>
               </Link>
             </div>
@@ -471,7 +471,7 @@ export default function DashboardPage() {
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
             <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
-            <Link href="/campaigns" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
+            <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
           </div>
           {loading ? (
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{[0,1,2].map(i => <Skeleton key={i} h={62} r={10}/>)}</div>
@@ -481,7 +481,7 @@ export default function DashboardPage() {
                 const ss = statusStyle[c.status] || statusStyle.draft
                 const replyRate = c.total_sent > 0 ? Math.round((c.total_replied||0)/c.total_sent*100) : 0
                 return (
-                  <Link key={c.id} href={`/campaigns/${c.id}`} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:surf, border:surfBd, borderRadius:12, textDecoration:'none', transition:'all 0.15s' }}>
+                  <Link key={c.id} href={`/automations`} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:surf, border:surfBd, borderRadius:12, textDecoration:'none', transition:'all 0.15s' }}>
                     <div style={{ width:36, height:36, borderRadius:9, background:`${ss.color}12`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       {c.channel==='whatsapp' ? <MessageSquare size={15} color={ss.color}/> : <Megaphone size={15} color={ss.color}/>}
                     </div>
@@ -498,7 +498,7 @@ export default function DashboardPage() {
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
               <Megaphone size={26} color="#cbd5e1"/>
               <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>Kampanya yok</p>
-              <Link href="/campaigns/new" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{t('page.create', 'Oluştur') + ' →'}</Link>
+              <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{t('page.create', 'Oluştur') + ' →'}</Link>
             </div>
           )}
         </div>
