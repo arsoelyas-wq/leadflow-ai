@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import SovloLogo from '@/components/SovloLogo'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ name: '', email: '', company: '', password: '' })
@@ -29,13 +30,10 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">L</span>
-            </div>
-            <span className="text-white text-2xl font-bold">Sovlo AI</span>
+          <div className="flex justify-center mb-5">
+            <SovloLogo size="lg" theme="dark" />
           </div>
-          <p className="text-slate-400">Ucretsiz hesap olusturun — 50 lead hediye!</p>
+          <p className="text-slate-400">Ücretsiz hesap oluşturun — 50 lead hediye!</p>
         </div>
         <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import SovloLogo from '@/components/SovloLogo'
 import { useI18n } from '@/lib/i18n'
 import {
   LayoutDashboard, Users, Megaphone,
@@ -231,36 +232,8 @@ export default function Sidebar() {
     }}>
 
       {/* ── LOGO ── */}
-      <div style={{
-        padding: '16px 16px 14px',
-        borderBottom: '1px solid #f1f5f9',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        flexShrink: 0,
-      }}>
-        <div style={{
-          width: 30, height: 30,
-          background: 'linear-gradient(135deg,#2563eb,#4f46e5)',
-          borderRadius: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 3px 10px rgba(37,99,235,0.28)',
-          flexShrink: 0,
-        }}>
-          <Zap size={14} color="white" fill="white" />
-        </div>
-        <div style={{ lineHeight: 1.1 }}>
-          <span style={{ color: '#0f172a', fontWeight: 800, fontSize: 14.5, letterSpacing: '-0.3px' }}>
-            Sovlo
-          </span>
-          <span style={{
-            background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            fontWeight: 800,
-            fontSize: 14.5,
-          }}> AI</span>
-        </div>
+      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+        <SovloLogo size="sm" theme="light" />
       </div>
 
       {/* ── KREDİ ÇUBUĞU ── */}

@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Zap, Menu, X, ChevronRight } from 'lucide-react'
+import { Menu, X, ChevronRight } from 'lucide-react'
+import SovloLogo from '@/components/SovloLogo'
 
 const NAV_LINKS = [
   { label: 'Özellikler', href: '#ozellikler' },
@@ -37,13 +38,8 @@ export default function LandingNavbar() {
           <div className="flex items-center justify-between h-16 lg:h-[70px]">
 
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-shadow">
-                <Zap size={16} className="text-white fill-white" />
-              </div>
-              <span className="text-slate-900 text-[17px] font-800 tracking-tight font-bold">
-                Sovlo <span className="gradient-text-blue">AI</span>
-              </span>
+            <Link href="/" className="flex items-center group">
+              <SovloLogo size="sm" theme="light" />
             </Link>
 
             {/* Desktop Nav */}
