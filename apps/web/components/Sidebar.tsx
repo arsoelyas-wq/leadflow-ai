@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import SovloLogo from '@/components/SovloLogo'
+import { SparkIcon } from '@/components/SovloLogo'
 import { useI18n } from '@/lib/i18n'
 import {
   LayoutDashboard, Users, Megaphone,
@@ -232,8 +232,34 @@ export default function Sidebar() {
     }}>
 
       {/* ── LOGO ── */}
-      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-        <SovloLogo size="sm" theme="light" />
+      <div style={{ padding: '14px 16px 14px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+        <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          {/* Animated Spark icon */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div
+              className="logo-spark-glow"
+              style={{
+                position: 'absolute',
+                inset: -4,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #0EA5E9, #6366F1)',
+                filter: 'blur(7px)',
+              }}
+            />
+            <div style={{ position: 'relative' }}>
+              <SparkIcon size={38} />
+            </div>
+          </div>
+          {/* Wordmark */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+            <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: '#0f172a', lineHeight: 1 }}>
+              Sovlo
+            </span>
+            <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.03em', color: '#0EA5E9', lineHeight: 1 }}>
+              AI
+            </span>
+          </div>
+        </Link>
       </div>
 
       {/* ── KREDİ ÇUBUĞU ── */}
