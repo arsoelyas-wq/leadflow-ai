@@ -829,33 +829,55 @@ router.get('/ai-status', async (req: any, res: any) => {
       }
     }
 
-    // ── Perplexity: check key presence (no free balance endpoint)
-    if (!process.env.PERPLEXITY_API_KEY) {
-      result.perplexity = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
-    } else {
-      result.perplexity = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
-    }
+    // Helper: simple key check
+    const keyCheck = (key: string | undefined, svc: string) => {
+      result[svc] = key
+        ? { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt }
+        : { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
+    };
 
-    // ── Google Places: check key presence
-    if (!process.env.GOOGLE_PLACES_API_KEY && !process.env.GOOGLE_MAPS_API_KEY) {
-      result.google_places = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
-    } else {
-      result.google_places = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
-    }
+    // ── AI & LLM
+    keyCheck(process.env.PERPLEXITY_API_KEY, 'perplexity');
+    keyCheck(process.env.GROQ_API_KEY, 'groq');
+    keyCheck(process.env.HEYGEN_API_KEY, 'heygen');
+    keyCheck(process.env.VAPI_API_KEY, 'vapi');
+    keyCheck(process.env.CARTESIA_API_KEY, 'cartesia');
+    keyCheck(process.env.AZURE_SPEECH_KEY, 'azure_speech');
+    keyCheck(process.env.REPLICATE_API_TOKEN, 'replicate');
+    keyCheck(process.env.RUNPOD_API_KEY, 'runpod');
 
-    // ── Resend
-    if (!process.env.RESEND_API_KEY) {
-      result.resend = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
-    } else {
-      result.resend = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
-    }
+    // ── Scraping & Arama
+    keyCheck(process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY, 'google_places');
+    keyCheck(process.env.APIFY_TOKEN, 'apify');
+    keyCheck(process.env.BRAVE_API_KEY, 'brave');
+    keyCheck(process.env.EXA_API_KEY, 'exa');
+    keyCheck(process.env.SERPER_API_KEY, 'serper');
+    keyCheck(process.env.TAVILY_API_KEY, 'tavily');
+    keyCheck(process.env.FOURSQUARE_API_KEY, 'foursquare');
+    keyCheck(process.env.HERE_API_KEY, 'here');
+    keyCheck(process.env.YELP_API_KEY, 'yelp');
+    keyCheck(process.env.HUNTER_API_KEY, 'hunter');
 
-    // ── Stripe
-    if (!process.env.STRIPE_SECRET_KEY) {
-      result.stripe = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
-    } else {
-      result.stripe = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
-    }
+    // ── Sosyal Medya & Outreach
+    keyCheck(process.env.LINKEDIN_CLIENT_ID, 'linkedin');
+    keyCheck(process.env.LINKDAPI_KEY, 'linkdapi');
+    keyCheck(process.env.META_GRAPH_TOKEN || process.env.META_APP_ID, 'meta');
+    keyCheck(process.env.WATI_ACCESS_TOKEN, 'wati');
+    keyCheck(process.env.TWILIO_ACCOUNT_SID, 'twilio');
+
+    // ── Ödeme & Altyapı
+    keyCheck(process.env.STRIPE_SECRET_KEY, 'stripe');
+    keyCheck(process.env.RESEND_API_KEY, 'resend');
+    keyCheck(process.env.REDIS_URL, 'redis');
+    keyCheck(process.env.SUPABASE_URL, 'supabase');
+    keyCheck(process.env.VAPID_PUBLIC_KEY, 'vapid');
+
+    // ── İş Verisi & Analitik
+    keyCheck(process.env.GOOGLE_ADS_CLIENT_ID, 'google_ads');
+    keyCheck(process.env.OPENCORPORATES_KEY, 'opencorporates');
+    keyCheck(process.env.UK_COMPANIES_HOUSE_KEY, 'uk_companies');
+    keyCheck(process.env.PAGESPEED_API_KEY, 'pagespeed');
+    keyCheck(process.env.GOOGLE_SHEETS_API_KEY || process.env.GOOGLE_API_KEY, 'google_sheets');
 
     _statusCache = { data: result, expiry: Date.now() + 5 * 60_000 };
     res.json({ ...result, cached: false });
