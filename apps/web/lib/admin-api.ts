@@ -60,6 +60,12 @@ export const adminApi = {
   systemErrors: () => adminRequest('/system/errors'),
   systemUptime: () => adminRequest('/system/uptime'),
 
+  // AI Costs — real token/cost data
+  aiCosts: (days = 30) => adminRequest(`/ai-costs?days=${days}`),
+
+  // AI Status — real health check for each API service
+  aiStatus: (force = false) => adminRequest(`/ai-status${force ? '?force=1' : ''}`),
+
   // Analytics
   analytics: () => adminRequest('/analytics'),
 

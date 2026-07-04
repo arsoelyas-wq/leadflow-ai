@@ -1,6 +1,7 @@
 export {};
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
+const { logAnthropicCall } = require('../lib/aiCostLogger');
 
 const router = express.Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -65,6 +66,14 @@ router.post('/chat', async (req: any, res: any) => {
     });
 
     const rawText = response.content[0].text;
+    // Log real token usage
+    logAnthropicCall({
+      userId: req.userId,
+      feature: 'ai_chat',
+      model: 'claude-sonnet-4-20250514',
+      usage: response.usage,
+    });
+
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return res.status(500).json({ error: 'AI yanit formati hatali' });

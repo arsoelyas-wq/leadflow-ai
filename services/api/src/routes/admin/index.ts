@@ -655,6 +655,213 @@ router.post('/promo/redeem', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/admin/ai-costs — Real AI cost data ───────────────────────────────
+router.get('/ai-costs', async (req: any, res: any) => {
+  try {
+    const days = parseInt(req.query.days || '30');
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+    const { data: logs, error } = await supabase
+      .from('ai_cost_logs')
+      .select('service, feature, model, input_tokens, output_tokens, units, unit_type, cost_usd, user_id, success, created_at')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(10000);
+
+    if (error) throw error;
+    const rows = logs || [];
+
+    // ── Totals
+    const totalCostUsd = rows.reduce((s: number, r: any) => s + (r.cost_usd || 0), 0);
+    const totalCalls   = rows.length;
+    const failedCalls  = rows.filter((r: any) => !r.success).length;
+
+    // ── By service
+    const byService: Record<string, { calls: number; cost_usd: number; tokens: number }> = {};
+    rows.forEach((r: any) => {
+      if (!byService[r.service]) byService[r.service] = { calls: 0, cost_usd: 0, tokens: 0 };
+      byService[r.service].calls   += 1;
+      byService[r.service].cost_usd += r.cost_usd || 0;
+      byService[r.service].tokens  += (r.input_tokens || 0) + (r.output_tokens || 0);
+    });
+
+    // ── By feature
+    const byFeature: Record<string, { calls: number; cost_usd: number }> = {};
+    rows.forEach((r: any) => {
+      if (!byFeature[r.feature]) byFeature[r.feature] = { calls: 0, cost_usd: 0 };
+      byFeature[r.feature].calls   += 1;
+      byFeature[r.feature].cost_usd += r.cost_usd || 0;
+    });
+
+    // ── By day (last N days)
+    const byDay: Record<string, number> = {};
+    rows.forEach((r: any) => {
+      const day = r.created_at?.slice(0, 10);
+      if (day) byDay[day] = (byDay[day] || 0) + (r.cost_usd || 0);
+    });
+    const dailyTrend = Object.entries(byDay)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, cost_usd]) => ({ day, cost_usd: parseFloat(cost_usd.toFixed(6)) }));
+
+    // ── Top users by cost
+    const byUser: Record<string, { cost_usd: number; calls: number }> = {};
+    rows.forEach((r: any) => {
+      if (!r.user_id) return;
+      if (!byUser[r.user_id]) byUser[r.user_id] = { cost_usd: 0, calls: 0 };
+      byUser[r.user_id].cost_usd += r.cost_usd || 0;
+      byUser[r.user_id].calls   += 1;
+    });
+
+    // Enrich with user info
+    const topUserIds = Object.entries(byUser)
+      .sort(([, a], [, b]) => b.cost_usd - a.cost_usd)
+      .slice(0, 20)
+      .map(([id]) => id);
+
+    let userInfo: Record<string, any> = {};
+    if (topUserIds.length) {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, email, name, plan_type')
+        .in('id', topUserIds);
+      (users || []).forEach((u: any) => { userInfo[u.id] = u; });
+    }
+
+    const topUsers = Object.entries(byUser)
+      .sort(([, a], [, b]) => b.cost_usd - a.cost_usd)
+      .slice(0, 20)
+      .map(([user_id, stats]) => ({
+        user_id,
+        ...stats,
+        cost_usd: parseFloat(stats.cost_usd.toFixed(6)),
+        email:    userInfo[user_id]?.email || user_id,
+        name:     userInfo[user_id]?.name  || '',
+        plan:     userInfo[user_id]?.plan_type || 'unknown',
+      }));
+
+    res.json({
+      period_days: days,
+      total_cost_usd: parseFloat(totalCostUsd.toFixed(4)),
+      total_calls: totalCalls,
+      failed_calls: failedCalls,
+      success_rate: totalCalls > 0 ? Math.round(((totalCalls - failedCalls) / totalCalls) * 100) : 100,
+      by_service: byService,
+      by_feature: byFeature,
+      daily_trend: dailyTrend,
+      top_users: topUsers,
+      has_data: rows.length > 0,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/admin/ai-status — Real API health check with balance/quota ───────
+let _statusCache: { data: any; expiry: number } | null = null;
+
+router.get('/ai-status', async (req: any, res: any) => {
+  try {
+    const force = req.query.force === '1';
+    if (!force && _statusCache && Date.now() < _statusCache.expiry) {
+      return res.json({ ..._statusCache.data, cached: true });
+    }
+
+    const checkedAt = new Date().toISOString();
+    const result: Record<string, any> = {};
+
+    // ── Anthropic: try a minimal 1-token call to detect billing errors
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      result.anthropic = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
+    } else {
+      try {
+        const Anthropic = require('@anthropic-ai/sdk');
+        const client = new Anthropic({ apiKey: anthropicKey });
+        await client.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'hi' }],
+        });
+        result.anthropic = { status: 'ok', message: 'Aktif ve çalışıyor', checked_at: checkedAt };
+      } catch (e: any) {
+        const msg: string = (e.message || e.error?.message || '').toLowerCase();
+        const code: number = e.status || e.statusCode || 0;
+        if (code === 401 || msg.includes('authentication') || msg.includes('invalid x-api-key')) {
+          result.anthropic = { status: 'invalid_key', message: 'API anahtarı geçersiz', checked_at: checkedAt };
+        } else if (
+          msg.includes('credit') || msg.includes('billing') || msg.includes('balance') ||
+          msg.includes('quota') || msg.includes('payment') || code === 402
+        ) {
+          result.anthropic = { status: 'billing_error', message: 'Bakiye tükendi — kredi yüklemeniz gerekiyor', checked_at: checkedAt };
+        } else {
+          result.anthropic = { status: 'error', message: (e.message || 'Bilinmeyen hata').slice(0, 150), checked_at: checkedAt };
+        }
+      }
+    }
+
+    // ── ElevenLabs: subscription endpoint for real quota data
+    const elKey = process.env.ELEVENLABS_API_KEY;
+    if (!elKey) {
+      result.elevenlabs = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
+    } else {
+      try {
+        const elRes = await fetch('https://api.elevenlabs.io/v1/user/subscription', {
+          headers: { 'xi-api-key': elKey },
+        });
+        if (!elRes.ok) {
+          result.elevenlabs = { status: elRes.status === 401 ? 'invalid_key' : 'error', message: `HTTP ${elRes.status}`, checked_at: checkedAt };
+        } else {
+          const sub: any = await elRes.json();
+          const used  = sub.character_count   || 0;
+          const limit = sub.character_limit   || 0;
+          const pct   = limit > 0 ? Math.round((used / limit) * 100) : 0;
+          const resetDate = sub.next_character_count_reset_unix
+            ? new Date(sub.next_character_count_reset_unix * 1000).toLocaleDateString('tr-TR')
+            : null;
+          result.elevenlabs = {
+            status: pct >= 100 ? 'quota_exceeded' : 'ok',
+            chars_used: used, chars_limit: limit, pct_used: pct,
+            tier: sub.tier || null, reset_date: resetDate,
+            message: `${used.toLocaleString('tr-TR')} / ${limit.toLocaleString('tr-TR')} karakter (%${pct} kullanıldı)`,
+            checked_at: checkedAt,
+          };
+        }
+      } catch (e: any) {
+        result.elevenlabs = { status: 'error', message: (e.message || '').slice(0, 100), checked_at: checkedAt };
+      }
+    }
+
+    // ── Perplexity: check key presence (no free balance endpoint)
+    if (!process.env.PERPLEXITY_API_KEY) {
+      result.perplexity = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
+    } else {
+      result.perplexity = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
+    }
+
+    // ── Google Places: check key presence
+    if (!process.env.GOOGLE_PLACES_API_KEY && !process.env.GOOGLE_MAPS_API_KEY) {
+      result.google_places = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
+    } else {
+      result.google_places = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
+    }
+
+    // ── Resend
+    if (!process.env.RESEND_API_KEY) {
+      result.resend = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
+    } else {
+      result.resend = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
+    }
+
+    // ── Stripe
+    if (!process.env.STRIPE_SECRET_KEY) {
+      result.stripe = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
+    } else {
+      result.stripe = { status: 'ok', message: 'Anahtar mevcut', checked_at: checkedAt };
+    }
+
+    _statusCache = { data: result, expiry: Date.now() + 5 * 60_000 };
+    res.json({ ...result, cached: false });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
 
 // ── Banner click/dismiss tracking (public — no admin auth) ─────────────────────

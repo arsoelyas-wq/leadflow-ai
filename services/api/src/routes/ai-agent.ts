@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
 const Anthropic = require('@anthropic-ai/sdk');
 const cron = require('node-cron');
+const { logAnthropicCall, logGooglePlacesCall } = require('../lib/aiCostLogger');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -145,6 +146,7 @@ SADECE JSON döndür (başka hiçbir şey yazma):
     max_tokens: 1200,
     messages: [{ role: 'user', content: prompt }],
   });
+  logAnthropicCall({ userId: undefined, feature: 'lead_analysis', model: 'claude-sonnet-4-20250514', usage: claudeRes.usage });
 
   const rawText = claudeRes.content[0]?.text || '';
   const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -270,6 +272,7 @@ Cevap yaz:`;
     system,
     messages: [{ role: 'user', content: userMsg }],
   });
+  logAnthropicCall({ userId: undefined, feature: 'ai_agent_reply', model: 'claude-sonnet-4-20250514', usage: r.usage });
 
   return (r.content[0]?.text || '').trim() || 'Mesajınız için teşekkürler! Size en kısa sürede dönüş yapacağım. 🙏';
 }
