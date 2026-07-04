@@ -362,6 +362,16 @@ body {
   transform: translateY(-1px);
 }
 
+/* ── LOGO SPARK GLOW ─────────────────────────────────────────── */
+@keyframes spark-glow {
+  0%, 100% { opacity: 0.30; transform: scale(1);    }
+  50%       { opacity: 0.55; transform: scale(1.15); }
+}
+
+.logo-spark-glow {
+  animation: spark-glow 3s ease-in-out infinite;
+}
+
 /* ── ACCORDION ─────────────────────────────────────────────── */
 .accordion-content {
   overflow: hidden;

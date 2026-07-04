@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Menu, X, ChevronRight } from 'lucide-react'
-import SovloLogo from '@/components/SovloLogo'
+import { SparkIcon } from '@/components/SovloLogo'
 
 const NAV_LINKS = [
   { label: 'Özellikler', href: '#ozellikler' },
@@ -38,8 +38,32 @@ export default function LandingNavbar() {
           <div className="flex items-center justify-between h-16 lg:h-[70px]">
 
             {/* Logo */}
-            <Link href="/" className="flex items-center group">
-              <SovloLogo size="sm" theme="light" />
+            <Link href="/" className="flex items-center gap-3 group select-none">
+              {/* Animated Spark icon */}
+              <div className="relative flex-shrink-0">
+                {/* Glow halo — pulses behind the icon */}
+                <div
+                  className="absolute inset-0 rounded-full logo-spark-glow"
+                  style={{
+                    background: 'linear-gradient(135deg, #0EA5E9, #6366F1)',
+                    filter: 'blur(8px)',
+                    margin: '-4px',
+                  }}
+                />
+                <div className="relative transition-transform duration-200 group-hover:scale-105">
+                  <SparkIcon size={40} />
+                </div>
+              </div>
+
+              {/* Wordmark */}
+              <div className="flex items-baseline gap-[3px]">
+                <span className="font-extrabold text-[20px] leading-none tracking-[-0.03em] text-slate-900">
+                  Sovlo
+                </span>
+                <span className="font-extrabold text-[20px] leading-none tracking-[-0.03em] text-sky-500">
+                  AI
+                </span>
+              </div>
             </Link>
 
             {/* Desktop Nav */}
@@ -67,10 +91,13 @@ export default function LandingNavbar() {
               </Link>
               <Link
                 href="/register"
-                className="flex items-center gap-1.5 px-4 py-2 text-[14px] font-semibold bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl btn-glow"
+                className="flex items-center gap-1.5 px-5 py-2.5 text-[14px] font-semibold bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl btn-glow group/cta"
               >
                 Ücretsiz Başla
-                <ChevronRight size={14} />
+                <ChevronRight
+                  size={14}
+                  className="transition-transform duration-200 group-hover/cta:translate-x-0.5"
+                />
               </Link>
             </div>
 
