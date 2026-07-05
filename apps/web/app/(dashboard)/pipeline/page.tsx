@@ -9,6 +9,7 @@ import {
   ChevronDown, PhoneCall, Globe, MapPin, Star, Zap,
   ArrowUpRight, Timer, ChevronRight, Filter, Layers,
 } from 'lucide-react'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 // ── Stage config ────────────────────────────────────────────────────────────────
 const STAGES = [
@@ -62,6 +63,8 @@ export default function PipelinePage() {
   const [dragId, setDragId]           = useState<string | null>(null)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const isMobile = useIsMobile()
+  const [mobileStage, setMobileStage] = useState('new')
 
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 3000)
@@ -130,19 +133,21 @@ export default function PipelinePage() {
             </div>
             {t('pipeline.title', 'Pipeline & Satış Takibi')}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5 ml-[42px]">Kartları sürükleyerek aşama değiştir</p>
+          {!isMobile && <p className="text-slate-500 text-sm mt-0.5 ml-[42px]">Kartları sürükleyerek aşama değiştir</p>}
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-slate-800/80 border border-slate-700 rounded-xl p-0.5">
-            {(['kanban', 'funnel'] as const).map(v => (
-              <button key={v} onClick={() => setView(v)}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  v === view ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:text-white'
-                }`}>
-                {v === 'kanban' ? <><Layers size={13} /> Kanban</> : <><Filter size={13} /> Huni</>}
-              </button>
-            ))}
-          </div>
+          {!isMobile && (
+            <div className="flex bg-slate-800/80 border border-slate-700 rounded-xl p-0.5">
+              {(['kanban', 'funnel'] as const).map(v => (
+                <button key={v} onClick={() => setView(v)}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    v === view ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:text-white'
+                  }`}>
+                  {v === 'kanban' ? <><Layers size={13} /> Kanban</> : <><Filter size={13} /> Huni</>}
+                </button>
+              ))}
+            </div>
+          )}
           <button onClick={load}
             className="p-2.5 bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-400 hover:text-white rounded-xl transition">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -211,7 +216,139 @@ export default function PipelinePage() {
         )}
       </div>
 
-      {loading ? (
+      {isMobile ? (
+        /* ═══════ Mobile Stage Tab View ═══════ */
+        <div>
+          {/* Stage tabs — horizontal scroll */}
+          <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide -mx-0.5 px-0.5">
+            {STAGES.map(stage => {
+              const count = (board[stage.key] || []).length
+              const isActive = mobileStage === stage.key
+              return (
+                <button
+                  key={stage.key}
+                  onClick={() => setMobileStage(stage.key)}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'text-white shadow-lg'
+                      : 'bg-slate-800/60 border border-slate-700/50 text-slate-400'
+                  }`}
+                  style={isActive ? { background: `linear-gradient(135deg, ${stage.accent}cc, ${stage.accent}88)`, border: `1px solid ${stage.accent}50` } : {}}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${stage.dotClass}`} />
+                  {stage.short}
+                  {count > 0 && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Lead cards for active stage */}
+          <div className="mt-3 flex flex-col gap-2">
+            {loading ? (
+              [0,1,2].map(i => (
+                <div key={i} className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-4 animate-pulse">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-700/60" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3.5 bg-slate-700/60 rounded-lg w-3/4" />
+                      <div className="h-3 bg-slate-700/40 rounded-lg w-1/2" />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : filterCards(board[mobileStage] || []).length === 0 ? (
+              <div className="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-10 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-slate-700/40 flex items-center justify-center mx-auto mb-3">
+                  <User className="w-6 h-6 text-slate-500" />
+                </div>
+                <p className="text-slate-400 text-sm font-medium">Bu aşamada lead yok</p>
+              </div>
+            ) : (
+              filterCards(board[mobileStage] || []).map((lead: any) => {
+                const rotten = isRotten(lead)
+                const next = nextStages(mobileStage)
+                const aColor = avatarColor(lead.company_name || lead.contact_name || '?')
+                return (
+                  <div
+                    key={lead.id}
+                    className={`bg-slate-800/50 border rounded-2xl overflow-hidden transition ${
+                      moving === lead.id ? 'opacity-50' : ''
+                    } ${rotten ? 'border-amber-500/30' : 'border-slate-700/50'}`}
+                  >
+                    {/* Stage accent top bar */}
+                    {(() => {
+                      const stg = STAGES.find(s => s.key === mobileStage)
+                      return stg ? (
+                        <div className="h-[2px]" style={{ background: `linear-gradient(90deg, ${stg.accent}cc, transparent)` }} />
+                      ) : null
+                    })()}
+
+                    <div className="p-4">
+                      {/* Lead info row */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${aColor}`}>
+                          {initials(lead.company_name || lead.contact_name || '?')}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-semibold text-sm truncate">
+                            {lead.company_name || lead.contact_name || 'İsimsiz'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {lead.city && (
+                              <span className="text-slate-500 text-xs flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />{lead.city}
+                              </span>
+                            )}
+                            <span className="text-slate-600 text-xs flex items-center gap-1">
+                              <Clock className="w-3 h-3" />{daysLabel(lead.daysInStage || 0)}
+                            </span>
+                            {rotten && (
+                              <span className="flex items-center gap-0.5 text-amber-400 text-[10px] font-semibold">
+                                <AlertTriangle className="w-3 h-3" /> Bekliyor
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {lead.ai_score != null && (
+                          <div className={`text-sm font-bold flex-shrink-0 ${scoreColor(lead.ai_score)}`}>
+                            {lead.ai_score}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Move buttons */}
+                      <div className="flex gap-2">
+                        {next.map(ns => {
+                          const nsData = STAGES.find(s => s.key === ns.key)
+                          return (
+                            <button
+                              key={ns.key}
+                              onClick={() => moveLead(lead.id, ns.key)}
+                              disabled={!!moving}
+                              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                                ns.key === 'won' ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25' :
+                                ns.key === 'lost' ? 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20' :
+                                'bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20'
+                              }`}
+                            >
+                              → {nsData?.short || ns.key}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center h-64">
           <RefreshCw className="w-6 h-6 animate-spin text-slate-500" />
         </div>

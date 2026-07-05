@@ -2,6 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import {
   Plus, Play, Pause, BarChart2, Search, Trash2, Send, Users,
   MessageSquare, Clock, CheckCircle2, AlertTriangle, Copy,
@@ -56,6 +57,7 @@ function timeAgo(dateStr: string) {
 
 export default function CampaignsPage() {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -133,8 +135,9 @@ export default function CampaignsPage() {
           </p>
         </div>
         <Link href="/campaigns/new"
-          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition shadow-lg shadow-blue-600/20">
-          <Plus size={16} /> Yeni Kampanya
+          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-semibold text-sm transition shadow-lg shadow-blue-600/20 px-3 py-2.5 sm:px-5">
+          <Plus size={16} />
+          <span className="hidden sm:inline">Yeni Kampanya</span>
         </Link>
       </div>
 
@@ -183,8 +186,8 @@ export default function CampaignsPage() {
       )}
 
       {/* ── Search & Filters ── */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-56">
+      <div className={`flex gap-3 ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
+        <div className="relative flex-1" style={isMobile ? {} : { minWidth: '14rem' }}>
           <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Kampanya ara..."
@@ -193,16 +196,18 @@ export default function CampaignsPage() {
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-lg">×</button>
           )}
         </div>
-        <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)}
-          className="bg-slate-800/50 border border-slate-700 text-slate-300 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer">
-          <option value="all">Tüm Kanallar</option>
-          {Object.entries(CHANNEL_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="bg-slate-800/50 border border-slate-700 text-slate-300 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer">
-          <option value="all">Tüm Durumlar</option>
-          {Object.entries(STATUS_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-        </select>
+        <div className="flex gap-2">
+          <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)}
+            className="flex-1 bg-slate-800/50 border border-slate-700 text-slate-300 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer">
+            <option value="all">Tüm Kanallar</option>
+            {Object.entries(CHANNEL_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            className="flex-1 bg-slate-800/50 border border-slate-700 text-slate-300 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 cursor-pointer">
+            <option value="all">Tüm Durumlar</option>
+            {Object.entries(STATUS_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* ── Campaign List ── */}
@@ -282,8 +287,8 @@ export default function CampaignsPage() {
                         <div className="space-y-2">
                           {/* Progress bar */}
                           <div>
-                            <div className="flex justify-between text-[11px] mb-1">
-                              <div className="flex items-center gap-3 text-slate-400">
+                            <div className={`flex text-[11px] mb-1 ${isMobile ? 'flex-col gap-1' : 'justify-between'}`}>
+                              <div className="flex items-center gap-3 text-slate-400 flex-wrap">
                                 <span className="flex items-center gap-1"><Send size={10} className="text-blue-400" /> {campaign.totalSent} gönderildi</span>
                                 {delivered > 0 && <span className="flex items-center gap-1"><CheckCircle2 size={10} className="text-emerald-400" /> {delivered} teslim</span>}
                                 {failed > 0 && <span className="flex items-center gap-1"><XCircle size={10} className="text-red-400" /> {failed} hata</span>}
@@ -327,18 +332,18 @@ export default function CampaignsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0 opacity-60 group-hover:opacity-100 transition">
+                    <div className={`flex items-center gap-1.5 shrink-0 opacity-60 group-hover:opacity-100 transition ${isMobile ? 'opacity-100' : ''}`}>
                       <Link href={`/campaigns/${campaign.id}`}
-                        className="p-2 bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition" title="Detay">
+                        className={`${isMobile ? 'p-2.5 min-w-[44px] min-h-[44px]' : 'p-2'} flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition`} title="Detay">
                         <BarChart2 size={14} />
                       </Link>
                       <button onClick={() => duplicateCampaign(campaign)}
-                        className="p-2 bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition" title="Kopyala">
+                        className={`${isMobile ? 'p-2.5 min-w-[44px] min-h-[44px]' : 'p-2'} flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition`} title="Kopyala">
                         <Copy size={14} />
                       </button>
                       {campaign.status !== 'completed' && (
                         <button onClick={() => toggleCampaign(campaign.id, campaign.status)}
-                          className={`p-2 rounded-lg transition ${
+                          className={`${isMobile ? 'p-2.5 min-w-[44px] min-h-[44px]' : 'p-2'} flex items-center justify-center rounded-lg transition ${
                             campaign.status === 'active'
                               ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400'
                               : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400'
@@ -347,7 +352,7 @@ export default function CampaignsPage() {
                         </button>
                       )}
                       <button onClick={() => deleteCampaign(campaign.id)}
-                        className="p-2 bg-red-500/5 hover:bg-red-500/15 rounded-lg text-red-400/60 hover:text-red-400 transition" title="Sil">
+                        className={`${isMobile ? 'p-2.5 min-w-[44px] min-h-[44px]' : 'p-2'} flex items-center justify-center bg-red-500/5 hover:bg-red-500/15 rounded-lg text-red-400/60 hover:text-red-400 transition`} title="Sil">
                         <Trash2 size={14} />
                       </button>
                     </div>
