@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useI18n, LOCALE_MAP } from '@/lib/i18n'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { ChevronDown, Search, Check, Globe2, X, Link, Copy, CheckCircle } from 'lucide-react'
 
 const COUNTRIES = [
@@ -84,6 +85,7 @@ const L = {
 
 export default function TopBar() {
   const { locale, lang, setLocale, t, getShareUrl } = useI18n()
+  const isMobile = useIsMobile()
   const [showC, setShowC] = useState(false)
   const [showL, setShowL] = useState(false)
   const [showShare, setShowShare] = useState(false)
@@ -140,7 +142,7 @@ export default function TopBar() {
       onClick={onClick}
       style={{
         display: 'flex', alignItems: 'center', gap: 5,
-        padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+        padding: isMobile ? '9px 10px' : '5px 10px', borderRadius: 8, cursor: 'pointer',
         border: `1px solid ${active ? L.pillBorderActive : L.pillBorder}`,
         background: active ? L.pillBgActive : L.pillBg,
         color: active ? L.pillTextActive : L.pillText,
@@ -161,6 +163,7 @@ export default function TopBar() {
     borderRadius: L.panelRadius,
     boxShadow: L.panelShadow,
     animation: 'tb-in .14s ease',
+    maxWidth: 'calc(100vw - 16px)',
   }
 
   return (
@@ -187,7 +190,7 @@ export default function TopBar() {
           </Pill>
 
           {showC && (
-            <div style={{ ...panelStyle, width: 380 }}>
+            <div style={{ ...panelStyle, width: isMobile ? '92vw' : 380 }}>
               {/* Arama + Bölge filtresi */}
               <div style={{ padding: '10px 12px 8px', borderBottom: `1px solid ${L.divider}` }}>
                 <div style={{ position: 'relative', marginBottom: 8 }}>
@@ -239,7 +242,7 @@ export default function TopBar() {
               </div>
 
               {/* Ülke listesi */}
-              <div style={{ maxHeight: 280, overflowY: 'auto', padding: '5px 8px' }}>
+              <div style={{ maxHeight: isMobile ? 220 : 280, overflowY: 'auto', padding: '5px 8px' }}>
                 {filtered.length === 0 ? (
                   <p style={{ color: L.text3, fontSize: 12, textAlign: 'center', padding: '14px 0' }}>
                     Sonuç bulunamadı
@@ -291,7 +294,7 @@ export default function TopBar() {
           </Pill>
 
           {showL && (
-            <div style={{ ...panelStyle, width: 230 }}>
+            <div style={{ ...panelStyle, width: isMobile ? 240 : 230 }}>
               <div style={{ padding: '6px 8px' }}>
                 <p style={{ color: L.text3, fontSize: 10, padding: '5px 10px 3px', margin: 0 }}>
                   {t('topbar.ui_lang', 'Arayüz dili')}
@@ -336,7 +339,7 @@ export default function TopBar() {
           </Pill>
 
           {showShare && (
-            <div style={{ ...panelStyle, width: 340, padding: '16px' }}>
+            <div style={{ ...panelStyle, width: isMobile ? '88vw' : 340, padding: '16px' }}>
               <p style={{ color: L.text1, fontSize: 13, fontWeight: 700, margin: '0 0 4px' }}>
                 {t('topbar.share_link', 'Paylaşılabilir Link')}
               </p>
