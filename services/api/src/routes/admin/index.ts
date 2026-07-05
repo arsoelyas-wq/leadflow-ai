@@ -36,7 +36,7 @@ router.post('/auth/login', async (req: any, res: any) => {
     const token = jwt.sign(
       { email, isAdmin: true },
       ADMIN_SECRET,
-      { expiresIn: '8h' }
+      { expiresIn: '30d' }
     );
     await audit(email, 'auth.login', undefined, {}, req.ip);
     res.json({ token, email });
@@ -881,6 +881,34 @@ router.get('/ai-status', async (req: any, res: any) => {
 
     _statusCache = { data: result, expiry: Date.now() + 5 * 60_000 };
     res.json({ ...result, cached: false });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/admin/landing-config — read landing page config ─────────────────────
+router.get('/landing-config', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('value, updated_at')
+      .eq('key', 'landing_home')
+      .single();
+    if (error && error.code !== 'PGRST116') throw error; // ignore "no rows" error
+    res.json({ config: data?.value || null, updated_at: data?.updated_at || null });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PATCH /api/admin/landing-config — save landing page config ───────────────────
+router.patch('/landing-config', async (req: any, res: any) => {
+  try {
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert({
+        key: 'landing_home',
+        value: req.body,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    if (error) throw error;
+    res.json({ ok: true, saved_at: new Date().toISOString() });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : ''
 
+function redirectLogin() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('admin_token')
+    window.location.href = '/admin/login'
+  }
+}
+
 // ── Styles ──────────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = { background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,color:'#e2e8f0',fontSize:13,padding:'9px 12px',outline:'none',width:'100%',boxSizing:'border-box',fontFamily:'inherit',resize:'none' }
 const lbl: React.CSSProperties = { display:'block',color:'#64748b',fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:6 }
@@ -159,9 +166,14 @@ export default function AdminLandingPage() {
   const [tab, setTab]         = useState(0)
 
   useEffect(() => {
-    fetch(`${API}/api/market-pages/public/home`)
-      .then(r => r.json())
-      .then(d => setCfg(d.page ? { ...DEFAULT, ...d.page } : { ...DEFAULT }))
+    fetch(`${API}/api/admin/landing-config`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    })
+      .then(async r => {
+        if (r.status === 401 || r.status === 403) { redirectLogin(); return }
+        const d = await r.json()
+        setCfg(d.config && Object.keys(d.config).length > 0 ? { ...DEFAULT, ...d.config } : { ...DEFAULT })
+      })
       .catch(() => setCfg({ ...DEFAULT }))
       .finally(() => setLoading(false))
   }, [])
@@ -171,13 +183,14 @@ export default function AdminLandingPage() {
   const save = async () => {
     setSaving(true)
     try {
-      const r = await fetch(`${API}/api/admin/market-pages/home`, {
+      const r = await fetch(`${API}/api/admin/landing-config`, {
         method: 'PATCH',
         headers: { 'Content-Type':'application/json', Authorization:`Bearer ${getToken()}` },
-        body: JSON.stringify({ ...cfg, updated_at: new Date().toISOString() }),
+        body: JSON.stringify(cfg),
       })
+      if (r.status === 401 || r.status === 403) { redirectLogin(); return }
       const d = await r.json()
-      if (!r.ok) throw new Error(d.error)
+      if (!r.ok) throw new Error(d.error || 'Kayıt başarısız')
       setMsg({ type:'ok', text:'✅ Kaydedildi! Ana sayfa güncellendi.' })
     } catch(e:any) { setMsg({ type:'err', text:'❌ '+e.message }) }
     finally { setSaving(false); setTimeout(()=>setMsg(null),4000) }
