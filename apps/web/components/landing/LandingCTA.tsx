@@ -24,7 +24,7 @@ export default function LandingCTA({ cfg }: { cfg?: any }) {
   const cta1Url     = cfg?.cta_primary_url   || '/register'
   const trustPoints = cfg?.cta_trust_points  || TRUST_POINTS
   return (
-    <section className="py-28 relative overflow-hidden bg-slate-900">
+    <section className="py-16 sm:py-20 lg:py-28 relative overflow-hidden bg-slate-900">
       {/* Background grid */}
       <div
         className="absolute inset-0 opacity-30"
@@ -60,11 +60,11 @@ export default function LandingCTA({ cfg }: { cfg?: any }) {
             Bugün başla, bu hafta sonuç al
           </div>
 
-          <h2 className="text-[40px] lg:text-[56px] xl:text-[64px] font-black leading-[1.04] tracking-[-0.035em] text-white mb-6">{headline}</h2>
+          <h2 className="text-[30px] sm:text-[40px] lg:text-[56px] xl:text-[64px] font-black leading-[1.04] tracking-[-0.035em] text-white mb-6">{headline}</h2>
           <p className="text-[18px] text-slate-400 leading-relaxed max-w-xl mx-auto mb-10">{subheadline}</p>
         </Reveal>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4 mb-10">
           <Link href={cta1Url} onClick={() => trackCTA('cta_section_register')} className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[16px] font-bold btn-glow" style={{ boxShadow: '0 8px 32px -6px rgba(99,102,241,0.6)' }}>
             {cta1Text} <ArrowRight size={18} />
           </Link>
@@ -73,7 +73,7 @@ export default function LandingCTA({ cfg }: { cfg?: any }) {
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-x-6">
           {trustPoints.map((t: string) => (
             <div key={t} className="flex items-center gap-1.5">
               <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" />

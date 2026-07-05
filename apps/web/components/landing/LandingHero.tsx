@@ -23,7 +23,7 @@ export default function LandingHero({ cfg }: { cfg?: any }) {
   const bullets    = cfg?.hero_trust_bullets || ['Kredi kartı gerekmez', '2,000+ aktif firma', 'İstediğin an iptal']
 
   return (
-    <section className="relative overflow-hidden bg-white pt-28 pb-20 lg:pt-36 lg:pb-28">
+    <section className="relative overflow-hidden bg-white pt-20 pb-14 sm:pt-24 sm:pb-18 lg:pt-36 lg:pb-28">
       <div className="absolute inset-0 dot-grid opacity-40" />
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(37,99,235,0.08) 0%, transparent 60%)' }} />
 
@@ -37,16 +37,16 @@ export default function LandingHero({ cfg }: { cfg?: any }) {
               <span className="text-blue-700 text-[13px] font-semibold">{badge}</span>
             </div>
 
-            <h1 className="text-[42px] sm:text-[52px] lg:text-[58px] xl:text-[64px] font-black leading-[1.04] tracking-[-0.03em] text-slate-900 mb-6">
+            <h1 className="text-[34px] sm:text-[46px] lg:text-[58px] xl:text-[64px] font-black leading-[1.06] tracking-[-0.03em] text-slate-900 mb-5">
               {headline}{' '}
               <span className="gradient-text-blue">{gradient}</span>{' '}
               {suffix}
             </h1>
 
-            <p className="text-[17px] lg:text-[18px] text-slate-500 leading-[1.7] mb-8 max-w-lg" dangerouslySetInnerHTML={{ __html: sub.replace(firmCount, `<strong class="text-slate-700 font-semibold">${firmCount}</strong>`) }} />
+            <p className="text-[15px] sm:text-[17px] lg:text-[18px] text-slate-500 leading-[1.7] mb-8 max-w-lg" dangerouslySetInnerHTML={{ __html: sub.replace(firmCount, `<strong class="text-slate-700 font-semibold">${firmCount}</strong>`) }} />
 
-            <div className="flex flex-wrap items-center gap-3 mb-8">
-              <Link href={cta1Url} onClick={() => trackCTA('hero_register')} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[15px] font-bold btn-glow">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-8">
+              <Link href={cta1Url} onClick={() => trackCTA('hero_register')} className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[15px] font-bold btn-glow">
                 {cta1Text} <ArrowRight size={16} />
               </Link>
               <a href={cta2Url} onClick={() => trackCTA('hero_demo_watch')} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-slate-100 text-slate-700 text-[15px] font-semibold hover:bg-slate-200 transition-colors">

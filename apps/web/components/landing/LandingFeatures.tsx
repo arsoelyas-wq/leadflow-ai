@@ -134,7 +134,7 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
     : FEATURES.filter(f => f.tags.includes(activeTab))
 
   return (
-    <section id="ozellikler" className="py-24 bg-white">
+    <section id="ozellikler" className="py-16 sm:py-20 lg:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <Reveal>
@@ -154,12 +154,12 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
         </Reveal>
 
         {/* Tabs */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
+        <div className="flex overflow-x-auto scrollbar-hide sm:flex-wrap sm:justify-center gap-2 mb-10 pb-1">
           {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all duration-200 ${
+              className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all duration-200 whitespace-nowrap ${
                 activeTab === tab
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -175,7 +175,7 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
           {filtered.map(({ icon: Icon, title, desc, color, bg, border }) => (
             <div
               key={title}
-              className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm card-hover group"
+              className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6 shadow-sm card-hover group"
             >
               <div className={`w-10 h-10 rounded-xl ${bg} border ${border} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
                 <Icon size={18} style={{ color }} />

@@ -103,7 +103,7 @@ export default function LandingFAQ({ cfg }: { cfg?: any }) {
   const faqs = cfg?.faqs?.length ? cfg.faqs : FAQS
 
   return (
-    <section className="py-24 bg-white">
+    <section className="py-16 sm:py-20 lg:py-24 bg-white">
       <div className="max-w-3xl mx-auto px-6">
         <Reveal>
           <div className="text-center mb-12">

@@ -109,7 +109,7 @@ export default function LandingPricing({ cfg }: { cfg?: any }) {
     : PLANS
 
   return (
-    <section id="fiyatlar" className="py-24 bg-slate-50">
+    <section id="fiyatlar" className="py-16 sm:py-20 lg:py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
 
         {/* Header */}
