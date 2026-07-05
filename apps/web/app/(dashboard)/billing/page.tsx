@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useAuth } from '@/lib/auth-context'
 import { useSearchParams } from 'next/navigation'
 import { CheckCircle, Zap, RefreshCw, Download, TrendingUp, Star, BarChart2, History, Gift, CreditCard, ChevronRight } from 'lucide-react'
@@ -117,6 +118,7 @@ function PlanBadge({ plan }: { plan: string }) {
 type Tab = 'plans' | 'topup' | 'usage' | 'history' | 'promo'
 
 export default function BillingPage() {
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [tab, setTab] = useState<Tab>('plans')
@@ -237,7 +239,7 @@ export default function BillingPage() {
               <h1 style={{ color: '#0f172a', fontSize: 20, fontWeight: 800, margin: 0 }}>Abonelik & Kredi</h1>
               <PlanBadge plan={currentPlan} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(3,1fr)', gap: isMobile ? 10 : 16, marginBottom: 12 }}>
               {[
                 { label: 'Aylık Tahsis', value: monthly.toLocaleString('tr-TR'), color: '#64748b' },
                 { label: 'Kalan Kredi', value: rem.toLocaleString('tr-TR'), color: pctColor },
@@ -281,7 +283,7 @@ export default function BillingPage() {
       )}
 
       {/* ── Tabs ───────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', padding: 4, borderRadius: 14, width: 'fit-content', marginBottom: 20, border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', padding: 4, borderRadius: 14, maxWidth: '100%', overflowX: 'auto', marginBottom: 20, border: '1px solid #e2e8f0' }}>
         {TABS.map(t => {
           const Icon = t.icon
           const active = tab === t.id

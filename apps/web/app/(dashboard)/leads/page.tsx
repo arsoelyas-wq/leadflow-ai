@@ -846,19 +846,19 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-bold text-slate-900">Lead Veritabanı</h1>
           <p className="text-slate-400 text-sm mt-0.5">{total.toLocaleString('tr-TR')} kayıt{hasFilters?' · filtrelendi':''}</p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button onClick={exportExcel} disabled={exporting}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 cursor-pointer">
             {exporting?<RefreshCw size={14} className="animate-spin"/>:<Download size={14}/>}
-            {selected.length>0?`${selected.length} Lead Export`:'Excel Export'}
+            <span className="hidden sm:inline">{selected.length>0?`${selected.length} Lead Export`:'Excel Export'}</span>
           </button>
           <Link href="/decision-maker"
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-            <Crosshair size={14}/> KV Bul
+            <Crosshair size={14}/><span className="hidden sm:inline"> KV Bul</span>
           </Link>
           <button onClick={()=>setShowImport(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-            <Download size={14} className="rotate-180 text-emerald-600"/> Excel Aktar
+            <Download size={14} className="rotate-180 text-emerald-600"/><span className="hidden sm:inline"> Excel Aktar</span>
           </button>
           <button onClick={()=>setShowAddLead(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"

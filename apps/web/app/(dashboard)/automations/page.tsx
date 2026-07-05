@@ -1,6 +1,7 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { api } from '@/lib/api'
 import {
   Zap, Megaphone, Bot, Workflow, Plus, Play, Pause, Trash2, Users, RefreshCw,
@@ -38,6 +39,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
 
 export default function AutomationsPage() {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
   const [mode, setMode] = useState<Mode | null>(null)
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -243,7 +245,7 @@ export default function AutomationsPage() {
           <span style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700 }}>AI</span>
         </div>
         <p style={{ color: tx2, fontSize: 12, margin: '0 0 14px' }}>Toplu mesaj, takip sekansı veya akıllı otomasyon — tek yerden yönet</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3,1fr)' : 'repeat(5,1fr)', gap: 8 }}>
           {[
             { label: 'Kampanya', value: allStats.campaigns, color: accentBlue, Icon: Megaphone },
             { label: 'Sekans', value: allStats.sequences, color: accentEmerald, Icon: Bot },
@@ -268,7 +270,7 @@ export default function AutomationsPage() {
 
       {/* ── MODE SELECTOR ────────────────────────────────────── */}
       {!mode && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 14 }}>
           {MODES.map(m => (
             <button key={m.id} onClick={() => setMode(m.id as Mode)}
               style={{ ...card, padding: '24px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', border: '2px solid #e2e8f0' }}
@@ -301,7 +303,7 @@ export default function AutomationsPage() {
           </div>
 
           {activeSubTab === 'compose' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Compose form */}
                 <div style={{ ...card, padding: 20 }}>
