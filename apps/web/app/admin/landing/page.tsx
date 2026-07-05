@@ -69,13 +69,24 @@ const DEFAULT: Record<string,any> = {
     {icon:'📈',title:'Gerçek Zamanlı Analitik',desc:'Canlı dashboard\'da cevapları, dönüşümleri ve ROI\'yi takip et.',tags:['Analitik']},
   ],
 
-  // Problem
+  // Problem vs Solution
   problem_headline:'Satışta Kaybolan Zamanı Geri Al',
   problem_subtitle:'Ortalama satışçı zamanının %73\'ünü satış yapmak yerine bu sorunlarla geçiriyor.',
   problems:[
-    {icon:'😩',title:'Manuel Lead Araştırması',desc:'Saatlerce Google\'da firma arayıp Excel\'e not almak. Çoğu lead zaten eski veya hatalı.'},
-    {icon:'📧',title:'Kişisel Görünen Spam',desc:'Toplu mesajlar spam filtrelerine takılıyor. Kişiselleştirme olmadan cevap oranları %2\'nin altında.'},
-    {icon:'🤷',title:'Hangi Mesaj İşe Yaradı?',desc:'A/B test yok, analitik yok. Neyin işe yarayıp yaramadığı bilinmiyor, aynı hataları tekrar eden ekipler.'},
+    'Günde 8+ saat manuel lead araması',
+    'Kişiselleştirilmemiş, spam görünen mesajlar',
+    'Excel/sheet ile dağınık lead takibi',
+    'Pahalı SDR ekibi veya freelance gideri',
+    'Hangi kanalın işe yaradığını bilememek',
+    'Kampanya sonuçlarını takip edememek',
+  ],
+  solutions:[
+    '7/24 otomatik lead toplama — siz uyurken bile',
+    'Gelişmiş yapay zeka ile her müşteriye özel, doğal mesajlar',
+    'Pipeline, skor ve durum takibi tek ekranda',
+    'SDR maliyetinin onda biri ile aynı sonuç',
+    'WhatsApp, Email, SMS — tek platformdan',
+    'Canlı analitik, ROI ve dönüşüm raporu',
   ],
 
   // How it works
@@ -138,7 +149,7 @@ const DEFAULT: Record<string,any> = {
   meta_keywords:'B2B lead, satış otomasyonu, WhatsApp kampanya, lead scraper, AI satış, CRM Türkiye',
 }
 
-const TABS = ['🗺️ Menü','🦸 Hero','📊 İstatistik','🎯 Özellikler','⚙️ Nasıl Çalışır','💬 Yorumlar','💰 Fiyatlar','❓ SSS','📢 CTA & Footer','🔍 SEO']
+const TABS = ['🗺️ Menü','🦸 Hero','📊 İstatistik','🎯 Özellikler','⚙️ Nasıl Çalışır','💬 Yorumlar','💰 Fiyatlar','❓ SSS','📢 CTA & Footer','🔍 SEO','🆚 Problem']
 
 export default function AdminLandingPage() {
   const [cfg, setCfg]     = useState<any>(null)
@@ -562,6 +573,47 @@ export default function AdminLandingPage() {
             <F label="OG / Social Başlık"><input value={cfg.meta_og_title||cfg.meta_title||''} onChange={e=>set('meta_og_title',e.target.value)} style={inp} /></F>
             <F label="OG / Social Açıklama"><input value={cfg.meta_og_description||cfg.meta_description||''} onChange={e=>set('meta_og_description',e.target.value)} style={inp} /></F>
           </G2>
+        </div>
+      )}
+
+      {/* ═══════════ TAB 10: PROBLEM & ÇÖZÜM ═══════════ */}
+      {tab===10 && (
+        <div>
+          <div style={card}>
+            <p style={h4}>Bölüm Başlığı & Alt Başlık</p>
+            <F label="Ana Başlık"><input value={cfg.problem_headline||''} onChange={e=>set('problem_headline',e.target.value)} style={inp} /></F>
+            <F label="Alt Başlık"><textarea value={cfg.problem_subtitle||''} onChange={e=>set('problem_subtitle',e.target.value)} rows={2} style={inp} /></F>
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+            {/* Problems */}
+            <div style={card}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                <p style={{...h4,margin:0,border:'none',padding:0}}>❌ Eski Yol (Sorunlar)</p>
+                <button onClick={()=>arrAdd('problems','Yeni sorun...')} style={addBtn}>+ Ekle</button>
+              </div>
+              {(cfg.problems||[]).map((p:any,i:number)=>(
+                <div key={i} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,marginBottom:8}}>
+                  <input value={typeof p==='string'?p:(p.title||p.desc||'')} onChange={e=>{const a=[...(cfg.problems||[])];a[i]=e.target.value;set('problems',a)}} style={inp} placeholder="Manuel lead araması..." />
+                  <button onClick={()=>arrDel('problems',i)} style={delBtn}>✕</button>
+                </div>
+              ))}
+            </div>
+
+            {/* Solutions */}
+            <div style={card}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                <p style={{...h4,margin:0,border:'none',padding:0}}>✅ Sovlo AI ile (Çözümler)</p>
+                <button onClick={()=>arrAdd('solutions','Yeni çözüm...')} style={addBtn}>+ Ekle</button>
+              </div>
+              {(cfg.solutions||[]).map((s:any,i:number)=>(
+                <div key={i} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,marginBottom:8}}>
+                  <input value={typeof s==='string'?s:(s.title||s.desc||'')} onChange={e=>{const a=[...(cfg.solutions||[])];a[i]=e.target.value;set('solutions',a)}} style={inp} placeholder="Otomatik lead toplama..." />
+                  <button onClick={()=>arrDel('solutions',i)} style={delBtn}>✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

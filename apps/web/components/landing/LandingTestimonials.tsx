@@ -115,7 +115,7 @@ export default function LandingTestimonials({ cfg }: { cfg?: any }) {
         quote:   t.quote   || TESTIMONIALS[i]?.quote   || '',
         result:  t.result  || TESTIMONIALS[i]?.result  || '',
         stars:   t.stars   ?? TESTIMONIALS[i]?.stars   ?? 5,
-        avatar:  t.name ? t.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() : (TESTIMONIALS[i]?.avatar || 'NA'),
+        avatar:  t.avatar || (t.name ? t.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() : (TESTIMONIALS[i]?.avatar || 'NA')),
       }))
     : TESTIMONIALS
 

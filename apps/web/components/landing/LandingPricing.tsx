@@ -90,11 +90,18 @@ export default function LandingPricing({ cfg }: { cfg?: any }) {
   const headlineGradient = cfg?.pricing_headline_gradient || (cfg?.pricing_headline ? '' : 'sürpriz yok')
   const subheadline  = cfg?.pricing_subheadline || 'Kullanılmayan krediler bir sonraki aya taşınır. Rakipler sıfırlıyor — biz taşıyoruz.'
 
+  const annualBadge = cfg?.pricing_annual_badge || '%20 indirim'
+
   const plans = cfg?.plans?.length
     ? cfg.plans.map((p: any, i: number) => ({
         ...PLANS[i] || PLANS[0],
+        name:         p.name         || PLANS[i]?.name         || '',
+        desc:         p.desc         || PLANS[i]?.desc         || '',
         monthlyPrice: Number(p.monthly_price) || PLANS[i]?.monthlyPrice || 0,
         annualPrice:  Number(p.annual_price)  || PLANS[i]?.annualPrice  || 0,
+        ctaHref:      p.cta_url      || PLANS[i]?.ctaHref      || '/register',
+        ctaText:      p.cta_text     || null,
+        popular:      p.popular      ?? PLANS[i]?.popular      ?? false,
         features: p.features?.length
           ? p.features.map((f: any) => ({ text: f.text || f, included: f.included !== false && f.inc !== false }))
           : PLANS[i]?.features || [],
@@ -132,7 +139,7 @@ export default function LandingPricing({ cfg }: { cfg?: any }) {
             <span className={`text-[14px] font-semibold ${annual ? 'text-slate-900' : 'text-slate-400'}`}>
               Yıllık
               <span className="ml-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
-                %20 indirim
+                {annualBadge}
               </span>
             </span>
           </div>
@@ -140,7 +147,7 @@ export default function LandingPricing({ cfg }: { cfg?: any }) {
 
         {/* Plan cards */}
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-          {plans.map((plan: any) => {
+          {plans.map((plan: any, pi: number) => {
             const price = annual ? plan.annualPrice : plan.monthlyPrice
             const Icon = plan.icon
             const annualTotal = plan.annualPrice * 12
@@ -148,7 +155,7 @@ export default function LandingPricing({ cfg }: { cfg?: any }) {
 
             return (
               <div
-                key={plan.id}
+                key={pi}
                 className={`relative bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col ${
                   plan.popular
                     ? 'border-violet-200 shadow-lg shadow-violet-500/10 ring-2 ring-violet-500/20'
@@ -212,7 +219,7 @@ export default function LandingPricing({ cfg }: { cfg?: any }) {
                       border: `1px solid ${plan.color}25`,
                     }}
                   >
-                    {plan.name} Başla
+                    {(plan as any).ctaText || plan.name + ' Başla'}
                     <ArrowRight size={14} />
                   </Link>
 

@@ -90,12 +90,14 @@ export default function LandingProblem({ cfg }: { cfg?: any }) {
               </div>
             </div>
             <div className="px-7 py-6 flex flex-col gap-4">
-              {solutions.map((s: string, i: number) => (
+              {solutions.map((s: any, i: number) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <CheckCircle size={10} className="text-emerald-500" />
                   </div>
-                  <span className="text-[14px] text-slate-700 leading-snug font-medium">{s}</span>
+                  <span className="text-[14px] text-slate-700 leading-snug font-medium">
+                    {typeof s === 'string' ? s : (s.title || s.desc || '')}
+                  </span>
                 </div>
               ))}
             </div>

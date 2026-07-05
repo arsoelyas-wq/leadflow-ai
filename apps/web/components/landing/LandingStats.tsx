@@ -79,10 +79,16 @@ function Counter({ target, suffix = '', duration = 1800 }: { target: number; suf
   )
 }
 
+function parseStatNum(v: any): number {
+  // Handle Turkish thousands separator (2.947 → 2947) and strip suffix symbols
+  const n = parseInt(String(v ?? '').replace(/\./g, '').replace(/[^0-9]/g, ''))
+  return isNaN(n) ? 0 : n
+}
+
 export default function LandingStats({ cfg }: { cfg?: any }) {
   const stats = cfg?.stats?.length ? cfg.stats.map((s: any, i: number) => ({
     ...STATS[i] || STATS[0],
-    value: parseInt(s.value) || STATS[i]?.value || 0,
+    value: parseStatNum(s.value) || STATS[i]?.value || 0,
     suffix: s.suffix ?? STATS[i]?.suffix ?? '',
     label: s.label || STATS[i]?.label || '',
     sub: s.sub || STATS[i]?.sub || '',
@@ -92,9 +98,9 @@ export default function LandingStats({ cfg }: { cfg?: any }) {
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-          {stats.map(({ value, suffix = '', label, sub, icon: Icon, color, bg, border }: any) => (
+          {stats.map(({ value, suffix = '', label, sub, icon: Icon, color, bg, border }: any, si: number) => (
             <div
-              key={label}
+              key={si}
               className="flex flex-col items-start gap-4 p-6 rounded-2xl border border-slate-100 bg-white card-hover shadow-sm"
             >
               <div className={`w-10 h-10 rounded-xl ${bg} border ${border} flex items-center justify-center`}>
