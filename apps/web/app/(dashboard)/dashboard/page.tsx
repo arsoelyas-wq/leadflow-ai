@@ -9,9 +9,9 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import AdminBanner from '@/components/AdminBanner'
 import {
   Users, Megaphone, MessageSquare, Zap, TrendingUp, TrendingDown,
-  ArrowRight, BarChart2, Bell, Wifi, WifiOff, Plus, ChevronRight,
+  ArrowRight, BarChart2, Bell, Plus, ChevronRight,
   AlertCircle, CheckCircle, Target, DollarSign, Activity, RefreshCw,
-  Clock, X
+  Clock,
 } from 'lucide-react'
 
 const supabase = createClient(
@@ -43,10 +43,10 @@ function Sparkline({ data, color = '#3b82f6', height = 28 }: { data: number[]; c
 }
 
 // ── AREA CHART ────────────────────────────────────────────────────────────────
-function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
+function AreaChart({ data, height = 120 }: { data: { date: string; sent: number }[]; height?: number }) {
   const [hoverIdx, setHoverIdx] = useState<number|null>(null)
   if (!data.length) return null
-  const W = 560, H = 120, PX = 8, PY = 12
+  const W = 560, H = height, PX = 8, PY = 10
   const max = Math.max(...data.map(d => d.sent), 1)
   const pts = data.map((d, i) => {
     const x = PX + (i / (data.length - 1)) * (W - PX * 2)
@@ -66,17 +66,13 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
             <stop offset="100%" stopColor="#3b82f6" stopOpacity={0}/>
           </linearGradient>
         </defs>
-        {/* Grid lines */}
         {[0,33,66,100].map(pct => {
           const y = PY + (1 - pct/100) * (H - PY*2)
           return <line key={pct} x1={PX} y1={y} x2={W-PX} y2={y} stroke="#f1f5f9" strokeWidth={1}/>
         })}
-        {/* Area fill */}
         <path d={areaPath} fill="url(#areaGrad)"/>
-        {/* Line */}
         <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
           style={{ filter:'drop-shadow(0 0 6px rgba(59,130,246,0.5))' }}/>
-        {/* Hover zones + dots */}
         {pts.map((p, i) => (
           <g key={i} onMouseEnter={() => setHoverIdx(i)}>
             <rect x={p.x - (W/data.length)/2} y={0} width={W/data.length} height={H} fill="transparent"/>
@@ -86,15 +82,13 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
           </g>
         ))}
       </svg>
-      {/* X labels */}
-      <div style={{ display:'flex', justifyContent:'space-between', paddingLeft:PX, paddingRight:PX, marginTop:4 }}>
-        {pts.map((p, i) => (
-          <span key={i} style={{ color: hoverIdx===i ? '#2563eb' : '#94a3b8', fontSize:11, fontWeight: hoverIdx===i ? 700 : 400, transition:'color 0.15s' }}>
-            {p.date}
-          </span>
-        ))}
-      </div>
-      {/* Tooltip */}
+      {!hoverIdx && (
+        <div style={{ display:'flex', justifyContent:'space-between', paddingLeft:PX, paddingRight:PX, marginTop:4 }}>
+          {pts.map((p, i) => (
+            <span key={i} style={{ color:'#94a3b8', fontSize:10 }}>{p.date}</span>
+          ))}
+        </div>
+      )}
       {hoverIdx !== null && (
         <div style={{ position:'absolute', top:0, left:pts[hoverIdx].x / W * 100 + '%', transform:'translateX(-50%)', background:'rgba(15,23,42,0.95)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:8, padding:'6px 10px', pointerEvents:'none', whiteSpace:'nowrap' }}>
           <p style={{ color:'#93c5fd', fontSize:11, margin:0, fontWeight:700 }}>{pts[hoverIdx].date}</p>
@@ -105,7 +99,7 @@ function AreaChart({ data }: { data: { date: string; sent: number }[] }) {
   )
 }
 
-// ── GÖRELİ ZAMAN (güven mikro-sinyali: "3 saat önce") ────────────────────────
+// ── GÖRELİ ZAMAN ─────────────────────────────────────────────────────────────
 function timeAgo(dateStr: string, lang: string): string {
   if (!dateStr) return ''
   const diffMs = Date.now() - new Date(dateStr).getTime()
@@ -138,7 +132,6 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const isMobile = useIsMobile()
   const { t, lang } = useI18n()
-  // Dashboard direct-language texts (bypasses translation system for reliability)
   const DB: Record<string, Record<string, string>> = {
     tr: { daily_summary:'İşte bugünkü özet', active_campaigns:'aktif kampanya', last7d:'Son 7 gün', see_all:'Tümünü gör', no_activity:'Henüz aktivite yok', no_leads:'Henüz lead yok', add_leads:'Lead ekleyin', no_campaigns:'Kampanya yok', find_leads:'Lead Bul', new_short:'Yeni' },
     de: { daily_summary:'Ihre heutige Zusammenfassung', active_campaigns:'aktive Kampagnen', last7d:'Letzte 7 Tage', see_all:'Alle anzeigen', no_activity:'Noch keine Aktivität', no_leads:'Noch keine Leads', add_leads:'Leads hinzufügen', no_campaigns:'Keine Kampagnen', find_leads:'Leads finden', new_short:'Neu' },
@@ -162,14 +155,12 @@ export default function DashboardPage() {
 
   useEffect(() => { fetchData() }, [])
 
-  // Click outside notifications
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotifs(false) }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Supabase Realtime
   useEffect(() => {
     if (!user?.id) return
     const RT: Record<string, { msg: string; lead: string; campaign: string }> = {
@@ -204,7 +195,6 @@ export default function DashboardPage() {
   const funnel   = data?.funnel   || []
   const insights = data?.insights || []
   const maxFunnel = Math.max(...funnel.map((f: any) => f.count), 1)
-  const maxSent   = Math.max(...(data?.dailyStats?.map((d: any) => d.sent) || [1]), 1)
   const sparkData = data?.dailyStats?.map((d: any) => d.sent) || []
 
   const card = {
@@ -214,7 +204,6 @@ export default function DashboardPage() {
     boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   } as const
 
-  // Light mode color tokens
   const tx1 = '#0f172a'
   const tx2 = '#64748b'
   const tx3 = '#94a3b8'
@@ -222,10 +211,8 @@ export default function DashboardPage() {
   const surf = '#f8fafc'
   const surfBd = '1px solid #f1f5f9'
   const divBd = '1px solid #f1f5f9'
-  const notifBg = '#ffffff'
   const notifBd = '1px solid #e2e8f0'
 
-  // Insight icon/color map
   const insightMeta: Record<string,{ color:string; bg:string; Icon:any }> = {
     action:  { color:'#2563eb', bg:'#eff6ff', Icon:Target },
     warning: { color:'#b45309', bg:'#fffbeb', Icon:AlertCircle },
@@ -244,8 +231,16 @@ export default function DashboardPage() {
   }
   const statusLabel = (s: string) => s ? t(`status.${s}`, s) : '—'
 
+  // ── Mobile stat cards data (ordered: Leads, Reply, Pipeline, Credits)
+  const mobileStats = [
+    { key:'leads',    label: t('dashboard.total_leads'),  value: stats?.totalLeads?.toLocaleString() || '0',             sub: `+${stats?.weekLeads||0} bu hafta`,           icon: Users,       color:'#2563eb', bg:'#eff6ff', bd:'#bfdbfe' },
+    { key:'reply',    label: t('dashboard.reply_rate'),   value: `%${stats?.replyRate || 0}`,                            sub: `${stats?.totalSent||0} gönderildi`,           icon: TrendingUp,  color:'#7c3aed', bg:'#faf5ff', bd:'#e9d5ff' },
+    { key:'pipeline', label: t('dashboard.pipeline'),     value: `₺${((stats?.pipelineValue||0)/1000).toFixed(0)}K`,     sub: `${stats?.activeCampaigns||0} kampanya`,       icon: DollarSign,  color:'#059669', bg:'#ecfdf5', bd:'#a7f3d0' },
+    { key:'credits',  label: t('dashboard.credits'),      value: (stats?.credits||0).toLocaleString(),                   sub: stats?.planType || 'starter',                  icon: Zap,         color:'#d97706', bg:'#fffbeb', bd:'#fde68a' },
+  ]
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap: isMobile ? 12 : 20 }}>
       <style>{`
         @keyframes sk-shine { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         @keyframes fadeIn    { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
@@ -256,13 +251,13 @@ export default function DashboardPage() {
       <AdminBanner type="dashboard" />
 
       {/* ── HEADER ── */}
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>
+      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
         <div>
           <h1 style={{ color:tx1, fontSize: isMobile ? 20 : 24, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>
             {t('dashboard.greeting')}, {user?.name?.split(' ')[0]}
           </h1>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
-            <p style={{ color:tx3, fontSize:13, margin:0 }}>{D.daily_summary}</p>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+            <p style={{ color:tx3, fontSize: isMobile ? 12 : 13, margin:0 }}>{D.daily_summary}</p>
             <div style={{ display:'flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:20, background:realtimeConnected?'rgba(16,185,129,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${realtimeConnected?'rgba(16,185,129,0.25)':'rgba(100,116,139,0.2)'}` }}>
               <div style={{ width:6, height:6, borderRadius:'50%', background:realtimeConnected?'#10b981':'#64748b', animation:realtimeConnected?'pulse-dot 2s infinite':'none' }}/>
               <span style={{ color:realtimeConnected?'#34d399':'#64748b', fontSize:11, fontWeight:600 }}>{realtimeConnected ? t('dashboard.live') : t('dashboard.connecting', 'Bağlanıyor...')}</span>
@@ -273,14 +268,14 @@ export default function DashboardPage() {
           {/* Notification Bell */}
           <div ref={notifRef} style={{ position:'relative' }}>
             <button onClick={() => { setShowNotifs(!showNotifs); setNewCount(0) }}
-              style={{ width:40, height:40, borderRadius:11, background:surf, border:surfBd, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', transition:'all 0.15s' }}>
+              style={{ width:40, height:40, borderRadius:11, background:surf, border:'1px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', transition:'all 0.15s' }}>
               <Bell size={16} color={tx3}/>
               {newCount > 0 && (
                 <span style={{ position:'absolute', top:-5, right:-5, width:18, height:18, background:'#2563eb', borderRadius:'50%', color:'#fff', fontSize:10, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #ffffff' }}>{newCount}</span>
               )}
             </button>
             {showNotifs && (
-              <div style={{ position:'absolute', right:0, top:46, width:'min(320px, calc(100vw - 32px))', background:notifBg, border:notifBd, borderRadius:16, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
+              <div style={{ position:'absolute', right:0, top:46, width:'min(320px, calc(100vw - 32px))', background:'#ffffff', border:notifBd, borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.10)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
                 <div style={{ padding:'12px 16px', borderBottom:divBd, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <span style={{ color:tx1, fontWeight:700, fontSize:13 }}>{t('dashboard.notifications','Bildirimler')}</span>
                   <button onClick={() => setNotifications([])} style={{ background:'none', border:'none', color:tx3, cursor:'pointer', fontSize:11, padding:0, fontFamily:'inherit' }}>{t('dashboard.clear','Temizle')}</button>
@@ -316,7 +311,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── MOBİL HIZLI EYLEMLER — LinkedIn tarzı chip satırı ── */}
+      {/* ── MOBİL HIZLI EYLEMLER ── */}
       {isMobile && (
         <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:2, scrollbarWidth:'none', WebkitOverflowScrolling:'touch' } as React.CSSProperties}>
           {[
@@ -333,242 +328,340 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── ÖNERİLEN SONRAKİ ADIM — alarm değil rehberlik tonu, tek ve sakin panel ── */}
+      {/* ── INSIGHT BANNER ── */}
       {!loading && insights.length > 0 && (() => {
         const ins = insights[0]
         const m = insightMeta[ins.type] || insightMeta.action
         const InsIcon = m.Icon
         return (
-          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:12, animation:'fadeIn 0.3s ease' }}>
-            <div style={{ width:34, height:34, borderRadius:10, background:m.bg, border:`1px solid ${m.color}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <InsIcon size={15} color={m.color}/>
+          <div style={{ display:'flex', alignItems:'center', gap:12, padding: isMobile ? '12px 14px' : '14px 18px', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:12, animation:'fadeIn 0.3s ease' }}>
+            <div style={{ width:32, height:32, borderRadius:9, background:m.bg, border:`1px solid ${m.color}22`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <InsIcon size={14} color={m.color}/>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <span style={{ display:'block', color:tx3, fontSize:10.5, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:2 }}>
+              <span style={{ display:'block', color:tx3, fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:2 }}>
                 {t('dashboard.next_step', 'Önerilen sonraki adım')}
               </span>
-              <p style={{ color:'#334155', fontSize:13, margin:0, lineHeight:1.5 }}>{ins.text}</p>
+              <p style={{ color:'#334155', fontSize: isMobile ? 12 : 13, margin:0, lineHeight:1.4 }}>{ins.text}</p>
             </div>
-            <Link href={ins.href} style={{ display:'flex', alignItems:'center', gap:4, color:m.color, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', padding:'7px 14px', borderRadius:9, background:m.bg, border:`1px solid ${m.color}25`, flexShrink:0 }}>
-              {ins.action} <ChevronRight size={12}/>
-            </Link>
+            {!isMobile && (
+              <Link href={ins.href} style={{ display:'flex', alignItems:'center', gap:4, color:m.color, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', padding:'7px 14px', borderRadius:9, background:m.bg, border:`1px solid ${m.color}25`, flexShrink:0 }}>
+                {ins.action} <ChevronRight size={12}/>
+              </Link>
+            )}
           </div>
         )
       })()}
 
-      {/* ── STAT CARDS — hero + ikincil hiyerarşi ── */}
-      <div className="dash-grid-stats">
-        {loading ? (
-          [0,1,2,3].map(i => (
-            <div key={i} style={{ ...card, padding:20 }}>
-              <Skeleton h={12} w={80} r={4}/><div style={{ marginTop:12 }}/>
-              <Skeleton h={28} w={100} r={6}/><div style={{ marginTop:8 }}/>
-              <Skeleton h={10} w={60} r={4}/>
-            </div>
-          ))
-        ) : (() => {
-          const hero = {
-            label: t('dashboard.total_leads'), value: stats?.totalLeads?.toLocaleString() || '0',
-            sub: `+${stats?.weekLeads || 0} ${t('this_week','bu hafta')}`,
-            trend: stats?.weekGrowth || 0, icon: Users, color: '#3b82f6',
-          }
-          const secondary = [
-            {
-              label: t('dashboard.pipeline'),
-              value: `₺${((stats?.pipelineValue || 0)/1000).toFixed(0)}K`,
-              sub: `${stats?.activeCampaigns || 0} ${D.active_campaigns}`,
-              icon: DollarSign, color: '#10b981',
-            },
-            {
-              label: t('dashboard.reply_rate'), value: `%${stats?.replyRate || 0}`,
-              sub: `${stats?.totalSent || 0} ${t('sent','gönderildi')}`,
-              icon: TrendingUp, color: '#8b5cf6',
-            },
-            {
-              label: t('dashboard.credits'), value: (stats?.credits || 0).toLocaleString(),
-              sub: stats?.planType || 'starter',
-              icon: Zap, color: '#f59e0b',
-            },
-          ]
-          return (
-            <>
-              {/* Hero kart — birincil metrik, vurgulu */}
-              <div style={{ ...card, padding:'20px 22px', background:`linear-gradient(135deg, ${hero.color}0d, #ffffff)`, border:`1px solid ${hero.color}26` }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-                  <span style={{ color:tx2, fontSize:12, fontWeight:600 }}>{hero.label}</span>
-                  <div style={{ width:36, height:36, borderRadius:10, background:`${hero.color}16`, border:`1px solid ${hero.color}28`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <hero.icon size={16} color={hero.color}/>
-                  </div>
-                </div>
-                <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
-                  <div>
-                    <p style={{ color:tx1, fontSize: isMobile ? 28 : 36, fontWeight:800, margin:0, letterSpacing:'-1px' }}>{hero.value}</p>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, flexWrap:'wrap' }}>
-                      <span style={{ display:'flex', alignItems:'center', gap:2, color: hero.trend >= 0 ? '#059669' : '#dc2626', fontSize:12, fontWeight:700 }}>
-                        {hero.trend >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
-                        {hero.trend >= 0 ? '+' : ''}{hero.trend}%
-                      </span>
-                      <span style={{ color:tx3, fontSize:12 }}>{hero.sub}</span>
-                    </div>
-                  </div>
-                  {!isMobile && <Sparkline data={sparkData} color={hero.color}/>}
-                </div>
+      {/* ══════════════════════════════════════════════════════════════════
+          STAT CARDS
+          Mobile:  2×2 flexbox (calc widths — no grid overflow possible)
+                   Row 1: Total Leads | Reply Rate
+                   Row 2: Pipeline    | Credits
+          Desktop: existing 4-column CSS grid
+          ══════════════════════════════════════════════════════════════════ */}
+      {isMobile ? (
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8, width:'100%' }}>
+          {loading ? (
+            [0,1,2,3].map(i => (
+              <div key={i} style={{ width:'calc(50% - 4px)', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:14, padding:'14px', boxSizing:'border-box', minHeight:86 }}>
+                <Skeleton h={9} w="55%" r={4}/><div style={{ marginTop:10 }}/>
+                <Skeleton h={20} w="65%" r={5}/><div style={{ marginTop:6 }}/>
+                <Skeleton h={8} w="45%" r={4}/>
               </div>
-
-              {/* İkincil kartlar — sade, tek satırlı */}
-              {secondary.map(({ label, value, sub, icon: Icon, color }) => (
-                <div key={label} style={{ ...card, padding:'16px 18px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <span style={{ color:tx3, fontSize:11, fontWeight:600 }}>{label}</span>
-                    <div style={{ width:28, height:28, borderRadius:8, background:`${color}12`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <Icon size={13} color={color}/>
-                    </div>
-                  </div>
-                  <div style={{ marginTop:14 }}>
-                    <p style={{ color:tx1, fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.6px' }}>{value}</p>
-                    <span style={{ color:tx4, fontSize:11 }}>{sub}</span>
+            ))
+          ) : (
+            mobileStats.map(({ key, label, value, sub, icon: Icon, color, bg, bd }) => (
+              <div key={key} style={{
+                width: 'calc(50% - 4px)',
+                background: `linear-gradient(140deg, ${bg} 0%, #ffffff 100%)`,
+                border: `1.5px solid ${bd}`,
+                borderRadius: 14,
+                padding: '13px 13px',
+                boxSizing: 'border-box',
+                overflow: 'hidden',
+              }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+                  <span style={{ color:tx2, fontSize:11, fontWeight:600, lineHeight:1.3, paddingRight:4 }}>{label}</span>
+                  <div style={{ width:26, height:26, borderRadius:7, background:`${color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Icon size={12} color={color}/>
                   </div>
                 </div>
-              ))}
-            </>
-          )
-        })()}
-      </div>
-
-      {/* ── CHART + FUNNEL ── */}
-      <div className="dash-grid-chart">
-        {/* Area Chart */}
-        <div style={{ ...card, padding:'20px 22px' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
-            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
-            <span style={{ color:'#94a3b8', fontSize:12 }}>{D.last7d}</span>
-          </div>
-          {loading ? (
-            <Skeleton h={120} r={8}/>
-          ) : data?.dailyStats?.some((d: any) => d.sent > 0) ? (
-            <AreaChart data={data.dailyStats}/>
-          ) : (
-            <div style={{ height:120, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10 }}>
-              <BarChart2 size={28} color="#cbd5e1"/>
-              <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{t('dashboard.no_messages')}</p>
-              <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
-                {t('dashboard.start_campaign')} <ArrowRight size={12}/>
-              </Link>
-            </div>
+                <p style={{ color:tx1, fontSize:20, fontWeight:800, margin:'0 0 3px', letterSpacing:'-0.5px' }}>{value}</p>
+                <span style={{ color:tx3, fontSize:10, lineHeight:1.2 }}>{sub}</span>
+              </div>
+            ))
           )}
         </div>
-
-        {/* Lead Funnel */}
-        <div style={{ ...card, padding:'20px 22px' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.funnel')}</h2>
-            <Link href="/pipeline" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
-          </div>
+      ) : (
+        <div className="dash-grid-stats">
           {loading ? (
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {[0,1,2,3,4].map(i => <Skeleton key={i} h={22} r={6}/>)}
-            </div>
-          ) : (
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {funnel.map((f: any, i: number) => {
-                const pct = Math.round((f.count / maxFunnel) * 100)
-                const funnelColors = ['#3b82f6','#8b5cf6','#f59e0b','#10b981','#34d399']
-                const color = funnelColors[i] || '#3b82f6'
-                return (
-                  <div key={f.key}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                      <span style={{ color:'#94a3b8', fontSize:12 }}>{t(`pipeline.stage.${f.key}`, f.label)}</span>
-                      <span style={{ color, fontSize:12, fontWeight:700 }}>{f.count.toLocaleString()}</span>
-                    </div>
-                    <div style={{ height:6, background:'#f1f5f9', borderRadius:3 }}>
-                      <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:3, boxShadow:`0 0 8px ${color}40`, transition:'width 0.8s ease' }}/>
+            [0,1,2,3].map(i => (
+              <div key={i} style={{ ...card, padding:20 }}>
+                <Skeleton h={12} w={80} r={4}/><div style={{ marginTop:12 }}/>
+                <Skeleton h={28} w={100} r={6}/><div style={{ marginTop:8 }}/>
+                <Skeleton h={10} w={60} r={4}/>
+              </div>
+            ))
+          ) : (() => {
+            const hero = {
+              label: t('dashboard.total_leads'), value: stats?.totalLeads?.toLocaleString() || '0',
+              sub: `+${stats?.weekLeads || 0} ${t('this_week','bu hafta')}`,
+              trend: stats?.weekGrowth || 0, icon: Users, color: '#3b82f6',
+            }
+            const secondary = [
+              {
+                label: t('dashboard.pipeline'),
+                value: `₺${((stats?.pipelineValue || 0)/1000).toFixed(0)}K`,
+                sub: `${stats?.activeCampaigns || 0} ${D.active_campaigns}`,
+                icon: DollarSign, color: '#10b981',
+              },
+              {
+                label: t('dashboard.reply_rate'), value: `%${stats?.replyRate || 0}`,
+                sub: `${stats?.totalSent || 0} ${t('sent','gönderildi')}`,
+                icon: TrendingUp, color: '#8b5cf6',
+              },
+              {
+                label: t('dashboard.credits'), value: (stats?.credits || 0).toLocaleString(),
+                sub: stats?.planType || 'starter',
+                icon: Zap, color: '#f59e0b',
+              },
+            ]
+            return (
+              <>
+                <div style={{ ...card, padding:'20px 22px', background:`linear-gradient(135deg, ${hero.color}0d, #ffffff)`, border:`1px solid ${hero.color}26` }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                    <span style={{ color:tx2, fontSize:12, fontWeight:600 }}>{hero.label}</span>
+                    <div style={{ width:36, height:36, borderRadius:10, background:`${hero.color}16`, border:`1px solid ${hero.color}28`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <hero.icon size={16} color={hero.color}/>
                     </div>
                   </div>
-                )
-              })}
-              {!funnel.length && (
-                <p style={{ color:'#94a3b8', fontSize:12, textAlign:'center', padding:'20px 0' }}>{D.add_leads}</p>
-              )}
+                  <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
+                    <div>
+                      <p style={{ color:tx1, fontSize:36, fontWeight:800, margin:0, letterSpacing:'-1px' }}>{hero.value}</p>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, flexWrap:'wrap' }}>
+                        <span style={{ display:'flex', alignItems:'center', gap:2, color: hero.trend >= 0 ? '#059669' : '#dc2626', fontSize:12, fontWeight:700 }}>
+                          {hero.trend >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
+                          {hero.trend >= 0 ? '+' : ''}{hero.trend}%
+                        </span>
+                        <span style={{ color:tx3, fontSize:12 }}>{hero.sub}</span>
+                      </div>
+                    </div>
+                    <Sparkline data={sparkData} color={hero.color}/>
+                  </div>
+                </div>
+                {secondary.map(({ label, value, sub, icon: Icon, color }) => (
+                  <div key={label} style={{ ...card, padding:'16px 18px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                      <span style={{ color:tx3, fontSize:11, fontWeight:600 }}>{label}</span>
+                      <div style={{ width:28, height:28, borderRadius:8, background:`${color}12`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <Icon size={13} color={color}/>
+                      </div>
+                    </div>
+                    <div style={{ marginTop:14 }}>
+                      <p style={{ color:tx1, fontSize:22, fontWeight:800, margin:0, letterSpacing:'-0.6px' }}>{value}</p>
+                      <span style={{ color:tx4, fontSize:11 }}>{sub}</span>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          CHART + FUNNEL
+          Mobile:  compact chart card only (80px), no funnel
+          Desktop: chart (1fr) + funnel (380px)
+          ══════════════════════════════════════════════════════════════════ */}
+      {isMobile ? (
+        <div style={{ ...card, padding:'14px 16px' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <h2 style={{ color:tx1, fontSize:13, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
+            <span style={{ color:tx3, fontSize:11 }}>{D.last7d}</span>
+          </div>
+          {loading ? (
+            <Skeleton h={70} r={8}/>
+          ) : data?.dailyStats?.some((d: any) => d.sent > 0) ? (
+            <AreaChart data={data.dailyStats} height={70}/>
+          ) : (
+            <div style={{ height:70, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6 }}>
+              <BarChart2 size={22} color="#cbd5e1"/>
+              <p style={{ color:tx3, fontSize:12, margin:0 }}>{t('dashboard.no_messages')}</p>
             </div>
           )}
         </div>
-      </div>
+      ) : (
+        <div className="dash-grid-chart">
+          <div style={{ ...card, padding:'20px 22px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
+              <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.trend')}</h2>
+              <span style={{ color:'#94a3b8', fontSize:12 }}>{D.last7d}</span>
+            </div>
+            {loading ? (
+              <Skeleton h={120} r={8}/>
+            ) : data?.dailyStats?.some((d: any) => d.sent > 0) ? (
+              <AreaChart data={data.dailyStats} height={120}/>
+            ) : (
+              <div style={{ height:120, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:10 }}>
+                <BarChart2 size={28} color="#cbd5e1"/>
+                <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{t('dashboard.no_messages')}</p>
+                <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+                  {t('dashboard.start_campaign')} <ArrowRight size={12}/>
+                </Link>
+              </div>
+            )}
+          </div>
+          <div style={{ ...card, padding:'20px 22px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+              <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.funnel')}</h2>
+              <Link href="/pipeline" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
+            </div>
+            {loading ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                {[0,1,2,3,4].map(i => <Skeleton key={i} h={22} r={6}/>)}
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {funnel.map((f: any, i: number) => {
+                  const pct = Math.round((f.count / maxFunnel) * 100)
+                  const funnelColors = ['#3b82f6','#8b5cf6','#f59e0b','#10b981','#34d399']
+                  const color = funnelColors[i] || '#3b82f6'
+                  return (
+                    <div key={f.key}>
+                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                        <span style={{ color:'#94a3b8', fontSize:12 }}>{t(`pipeline.stage.${f.key}`, f.label)}</span>
+                        <span style={{ color, fontSize:12, fontWeight:700 }}>{f.count.toLocaleString()}</span>
+                      </div>
+                      <div style={{ height:6, background:'#f1f5f9', borderRadius:3 }}>
+                        <div style={{ height:'100%', width:`${pct}%`, background:color, borderRadius:3, boxShadow:`0 0 8px ${color}40`, transition:'width 0.8s ease' }}/>
+                      </div>
+                    </div>
+                  )
+                })}
+                {!funnel.length && (
+                  <p style={{ color:'#94a3b8', fontSize:12, textAlign:'center', padding:'20px 0' }}>{D.add_leads}</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-      {/* ── CAMPAIGNS + ACTIVITY ── */}
-      <div className="dash-grid-campaigns">
-        {/* Campaigns */}
-        <div style={{ ...card, padding:'20px 22px' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
-            <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
+      {/* ══════════════════════════════════════════════════════════════════
+          CAMPAIGNS (+ ACTIVITY on desktop)
+          Mobile:  campaigns only, compact list
+          Desktop: campaigns (1fr) + activity (320px)
+          ══════════════════════════════════════════════════════════════════ */}
+      {isMobile ? (
+        <div style={{ ...card, padding:'14px 16px' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <h2 style={{ color:tx1, fontSize:13, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
+            <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:2 }}>{t('page.all','Tümü')}<ChevronRight size={12}/></Link>
           </div>
           {loading ? (
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{[0,1,2].map(i => <Skeleton key={i} h={62} r={10}/>)}</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{[0,1,2].map(i => <Skeleton key={i} h={52} r={10}/>)}</div>
           ) : data?.recentCampaigns?.length ? (
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {data.recentCampaigns.map((c: any) => {
+              {data.recentCampaigns.slice(0, 3).map((c: any) => {
                 const ss = statusStyle[c.status] || statusStyle.draft
                 const replyRate = c.total_sent > 0 ? Math.round((c.total_replied||0)/c.total_sent*100) : 0
                 return (
-                  <Link key={c.id} href={`/automations`} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:surf, border:surfBd, borderRadius:12, textDecoration:'none', transition:'all 0.15s' }}>
-                    <div style={{ width:36, height:36, borderRadius:9, background:`${ss.color}12`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      {c.channel==='whatsapp' ? <MessageSquare size={15} color={ss.color}/> : <Megaphone size={15} color={ss.color}/>}
+                  <Link key={c.id} href="/automations" style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:surf, border:surfBd, borderRadius:11, textDecoration:'none' }}>
+                    <div style={{ width:32, height:32, borderRadius:8, background:`${ss.color}12`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      {c.channel==='whatsapp' ? <MessageSquare size={14} color={ss.color}/> : <Megaphone size={14} color={ss.color}/>}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:'0 0 3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</p>
-                      <p style={{ color:tx2, fontSize:11, margin:0 }}>{c.total_sent||0} {t('campaigns.sent','gönderildi')} · {replyRate}% {t('campaigns.replied','cevap')}</p>
+                      <p style={{ color:tx1, fontSize:12, fontWeight:600, margin:'0 0 2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</p>
+                      <p style={{ color:tx2, fontSize:11, margin:0 }}>{c.total_sent||0} gönderildi · {replyRate}% cevap</p>
                     </div>
-                    <span style={{ color:ss.color, background:ss.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, flexShrink:0 }}>{statusLabel(c.status)}</span>
+                    <span style={{ color:ss.color, background:ss.bg, fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20, flexShrink:0 }}>{statusLabel(c.status)}</span>
                   </Link>
                 )
               })}
             </div>
           ) : (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
-              <Megaphone size={26} color="#cbd5e1"/>
-              <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{D.no_campaigns}</p>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'20px 0' }}>
+              <Megaphone size={24} color="#cbd5e1"/>
+              <p style={{ color:tx3, fontSize:12, margin:0 }}>{D.no_campaigns}</p>
               <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{t('page.create', 'Oluştur') + ' →'}</Link>
             </div>
           )}
         </div>
-
-        {/* Activity Feed */}
-        <div style={{ ...card, padding:'20px 22px' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-            <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.activity')}</h2>
-            <Activity size={14} color="#94a3b8"/>
+      ) : (
+        <div className="dash-grid-campaigns">
+          <div style={{ ...card, padding:'20px 22px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+              <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.campaigns')}</h2>
+              <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>{t('page.all', 'Tümü')}<ChevronRight size={12}/></Link>
+            </div>
+            {loading ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{[0,1,2].map(i => <Skeleton key={i} h={62} r={10}/>)}</div>
+            ) : data?.recentCampaigns?.length ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {data.recentCampaigns.map((c: any) => {
+                  const ss = statusStyle[c.status] || statusStyle.draft
+                  const replyRate = c.total_sent > 0 ? Math.round((c.total_replied||0)/c.total_sent*100) : 0
+                  return (
+                    <Link key={c.id} href="/automations" style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:surf, border:surfBd, borderRadius:12, textDecoration:'none', transition:'all 0.15s' }}>
+                      <div style={{ width:36, height:36, borderRadius:9, background:`${ss.color}12`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                        {c.channel==='whatsapp' ? <MessageSquare size={15} color={ss.color}/> : <Megaphone size={15} color={ss.color}/>}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:'0 0 3px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</p>
+                        <p style={{ color:tx2, fontSize:11, margin:0 }}>{c.total_sent||0} {t('campaigns.sent','gönderildi')} · {replyRate}% {t('campaigns.replied','cevap')}</p>
+                      </div>
+                      <span style={{ color:ss.color, background:ss.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, flexShrink:0 }}>{statusLabel(c.status)}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
+                <Megaphone size={26} color="#cbd5e1"/>
+                <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{D.no_campaigns}</p>
+                <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{t('page.create', 'Oluştur') + ' →'}</Link>
+              </div>
+            )}
           </div>
-          {loading ? (
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>{[0,1,2,3].map(i=><Skeleton key={i} h={38} r={8}/>)}</div>
-          ) : (data?.recentMessages||[]).length ? (
-            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
-              {data.recentMessages.slice(0,6).map((m: any, i: number) => (
-                <div key={m.id||i} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom: i < 5 ? divBd : 'none', alignItems:'flex-start' }}>
-                  <div style={{ width:7, height:7, borderRadius:'50%', background:'#3b82f6', marginTop:5, flexShrink:0 }}/>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ color:tx2, fontSize:12, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.4 }}>
-                      {(m.content||'').slice(0,55)}{(m.content||'').length>55?'...':''}
-                    </p>
-                    <p style={{ color:tx3, fontSize:10, margin:'2px 0 0', display:'flex', alignItems:'center', gap:3 }}>
-                      <Clock size={9}/> {new Date(m.sent_at).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}
-                    </p>
+          <div style={{ ...card, padding:'20px 22px' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+              <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.activity')}</h2>
+              <Activity size={14} color="#94a3b8"/>
+            </div>
+            {loading ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>{[0,1,2,3].map(i=><Skeleton key={i} h={38} r={8}/>)}</div>
+            ) : (data?.recentMessages||[]).length ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+                {data.recentMessages.slice(0,6).map((m: any, i: number) => (
+                  <div key={m.id||i} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom: i < 5 ? divBd : 'none', alignItems:'flex-start' }}>
+                    <div style={{ width:7, height:7, borderRadius:'50%', background:'#3b82f6', marginTop:5, flexShrink:0 }}/>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ color:tx2, fontSize:12, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.4 }}>
+                        {(m.content||'').slice(0,55)}{(m.content||'').length>55?'...':''}
+                      </p>
+                      <p style={{ color:tx3, fontSize:10, margin:'2px 0 0', display:'flex', alignItems:'center', gap:3 }}>
+                        <Clock size={9}/> {new Date(m.sent_at).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'24px 0' }}>
-              <Activity size={24} color="#cbd5e1"/>
-              <p style={{ color:'#94a3b8', fontSize:12, margin:0 }}>{D.no_activity}</p>
-            </div>
-          )}
+                ))}
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'24px 0' }}>
+                <Activity size={24} color="#cbd5e1"/>
+                <p style={{ color:'#94a3b8', fontSize:12, margin:0 }}>{D.no_activity}</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── RECENT LEADS ── */}
-      <div style={{ ...card, padding:'20px 22px' }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <h2 style={{ color:tx1, fontSize:14, fontWeight:700, margin:0 }}>{t('dashboard.leads')}</h2>
+      <div style={{ ...card, padding: isMobile ? '14px 16px' : '20px 22px' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: isMobile ? 10 : 16 }}>
+          <h2 style={{ color:tx1, fontSize: isMobile ? 13 : 14, fontWeight:700, margin:0 }}>{t('dashboard.leads')}</h2>
           <Link href="/leads" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none', display:'flex', alignItems:'center', gap:3 }}>
             {D.see_all} <ArrowRight size={12}/>
           </Link>
@@ -577,7 +670,6 @@ export default function DashboardPage() {
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{[0,1,2,3].map(i=><Skeleton key={i} h={48} r={8}/>)}</div>
         ) : data?.recentLeads?.length ? (
           isMobile ? (
-            /* Mobil: Kart görünümü */
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {data.recentLeads.map((lead: any) => {
                 const score = lead.score || 0
@@ -585,30 +677,28 @@ export default function DashboardPage() {
                 const ls = statusStyle[lead.status] || statusStyle.draft
                 return (
                   <Link key={lead.id} href={`/leads/${lead.id}`}
-                    style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:surf, border:surfBd, borderRadius:12, textDecoration:'none', transition:'background 0.12s' }}>
-                    <div style={{ width:38, height:38, borderRadius:10, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563eb', fontSize:14, fontWeight:700, flexShrink:0 }}>
+                    style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:surf, border:surfBd, borderRadius:11, textDecoration:'none' }}>
+                    <div style={{ width:36, height:36, borderRadius:9, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563eb', fontSize:13, fontWeight:700, flexShrink:0 }}>
                       {((lead.company_name||lead.contact_name||'?')[0]).toUpperCase()}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:'0 0 2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                      <p style={{ color:tx1, fontSize:12, fontWeight:600, margin:'0 0 2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {lead.company_name || lead.contact_name}
                       </p>
                       <p style={{ color:tx3, fontSize:11, margin:0 }}>{lead.source||'—'} · {lead.city||'—'}</p>
                     </div>
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:3, flexShrink:0 }}>
                       <span style={{ color:ls.color, background:ls.bg, fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20 }}>
                         {statusLabel(lead.status||'new')}
                       </span>
-                      <span style={{ color:scoreColor, fontSize:11, fontWeight:700 }}>{score}p</span>
+                      <span style={{ color:scoreColor, fontSize:10, fontWeight:700 }}>{score}p</span>
                     </div>
                   </Link>
                 )
               })}
             </div>
           ) : (
-            /* Desktop: Tablo görünümü */
             <div>
-              {/* Table header */}
               <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:divBd }}>
                 {[t('leads.col_company','Şirket / Kişi'),t('leads.col_source','Kaynak'),t('leads.col_score','Puan'),t('leads.col_status','Durum')].map(h => (
                   <span key={h} style={{ color:tx3, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</span>
