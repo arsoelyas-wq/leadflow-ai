@@ -716,6 +716,12 @@ input[type="range"]::-moz-range-thumb {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
+  /* Prevent grid item min-content overflow */
+  .dash-grid-stats > * { min-width: 0; }
+  /* Hero card (first) spans full width */
+  .dash-grid-stats > *:first-child { grid-column: 1 / -1; }
+  /* Credits card (last) spans full width */
+  .dash-grid-stats > *:last-child { grid-column: 1 / -1; }
 
   .dash-grid-chart {
     grid-template-columns: 1fr;
@@ -728,7 +734,6 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 480px) {
   .dash-grid-stats {
-    grid-template-columns: 1fr 1fr;
     gap: 8px;
   }
 }

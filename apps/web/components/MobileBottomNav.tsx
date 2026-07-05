@@ -4,12 +4,22 @@ import { usePathname } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { LayoutDashboard, Users, Megaphone, Inbox, MoreHorizontal } from 'lucide-react'
 
+// Short labels for mobile nav — sidebar i18n values are too long
+const SHORT_LABELS: Record<string, [string, string, string, string]> = {
+  tr: ['Ana',     'Leads',  'Kampanya', 'Gelen'],
+  en: ['Home',    'Leads',  'Kampanya', 'Inbox'],
+  de: ['Start',   'Leads',  'Kampagne', 'Inbox'],
+  fr: ['Accueil', 'Leads',  'Campagne', 'Inbox'],
+  ar: ['الرئيسية','Leads',  'حملات',   'رسائل'],
+  ru: ['Главная', 'Лиды',   'Кампании', 'Inbox'],
+}
+
 const BOTTOM_NAV = [
-  { href: '/dashboard',   labelKey: 'nav.dashboard',   fallback: 'Panel',     icon: LayoutDashboard },
-  { href: '/leads',       labelKey: 'nav.leads',        fallback: 'Leadler',   icon: Users },
-  { href: '/automations', labelKey: 'nav.automations',  fallback: 'Otomasyon', icon: Megaphone },
-  { href: '/inbox',       labelKey: 'nav.inbox',        fallback: 'Gelen',     icon: Inbox },
-]
+  { href: '/dashboard',   icon: LayoutDashboard, idx: 0 },
+  { href: '/leads',       icon: Users,            idx: 1 },
+  { href: '/automations', icon: Megaphone,        idx: 2 },
+  { href: '/inbox',       icon: Inbox,            idx: 3 },
+] as const
 
 interface MobileBottomNavProps {
   onMenuOpen: () => void
@@ -17,11 +27,12 @@ interface MobileBottomNavProps {
 
 export default function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
   const pathname = usePathname()
-  const { t } = useI18n()
+  const { lang } = useI18n()
+  const labels = SHORT_LABELS[lang] ?? SHORT_LABELS.tr
 
   return (
     <nav className="mobile-bottom-nav">
-      {BOTTOM_NAV.map(({ href, labelKey, fallback, icon: Icon }) => {
+      {BOTTOM_NAV.map(({ href, icon: Icon, idx }) => {
         const active = pathname === href || pathname.startsWith(href + '/')
         return (
           <Link
@@ -54,23 +65,21 @@ export default function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
                 borderRadius: '0 0 3px 3px',
               }} />
             )}
-            <Icon
-              size={21}
-              strokeWidth={active ? 2.5 : 1.8}
-            />
+            <Icon size={21} strokeWidth={active ? 2.5 : 1.8} />
             <span style={{
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: active ? 700 : 500,
               letterSpacing: '0.01em',
               lineHeight: 1.2,
+              whiteSpace: 'nowrap',
             }}>
-              {t(labelKey, fallback)}
+              {labels[idx]}
             </span>
           </Link>
         )
       })}
 
-      {/* Daha Fazla / Menü butonu */}
+      {/* Menü butonu */}
       <button
         onClick={onMenuOpen}
         style={{
