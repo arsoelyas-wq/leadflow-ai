@@ -280,7 +280,7 @@ export default function DashboardPage() {
               )}
             </button>
             {showNotifs && (
-              <div style={{ position:'absolute', right:0, top:46, width:320, background:notifBg, border:notifBd, borderRadius:16, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
+              <div style={{ position:'absolute', right:0, top:46, width:'min(320px, calc(100vw - 32px))', background:notifBg, border:notifBd, borderRadius:16, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', zIndex:200, overflow:'hidden', animation:'fadeIn 0.18s ease' }}>
                 <div style={{ padding:'12px 16px', borderBottom:divBd, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <span style={{ color:tx1, fontWeight:700, fontSize:13 }}>{t('dashboard.notifications','Bildirimler')}</span>
                   <button onClick={() => setNotifications([])} style={{ background:'none', border:'none', color:tx3, cursor:'pointer', fontSize:11, padding:0, fontFamily:'inherit' }}>{t('dashboard.clear','Temizle')}</button>
@@ -315,6 +315,23 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* ── MOBİL HIZLI EYLEMLER — LinkedIn tarzı chip satırı ── */}
+      {isMobile && (
+        <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:2, scrollbarWidth:'none', WebkitOverflowScrolling:'touch' } as React.CSSProperties}>
+          {[
+            { label: '🔍 Lead Bul',    href: '/lead-machine',  bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
+            { label: '🤖 Lead Avcısı', href: '/lead-hunter',   bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
+            { label: '📢 Kampanya',    href: '/automations',   bg: '#faf5ff', color: '#7c3aed', border: '#ddd6fe' },
+            { label: '📊 Pipeline',    href: '/pipeline',      bg: '#fff7ed', color: '#b45309', border: '#fed7aa' },
+            { label: '💬 Gelen Kutu',  href: '/inbox',         bg: '#f0f9ff', color: '#0369a1', border: '#bae6fd' },
+          ].map(({ label, href, bg, color, border }) => (
+            <Link key={href} href={href} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:20, background:bg, border:`1.5px solid ${border}`, color, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, transition:'all 0.15s' }}>
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* ── ÖNERİLEN SONRAKİ ADIM — alarm değil rehberlik tonu, tek ve sakin panel ── */}
       {!loading && insights.length > 0 && (() => {
@@ -385,8 +402,8 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
                   <div>
-                    <p style={{ color:tx1, fontSize:36, fontWeight:800, margin:0, letterSpacing:'-1.2px' }}>{hero.value}</p>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
+                    <p style={{ color:tx1, fontSize: isMobile ? 28 : 36, fontWeight:800, margin:0, letterSpacing:'-1px' }}>{hero.value}</p>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, flexWrap:'wrap' }}>
                       <span style={{ display:'flex', alignItems:'center', gap:2, color: hero.trend >= 0 ? '#059669' : '#dc2626', fontSize:12, fontWeight:700 }}>
                         {hero.trend >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
                         {hero.trend >= 0 ? '+' : ''}{hero.trend}%
@@ -394,7 +411,7 @@ export default function DashboardPage() {
                       <span style={{ color:tx3, fontSize:12 }}>{hero.sub}</span>
                     </div>
                   </div>
-                  <Sparkline data={sparkData} color={hero.color}/>
+                  {!isMobile && <Sparkline data={sparkData} color={hero.color}/>}
                 </div>
               </div>
 
