@@ -43,6 +43,10 @@ router.get('/', async (req, res) => {
         // Pipeline value
         const avgDeal = userCredits?.avg_deal_value || 5000;
         const pipelineValue = (wonLeads || []).reduce((s, l) => s + (l.total_value || avgDeal), 0) || (statusCounts['won'] || 0) * avgDeal;
+        // Detect user language from cookie or header (must be before dailyStats loop)
+        const lang = (req.cookies?.lf_lang || req.headers['x-lang'] || 'tr').toLowerCase();
+        const localeMap = { tr: 'tr-TR', de: 'de-DE', ru: 'ru-RU', en: 'en-US', fr: 'fr-FR', ar: 'ar-SA' };
+        const locale = localeMap[lang] || 'tr-TR';
         // Daily stats (last 7 days)
         const dailyStats = [];
         for (let i = 6; i >= 0; i--) {
@@ -51,10 +55,8 @@ router.get('/', async (req, res) => {
             const dayStart = new Date(d.setHours(0, 0, 0, 0)).toISOString();
             const dayEnd = new Date(d.setHours(23, 59, 59, 999)).toISOString();
             const { count: daySent } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('direction', 'out').gte('sent_at', dayStart).lte('sent_at', dayEnd);
-            dailyStats.push({ date: new Date(dayStart).toLocaleDateString('tr-TR', { weekday: 'short' }), sent: daySent || 0 });
+            dailyStats.push({ date: new Date(dayStart).toLocaleDateString(locale, { weekday: 'short' }), sent: daySent || 0 });
         }
-        // Detect user language from cookie or header
-        const lang = (req.cookies?.lf_lang || req.headers['x-lang'] || 'tr').toLowerCase();
         // Multilingual insight texts
         const I = {
             tr: { no_msg: `${statusCounts['new'] || totalLeads} lead sizi bekliyor — henüz ilk mesajınızı göndermediniz. İlk kampanyanı başlat ve görüşmeleri başlat.`, start_campaign: 'İlk Kampanyayı Başlat', new_leads: `${statusCounts['new']} yeni lead iletişim bekliyor.`, view: 'Görüntüle', low_credit: `Krediniz azalıyor: ${credits} kredi kaldı.`, buy_credit: 'Kredi Al', won: `Bu ay ${statusCounts['won']} deal kazanıldı!`, see_pipeline: 'Pipeline\'ı Gör' },
@@ -70,7 +72,7 @@ router.get('/', async (req, res) => {
         const hasUncontactedLeads = (totalLeads || 0) > 0 && replyRate === 0 && totalSent === 0;
         if (hasUncontactedLeads) {
             // "lead bekliyor" + "henüz mesaj yok" aynı durumun iki yüzü — tek, bağlamlandırılmış anlatıda birleştirilir
-            insights.push({ type: 'action', text: T.no_msg, action: T.start_campaign, href: '/campaigns/new' });
+            insights.push({ type: 'action', text: T.no_msg, action: T.start_campaign, href: '/automations' });
         }
         else if ((statusCounts['new'] || 0) > 10) {
             insights.push({ type: 'warning', text: T.new_leads, action: T.view, href: '/leads?status=new' });

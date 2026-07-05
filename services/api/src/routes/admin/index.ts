@@ -921,6 +921,26 @@ router.patch('/landing-config', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/admin/leads-config ───────────────────────────────────────────────
+router.get('/leads-config', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase.from('site_settings').select('value, updated_at').eq('key', 'leads_config').single();
+    if (error && error.code !== 'PGRST116') throw error;
+    res.json({ config: data?.value || null, updated_at: data?.updated_at || null });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PATCH /api/admin/leads-config ─────────────────────────────────────────────
+router.patch('/leads-config', async (req: any, res: any) => {
+  try {
+    const { error } = await supabase.from('site_settings').upsert({
+      key: 'leads_config', value: req.body, updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' });
+    if (error) throw error;
+    res.json({ ok: true, saved_at: new Date().toISOString() });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
 
 // ── Banner click/dismiss tracking (public — no admin auth) ─────────────────────

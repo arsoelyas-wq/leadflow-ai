@@ -11,6 +11,7 @@ const NAV = [
   { href: '/admin/revenue', icon: '💰', label: 'Gelir & Finans' },
   { group: 'İÇERİK & UI' },
   { href: '/admin/landing', icon: '🏠', label: 'Ana Sayfa Editörü' },
+  { href: '/admin/leads', icon: '🎯', label: 'Lead Sayfası Editörü' },
   { href: '/admin/content', icon: '🌍', label: 'Pazar Sayfaları' },
   { href: '/admin/content/banners', icon: '🎬', label: 'Banner & Video' },
   { href: '/admin/avatar-library', icon: '🎭', label: 'Avatar Kütüphanesi' },

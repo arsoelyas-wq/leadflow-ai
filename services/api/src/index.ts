@@ -237,6 +237,16 @@ app.use('/api/settings/business-profile', authMiddleware, require('./routes/busi
 // Market pages — public GET no auth, CRUD requires auth
 app.use('/api/market-pages/public', require('./routes/market-pages-public'));
 app.use('/api/market-pages',        authMiddleware, require('./routes/market-pages'));
+// Leads config — public read (no auth), used by leads page for status/score config
+app.get('/api/leads-config', async (req: any, res: any) => {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const { data } = await sb.from('site_settings').select('value').eq('key', 'leads_config').single();
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.json({ config: data?.value && Object.keys(data.value).length > 0 ? data.value : null });
+  } catch { res.json({ config: null }); }
+});
 // ── ADMIN OS ─────────────────────────────────────────────────────────────────
 const { adminAuthMiddleware } = require('./middleware/adminAuth');
 const adminRouter = require('./routes/admin/index');

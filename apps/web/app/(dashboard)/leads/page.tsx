@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
@@ -45,21 +45,32 @@ const AV = [
 function av(name: string) { return AV[(name.charCodeAt(0)+(name.charCodeAt(1)||0)) % AV.length] }
 
 /* ─── Status ─────────────────────────────────────────────────── */
+const COLOR_PRESETS: Record<string,{bg:string;text:string;dot:string;ring:string}> = {
+  blue:    {bg:'#EFF6FF',text:'#1D4ED8',dot:'#3B82F6',ring:'#BFDBFE'},
+  yellow:  {bg:'#FFFBEB',text:'#92400E',dot:'#F59E0B',ring:'#FDE68A'},
+  cyan:    {bg:'#ECFEFF',text:'#155E75',dot:'#06B6D4',ring:'#A5F3FC'},
+  emerald: {bg:'#F0FDF4',text:'#15803D',dot:'#22C55E',ring:'#BBF7D0'},
+  purple:  {bg:'#FDF4FF',text:'#7E22CE',dot:'#A855F7',ring:'#E9D5FF'},
+  green:   {bg:'#DCFCE7',text:'#14532D',dot:'#16A34A',ring:'#86EFAC'},
+  red:     {bg:'#FEF2F2',text:'#991B1B',dot:'#EF4444',ring:'#FECACA'},
+  gray:    {bg:'#F8FAFC',text:'#64748B',dot:'#94A3B8',ring:'#E2E8F0'},
+}
 const ST: Record<string,{label:string;bg:string;text:string;dot:string;ring:string}> = {
-  new:       {label:'Yeni',           bg:'#EFF6FF',text:'#1D4ED8',dot:'#3B82F6',ring:'#BFDBFE'},
-  contacted: {label:'İletişimde',     bg:'#FFFBEB',text:'#92400E',dot:'#F59E0B',ring:'#FDE68A'},
-  qualified: {label:'Nitelikli',      bg:'#ECFEFF',text:'#155E75',dot:'#06B6D4',ring:'#A5F3FC'},
-  replied:   {label:'Cevap Verdi',    bg:'#F0FDF4',text:'#15803D',dot:'#22C55E',ring:'#BBF7D0'},
-  offered:   {label:'Teklif Verildi', bg:'#FDF4FF',text:'#7E22CE',dot:'#A855F7',ring:'#E9D5FF'},
-  won:       {label:'Kazanıldı',      bg:'#DCFCE7',text:'#14532D',dot:'#16A34A',ring:'#86EFAC'},
-  lost:      {label:'Kaybedildi',     bg:'#FEF2F2',text:'#991B1B',dot:'#EF4444',ring:'#FECACA'},
+  new:       {label:'Yeni',           ...COLOR_PRESETS.blue},
+  contacted: {label:'İletişimde',     ...COLOR_PRESETS.yellow},
+  qualified: {label:'Nitelikli',      ...COLOR_PRESETS.cyan},
+  replied:   {label:'Cevap Verdi',    ...COLOR_PRESETS.emerald},
+  offered:   {label:'Teklif Verildi', ...COLOR_PRESETS.purple},
+  won:       {label:'Kazanıldı',      ...COLOR_PRESETS.green},
+  lost:      {label:'Kaybedildi',     ...COLOR_PRESETS.red},
 }
 const SK = ['new','contacted','qualified','replied','offered','won','lost']
 
-function StatusPill({ status, onChange }: { status: string; onChange:(s:string)=>void }) {
+function StatusPill({ status, onChange, stMap }: { status: string; onChange:(s:string)=>void; stMap?: typeof ST }) {
   const [open,setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const s = ST[status] || {label:status,bg:'#F1F5F9',text:'#475569',dot:'#94A3B8',ring:'#E2E8F0'}
+  const map = stMap || ST
+  const s = map[status] || {label:status,bg:'#F1F5F9',text:'#475569',dot:'#94A3B8',ring:'#E2E8F0'}
   useEffect(()=>{
     const h=(e:MouseEvent)=>{if(ref.current&&!ref.current.contains(e.target as Node))setOpen(false)}
     document.addEventListener('mousedown',h); return ()=>document.removeEventListener('mousedown',h)
@@ -75,7 +86,7 @@ function StatusPill({ status, onChange }: { status: string; onChange:(s:string)=
       </button>
       {open && (
         <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-xl py-1 min-w-[170px]">
-          {SK.map(k=>{const c=ST[k]; return (
+          {Object.keys(map).map(k=>{const c=map[k]; return (
             <button key={k} onClick={()=>{onChange(k);setOpen(false)}}
               className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs hover:bg-slate-50 transition-colors text-left">
               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{background:c.dot}}/>
@@ -102,10 +113,11 @@ function SourceBadge({source}:{source:string}) {
 }
 
 /* ─── Score ──────────────────────────────────────────────────── */
-function ScoreBadge({score}:{score:number}) {
-  const c = score>=75 ? {bg:'#DCFCE7',t:'#15803D',b:'#BBF7D0'}
-    : score>=50 ? {bg:'#EDE9FE',t:'#6D28D9',b:'#DDD6FE'}
-    : score>=30 ? {bg:'#FEF3C7',t:'#92400E',b:'#FDE68A'}
+function ScoreBadge({score, thresholds}:{score:number; thresholds?:{high:number;medium:number;low:number}}) {
+  const h = thresholds?.high ?? 75, m = thresholds?.medium ?? 50, l = thresholds?.low ?? 30
+  const c = score>=h ? {bg:'#DCFCE7',t:'#15803D',b:'#BBF7D0'}
+    : score>=m ? {bg:'#EDE9FE',t:'#6D28D9',b:'#DDD6FE'}
+    : score>=l ? {bg:'#FEF3C7',t:'#92400E',b:'#FDE68A'}
     : {bg:'#FEE2E2',t:'#991B1B',b:'#FECACA'}
   return <span className="inline-flex items-center justify-center w-9 h-7 rounded-lg text-xs font-bold border"
     style={{background:c.bg,color:c.t,borderColor:c.b}}>{score}</span>
@@ -340,8 +352,9 @@ const SOURCES = ['Manuel','WhatsApp Gelen','Google Maps','Instagram','Facebook',
 const STATUS_OPTS = ['new','contacted','qualified','replied','offered','won','lost']
 
 function AddLeadDrawer({
-  open, onClose, onSaved, sectors,
-}:{open:boolean; onClose:()=>void; onSaved:(lead:any)=>void; sectors:string[]}) {
+  open, onClose, onSaved, sectors, stMap: drawerStMap,
+}:{open:boolean; onClose:()=>void; onSaved:(lead:any)=>void; sectors:string[]; stMap?: typeof ST}) {
+  const stMap = drawerStMap || ST
   const [form,setForm]=useState({
     company_name:'', contact_name:'', phone:'', email:'', website:'',
     city:'', sector:'', source:'Manuel', status:'new', notes:'', score:50,
@@ -489,7 +502,7 @@ function AddLeadDrawer({
                 <div>
                   <label className={label}>Başlangıç Durumu</label>
                   <select value={form.status} onChange={e=>set('status',e.target.value)} className={inp+' cursor-pointer'}>
-                    {STATUS_OPTS.map(s=><option key={s} value={s}>{ST[s]?.label||s}</option>)}
+                    {Object.keys(stMap).map((s:string)=><option key={s} value={s}>{stMap[s]?.label||s}</option>)}
                   </select>
                 </div>
               </div>
@@ -620,6 +633,34 @@ const PAGE_SIZES=[20,50,100]
 export default function LeadsPage() {
   const {t} = useI18n()
   const isMobile = useIsMobile()
+
+  // ── Admin config ──────────────────────────────────────────────
+  const [ldCfg, setLdCfg] = useState<any>(null)
+  useEffect(() => {
+    fetch(`${API_BASE}/api/leads-config`)
+      .then(r => r.json())
+      .then(d => { if (d.config) setLdCfg(d.config) })
+      .catch(() => {})
+  }, [])
+  const stMap = useMemo(() => {
+    if (!ldCfg?.statuses?.length) return ST
+    return Object.fromEntries(
+      ldCfg.statuses.map((s: any) => [s.key, { label: s.label, ...(COLOR_PRESETS[s.color] || COLOR_PRESETS.gray) }])
+    ) as typeof ST
+  }, [ldCfg])
+  const scoreThresholds = useMemo(() => ({
+    high: ldCfg?.score_high ?? 75, medium: ldCfg?.score_medium ?? 50, low: ldCfg?.score_low ?? 30,
+  }), [ldCfg])
+  const hotThreshold    = ldCfg?.hot_threshold ?? 75
+  const featureKvBul    = ldCfg?.feature_kv_bul !== false
+  const featureImport   = ldCfg?.feature_import !== false
+  const featureExport   = ldCfg?.feature_export !== false
+  const pageTitle       = ldCfg?.page_title || 'Lead Veritabanı'
+  const statTodayLabel  = ldCfg?.stat_today_label || 'Bugün Eklenen'
+  const statWonLabel    = ldCfg?.stat_won_label || 'Kazanılan'
+  const statHotLabel    = ldCfg?.stat_hot_label || 'Sıcak Lead'
+  // ─────────────────────────────────────────────────────────────
+
   const [leads,setLeads]=useState<Lead[]>([])
   const [total,setTotal]=useState(0)
   const [loading,setLoading]=useState(true)
@@ -827,6 +868,7 @@ export default function LeadsPage() {
         open={showAddLead}
         onClose={()=>setShowAddLead(false)}
         sectors={sectors}
+        stMap={stMap}
         onSaved={lead=>{
           setShowAddLead(false)
           toast('success',`✅ "${lead.company_name}" başarıyla eklendi`)
@@ -845,23 +887,29 @@ export default function LeadsPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Lead Veritabanı</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
           <p className="text-slate-400 text-sm mt-0.5">{total.toLocaleString('tr-TR')} kayıt{hasFilters?' · filtrelendi':''}</p>
         </div>
         <div className="flex items-center gap-2.5 flex-wrap">
-          <button onClick={exportExcel} disabled={exporting}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 cursor-pointer">
-            {exporting?<RefreshCw size={14} className="animate-spin"/>:<Download size={14}/>}
-            <span className="hidden sm:inline">{selected.length>0?`${selected.length} Lead Export`:'Excel Export'}</span>
-          </button>
-          <Link href="/decision-maker"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-            <Crosshair size={14}/><span className="hidden sm:inline"> KV Bul</span>
-          </Link>
-          <button onClick={()=>setShowImport(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-            <Download size={14} className="rotate-180 text-emerald-600"/><span className="hidden sm:inline"> Excel Aktar</span>
-          </button>
+          {featureExport && (
+            <button onClick={exportExcel} disabled={exporting}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 cursor-pointer">
+              {exporting?<RefreshCw size={14} className="animate-spin"/>:<Download size={14}/>}
+              <span className="hidden sm:inline">{selected.length>0?`${selected.length} Lead Export`:'Excel Export'}</span>
+            </button>
+          )}
+          {featureKvBul && (
+            <Link href="/decision-maker"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+              <Crosshair size={14}/><span className="hidden sm:inline"> KV Bul</span>
+            </Link>
+          )}
+          {featureImport && (
+            <button onClick={()=>setShowImport(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+              <Download size={14} className="rotate-180 text-emerald-600"/><span className="hidden sm:inline"> Excel Aktar</span>
+            </button>
+          )}
           <button onClick={()=>setShowAddLead(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
             style={{background:'linear-gradient(135deg,#059669,#0d9488)'}}>
@@ -877,10 +925,10 @@ export default function LeadsPage() {
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users}      value={total}    label="Toplam Lead"   iconBg="#EEF2FF" iconColor="#4F46E5"/>
-        <StatCard icon={Zap}        value={newToday} label="Bugün Eklenen"  iconBg="#F0FDF4" iconColor="#16A34A"/>
-        <StatCard icon={TrendingUp} value={pipelineStats?.wonCount??leads.filter(l=>l.status==='won').length}       label="Kazanılan"    iconBg="#FFFBEB" iconColor="#D97706"/>
-        <StatCard icon={Flame}      value={pipelineStats?.hotLeads??leads.filter(l=>(l.hot_score||0)>=30).length} label="Sıcak Lead"   iconBg="#FEF2F2" iconColor="#DC2626"/>
+        <StatCard icon={Users}      value={total}    label="Toplam Lead"     iconBg="#EEF2FF" iconColor="#4F46E5"/>
+        <StatCard icon={Zap}        value={newToday} label={statTodayLabel}  iconBg="#F0FDF4" iconColor="#16A34A"/>
+        <StatCard icon={TrendingUp} value={pipelineStats?.wonCount??leads.filter(l=>l.status==='won').length}                              label={statWonLabel}  iconBg="#FFFBEB" iconColor="#D97706"/>
+        <StatCard icon={Flame}      value={pipelineStats?.hotLeads??leads.filter(l=>(l.score||0)>=hotThreshold).length} label={statHotLabel}  iconBg="#FEF2F2" iconColor="#DC2626"/>
 
       {/* Pipeline Stats + Çöp Kutusu aksiyonları */}
       </div>
@@ -1136,7 +1184,7 @@ export default function LeadsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-slate-900 text-[15px] font-semibold truncate">{lead.company_name}</span>
-                      {(lead.hot_score||0)>=30&&<Flame size={12} className="text-red-400 shrink-0"/>}
+                      {(lead.score||0)>=hotThreshold&&<Flame size={12} className="text-red-400 shrink-0"/>}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       {lead.city&&<span className="text-slate-400 text-xs">{lead.city}</span>}
@@ -1162,8 +1210,8 @@ export default function LeadsPage() {
                     </button>
                   )}
                   <div className="flex items-center gap-2 shrink-0">
-                    <ScoreBadge score={lead.score}/>
-                    <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)}/>
+                    <ScoreBadge score={lead.score} thresholds={scoreThresholds}/>
+                    <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)} stMap={stMap}/>
                   </div>
                 </div>
               </div>
@@ -1271,7 +1319,7 @@ export default function LeadsPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-1 min-w-0">
                             <span className="text-slate-900 text-sm font-semibold truncate block">{lead.company_name}</span>
-                            {(lead.hot_score||0)>=30&&<Flame size={10} className="text-red-400 shrink-0"/>}
+                            {(lead.score||0)>=hotThreshold&&<Flame size={10} className="text-red-400 shrink-0"/>}
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
                             {lead.city&&<span className="text-slate-400 text-[10px] truncate">{lead.city}</span>}
@@ -1349,7 +1397,7 @@ export default function LeadsPage() {
                     {/* Score */}
                     <td className="px-3 py-3 align-middle">
                       <div className="flex items-center gap-1">
-                        <ScoreBadge score={lead.score}/>
+                        <ScoreBadge score={lead.score} thresholds={scoreThresholds}/>
                         {lead.ai_grade&&(['A','B','C','D'] as const).includes(lead.ai_grade as any)&&(
                           <span className="text-[9px] font-bold px-1 py-0.5 rounded border"
                             style={lead.ai_grade==='A'?{background:'#DCFCE7',color:'#15803D',borderColor:'#BBF7D0'}
@@ -1364,7 +1412,7 @@ export default function LeadsPage() {
                     {/* Status */}
                     <td className="px-3 py-3 align-middle">
                       <div className="flex items-center gap-1">
-                        <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)}/>
+                        <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)} stMap={stMap}/>
                         <button title="Meta'ya kaliteli lead sinyali gönder" onClick={async(e)=>{e.stopPropagation();try{const d=await api.post('/api/ads-intelligence/quality-signal',{leadId:lead.id,quality:'qualified'});toast('success',d.message||'Meta sinyali gönderildi!')}catch{toast('error','Sinyal gönderilemedi')}}}
                           className="opacity-0 group-hover/row:opacity-100 w-5 h-5 flex items-center justify-center rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 transition-all shrink-0">
                           <Target size={10}/>
