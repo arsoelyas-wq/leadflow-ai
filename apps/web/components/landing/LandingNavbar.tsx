@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Menu, X, ChevronRight } from 'lucide-react'
 import { SparkIcon } from '@/components/SovloLogo'
 
-const NAV_LINKS = [
+const DEFAULT_NAV_LINKS = [
   { label: 'Özellikler', href: '#ozellikler' },
   { label: 'Nasıl Çalışır', href: '#nasil-calisir' },
   { label: 'Fiyatlar', href: '#fiyatlar' },
@@ -15,7 +15,14 @@ const NAV_LINKS = [
 const NAV_LINK_CLASS = 'px-4 py-2 text-[14px] font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-all duration-150'
 const MOBILE_NAV_LINK_CLASS = 'px-4 py-3 text-[15px] font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all'
 
-export default function LandingNavbar() {
+export default function LandingNavbar({ cfg }: { cfg?: any }) {
+  const NAV_LINKS = cfg?.nav_links?.length ? cfg.nav_links : DEFAULT_NAV_LINKS
+  const logoName   = cfg?.nav_logo_name   || 'Sovlo'
+  const logoSuffix = cfg?.nav_logo_suffix || 'AI'
+  const loginText  = cfg?.nav_login_text  || 'Giriş Yap'
+  const loginUrl   = cfg?.nav_login_url   || '/login'
+  const ctaText    = cfg?.nav_cta_text    || 'Ücretsiz Başla'
+  const ctaUrl     = cfg?.nav_cta_url     || '/register'
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -57,18 +64,14 @@ export default function LandingNavbar() {
 
               {/* Wordmark */}
               <div className="flex items-baseline gap-[3px]">
-                <span className="font-extrabold text-[20px] leading-none tracking-[-0.03em] text-slate-900">
-                  Sovlo
-                </span>
-                <span className="font-extrabold text-[20px] leading-none tracking-[-0.03em] text-sky-500">
-                  AI
-                </span>
+                <span className="font-extrabold text-[20px] leading-none tracking-[-0.03em] text-slate-900">{logoName}</span>
+                <span className="font-extrabold text-[20px] leading-none tracking-[-0.03em] text-sky-500">{logoSuffix}</span>
               </div>
             </Link>
 
             {/* Desktop Nav */}
             <nav className="hidden lg:flex items-center gap-1">
-              {NAV_LINKS.map(link => (
+              {NAV_LINKS.map((link: any) => (
                 link.href.startsWith('/') ? (
                   <Link key={link.label} href={link.href} className={NAV_LINK_CLASS}>
                     {link.label}
@@ -83,21 +86,12 @@ export default function LandingNavbar() {
 
             {/* Desktop CTAs */}
             <div className="hidden lg:flex items-center gap-3">
-              <Link
-                href="/login"
-                className="px-4 py-2 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                Giriş Yap
+              <Link href={loginUrl} className="px-4 py-2 text-[14px] font-medium text-slate-600 hover:text-slate-900 transition-colors">
+                {loginText}
               </Link>
-              <Link
-                href="/register"
-                className="flex items-center gap-1.5 px-5 py-2.5 text-[14px] font-semibold bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl btn-glow group/cta"
-              >
-                Ücretsiz Başla
-                <ChevronRight
-                  size={14}
-                  className="transition-transform duration-200 group-hover/cta:translate-x-0.5"
-                />
+              <Link href={ctaUrl} className="flex items-center gap-1.5 px-5 py-2.5 text-[14px] font-semibold bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl btn-glow group/cta">
+                {ctaText}
+                <ChevronRight size={14} className="transition-transform duration-200 group-hover/cta:translate-x-0.5" />
               </Link>
             </div>
 
@@ -142,7 +136,7 @@ export default function LandingNavbar() {
           </div>
 
           <nav className="flex flex-col p-4 gap-1">
-            {NAV_LINKS.map(link => (
+            {NAV_LINKS.map((link: any) => (
               link.href.startsWith('/') ? (
                 <Link
                   key={link.label}

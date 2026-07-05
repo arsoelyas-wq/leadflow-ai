@@ -99,7 +99,26 @@ function Stars({ count }: { count: number }) {
   )
 }
 
-export default function LandingTestimonials() {
+export default function LandingTestimonials({ cfg }: { cfg?: any }) {
+  const badge        = cfg?.testimonials_badge       || 'Müşteri Yorumları'
+  const headline     = cfg?.testimonials_headline    || 'Gerçek firmalar,'
+  const headlineGradient = cfg?.testimonials_headline_gradient || (cfg?.testimonials_headline ? '' : 'gerçek sonuçlar')
+  const subheadline  = cfg?.testimonials_subheadline || 'Türkiye ve Avrupa\'dan 14 farklı sektörde kullanıcılarımız ne söylüyor.'
+
+  const testimonials = cfg?.testimonials?.length
+    ? cfg.testimonials.map((t: any, i: number) => ({
+        ...TESTIMONIALS[i] || TESTIMONIALS[0],
+        name:    t.name    || TESTIMONIALS[i]?.name    || '',
+        role:    t.role    || TESTIMONIALS[i]?.role    || '',
+        company: t.company || TESTIMONIALS[i]?.company || '',
+        country: t.country || TESTIMONIALS[i]?.country || '',
+        quote:   t.quote   || TESTIMONIALS[i]?.quote   || '',
+        result:  t.result  || TESTIMONIALS[i]?.result  || '',
+        stars:   t.stars   ?? TESTIMONIALS[i]?.stars   ?? 5,
+        avatar:  t.name ? t.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() : (TESTIMONIALS[i]?.avatar || 'NA'),
+      }))
+    : TESTIMONIALS
+
   return (
     <section className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
@@ -108,23 +127,23 @@ export default function LandingTestimonials() {
           <div className="text-center mb-14 max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 border border-amber-100 text-amber-700 text-[13px] font-semibold mb-6">
               <Star size={13} className="fill-amber-500 text-amber-500" />
-              Müşteri Yorumları
+              {badge}
             </div>
             <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-              Gerçek firmalar,{' '}
-              <span className="gradient-text-blue">gerçek sonuçlar</span>
+              {headline}
+              {headlineGradient && <>{' '}<span className="gradient-text-blue">{headlineGradient}</span></>}
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              Türkiye ve Avrupa&apos;dan 14 farklı sektörde kullanıcılarımız ne söylüyor.
+              {subheadline}
             </p>
           </div>
         </Reveal>
 
         {/* Masonry-style grid */}
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5">
-          {TESTIMONIALS.map((t) => (
+          {testimonials.map((t: any, idx: number) => (
             <div
-              key={t.name}
+              key={idx}
               className="break-inside-avoid bg-white rounded-2xl border border-slate-200 p-6 shadow-sm card-hover"
             >
               {/* Quote icon */}

@@ -29,8 +29,13 @@ const LEGAL_LINKS = [
   { label: 'GDPR',                href: '/gdpr' },
 ]
 
-export default function LandingFooter() {
-  const year = new Date().getFullYear()
+export default function LandingFooter({ cfg }: { cfg?: any }) {
+  const year        = new Date().getFullYear()
+  const companyDesc = cfg?.footer_company_desc      || 'Yapay zeka destekli B2B lead intelligence ve satış otomasyon platformu. 14 sektörde 2,000+ firma tarafından kullanılıyor.'
+  const contactEmail = cfg?.footer_contact_email    || SITE_CONFIG.email
+  const linkedinUrl  = cfg?.footer_linkedin_url     || SITE_CONFIG.linkedIn
+  const twitterUrl   = cfg?.footer_twitter_url      || SITE_CONFIG.twitter
+  const copyright    = cfg?.footer_copyright        || `© ${year} Sovlo AI. Tüm hakları saklıdır.`
 
   return (
     <footer className="bg-slate-900 text-slate-400">
@@ -47,18 +52,17 @@ export default function LandingFooter() {
             </Link>
 
             <p className="text-[14px] leading-relaxed mb-5 max-w-xs">
-              Yapay zeka destekli B2B lead intelligence ve satış otomasyon platformu.
-              14 sektörde 2,000+ firma tarafından kullanılıyor.
+              {companyDesc}
             </p>
 
             {/* Contact */}
             <div className="flex flex-col gap-2 mb-6">
               <a
-                href={`mailto:${SITE_CONFIG.email}`}
+                href={`mailto:${contactEmail}`}
                 className="flex items-center gap-2 text-[13px] hover:text-white transition-colors w-fit"
               >
                 <Mail size={13} />
-                {SITE_CONFIG.email}
+                {contactEmail}
               </a>
               <a
                 href={whatsappUrl('Merhaba, Sovlo AI hakkında bilgi almak istiyorum.')}
@@ -74,7 +78,7 @@ export default function LandingFooter() {
             {/* Social */}
             <div className="flex items-center gap-3">
               <a
-                href={SITE_CONFIG.linkedIn}
+                href={linkedinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
@@ -83,7 +87,7 @@ export default function LandingFooter() {
                 <Linkedin size={14} className="text-slate-400 hover:text-white" />
               </a>
               <a
-                href={SITE_CONFIG.twitter}
+                href={twitterUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="X / Twitter"
@@ -132,7 +136,7 @@ export default function LandingFooter() {
         <div className="border-t border-slate-800 pt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-[12px] text-slate-600">
-              © {year} Sovlo AI. Tüm hakları saklıdır.
+              {copyright}
             </p>
 
             {/* Compliance badges */}

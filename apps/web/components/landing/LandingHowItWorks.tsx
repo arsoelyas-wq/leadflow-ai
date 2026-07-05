@@ -51,7 +51,21 @@ const STEPS = [
   },
 ]
 
-export default function LandingHowItWorks() {
+export default function LandingHowItWorks({ cfg }: { cfg?: any }) {
+  const badge        = cfg?.how_badge        || 'Nasıl Çalışır?'
+  const headline     = cfg?.how_headline     || '3 adımda tam'
+  const headlineGradient = cfg?.how_headline_gradient || (cfg?.how_headline ? '' : 'otomasyon')
+  const subheadline  = cfg?.how_subheadline  || 'Kurulum yok, teknik bilgi yok. Hesap açın, hedefi belirleyin, Sovlo başlasın.'
+
+  const steps = cfg?.how_steps?.length
+    ? cfg.how_steps.map((s: any, i: number) => ({
+        ...STEPS[i] || STEPS[0],
+        title:  s.title  || STEPS[i]?.title  || '',
+        desc:   s.desc   || STEPS[i]?.desc   || '',
+        detail: s.details?.length ? s.details : STEPS[i]?.detail || [],
+      }))
+    : STEPS
+
   return (
     <section id="nasil-calisir" className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
@@ -59,14 +73,14 @@ export default function LandingHowItWorks() {
         <Reveal>
           <div className="text-center mb-16 max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[13px] font-semibold mb-6">
-              Nasıl Çalışır?
+              {badge}
             </div>
             <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-              3 adımda tam{' '}
-              <span className="gradient-text-blue">otomasyon</span>
+              {headline}
+              {headlineGradient && <>{' '}<span className="gradient-text-blue">{headlineGradient}</span></>}
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              Kurulum yok, teknik bilgi yok. Hesap açın, hedefi belirleyin, Sovlo başlasın.
+              {subheadline}
             </p>
           </div>
         </Reveal>
@@ -77,8 +91,8 @@ export default function LandingHowItWorks() {
           <div className="hidden lg:block absolute top-14 left-[33%] right-[33%] h-px"
             style={{ background: 'linear-gradient(to right, transparent, #cbd5e1, transparent)' }} />
 
-          {STEPS.map(({ step, icon: Icon, title, desc, color, bg, border, detail }, i) => (
-            <div key={step} className="relative">
+          {steps.map(({ step, icon: Icon, title, desc, color, bg, border, detail }: any, i: number) => (
+            <div key={i} className="relative">
               {/* Step card */}
               <div className="bg-white rounded-2xl border border-slate-200 p-7 shadow-sm h-full flex flex-col">
                 {/* Step number + icon */}
@@ -99,7 +113,7 @@ export default function LandingHowItWorks() {
 
                 {/* Detail list */}
                 <div className="mt-auto flex flex-col gap-2">
-                  {detail.map((d, j) => (
+                  {detail.map((d: string, j: number) => (
                     <div key={j} className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
                       <span className="text-[13px] text-slate-600 font-medium">{d}</span>

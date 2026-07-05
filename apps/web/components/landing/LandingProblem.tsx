@@ -21,7 +21,14 @@ const SOLUTIONS = [
   'Canlı analitik, ROI ve dönüşüm raporu',
 ]
 
-export default function LandingProblem() {
+export default function LandingProblem({ cfg }: { cfg?: any }) {
+  const badge      = cfg?.problem_badge    || 'Neden Değiştirmelisiniz?'
+  const headline   = cfg?.problem_headline || 'Manuel satış artık'
+  const headlineGradient = cfg?.problem_headline_gradient || (cfg?.problem_headline ? '' : 'rekabetçi değil')
+  const subtitle   = cfg?.problem_subtitle || 'Rakipleriniz AI ile otomatik büyürken siz hâlâ saatler harcıyorsanız, fark her geçen gün açılıyor.'
+  const problems   = cfg?.problems?.length   ? cfg.problems   : PROBLEMS
+  const solutions  = cfg?.solutions?.length  ? cfg.solutions  : SOLUTIONS
+
   return (
     <section className="py-24 bg-slate-50">
       <div className="max-w-7xl mx-auto px-6">
@@ -29,14 +36,14 @@ export default function LandingProblem() {
         <Reveal>
           <div className="text-center mb-16 max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 border border-rose-100 text-rose-700 text-[13px] font-semibold mb-6">
-              Neden Değiştirmelisiniz?
+              {badge}
             </div>
             <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-              Manuel satış artık{' '}
-              <span className="gradient-text-blue">rekabetçi değil</span>
+              {headline}
+              {headlineGradient && <>{' '}<span className="gradient-text-blue">{headlineGradient}</span></>}
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              Rakipleriniz AI ile otomatik büyürken siz hâlâ saatler harcıyorsanız, fark her geçen gün açılıyor.
+              {subtitle}
             </p>
           </div>
         </Reveal>
@@ -55,12 +62,14 @@ export default function LandingProblem() {
               </div>
             </div>
             <div className="px-7 py-6 flex flex-col gap-4">
-              {PROBLEMS.map((p, i) => (
+              {problems.map((p: any, i: number) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-rose-100 border border-rose-200 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <X size={10} className="text-rose-500" strokeWidth={3} />
                   </div>
-                  <span className="text-[14px] text-slate-500 leading-snug">{p}</span>
+                  <span className="text-[14px] text-slate-500 leading-snug">
+                    {typeof p === 'string' ? p : (p.title || p.desc || '')}
+                  </span>
                 </div>
               ))}
             </div>
@@ -81,7 +90,7 @@ export default function LandingProblem() {
               </div>
             </div>
             <div className="px-7 py-6 flex flex-col gap-4">
-              {SOLUTIONS.map((s, i) => (
+              {solutions.map((s: string, i: number) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <CheckCircle size={10} className="text-emerald-500" />

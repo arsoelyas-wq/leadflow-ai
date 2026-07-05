@@ -82,8 +82,24 @@ const PLANS = [
   },
 ]
 
-export default function LandingPricing() {
+export default function LandingPricing({ cfg }: { cfg?: any }) {
   const [annual, setAnnual] = useState(false)
+
+  const badge        = cfg?.pricing_badge       || 'Şeffaf Fiyatlandırma'
+  const headline     = cfg?.pricing_headline    || 'Gizli ücret yok,'
+  const headlineGradient = cfg?.pricing_headline_gradient || (cfg?.pricing_headline ? '' : 'sürpriz yok')
+  const subheadline  = cfg?.pricing_subheadline || 'Kullanılmayan krediler bir sonraki aya taşınır. Rakipler sıfırlıyor — biz taşıyoruz.'
+
+  const plans = cfg?.plans?.length
+    ? cfg.plans.map((p: any, i: number) => ({
+        ...PLANS[i] || PLANS[0],
+        monthlyPrice: Number(p.monthly_price) || PLANS[i]?.monthlyPrice || 0,
+        annualPrice:  Number(p.annual_price)  || PLANS[i]?.annualPrice  || 0,
+        features: p.features?.length
+          ? p.features.map((f: any) => ({ text: f.text || f, included: f.included !== false && f.inc !== false }))
+          : PLANS[i]?.features || [],
+      }))
+    : PLANS
 
   return (
     <section id="fiyatlar" className="py-24 bg-slate-50">
@@ -93,14 +109,14 @@ export default function LandingPricing() {
         <div className="text-center mb-12 max-w-2xl mx-auto">
           <Reveal>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-[13px] font-semibold mb-6">
-              Şeffaf Fiyatlandırma
+              {badge}
             </div>
             <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-              Gizli ücret yok,{' '}
-              <span className="gradient-text-blue">sürpriz yok</span>
+              {headline}
+              {headlineGradient && <>{' '}<span className="gradient-text-blue">{headlineGradient}</span></>}
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              Kullanılmayan krediler bir sonraki aya taşınır. Rakipler sıfırlıyor — biz taşıyoruz.
+              {subheadline}
             </p>
           </Reveal>
 
@@ -124,7 +140,7 @@ export default function LandingPricing() {
 
         {/* Plan cards */}
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
-          {PLANS.map(plan => {
+          {plans.map((plan: any) => {
             const price = annual ? plan.annualPrice : plan.monthlyPrice
             const Icon = plan.icon
             const annualTotal = plan.annualPrice * 12
@@ -209,7 +225,7 @@ export default function LandingPricing() {
                 <div className="px-7 pb-7 flex-1 border-t border-slate-100 pt-5">
                   <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">Neler dahil</div>
                   <div className="flex flex-col gap-2.5">
-                    {plan.features.map((f, i) => (
+                    {plan.features.map((f: any, i: number) => (
                       <div key={i} className="flex items-center gap-2.5">
                         {f.included ? (
                           <CheckCircle size={14} style={{ color: plan.color, flexShrink: 0 }} />

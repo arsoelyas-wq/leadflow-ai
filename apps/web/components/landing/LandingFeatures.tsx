@@ -122,7 +122,11 @@ const FEATURES = [
   },
 ]
 
-export default function LandingFeatures() {
+export default function LandingFeatures({ cfg }: { cfg?: any }) {
+  const headline         = cfg?.features_headline          || 'Satışın her adımı'
+  const headlineGradient = cfg?.features_headline_gradient || (cfg?.features_headline ? '' : 'otomatik')
+  const subheadline      = cfg?.features_subheadline       || 'Lead bulmadan kapatmaya, her aşamada AI destekli araçlar. Rakipleriniz manuel çalışırken siz büyüyün.'
+
   const [activeTab, setActiveTab] = useState<Tab>('Tümü')
 
   const filtered = activeTab === 'Tümü'
@@ -140,11 +144,11 @@ export default function LandingFeatures() {
               Özellikler
             </div>
             <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-              Satışın her adımı{' '}
-              <span className="gradient-text-blue">otomatik</span>
+              {headline}
+              {headlineGradient && <>{' '}<span className="gradient-text-blue">{headlineGradient}</span></>}
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              Lead bulmadan kapatmaya, her aşamada AI destekli araçlar. Rakipleriniz manuel çalışırken siz büyüyün.
+              {subheadline}
             </p>
           </div>
         </Reveal>

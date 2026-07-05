@@ -65,7 +65,22 @@ export const metadata: Metadata = {
   },
 }
 
-export default function LandingPage() {
+async function getLandingConfig() {
+  try {
+    const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
+    const res = await fetch(`${API}/api/market-pages/public/home`, {
+      next: { revalidate: 60 }, // ISR: revalidate every 60s
+    })
+    const data = await res.json()
+    return data?.page || null
+  } catch {
+    return null
+  }
+}
+
+export default async function LandingPage() {
+  const cfg = await getLandingConfig()
+
   return (
     <div className="bg-white text-slate-900">
       {/* Structured data — SoftwareApplication */}
@@ -78,80 +93,36 @@ export default function LandingPage() {
             name: 'Sovlo AI',
             applicationCategory: 'BusinessApplication',
             operatingSystem: 'Web',
-            description: 'Yapay Zeka Destekli B2B Lead Intelligence ve Satış Otomasyon Platformu',
+            description: cfg?.meta_description || 'Yapay Zeka Destekli B2B Lead Intelligence ve Satış Otomasyon Platformu',
             url: SITE_CONFIG.url,
-            offers: {
-              '@type': 'Offer',
-              price: '199',
-              priceCurrency: 'TRY',
-              priceValidUntil: '2027-01-01',
-            },
-            aggregateRating: {
-              '@type': 'AggregateRating',
-              ratingValue: '4.8',
-              reviewCount: '2000',
-              bestRating: '5',
-              worstRating: '1',
-            },
+            offers: { '@type': 'Offer', price: '199', priceCurrency: 'TRY', priceValidUntil: '2027-01-01' },
+            aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', reviewCount: '2000', bestRating: '5', worstRating: '1' },
           }),
         }}
       />
 
-      <LandingNavbar />
+      <LandingNavbar cfg={cfg} />
 
       <main>
-        {/* 1. Hero */}
-        <LandingHero />
-
-        {/* 2. Logo Bar — sektör rozetleri */}
+        <LandingHero cfg={cfg} />
         <LandingLogoBar />
-
-        {/* 3. Stats */}
-        <LandingStats />
-
-        {/* 4. ROI Hesaplayıcı — dönüşüm arttırıcı */}
+        <LandingStats cfg={cfg} />
         <LandingROICalculator />
-
-        {/* 5. Problem → Solution */}
-        <LandingProblem />
-
-        {/* 6. Features */}
-        <LandingFeatures />
-
-        {/* 7. Rakip Karşılaştırma */}
+        <LandingProblem cfg={cfg} />
+        <LandingFeatures cfg={cfg} />
         <LandingComparisonTable />
-
-        {/* 8. How It Works */}
-        <LandingHowItWorks />
-
-        {/* 9. Demo */}
+        <LandingHowItWorks cfg={cfg} />
         <LandingDemo />
-
-        {/* 10. Use Cases */}
         <LandingUseCases />
-
-        {/* 11. Testimonials */}
-        <LandingTestimonials />
-
-        {/* 12. Integrations */}
+        <LandingTestimonials cfg={cfg} />
         <LandingIntegrations />
-
-        {/* 13. Pricing */}
-        <LandingPricing />
-
-        {/* 14. FAQ */}
-        <LandingFAQ />
-
-        {/* 15. Final CTA */}
-        <LandingCTA />
+        <LandingPricing cfg={cfg} />
+        <LandingFAQ cfg={cfg} />
+        <LandingCTA cfg={cfg} />
       </main>
 
-      <LandingFooter />
-
-      {/* Support widget */}
+      <LandingFooter cfg={cfg} />
       <SupportWidget />
-
-      {/* Exit intent popup — çıkış niyeti yakalama */}
       <ExitIntentPopup />
     </div>
   )

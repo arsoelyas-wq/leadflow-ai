@@ -97,18 +97,19 @@ function AccordionItem({ faq, index, isOpen, onToggle }: {
   )
 }
 
-export default function LandingFAQ() {
+export default function LandingFAQ({ cfg }: { cfg?: any }) {
   const [open, setOpen] = useState<number | null>(0)
+  const headline = cfg?.faq_headline || 'Sıkça Sorulan Sorular'
+  const faqs = cfg?.faqs?.length ? cfg.faqs : FAQS
 
   return (
     <section className="py-24 bg-white">
       <div className="max-w-3xl mx-auto px-6">
-        {/* Header */}
         <Reveal>
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[13px] font-semibold mb-6">
               <HelpCircle size={13} />
-              Sıkça Sorulan Sorular
+              {headline}
             </div>
             <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
               Aklınızdaki{' '}
@@ -120,9 +121,8 @@ export default function LandingFAQ() {
           </div>
         </Reveal>
 
-        {/* Accordion */}
         <div className="flex flex-col gap-3">
-          {FAQS.map((faq, i) => (
+          {faqs.map((faq: any, i: number) => (
             <AccordionItem
               key={i}
               faq={faq}

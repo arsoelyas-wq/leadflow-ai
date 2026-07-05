@@ -17,7 +17,12 @@ function trackCTA(label: string) {
   }
 }
 
-export default function LandingCTA() {
+export default function LandingCTA({ cfg }: { cfg?: any }) {
+  const headline    = cfg?.cta_headline      || 'Satışlarınızı Bugün Otomatize Edin'
+  const subheadline = cfg?.cta_subheadline   || '2,000+ firma Sovlo AI ile satışlarını otomatize etti. Sizin sıranız.'
+  const cta1Text    = cfg?.cta_primary_text  || '14 Gün Ücretsiz Başla'
+  const cta1Url     = cfg?.cta_primary_url   || '/register'
+  const trustPoints = cfg?.cta_trust_points  || TRUST_POINTS
   return (
     <section className="py-28 relative overflow-hidden bg-slate-900">
       {/* Background grid */}
@@ -55,56 +60,21 @@ export default function LandingCTA() {
             Bugün başla, bu hafta sonuç al
           </div>
 
-          {/* Headline */}
-          <h2 className="text-[40px] lg:text-[56px] xl:text-[64px] font-black leading-[1.04] tracking-[-0.035em] text-white mb-6">
-            Rakiplerinden{' '}
-            <span
-              className="animate-gradient-x"
-              style={{
-                background: 'linear-gradient(135deg, #60a5fa, #a78bfa, #60a5fa)',
-                backgroundSize: '200% 200%',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              1 Adım Önde Ol
-            </span>
-          </h2>
-
-          <p className="text-[18px] text-slate-400 leading-relaxed max-w-xl mx-auto mb-10">
-            2,000+ firma Sovlo AI ile satışlarını otomatize etti.{' '}
-            <strong className="text-slate-200">Sizin sıranız.</strong>
-          </p>
+          <h2 className="text-[40px] lg:text-[56px] xl:text-[64px] font-black leading-[1.04] tracking-[-0.035em] text-white mb-6">{headline}</h2>
+          <p className="text-[18px] text-slate-400 leading-relaxed max-w-xl mx-auto mb-10">{subheadline}</p>
         </Reveal>
 
-        {/* CTA Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
-          <Link
-            href="/register"
-            onClick={() => trackCTA('cta_section_register')}
-            className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[16px] font-bold btn-glow"
-            style={{ boxShadow: '0 8px 32px -6px rgba(99,102,241,0.6)' }}
-          >
-            14 Gün Ücretsiz Başla
-            <ArrowRight size={18} />
+          <Link href={cta1Url} onClick={() => trackCTA('cta_section_register')} className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[16px] font-bold btn-glow" style={{ boxShadow: '0 8px 32px -6px rgba(99,102,241,0.6)' }}>
+            {cta1Text} <ArrowRight size={18} />
           </Link>
-
-          <a
-            href={whatsappUrl('Merhaba, Sovlo AI demo almak istiyorum.')}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackCTA('cta_section_whatsapp')}
-            className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-[15px] font-semibold text-slate-300 border border-slate-700 hover:border-slate-600 hover:text-white transition-all"
-          >
-            <MessageCircle size={16} />
-            WhatsApp Demo Al
+          <a href={whatsappUrl('Merhaba, Sovlo AI demo almak istiyorum.')} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-[15px] font-semibold text-slate-300 border border-slate-700 hover:border-slate-600 hover:text-white transition-all">
+            <MessageCircle size={16} /> WhatsApp Demo Al
           </a>
         </div>
 
-        {/* Trust points */}
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {TRUST_POINTS.map(t => (
+          {trustPoints.map((t: string) => (
             <div key={t} className="flex items-center gap-1.5">
               <CheckCircle size={13} className="text-emerald-400 flex-shrink-0" />
               <span className="text-[13px] text-slate-400 font-medium">{t}</span>
