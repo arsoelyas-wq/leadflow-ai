@@ -58,7 +58,7 @@ const PLAN_COLORS: Record<string, string> = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatPrice(cents: number): string {
-  return '$' + (cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })
+  return '₺' + (cents / 100).toLocaleString('tr-TR', { maximumFractionDigits: 0 })
 }
 
 function formatNum(n: number): string {
@@ -128,6 +128,8 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<PlanInfo[]>([])
   const [topups, setTopups] = useState<TopupPackage[]>([])
   const [history, setHistory] = useState<TxRecord[]>([])
+  const [enterprise, setEnterprise] = useState<any>(null)
+  const [comparison, setComparison] = useState<any>(null)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [promoCode, setPromoCode] = useState('')
   const [promoResult, setPromoResult] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -145,6 +147,8 @@ export default function BillingPage() {
       if (pln.status === 'fulfilled') {
         setPlans(pln.value.subscriptionPlans || [])
         setTopups(pln.value.topupPackages || [])
+        if (pln.value.enterprise)  setEnterprise(pln.value.enterprise)
+        if (pln.value.comparison)  setComparison(pln.value.comparison)
       }
       if (hist.status === 'fulfilled') setHistory(hist.value.payments || [])
     } catch {}
@@ -387,47 +391,46 @@ export default function BillingPage() {
             })}
 
             {/* Enterprise card */}
-            <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: '2px solid #334155', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <h3 style={{ color: '#f8fafc', fontSize: 17, fontWeight: 800, margin: '0 0 4px' }}>Enterprise</h3>
-                <p style={{ color: '#94a3b8', fontSize: 11, margin: '0 0 16px' }}>Büyük ekipler için özel çözüm</p>
-                <span style={{ color: '#ec4899', fontSize: 26, fontWeight: 900 }}>Özel Fiyat</span>
-                <div style={{ marginTop: 16 }}>
-                  {['Sınırsız kredi & ekip', 'White-Label & API', 'SLA %99.9 garantisi', 'Dedicated Account Manager'].map(f => (
-                    <div key={f} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
-                      <CheckCircle size={12} color="#ec4899" />
-                      <span style={{ color: '#cbd5e1', fontSize: 11 }}>{f}</span>
-                    </div>
-                  ))}
+            {enterprise && (
+              <div style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', border: '2px solid #334155', borderRadius: 20, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <h3 style={{ color: '#f8fafc', fontSize: 17, fontWeight: 800, margin: '0 0 4px' }}>{enterprise.title || 'Enterprise'}</h3>
+                  <p style={{ color: '#94a3b8', fontSize: 11, margin: '0 0 16px' }}>{enterprise.desc || ''}</p>
+                  <span style={{ color: enterprise.color || '#ec4899', fontSize: 26, fontWeight: 900 }}>{enterprise.price_label || 'Özel Fiyat'}</span>
+                  <div style={{ marginTop: 16 }}>
+                    {(enterprise.features || []).map((f: string) => (
+                      <div key={f} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+                        <CheckCircle size={12} color={enterprise.color || '#ec4899'} />
+                        <span style={{ color: '#cbd5e1', fontSize: 11 }}>{f}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                <a href={enterprise.cta_url || 'mailto:enterprise@sovlo.io'}
+                  style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 12, background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                  <ChevronRight size={13} /> {enterprise.cta_text || 'Bizimle İletişime Geçin'}
+                </a>
               </div>
-              <a href="mailto:enterprise@sovlo.io"
-                style={{ marginTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px', borderRadius: 12, background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-                <ChevronRight size={13} /> Bizimle İletişime Geçin
-              </a>
-            </div>
+            )}
           </div>
 
           {/* Competitor comparison */}
-          <div style={{ marginTop: 24, padding: '20px 24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16 }}>
-            <p style={{ color: '#64748b', fontSize: 12, fontWeight: 700, margin: '0 0 12px' }}>Neden Sovlo?</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-              {[
-                { label: 'Apollo Pro + Smartlead + WA aracı', price: '≈ ₺10.500/ay', icon: '🔴' },
-                { label: 'Sovlo Growth — hepsi tek pakette', price: '₺2.990/ay', icon: '🟢' },
-                { label: 'Kredi rollover (rakipler sıfırlıyor)', price: '2 ay taşınır', icon: '✅' },
-                { label: 'WhatsApp mesajı (rakipler +₺0.50/msj)', price: 'Sınırsız ücretsiz', icon: '✅' },
-              ].map(c => (
-                <div key={c.label} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 12 }}>{c.icon}</span>
-                  <div>
-                    <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{c.label}</p>
-                    <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 700, margin: '2px 0 0' }}>{c.price}</p>
+          {comparison && (
+            <div style={{ marginTop: 24, padding: '20px 24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16 }}>
+              <p style={{ color: '#64748b', fontSize: 12, fontWeight: 700, margin: '0 0 12px' }}>{comparison.title || 'Neden Sovlo?'}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                {(comparison.items || []).map((c: any) => (
+                  <div key={c.label} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 12 }}>{c.icon}</span>
+                    <div>
+                      <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>{c.label}</p>
+                      <p style={{ color: '#0f172a', fontSize: 12, fontWeight: 700, margin: '2px 0 0' }}>{c.price}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
