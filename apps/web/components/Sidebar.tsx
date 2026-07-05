@@ -191,10 +191,14 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
     })
   }, [pathname])
 
-  // Rota değişince mobilede sidebar'ı kapat
+  // Rota değişince mobilede sidebar'ı kapat — sadece pathname değişince çalış
+  const prevPathnameRef = useRef(pathname)
   useEffect(() => {
-    if (isMobile && mobileOpen) onMobileClose?.()
-  }, [pathname, isMobile, mobileOpen, onMobileClose])
+    if (pathname !== prevPathnameRef.current && isMobile) {
+      onMobileClose?.()
+    }
+    prevPathnameRef.current = pathname
+  }, [pathname, isMobile, onMobileClose])
 
   const dismissCta = () => {
     setCtaDismissed(true)

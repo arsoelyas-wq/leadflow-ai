@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import {
   Search, Plus, Trash2, ExternalLink, Crosshair, RefreshCw, Target,
   Download, Flame, Globe, ChevronDown, ChevronUp, Copy, CheckCircle2, X,
@@ -618,6 +619,7 @@ const PAGE_SIZES=[20,50,100]
 /* ─── Main ───────────────────────────────────────────────────── */
 export default function LeadsPage() {
   const {t} = useI18n()
+  const isMobile = useIsMobile()
   const [leads,setLeads]=useState<Lead[]>([])
   const [total,setTotal]=useState(0)
   const [loading,setLoading]=useState(true)
@@ -1099,7 +1101,98 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* ── Table ── */}
+      {/* ── Mobile Cards ── */}
+      {isMobile && (
+        <div className="space-y-2.5">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-16">
+              <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"/>
+              <span className="text-slate-500 text-sm">Yükleniyor...</span>
+            </div>
+          ) : leads.length === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center py-16 gap-4">
+              <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">
+                <Users size={24} className="text-slate-400"/>
+              </div>
+              <div className="text-center">
+                <p className="text-slate-600 font-medium mb-1">Lead bulunamadı</p>
+                <p className="text-slate-400 text-sm">Filtrelerini değiştir veya yeni lead topla</p>
+              </div>
+              <Link href="/scrape"
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                + Lead Topla
+              </Link>
+            </div>
+          ) : leads.map(lead => {
+            const [bg,tc]=av(lead.company_name)
+            const initials=lead.company_name.slice(0,2).toUpperCase()
+            return (
+              <div key={lead.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-bold"
+                    style={{background:bg,color:tc}}>
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-slate-900 text-[15px] font-semibold truncate">{lead.company_name}</span>
+                      {(lead.hot_score||0)>=30&&<Flame size={12} className="text-red-400 shrink-0"/>}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      {lead.city&&<span className="text-slate-400 text-xs">{lead.city}</span>}
+                      <SourceBadge source={lead.source}/>
+                    </div>
+                  </div>
+                  <Link href={`/leads/${lead.id}`} className="text-slate-300 hover:text-indigo-500 shrink-0 p-1 transition-colors">
+                    <ExternalLink size={15}/>
+                  </Link>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                  {lead.phone ? (
+                    <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-slate-700 font-mono bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-colors min-w-0 truncate">
+                      <Phone size={12} className="shrink-0 text-emerald-600"/>
+                      {lead.phone}
+                    </a>
+                  ) : (
+                    <button onClick={()=>findPhone(lead)} disabled={!!findingDM}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-500 hover:text-indigo-600 text-xs font-medium rounded-xl transition-colors disabled:opacity-50 cursor-pointer">
+                      {findingDM===lead.id+'_ph'?<RefreshCw size={12} className="animate-spin"/>:<Phone size={12}/>}
+                      Telefon Bul
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <ScoreBadge score={lead.score}/>
+                    <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)}/>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          {total>pageSize&&(
+            <div className="flex items-center justify-between pt-1 pb-2">
+              <span className="text-slate-500 text-sm">
+                <span className="font-medium text-slate-700">{((page-1)*pageSize+1).toLocaleString('tr-TR')}–{Math.min(page*pageSize,total).toLocaleString('tr-TR')}</span>
+                {' '}/{' '}{total.toLocaleString('tr-TR')}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer">
+                  ‹
+                </button>
+                <span className="px-2 text-slate-400 text-sm">{page}/{totalPages}</span>
+                <button onClick={()=>setPage(p=>p+1)} disabled={page>=totalPages}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer">
+                  ›
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Desktop Table ── */}
+      {!isMobile && (
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full" style={{tableLayout:'fixed',minWidth:'960px'}}>
@@ -1320,6 +1413,8 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
+      )}
+
     </div>
   )
 }
