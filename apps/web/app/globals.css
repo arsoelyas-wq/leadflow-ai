@@ -776,3 +776,18 @@ input[type="range"]::-moz-range-thumb {
     box-shadow: 0 8px 24px -6px rgba(37, 99, 235, 0.5);
   }
 }
+
+/* ── GLOBAL MOBILE MINIMUM TOUCH TARGETS ───────────────────── */
+@media (max-width: 768px) {
+  button, a[role="button"], [role="tab"] {
+    min-height: 36px;
+  }
+}
+
+/* ── DASHBOARD TEXT READABILITY ─────────────────────────────── */
+@media (max-width: 768px) {
+  .dash-main {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}

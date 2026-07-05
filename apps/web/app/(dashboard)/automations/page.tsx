@@ -385,7 +385,7 @@ export default function AutomationsPage() {
           )}
 
           {activeSubTab === 'templates' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
               {templates.filter(t => !bcChannel || t.channel === bcChannel || t.channel === 'whatsapp').map(tpl => (
                 <div key={tpl.id} style={{ ...card, padding: '14px 16px', cursor: 'pointer', transition: 'border-color 0.2s' }}
                   onClick={() => { setBcMessage(tpl.message); setActiveSubTab('compose'); showMsg('success', 'Şablon uygulandı') }}

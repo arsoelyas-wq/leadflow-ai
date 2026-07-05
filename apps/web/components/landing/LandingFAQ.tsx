@@ -66,7 +66,7 @@ function AccordionItem({ faq, index, isOpen, onToggle }: {
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5 text-left hover:bg-slate-50 transition-colors"
         aria-expanded={isOpen}
       >
         <span className="text-[15px] font-semibold text-slate-900 leading-snug pr-2">

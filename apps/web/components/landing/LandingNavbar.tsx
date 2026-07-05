@@ -121,7 +121,7 @@ export default function LandingNavbar({ cfg }: { cfg?: any }) {
 
         {/* Panel */}
         <div
-          className={`absolute top-0 right-0 w-[300px] h-full bg-white shadow-2xl transition-transform duration-300 ${
+          className={`absolute top-0 right-0 w-[min(300px,85vw)] h-full bg-white shadow-2xl transition-transform duration-300 ${
             mobileOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
         >

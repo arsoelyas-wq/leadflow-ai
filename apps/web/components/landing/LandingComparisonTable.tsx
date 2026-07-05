@@ -93,7 +93,60 @@ export default function LandingComparisonTable() {
         </Reveal>
 
         <Reveal>
-          <div className="overflow-x-auto">
+          {/* ── Mobil: Sovlo AI özellik listesi ── */}
+          <div className="sm:hidden">
+            <div className="flex items-center justify-between mb-4 px-1">
+              <div className="bg-gradient-to-br from-blue-600 to-violet-600 rounded-2xl px-4 py-2.5 shadow-lg shadow-blue-500/20 inline-flex items-center gap-2">
+                <Zap size={13} className="text-white fill-white" />
+                <span className="text-white text-[14px] font-black">Sovlo AI</span>
+                <span className="text-blue-200 text-[11px] font-medium ml-1">Önerilen</span>
+              </div>
+              <span className="text-slate-400 text-[12px]">Manuel Ekip</span>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+              {FEATURES.map((row, i) => (
+                <div key={row.label}
+                  className={`flex items-center gap-3 px-4 py-3.5 ${i < FEATURES.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-slate-800 leading-snug">{row.label}</div>
+                    {row.sub && <div className="text-[11px] text-slate-400 mt-0.5">{row.sub}</div>}
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <Cell value={row.sovlo} highlight={true} />
+                    <div className="w-px h-5 bg-slate-100"/>
+                    <Cell value={row.manual} highlight={false} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-col gap-3">
+              <div className="flex items-center gap-4 text-[11px] text-slate-400 justify-center">
+                <span className="flex items-center gap-1.5">
+                  <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Check size={9} className="text-white" strokeWidth={3} />
+                  </div>Sovlo AI
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Check size={9} className="text-emerald-600" strokeWidth={3} />
+                  </div>Var
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Minus size={11} className="text-amber-400" strokeWidth={2.5} />Kısmi
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <X size={11} className="text-slate-300" strokeWidth={2} />Yok
+                </span>
+              </div>
+              <Link href="/register"
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[14px] font-bold btn-glow">
+                14 Gün Ücretsiz Dene
+              </Link>
+            </div>
+          </div>
+
+          {/* ── Masaüstü: 5 sütunlu tam tablo ── */}
+          <div className="hidden sm:block overflow-x-auto">
             <div className="min-w-[640px]">
               {/* Header */}
               <div className="grid grid-cols-5 mb-2">
@@ -123,22 +176,15 @@ export default function LandingComparisonTable() {
               {/* Rows */}
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                 {FEATURES.map((row, i) => (
-                  <div
-                    key={row.label}
-                    className={`grid grid-cols-5 items-center ${i < FEATURES.length - 1 ? 'border-b border-slate-100' : ''}`}
-                  >
-                    {/* Feature label */}
+                  <div key={row.label}
+                    className={`grid grid-cols-5 items-center ${i < FEATURES.length - 1 ? 'border-b border-slate-100' : ''}`}>
                     <div className="col-span-1 px-5 py-4">
                       <div className="text-[14px] font-semibold text-slate-800 leading-tight">{row.label}</div>
                       {row.sub && <div className="text-[11px] text-slate-400 mt-0.5">{row.sub}</div>}
                     </div>
-
-                    {/* Sovlo column — highlighted background */}
                     <div className="col-span-1 px-3 py-4 text-center bg-blue-50/60 border-x border-blue-100">
                       <Cell value={row.sovlo} highlight={true} />
                     </div>
-
-                    {/* Other columns */}
                     {(['manual', 'basic', 'data'] as const).map(key => (
                       <div key={key} className="col-span-1 px-3 py-4 text-center">
                         <Cell value={row[key]} highlight={false} />
@@ -154,23 +200,17 @@ export default function LandingComparisonTable() {
                   <span className="flex items-center gap-1.5">
                     <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center">
                       <Check size={9} className="text-emerald-600" strokeWidth={3} />
-                    </div>
-                    Tam destek
+                    </div>Tam destek
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Minus size={13} className="text-amber-400" strokeWidth={2.5} />
-                    Kısmi
+                    <Minus size={13} className="text-amber-400" strokeWidth={2.5} />Kısmi
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <X size={12} className="text-slate-300" strokeWidth={2} />
-                    Yok
+                    <X size={12} className="text-slate-300" strokeWidth={2} />Yok
                   </span>
                 </div>
-
-                <Link
-                  href="/register"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[13px] font-bold btn-glow"
-                >
+                <Link href="/register"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[13px] font-bold btn-glow">
                   14 Gün Ücretsiz Dene
                 </Link>
               </div>

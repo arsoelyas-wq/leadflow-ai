@@ -1,10 +1,11 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import {
   Send, RefreshCw, MessageSquare, Search, X, Phone, Mail, MapPin,
   TrendingUp, MessageCircle, CheckCheck, Check, Smile, Paperclip,
-  ChevronDown, ExternalLink, Globe, Star, Clock, Copy, Reply,
+  ChevronDown, ChevronLeft, ExternalLink, Globe, Star, Clock, Copy, Reply,
   Image, FileText, Mic, Plus, Trash2, Pin, Sparkles, ChevronRight,
   ZapIcon, AlertCircle,
 } from 'lucide-react'
@@ -121,6 +122,8 @@ function MediaPreview({ media, isOut }: { media: any; isOut: boolean }) {
 
 export default function UnifiedInboxPage() {
   const { t } = useI18n()
+  const isMobile = useIsMobile()
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
   const [conversations, setConversations] = useState<any[]>([])
   const [messages, setMessages] = useState<any[]>([])
   const [selectedLead, setSelectedLead] = useState<any>(null)
@@ -307,6 +310,11 @@ export default function UnifiedInboxPage() {
     } catch {}
   }, [newQRTitle, newQRContent, newQRCat, loadQuickReplies, showToast])
 
+  // Mobilde lead seçilince chat görünümüne geç
+  useEffect(() => {
+    if (isMobile && selectedLead) setMobileView('chat')
+  }, [selectedLead, isMobile])
+
   // ─── Mesaj gruplama (useMemo — her render'da yeniden hesaplamaz) ───────────
   const messageGroups = useMemo(() => buildMessageGroups(messages), [messages])
 
@@ -321,10 +329,16 @@ export default function UnifiedInboxPage() {
   const totalUnread = useMemo(() => conversations.reduce((s, c) => s + (c.unreadCount || 0), 0), [conversations])
 
   return (
-    <div className="flex h-[calc(100vh-90px)] bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+    <div className={`bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm ${
+      isMobile ? 'flex flex-col' : 'flex h-[calc(100vh-90px)]'
+    }`}>
 
-      {/* ═══ LEFT PANEL ═══ */}
-      <div className="w-[340px] border-r border-slate-200 flex flex-col shrink-0 bg-white">
+      {/* ═══ LEFT PANEL — Konuşma Listesi ═══ */}
+      <div className={`border-r border-slate-200 flex flex-col bg-white ${
+        isMobile
+          ? mobileView === 'list' ? 'flex w-full' : 'hidden'
+          : 'w-[340px] shrink-0'
+      }`}>
 
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-slate-100">
@@ -383,7 +397,8 @@ export default function UnifiedInboxPage() {
         )}
 
         {/* Konuşma listesi */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={`overflow-y-auto ${isMobile ? 'flex-1 min-h-0' : 'flex-1'}`}
+          style={isMobile ? { maxHeight: 'calc(100dvh - 230px)' } : {}}>
           {loading && conversations.length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-sm">Yükleniyor...</div>
           ) : filtered.length === 0 ? (
@@ -444,10 +459,17 @@ export default function UnifiedInboxPage() {
 
       {/* ═══ MIDDLE PANEL — Mesaj Alanı ═══ */}
       {selectedLead ? (
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={`flex-1 flex flex-col min-w-0 ${isMobile && mobileView !== 'chat' ? 'hidden' : ''} ${isMobile ? 'h-[calc(100dvh-160px)]' : ''}`}>
 
           {/* Chat header */}
-          <div className="px-5 py-3 border-b border-slate-200 bg-white flex items-center gap-3">
+          <div className="px-4 py-3 border-b border-slate-200 bg-white flex items-center gap-2">
+            {/* Geri butonu — sadece mobil */}
+            {isMobile && (
+              <button onClick={() => { setMobileView('list'); setSelectedLead(null) }}
+                className="p-2 -ml-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition shrink-0">
+                <ChevronLeft size={20}/>
+              </button>
+            )}
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0"
               style={{ backgroundColor: avatarColor(selectedLead.company_name || '') }}>
               {initials(selectedLead.company_name || '')}
@@ -479,7 +501,7 @@ export default function UnifiedInboxPage() {
           </div>
 
           {/* Mesaj alanı */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1"
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.4'%3E%3Cpath d='M20 20.5V18H0v5h5v5H0v5h20v-5h-5v-5h5v-.5z'/%3E%3C/g%3E%3C/svg%3E")` }}>
 
             {messages.length === 0 ? (
@@ -753,20 +775,22 @@ export default function UnifiedInboxPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center"
-          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.4'%3E%3Cpath d='M20 20.5V18H0v5h5v5H0v5h20v-5h-5v-5h5v-.5z'/%3E%3C/g%3E%3C/svg%3E")` }}>
-          <div className="text-center">
-            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4">
-              <MessageSquare size={28} className="text-slate-300"/>
+        !isMobile && (
+          <div className="flex-1 flex items-center justify-center"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.4'%3E%3Cpath d='M20 20.5V18H0v5h5v5H0v5h20v-5h-5v-5h5v-.5z'/%3E%3C/g%3E%3C/svg%3E")` }}>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4">
+                <MessageSquare size={28} className="text-slate-300"/>
+              </div>
+              <p className="text-slate-600 font-semibold mb-1">Konuşma Seçin</p>
+              <p className="text-slate-400 text-sm">Soldaki listeden bir konuşma seçin</p>
             </div>
-            <p className="text-slate-600 font-semibold mb-1">Konuşma Seçin</p>
-            <p className="text-slate-400 text-sm">Soldaki listeden bir konuşma seçin</p>
           </div>
-        </div>
+        )
       )}
 
-      {/* ═══ RIGHT PANEL — Lead Detayı ═══ */}
-      {selectedLead && (
+      {/* ═══ RIGHT PANEL — Lead Detayı (sadece masaüstü) ═══ */}
+      {selectedLead && !isMobile && (
         <div className="w-[260px] border-l border-slate-200 bg-slate-50 flex flex-col shrink-0 overflow-y-auto">
           <div className="p-4 border-b border-slate-200 bg-white">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-sm mx-auto mb-2"

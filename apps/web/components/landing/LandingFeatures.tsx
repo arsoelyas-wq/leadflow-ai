@@ -159,7 +159,7 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all duration-200 whitespace-nowrap ${
+              className={`px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200 whitespace-nowrap ${
                 activeTab === tab
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'

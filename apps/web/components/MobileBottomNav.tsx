@@ -59,7 +59,7 @@ export default function MobileBottomNav({ onMenuOpen }: MobileBottomNavProps) {
               strokeWidth={active ? 2.5 : 1.8}
             />
             <span style={{
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: active ? 700 : 500,
               letterSpacing: '0.01em',
               lineHeight: 1.2,

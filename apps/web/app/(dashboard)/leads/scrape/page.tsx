@@ -649,7 +649,7 @@ export default function LeadFinderPage() {
         </div>
 
         {/* ── 2. Country + City ── */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
           {/* Country */}
           <div className="space-y-2">
@@ -718,7 +718,7 @@ export default function LeadFinderPage() {
               </button>
 
               {cityOpen && (
-                <div className="absolute z-50 left-0 right-0 top-[calc(100%+4px)] bg-slate-800 border border-slate-600 rounded-xl shadow-2xl overflow-hidden">
+                <div className="absolute z-50 left-0 right-0 sm:top-[calc(100%+4px)] top-auto bottom-[calc(100%+4px)] sm:bottom-auto bg-slate-800 border border-slate-600 rounded-xl shadow-2xl overflow-hidden">
                   <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-700/80">
                     <Search size={13} className="text-slate-500 shrink-0" />
                     <input
@@ -732,7 +732,7 @@ export default function LeadFinderPage() {
                     <span className="text-slate-700">·</span>
                     <button type="button" onClick={() => setSelectedCities([])} className="text-[11px] text-slate-400 hover:text-white transition whitespace-nowrap">Temizle</button>
                   </div>
-                  <div className="max-h-56 overflow-y-auto p-1.5 grid grid-cols-2 gap-0.5">
+                  <div className="max-h-56 overflow-y-auto p-1.5 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
                     {filteredCityList.map(c => {
                       const active = selectedCities.includes(c)
                       return (
@@ -777,7 +777,7 @@ export default function LeadFinderPage() {
         {/* ── 3. Lead count ── */}
         <div className="space-y-3">
           <label className="text-slate-300 text-sm font-medium">{t('leads.kac_lead_istiyorsunuz', 'Kaç lead istiyorsunuz?')}</label>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {LEAD_COUNTS.map(opt => (
               <button
                 type="button"
@@ -880,7 +880,7 @@ export default function LeadFinderPage() {
               </div>
 
               {/* Radius presets + Min score */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Radius */}
                 <div className="space-y-2">
                   <label className="text-slate-400 text-xs font-medium">Arama yarıçapı</label>
