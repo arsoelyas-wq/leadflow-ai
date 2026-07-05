@@ -313,15 +313,14 @@ export default function DashboardPage() {
 
       {/* ── MOBİL HIZLI EYLEMLER ── */}
       {isMobile && (
-        <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:2, scrollbarWidth:'none', WebkitOverflowScrolling:'touch' } as React.CSSProperties}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:6 }}>
           {[
-            { label: '🔍 Lead Bul',    href: '/lead-machine',  bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
-            { label: '🤖 Lead Avcısı', href: '/lead-hunter',   bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
-            { label: '📢 Kampanya',    href: '/automations',   bg: '#faf5ff', color: '#7c3aed', border: '#ddd6fe' },
-            { label: '📊 Pipeline',    href: '/pipeline',      bg: '#fff7ed', color: '#b45309', border: '#fed7aa' },
-            { label: '💬 Gelen Kutu',  href: '/inbox',         bg: '#f0f9ff', color: '#0369a1', border: '#bae6fd' },
+            { label: 'Lead Bul',    href: '/lead-machine',  bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
+            { label: 'Avcı',        href: '/lead-hunter',   bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
+            { label: 'Kampanya',    href: '/automations',   bg: '#faf5ff', color: '#7c3aed', border: '#ddd6fe' },
+            { label: 'Pipeline',    href: '/pipeline',      bg: '#fff7ed', color: '#b45309', border: '#fed7aa' },
           ].map(({ label, href, bg, color, border }) => (
-            <Link key={href} href={href} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:20, background:bg, border:`1.5px solid ${border}`, color, fontSize:12, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, transition:'all 0.15s' }}>
+            <Link key={href} href={href} style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'8px 4px', borderRadius:20, background:bg, border:`1.5px solid ${border}`, color, fontSize:11, fontWeight:700, textDecoration:'none', textAlign:'center', transition:'all 0.15s' }}>
               {label}
             </Link>
           ))}
