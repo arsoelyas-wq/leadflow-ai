@@ -911,43 +911,83 @@ export default function LeadsPage() {
       />
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      {isMobile ? (
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
-          <p className="text-slate-400 text-sm mt-0.5">{total.toLocaleString('tr-TR')} kayıt{hasFilters?' · filtrelendi':''}</p>
-        </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {featureExport && (
-            <button onClick={exportExcel} disabled={exporting}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 cursor-pointer">
-              {exporting?<RefreshCw size={14} className="animate-spin"/>:<Download size={14}/>}
-              <span className="hidden sm:inline">{selected.length>0?`${selected.length} Lead Export`:'Excel Export'}</span>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
+            <div>
+              <h1 style={{ color:'#0f172a', fontSize:20, fontWeight:800, margin:0 }}>{pageTitle}</h1>
+              <p style={{ color:'#94a3b8', fontSize:12, margin:'2px 0 0' }}>{total.toLocaleString('tr-TR')} kayıt{hasFilters?' · filtrelendi':''}</p>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              {featureExport && (
+                <button onClick={exportExcel} disabled={exporting}
+                  style={{ width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, color:'#64748b', cursor:'pointer' }}>
+                  {exporting?<RefreshCw size={14} className="animate-spin"/>:<Download size={14}/>}
+                </button>
+              )}
+              {featureKvBul && (
+                <Link href="/decision-maker" style={{ width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, color:'#64748b', textDecoration:'none' }}>
+                  <Crosshair size={14}/>
+                </Link>
+              )}
+              {featureImport && (
+                <button onClick={()=>setShowImport(true)}
+                  style={{ width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:10, cursor:'pointer' }}>
+                  <Download size={14} style={{ transform:'rotate(180deg)', color:'#10b981' }}/>
+                </button>
+              )}
+            </div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            <button onClick={()=>setShowAddLead(true)}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'11px 0', borderRadius:12, border:'none', background:'linear-gradient(135deg,#059669,#0d9488)', color:'#ffffff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+              <Plus size={14}/> Lead Ekle
             </button>
-          )}
-          {featureKvBul && (
-            <Link href="/decision-maker"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-              <Crosshair size={14}/><span className="hidden sm:inline"> KV Bul</span>
+            <Link href="/leads/scrape"
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'11px 0', borderRadius:12, background:'linear-gradient(135deg,#4F46E5,#7C3AED)', color:'#ffffff', fontSize:13, fontWeight:700, textDecoration:'none' }}>
+              <Plus size={14}/> Lead Topla
             </Link>
-          )}
-          {featureImport && (
-            <button onClick={()=>setShowImport(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-              <Download size={14} className="rotate-180 text-emerald-600"/><span className="hidden sm:inline"> Excel Aktar</span>
-            </button>
-          )}
-          <button onClick={()=>setShowAddLead(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
-            style={{background:'linear-gradient(135deg,#059669,#0d9488)'}}>
-            <Plus size={14}/> Lead Ekle
-          </button>
-          <Link href="/leads/scrape"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
-            style={{background:'linear-gradient(135deg,#4F46E5,#7C3AED)'}}>
-            <Plus size={14}/> Lead Topla
-          </Link>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">{pageTitle}</h1>
+            <p className="text-slate-400 text-sm mt-0.5">{total.toLocaleString('tr-TR')} kayıt{hasFilters?' · filtrelendi':''}</p>
+          </div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {featureExport && (
+              <button onClick={exportExcel} disabled={exporting}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 cursor-pointer">
+                {exporting?<RefreshCw size={14} className="animate-spin"/>:<Download size={14}/>}
+                <span className="hidden sm:inline">{selected.length>0?`${selected.length} Lead Export`:'Excel Export'}</span>
+              </button>
+            )}
+            {featureKvBul && (
+              <Link href="/decision-maker"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+                <Crosshair size={14}/><span className="hidden sm:inline"> KV Bul</span>
+              </Link>
+            )}
+            {featureImport && (
+              <button onClick={()=>setShowImport(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+                <Download size={14} className="rotate-180 text-emerald-600"/><span className="hidden sm:inline"> Excel Aktar</span>
+              </button>
+            )}
+            <button onClick={()=>setShowAddLead(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+              style={{background:'linear-gradient(135deg,#059669,#0d9488)'}}>
+              <Plus size={14}/> Lead Ekle
+            </button>
+            <Link href="/leads/scrape"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+              style={{background:'linear-gradient(135deg,#4F46E5,#7C3AED)'}}>
+              <Plus size={14}/> Lead Topla
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

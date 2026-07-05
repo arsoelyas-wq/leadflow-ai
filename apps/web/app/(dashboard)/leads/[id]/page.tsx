@@ -1,6 +1,6 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import {
@@ -11,6 +11,7 @@ import {
   Flame, Clock, Swords, Users, Activity, Building2, Network, Eye, Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 interface ScoringData {
   breakdown?:      Record<string, number>
@@ -190,6 +191,9 @@ export default function LeadDetailPage() {
   const [visionLoading, setVisionLoading]       = useState(false)
   const [visionExpanded, setVisionExpanded]     = useState(false)
   const [visionCopied, setVisionCopied]         = useState(false)
+
+  const isMobile = useIsMobile()
+  const [activeTab, setActiveTab] = useState<'contact'|'ai'|'actions'|'activity'>('contact')
 
   const showMsg = (type: 'success' | 'error', text: string) => {
     setMsg({ type, text })
@@ -389,6 +393,345 @@ export default function LeadDetailPage() {
 
   const currentStatus = STATUS_OPTS.find(s => s.value === lead.status)
   const scoring = lead.scoringData as any
+
+  // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
+  if (isMobile) {
+    const gradeStyle: Record<string, React.CSSProperties> = {
+      A: { background:'#d1fae5', color:'#065f46', border:'1px solid #a7f3d0' },
+      B: { background:'#ede9fe', color:'#5b21b6', border:'1px solid #ddd6fe' },
+      C: { background:'#fef3c7', color:'#92400e', border:'1px solid #fde68a' },
+      D: { background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca' },
+    }
+    const scoreColor = lead.score >= 80 ? '#059669' : lead.score >= 60 ? '#2563eb' : lead.score >= 40 ? '#d97706' : '#dc2626'
+    const scoreBarColor = lead.score >= 80 ? '#10b981' : lead.score >= 60 ? '#3b82f6' : lead.score >= 40 ? '#f59e0b' : '#ef4444'
+    const card: React.CSSProperties = { background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:14, padding:'14px 16px' }
+    const rowBg: React.CSSProperties = { display:'flex', alignItems:'center', gap:10, padding:'9px 12px', background:'#f8fafc', borderRadius:10, marginBottom:8 }
+    const iconBox = (bg: string): React.CSSProperties => ({ width:30, height:30, borderRadius:8, background:bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 })
+
+    return (
+      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin .7s linear infinite}`}</style>
+
+        {/* ── Mobile Header ── */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+          <Link href="/leads" style={{ width:38, height:38, borderRadius:10, background:'#f1f5f9', border:'1px solid #e2e8f0', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, textDecoration:'none', color:'#475569' }}>
+            <ArrowLeft size={16}/>
+          </Link>
+          <div style={{ flex:1, minWidth:0 }}>
+            <h1 style={{ color:'#0f172a', fontSize:15, fontWeight:800, margin:0, lineHeight:1.3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.company_name}</h1>
+            <p style={{ color:'#94a3b8', fontSize:11, margin:'2px 0 0' }}>
+              {lead.source} · {new Date(lead.created_at).toLocaleDateString('tr-TR')}
+              {lead.sector && <span style={{ marginLeft:6, padding:'1px 6px', background:'#eff6ff', color:'#1d4ed8', borderRadius:4, fontSize:10 }}>{lead.sector}</span>}
+            </p>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+            {lead.ai_grade && (
+              <span style={{ padding:'3px 8px', borderRadius:8, fontSize:13, fontWeight:800, ...(gradeStyle[lead.ai_grade]||{background:'#f1f5f9',color:'#475569',border:'1px solid #e2e8f0'}) }}>
+                {lead.ai_grade}
+              </span>
+            )}
+            <span style={{ padding:'3px 8px', borderRadius:20, fontSize:11, fontWeight:600, background: lead.status==='won'?'#d1fae5':lead.status==='new'?'#dbeafe':lead.status==='lost'?'#fee2e2':'#f1f5f9', color: lead.status==='won'?'#065f46':lead.status==='new'?'#1d4ed8':lead.status==='lost'?'#991b1b':'#475569' }}>
+              {currentStatus?.label||lead.status}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Toast ── */}
+        {msg && (
+          <div style={{ padding:'10px 14px', borderRadius:12, border:'1px solid', fontSize:13, display:'flex', alignItems:'center', gap:8, background: msg.type==='success'?'#f0fdf4':'#fef2f2', borderColor: msg.type==='success'?'#bbf7d0':'#fecaca', color: msg.type==='success'?'#15803d':'#991b1b' }}>
+            {msg.type==='success' ? <CheckCircle size={14}/> : <AlertTriangle size={14}/>}
+            {msg.text}
+          </div>
+        )}
+
+        {/* ── Tab Navigation ── */}
+        <div style={{ display:'flex', gap:0, background:'#f1f5f9', borderRadius:13, padding:3 }}>
+          {([
+            { key:'contact',  label:'İletişim' },
+            { key:'ai',       label:'AI Puan'  },
+            { key:'actions',  label:'Aksiyonlar'},
+            { key:'activity', label:'Aktivite' },
+          ] as const).map(tab => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+              style={{ flex:1, padding:'8px 2px', borderRadius:10, border:'none', cursor:'pointer', fontFamily:'inherit', fontSize:11, fontWeight: activeTab===tab.key ? 700 : 500, transition:'all 0.15s', background: activeTab===tab.key ? '#ffffff' : 'transparent', color: activeTab===tab.key ? '#0f172a' : '#64748b', boxShadow: activeTab===tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab: İletişim ── */}
+        {activeTab === 'contact' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={card}>
+              <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:'0 0 10px' }}>İletişim Bilgileri</h3>
+
+              {lead.phone ? (
+                <div style={rowBg}>
+                  <div style={iconBox('#dcfce7')}><Phone size={13} color="#16a34a"/></div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Telefon</p>
+                    <a href={`tel:${lead.phone}`} style={{ color:'#0f172a', fontSize:13, fontWeight:600, textDecoration:'none' }}>{lead.phone}</a>
+                  </div>
+                  <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                    style={{ padding:'6px 12px', background:'#16a34a', color:'#fff', borderRadius:8, fontSize:11, fontWeight:700, textDecoration:'none', flexShrink:0 }}>WA →</a>
+                </div>
+              ) : (
+                <div style={{ ...rowBg, opacity:0.4 }}>
+                  <div style={iconBox('#f1f5f9')}><Phone size={13} color="#94a3b8"/></div>
+                  <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>Telefon yok</p>
+                </div>
+              )}
+
+              {lead.email ? (
+                <div style={rowBg}>
+                  <div style={iconBox('#dbeafe')}><Mail size={13} color="#1d4ed8"/></div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Email</p>
+                    <p style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.email}</p>
+                  </div>
+                  <button onClick={() => copyText(lead.email!, 'email')}
+                    style={{ background:'none', border:'none', cursor:'pointer', color: copied==='email'?'#16a34a':'#94a3b8', padding:4 }}>
+                    {copied==='email' ? <CheckCircle size={15}/> : <Copy size={15}/>}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ ...rowBg, opacity:0.4 }}>
+                  <div style={iconBox('#f1f5f9')}><Mail size={13} color="#94a3b8"/></div>
+                  <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>Email yok</p>
+                </div>
+              )}
+
+              {lead.website && (
+                <div style={rowBg}>
+                  <div style={iconBox('#faf5ff')}><Globe size={13} color="#7c3aed"/></div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Website</p>
+                    <a href={lead.website.startsWith('http')?lead.website:`https://${lead.website}`} target="_blank" rel="noreferrer"
+                      style={{ color:'#1d4ed8', fontSize:12, textDecoration:'none', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'block' }}>
+                      {lead.website.replace(/^https?:\/\/(www\.)?/,'').slice(0,32)}
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {lead.city && (
+                <div style={{ ...rowBg, marginBottom:0 }}>
+                  <div style={iconBox('#f1f5f9')}><MapPin size={13} color="#94a3b8"/></div>
+                  <div>
+                    <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Şehir</p>
+                    <p style={{ color:'#0f172a', fontSize:13, fontWeight:600, margin:0 }}>{lead.city}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div style={card}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0 }}>Notlar</h3>
+                {!editingNotes ? (
+                  <button onClick={() => setEditingNotes(true)} style={{ background:'none', border:'none', cursor:'pointer', color:'#64748b', fontSize:12, display:'flex', alignItems:'center', gap:4, fontFamily:'inherit' }}>
+                    <Edit2 size={12}/> Düzenle
+                  </button>
+                ) : (
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button onClick={saveNotes} disabled={saving} style={{ background:'none', border:'none', cursor:'pointer', color:'#16a34a', fontSize:12, fontFamily:'inherit', display:'flex', alignItems:'center', gap:3 }}>
+                      <Save size={12}/> {saving?'...':'Kaydet'}
+                    </button>
+                    <button onClick={() => { setEditingNotes(false); setNotes(lead.notes||'') }} style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', fontSize:12, fontFamily:'inherit', display:'flex', alignItems:'center', gap:3 }}>
+                      <X size={12}/> İptal
+                    </button>
+                  </div>
+                )}
+              </div>
+              {editingNotes ? (
+                <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={4}
+                  style={{ width:'100%', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:10, padding:'10px 12px', color:'#0f172a', fontSize:13, outline:'none', resize:'none', fontFamily:'inherit', boxSizing:'border-box' }}/>
+              ) : (
+                <p style={{ color: lead.notes?'#334155':'#94a3b8', fontSize:13, margin:0, lineHeight:1.5, fontStyle: lead.notes?'normal':'italic' }}>
+                  {lead.notes || 'Not eklenmemiş.'}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: AI Puan ── */}
+        {activeTab === 'ai' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={card}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+                <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:6 }}>
+                  <Star size={14} color="#f59e0b"/> AI Kalite Puanı
+                </h3>
+                <button onClick={() => triggerAIAnalysis()} disabled={analyzing}
+                  style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, color:'#92400e', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit', opacity:analyzing?0.7:1 }}>
+                  {analyzing ? <RefreshCw size={11} className="animate-spin"/> : <Zap size={11}/>}
+                  {analyzing ? 'Analiz...' : lead.ai_grade ? 'Yenile' : 'Analiz Et'}
+                </button>
+              </div>
+
+              <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:14 }}>
+                <div style={{ textAlign:'center', flexShrink:0 }}>
+                  <div style={{ fontSize:42, fontWeight:800, color:scoreColor, lineHeight:1 }}>{lead.score}</div>
+                  <div style={{ color:'#94a3b8', fontSize:11 }}>/ 100</div>
+                </div>
+                {lead.ai_grade && (
+                  <div style={{ width:52, height:52, borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:800, flexShrink:0, ...(gradeStyle[lead.ai_grade]||{background:'#f1f5f9',color:'#475569'}) }}>
+                    {lead.ai_grade}
+                  </div>
+                )}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ height:8, background:'#f1f5f9', borderRadius:4, marginBottom:6, overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${lead.score}%`, background:scoreBarColor, borderRadius:4, transition:'width 0.8s' }}/>
+                  </div>
+                  {lead.ai_priority && <p style={{ color:'#64748b', fontSize:11, margin:0 }}>{PRIORITY_LABEL[lead.ai_priority]||lead.ai_priority} öncelik</p>}
+                  {scoring?.estimatedValue && <p style={{ color:'#94a3b8', fontSize:10, margin:'2px 0 0' }}>Tahmini: <span style={{ color:'#0f172a', fontWeight:600 }}>{scoring.estimatedValue}</span></p>}
+                </div>
+              </div>
+            </div>
+
+            {scoring && (scoring.strengths?.length > 0 || scoring.weaknesses?.length > 0) && (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                {scoring.strengths?.length > 0 && (
+                  <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:12, padding:'12px' }}>
+                    <h4 style={{ color:'#15803d', fontSize:11, fontWeight:700, margin:'0 0 8px', display:'flex', alignItems:'center', gap:3 }}>
+                      <CheckCircle size={10}/> Güçlü
+                    </h4>
+                    {scoring.strengths.slice(0,3).map((s: string, i: number) => (
+                      <p key={i} style={{ color:'#166534', fontSize:10, margin:'0 0 3px', lineHeight:1.4 }}>• {s}</p>
+                    ))}
+                  </div>
+                )}
+                {scoring.weaknesses?.length > 0 && (
+                  <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:12, padding:'12px' }}>
+                    <h4 style={{ color:'#991b1b', fontSize:11, fontWeight:700, margin:'0 0 8px', display:'flex', alignItems:'center', gap:3 }}>
+                      <AlertTriangle size={10}/> Zayıf
+                    </h4>
+                    {scoring.weaknesses.slice(0,3).map((w: string, i: number) => (
+                      <p key={i} style={{ color:'#7f1d1d', fontSize:10, margin:'0 0 3px', lineHeight:1.4 }}>• {w}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {scoring?.recommendation && (
+              <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:'12px 14px' }}>
+                <h4 style={{ color:'#92400e', fontSize:11, fontWeight:700, margin:'0 0 6px', display:'flex', alignItems:'center', gap:4 }}>
+                  <Lightbulb size={10}/> AI Önerisi
+                </h4>
+                <p style={{ color:'#78350f', fontSize:12, margin:0, lineHeight:1.5 }}>{scoring.recommendation}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Aksiyonlar ── */}
+        {activeTab === 'actions' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {/* Status update */}
+            <div style={card}>
+              <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Durumu Güncelle</h3>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                {STATUS_OPTS.map(opt => (
+                  <button key={opt.value} onClick={() => updateStatus(opt.value)} disabled={saving || lead.status === opt.value}
+                    style={{ padding:'9px 8px', borderRadius:10, border: lead.status===opt.value ? 'none' : '1px solid #e2e8f0', cursor: lead.status===opt.value ? 'default' : 'pointer', fontFamily:'inherit', fontSize:12, fontWeight: lead.status===opt.value ? 700 : 500, transition:'all 0.15s', background: lead.status===opt.value ? '#0f172a' : '#f8fafc', color: lead.status===opt.value ? '#ffffff' : '#475569' }}>
+                    {lead.status===opt.value ? '✓ ' : ''}{opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick actions */}
+            <div style={card}>
+              <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:'0 0 10px' }}>Hızlı Aksiyonlar</h3>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {lead.phone && (
+                  <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                    style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:12, textDecoration:'none' }}>
+                    <MessageSquare size={16} color="#15803d"/>
+                    <span style={{ color:'#15803d', fontSize:13, fontWeight:600 }}>WhatsApp Gönder</span>
+                  </a>
+                )}
+                {lead.email && (
+                  <a href={`mailto:${lead.email}`}
+                    style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:12, textDecoration:'none' }}>
+                    <Send size={16} color="#1d4ed8"/>
+                    <span style={{ color:'#1d4ed8', fontSize:13, fontWeight:600 }}>Email Gönder</span>
+                  </a>
+                )}
+                <button onClick={findDecisionMaker} disabled={findingDM}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'#faf5ff', border:'1px solid #e9d5ff', borderRadius:12, cursor:'pointer', fontFamily:'inherit', width:'100%', textAlign:'left', opacity: findingDM?0.7:1 }}>
+                  {findingDM ? <RefreshCw size={16} color="#7c3aed" className="animate-spin"/> : <Crosshair size={16} color="#7c3aed"/>}
+                  <span style={{ color:'#7c3aed', fontSize:13, fontWeight:600 }}>{findingDM?'Aranıyor...':dmResult?.found>0?'KV Yenile':'Karar Verici Bul'}</span>
+                </button>
+                <button onClick={createPortalLink} disabled={creatingPortal}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:12, cursor:'pointer', fontFamily:'inherit', width:'100%', textAlign:'left', opacity:creatingPortal?0.7:1 }}>
+                  {creatingPortal ? <RefreshCw size={16} color="#b45309" className="animate-spin"/> : <Link2 size={16} color="#b45309"/>}
+                  <span style={{ color:'#b45309', fontSize:13, fontWeight:600 }}>{creatingPortal?'Oluşturuluyor...':'Müşteri Portalı'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* DM result */}
+            {dmResult?.found > 0 && (
+              <div style={{ background:'#faf5ff', border:'1px solid #e9d5ff', borderRadius:12, padding:'12px 14px' }}>
+                <p style={{ color:'#7c3aed', fontSize:12, fontWeight:700, margin:'0 0 3px' }}>{dmResult.bestName}</p>
+                {dmResult.bestTitle && <p style={{ color:'#94a3b8', fontSize:11, margin:'0 0 2px' }}>{dmResult.bestTitle}</p>}
+                {dmResult.bestEmail && <p style={{ color:'#94a3b8', fontSize:11, margin:0 }}>{dmResult.bestEmail}</p>}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Aktivite ── */}
+        {activeTab === 'activity' && (
+          <div style={card}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+              <h3 style={{ color:'#0f172a', fontSize:13, fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:6 }}>
+                <Activity size={14} color="#0ea5e9"/> Aktivite Akışı
+              </h3>
+              <button onClick={() => logCall()}
+                style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, color:'#15803d', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                <Phone size={11}/> Arama Kaydet
+              </button>
+            </div>
+
+            {activitiesLoading ? (
+              <div style={{ display:'flex', justifyContent:'center', padding:'20px' }}>
+                <RefreshCw size={18} color="#94a3b8" className="animate-spin"/>
+              </div>
+            ) : activities.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'20px 0' }}>
+                <Activity size={28} color="#cbd5e1" style={{ margin:'0 auto 8px', display:'block' }}/>
+                <p style={{ color:'#94a3b8', fontSize:13, margin:'0 0 4px' }}>Henüz aktivite kaydı yok</p>
+                <p style={{ color:'#cbd5e1', fontSize:11, margin:0 }}>Email, arama veya WhatsApp sonrası otomatik kaydedilir</p>
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                {activities.slice(0, 12).map((act, i) => (
+                  <div key={act.id} style={{ display:'flex', gap:10, padding:'9px 0', borderBottom: i < Math.min(activities.length,12)-1 ? '1px solid #f1f5f9' : 'none', alignItems:'flex-start' }}>
+                    <span style={{ fontSize:15, lineHeight:1, marginTop:2, flexShrink:0 }}>{ACTIVITY_ICON[act.event_type]||'🔔'}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ color:'#334155', fontSize:12, fontWeight:600, margin:'0 0 1px' }}>{ACTIVITY_LABEL[act.event_type]||act.event_type}</p>
+                      {act.metadata?.message && (
+                        <p style={{ color:'#94a3b8', fontSize:11, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{act.metadata.message}</p>
+                      )}
+                    </div>
+                    <span style={{ color:'#cbd5e1', fontSize:10, flexShrink:0, marginTop:2 }}>
+                      {new Date(act.created_at).toLocaleDateString('tr-TR', {day:'2-digit', month:'short'})}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+  // ── END MOBILE LAYOUT ───────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5 max-w-5xl">
