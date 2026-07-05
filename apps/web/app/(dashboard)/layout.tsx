@@ -64,10 +64,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div style={{
         flex: 1,
+        minWidth: 0,
+        maxWidth: '100vw',
         marginLeft: isMobile ? 0 : 232,
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
+        overflowX: 'hidden',
         transition: 'margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
       }}>
 

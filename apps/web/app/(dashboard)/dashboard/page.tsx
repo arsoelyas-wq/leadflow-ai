@@ -361,33 +361,33 @@ export default function DashboardPage() {
           Desktop: existing 4-column CSS grid
           ══════════════════════════════════════════════════════════════════ */}
       {isMobile ? (
-        <div style={{ display:'flex', flexWrap:'wrap', gap:8, width:'100%' }}>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
           {loading ? (
             [0,1,2,3].map(i => (
-              <div key={i} style={{ width:'calc(50% - 4px)', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:14, padding:'14px', boxSizing:'border-box', minHeight:86 }}>
-                <Skeleton h={9} w="55%" r={4}/><div style={{ marginTop:10 }}/>
-                <Skeleton h={20} w="65%" r={5}/><div style={{ marginTop:6 }}/>
-                <Skeleton h={8} w="45%" r={4}/>
+              <div key={i} style={{ width:'calc(50vw - 20px)', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12, padding:'10px 12px', boxSizing:'border-box', minHeight:72 }}>
+                <Skeleton h={8} w="55%" r={4}/><div style={{ marginTop:8 }}/>
+                <Skeleton h={16} w="65%" r={5}/><div style={{ marginTop:5 }}/>
+                <Skeleton h={7} w="45%" r={4}/>
               </div>
             ))
           ) : (
             mobileStats.map(({ key, label, value, sub, icon: Icon, color, bg, bd }) => (
               <div key={key} style={{
-                width: 'calc(50% - 4px)',
+                width: 'calc(50vw - 20px)',
                 background: `linear-gradient(140deg, ${bg} 0%, #ffffff 100%)`,
                 border: `1.5px solid ${bd}`,
-                borderRadius: 14,
-                padding: '13px 13px',
+                borderRadius: 12,
+                padding: '10px 12px',
                 boxSizing: 'border-box',
                 overflow: 'hidden',
               }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
-                  <span style={{ color:tx2, fontSize:11, fontWeight:600, lineHeight:1.3, paddingRight:4 }}>{label}</span>
-                  <div style={{ width:26, height:26, borderRadius:7, background:`${color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <Icon size={12} color={color}/>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:5 }}>
+                  <span style={{ color:tx2, fontSize:10, fontWeight:600, lineHeight:1.3, paddingRight:4, flex:1, minWidth:0 }}>{label}</span>
+                  <div style={{ width:22, height:22, borderRadius:6, background:`${color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Icon size={11} color={color}/>
                   </div>
                 </div>
-                <p style={{ color:tx1, fontSize:20, fontWeight:800, margin:'0 0 3px', letterSpacing:'-0.5px' }}>{value}</p>
+                <p style={{ color:tx1, fontSize:17, fontWeight:800, margin:'0 0 2px', letterSpacing:'-0.3px' }}>{value}</p>
                 <span style={{ color:tx3, fontSize:10, lineHeight:1.2 }}>{sub}</span>
               </div>
             ))

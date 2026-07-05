@@ -179,7 +179,7 @@ export default function TopBar() {
         <div ref={cRef} style={{ position: 'relative' }}>
           <Pill onClick={() => { setShowC(!showC); setShowL(false); setShowShare(false) }} active={showC}>
             <FlagImg code={currentC.flag} size={16} />
-            <span>{currentC.name}</span>
+            {!isMobile && <span>{currentC.name}</span>}
             {saving && (
               <span style={{
                 width: 5, height: 5, borderRadius: '50%',
