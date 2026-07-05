@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { createClient } from '@supabase/supabase-js'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import AdminBanner from '@/components/AdminBanner'
 import {
   Users, Megaphone, MessageSquare, Zap, TrendingUp, TrendingDown,
@@ -135,6 +136,7 @@ function Skeleton({ h = 20, w = '100%', r = 6 }: { h?: number; w?: number|string
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user } = useAuth()
+  const isMobile = useIsMobile()
   const { t, lang } = useI18n()
   // Dashboard direct-language texts (bypasses translation system for reliability)
   const DB: Record<string, Record<string, string>> = {
@@ -247,7 +249,7 @@ export default function DashboardPage() {
       {/* ── HEADER ── */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16 }}>
         <div>
-          <h1 style={{ color:tx1, fontSize:24, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>
+          <h1 style={{ color:tx1, fontSize: isMobile ? 20 : 24, fontWeight:800, margin:0, letterSpacing:'-0.5px' }}>
             {t('dashboard.greeting')}, {user?.name?.split(' ')[0]}
           </h1>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5 }}>
@@ -298,8 +300,9 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <Link href="/automations" style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(59,130,246,0.35)', transition:'all 0.15s' }}>
-            <Zap size={14}/> {t('dashboard.new_campaign')}
+          <Link href="/automations" style={{ display:'flex', alignItems:'center', gap:7, padding: isMobile ? '9px 14px' : '9px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(59,130,246,0.35)', transition:'all 0.15s', whiteSpace:'nowrap' }}>
+            <Zap size={14}/> {!isMobile && t('dashboard.new_campaign')}
+            {isMobile && <span style={{fontSize:11}}>Yeni</span>}
           </Link>
         </div>
       </div>
@@ -328,7 +331,7 @@ export default function DashboardPage() {
       })()}
 
       {/* ── STAT CARDS — hero + ikincil hiyerarşi ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr 1fr 1fr', gap:14 }}>
+      <div className="dash-grid-stats">
         {loading ? (
           [0,1,2,3].map(i => (
             <div key={i} style={{ ...card, padding:20 }}>
@@ -407,7 +410,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── CHART + FUNNEL ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 380px', gap:16 }}>
+      <div className="dash-grid-chart">
         {/* Area Chart */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:18 }}>
@@ -466,7 +469,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── CAMPAIGNS + ACTIVITY ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:16 }}>
+      <div className="dash-grid-campaigns">
         {/* Campaigns */}
         <div style={{ ...card, padding:'20px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
@@ -547,52 +550,84 @@ export default function DashboardPage() {
         {loading ? (
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{[0,1,2,3].map(i=><Skeleton key={i} h={48} r={8}/>)}</div>
         ) : data?.recentLeads?.length ? (
-          <div>
-            {/* Table header */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:divBd }}>
-              {[t('leads.col_company','Şirket / Kişi'),t('leads.col_source','Kaynak'),t('leads.col_score','Puan'),t('leads.col_status','Durum')].map(h => (
-                <span key={h} style={{ color:tx3, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</span>
-              ))}
-            </div>
-            <div style={{ display:'flex', flexDirection:'column' }}>
-              {data.recentLeads.map((lead: any, i: number) => {
+          isMobile ? (
+            /* Mobil: Kart görünümü */
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {data.recentLeads.map((lead: any) => {
                 const score = lead.score || 0
                 const scoreColor = score >= 70 ? '#059669' : score >= 40 ? '#b45309' : '#94a3b8'
                 const ls = statusStyle[lead.status] || statusStyle.draft
                 return (
                   <Link key={lead.id} href={`/leads/${lead.id}`}
-                    style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'10px', borderBottom: i < data.recentLeads.length-1 ? divBd : 'none', alignItems:'center', textDecoration:'none', borderRadius:8, transition:'background 0.12s' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:32, height:32, borderRadius:9, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563eb', fontSize:13, fontWeight:700, flexShrink:0 }}>
-                        {((lead.company_name||lead.contact_name||'?')[0]).toUpperCase()}
-                      </div>
-                      <div style={{ minWidth:0 }}>
-                        <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {lead.company_name || lead.contact_name}
-                        </p>
-                        <p style={{ color:tx3, fontSize:11, margin:'1px 0 0' }}>{lead.city||'—'}</p>
-                      </div>
+                    style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', background:surf, border:surfBd, borderRadius:12, textDecoration:'none', transition:'background 0.12s' }}>
+                    <div style={{ width:38, height:38, borderRadius:10, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563eb', fontSize:14, fontWeight:700, flexShrink:0 }}>
+                      {((lead.company_name||lead.contact_name||'?')[0]).toUpperCase()}
                     </div>
-                    <div style={{ minWidth:0 }}>
-                      <span style={{ color:tx2, fontSize:12, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.source||'—'}</span>
-                      {lead.created_at && (
-                        <span style={{ color:tx4, fontSize:10.5 }}>{timeAgo(lead.created_at, lang)}</span>
-                      )}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:'0 0 2px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {lead.company_name || lead.contact_name}
+                      </p>
+                      <p style={{ color:tx3, fontSize:11, margin:0 }}>{lead.source||'—'} · {lead.city||'—'}</p>
                     </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <div style={{ flex:1, height:4, background:'#f1f5f9', borderRadius:2 }}>
-                        <div style={{ height:'100%', width:`${score}%`, background:scoreColor, borderRadius:2 }}/>
-                      </div>
-                      <span style={{ color:scoreColor, fontSize:11, fontWeight:700, width:24, flexShrink:0 }}>{score}</span>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+                      <span style={{ color:ls.color, background:ls.bg, fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20 }}>
+                        {statusLabel(lead.status||'new')}
+                      </span>
+                      <span style={{ color:scoreColor, fontSize:11, fontWeight:700 }}>{score}p</span>
                     </div>
-                    <span style={{ color:ls.color, background:ls.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, width:'fit-content' }}>
-                      {statusLabel(lead.status||'new')}
-                    </span>
                   </Link>
                 )
               })}
             </div>
-          </div>
+          ) : (
+            /* Desktop: Tablo görünümü */
+            <div>
+              {/* Table header */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:divBd }}>
+                {[t('leads.col_company','Şirket / Kişi'),t('leads.col_source','Kaynak'),t('leads.col_score','Puan'),t('leads.col_status','Durum')].map(h => (
+                  <span key={h} style={{ color:tx3, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</span>
+                ))}
+              </div>
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                {data.recentLeads.map((lead: any, i: number) => {
+                  const score = lead.score || 0
+                  const scoreColor = score >= 70 ? '#059669' : score >= 40 ? '#b45309' : '#94a3b8'
+                  const ls = statusStyle[lead.status] || statusStyle.draft
+                  return (
+                    <Link key={lead.id} href={`/leads/${lead.id}`}
+                      style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'10px', borderBottom: i < data.recentLeads.length-1 ? divBd : 'none', alignItems:'center', textDecoration:'none', borderRadius:8, transition:'background 0.12s' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <div style={{ width:32, height:32, borderRadius:9, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563eb', fontSize:13, fontWeight:700, flexShrink:0 }}>
+                          {((lead.company_name||lead.contact_name||'?')[0]).toUpperCase()}
+                        </div>
+                        <div style={{ minWidth:0 }}>
+                          <p style={{ color:tx1, fontSize:13, fontWeight:600, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                            {lead.company_name || lead.contact_name}
+                          </p>
+                          <p style={{ color:tx3, fontSize:11, margin:'1px 0 0' }}>{lead.city||'—'}</p>
+                        </div>
+                      </div>
+                      <div style={{ minWidth:0 }}>
+                        <span style={{ color:tx2, fontSize:12, display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lead.source||'—'}</span>
+                        {lead.created_at && (
+                          <span style={{ color:tx4, fontSize:10.5 }}>{timeAgo(lead.created_at, lang)}</span>
+                        )}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ flex:1, height:4, background:'#f1f5f9', borderRadius:2 }}>
+                          <div style={{ height:'100%', width:`${score}%`, background:scoreColor, borderRadius:2 }}/>
+                        </div>
+                        <span style={{ color:scoreColor, fontSize:11, fontWeight:700, width:24, flexShrink:0 }}>{score}</span>
+                      </div>
+                      <span style={{ color:ls.color, background:ls.bg, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:20, width:'fit-content' }}>
+                        {statusLabel(lead.status||'new')}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
             <Users size={28} color="#cbd5e1"/>
