@@ -36,14 +36,14 @@ CREATE INDEX IF NOT EXISTS idx_ct_user_action
 
 INSERT INTO credit_transactions (user_id, action, amount, description, created_at)
 SELECT
-  user_id,
+  user_id::text,
   COALESCE(action, 'legacy'),
   -COALESCE(cost, 0),     -- credit_logs stored costs as positive, we use negative for debits
   COALESCE(description, action, 'Eski kayıt'),
   COALESCE(created_at, NOW())
 FROM credit_logs
 WHERE NOT EXISTS (
-  SELECT 1 FROM credit_transactions ct WHERE ct.user_id = credit_logs.user_id
+  SELECT 1 FROM credit_transactions ct WHERE ct.user_id = credit_logs.user_id::text
     AND ct.created_at = credit_logs.created_at
     AND ct.action = COALESCE(credit_logs.action, 'legacy')
 )

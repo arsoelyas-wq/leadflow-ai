@@ -7,40 +7,94 @@ const { ADMIN_EMAILS, ADMIN_SECRET } = require('../../middleware/adminAuth');
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// ── IP-based brute-force protection ──────────────────────────────────────────
+// In-memory store: { ip -> { count, firstAt, lockedUntil } }
+const loginAttempts = new Map<string, { count: number; firstAt: number; lockedUntil: number }>();
+const MAX_ATTEMPTS  = 5;
+const WINDOW_MS     = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_MS    = 30 * 60 * 1000; // 30 minute lockout after limit
+
+function checkBruteForce(ip: string): { blocked: boolean; retryAfter?: number } {
+  const now   = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (!entry) return { blocked: false };
+  if (now < entry.lockedUntil) {
+    return { blocked: true, retryAfter: Math.ceil((entry.lockedUntil - now) / 1000) };
+  }
+  if (now - entry.firstAt > WINDOW_MS) {
+    loginAttempts.delete(ip);
+    return { blocked: false };
+  }
+  return { blocked: false };
+}
+
+function recordFailedAttempt(ip: string): void {
+  const now   = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (!entry || now - entry.firstAt > WINDOW_MS) {
+    loginAttempts.set(ip, { count: 1, firstAt: now, lockedUntil: 0 });
+    return;
+  }
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) {
+    entry.lockedUntil = now + LOCKOUT_MS;
+    console.warn(`[Security] Admin login locked for IP ${ip} after ${entry.count} failed attempts`);
+  }
+  loginAttempts.set(ip, entry);
+}
+
+function clearAttempts(ip: string): void {
+  loginAttempts.delete(ip);
+}
+
 router.use('/avatar-library', require('./avatar-library'));
 
-// ── Helper: audit log ─────────────────────────────────────────────────────────
+// ── Helper: audit log — delegates to central security lib ─────────────────────
+const { auditLog: _auditLog, securityEvent } = require('../../lib/security');
 async function audit(email: string, action: string, targetId?: string, details?: object, ip?: string) {
-  try {
-    await supabase.from('admin_audit_logs').insert([{
-      admin_email: email,
-      action,
-      target_user_id: targetId || null,
-      details: details || {},
-      ip_address: ip || null,
-    }])
-  } catch { /* audit failure should never block main action */ }
+  await _auditLog({ adminEmail: email, action, targetUserId: targetId, details, ip });
 }
 
 // ── POST /api/admin/auth/login ────────────────────────────────────────────────
 router.post('/auth/login', async (req: any, res: any) => {
+  const ip = (req.headers['x-forwarded-for'] as string || req.ip || '').split(',')[0].trim();
   try {
+    // Brute-force check
+    const bf = checkBruteForce(ip);
+    if (bf.blocked) {
+      return res.status(429).json({
+        error: `Çok fazla başarısız giriş. ${Math.ceil((bf.retryAfter || 1800) / 60)} dakika sonra tekrar deneyin.`,
+      });
+    }
+
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email ve şifre gerekli' });
     if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
-      return res.status(403).json({ error: 'Bu email admin yetkisine sahip değil' });
+      recordFailedAttempt(ip);
+      return res.status(403).json({ error: 'Yetkisiz' }); // don't reveal why
     }
-    const adminPass = process.env.ADMIN_PASSWORD || 'leadflow-admin-2026';
-    if (password !== adminPass) return res.status(401).json({ error: 'Yanlış şifre' });
+
+    const adminPass = process.env.ADMIN_PASSWORD;
+    if (!adminPass) {
+      console.error('[FATAL] ADMIN_PASSWORD environment variable is not set.');
+      return res.status(503).json({ error: 'Yapılandırma hatası' });
+    }
+    if (password !== adminPass) {
+      recordFailedAttempt(ip);
+      await audit(email, 'auth.login_failed', undefined, { ip }, ip);
+      return res.status(401).json({ error: 'Hatalı kimlik bilgileri' });
+    }
+
+    clearAttempts(ip);
 
     const token = jwt.sign(
       { email, isAdmin: true },
       ADMIN_SECRET,
       { expiresIn: '30d' }
     );
-    await audit(email, 'auth.login', undefined, {}, req.ip);
+    await audit(email, 'auth.login', undefined, { ip }, ip);
     res.json({ token, email });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) { res.status(500).json({ error: 'Sunucu hatası' }); }
 });
 
 // ── GET /api/admin/overview ───────────────────────────────────────────────────
@@ -151,7 +205,7 @@ router.post('/users/:id/impersonate', async (req: any, res: any) => {
 
     const impersonateToken = jwt.sign(
       { userId: user.id, email: user.email, impersonatedBy: req.adminEmail },
-      process.env.JWT_SECRET || 'leadflow-super-secret-jwt-key-2026',
+      process.env.JWT_SECRET,
       { expiresIn: '2h' }
     );
     await audit(req.adminEmail, 'user.impersonate', req.params.id, { target_email: user.email }, req.ip);
@@ -447,8 +501,8 @@ router.post('/auth/2fa/verify', async (req: any, res: any) => {
     if (!ADMIN_EMAILS.includes(email?.toLowerCase())) {
       return res.status(403).json({ error: 'Admin değil' });
     }
-    const adminPass = process.env.ADMIN_PASSWORD || 'leadflow-admin-2026';
-    if (password !== adminPass) return res.status(401).json({ error: 'Yanlış şifre' });
+    const adminPass = process.env.ADMIN_PASSWORD;
+    if (!adminPass || password !== adminPass) return res.status(401).json({ error: 'Hatalı kimlik bilgileri' });
 
     // If 2FA is configured, verify TOTP
     const secret = totp_secret || ADMIN_2FA_SECRET;

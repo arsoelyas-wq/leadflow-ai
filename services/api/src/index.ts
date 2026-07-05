@@ -11,19 +11,41 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
-app.use(helmet());
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://sovlo.io,https://www.sovlo.io,https://leadflow-ai-web-kappa.vercel.app,http://localhost:3000').split(',');
-app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin) || (!!origin && (origin.endsWith('.vercel.app') || origin.endsWith('.sovlo.io')))), credentials: true, methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization','x-lang'] }));
+app.use(helmet({
+  contentSecurityPolicy: false, // Next.js handles CSP on frontend
+  crossOriginEmbedderPolicy: false,
+}));
 
-const generalLimiter  = rateLimit({ windowMs: 15*60*1000, max: 200, standardHeaders: true, legacyHeaders: false });
-const authLimiter     = rateLimit({ windowMs: 15*60*1000, max: 10 });
-const scrapeLimiter   = rateLimit({ windowMs: 60*60*1000, max: 50, message: { error: 'Çok fazla istek. Lütfen bir saat sonra tekrar deneyin.' } });
-const campaignLimiter = rateLimit({ windowMs: 60*60*1000, max: 50 });
-const aiLimiter       = rateLimit({ windowMs: 60*1000,    max: 20 });
+// CORS — explicit allowlist only, NO wildcards
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://sovlo.io,https://www.sovlo.io,http://localhost:3000')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow same-origin / server-to-server (no origin header)
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Allow only explicitly listed sovlo.io subdomains
+    if (origin.endsWith('.sovlo.io')) return cb(null, true);
+    return cb(new Error('CORS not allowed'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-lang'],
+}));
+
+const generalLimiter  = rateLimit({ windowMs: 15*60*1000, max: 150, standardHeaders: true, legacyHeaders: false, message: { error: 'Çok fazla istek. Lütfen bekleyin.' } });
+const authLimiter     = rateLimit({ windowMs: 15*60*1000, max: 10,  message: { error: 'Çok fazla giriş denemesi.' } });
+const scrapeLimiter   = rateLimit({ windowMs: 60*60*1000, max: 40,  message: { error: 'Scrape limiti aşıldı. Bir saat sonra tekrar deneyin.' } });
+const campaignLimiter = rateLimit({ windowMs: 60*60*1000, max: 40,  message: { error: 'Kampanya limiti aşıldı.' } });
+const aiLimiter       = rateLimit({ windowMs: 60*1000,    max: 15,  message: { error: 'AI istek limiti aşıldı.' } });
+const paymentLimiter  = rateLimit({ windowMs: 60*60*1000, max: 20,  message: { error: 'Ödeme işlemi limiti aşıldı.' } });
+const creditLimiter   = rateLimit({ windowMs: 15*60*1000, max: 30,  message: { error: 'Kredi sorgu limiti aşıldı.' } });
 
 app.use(generalLimiter);
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Ensure all JSON responses explicitly declare UTF-8
 app.use((_req: any, res: any, next: any) => {
   const orig = res.json.bind(res);
@@ -35,6 +57,13 @@ app.use((_req: any, res: any, next: any) => {
 });
 
 const { authMiddleware } = require('./middleware/auth');
+const { anomalyDetection, registerHoneypots } = require('./middleware/security');
+
+// ── Honeypots — register first so scanners are trapped before hitting real routes
+registerHoneypots(app);
+
+// ── Anomaly detection — applied globally
+app.use(anomalyDetection);
 
 // PUBLIC
 app.use('/api/auth', authLimiter, require('./routes/auth'));
@@ -43,49 +72,39 @@ app.get('/t/:code', (req: any, res: any) => {
   linksRouter.handle(Object.assign(req, { url: `/redirect/${req.params.code}`, path: `/redirect/${req.params.code}` }), res, () => res.status(404).send('Not found'));
 });
 
-// Meta Webhook (public)
+// Meta Webhook (public — token validated from env only)
 app.get('/api/meta/webhook', (req: any, res: any) => {
-  const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN || 'leadflow2024';
+  const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
+  if (!VERIFY_TOKEN) return res.status(503).send('Not configured');
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     res.status(200).send(challenge);
   } else {
-    res.status(403).send('Verification failed');
+    res.status(403).send('Forbidden');
   }
 });
 
-// Automations webhook (public)
-app.use('/api/automations', require('./routes/automations'));
+// Automations — webhook paths verified by signature inside route, rest requires auth
+app.use('/api/automations', authMiddleware, require('./routes/automations'));
 
 // Portal (public - token ile erisim)
 app.use('/api/portal', require('./routes/portal'));
 
-// Public diagnostic: test Google Places API key (no sensitive data exposed)
-app.get('/api/scrape/test-key', (req: any, res: any, next: any) => {
-  req.url = '/test-key';
-  require('./routes/scrape')(req, res, next);
-});
-
-// Public diagnostic: test Apify token (no user data exposed)
+// Diagnostic endpoints — DEV only, completely disabled in production
 const lfRouter = require('./routes/lead-finder');
-app.get('/api/lead-finder/test-apify', (req: any, res: any, next: any) => {
-  req.url = '/test-apify';
-  lfRouter(req, res, next);
-});
-
-// Public diagnostic: test LinkedIn Voyager session (no user data exposed)
 const dmRouter = require('./routes/decision-maker');
-app.get('/api/decision-maker/test-linkedin', (req: any, res: any, next: any) => {
-  req.url = '/test-linkedin';
-  dmRouter(req, res, next);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/scrape/test-key', (req: any, res: any, next: any) => { req.url = '/test-key'; require('./routes/scrape')(req, res, next); });
+  app.get('/api/lead-finder/test-apify', (req: any, res: any, next: any) => { req.url = '/test-apify'; lfRouter(req, res, next); });
+  app.get('/api/decision-maker/test-linkedin', (req: any, res: any, next: any) => { req.url = '/test-linkedin'; dmRouter(req, res, next); });
+}
 
 // PROTECTED
-app.use('/api/leads',                authMiddleware, require('./routes/leads'));
+app.use('/api/leads',                authMiddleware, creditLimiter, require('./routes/leads'));
 app.use('/api/scrape',               authMiddleware, scrapeLimiter, require('./routes/scrape'));
-app.use('/api/payments',             authMiddleware, require('./routes/payments'));
+app.use('/api/payments',             authMiddleware, paymentLimiter, require('./routes/payments'));
 app.use('/api/analytics',            authMiddleware, require('./routes/analytics'));
 app.use('/api/ai',                   authMiddleware, aiLimiter, require('./routes/ai'));
 app.use('/api/campaigns',            authMiddleware, campaignLimiter, require('./routes/campaigns'));
@@ -121,7 +140,7 @@ app.use('/api/2fa',                  authMiddleware, require('./routes/twofa'));
 app.use('/api/churn',                authMiddleware, require('./routes/churn'));
 app.use('/api/affiliate',            authMiddleware, require('./routes/affiliate'));
 app.use('/api/sheets',               authMiddleware, require('./routes/sheets'));
-app.use('/api/credits',              authMiddleware, require('./routes/credits'));
+app.use('/api/credits',              authMiddleware, creditLimiter, require('./routes/credits'));
 app.use('/api/ads',                  authMiddleware, require('./routes/ads'));
 app.use('/api/ads-intelligence',     authMiddleware, require('./routes/ads-intelligence'));
 app.use('/api/google-intelligence',  authMiddleware, require('./routes/google-ads-intelligence'));
@@ -150,9 +169,12 @@ app.use('/api/trade-fair',           authMiddleware, require('./routes/trade-fai
 app.use('/api/tenders',              authMiddleware, require('./routes/tenders'));
 app.use('/api/linkedin',             authMiddleware, require('./routes/linkedin'));
 app.use('/api/sequences',            authMiddleware, require('./routes/sequences'));
-app.use('/api/calls', require('./routes/calls'));
+app.use('/api/calls', authMiddleware, require('./routes/calls'));
 const tiRouter = require('./routes/team-intelligence');
-app.get('/api/twiml/test', function(req, res) { res.setHeader('Content-Type', 'text/xml'); res.send('<Response><Say language="tr-TR" voice="Polly.Filiz">Merhaba! Ben Ahmet, Dekor Panel den ariyorum. Akustik panellerimiz var. Uygun musunuz?</Say></Response>'); });
+// TwiML test — DEV only
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/twiml/test', function(_req: any, res: any) { res.setHeader('Content-Type', 'text/xml'); res.send('<Response><Say language="tr-TR" voice="Polly.Filiz">Test modu</Say></Response>'); });
+}
 app.post('/api/team-intelligence/process-call', (req: any, res: any, next: any) => { req.url = '/process-call'; tiRouter(req, res, next); });
 app.use('/api/team-intelligence', authMiddleware, tiRouter);
 // Green API public endpoints (no auth)
@@ -167,7 +189,10 @@ app.use('/api/visual-trends',        authMiddleware, require('./routes/visual-tr
 // HeyGen webhook public (no auth, called by HeyGen servers)
 const videoOutreachRouter = require('./routes/video-outreach');
 app.post('/api/video-outreach/heygen-webhook', (req: any, res: any, next: any) => { req.url = '/heygen-webhook'; videoOutreachRouter(req, res, next); });
-app.get('/api/video-outreach/test-ai', (req: any, res: any, next: any) => { req.url = '/test-ai'; videoOutreachRouter(req, res, next); });
+// video-outreach test-ai — DEV only
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/video-outreach/test-ai', (req: any, res: any, next: any) => { req.url = '/test-ai'; videoOutreachRouter(req, res, next); });
+}
 app.use('/api/video-outreach',       authMiddleware, videoOutreachRouter);
 app.use('/v',                          require('./routes/video-tracking'));
 // Video sequences — multi-touch outreach engine
@@ -237,13 +262,13 @@ app.use('/api/settings/business-profile', authMiddleware, require('./routes/busi
 // Market pages — public GET no auth, CRUD requires auth
 app.use('/api/market-pages/public', require('./routes/market-pages-public'));
 app.use('/api/market-pages',        authMiddleware, require('./routes/market-pages'));
-// Leads config — public read (no auth), used by leads page for status/score config
-app.get('/api/leads-config', async (req: any, res: any) => {
+// Leads config — protected: only authenticated users of this system may read their own CRM config
+app.get('/api/leads-config', authMiddleware, async (_req: any, res: any) => {
   try {
     const { createClient } = require('@supabase/supabase-js');
     const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
     const { data } = await sb.from('site_settings').select('value').eq('key', 'leads_config').single();
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    res.setHeader('Cache-Control', 'private, max-age=60');
     res.json({ config: data?.value && Object.keys(data.value).length > 0 ? data.value : null });
   } catch { res.json({ config: null }); }
 });
@@ -260,7 +285,7 @@ app.use('/api/admin', (req: any, res: any, next: any) => {
     if (authHeader?.startsWith('Bearer ')) {
       try {
         const jwt = require('jsonwebtoken');
-        const decoded: any = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'leadflow-super-secret-jwt-key-2026');
+        const decoded: any = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
         req.userId = decoded.userId;
       } catch {}
     }
@@ -275,11 +300,20 @@ app.use('/api/monitoring', authMiddleware, monitoringRouter);
 const { router: webhooksRouter } = require('./routes/webhooks');
 app.use('/api/webhooks',   authMiddleware, webhooksRouter);
 
-// Support chat — /public/chat is open, rest requires auth (handled inside the route)
-app.use('/api/support', require('./routes/support'));
+// Support chat — /public/chat is stateless (no auth), all other paths require auth
+const supportRouter = require('./routes/support');
+app.use('/api/support/public', supportRouter);
+app.use('/api/support', authMiddleware, supportRouter);
 
-// Health check
-app.get('/health', (_req: any, res: any) => res.json({ status: 'OK', ts: Date.now() }));
+// Health check — minimal info, no internal details
+app.get('/health', (_req: any, res: any) => res.json({ ok: true }));
+
+// Global error handler — never expose stack traces to client
+app.use((err: any, _req: any, res: any, _next: any) => {
+  const status = err.status || err.statusCode || 500;
+  if (status >= 500) console.error('[Error]', err.message);
+  res.status(status).json({ error: status >= 500 ? 'Sunucu hatası' : (err.message || 'Hata') });
+});
 
 // Daily tender scan
 function scheduleDailyTenderScan() {
@@ -297,5 +331,7 @@ scheduleDailyTenderScan();
 const { runNightlyCollection } = require('./routes/data-collector');
 require('node-cron').schedule('0 2 * * *', () => { runNightlyCollection(); });
 require('node-cron').schedule('*/10 * * * *', () => { checkAndAdvanceSequences(); });
+// Security: clean expired JWT blocklist entries daily at 03:00
+require('node-cron').schedule('0 3 * * *', () => { require('./lib/security').cleanBlocklist(); });
 
 app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));

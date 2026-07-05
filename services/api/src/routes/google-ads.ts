@@ -78,7 +78,7 @@ router.get('/callback', async (req: any, res: any) => {
     let sessionToken = '';
     try {
       const jwt = require('jsonwebtoken');
-      sessionToken = jwt.sign({ userId: state }, process.env.JWT_SECRET || 'leadflow-super-secret-jwt-key-2026', { expiresIn: '7d' });
+      if (process.env.JWT_SECRET) sessionToken = jwt.sign({ userId: state }, process.env.JWT_SECRET, { expiresIn: '7d' });
     } catch {}
     return res.redirect(`${FRONTEND_URL}/google-ads?google_success=1${sessionToken ? `&_t=${encodeURIComponent(sessionToken)}` : ''}`);
   } catch (e: any) {

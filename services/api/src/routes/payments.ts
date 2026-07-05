@@ -14,21 +14,74 @@ function formatPrice(kurus: number): string {
 
 // ── GET /api/payments/plans ───────────────────────────────────────────────────
 
-router.get('/plans', (_req: any, res: any) => {
+const DEFAULT_ENTERPRISE = {
+  title: 'Enterprise',
+  desc: 'Büyük ekipler için özel çözüm',
+  price_label: 'Özel Fiyat',
+  features: ['Sınırsız kredi & ekip', 'White-Label & API', 'SLA %99.9 garantisi', 'Dedicated Account Manager'],
+  cta_text: 'Bizimle İletişime Geçin',
+  cta_url: 'mailto:enterprise@sovlo.io',
+  color: '#ec4899',
+};
+
+const DEFAULT_COMPARISON = {
+  title: 'Neden Sovlo?',
+  items: [
+    { label: 'Apollo Pro + Smartlead + WA aracı', price: '≈ ₺10.500/ay', icon: '🔴' },
+    { label: 'Sovlo Growth — hepsi tek pakette', price: '₺2.990/ay', icon: '🟢' },
+    { label: 'Kredi rollover (rakipler sıfırlıyor)', price: '2 ay taşınır', icon: '✅' },
+    { label: 'WhatsApp mesajı (rakipler +₺0.50/msj)', price: 'Sınırsız ücretsiz', icon: '✅' },
+  ],
+};
+
+router.get('/plans', async (_req: any, res: any) => {
+  // Read admin overrides from site_settings
+  let adminCfg: any = null;
+  try {
+    const { data } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'landing_home')
+      .single();
+    if (data?.value) adminCfg = data.value;
+  } catch (_e) { /* use defaults */ }
+
+  // Build admin plan lookup by id
+  const adminPlans: Record<string, any> = {};
+  if (Array.isArray(adminCfg?.plans)) {
+    for (const p of adminCfg.plans) {
+      if (p.id) adminPlans[p.id] = p;
+    }
+  }
+
   const subscriptionPlans = Object.values(PLANS)
     .filter((p: any) => p.id !== 'enterprise')
-    .map((p: any) => ({
-      id:             p.id,
-      name:           p.name,
-      nameLocal:      p.nameLocal,
-      monthlyCredits: p.monthlyCredits,
-      rolloverMonths: p.rolloverMonths,
-      priceMonthly:   p.priceMonthly,
-      priceAnnual:    p.priceAnnual,
-      color:          p.color,
-      popular:        p.popular,
-      features:       p.features,
-    }));
+    .map((p: any) => {
+      const adm = adminPlans[p.id];
+      const features = adm?.features
+        ? adm.features.filter((f: any) => f.inc !== false).map((f: any) => f.text)
+        : p.features;
+      const priceMonthly = adm?.monthly_price != null ? Math.round(adm.monthly_price * 100) : p.priceMonthly;
+      const priceAnnual  = adm?.annual_price  != null ? Math.round(adm.annual_price  * 100) : p.priceAnnual;
+      const monthlyCredits = adm?.credits != null
+        ? parseInt(String(adm.credits).replace(/[^\d]/g, ''), 10) || p.monthlyCredits
+        : p.monthlyCredits;
+      return {
+        id:             p.id,
+        name:           p.name,
+        nameLocal:      adm?.name      || p.nameLocal,
+        desc:           adm?.desc      || '',
+        monthlyCredits,
+        rolloverMonths: p.rolloverMonths,
+        priceMonthly,
+        priceAnnual,
+        color:          p.color,
+        popular:        adm ? (adm.popular ?? p.popular) : p.popular,
+        features,
+        ctaText:        adm?.cta_text  || '',
+        ctaUrl:         adm?.cta_url   || '',
+      };
+    });
 
   const topupPackages = Object.entries(TOPUP_PACKAGES).map(([id, pkg]: [string, any]) => ({
     id,
@@ -40,7 +93,10 @@ router.get('/plans', (_req: any, res: any) => {
     pricePerCredit: Math.round(pkg.price / pkg.credits),
   }));
 
-  res.json({ subscriptionPlans, topupPackages });
+  const enterprise  = { ...DEFAULT_ENTERPRISE,  ...(adminCfg?.enterprise  || {}) };
+  const comparison  = { ...DEFAULT_COMPARISON,  ...(adminCfg?.comparison  || {}) };
+
+  res.json({ subscriptionPlans, topupPackages, enterprise, comparison });
 });
 
 // ── POST /api/payments/topup ──────────────────────────────────────────────────

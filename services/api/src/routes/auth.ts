@@ -59,8 +59,9 @@ router.post('/register', async (req: any, res: any) => {
 
     if (error) throw error;
 
+    const jti = require('crypto').randomUUID();
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, jti },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -87,8 +88,9 @@ router.post('/login', async (req: any, res: any) => {
     if (!isValid)
       return res.status(401).json({ error: 'Email veya sifre yanlis' });
 
+    const jti = require('crypto').randomUUID();
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, jti },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -120,6 +122,45 @@ router.get('/me', async (req: any, res: any) => {
     res.json({ user: formatUser(user) });
   } catch (error: any) {
     res.status(401).json({ error: 'Gecersiz token' });
+  }
+});
+
+// LOGOUT — revoke current token by adding jti to blocklist
+router.post('/logout', async (req: any, res: any) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.json({ ok: true }); // already logged out
+    const token = authHeader.split(' ')[1];
+    let decoded: any;
+    try { decoded = jwt.verify(token, process.env.JWT_SECRET); } catch { return res.json({ ok: true }); }
+    if (decoded?.jti) {
+      const expiresAt = new Date(decoded.exp * 1000).toISOString();
+      await supabase.from('token_blocklist').upsert({
+        jti: decoded.jti,
+        user_id: decoded.userId,
+        reason: 'logout',
+        expires_at: expiresAt,
+      });
+    }
+    res.json({ ok: true });
+  } catch {
+    res.json({ ok: true }); // always succeed logout from client's perspective
+  }
+});
+
+// REVOKE ALL TOKENS — e.g. password change or account compromise
+router.post('/revoke-all', async (req: any, res: any) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token gerekli' });
+    const token = authHeader.split(' ')[1];
+    let decoded: any;
+    try { decoded = jwt.verify(token, process.env.JWT_SECRET); } catch { return res.status(401).json({ error: 'Geçersiz token' }); }
+    // Mark revoke timestamp on user — all tokens before this time are invalid
+    await supabase.from('users').update({ tokens_revoked_at: new Date().toISOString() }).eq('id', decoded.userId);
+    res.json({ ok: true, message: 'Tüm oturumlar sonlandırıldı' });
+  } catch (e: any) {
+    res.status(500).json({ error: 'İşlem başarısız' });
   }
 });
 

@@ -161,6 +161,28 @@ const DEFAULT: Record<string,any> = {
   meta_description:'Google Maps\'ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt. 2,000+ firma ile satışlarınızı otomatize edin.',
   meta_keywords:'B2B lead, satış otomasyonu, WhatsApp kampanya, lead scraper, AI satış, CRM Türkiye',
 
+  // Enterprise Card (Fiyatlar tab)
+  enterprise:{
+    title:'Enterprise',
+    desc:'Büyük ekipler için özel çözüm',
+    price_label:'Özel Fiyat',
+    color:'#ec4899',
+    features:['Sınırsız kredi & ekip','White-Label & API','SLA %99.9 garantisi','Dedicated Account Manager'],
+    cta_text:'Bizimle İletişime Geçin',
+    cta_url:'mailto:enterprise@sovlo.io',
+  },
+
+  // Karşılaştırma (Fiyatlar tab)
+  comparison:{
+    title:'Neden Sovlo?',
+    items:[
+      {label:'Apollo Pro + Smartlead + WA aracı',price:'≈ ₺10.500/ay',icon:'🔴'},
+      {label:'Sovlo Growth — hepsi tek pakette',price:'₺2.990/ay',icon:'🟢'},
+      {label:'Kredi rollover (rakipler sıfırlıyor)',price:'2 ay taşınır',icon:'✅'},
+      {label:'WhatsApp mesajı (rakipler +₺0.50/msj)',price:'Sınırsız ücretsiz',icon:'✅'},
+    ],
+  },
+
   // Demo & Popup
   demo_video_id:'',
   demo_headline:'Ürünü canlı görün',
@@ -539,7 +561,6 @@ export default function AdminLandingPage() {
                     <label htmlFor={`popular-${pi}`} style={{color:'#94a3b8',fontSize:12,cursor:'pointer'}}>Popüler / Öne Çıkan</label>
                   </div>
                 </G2>
-                {/* Plan features */}
                 <p style={{color:'#475569',fontSize:11,fontWeight:700,textTransform:'uppercase',marginBottom:8}}>Özellik Listesi</p>
                 {(p.features||[]).map((f:any,fi:number)=>(
                   <div key={fi} style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:8,marginBottom:7,alignItems:'center'}}>
@@ -549,6 +570,45 @@ export default function AdminLandingPage() {
                   </div>
                 ))}
                 <button onClick={()=>{ const pls=[...(cfg.plans||[])];pls[pi]={...pls[pi],features:[...(pls[pi].features||[]),{text:'Yeni özellik',inc:true}]};set('plans',pls) }} style={{...addBtn,marginTop:8}}>+ Özellik</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Enterprise card editor */}
+          <div style={card}>
+            <p style={h4}>Enterprise Kartı (Billing sayfasında görünür)</p>
+            <G2>
+              <F label="Başlık"><input value={cfg.enterprise?.title||''} onChange={e=>set('enterprise',{...(cfg.enterprise||{}),title:e.target.value})} style={inp} /></F>
+              <F label="Açıklama"><input value={cfg.enterprise?.desc||''} onChange={e=>set('enterprise',{...(cfg.enterprise||{}),desc:e.target.value})} style={inp} /></F>
+              <F label="Fiyat Etiketi (ör: Özel Fiyat)"><input value={cfg.enterprise?.price_label||''} onChange={e=>set('enterprise',{...(cfg.enterprise||{}),price_label:e.target.value})} style={inp} /></F>
+              <F label="Renk (hex)"><input value={cfg.enterprise?.color||'#ec4899'} onChange={e=>set('enterprise',{...(cfg.enterprise||{}),color:e.target.value})} style={inp} /></F>
+              <F label="CTA Metni"><input value={cfg.enterprise?.cta_text||''} onChange={e=>set('enterprise',{...(cfg.enterprise||{}),cta_text:e.target.value})} style={inp} /></F>
+              <F label="CTA URL"><input value={cfg.enterprise?.cta_url||''} onChange={e=>set('enterprise',{...(cfg.enterprise||{}),cta_url:e.target.value})} style={inp} /></F>
+            </G2>
+            <p style={{color:'#475569',fontSize:11,fontWeight:700,textTransform:'uppercase',marginBottom:8}}>Özellikler</p>
+            {(cfg.enterprise?.features||[]).map((f:string,fi:number)=>(
+              <div key={fi} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,marginBottom:7}}>
+                <input value={f} onChange={e=>{ const ent={...(cfg.enterprise||{})};const fts=[...(ent.features||[])];fts[fi]=e.target.value;set('enterprise',{...ent,features:fts}) }} style={{...inp,marginBottom:0}} />
+                <button onClick={()=>{ const ent={...(cfg.enterprise||{})};set('enterprise',{...ent,features:(ent.features||[]).filter((_:string,j:number)=>j!==fi)}) }} style={delBtn}>✕</button>
+              </div>
+            ))}
+            <button onClick={()=>{ const ent={...(cfg.enterprise||{})};set('enterprise',{...ent,features:[...(ent.features||[]),'Yeni özellik']}) }} style={{...addBtn,marginTop:8}}>+ Özellik</button>
+          </div>
+
+          {/* Competitor comparison editor */}
+          <div style={card}>
+            <p style={h4}>Karşılaştırma Bölümü (Billing sayfasında görünür)</p>
+            <F label="Bölüm Başlığı"><input value={cfg.comparison?.title||''} onChange={e=>set('comparison',{...(cfg.comparison||{}),title:e.target.value})} style={inp} /></F>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <p style={{color:'#64748b',fontSize:11,fontWeight:700,textTransform:'uppercase',margin:0}}>Karşılaştırma Satırları</p>
+              <button onClick={()=>{ const cmp={...(cfg.comparison||{})};set('comparison',{...cmp,items:[...(cmp.items||[]),{label:'Yeni satır',price:'₺0/ay',icon:'✅'}]}) }} style={addBtn}>+ Satır</button>
+            </div>
+            {(cfg.comparison?.items||[]).map((c:any,ci:number)=>(
+              <div key={ci} style={{display:'grid',gridTemplateColumns:'60px 1fr 1fr auto',gap:8,marginBottom:8,alignItems:'center'}}>
+                <F label="İkon"><input value={c.icon||''} onChange={e=>{ const cmp={...(cfg.comparison||{})};const its=[...(cmp.items||[])];its[ci]={...its[ci],icon:e.target.value};set('comparison',{...cmp,items:its}) }} style={{...inp,marginBottom:0}} /></F>
+                <F label="Açıklama"><input value={c.label||''} onChange={e=>{ const cmp={...(cfg.comparison||{})};const its=[...(cmp.items||[])];its[ci]={...its[ci],label:e.target.value};set('comparison',{...cmp,items:its}) }} style={{...inp,marginBottom:0}} /></F>
+                <F label="Fiyat/Değer"><input value={c.price||''} onChange={e=>{ const cmp={...(cfg.comparison||{})};const its=[...(cmp.items||[])];its[ci]={...its[ci],price:e.target.value};set('comparison',{...cmp,items:its}) }} style={{...inp,marginBottom:0}} /></F>
+                <button onClick={()=>{ const cmp={...(cfg.comparison||{})};set('comparison',{...cmp,items:(cmp.items||[]).filter((_:any,j:number)=>j!==ci)}) }} style={{...delBtn,marginTop:16}}>✕</button>
               </div>
             ))}
           </div>
