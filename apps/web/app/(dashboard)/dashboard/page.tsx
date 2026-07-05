@@ -140,12 +140,12 @@ export default function DashboardPage() {
   const { t, lang } = useI18n()
   // Dashboard direct-language texts (bypasses translation system for reliability)
   const DB: Record<string, Record<string, string>> = {
-    tr: { daily_summary:'İşte bugünkü özet', active_campaigns:'aktif kampanya', last7d:'Son 7 gün', see_all:'Tümünü gör', no_activity:'Henüz aktivite yok', no_leads:'Henüz lead yok' },
-    de: { daily_summary:'Ihre heutige Zusammenfassung', active_campaigns:'aktive Kampagnen', last7d:'Letzte 7 Tage', see_all:'Alle anzeigen', no_activity:'Noch keine Aktivität', no_leads:'Noch keine Leads' },
-    ru: { daily_summary:'Вот ваша сводка дня', active_campaigns:'активных кампаний', last7d:'Последние 7 дней', see_all:'Просмотреть все', no_activity:'Активности пока нет', no_leads:'Лидов пока нет' },
-    en: { daily_summary:'Here\'s your daily summary', active_campaigns:'active campaigns', last7d:'Last 7 days', see_all:'View all', no_activity:'No activity yet', no_leads:'No leads yet' },
-    fr: { daily_summary:'Voici votre résumé du jour', active_campaigns:'campagnes actives', last7d:'7 derniers jours', see_all:'Voir tout', no_activity:'Pas encore d\'activité', no_leads:'Pas encore de leads' },
-    ar: { daily_summary:'إليك ملخصك اليومي', active_campaigns:'حملات نشطة', last7d:'آخر 7 أيام', see_all:'عرض الكل', no_activity:'لا يوجد نشاط بعد', no_leads:'لا يوجد عملاء بعد' },
+    tr: { daily_summary:'İşte bugünkü özet', active_campaigns:'aktif kampanya', last7d:'Son 7 gün', see_all:'Tümünü gör', no_activity:'Henüz aktivite yok', no_leads:'Henüz lead yok', add_leads:'Lead ekleyin', no_campaigns:'Kampanya yok', find_leads:'Lead Bul', new_short:'Yeni' },
+    de: { daily_summary:'Ihre heutige Zusammenfassung', active_campaigns:'aktive Kampagnen', last7d:'Letzte 7 Tage', see_all:'Alle anzeigen', no_activity:'Noch keine Aktivität', no_leads:'Noch keine Leads', add_leads:'Leads hinzufügen', no_campaigns:'Keine Kampagnen', find_leads:'Leads finden', new_short:'Neu' },
+    ru: { daily_summary:'Вот ваша сводка дня', active_campaigns:'активных кампаний', last7d:'Последние 7 дней', see_all:'Просмотреть все', no_activity:'Активности пока нет', no_leads:'Лидов пока нет', add_leads:'Добавить лидов', no_campaigns:'Нет кампаний', find_leads:'Найти лидов', new_short:'Новый' },
+    en: { daily_summary:'Here\'s your daily summary', active_campaigns:'active campaigns', last7d:'Last 7 days', see_all:'View all', no_activity:'No activity yet', no_leads:'No leads yet', add_leads:'Add leads', no_campaigns:'No campaigns', find_leads:'Find Leads', new_short:'New' },
+    fr: { daily_summary:'Voici votre résumé du jour', active_campaigns:'campagnes actives', last7d:'7 derniers jours', see_all:'Voir tout', no_activity:'Pas encore d\'activité', no_leads:'Pas encore de leads', add_leads:'Ajouter des leads', no_campaigns:'Aucune campagne', find_leads:'Trouver des leads', new_short:'Nouveau' },
+    ar: { daily_summary:'إليك ملخصك اليومي', active_campaigns:'حملات نشطة', last7d:'آخر 7 أيام', see_all:'عرض الكل', no_activity:'لا يوجد نشاط بعد', no_leads:'لا يوجد عملاء بعد', add_leads:'إضافة عملاء', no_campaigns:'لا توجد حملات', find_leads:'إيجاد عملاء', new_short:'جديد' },
   }
   const D = DB[lang] || DB.tr
   const [data, setData] = useState<any>(null)
@@ -172,6 +172,15 @@ export default function DashboardPage() {
   // Supabase Realtime
   useEffect(() => {
     if (!user?.id) return
+    const RT: Record<string, { msg: string; lead: string; campaign: string }> = {
+      tr: { msg:'Yeni mesaj', lead:'Yeni lead', campaign:'Kampanya tamamlandı' },
+      en: { msg:'New message', lead:'New lead', campaign:'Campaign completed' },
+      de: { msg:'Neue Nachricht', lead:'Neuer Lead', campaign:'Kampagne abgeschlossen' },
+      ru: { msg:'Новое сообщение', lead:'Новый лид', campaign:'Кампания завершена' },
+      fr: { msg:'Nouveau message', lead:'Nouveau lead', campaign:'Campagne terminée' },
+      ar: { msg:'رسالة جديدة', lead:'عميل جديد', campaign:'انتهت الحملة' },
+    }
+    const L = RT[lang] || RT.tr
     const addNotif = (text: string, type: string) => {
       setNotifications(p => [{ id: Date.now(), text, type, time: new Date() }, ...p].slice(0, 12))
       setNewCount(c => c + 1)
@@ -179,17 +188,17 @@ export default function DashboardPage() {
     }
     const channel = supabase.channel(`dash-${user.id}`)
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages', filter:`user_id=eq.${user.id}` }, (p: any) => {
-        if (p.new.direction === 'in') addNotif(`Yeni mesaj: "${(p.new.content||'').slice(0,45)}..."`, 'message')
+        if (p.new.direction === 'in') addNotif(`${L.msg}: "${(p.new.content||'').slice(0,45)}..."`, 'message')
       })
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'leads', filter:`user_id=eq.${user.id}` }, (p: any) => {
-        addNotif(`Yeni lead: ${p.new.company_name || p.new.phone}`, 'lead')
+        addNotif(`${L.lead}: ${p.new.company_name || p.new.phone}`, 'lead')
       })
       .on('postgres_changes', { event:'UPDATE', schema:'public', table:'campaigns', filter:`user_id=eq.${user.id}` }, (p: any) => {
-        if (p.new.status === 'completed') addNotif(`Kampanya tamamlandı: "${p.new.name}"`, 'campaign')
+        if (p.new.status === 'completed') addNotif(`${L.campaign}: "${p.new.name}"`, 'campaign')
       })
       .subscribe((s: string) => setRealtimeConnected(s === 'SUBSCRIBED'))
     return () => { supabase.removeChannel(channel) }
-  }, [user?.id])
+  }, [user?.id, lang])
 
   const stats    = data?.stats
   const funnel   = data?.funnel   || []
@@ -233,7 +242,7 @@ export default function DashboardPage() {
     completed: { color:'#2563eb', bg:'#eff6ff' },
     draft:     { color:'#64748b', bg:'#f1f5f9' },
   }
-  const statusLabel = (s: string) => t(`status.${s}`, s)
+  const statusLabel = (s: string) => s ? t(`status.${s}`, s) : '—'
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
@@ -302,7 +311,7 @@ export default function DashboardPage() {
           </div>
           <Link href="/automations" style={{ display:'flex', alignItems:'center', gap:7, padding: isMobile ? '9px 14px' : '9px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(59,130,246,0.35)', transition:'all 0.15s', whiteSpace:'nowrap' }}>
             <Zap size={14}/> {!isMobile && t('dashboard.new_campaign')}
-            {isMobile && <span style={{fontSize:11}}>Yeni</span>}
+            {isMobile && <span style={{fontSize:11}}>{D.new_short}</span>}
           </Link>
         </div>
       </div>
@@ -461,7 +470,7 @@ export default function DashboardPage() {
                 )
               })}
               {!funnel.length && (
-                <p style={{ color:'#94a3b8', fontSize:12, textAlign:'center', padding:'20px 0' }}>Lead ekleyin</p>
+                <p style={{ color:'#94a3b8', fontSize:12, textAlign:'center', padding:'20px 0' }}>{D.add_leads}</p>
               )}
             </div>
           )}
@@ -500,7 +509,7 @@ export default function DashboardPage() {
           ) : (
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
               <Megaphone size={26} color="#cbd5e1"/>
-              <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>Kampanya yok</p>
+              <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{D.no_campaigns}</p>
               <Link href="/automations" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{t('page.create', 'Oluştur') + ' →'}</Link>
             </div>
           )}
@@ -632,7 +641,7 @@ export default function DashboardPage() {
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'28px 0' }}>
             <Users size={28} color="#cbd5e1"/>
             <p style={{ color:'#94a3b8', fontSize:13, margin:0 }}>{D.no_leads}</p>
-            <Link href="/lead-machine" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>Lead bul →</Link>
+            <Link href="/lead-machine" style={{ color:'#60a5fa', fontSize:12, textDecoration:'none' }}>{D.find_leads} →</Link>
           </div>
         )}
       </div>
