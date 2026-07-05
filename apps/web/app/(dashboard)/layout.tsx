@@ -165,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Main content */}
         <main
           className="dash-main"
-          style={{ flex: 1, padding: '28px 32px', overflowX: 'hidden' }}
+          style={{ flex: 1, padding: isMobile ? '16px 16px 100px' : '28px 32px 40px', overflowX: 'hidden' }}
           lang={lang}
         >
           {children}

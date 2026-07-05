@@ -293,10 +293,10 @@ export default function AutomationsPage() {
       {mode === 'broadcast' && (
         <div>
           {/* Sub-tabs */}
-          <div style={{ display: 'flex', gap: 3, marginBottom: 14, background: surf, padding: 3, borderRadius: 10, width: 'fit-content', border: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 3, marginBottom: 14, background: surf, padding: 3, borderRadius: 10, border: '1px solid #f1f5f9' }}>
             {[{ id: 'compose', label: 'Yaz & Gönder', Icon: Send }, { id: 'templates', label: 'Şablonlar', Icon: ListOrdered }, { id: 'analytics', label: 'Analitik', Icon: BarChart2 }].map(tb => (
               <button key={tb.id} onClick={() => setActiveSubTab(tb.id as any)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeSubTab === tb.id ? '#fff' : 'transparent', color: activeSubTab === tb.id ? accentBlue : tx3, boxShadow: activeSubTab === tb.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: isMobile ? 11 : 12, fontWeight: 600, background: activeSubTab === tb.id ? '#fff' : 'transparent', color: activeSubTab === tb.id ? accentBlue : tx3, boxShadow: activeSubTab === tb.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
                 <tb.Icon size={13} /> {tb.label}
               </button>
             ))}
@@ -380,7 +380,7 @@ export default function AutomationsPage() {
               </div>
 
               {/* Right — Lead selector */}
-              <LeadSelector maxHeight={520} />
+              <LeadSelector maxHeight={isMobile ? 300 : 520} />
             </div>
           )}
 
@@ -403,7 +403,7 @@ export default function AutomationsPage() {
           )}
 
           {activeSubTab === 'analytics' && analytics && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 12 }}>
               <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
                 <p style={{ color: accentBlue, fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.totalSent}</p>
                 <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Gönderilen</p>
@@ -436,7 +436,7 @@ export default function AutomationsPage() {
                 </div>
               )}
               {/* Kampanya listesi + Funnel */}
-              <div style={{ ...card, padding: '14px 16px', gridColumn: 'span 2' }}>
+              <div style={{ ...card, padding: '14px 16px', gridColumn: isMobile ? '1 / -1' : 'span 2' }}>
                 <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kampanya Geçmişi</p>
                 {(analytics.campaigns || []).slice(0, 8).map((c: any) => {
                   const st = STATUS_COLORS[c.status] || STATUS_COLORS.draft
@@ -456,7 +456,7 @@ export default function AutomationsPage() {
                       {/* Funnel Widget */}
                       {isSelected && campaignFunnel && (
                         <div className="fade-in" style={{ background: 'linear-gradient(135deg,#eff6ff,#f0fdf4)', borderRadius: 8, padding: '10px 12px', margin: '6px 0 2px', border: '1px solid #bfdbfe' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
                             {[
                               { label: 'Gönderilen', val: campaignFunnel.funnel.sent, color: accentBlue },
                               { label: 'Teslim', val: campaignFunnel.funnel.delivered, color: accentViolet },
@@ -488,7 +488,7 @@ export default function AutomationsPage() {
       {/* ═══════════ TAKIP SEKANSI ═══════════ */}
       {mode === 'sequence' && (
         <div>
-          {seqStats && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+          {seqStats && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
             {[{ label: 'Enrollment', value: seqStats.total || 0, color: tx1 }, { label: 'Aktif', value: seqStats.active || 0, color: accentEmerald }, { label: 'Tamamlanan', value: seqStats.completed || 0, color: accentBlue }].map(({ label, value, color }) => (
               <div key={label} style={{ ...card, padding: '10px 12px', textAlign: 'center' }}><p style={{ color, fontSize: 18, fontWeight: 800, margin: 0 }}>{value}</p><p style={{ color: tx3, fontSize: 10, margin: 0 }}>{label}</p></div>
             ))}
@@ -497,7 +497,7 @@ export default function AutomationsPage() {
           {showSeqCreate && (
             <div style={{ ...card, padding: 20, marginBottom: 14 }}>
               <h3 style={{ color: tx1, fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>Yeni Sekans</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <input value={seqName} onChange={e => setSeqName(e.target.value)} placeholder="Sekans adi *" style={inputStyle} />
                 <select value={seqChannel} onChange={e => setSeqChannel(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select>
               </div>
@@ -584,7 +584,7 @@ export default function AutomationsPage() {
                     {liveLoading && <RefreshCw size={11} className="auto-anim" style={{ color: accentBlue }} />}
                   </div>
                   {liveMonitor?.summary && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
                       {[
                         { label: 'Aktif', val: liveMonitor.summary.active, color: accentBlue },
                         { label: '⚡ Hazır', val: liveMonitor.summary.readyNow, color: '#f59e0b' },

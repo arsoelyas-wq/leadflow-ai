@@ -10,6 +10,7 @@ import {
   Sparkles, FileText, CheckCircle2, Globe,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 interface Lead {
   id: string
@@ -83,6 +84,7 @@ export default function NewCampaignPage() {
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduleAt, setScheduleAt] = useState('')
   const [leadsTotal, setLeadsTotal] = useState(0)
+  const isMobile = useIsMobile()
 
   useEffect(() => { if (step === 3) loadLeads() }, [step])
 
@@ -156,7 +158,7 @@ export default function NewCampaignPage() {
   ]
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className={`space-y-5 max-w-3xl ${isMobile ? 'pb-24' : ''}`}>
 
       {/* ── Header ── */}
       <div className="flex items-center gap-3">

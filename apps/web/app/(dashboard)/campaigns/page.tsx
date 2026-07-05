@@ -119,7 +119,7 @@ export default function CampaignsPage() {
   })[0]
 
   return (
-    <div className="space-y-5">
+    <div className={`space-y-5 ${isMobile ? 'pb-24' : ''}`}>
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">

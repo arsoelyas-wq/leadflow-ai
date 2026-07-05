@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import Link from 'next/link'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import {
   ArrowLeft, Play, Pause, Trash2, MessageSquare,
   Mail, Users, TrendingUp, CheckCircle, XCircle,
@@ -58,6 +59,7 @@ export default function CampaignDetailPage() {
   const params = useParams()
   const router = useRouter()
   const id = params?.id as string
+  const isMobile = useIsMobile()
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -135,7 +137,7 @@ export default function CampaignDetailPage() {
   const failed = messages.filter(m => m.status === 'failed')
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className={`space-y-6 max-w-5xl ${isMobile ? 'pb-24' : ''}`}>
 
       {/* Header */}
       <div className="flex items-start justify-between">
