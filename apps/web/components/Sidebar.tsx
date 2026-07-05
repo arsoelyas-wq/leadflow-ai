@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -127,11 +128,18 @@ const ALL_NAV_ITEMS: { href: string; label: string; icon: any; groupLabel?: stri
   ...GROUPS.flatMap(g => g.items.map(i => ({ href: i.href, label: i.label, icon: i.icon, groupLabel: g.label }))),
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuth()
   const { t } = useI18n()
+
+  const isMobile = useIsMobile()
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [ctaDismissed, setCtaDismissed] = useState(false)
@@ -183,6 +191,11 @@ export default function Sidebar() {
     })
   }, [pathname])
 
+  // Rota değişince mobilede sidebar'ı kapat
+  useEffect(() => {
+    if (isMobile && mobileOpen) onMobileClose?.()
+  }, [pathname])
+
   const dismissCta = () => {
     setCtaDismissed(true)
     if (typeof window !== 'undefined') localStorage.setItem('cta_dismissed', '1')
@@ -200,7 +213,7 @@ export default function Sidebar() {
     display: 'flex' as const,
     alignItems: 'center' as const,
     gap: 9,
-    padding: '7px 10px 7px 9px',
+    padding: isMobile ? '11px 10px 11px 9px' : '7px 10px 7px 9px',
     borderRadius: 7,
     marginBottom: 1,
     textDecoration: 'none' as const,
@@ -218,8 +231,16 @@ export default function Sidebar() {
 
   return (
     <>
+    {/* Mobile backdrop — sidebar açıkken arka planı karartır */}
+    {isMobile && mobileOpen && (
+      <div
+        className="sidebar-backdrop"
+        onClick={onMobileClose}
+      />
+    )}
+
     <aside style={{
-      width: 232,
+      width: isMobile ? 280 : 232,
       background: '#ffffff',
       borderRight: '1px solid #e2e8f0',
       display: 'flex',
@@ -228,11 +249,14 @@ export default function Sidebar() {
       position: 'fixed',
       left: 0,
       top: 0,
-      zIndex: 40,
+      zIndex: isMobile ? 200 : 40,
+      transform: isMobile && !mobileOpen ? 'translateX(-100%)' : 'translateX(0)',
+      transition: 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+      overflowY: 'hidden',
     }}>
 
       {/* ── LOGO ── */}
-      <div style={{ padding: '14px 16px 14px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+      <div style={{ padding: '14px 16px 14px', borderBottom: '1px solid #f1f5f9', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
           {/* Animated Spark icon */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -260,6 +284,20 @@ export default function Sidebar() {
             </span>
           </div>
         </Link>
+        {isMobile && (
+          <button
+            onClick={onMobileClose}
+            style={{
+              width: 34, height: 34, borderRadius: 9,
+              border: 'none', background: '#f1f5f9',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: '#94a3b8', flexShrink: 0,
+              fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
+          >
+            <X size={16} />
+          </button>
+        )}
       </div>
 
       {/* ── KREDİ ÇUBUĞU ── */}
