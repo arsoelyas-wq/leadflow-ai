@@ -191,13 +191,6 @@ export default function AdminLandingPage() {
       if (r.status === 401 || r.status === 403) { redirectLogin(); return }
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Kayıt başarısız')
-      // Trigger Next.js cache revalidation so landing page updates immediately
-      try {
-        await fetch('/api/revalidate', {
-          method: 'POST',
-          headers: { 'x-revalidate-secret': 'sovlo-revalidate-2026' },
-        })
-      } catch {}
       setMsg({ type:'ok', text:'✅ Kaydedildi! Ana sayfa güncellendi.' })
     } catch(e:any) { setMsg({ type:'err', text:'❌ '+e.message }) }
     finally { setSaving(false); setTimeout(()=>setMsg(null),4000) }

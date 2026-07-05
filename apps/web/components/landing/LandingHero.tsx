@@ -23,7 +23,7 @@ export default function LandingHero({ cfg }: { cfg?: any }) {
   const bullets    = cfg?.hero_trust_bullets || ['Kredi kartı gerekmez', '2,000+ aktif firma', 'İstediğin an iptal']
 
   return (
-    <section className="relative overflow-hidden bg-white pt-20 pb-14 sm:pt-24 sm:pb-18 lg:pt-36 lg:pb-28">
+    <section className="relative overflow-hidden bg-white pt-20 pb-14 sm:pt-24 sm:pb-16 lg:pt-36 lg:pb-28">
       <div className="absolute inset-0 dot-grid opacity-40" />
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(37,99,235,0.08) 0%, transparent 60%)' }} />
 

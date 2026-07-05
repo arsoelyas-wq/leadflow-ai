@@ -36,7 +36,7 @@ router.post('/auth/login', async (req: any, res: any) => {
     const token = jwt.sign(
       { email, isAdmin: true },
       ADMIN_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '8h' }
     );
     await audit(email, 'auth.login', undefined, {}, req.ip);
     res.json({ token, email });
@@ -908,6 +908,15 @@ router.patch('/landing-config', async (req: any, res: any) => {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'key' });
     if (error) throw error;
+    // Trigger Next.js ISR revalidation server-to-server (secret never reaches client)
+    try {
+      const nextUrl = process.env.NEXTJS_URL || 'https://sovlo.io'
+      const revSecret = process.env.REVALIDATE_SECRET || 'sovlo-revalidate-2026'
+      await fetch(`${nextUrl}/api/revalidate`, {
+        method: 'POST',
+        headers: { 'x-revalidate-secret': revSecret },
+      })
+    } catch {}
     res.json({ ok: true, saved_at: new Date().toISOString() });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

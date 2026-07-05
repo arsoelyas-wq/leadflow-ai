@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -15,7 +15,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, loading } = useAuth()
   const { lang } = useI18n()
   const router = useRouter()
-  const pathname = usePathname()
   const isMobile = useIsMobile()
   const [isImpersonating, setIsImpersonating] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)

@@ -194,7 +194,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
   // Rota değişince mobilede sidebar'ı kapat
   useEffect(() => {
     if (isMobile && mobileOpen) onMobileClose?.()
-  }, [pathname])
+  }, [pathname, isMobile, mobileOpen, onMobileClose])
 
   const dismissCta = () => {
     setCtaDismissed(true)
@@ -252,7 +252,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
       zIndex: isMobile ? 200 : 40,
       transform: isMobile && !mobileOpen ? 'translateX(-100%)' : 'translateX(0)',
       transition: 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
-      overflowY: 'hidden',
     }}>
 
       {/* ── LOGO ── */}
