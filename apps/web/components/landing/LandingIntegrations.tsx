@@ -129,7 +129,7 @@ function IntegrationCard({ name, bg, Icon }: { name: string; color: string; bg: 
   )
 }
 
-export default function LandingIntegrations() {
+export default function LandingIntegrations({ cfg }: { cfg?: any }) {
   const row1 = INTEGRATIONS.slice(0, 6)
   const row2 = INTEGRATIONS.slice(6)
 

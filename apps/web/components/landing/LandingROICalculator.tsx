@@ -58,7 +58,7 @@ function Slider({
   )
 }
 
-export default function LandingROICalculator() {
+export default function LandingROICalculator({ cfg }: { cfg?: any }) {
   const [manualLeads, setManualLeads] = useState(100)
   const [dealSize, setDealSize] = useState(25000)
   const [teamCost, setTeamCost] = useState(50000)

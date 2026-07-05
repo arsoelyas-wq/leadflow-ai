@@ -15,7 +15,11 @@ const SECTORS = [
 
 const SESSION_KEY = 'sovlo_exit_popup_shown'
 
-export default function ExitIntentPopup() {
+export default function ExitIntentPopup({ cfg }: { cfg?: any }) {
+  const popupTitle   = cfg?.exit_popup_title   || 'Ayrılmadan önce —'
+  const popupOffer   = cfg?.exit_popup_offer   || 'Sektörünüzdeki ilk 50 lead\'i ücretsiz görmek ister misiniz? Email adresinizi bırakın, hemen hazırlayalım.'
+  const popupCtaUrl  = cfg?.exit_popup_cta_url || '/register?ref=exit-intent'
+  const popupEnabled = cfg?.exit_popup_enabled !== false
   const [visible, setVisible] = useState(false)
   const [email, setEmail] = useState('')
   const [sector, setSector] = useState('')
@@ -76,11 +80,11 @@ export default function ExitIntentPopup() {
     }
     // Redirect to register after 1.5s
     setTimeout(() => {
-      router.push(`/register?ref=exit-intent&sector=${encodeURIComponent(sector)}`)
+      router.push(`${popupCtaUrl}&sector=${encodeURIComponent(sector)}`)
     }, 1500)
   }
 
-  if (!visible) return null
+  if (!visible || !popupEnabled) return null
 
   return (
     <div
@@ -113,11 +117,10 @@ export default function ExitIntentPopup() {
               </div>
 
               <h3 className="text-[22px] font-black text-slate-900 leading-tight mb-2">
-                Ayrılmadan önce —
+                {popupTitle}
               </h3>
               <p className="text-[15px] text-slate-600 leading-relaxed mb-6">
-                <strong className="text-blue-600">Sektörünüzdeki ilk 50 lead&apos;i ücretsiz</strong> görmek ister misiniz?
-                Email adresinizi bırakın, hemen hazırlayalım.
+                {popupOffer}
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-3">

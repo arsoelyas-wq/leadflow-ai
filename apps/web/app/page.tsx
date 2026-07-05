@@ -20,54 +20,10 @@ import SupportWidget from '@/components/SupportWidget'
 import ExitIntentPopup from '@/components/landing/ExitIntentPopup'
 import { SITE_CONFIG } from '@/lib/site-config'
 
-export const metadata: Metadata = {
-  title: 'Sovlo AI — Yapay Zeka Destekli B2B Lead Intelligence Platformu',
-  description: 'Google Maps\'ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt. 2,000+ firma ile satışlarınızı otomatize edin.',
-  keywords: ['B2B lead', 'satış otomasyonu', 'WhatsApp kampanya', 'lead scraper', 'AI satış', 'CRM Türkiye', 'lead generation'],
-  metadataBase: new URL(SITE_CONFIG.url),
-  openGraph: {
-    type: 'website',
-    url: SITE_CONFIG.url,
-    title: 'Sovlo AI — B2B Lead Intelligence Platformu',
-    description: '2,000+ firma tarafından kullanılan AI destekli B2B satış otomasyon platformu.',
-    siteName: 'Sovlo AI',
-    images: [
-      {
-        url: '/og-image.png',   // public/og-image.png dosyasını ekleyin (1200x630px)
-        width: 1200,
-        height: 630,
-        alt: 'Sovlo AI — B2B Lead Intelligence',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    site: '@sovloai',
-    title: 'Sovlo AI — B2B Lead Intelligence',
-    description: '2,000+ firma tarafından kullanılan AI destekli B2B satış otomasyon platformu.',
-    images: ['/og-image.png'],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-    },
-  },
-  alternates: {
-    canonical: SITE_CONFIG.url,
-  },
-  verification: {
-    // google: 'GOOGLE_VERIFICATION_CODE',  // Search Console'dan alın
-  },
-}
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 
 async function getLandingConfig() {
   try {
-    const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
     const res = await fetch(`${API}/api/market-pages/public/home`, {
       next: { revalidate: 60 },
     })
@@ -78,25 +34,63 @@ async function getLandingConfig() {
   }
 }
 
+export async function generateMetadata(): Promise<Metadata> {
+  const cfg = await getLandingConfig()
+
+  const title       = cfg?.meta_title       || 'Sovlo AI — Yapay Zeka Destekli B2B Lead Intelligence Platformu'
+  const description = cfg?.meta_description || 'Google Maps\'ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt. 2,000+ firma ile satışlarınızı otomatize edin.'
+  const keywords    = cfg?.meta_keywords    || 'B2B lead, satış otomasyonu, WhatsApp kampanya, lead scraper, AI satış, CRM Türkiye'
+  const ogTitle     = cfg?.meta_og_title    || title
+  const ogDesc      = cfg?.meta_og_description || description
+  const twitterSite = cfg?.footer_twitter_url?.replace('https://twitter.com/', '@') || '@sovloai'
+
+  return {
+    title,
+    description,
+    keywords: keywords.split(',').map((k: string) => k.trim()),
+    metadataBase: new URL(SITE_CONFIG.url),
+    openGraph: {
+      type: 'website',
+      url: SITE_CONFIG.url,
+      title: ogTitle,
+      description: ogDesc,
+      siteName: `${cfg?.nav_logo_name || 'Sovlo'} ${cfg?.nav_logo_suffix || 'AI'}`,
+      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: ogTitle }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      site: twitterSite,
+      title: ogTitle,
+      description: ogDesc,
+      images: ['/og-image.png'],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, 'max-video-preview': -1, 'max-image-preview': 'large' },
+    },
+    alternates: { canonical: SITE_CONFIG.url },
+  }
+}
+
 export default async function LandingPage() {
   const cfg = await getLandingConfig()
 
   return (
     <div className="bg-white text-slate-900">
-      {/* Structured data — SoftwareApplication */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'SoftwareApplication',
-            name: 'Sovlo AI',
+            name: `${cfg?.nav_logo_name || 'Sovlo'} ${cfg?.nav_logo_suffix || 'AI'}`,
             applicationCategory: 'BusinessApplication',
             operatingSystem: 'Web',
             description: cfg?.meta_description || 'Yapay Zeka Destekli B2B Lead Intelligence ve Satış Otomasyon Platformu',
             url: SITE_CONFIG.url,
-            offers: { '@type': 'Offer', price: '199', priceCurrency: 'TRY', priceValidUntil: '2027-01-01' },
-            aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', reviewCount: '2000', bestRating: '5', worstRating: '1' },
+            offers: { '@type': 'Offer', price: (cfg?.plans?.[1]?.monthly_price || 199).toString(), priceCurrency: 'TRY', priceValidUntil: '2027-01-01' },
+            aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.8', reviewCount: (cfg?.stats?.[0]?.value || '2000').replace(/[^0-9]/g, '') || '2000', bestRating: '5', worstRating: '1' },
           }),
         }}
       />
@@ -107,15 +101,15 @@ export default async function LandingPage() {
         <LandingHero cfg={cfg} />
         <LandingLogoBar />
         <LandingStats cfg={cfg} />
-        <LandingROICalculator />
+        <LandingROICalculator cfg={cfg} />
         <LandingProblem cfg={cfg} />
         <LandingFeatures cfg={cfg} />
         <LandingComparisonTable />
         <LandingHowItWorks cfg={cfg} />
-        <LandingDemo />
-        <LandingUseCases />
+        <LandingDemo cfg={cfg} />
+        <LandingUseCases cfg={cfg} />
         <LandingTestimonials cfg={cfg} />
-        <LandingIntegrations />
+        <LandingIntegrations cfg={cfg} />
         <LandingPricing cfg={cfg} />
         <LandingFAQ cfg={cfg} />
         <LandingCTA cfg={cfg} />
@@ -123,7 +117,7 @@ export default async function LandingPage() {
 
       <LandingFooter cfg={cfg} />
       <SupportWidget />
-      <ExitIntentPopup />
+      <ExitIntentPopup cfg={cfg} />
     </div>
   )
 }

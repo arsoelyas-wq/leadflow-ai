@@ -36,7 +36,7 @@ router.post('/auth/login', async (req: any, res: any) => {
     const token = jwt.sign(
       { email, isAdmin: true },
       ADMIN_SECRET,
-      { expiresIn: '8h' }
+      { expiresIn: '30d' }
     );
     await audit(email, 'auth.login', undefined, {}, req.ip);
     res.json({ token, email });
@@ -460,7 +460,7 @@ router.post('/auth/2fa/verify', async (req: any, res: any) => {
       return res.status(400).json({ error: '2FA kodu gerekli', requires_2fa: true });
     }
 
-    const token = jwt.sign({ email, isAdmin: true }, ADMIN_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign({ email, isAdmin: true }, ADMIN_SECRET, { expiresIn: '30d' });
     await audit(email, 'auth.login_2fa', undefined, {}, req.ip);
     res.json({ token, email });
   } catch (e: any) { res.status(500).json({ error: e.message }); }

@@ -113,12 +113,25 @@ function SourceBadge({source}:{source:string}) {
 }
 
 /* ─── Score ──────────────────────────────────────────────────── */
-function ScoreBadge({score, thresholds}:{score:number; thresholds?:{high:number;medium:number;low:number}}) {
+const SCORE_COLOR_MAP: Record<string,{bg:string;t:string;b:string}> = {
+  green:   {bg:'#DCFCE7',t:'#15803D',b:'#BBF7D0'},
+  emerald: {bg:'#D1FAE5',t:'#065F46',b:'#A7F3D0'},
+  purple:  {bg:'#EDE9FE',t:'#6D28D9',b:'#DDD6FE'},
+  blue:    {bg:'#DBEAFE',t:'#1E40AF',b:'#BFDBFE'},
+  yellow:  {bg:'#FEF3C7',t:'#92400E',b:'#FDE68A'},
+  orange:  {bg:'#FFEDD5',t:'#9A3412',b:'#FED7AA'},
+  red:     {bg:'#FEE2E2',t:'#991B1B',b:'#FECACA'},
+  gray:    {bg:'#F1F5F9',t:'#475569',b:'#CBD5E1'},
+  cyan:    {bg:'#CFFAFE',t:'#155E75',b:'#A5F3FC'},
+}
+
+function ScoreBadge({score, thresholds, colors}:{score:number; thresholds?:{high:number;medium:number;low:number}; colors?:{high:string;medium:string;low:string}}) {
   const h = thresholds?.high ?? 75, m = thresholds?.medium ?? 50, l = thresholds?.low ?? 30
-  const c = score>=h ? {bg:'#DCFCE7',t:'#15803D',b:'#BBF7D0'}
-    : score>=m ? {bg:'#EDE9FE',t:'#6D28D9',b:'#DDD6FE'}
-    : score>=l ? {bg:'#FEF3C7',t:'#92400E',b:'#FDE68A'}
-    : {bg:'#FEE2E2',t:'#991B1B',b:'#FECACA'}
+  const hc = SCORE_COLOR_MAP[colors?.high||'green']||SCORE_COLOR_MAP.green
+  const mc = SCORE_COLOR_MAP[colors?.medium||'purple']||SCORE_COLOR_MAP.purple
+  const lc = SCORE_COLOR_MAP[colors?.low||'yellow']||SCORE_COLOR_MAP.yellow
+  const fc = {bg:'#FEE2E2',t:'#991B1B',b:'#FECACA'}
+  const c = score>=h ? hc : score>=m ? mc : score>=l ? lc : fc
   return <span className="inline-flex items-center justify-center w-9 h-7 rounded-lg text-xs font-bold border"
     style={{background:c.bg,color:c.t,borderColor:c.b}}>{score}</span>
 }
@@ -639,7 +652,12 @@ export default function LeadsPage() {
   useEffect(() => {
     fetch(`${API_BASE}/api/leads-config`)
       .then(r => r.json())
-      .then(d => { if (d.config) setLdCfg(d.config) })
+      .then(d => {
+        if (d.config) {
+          setLdCfg(d.config)
+          if (d.config.default_page_size) setPageSize(d.config.default_page_size)
+        }
+      })
       .catch(() => {})
   }, [])
   const stMap = useMemo(() => {
@@ -651,14 +669,22 @@ export default function LeadsPage() {
   const scoreThresholds = useMemo(() => ({
     high: ldCfg?.score_high ?? 75, medium: ldCfg?.score_medium ?? 50, low: ldCfg?.score_low ?? 30,
   }), [ldCfg])
-  const hotThreshold    = ldCfg?.hot_threshold ?? 75
-  const featureKvBul    = ldCfg?.feature_kv_bul !== false
-  const featureImport   = ldCfg?.feature_import !== false
-  const featureExport   = ldCfg?.feature_export !== false
-  const pageTitle       = ldCfg?.page_title || 'Lead Veritabanı'
-  const statTodayLabel  = ldCfg?.stat_today_label || 'Bugün Eklenen'
-  const statWonLabel    = ldCfg?.stat_won_label || 'Kazanılan'
-  const statHotLabel    = ldCfg?.stat_hot_label || 'Sıcak Lead'
+  const hotThreshold      = ldCfg?.hot_threshold ?? 75
+  const featureKvBul      = ldCfg?.feature_kv_bul !== false
+  const featureImport     = ldCfg?.feature_import !== false
+  const featureExport     = ldCfg?.feature_export !== false
+  const featureBulkDelete = ldCfg?.feature_bulk_delete !== false
+  const featureScoreBadge = ldCfg?.feature_score_badge !== false
+  const featureHotBadge   = ldCfg?.feature_hot_badge !== false
+  const pageTitle         = ldCfg?.page_title || 'Lead Veritabanı'
+  const statTodayLabel    = ldCfg?.stat_today_label || 'Bugün Eklenen'
+  const statWonLabel      = ldCfg?.stat_won_label || 'Kazanılan'
+  const statHotLabel      = ldCfg?.stat_hot_label || 'Sıcak Lead'
+  const statTotalLabel    = ldCfg?.stat_total_label || 'Toplam Lead'
+  const visibleCols       = ldCfg?.visible_columns || null
+  const scoreHighColor    = ldCfg?.score_high_color || 'green'
+  const scoreMedColor     = ldCfg?.score_medium_color || 'purple'
+  const scoreLowColor     = ldCfg?.score_low_color || 'yellow'
   // ─────────────────────────────────────────────────────────────
 
   const [leads,setLeads]=useState<Lead[]>([])
@@ -925,7 +951,7 @@ export default function LeadsPage() {
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Users}      value={total}    label="Toplam Lead"     iconBg="#EEF2FF" iconColor="#4F46E5"/>
+        <StatCard icon={Users}      value={total}    label={statTotalLabel}  iconBg="#EEF2FF" iconColor="#4F46E5"/>
         <StatCard icon={Zap}        value={newToday} label={statTodayLabel}  iconBg="#F0FDF4" iconColor="#16A34A"/>
         <StatCard icon={TrendingUp} value={pipelineStats?.wonCount??leads.filter(l=>l.status==='won').length}                              label={statWonLabel}  iconBg="#FFFBEB" iconColor="#D97706"/>
         <StatCard icon={Flame}      value={pipelineStats?.hotLeads??leads.filter(l=>(l.score||0)>=hotThreshold).length} label={statHotLabel}  iconBg="#FEF2F2" iconColor="#DC2626"/>
@@ -1210,7 +1236,7 @@ export default function LeadsPage() {
                     </button>
                   )}
                   <div className="flex items-center gap-2 shrink-0">
-                    <ScoreBadge score={lead.score} thresholds={scoreThresholds}/>
+                    <ScoreBadge score={lead.score} thresholds={scoreThresholds} colors={{high:scoreHighColor,medium:scoreMedColor,low:scoreLowColor}}/>
                     <StatusPill status={lead.status} onChange={s=>changeStatus(lead,s)} stMap={stMap}/>
                   </div>
                 </div>
@@ -1397,7 +1423,7 @@ export default function LeadsPage() {
                     {/* Score */}
                     <td className="px-3 py-3 align-middle">
                       <div className="flex items-center gap-1">
-                        <ScoreBadge score={lead.score} thresholds={scoreThresholds}/>
+                        <ScoreBadge score={lead.score} thresholds={scoreThresholds} colors={{high:scoreHighColor,medium:scoreMedColor,low:scoreLowColor}}/>
                         {lead.ai_grade&&(['A','B','C','D'] as const).includes(lead.ai_grade as any)&&(
                           <span className="text-[9px] font-bold px-1 py-0.5 rounded border"
                             style={lead.ai_grade==='A'?{background:'#DCFCE7',color:'#15803D',borderColor:'#BBF7D0'}

@@ -72,7 +72,7 @@ const CASES = [
   },
 ] as const
 
-export default function LandingUseCases() {
+export default function LandingUseCases({ cfg }: { cfg?: any }) {
   const [active, setActive] = useState(0)
   const c = CASES[active]
 

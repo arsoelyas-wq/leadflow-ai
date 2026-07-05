@@ -4,10 +4,11 @@ import { Play, X, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 import Reveal from './Reveal'
 import { SITE_CONFIG } from '@/lib/site-config'
 
-const VIDEO_ID = SITE_CONFIG.demoVideoId  // YouTube video ID — site-config.ts dosyasından ayarlayın
+// YouTube video ID — admin panelden veya site-config.ts'den ayarlanır
 
-export default function LandingDemo() {
+export default function LandingDemo({ cfg }: { cfg?: any }) {
   const [playing, setPlaying] = useState(false)
+  const VIDEO_ID = cfg?.demo_video_id || SITE_CONFIG.demoVideoId
 
   const handlePlay = () => {
     if (!VIDEO_ID) return

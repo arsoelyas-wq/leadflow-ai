@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : ''
@@ -19,8 +19,14 @@ const addBtn: React.CSSProperties = { padding:'6px 14px',borderRadius:7,border:'
 const delBtn: React.CSSProperties = { padding:'4px 10px',borderRadius:6,border:'1px solid rgba(248,113,113,0.3)',background:'rgba(248,113,113,0.07)',color:'#f87171',fontSize:11,cursor:'pointer',fontFamily:'inherit' }
 
 // ── Field helpers ─────────────────────────────────────────────────────────
-function F({ label, children }: { label:string; children:React.ReactNode }) {
-  return <div style={{marginBottom:14}}><label style={lbl}>{label}</label>{children}</div>
+function F({ label, children, error }: { label:string; children:React.ReactNode; error?:string }) {
+  return (
+    <div style={{marginBottom:14}}>
+      <label style={lbl}>{label}</label>
+      {children}
+      {error && <p style={{color:'#f87171',fontSize:11,margin:'4px 0 0'}}>{error}</p>}
+    </div>
+  )
 }
 function G2({ children }: { children:React.ReactNode }) {
   return <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>{children}</div>
@@ -154,16 +160,26 @@ const DEFAULT: Record<string,any> = {
   meta_title:'Sovlo AI — Yapay Zeka Destekli B2B Lead Intelligence Platformu',
   meta_description:'Google Maps\'ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt. 2,000+ firma ile satışlarınızı otomatize edin.',
   meta_keywords:'B2B lead, satış otomasyonu, WhatsApp kampanya, lead scraper, AI satış, CRM Türkiye',
+
+  // Demo & Popup
+  demo_video_id:'',
+  demo_headline:'Ürünü canlı görün',
+  exit_popup_enabled:true,
+  exit_popup_title:'Ayrılmadan önce —',
+  exit_popup_offer:'Sektörünüzdeki ilk 50 lead\'i ücretsiz görmek ister misiniz? Email adresinizi bırakın, hemen hazırlayalım.',
+  exit_popup_cta_url:'/register?ref=exit-intent',
 }
 
-const TABS = ['🗺️ Menü','🦸 Hero','📊 İstatistik','🎯 Özellikler','⚙️ Nasıl Çalışır','💬 Yorumlar','💰 Fiyatlar','❓ SSS','📢 CTA & Footer','🔍 SEO','🆚 Problem']
+const TABS = ['Menü','Hero','İstatistik','Özellikler','Nasıl Çalışır','Yorumlar','Fiyatlar','SSS','CTA & Footer','SEO','Problem','Demo & Popup']
 
 export default function AdminLandingPage() {
-  const [cfg, setCfg]     = useState<any>(null)
+  const [cfg, setCfg]       = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving]   = useState(false)
   const [msg, setMsg]         = useState<{type:'ok'|'err';text:string}|null>(null)
   const [tab, setTab]         = useState(0)
+  const [dirty, setDirty]     = useState(false)
+  const [errors, setErrors]   = useState<Record<string,string>>({})
 
   useEffect(() => {
     fetch(`${API}/api/admin/landing-config`, {
@@ -178,10 +194,38 @@ export default function AdminLandingPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const set = (key: string, val: any) => setCfg((c: any) => ({ ...c, [key]: val }))
+  // Unsaved changes protection
+  useEffect(()=>{
+    const handler=(e:BeforeUnloadEvent)=>{ if(dirty){ e.preventDefault(); e.returnValue='' } }
+    window.addEventListener('beforeunload',handler)
+    return ()=>window.removeEventListener('beforeunload',handler)
+  },[dirty])
+
+  const set = useCallback((key: string, val: any) => {
+    setCfg((c: any) => ({ ...c, [key]: val }))
+    setDirty(true)
+  }, [])
+
+  const validate = () => {
+    const errs: Record<string,string> = {}
+    if (!cfg?.nav_logo_name?.trim()) errs.nav_logo_name = 'Logo adı boş bırakılamaz'
+    if (!cfg?.hero_headline?.trim()) errs.hero_headline = 'Hero başlık boş bırakılamaz'
+    if ((cfg?.meta_title||'').length > 60) errs.meta_title = 'Meta başlık 60 karakteri geçmemeli'
+    if ((cfg?.meta_description||'').length > 160) errs.meta_description = 'Meta açıklama 160 karakteri geçmemeli'
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const resetDefaults = () => {
+    if (!confirm('Tüm landing page ayarlarını varsayılana döndürmek istediğinizden emin misiniz?')) return
+    setCfg({ ...DEFAULT })
+    setDirty(true)
+  }
 
   const save = async () => {
+    if (!validate()) return
     setSaving(true)
+    setDirty(false)
     try {
       const r = await fetch(`${API}/api/admin/landing-config`, {
         method: 'PATCH',
@@ -191,14 +235,16 @@ export default function AdminLandingPage() {
       if (r.status === 401 || r.status === 403) { redirectLogin(); return }
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Kayıt başarısız')
-      setMsg({ type:'ok', text:'✅ Kaydedildi! Ana sayfa güncellendi.' })
-    } catch(e:any) { setMsg({ type:'err', text:'❌ '+e.message }) }
-    finally { setSaving(false); setTimeout(()=>setMsg(null),4000) }
+      // Cache bust
+      try { await fetch('/api/revalidate',{method:'POST',headers:{'x-revalidate-secret':'sovlo-revalidate-2026'}}) } catch {}
+      setMsg({ type:'ok', text:'✅ Kaydedildi! Ana sayfa anında güncellendi.' })
+    } catch(e:any) { setDirty(true); setMsg({ type:'err', text:'❌ '+e.message }) }
+    finally { setSaving(false); setTimeout(()=>setMsg(null),5000) }
   }
 
   // Array helpers
-  const arrAdd = (key: string, item: any) => set(key, [...(cfg[key]||[]), item])
-  const arrDel = (key: string, i: number) => set(key, (cfg[key]||[]).filter((_:any, j:number) => j !== i))
+  const arrAdd = (key: string, item: any) => { set(key, [...(cfg[key]||[]), item]) }
+  const arrDel = (key: string, i: number) => { set(key, (cfg[key]||[]).filter((_:any, j:number) => j !== i)) }
   const arrSet = (key: string, i: number, patch: any) => {
     const arr = [...(cfg[key]||[])]
     arr[i] = { ...arr[i], ...patch }
@@ -215,23 +261,26 @@ export default function AdminLandingPage() {
       {/* Top header */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24,flexWrap:'wrap',gap:10}}>
         <div>
-          <h1 style={{color:'#fff',fontSize:21,fontWeight:900,margin:'0 0 3px',letterSpacing:'-0.02em'}}>🏠 Landing Page Editörü — Tam Kontrol</h1>
+          <h1 style={{color:'#fff',fontSize:21,fontWeight:900,margin:'0 0 3px',letterSpacing:'-0.02em'}}>Landing Page Editörü — Tam Kontrol</h1>
           <p style={{color:'#475569',fontSize:12,margin:0}}>Her bölümü düzenleyin · Kaydet & Yayınla ile anında yayına girer</p>
         </div>
-        <div style={{display:'flex',gap:10,alignItems:'center'}}>
-          <a href="/" target="_blank" rel="noreferrer" style={{padding:'8px 14px',borderRadius:8,border:'1px solid rgba(255,255,255,0.08)',background:'transparent',color:'#64748b',textDecoration:'none',fontSize:12}}>👁 Önizle</a>
-          <button onClick={save} disabled={saving} style={{padding:'10px 22px',borderRadius:10,border:'none',background:saving?'rgba(59,130,246,0.4)':'linear-gradient(135deg,#3b82f6,#6366f1)',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit'}}>
-            {saving ? '⏳ Kaydediliyor...' : '💾 Kaydet & Yayınla'}
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          {dirty && <span style={{fontSize:11,color:'#fb923c',background:'rgba(251,146,60,0.1)',border:'1px solid rgba(251,146,60,0.2)',borderRadius:6,padding:'4px 10px'}}>Kaydedilmemiş değişiklik</span>}
+          <a href="/" target="_blank" rel="noreferrer" style={{padding:'8px 14px',borderRadius:8,border:'1px solid rgba(255,255,255,0.08)',background:'transparent',color:'#64748b',textDecoration:'none',fontSize:12,whiteSpace:'nowrap'}}>Önizle</a>
+          <button onClick={resetDefaults} style={{padding:'8px 14px',borderRadius:8,border:'1px solid rgba(255,255,255,0.06)',background:'transparent',color:'#64748b',cursor:'pointer',fontSize:12,fontFamily:'inherit',whiteSpace:'nowrap'}}>Sıfırla</button>
+          <button onClick={save} disabled={saving} style={{padding:'10px 22px',borderRadius:10,border:'none',background:saving?'rgba(59,130,246,0.4)':'linear-gradient(135deg,#3b82f6,#6366f1)',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',whiteSpace:'nowrap'}}>
+            {saving ? 'Kaydediliyor...' : 'Kaydet & Yayınla'}
           </button>
         </div>
       </div>
 
       {msg && <div style={{padding:'10px 16px',borderRadius:9,marginBottom:16,background:msg.type==='ok'?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${msg.type==='ok'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`,color:msg.type==='ok'?'#34d399':'#f87171',fontSize:13}}>{msg.text}</div>}
+      {Object.keys(errors).length>0 && <div style={{padding:'10px 16px',borderRadius:9,marginBottom:16,background:'rgba(239,68,68,0.07)',border:'1px solid rgba(239,68,68,0.2)',color:'#f87171',fontSize:13}}>Hata: {Object.values(errors).join(' · ')}</div>}
 
       {/* Tabs */}
-      <div style={{display:'flex',gap:4,overflowX:'auto',marginBottom:20,paddingBottom:4}}>
+      <div style={{display:'flex',gap:3,overflowX:'auto',marginBottom:20,paddingBottom:4,borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
         {TABS.map((t,i)=>(
-          <button key={i} onClick={()=>setTab(i)} style={{padding:'8px 14px',borderRadius:8,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,whiteSpace:'nowrap',fontFamily:'inherit',transition:'all 0.15s',background:tab===i?'rgba(99,102,241,0.2)':'transparent',color:tab===i?'#a5b4fc':'#475569',borderBottom:tab===i?'2px solid #6366f1':'2px solid transparent'}}>
+          <button key={i} onClick={()=>setTab(i)} style={{padding:'8px 14px',borderRadius:'8px 8px 0 0',border:'none',cursor:'pointer',fontSize:12,fontWeight:600,whiteSpace:'nowrap',fontFamily:'inherit',transition:'all 0.15s',background:tab===i?'rgba(99,102,241,0.15)':'transparent',color:tab===i?'#a5b4fc':'#475569',borderBottom:tab===i?'2px solid #6366f1':'2px solid transparent'}}>
             {t}
           </button>
         ))}
@@ -630,11 +679,45 @@ export default function AdminLandingPage() {
         </div>
       )}
 
+      {/* ═══════════ TAB 11: DEMO & POPUP ═══════════ */}
+      {tab===11 && (
+        <div>
+          <div style={card}>
+            <p style={h4}>Demo Video</p>
+            <F label="YouTube Video ID (URL'deki ?v= değeri)">
+              <input value={cfg.demo_video_id||''} onChange={e=>set('demo_video_id',e.target.value)} style={inp} placeholder="dQw4w9WgXcQ" />
+              <p style={{color:'#475569',fontSize:11,marginTop:4}}>Örnek URL: youtube.com/watch?v=dQw4w9WgXcQ — sadece ID kısmını girin</p>
+            </F>
+            <F label="Demo Bölüm Başlığı"><input value={cfg.demo_headline||''} onChange={e=>set('demo_headline',e.target.value)} style={inp} placeholder="Ürünü canlı görün"/></F>
+          </div>
+
+          <div style={card}>
+            <p style={h4}>Çıkış Niyeti Popup (Exit Intent)</p>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+              <div>
+                <p style={{color:'#e2e8f0',fontSize:13,fontWeight:600,margin:0}}>Popup Aktif</p>
+                <p style={{color:'#475569',fontSize:11,margin:'2px 0 0'}}>Ziyaretçi sayfadan ayrılmaya çalışınca gösterilir</p>
+              </div>
+              <button onClick={()=>set('exit_popup_enabled',!cfg.exit_popup_enabled)}
+                style={{width:44,height:24,borderRadius:12,border:'none',cursor:'pointer',padding:2,background:cfg.exit_popup_enabled!==false?'#22c55e':'rgba(255,255,255,0.1)',transition:'background 0.2s',display:'flex',alignItems:'center',justifyContent:cfg.exit_popup_enabled!==false?'flex-end':'flex-start'}}>
+                <div style={{width:20,height:20,borderRadius:10,background:'#fff',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}/>
+              </button>
+            </div>
+            <F label="Popup Başlığı"><input value={cfg.exit_popup_title||''} onChange={e=>set('exit_popup_title',e.target.value)} style={inp} placeholder="Ayrılmadan önce —"/></F>
+            <F label="Teklif Metni"><textarea value={cfg.exit_popup_offer||''} onChange={e=>set('exit_popup_offer',e.target.value)} rows={3} style={inp} placeholder="Sektörünüzdeki ilk 50 lead'i ücretsiz..."/></F>
+            <F label="CTA URL (kayıt sonrası yönlendirme)"><input value={cfg.exit_popup_cta_url||''} onChange={e=>set('exit_popup_cta_url',e.target.value)} style={inp} placeholder="/register?ref=exit-intent"/></F>
+          </div>
+        </div>
+      )}
+
       {/* Sticky save */}
       <div style={{position:'sticky',bottom:16,background:'rgba(5,10,25,0.97)',backdropFilter:'blur(20px)',border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:20,boxShadow:'0 20px 60px rgba(0,0,0,0.8)'}}>
-        <span style={{color:'#334155',fontSize:12}}>💡 Değişiklikler kaydedilince ana sayfa anında güncellenir</span>
-        <button onClick={save} disabled={saving} style={{padding:'10px 28px',borderRadius:9,border:'none',background:'linear-gradient(135deg,#3b82f6,#6366f1)',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit'}}>
-          {saving?'⏳ Kaydediliyor...':'💾 Kaydet & Yayınla'}
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          {dirty && <span style={{fontSize:11,color:'#fb923c',background:'rgba(251,146,60,0.1)',border:'1px solid rgba(251,146,60,0.2)',borderRadius:6,padding:'4px 10px'}}>Kaydedilmemiş değişiklik var</span>}
+          {!dirty && <span style={{color:'#334155',fontSize:12}}>Değişiklikler kaydedilince ana sayfa anında güncellenir</span>}
+        </div>
+        <button onClick={save} disabled={saving} style={{padding:'10px 28px',borderRadius:9,border:'none',background:saving?'rgba(99,102,241,0.4)':'linear-gradient(135deg,#3b82f6,#6366f1)',color:'#fff',cursor:saving?'not-allowed':'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit'}}>
+          {saving?'Kaydediliyor...':'Kaydet & Yayınla'}
         </button>
       </div>
     </div>
