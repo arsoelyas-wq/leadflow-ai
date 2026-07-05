@@ -69,7 +69,7 @@ async function getLandingConfig() {
   try {
     const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
     const res = await fetch(`${API}/api/market-pages/public/home`, {
-      next: { revalidate: 60 }, // ISR: revalidate every 60s
+      next: { revalidate: 60 },
     })
     const data = await res.json()
     return data?.page || null
