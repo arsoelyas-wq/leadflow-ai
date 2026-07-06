@@ -237,7 +237,7 @@ export default function AutomationsPage() {
   )
 
   return (
-    <div style={{ padding: 0 }}>
+    <div style={{ padding: 0, maxWidth: '100%', overflow: 'hidden' }}>
       {/* ── HERO ──────────────────────────────────────────────── */}
       <div style={{ ...card, padding: '24px 24px 18px', marginBottom: 18, background: 'linear-gradient(135deg,#fff,#f0f9ff 60%,#faf5ff)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -245,7 +245,7 @@ export default function AutomationsPage() {
           <span style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700 }}>AI</span>
         </div>
         <p style={{ color: tx2, fontSize: 12, margin: '0 0 14px' }}>Toplu mesaj, takip sekansı veya akıllı otomasyon — tek yerden yönet</p>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(3,1fr)' : 'repeat(5,1fr)', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))', gap: 8 }}>
           {[
             { label: 'Kampanya', value: allStats.campaigns, color: accentBlue, Icon: Megaphone },
             { label: 'Sekans', value: allStats.sequences, color: accentEmerald, Icon: Bot },
@@ -554,12 +554,12 @@ export default function AutomationsPage() {
             <div style={{ ...card, padding: 40, textAlign: 'center' }}><Bot size={28} style={{ color: tx3, margin: '0 auto 10px' }} /><p style={{ color: tx3, fontSize: 12 }}>Henüz sekans yok</p></div>
           ) : sequences.map(seq => { const st = STATUS_COLORS[seq.status] || STATUS_COLORS.active; return (
             <div key={seq.id} style={{ ...card, padding: '14px 18px', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Zap size={14} style={{ color: accentEmerald }} /></div>
-                  <div><p style={{ color: tx1, fontWeight: 700, fontSize: 12, margin: 0 }}>{seq.name}</p><div style={{ display: 'flex', gap: 6, marginTop: 2 }}><span style={{ color: tx3, fontSize: 9 }}>{seq.channel === 'whatsapp' ? 'WA' : 'Email'}</span><span style={{ color: tx3, fontSize: 9 }}>{seq.steps?.length || 0} adım</span><span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span></div></div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Zap size={14} style={{ color: accentEmerald }} /></div>
+                  <div style={{ minWidth: 0 }}><p style={{ color: tx1, fontWeight: 700, fontSize: 12, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{seq.name}</p><div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap' }}><span style={{ color: tx3, fontSize: 9 }}>{seq.channel === 'whatsapp' ? 'WA' : 'Email'}</span><span style={{ color: tx3, fontSize: 9 }}>{seq.steps?.length || 0} adım</span><span style={{ background: st.bg, color: st.color, fontSize: 8, padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{st.label}</span></div></div>
                 </div>
-                <div style={{ display: 'flex', gap: 5 }}>
+                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
                   <button onClick={() => { setSelectedSeq(selectedSeq?.id === seq.id ? null : seq); setShowLive(false) }} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '5px 10px', borderRadius: 6, border: '1px solid #a7f3d0', background: '#ecfdf5', color: accentEmerald, fontSize: 10, fontWeight: 600, cursor: 'pointer' }}><Users size={11} /> Lead</button>
                   <button onClick={() => {
                     if (selectedSeq?.id !== seq.id) { setLiveMonitor(null) } // Sekans değişince temizle
