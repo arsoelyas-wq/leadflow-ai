@@ -291,7 +291,7 @@ export default function AutomationsPage() {
 
       {/* ═══════════ TOPLU MESAJ ═══════════ */}
       {mode === 'broadcast' && (
-        <div>
+        <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
           {/* Sub-tabs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 3, marginBottom: 14, background: surf, padding: 3, borderRadius: 10, border: '1px solid #f1f5f9' }}>
             {[{ id: 'compose', label: 'Yaz & Gönder', Icon: Send }, { id: 'templates', label: 'Şablonlar', Icon: ListOrdered }, { id: 'analytics', label: 'Analitik', Icon: BarChart2 }].map(tb => (
@@ -312,9 +312,9 @@ export default function AutomationsPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <input value={bcName} onChange={e => setBcName(e.target.value)} placeholder="Kampanya adi *" style={inputStyle} />
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                       {(['whatsapp', 'email'] as const).map(ch => (
-                        <button key={ch} onClick={() => setBcChannel(ch)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: `2px solid ${bcChannel === ch ? accentBlue : '#e2e8f0'}`, background: bcChannel === ch ? '#eff6ff' : '#fff', color: bcChannel === ch ? accentBlue : tx2, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <button key={ch} onClick={() => setBcChannel(ch)} style={{ padding: '9px', borderRadius: 9, border: `2px solid ${bcChannel === ch ? accentBlue : '#e2e8f0'}`, background: bcChannel === ch ? '#eff6ff' : '#fff', color: bcChannel === ch ? accentBlue : tx2, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: 0 }}>
                           {ch === 'whatsapp' ? <MessageCircle size={12} /> : <Mail size={12} />} {ch === 'whatsapp' ? 'WhatsApp' : 'Email'}
                         </button>
                       ))}
@@ -322,14 +322,14 @@ export default function AutomationsPage() {
                     <textarea value={bcMessage} onChange={e => { setBcMessage(e.target.value); setOptimized(null) }} rows={4} placeholder="Merhaba {{firma}}, {{sektor}} alaninda size ozel teklifimiz var..." style={{ ...inputStyle, resize: 'vertical' as const }} />
                     <p style={{ color: tx3, fontSize: 9, margin: '-6px 0 0' }}>Degiskenler: {'{{firma}} {{isim}} {{sehir}} {{sektor}}'}</p>
 
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 6 }}>
                       <button onClick={optimizeMessage} disabled={optimizing || !bcMessage}
-                        style={{ flex: 1, padding: '10px', borderRadius: 9, border: `1px solid ${accentViolet}40`, background: '#faf5ff', color: accentViolet, fontSize: 11, fontWeight: 600, cursor: optimizing || !bcMessage ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        style={{ padding: '10px', borderRadius: 9, border: `1px solid ${accentViolet}40`, background: '#faf5ff', color: accentViolet, fontSize: 11, fontWeight: 600, cursor: optimizing || !bcMessage ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, minWidth: 0 }}>
                         {optimizing ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Sparkles size={11} />}
                         AI Optimize Et
                       </button>
                       <button onClick={sendBroadcast} disabled={bcSending || !bcName || !bcMessage || !selectedLeads.length}
-                        style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', cursor: bcSending || !bcName || !bcMessage || !selectedLeads.length ? 'not-allowed' : 'pointer', background: selectedLeads.length && bcName && bcMessage ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : surf, color: selectedLeads.length && bcName && bcMessage ? '#fff' : tx3, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        style={{ padding: '10px', borderRadius: 9, border: 'none', cursor: bcSending || !bcName || !bcMessage || !selectedLeads.length ? 'not-allowed' : 'pointer', background: selectedLeads.length && bcName && bcMessage ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : surf, color: selectedLeads.length && bcName && bcMessage ? '#fff' : tx3, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, minWidth: 0 }}>
                         {bcSending ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Send size={11} />}
                         {bcSending ? 'Gönderiliyor...' : `${selectedLeads.length} Lead'e Gönder`}
                       </button>
@@ -363,18 +363,18 @@ export default function AutomationsPage() {
                 <div style={{ ...card, padding: 16 }}>
                   <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 5 }}><Filter size={12} style={{ color: accentBlue }} /> Lead Filtrele</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                    <select value={segFilters.min_score} onChange={e => setSegFilters(p => ({ ...p, min_score: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
+                    <select value={segFilters.min_score} onChange={e => setSegFilters(p => ({ ...p, min_score: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px', minWidth: 0 }}>
                       <option value="">Tüm Skorlar</option><option value="40">40+</option><option value="60">60+</option><option value="80">80+</option>
                     </select>
-                    <select value={segFilters.city} onChange={e => setSegFilters(p => ({ ...p, city: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
+                    <select value={segFilters.city} onChange={e => setSegFilters(p => ({ ...p, city: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px', minWidth: 0 }}>
                       <option value="">Tüm Şehirler</option>
                       {(segOptions.cities || []).map((c: string) => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <select value={segFilters.sector} onChange={e => setSegFilters(p => ({ ...p, sector: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px' }}>
+                    <select value={segFilters.sector} onChange={e => setSegFilters(p => ({ ...p, sector: e.target.value }))} style={{ ...inputStyle, fontSize: 10, padding: '6px 8px', minWidth: 0 }}>
                       <option value="">Tüm Sektörler</option>
                       {(segOptions.sectors || []).slice(0, 20).map((s: string) => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <button onClick={applySegment} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: accentBlue, color: '#fff', fontSize: 10, fontWeight: 600, cursor: 'pointer' }}>Filtrele</button>
+                    <button onClick={applySegment} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', background: accentBlue, color: '#fff', fontSize: 10, fontWeight: 600, cursor: 'pointer', width: '100%' }}>Filtrele</button>
                   </div>
                 </div>
               </div>
