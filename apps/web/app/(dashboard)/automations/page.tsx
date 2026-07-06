@@ -270,7 +270,7 @@ export default function AutomationsPage() {
 
       {/* ── MODE SELECTOR ────────────────────────────────────── */}
       {!mode && (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 14 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 14 }}>
           {MODES.map(m => (
             <button key={m.id} onClick={() => setMode(m.id as Mode)}
               style={{ ...card, padding: '24px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', border: '2px solid #e2e8f0' }}
@@ -303,7 +303,7 @@ export default function AutomationsPage() {
           </div>
 
           {activeSubTab === 'compose' && (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Compose form */}
                 <div style={{ ...card, padding: 20 }}>
@@ -322,7 +322,7 @@ export default function AutomationsPage() {
                     <textarea value={bcMessage} onChange={e => { setBcMessage(e.target.value); setOptimized(null) }} rows={4} placeholder="Merhaba {{firma}}, {{sektor}} alaninda size ozel teklifimiz var..." style={{ ...inputStyle, resize: 'vertical' as const }} />
                     <p style={{ color: tx3, fontSize: 9, margin: '-6px 0 0' }}>Degiskenler: {'{{firma}} {{isim}} {{sehir}} {{sektor}}'}</p>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 6 }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 6 }}>
                       <button onClick={optimizeMessage} disabled={optimizing || !bcMessage}
                         style={{ padding: '10px', borderRadius: 9, border: `1px solid ${accentViolet}40`, background: '#faf5ff', color: accentViolet, fontSize: 11, fontWeight: 600, cursor: optimizing || !bcMessage ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, minWidth: 0 }}>
                         {optimizing ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Sparkles size={11} />}
@@ -385,7 +385,7 @@ export default function AutomationsPage() {
           )}
 
           {activeSubTab === 'templates' && (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
               {templates.filter(t => !bcChannel || t.channel === bcChannel || t.channel === 'whatsapp').map(tpl => (
                 <div key={tpl.id} style={{ ...card, padding: '14px 16px', cursor: 'pointer', transition: 'border-color 0.2s' }}
                   onClick={() => { setBcMessage(tpl.message); setActiveSubTab('compose'); showMsg('success', 'Şablon uygulandı') }}
@@ -403,7 +403,7 @@ export default function AutomationsPage() {
           )}
 
           {activeSubTab === 'analytics' && analytics && (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 12 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 12 }}>
               <div style={{ ...card, padding: '14px 16px', textAlign: 'center' }}>
                 <p style={{ color: accentBlue, fontSize: 22, fontWeight: 800, margin: 0 }}>{analytics.totalSent}</p>
                 <p style={{ color: tx3, fontSize: 10, margin: 0 }}>Gönderilen</p>
@@ -436,7 +436,7 @@ export default function AutomationsPage() {
                 </div>
               )}
               {/* Kampanya listesi + Funnel */}
-              <div style={{ ...card, padding: '14px 16px', gridColumn: isMobile ? '1 / -1' : 'span 2' }}>
+              <div className="col-span-2" style={{ ...card, padding: '14px 16px' }}>
                 <p style={{ color: tx1, fontSize: 12, fontWeight: 700, margin: '0 0 10px' }}>Kampanya Geçmişi</p>
                 {(analytics.campaigns || []).slice(0, 8).map((c: any) => {
                   const st = STATUS_COLORS[c.status] || STATUS_COLORS.draft
@@ -456,7 +456,7 @@ export default function AutomationsPage() {
                       {/* Funnel Widget */}
                       {isSelected && campaignFunnel && (
                         <div className="fade-in" style={{ background: 'linear-gradient(135deg,#eff6ff,#f0fdf4)', borderRadius: 8, padding: '10px 12px', margin: '6px 0 2px', border: '1px solid #bfdbfe' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
+                          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 6, marginBottom: 8 }}>
                             {[
                               { label: 'Gönderilen', val: campaignFunnel.funnel.sent, color: accentBlue },
                               { label: 'Teslim', val: campaignFunnel.funnel.delivered, color: accentViolet },
@@ -497,7 +497,7 @@ export default function AutomationsPage() {
           {showSeqCreate && (
             <div style={{ ...card, padding: 20, marginBottom: 14 }}>
               <h3 style={{ color: tx1, fontSize: 13, fontWeight: 700, margin: '0 0 12px' }}>Yeni Sekans</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 10, marginBottom: 12 }}>
                 <input value={seqName} onChange={e => setSeqName(e.target.value)} placeholder="Sekans adi *" style={inputStyle} />
                 <select value={seqChannel} onChange={e => setSeqChannel(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}><option value="whatsapp">WhatsApp</option><option value="email">Email</option></select>
               </div>
@@ -584,7 +584,7 @@ export default function AutomationsPage() {
                     {liveLoading && <RefreshCw size={11} className="auto-anim" style={{ color: accentBlue }} />}
                   </div>
                   {liveMonitor?.summary && (
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 6, marginBottom: 8 }}>
+                    <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 6, marginBottom: 8 }}>
                       {[
                         { label: 'Aktif', val: liveMonitor.summary.active, color: accentBlue },
                         { label: '⚡ Hazır', val: liveMonitor.summary.readyNow, color: '#f59e0b' },
