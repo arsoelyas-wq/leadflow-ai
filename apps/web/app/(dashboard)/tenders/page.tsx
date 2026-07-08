@@ -704,12 +704,12 @@ export default function TendersPage() {
       {/* Hero */}
       <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#f5f3ff,#eff6ff)', borderRadius:20, padding:'28px 28px', marginBottom:20, border:'1px solid rgba(139,92,246,0.2)', flexShrink:0 }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(139,92,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,0.02) 1px,transparent 1px)', backgroundSize:'40px 40px', zIndex:0 }} />
-        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:22 }}>
+        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap' }}>
           <TenderOrb size={85} scanning={!!activeScanId} tenderCount={tenders.length} />
-          <div style={{ flex:1 }}>
+          <div style={{ flex:1, minWidth:0 }}>
             <h1 style={{ color:'#0f172a', fontSize:24, fontWeight:800, margin:'0 0 4px' }}>{t('tenders.ihale_avcisi', 'İhale Avcısı')}</h1>
             <p style={{ color:'#64748b', fontSize:13, margin:'0 0 16px' }}>{t('tenders.23_ulke_ekap_ted_europa_w', '23 ülke · EKAP · TED Europa · World Bank · Exa.ai · AI analiz · Teklif taslağı')}</p>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:10 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }} className="sm:grid-cols-6">
               {[{l:t('tenders.total','Toplam'),v:stats?.total||0,c:'#475569'},{l:t('tenders.active','Aktif'),v:stats?.active||0,c:'#059669'},{l:t('tenders.high_score','Yüksek Skor'),v:stats?.highScore||0,c:'#7c3aed'},{l:t('tenders.applied','Başvuruldu'),v:stats?.applied||0,c:'#2563eb'},{l:t('tenders.won','Kazanıldı'),v:stats?.won||0,c:'#9333ea'},{l:t('tenders.scans','Tarama'),v:stats?.totalScans||0,c:'#b45309'}].map(m => (
                 <div key={m.l} style={{ textAlign:'center' }}>
                   <p style={{ color:m.c, fontSize:17, fontWeight:800, margin:0 }}>{m.v}</p>
@@ -749,11 +749,11 @@ export default function TendersPage() {
       {msg && <div style={{ marginBottom:12, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10, flexShrink:0 }}><p style={{ color:msg.type==='success'?'#059669':'#dc2626', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:16, border:'1px solid #e2e8f0', flexShrink:0 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, marginBottom:16, border:'1px solid #e2e8f0', flexShrink:0, minWidth:0 }}>
         {[{id:'tenders',label:`${t('tenders.tenders_tab','İhaleler')} (${tenders.length})`,Icon:FileText},{id:'alerts',label:`${t('tenders.approaching','Vadesi Yaklaşan')}${alerts.length>0?` (${alerts.length})`:''}`,Icon:Clock},{id:'analytics',label:`${t('tenders.analytics_tab','Analitik')}`,Icon:BarChart2},{id:'prefs',label:`Otomatik (${prefs.length})`,Icon:Bell}].map(tb => (
           <button key={tb.id} onClick={() => setActiveTab(tb.id as any)}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tb.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===tb.id?'#fff':'#64748b', boxShadow:activeTab===tb.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap' }}>
-            <tb.Icon size={13} /> {tb.label}
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'7px 8px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tb.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===tb.id?'#fff':'#64748b', boxShadow:activeTab===tb.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 }}>
+            <tb.Icon size={13} style={{ flexShrink:0 }} /> <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}>{tb.label}</span>
           </button>
         ))}
       </div>

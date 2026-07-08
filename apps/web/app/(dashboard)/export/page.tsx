@@ -471,18 +471,18 @@ export default function ExportPage() {
       )}
 
       {/* TABS */}
-      <div style={{ display: 'flex', gap: 3, background: surf, padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 18, border: '1px solid #e2e8f0', flexShrink: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 3, background: surf, padding: 4, borderRadius: 12, marginBottom: 18, border: '1px solid #e2e8f0', flexShrink: 0, minWidth: 0 }}>
         {[
           { id: 'find', label: t('export.buyer_discovery','Alıcı Keşfi'), Icon: Globe },
-          { id: 'leads', label: `${t('export.buyers','Alıcı')} (${leadsWithContact.length}📞 / ${exportLeads.length})`, Icon: Users },
+          { id: 'leads', label: `${t('export.buyers','Alıcı')} (${leadsWithContact.length}/${exportLeads.length})`, Icon: Users },
           { id: 'campaigns', label: `${t('export.campaigns_tab','Kampanyalar')} (${campaigns.length})`, Icon: Rocket },
           { id: 'messages', label: `${t('export.messages_tab','İletişimler')} (${messages.length})`, Icon: MessageSquare },
           { id: 'analytics', label: t('export.analytics_tab','Analitik'), Icon: BarChart2 },
         ].map(tb => (
           <button key={tb.id} onClick={() => setTab(tb.id as any)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: tab === tb.id ? `linear-gradient(135deg,${accentTeal},${accentEmerald})` : 'transparent', color: tab === tb.id ? '#fff' : tx2, boxShadow: tab === tb.id ? '0 3px 12px rgba(13,148,136,0.28)' : 'none', whiteSpace: 'nowrap' }}>
-            <tb.Icon size={13} />
-            {tb.label}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 8px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: tab === tb.id ? `linear-gradient(135deg,${accentTeal},${accentEmerald})` : 'transparent', color: tab === tb.id ? '#fff' : tx2, boxShadow: tab === tb.id ? '0 3px 12px rgba(13,148,136,0.28)' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+            <tb.Icon size={13} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{tb.label}</span>
           </button>
         ))}
       </div>
@@ -492,7 +492,7 @@ export default function ExportPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
 
           {/* Filters row */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
               {REGIONS.map((r, i) => {
                 const trKey = REGIONS_TR[i]  // always compare with Turkish DB value
@@ -505,10 +505,10 @@ export default function ExportPage() {
                 )
               })}
             </div>
-            <div style={{ marginLeft: 'auto', position: 'relative' }}>
+            <div style={{ position: 'relative' }}>
               <input value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
                 placeholder={ET.search_country}
-                style={{ ...inp, width: 160, padding: '7px 12px', fontSize: 12, height: 34 }} />
+                style={{ ...inp, width: '100%', padding: '7px 12px', fontSize: 12, height: 34 }} />
             </div>
           </div>
 
