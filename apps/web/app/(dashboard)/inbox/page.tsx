@@ -475,10 +475,10 @@ export default function UnifiedInboxPage() {
               {initials(selectedLead.company_name || '')}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-slate-800 font-semibold text-sm leading-tight">{selectedLead.company_name}</p>
-              <p className="text-slate-400 text-xs">{selectedLead.phone || selectedLead.email || '—'}</p>
+              <p className="text-slate-800 font-semibold text-sm leading-tight truncate">{selectedLead.company_name}</p>
+              <p className="text-slate-400 text-xs truncate">{selectedLead.phone || selectedLead.email || '—'}</p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {selectedLead.phone && (
                 <a href={`tel:${selectedLead.phone}`} title="Ara"
                   className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
@@ -490,11 +490,11 @@ export default function UnifiedInboxPage() {
                 <Sparkles size={15}/>
               </button>
               <Link href={`/leads/${selectedLead.id}`} title="Lead Detayı"
-                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition hidden sm:flex">
                 <ExternalLink size={15}/>
               </Link>
               <button onClick={() => loadMessages(selectedLead)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition hidden sm:flex">
                 <RefreshCw size={13}/>
               </button>
             </div>
