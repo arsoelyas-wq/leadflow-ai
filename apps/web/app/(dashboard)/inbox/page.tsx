@@ -331,13 +331,13 @@ export default function UnifiedInboxPage() {
   return (
     <div className={`bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm ${
       isMobile ? 'flex flex-col' : 'flex h-[calc(100vh-90px)]'
-    }`}>
+    }`} style={isMobile && mobileView === 'chat' ? { height: 'calc(100dvh - 176px)' } : undefined}>
 
       {/* ═══ LEFT PANEL — Konuşma Listesi ═══ */}
-      <div className={`border-r border-slate-200 flex flex-col bg-white ${
+      <div className={`border-r border-slate-200 bg-white ${
         isMobile
-          ? mobileView === 'list' ? 'flex w-full' : 'hidden'
-          : 'w-[340px] shrink-0'
+          ? mobileView === 'list' ? 'flex flex-col w-full' : 'hidden'
+          : 'flex flex-col w-[340px] shrink-0'
       }`}>
 
         {/* Header */}
@@ -397,8 +397,7 @@ export default function UnifiedInboxPage() {
         )}
 
         {/* Konuşma listesi */}
-        <div className={`overflow-y-auto ${isMobile ? 'flex-1 min-h-0' : 'flex-1'}`}
-          style={isMobile ? { maxHeight: 'calc(100dvh - 230px)' } : {}}>
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {loading && conversations.length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-sm">Yükleniyor...</div>
           ) : filtered.length === 0 ? (
@@ -459,7 +458,7 @@ export default function UnifiedInboxPage() {
 
       {/* ═══ MIDDLE PANEL — Mesaj Alanı ═══ */}
       {selectedLead ? (
-        <div className={`flex-1 flex flex-col min-w-0 ${isMobile && mobileView !== 'chat' ? 'hidden' : ''} ${isMobile ? 'h-[calc(100dvh-160px)]' : ''}`}>
+        <div className={`flex-1 flex flex-col min-w-0 ${isMobile && mobileView !== 'chat' ? 'hidden' : ''}`}>
 
           {/* Chat header */}
           <div className="px-4 py-3 border-b border-slate-200 bg-white flex items-center gap-2">
@@ -501,7 +500,7 @@ export default function UnifiedInboxPage() {
           </div>
 
           {/* Mesaj alanı */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1"
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23e2e8f0' fill-opacity='0.4'%3E%3Cpath d='M20 20.5V18H0v5h5v5H0v5h20v-5h-5v-5h5v-.5z'/%3E%3C/g%3E%3C/svg%3E")` }}>
 
             {messages.length === 0 ? (
