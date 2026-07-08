@@ -315,7 +315,7 @@ function TrendItem({ item }: { item: any }) {
       </div>
       {expanded && ai && (
         <div style={{ borderTop: `1px solid ${color}15`, padding: '12px 16px', background: `${color}05` }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 8, marginBottom: 10 }}>
             <div>
               <p style={{ color: '#475569', fontSize: 10, margin: '0 0 3px', fontWeight: 600 }}>STİL</p>
               <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>{ai.style}</p>
@@ -540,7 +540,7 @@ export default function VisualTrendPage() {
 
           {/* ── TAB: REPORT ─────────────────────────────────────────────── */}
           {activeTab === 'report' && report && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 18 }}>
               {[
                 { label: t('📊 Özet','📊 Özet'), content: report.summary, color: '#7c3aed' },
                 { label: t('🎯 Pazar Fırsatı','🎯 Pazar Fırsatı'), content: report.marketOpportunity, color: '#059669' },

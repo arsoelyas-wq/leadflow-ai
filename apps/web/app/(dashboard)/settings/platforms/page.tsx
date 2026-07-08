@@ -193,7 +193,7 @@ export default function PlatformsPage() {
             </div>
 
             {/* Country grid */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:8, maxHeight:320, overflowY:'auto' }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" style={{ gap:8, maxHeight:320, overflowY:'auto' }}>
               {filteredCountries.map(c => {
                 const isActive = (currentCountry?.code || currentCountry?.country_code) === c.code
                 return (
@@ -241,11 +241,11 @@ export default function PlatformsPage() {
           <span style={{ color:'#334155', fontSize:11 }}>{t('settings.kapatilamaz', 'Kapatılamaz')}</span>
         </div>
         {loading ? (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap:10 }}>
             {[0,1,2,3,4,5,6,7].map(i => <div key={i} style={{ height:56, background:'rgba(255,255,255,0.03)', borderRadius:10 }}/>)}
           </div>
         ) : (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap:10 }}>
             {globalPlatforms.map(p => {
               const tm = TYPE_META[p.type] || { label: t('Diğer','Diğer'), color:'#64748b' }
               return (
@@ -328,7 +328,7 @@ export default function PlatformsPage() {
 
       {/* Özet */}
       {!loading && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:12 }}>
           {[
             { label:'Toplam Platform', value:platforms.length, color:'#94a3b8' },
             { label:'Aktif Platform',  value:platforms.filter(p=>p.enabled).length, color:'#10b981' },

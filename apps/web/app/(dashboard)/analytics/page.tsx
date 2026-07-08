@@ -346,7 +346,7 @@ export default function AnalyticsPage() {
       {tab === 'overview' && (<>
       {/* ── STAT CARDS */}
       {data && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 16, marginBottom: 24 }}>
           <StatCard label={t('analytics.total_leads','Toplam Lead')} value={data.totalLeads} sub={`+${data.newLeads} ${t('analytics.new_leads','yeni')}`} color="#059669" Icon={Users} trend={12} />
           <StatCard label={t('analytics.conversion','Cevap Oranı')} value={`${data.replyRate}%`} sub={t('analytics.campaigns','kampanya bazlı')} color="#7c3aed" Icon={MessageSquare} trend={data.replyRate > 10 ? 5 : -8} />
           <StatCard label={t('analytics.campaigns','Aktif Kampanya')} value={data.activeCampaigns} sub={t('analytics.overview','devam eden')} color="#0d9488" Icon={Megaphone} />
@@ -356,7 +356,7 @@ export default function AnalyticsPage() {
 
       {/* ── CHANNEL + FUNNEL */}
       {data && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 20, marginBottom: 24 }}>
           {/* Channel comparison */}
           <div style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 18, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 18px' }}><Smartphone size={15} style={{ color: '#7c3aed' }} /> {t('analytics.kanal_karsilastirmasi', 'Kanal Karşılaştırması')}</h3>
@@ -455,7 +455,7 @@ export default function AnalyticsPage() {
         </div>
       ) : reportD && (
         <>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap:16, marginBottom:20 }}>
             {[
               { label:'Yeni Lead', value:reportD.newLeads, color:'#8b5cf6', Icon: Users, trend:reportD.prevNewLeads?Math.round(((reportD.newLeads-reportD.prevNewLeads)/(reportD.prevNewLeads||1))*100):0 },
               { label: t('Kazanılan','Kazanılan'), value:reportD.wonLeads, color:'#10b981', Icon: Trophy, trend:0 },
@@ -473,7 +473,7 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap:20, marginBottom:20 }}>
             <div style={{ background:'#ffffff', border:'1px solid rgba(245,158,11,0.18)', borderRadius:18, padding:22 }}>
               <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px', display:'flex', alignItems:'center', gap:6 }}><Target size={15} style={{ color:'#7c3aed' }} /> Hedef Takibi</h3>
               {[
@@ -537,7 +537,7 @@ export default function AnalyticsPage() {
             <div style={{ textAlign: 'center', padding: 48 }}><RefreshCw size={20} style={{ color: '#047857', animation: 'df-spin 1s linear infinite' }} /></div>
           ) : financial ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+              <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 12 }}>
                 {[
                   { label: '30 Gün Lead', value: financial.growth?.thisMonth || financial.monthlyLeads || 0, color: '#047857', Icon: Users },
                   { label: 'Churn Riski', value: financial.churnRisk?.total ?? financial.churnRisk ?? 0, color: '#dc2626', Icon: TrendingDown },
@@ -593,7 +593,7 @@ export default function AnalyticsPage() {
             <div style={{ textAlign: 'center', padding: 48 }}><RefreshCw size={20} style={{ color: '#047857', animation: 'df-spin 1s linear infinite' }} /></div>
           ) : revenue ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 12 }}>
                 {[
                   { label: 'Bu Ay Potansiyel', value: revenue.revenue?.monthlyPotential?.toLocaleString('tr-TR') || '0', color: '#047857', Icon: DollarSign },
                   { label: 'Win Rate', value: `%${revenue.funnel?.winRate || 0}`, color: '#2563eb', Icon: CheckCircle },
@@ -627,7 +627,7 @@ export default function AnalyticsPage() {
               {revenue.funnel && (
                 <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                   <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: '0 0 14px' }}>Satış Hunisi</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 10 }}>
                     {[
                       { label: 'İletişim Oranı', value: `%${revenue.funnel.contactRate || 0}`, color: '#0d9488' },
                       { label: 'Nitelendirme', value: `%${revenue.funnel.qualifyRate || 0}`, color: '#7c3aed' },

@@ -117,7 +117,7 @@ export default function WANumbersPage() {
       {msg && <div style={{ marginBottom: 14, padding: '10px 16px', borderRadius: 11, fontSize: 12, background: msg.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: msg.type === 'success' ? '#059669' : '#dc2626' }}>{msg.text}</div>}
 
       {/* ── STATS ─────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 18 }}>
+      <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 12, marginBottom: 18 }}>
         {[
           { label: 'Toplam', value: numbers.length, color: '#64748b', Icon: Phone },
           { label: 'Bağlı', value: connected, color: accentGreen, Icon: Wifi },
@@ -142,7 +142,7 @@ export default function WANumbersPage() {
           <h3 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
             <QrCode size={16} style={{ color: accentGreen }} /> Yeni Numara Bağla
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <label style={{ color: tx2, fontSize: 11, display: 'block', marginBottom: 5 }}>İsim (opsiyonel)</label>
               <input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="örn: Satış Hattı 1" style={inputStyle} />

@@ -438,7 +438,7 @@ export default function ShadowPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 24 }}>
           {[
             { label: t('Rakip İzleniyor','Rakip İzleniyor'), value:competitors.length, color:'#7c3aed', Icon:Eye },
             { label: t('Yüksek Tehdit','Yüksek Tehdit'),   value:highThreat,         color:'#dc2626', Icon:AlertTriangle },
@@ -479,7 +479,7 @@ export default function ShadowPage() {
       {addForm && (
         <div style={{ marginBottom: 20, background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: 22, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <p style={{ color: '#7c3aed', fontWeight: 700, fontSize: 14, margin: '0 0 16px' }}>+ Yeni Rakip Ekle</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('shadow.rakip_firma_adi', 'Rakip Firma Adı *')}</label>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('shadow.orn_dekonil', 'örn: Dekonil')}
@@ -541,7 +541,7 @@ ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;
       {tab === 'crisis' && (<>
       {/* ── KRİZ İSTATİSTİKLERİ ─────────────────────────────────────────────── */}
       {crisisStats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 12, marginBottom: 20 }}>
           {[
             { label: 'Toplam Gelişme', value: crisisStats.total, color: '#7c3aed', Icon: Activity },
             { label: 'Fırsatlar', value: crisisStats.opportunities, color: '#059669', Icon: TrendingUp },

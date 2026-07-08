@@ -155,7 +155,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+      <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 14, marginBottom: 20 }}>
         {[
           { label: 'Uptime (24s)', value: `%${status?.uptime?.percent24h || 100}`, sub: status?.uptime?.formatted || '—', color: '#10b981', icon: <Activity size={15} />, data: uptimeLogs.map((l: any) => l.status === 'up' ? 100 : 0) },
           { label: t('Yanıt Süresi','Yanıt Süresi'), value: `${status?.uptime?.avgResponseMs || 0}ms`, sub: 'Son 24 saat', color: '#06b6d4', icon: <Clock size={15} />, data: responseTimes },
@@ -179,7 +179,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* Recent uptime + system info */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16, marginBottom: 20 }}>
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 18, padding: 20, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
           <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: '0 0 14px' }}>📡 Son Kontroller</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>

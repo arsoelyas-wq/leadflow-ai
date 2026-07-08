@@ -124,7 +124,7 @@ function ProductForm({ initial, onClose, onSaved, token }: { initial?: Product |
         </div>
 
         {/* Images */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBottom: 18 }}>
           {[0, 1].map(i => (
             <div key={i}>
               <label style={{ color: tx2, fontSize: 11, display: 'block', marginBottom: 6 }}>{i === 0 ? 'Ana Görsel *' : 'İkinci Görsel (opsiyonel)'}</label>
@@ -145,7 +145,7 @@ function ProductForm({ initial, onClose, onSaved, token }: { initial?: Product |
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBottom: 12 }}>
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ color: tx2, fontSize: 11, display: 'block', marginBottom: 5 }}>Ürün Adı *</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="örn: Compact LED Masa Lambası"
@@ -301,7 +301,7 @@ export default function ProductsPage() {
         <input ref={excelRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => { if (e.target.files?.[0]) importExcel(e.target.files[0]); e.target.value = '' }} />
 
         {/* Stats row */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 22 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 22 }}>
           {[
             { label: t('Toplam Ürün','Toplam Ürün'), value: products.length, color: '#4f46e5', Icon: Package },
             { label: 'Aktif', value: activeCount, color: accentEmerald, Icon: CheckCircle },
@@ -386,7 +386,7 @@ export default function ProductsPage() {
       ) : (
         <div>
           <p style={{ color: tx2, fontSize: 12, margin: '0 0 14px' }}>{filtered.length} ürün{search || filterCat ? ` (${products.length} toplam)` : ''}</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 16 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 16 }}>
             {filtered.map(p => (
               <ProductCard key={p.id} p={p} onDelete={deleteProduct} onToggle={toggleProduct} onEdit={prod => { setEditProduct(prod); setShowForm(true) }} />
             ))}

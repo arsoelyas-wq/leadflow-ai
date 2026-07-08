@@ -131,7 +131,7 @@ export default function ReferralPage() {
           <div style={{ flex:1 }}>
             <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Referral Loop</h1>
             <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('referral.kazanilan_musterilerden_o', 'Kazanılan müşterilerden otomatik referans kampanyası')}</p>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:12 }}>
               {[{label: t('Gönderilen','Gönderilen'),value:stats?.sent||0,color:accentTeal},{label:'Referans',value:stats?.referralsReceived||0,color:'#d97706'},{label: t('Kazanılan','Kazanılan'),value:stats?.referralsWon||0,color:accentEmerald}].map(m => (
                 <div key={m.label} style={{ textAlign:'center' }}>
                   <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>
@@ -165,7 +165,7 @@ export default function ReferralPage() {
       </div>
 
       {activeTab === 'main' && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap:20 }}>
           <div style={{ background:'#ffffff', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
             <h3 style={{ display:'flex', alignItems:'center', gap:7, color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px' }}><Settings size={15} />{t('referral.kampanya_ayarlari', 'Kampanya Ayarları')}</h3>
             <div style={{ marginBottom:14 }}>

@@ -309,7 +309,7 @@ function CulturalCard({ profile, countryCode }: { profile: any; countryCode: str
           </div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 10, marginBottom: 12 }}>
         <div style={{ background: '#f8fafc', borderRadius: 9, padding: '8px 12px' }}>
           <p style={{ color: '#475569', fontSize: 9, fontWeight: 700, margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: 1 }}>İletişim</p>
           <p style={{ color: '#0f172a', fontSize: 12, margin: 0 }}>{profile.communication}</p>
@@ -475,7 +475,7 @@ export default function CulturalPage() {
       )}
 
       {/* ── MAIN GRID ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 20 }}>
 
         {/* LEFT: Lead Cultural Adaptation */}
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>

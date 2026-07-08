@@ -313,7 +313,7 @@ export default function DashboardPage() {
 
       {/* ── MOBİL HIZLI EYLEMLER ── */}
       {isMobile && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:6 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap:6 }}>
           {[
             { label: 'Lead Bul',    href: '/lead-machine',  bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
             { label: 'Avcı',        href: '/lead-hunter',   bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
@@ -697,8 +697,8 @@ export default function DashboardPage() {
               })}
             </div>
           ) : (
-            <div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:divBd }}>
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'0 10px 8px', borderBottom:divBd, minWidth: 400 }}>
                 {[t('leads.col_company','Şirket / Kişi'),t('leads.col_source','Kaynak'),t('leads.col_score','Puan'),t('leads.col_status','Durum')].map(h => (
                   <span key={h} style={{ color:tx3, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{h}</span>
                 ))}
@@ -710,7 +710,7 @@ export default function DashboardPage() {
                   const ls = statusStyle[lead.status] || statusStyle.draft
                   return (
                     <Link key={lead.id} href={`/leads/${lead.id}`}
-                      style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'10px', borderBottom: i < data.recentLeads.length-1 ? divBd : 'none', alignItems:'center', textDecoration:'none', borderRadius:8, transition:'background 0.12s' }}>
+                      style={{ display:'grid', gridTemplateColumns:'1fr 120px 80px 100px', gap:12, padding:'10px', minWidth: 400, borderBottom: i < data.recentLeads.length-1 ? divBd : 'none', alignItems:'center', textDecoration:'none', borderRadius:8, transition:'background 0.12s' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <div style={{ width:32, height:32, borderRadius:9, background:'#eff6ff', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563eb', fontSize:13, fontWeight:700, flexShrink:0 }}>
                           {((lead.company_name||lead.contact_name||'?')[0]).toUpperCase()}

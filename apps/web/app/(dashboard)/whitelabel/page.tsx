@@ -149,7 +149,7 @@ export default function WhitelabelPage() {
       {showForm && (
         <div style={{ background:'#ffffff', border:'1px solid rgba(139,92,246,0.25)', borderRadius:18, padding:24, marginBottom:20 }}>
           <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 18px' }}>{t('whitelabel.yeni_bayi_olustur', '🏢 Yeni Bayi Oluştur')}</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12, marginBottom:12 }}>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>{t('whitelabel.marka_adi', 'Marka Adı *')}</label><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={t('whitelabel.orn_abc_crm', 'örn: ABC CRM')} style={inputStyle} /></div>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Domain (opsiyonel)</label><input value={form.domain} onChange={e=>setForm({...form,domain:e.target.value})} placeholder="crm.firmam.com" style={inputStyle} /></div>
             <div><label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:5 }}>Logo URL</label><input value={form.logo_url} onChange={e=>setForm({...form,logo_url:e.target.value})} placeholder="https://..." style={inputStyle} /></div>
@@ -180,7 +180,7 @@ export default function WhitelabelPage() {
       {newBrandResult && (
         <div style={{ marginBottom:16, background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:14, padding:20 }}>
           <h3 style={{ color:'#047857', fontWeight:700, fontSize:14, margin:'0 0 12px' }}>{t('whitelabel.bayi_olusturuldu', '✅ Bayi Oluşturuldu!')}</h3>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:10 }}>
             {[{l:'Admin Email',v:newBrandResult.adminEmail},{l:'Geçici Şifre',v:newBrandResult.tempPassword}].map(f => (
               <div key={f.l} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px' }}>
                 <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{f.l}</p>
@@ -237,9 +237,9 @@ export default function WhitelabelPage() {
                 </div>
               </div>
               {selectedBrand === brand.id && brandStats && (
-                <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #e2e8f0', display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:10 }}>
+                <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid #e2e8f0', display:'flex', overflowX:'auto', gap:10, scrollbarWidth:'none' }}>
                   {[{l:'Kullanıcı',v:brandStats.stats?.totalUsers},{l:'Lead',v:brandStats.stats?.totalLeads},{l:'Mesaj',v:brandStats.stats?.totalMessages},{l:'Video',v:brandStats.stats?.totalVideos},{l:'Aylık Gelir',v:`₺${(brandStats.stats?.monthlyRevenue||0).toLocaleString()}`}].map(st => (
-                    <div key={st.l} style={{ textAlign:'center', padding:'10px', background:'#f8fafc', borderRadius:9 }}>
+                    <div key={st.l} style={{ textAlign:'center', padding:'10px', background:'#f8fafc', borderRadius:9, flexShrink:0, minWidth:80 }}>
                       <p style={{ color:'#0f172a', fontWeight:800, fontSize:14, margin:0 }}>{st.v}</p>
                       <p style={{ color:'#475569', fontSize:10, margin:0 }}>{st.l}</p>
                     </div>

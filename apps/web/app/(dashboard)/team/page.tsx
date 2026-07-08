@@ -180,11 +180,11 @@ function AddMemberModal({ onClose, onAdded }: { onClose:()=>void; onAdded:()=>vo
           <button onClick={onClose} style={{ background:C.hover, border:C.cardBd, borderRadius:8, padding:'6px', cursor:'pointer', display:'flex', alignItems:'center', color:C.text3 }}><X size={16}/></button>
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12 }}>
             <div><label style={{ color:C.text3, fontSize:11, fontWeight:600, display:'block', marginBottom:5 }}>Ad Soyad *</label><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} style={fi} placeholder="Ahmet Yılmaz"/></div>
             <div><label style={{ color:C.text3, fontSize:11, fontWeight:600, display:'block', marginBottom:5 }}>Email *</label><input type="email" value={form.email} onChange={e=>setForm(p=>({...p,email:e.target.value}))} style={fi} placeholder="ahmet@firma.com"/></div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12 }}>
             <div><label style={{ color:C.text3, fontSize:11, fontWeight:600, display:'block', marginBottom:5 }}>Rol *</label>
               <select value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))} style={{ ...fi, height:44, cursor:'pointer' }}>
                 {ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}
@@ -193,7 +193,7 @@ function AddMemberModal({ onClose, onAdded }: { onClose:()=>void; onAdded:()=>vo
             <div><label style={{ color:C.text3, fontSize:11, fontWeight:600, display:'block', marginBottom:5 }}>Şifre</label><input type="password" value={form.password} onChange={e=>setForm(p=>({...p,password:e.target.value}))} placeholder="••••••••" style={fi} /></div>
           </div>
           <div><label style={{ color:C.text3, fontSize:11, fontWeight:600, display:'block', marginBottom:5 }}>WhatsApp (bildirim için)</label><input value={form.wa_phone} onChange={e=>setForm(p=>({...p,wa_phone:e.target.value}))} placeholder="905551234567" style={fi} /></div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12 }}>
             <div><label style={{ color:C.text3, fontSize:11, fontWeight:600, display:'block', marginBottom:5 }}>Aylık Lead Hedefi</label><input type="number" value={form.target_leads_monthly} onChange={e=>setForm(p=>({...p,target_leads_monthly:Number(e.target.value)}))} style={fi} /></div>
             <div><label style={{ color:C.text3, fontSize:11, fontWeight:600, display:'block', marginBottom:5 }}>Dönüşüm Hedefi (%)</label><input type="number" value={form.target_conversion_rate} onChange={e=>setForm(p=>({...p,target_conversion_rate:Number(e.target.value)}))} style={fi} /></div>
           </div>
@@ -566,7 +566,7 @@ export default function TeamPage() {
                     <p style={{ color:C.text4, fontSize:10, margin:0 }}>Ort. Skor</p>
                   </div>}
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+                <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap:10 }}>
                   {[
                     { l:'Haftalık Mesaj', v:a.weeklyMessages, c:'#0891b2', bg:'#ecfeff', bd:'#a5f3fc' },
                     { l:'Aktif Lead',     v:a.activeLeads,    c:C.warn,    bg:C.warnBg,  bd:C.warnBd },
@@ -626,7 +626,7 @@ export default function TeamPage() {
           </div>
           <div style={{ ...card, padding:18 }}>
             <h3 style={{ color:C.text1, fontSize:13, fontWeight:700, margin:'0 0 12px' }}>Rozet Sistemi</h3>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:8 }}>
               {Object.entries(BADGE_DEFS).map(([key, label])=>(
                 <div key={key} style={{ background:C.warnBg, border:`1px solid ${C.warnBd}`, borderRadius:10, padding:'10px 12px' }}>
                   <p style={{ color:C.warn, fontSize:12, fontWeight:700, margin:0 }}>{label}</p>
@@ -763,7 +763,7 @@ export default function TeamPage() {
           {dnaLoading && <div style={{ textAlign:'center', padding:32 }}><RefreshCw size={20} style={{ color:C.violet, animation:'tm-spin 1s linear infinite' }} /><p style={{ color:C.text3, fontSize:12, marginTop:8 }}>DNA analizi yapiliyor...</p></div>}
 
           {memberDna?.dna && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap:14 }}>
               {/* Radar Skorlar */}
               <div style={{ ...card, padding:'18px 20px' }}>
                 <h3 style={{ color:C.text1, fontSize:14, fontWeight:700, margin:'0 0 14px' }}>{memberDna.member} — Satis DNA</h3>
@@ -784,7 +784,7 @@ export default function TeamPage() {
                     </div>
                   ))}
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginTop:14 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:8, marginTop:14 }}>
                   <div style={{ background:'#ecfdf5', borderRadius:8, padding:'8px 10px', textAlign:'center' }}>
                     <p style={{ color:'#059669', fontSize:18, fontWeight:800, margin:0 }}>{memberDna.dna.winRate}%</p>
                     <p style={{ color:C.text3, fontSize:9, margin:0 }}>Kazanma</p>

@@ -499,7 +499,7 @@ export default function PriceTrackerPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 24 }}>
           {[
             { label: 'Takip Edilen', value: stats.total, color: '#0d9488', Icon: Eye },
             { label: t('Fiyat Düşüşü','Fiyat Düşüşü'), value: stats.priceDrops, color: '#059669', Icon: TrendingDown },
@@ -530,7 +530,7 @@ export default function PriceTrackerPage() {
             <Plus size={15} style={{ color: '#059669' }} />
             <h3 style={{ color: '#0f172a', fontSize: 15, fontWeight: 700, margin: 0 }}>{t('price_tracker.yeni_urun_fiyati_takip_et', 'Yeni Ürün Fiyatı Takip Et')}</h3>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('price_tracker.urun_url_trendyol_amazon', 'Ürün URL * (Trendyol, Amazon, rakip site...)')}</label>
               <input value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} placeholder="https://www.trendyol.com/..." style={{ ...inp, border: `1px solid ${form.url ? '#6ee7b7' : '#e2e8f0'}` }} />

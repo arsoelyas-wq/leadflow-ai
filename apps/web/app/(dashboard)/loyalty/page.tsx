@@ -259,7 +259,7 @@ export default function LoyaltyPage() {
       ) : (
         <>
           {/* 3-card risk grid */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:12, marginBottom:20 }}>
             {[
               { label: t('Yüksek Risk','Yüksek Risk'), value: churnHighRisk.length, ...RISK_STYLES.high },
               { label: 'Orta Risk', value: churnMediumRisk.length, ...RISK_STYLES.medium },

@@ -412,7 +412,7 @@ export default function SettingsPage() {
                     <span style={{ color:'#94a3b8', fontSize:10 }}>Üye: {(user as any)?.created_at ? new Date((user as any).created_at).toLocaleDateString('tr-TR') : '—'}</span>
                   </div>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12 }}>
                   {[
                     { label:'Ad Soyad', key:'name' },
                     { label:'Firma Adı', key:'company' },
@@ -435,7 +435,7 @@ export default function SettingsPage() {
               {/* Plan & Credits info */}
               <div style={card}>
                 <h2 style={cardTitle}>💎 Plan & Kredi</h2>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:12 }}>
                   <div style={{ textAlign:'center', padding:'12px', background:'#f8fafc', borderRadius:10 }}>
                     <p style={{ color:'#2563eb', fontSize:20, fontWeight:800, margin:0 }}>{user?.planType === 'enterprise' ? 'Enterprise' : user?.planType === 'growth' ? 'Büyüme' : 'Başlangıç'}</p>
                     <p style={{ color:'#94a3b8', fontSize:10, margin:0 }}>Mevcut Plan</p>
@@ -587,7 +587,7 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:10 }}>
                       <div style={{ padding:14, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12 }}>
                         <p style={{ color:'#0f172a', fontSize:13, fontWeight:500, margin:'0 0 4px' }}>📹 Video Avatar</p>
                         <p style={{ color:'#64748b', fontSize:11, margin:'0 0 4px' }}>{t('settings.25_dk_video_yukle_ai_klonlar', '2-5 dk video yükle → AI klonlar')}</p>
@@ -702,7 +702,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12 }}>
                     <div>
                       <label style={fieldLabel}>SMTP Sunucu</label>
                       <input value={settings.email_host || 'smtp.gmail.com'}

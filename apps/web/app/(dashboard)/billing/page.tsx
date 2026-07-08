@@ -316,7 +316,7 @@ export default function BillingPage() {
             </span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 16 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 16 }}>
             {plans.map(plan => {
               const price = billing === 'annual' ? plan.priceAnnual : plan.priceMonthly
               const isCurrent = currentPlan === plan.id
@@ -418,7 +418,7 @@ export default function BillingPage() {
           {comparison && (
             <div style={{ marginTop: 24, padding: '20px 24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16 }}>
               <p style={{ color: '#64748b', fontSize: 12, fontWeight: 700, margin: '0 0 12px' }}>{comparison.title || 'Neden Sovlo?'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
                 {(comparison.items || []).map((c: any) => (
                   <div key={c.label} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                     <span style={{ fontSize: 12 }}>{c.icon}</span>
@@ -441,7 +441,7 @@ export default function BillingPage() {
             Abonelik kredinize ek olarak her zaman kredi satın alabilirsiniz. Satın alınan krediler sona ermez.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 16, marginBottom: 24 }}>
             {topups.map(pkg => {
               const priceStr = formatPrice(pkg.price)
               const perCr   = (pkg.price / pkg.credits / 100).toFixed(2)
@@ -487,7 +487,7 @@ export default function BillingPage() {
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0' }}>
               <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: 0 }}>Kredi Maliyet Tablosu</h3>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 0 }}>
               {[
                 { action: 'Lead Scraping (Google Maps)', cost: 5, free: false },
                 { action: 'AI Mesaj Kişiselleştirme', cost: 1, free: false },
@@ -517,7 +517,7 @@ export default function BillingPage() {
         <div style={{ display: 'grid', gap: 16 }}>
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 24 }}>
             <h3 style={{ color: '#0f172a', fontSize: 13, fontWeight: 700, margin: '0 0 20px' }}>Bu Ay Kredi Kullanımı</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" style={{ gap: 12 }}>
               {[
                 { key: 'lead_scrape', pct: 45 },
                 { key: 'ai_message', pct: 28 },

@@ -677,7 +677,7 @@ export default function HunterSettingsPage() {
             </div>
 
             {/* Stats */}
-            <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 20 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 20 }}>
               {STATS_DATA.map(({ label, value, color, Icon }) => (
                 <div key={label} style={{ ...card, padding: '12px 14px', textAlign: 'center' }}>
                   <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px' }}>
@@ -698,7 +698,7 @@ export default function HunterSettingsPage() {
           )}
 
           {/* ── MAIN GRID ─────────────────────────────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 20 }}>
 
             {/* ── SOL: Ayarlar ────────────────────────────────────────────────── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

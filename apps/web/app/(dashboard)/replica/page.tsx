@@ -298,7 +298,7 @@ export default function ReplicaPage() {
 
       {/* ── STATS ROW (only when replicas exist) ── */}
       {replicas.length > 0 && (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:12, marginBottom:20 }}>
           {[
             { label:'Toplam Replika',   value: replicas.length,                                         color:'#7c3aed', Icon:Brain },
             { label:'Hazır',            value: replicas.filter(r=>r.status==='ready').length,            color:'#059669', Icon:CheckCircle },
@@ -496,7 +496,7 @@ export default function ReplicaPage() {
             <div>
               <label style={{ display:'block', fontSize:13, fontWeight:600, color:tx1, marginBottom:4 }}>Kayıt Ortamı</label>
               <p style={{ color:tx3, fontSize:12, margin:'0 0 10px' }}>Aynı kişiyi farklı ortamlarda kaydedip videolarda seçim yapabilirsiniz.</p>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:8 }}>
+              <div style={{ display:'flex', overflowX:'auto', gap:8, scrollbarWidth:'none' }}>
                 {SCENE_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
@@ -507,6 +507,7 @@ export default function ReplicaPage() {
                       padding:'12px 4px', borderRadius:12, border:'none', cursor:'pointer', transition:'all 0.15s',
                       background: sceneType === opt.value ? purpleLight : surf,
                       outline: sceneType === opt.value ? `2px solid ${purple}` : '2px solid transparent',
+                      flexShrink: 0, minWidth: 64, whiteSpace: 'nowrap',
                     }}
                   >
                     <span style={{ fontSize:20 }}>{opt.icon}</span>

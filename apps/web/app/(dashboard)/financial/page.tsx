@@ -314,7 +314,7 @@ export default function FinancialPage() {
         <div style={{ display:'flex', justifyContent:'center', height:100, alignItems:'center' }}><RefreshCw size={22} style={{ color:'#475569', animation:'fn-spin 1s linear infinite' }} /></div>
       ) : (
         <>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:20 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap:16, marginBottom:20 }}>
             {[
               { label: t('30 Gün Lead','30 Gün Lead'), value:last30Leads, color:'#059669', Icon: Users },
               { label:'Churn Riski', value:churn.total||0, color:'#dc2626', Icon: AlertTriangle },
@@ -329,7 +329,7 @@ export default function FinancialPage() {
             ))}
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap:20, marginBottom:20 }}>
             {/* Source ROI — real % */}
             <div style={{ background:'#ffffff', border:'1px solid rgba(99,102,241,0.18)', borderRadius:18, padding:22 }}>
               <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px', display:'flex', alignItems:'center', gap:6 }}><BarChart3 size={15} style={{ color:'#4f46e5' }} /> {t('financial.kaynak_roi_gercek', 'Kaynak ROI (Gerçek %)')}</h3>
@@ -432,7 +432,7 @@ export default function FinancialPage() {
         <div style={{ display:'flex', justifyContent:'center', height:100, alignItems:'center' }}><RefreshCw size={22} style={{ color:'#475569', animation:'rv-spin 1s linear infinite' }} /></div>
       ) : (
         <>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:20 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:16, marginBottom:20 }}>
             {[
               { label: t('Bu Dönem Potansiyel','Bu Dönem Potansiyel'), value:fmtCurrency(baseMonthly*revenuePeriodMultiplier), color:'#059669', Icon: DollarSign },
               { label: t('Sonraki Dönem','Sonraki Dönem'), value:fmtCurrency(Math.round((forecast[0]||0)*scenarioMultiplier*revenuePeriodMultiplier)), color:'#b45309', Icon: TrendingUp },
@@ -446,7 +446,7 @@ export default function FinancialPage() {
             ))}
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap:20, marginBottom:20 }}>
             <div style={{ background:'#ffffff', border:'1px solid rgba(217,119,6,0.2)', borderRadius:18, padding:22 }}>
               <h3 style={{ color:'#0f172a', fontSize:14, fontWeight:700, margin:'0 0 16px', display:'flex', alignItems:'center', gap:6 }}><Settings size={15} style={{ color:'#b45309' }} /> Gelir Parametreleri</h3>
               <div style={{ marginBottom:14 }}>

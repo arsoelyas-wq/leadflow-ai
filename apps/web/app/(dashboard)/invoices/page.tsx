@@ -343,7 +343,7 @@ export default function InvoicesPage() {
           <div style={{ flex: 1 }}>
             <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('debt_collector.tahsilat_yonetimi', 'Tahsilat Yönetimi')}</h1>
             <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('debt_collector.gecikmis_fatura_takibi_ot', 'Gecikmiş fatura takibi, otomatik hatırlatma ve yasal süreç yönetimi')}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 12 }}>
               {[
                 { label: 'Toplam Fatura', value: enriched.length, color: '#475569' },
                 { label: t('Gecikmiş','Gecikmiş'), value: overdueInvoices.length, color: '#dc2626' },
@@ -378,13 +378,13 @@ export default function InvoicesPage() {
       </div>
 
       {/* Aging Buckets */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'flex', overflowX: 'auto', gap: 10, marginBottom: 20, scrollbarWidth: 'none' }}>
         {[
           { key: 'all', label: t('Tümü','Tümü'), color: '#7c3aed', count: enriched.filter(i => i.status !== 'paid').length, amount: enriched.filter(i => i.status !== 'paid').reduce((s, i) => s + (parseFloat(i.amount) || 0), 0) },
           ...BUCKETS.map(b => ({ ...b, count: bucketCount(b.key), amount: bucketAmount(b.key) }))
         ].map(b => (
           <button key={b.key} onClick={() => setActiveBucket(b.key)}
-            style={{ padding: '12px 10px', borderRadius: 13, border: `1px solid ${activeBucket === b.key ? b.color + '60' : '#e2e8f0'}`, background: activeBucket === b.key ? `${b.color}10` : '#f8fafc', cursor: 'pointer', textAlign: 'left' }}>
+            style={{ padding: '12px 10px', borderRadius: 13, border: `1px solid ${activeBucket === b.key ? b.color + '60' : '#e2e8f0'}`, background: activeBucket === b.key ? `${b.color}10` : '#f8fafc', cursor: 'pointer', textAlign: 'left', flexShrink: 0, minWidth: 100 }}>
             <p style={{ color: b.color, fontSize: 18, fontWeight: 800, margin: 0 }}>{b.count}</p>
             <p style={{ color: '#475569', fontSize: 11, margin: '2px 0 0', fontWeight: 600 }}>{b.label}</p>
             <p style={{ color: '#475569', fontSize: 10, margin: '1px 0 0' }}>₺{b.amount.toLocaleString()}</p>
@@ -575,7 +575,7 @@ export default function InvoicesPage() {
           </div>
 
           {formalStats && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 10 }}>
               {[
                 { label: 'Toplam', value: formalStats.total, color: '#0f172a' },
                 { label: t('Ödendi','Ödendi'), value: formalStats.paid, color: '#059669' },
@@ -606,7 +606,7 @@ export default function InvoicesPage() {
           {showFormalCreate && (
             <div style={{ background: '#ffffff', border: '1px solid #fee2e2', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <h3 style={{ color: '#0f172a', fontWeight: 700, fontSize: 14, margin: 0 }}>{t('invoices.yeni_fatura','Yeni Fatura')}</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 12 }}>
                 <div>
                   <label style={{ color: '#475569', fontSize: 11, display: 'block', marginBottom: 5 }}>{t('invoices.musteri', 'Müşteri *')}</label>
                   <select value={formalForm.leadId} onChange={e => setFormalForm(p => ({ ...p, leadId: e.target.value }))} style={{ ...formalInputStyle, height: 42 }}>
