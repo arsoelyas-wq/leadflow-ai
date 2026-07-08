@@ -428,22 +428,22 @@ export default function CompetitorPage() {
         <div style={{ position: 'absolute', top: 55, right: 250, zIndex: 1, opacity: 0.5 }}><FloatTarget size={12} delay="1s" color="#2563eb" /></div>
         <div style={{ position: 'absolute', bottom: 25, right: 210, zIndex: 1, opacity: 0.5 }}><FloatTarget size={14} delay="1.8s" color="#7c3aed" /></div>
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
-            <RadarScanner size={110} scanning={scanning !== null} />
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          {/* Top row: radar + text */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, minWidth: 0 }}>
+            <RadarScanner size={80} scanning={scanning !== null} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5, whiteSpace: 'nowrap' }}>Rakip Hijacking</h1>
+                <h1 style={{ color: tx1, fontSize: 20, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Rakip Hijacking</h1>
                 <span style={{ background: 'linear-gradient(135deg,#0f766e,#0d9488)', color: '#ffffff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1, flexShrink: 0 }}>GLOBAL</span>
                 <span style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: accentEmerald, fontSize: 10, padding: '3px 10px', borderRadius: 20, flexShrink: 0 }}>{t('competitor.75_ulke', '75 Ülke')}</span>
               </div>
-              <p style={{ color: tx2, fontSize: 13, margin: '0 0 12px', wordBreak: 'break-word', overflow: 'hidden' }}>{t('competitor.rakiplerin_musterilerini', 'Rakiplerin müşterilerini tespit edin — Google yorumları, sosyal şikayetler, LinkedIn, B2B dizinler — 75 ülkede')}</p>
+              <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>{t('competitor.rakiplerin_musterilerini', 'Rakiplerin müşterilerini tespit edin — Google yorumları, sosyal şikayetler, LinkedIn, B2B dizinler — 75 ülkede')}</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {[
                   { Icon: Star, label: 'Google Yorumları' },
                   { Icon: MessageCircleWarning, label: 'Şikayet Avcısı' },
                   { Icon: Linkedin, label: 'LinkedIn' },
-                  { Icon: Globe2, label: '75 Ülke' },
                   { Icon: Radar, label: 'Otomatik Tarama' },
                 ].map(f => (
                   <span key={f.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: surf, border: '1px solid #f1f5f9', color: tx2, fontSize: 11, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>
@@ -453,11 +453,14 @@ export default function CompetitorPage() {
               </div>
             </div>
           </div>
-          <button onClick={scanAll} disabled={scanning === 'all' || !competitors.length}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: `1px solid ${accentEmerald}40`, cursor: scanning === 'all' || !competitors.length ? 'not-allowed' : 'pointer', background: '#ecfdf5', color: accentEmerald, fontSize: 13, fontWeight: 700, opacity: !competitors.length ? 0.4 : 1, flexShrink: 0, whiteSpace: 'nowrap' }}>
-            {scanning === 'all' ? <RefreshCw size={14} style={{ animation: 'rdrSpin 1s linear infinite' }} /> : <Target size={14} />}
-            Tümünü Tara
-          </button>
+          {/* Button row: full width below */}
+          <div style={{ marginTop: 14 }}>
+            <button onClick={scanAll} disabled={scanning === 'all' || !competitors.length}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: `1px solid ${accentEmerald}40`, cursor: scanning === 'all' || !competitors.length ? 'not-allowed' : 'pointer', background: '#ecfdf5', color: accentEmerald, fontSize: 13, fontWeight: 700, opacity: !competitors.length ? 0.4 : 1 }}>
+              {scanning === 'all' ? <RefreshCw size={14} style={{ animation: 'rdrSpin 1s linear infinite' }} /> : <Target size={14} />}
+              Tümünü Tara
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -482,23 +485,23 @@ export default function CompetitorPage() {
       )}
 
       {/* ── TABS ──────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 4, background: surf, padding: 4, borderRadius: 12, marginBottom: 22, border: '1px solid #f1f5f9', minWidth: 0 }}>
+      <div style={{ display: 'flex', overflowX: 'auto', gap: 4, background: surf, padding: 4, borderRadius: 12, marginBottom: 22, border: '1px solid #f1f5f9', scrollbarWidth: 'none' }}>
         {[
           { id: 'list',     label: `Rakip Listesi (${competitors.length})`, Icon: Target },
           { id: 'hijack',   label: t('competitor.hizli_tarama', 'Hızlı Tarama'), Icon: Zap },
-          { id: 'leads',    label: `Bulunan Leadler (${leads.length})`, Icon: Users },
-          { id: 'analyze',  label: 'SWOT Analizi', Icon: BarChart3 },
+          { id: 'leads',    label: `Leadler (${leads.length})`, Icon: Users },
+          { id: 'analyze',  label: 'SWOT', Icon: BarChart3 },
           { id: 'campaign', label: 'Kampanya', Icon: Megaphone },
         ].map(tb => (
-          <button key={tb.id} onClick={() => setTab(tb.id as any)} style={{ ...tabBtn(tab === tb.id), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-            <tb.Icon size={14} style={{ flexShrink: 0 }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{tb.label}</span>
+          <button key={tb.id} onClick={() => setTab(tb.id as any)} style={{ ...tabBtn(tab === tb.id), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap' }}>
+            <tb.Icon size={14} style={{ flexShrink: 0 }} /> {tb.label}
           </button>
         ))}
       </div>
 
       {/* ── TAB: LIST ─────────────────────────────────────────────────────── */}
       {tab === 'list' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 20 }}>
           <div style={{ ...card, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <Plus size={16} style={{ color: accentTeal }} />
@@ -506,7 +509,7 @@ export default function CompetitorPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('competitor.rakip_firma_adi', 'Rakip firma adı *')} style={inputStyle} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 10 }}>
                 <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder={t('competitor.sehir_bolge', 'Şehir / Bölge')} style={inputStyle} />
                 <input value={newSector} onChange={e => setNewSector(e.target.value)} placeholder={t('competitor.sektor', 'Sektör')} style={inputStyle} />
               </div>
@@ -597,7 +600,7 @@ export default function CompetitorPage() {
 
       {/* ── TAB: HIJACK ───────────────────────────────────────────────────── */}
       {tab === 'hijack' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 20 }}>
           <div style={{ ...card, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <Zap size={16} style={{ color: accentTeal }} />
@@ -606,7 +609,7 @@ export default function CompetitorPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <input value={hName} onChange={e => setHName(e.target.value)} placeholder={t('competitor.rakip_firma_adi', 'Rakip firma adı *')} style={inputStyle} />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 10 }}>
                 <input value={hCity} onChange={e => setHCity(e.target.value)} placeholder={t('competitor.sehir', 'Şehir *')} style={inputStyle} />
                 <input value={hSector} onChange={e => setHSector(e.target.value)} placeholder={t('competitor.sektor', 'Sektör')} style={inputStyle} />
               </div>
