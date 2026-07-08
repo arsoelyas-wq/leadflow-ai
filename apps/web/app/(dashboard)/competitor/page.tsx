@@ -667,18 +667,18 @@ export default function CompetitorPage() {
         return (
           <div>
             {/* Stats bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 10, marginBottom: 16 }}>
               {[
                 { label: 'Toplam Lead', value: leads.length, color: '#7c3aed', Icon: Users },
                 { label: 'Yüksek Kalite', value: highQuality, color: accentEmerald, Icon: Award },
-                { label: 'Ortalama Skor', value: `${avgScore}%`, color: '#2563eb', Icon: BarChart3 },
+                { label: 'Ort. Skor', value: `${avgScore}%`, color: '#2563eb', Icon: BarChart3 },
                 { label: 'Seçili', value: selectedLeads.size, color: '#b45309', Icon: CheckCircle },
               ].map(({ label, value, color, Icon }) => (
                 <div key={label} style={{ ...card, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Icon size={14} style={{ color }} />
                   </div>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <p style={{ color: tx1, fontSize: 16, fontWeight: 800, margin: 0, lineHeight: 1 }}>{value}</p>
                     <p style={{ color: tx3, fontSize: 10, margin: 0 }}>{label}</p>
                   </div>
@@ -687,10 +687,11 @@ export default function CompetitorPage() {
             </div>
 
             {/* Filters & actions */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {/* Row 1: rakip dropdown (full width) */}
               <div style={{ position: 'relative' }}>
                 <select value={filterComp} onChange={e => setFilterComp(e.target.value)}
-                  style={{ ...inputStyle, minWidth: 200, appearance: 'none', paddingRight: 32 }}>
+                  style={{ ...inputStyle, width: '100%', appearance: 'none', paddingRight: 32 }}>
                   <option value="">Tüm rakipler ({leads.length})</option>
                   {Object.keys(groupedLeads).map(name => (
                     <option key={name} value={name}>{name} ({groupedLeads[name].length})</option>
@@ -698,44 +699,45 @@ export default function CompetitorPage() {
                 </select>
                 <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
               </div>
-              <div style={{ position: 'relative' }}>
-                <select value={leadSort} onChange={e => setLeadSort(e.target.value as any)}
-                  style={{ ...inputStyle, minWidth: 140, appearance: 'none', paddingRight: 32 }}>
-                  <option value="score">Skora göre</option>
-                  <option value="date">Tarihe göre</option>
-                  <option value="name">İsme göre</option>
-                </select>
-                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
+              {/* Row 2: sort + score + select-all (3 cols) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3" style={{ gap: 8 }}>
+                <div style={{ position: 'relative' }}>
+                  <select value={leadSort} onChange={e => setLeadSort(e.target.value as any)}
+                    style={{ ...inputStyle, width: '100%', appearance: 'none', paddingRight: 28 }}>
+                    <option value="score">Skora göre</option>
+                    <option value="date">Tarihe göre</option>
+                    <option value="name">İsme göre</option>
+                  </select>
+                  <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <select value={leadMinScore} onChange={e => setLeadMinScore(Number(e.target.value))}
+                    style={{ ...inputStyle, width: '100%', appearance: 'none', paddingRight: 28 }}>
+                    <option value={0}>Tüm skorlar</option>
+                    <option value={40}>40%+</option>
+                    <option value={60}>60%+ (iyi)</option>
+                    <option value={80}>80%+ (mük.)</option>
+                  </select>
+                  <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
+                </div>
+                <button onClick={selectAllLeads}
+                  className="sm:col-span-1 col-span-2"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: '1px solid #e2e8f0', background: selectedLeads.size === filtered.length && filtered.length > 0 ? '#ecfdf5' : '#ffffff', color: tx2, fontSize: 12, cursor: 'pointer' }}>
+                  <CheckCircle size={12} /> {selectedLeads.size === filtered.length && filtered.length > 0 ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+                </button>
               </div>
-              <div style={{ position: 'relative' }}>
-                <select value={leadMinScore} onChange={e => setLeadMinScore(Number(e.target.value))}
-                  style={{ ...inputStyle, minWidth: 130, appearance: 'none', paddingRight: 32 }}>
-                  <option value={0}>Tüm skorlar</option>
-                  <option value={40}>40%+</option>
-                  <option value={60}>60%+ (iyi)</option>
-                  <option value={80}>80%+ (mükemmel)</option>
-                </select>
-                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
-              </div>
-
-              <div style={{ flex: 1 }} />
-
-              <button onClick={selectAllLeads}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: '1px solid #e2e8f0', background: selectedLeads.size === filtered.length && filtered.length > 0 ? '#ecfdf5' : '#ffffff', color: tx2, fontSize: 12, cursor: 'pointer' }}>
-                <CheckCircle size={12} /> {selectedLeads.size === filtered.length && filtered.length > 0 ? 'Seçimi Kaldır' : 'Tümünü Seç'}
-              </button>
-
+              {/* Row 3: campaign actions (only when leads selected) */}
               {selectedLeads.size > 0 && (
-                <>
+                <div className="grid grid-cols-2" style={{ gap: 8 }}>
                   <button onClick={() => sendCampaign('voice')} disabled={campaignSending}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#0f766e,#0d9488)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 10px', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#0f766e,#0d9488)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     <PhoneCall size={12} /> Sesli Ara ({selectedLeads.size})
                   </button>
                   <button onClick={() => sendCampaign('whatsapp')}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#25d366', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 10px', borderRadius: 9, border: 'none', background: '#25d366', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     <MessageCircle size={12} /> WhatsApp ({selectedLeads.size})
                   </button>
-                </>
+                </div>
               )}
             </div>
 
@@ -752,7 +754,7 @@ export default function CompetitorPage() {
                       style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${selectedLeads.has(lead.id) ? accentTeal : '#d1d5db'}`, background: selectedLeads.has(lead.id) ? accentTeal : '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                       {selectedLeads.has(lead.id) && <CheckCircle size={12} style={{ color: '#fff' }} />}
                     </div>
-                    <div style={{ flex: 1 }}><LeadRow lead={lead} onAction={handleLeadAction} /></div>
+                    <div style={{ flex: 1, minWidth: 0 }}><LeadRow lead={lead} onAction={handleLeadAction} /></div>
                   </div>
                 ))}
               </div>
@@ -763,7 +765,7 @@ export default function CompetitorPage() {
 
       {/* ── TAB: SWOT ANALYZE ──────────────────────────────────────────── */}
       {tab === 'analyze' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 20 }}>
           <div style={{ ...card, padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
               <BarChart3 size={16} style={{ color: accentTeal }} />
@@ -811,8 +813,8 @@ export default function CompetitorPage() {
             ) : analysis ? (
               <>
                 {/* Header with threat level & score */}
-                <div style={{ ...card, padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ ...card, padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
                     <div style={{ width: 44, height: 44, borderRadius: 12, background: '#f0fdfa', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Target size={20} style={{ color: accentTeal }} />
                     </div>
@@ -849,7 +851,7 @@ export default function CompetitorPage() {
                 </div>
 
                 {/* Channel data cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+                <div className="grid grid-cols-3" style={{ gap: 10 }}>
                   {[
                     { label: 'Google Maps', rating: analysis.channels?.googleMaps?.rating, icon: Star },
                     { label: 'Trustpilot', rating: analysis.channels?.trustpilot?.rating, icon: Star },
@@ -872,7 +874,7 @@ export default function CompetitorPage() {
 
                 {/* SWOT Grid */}
                 {analysis.analysis?.swot && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
                     <SwotCard title="Güçlü Yönler" items={analysis.analysis.swot.strengths} color="#059669" Icon={Shield} bg="#ecfdf508" />
                     <SwotCard title="Zayıf Yönler" items={analysis.analysis.swot.weaknesses} color="#dc2626" Icon={TrendingDown} bg="#fef2f208" />
                     <SwotCard title="Fırsatlar" items={analysis.analysis.swot.opportunities} color="#2563eb" Icon={Lightbulb} bg="#eff6ff08" />
@@ -882,7 +884,7 @@ export default function CompetitorPage() {
 
                 {/* Backward compat: old weaknesses/opportunities format */}
                 {!analysis.analysis?.swot && analysis.analysis && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12 }}>
                     <SwotCard title="Zayıf Yönler" items={analysis.analysis.weaknesses} color="#dc2626" Icon={TrendingDown} bg="#fef2f208" />
                     <SwotCard title="Fırsatlar" items={analysis.analysis.opportunities} color={accentEmerald} Icon={TrendingUp} bg="#ecfdf508" />
                   </div>
@@ -899,7 +901,7 @@ export default function CompetitorPage() {
                 )}
 
                 {/* Message Templates */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 12 }}>
                   {analysis.analysis?.suggestedWhatsApp && (
                     <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: 14 }}>
                       <p style={{ color: '#25d366', fontSize: 11, fontWeight: 700, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -958,7 +960,7 @@ export default function CompetitorPage() {
         const phoneLeads = leads.filter(l => l.phone)
         const highScoreLeads = phoneLeads.filter(l => (l.score || 0) >= 60)
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 20 }}>
             {/* Campaign Creator */}
             <div style={{ ...card, padding: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
