@@ -1,6 +1,7 @@
 ﻿'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { FileText, Search, RefreshCw, Globe, CheckCircle, Clock, Star, ExternalLink, Bell, Trash2, X, Play, ChevronDown, BarChart2, AlertTriangle, TrendingUp, Copy, Download, Zap, Calendar, XCircle, ClipboardCheck, PenLine, FileCheck, Wallet, ShieldAlert, Sparkles, Users } from 'lucide-react'
 
@@ -288,8 +289,8 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
   )
 }
 
-// ── TENDER DETAIL PANEL ────────────────────────────────────────────────────────
-function TenderDetail({ tender, onUpdate, onClose }: { tender: any; onUpdate: (id: string, status: string) => void; onClose: () => void }) {
+// ── TENDER DETAIL PANEL (moved to ./[id]/page.tsx) ───────────────────────────
+function _TenderDetailUnused({ tender, onUpdate, onClose }: { tender: any; onUpdate: (id: string, status: string) => void; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'info'|'requirements'|'proposal'|'coach'>('info')
   const [generating, setGenerating] = useState(false)
   const [proposal, setProposal] = useState<string | null>(tender.proposal_draft || null)
@@ -641,13 +642,13 @@ export default function TendersPage() {
     }
     return (TND[lang] || {})[key] || fallback
   }
+  const router = useRouter()
   const [tenders, setTenders] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [prefs, setPrefs] = useState<any[]>([])
   const [alerts, setAlerts] = useState<any[]>([])
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedTender, setSelectedTender] = useState<any>(null)
   const [showScan, setShowScan] = useState(false)
   const [activeScanId, setActiveScanId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'tenders'|'alerts'|'analytics'|'prefs'>('tenders')
@@ -685,7 +686,6 @@ export default function TendersPage() {
     try {
       await api.patch(`/api/tenders/${id}`, { status })
       setTenders(p => p.map(t => t.id === id ? { ...t, status } : t))
-      if (selectedTender?.id === id) setSelectedTender((p: any) => ({ ...p, status }))
     } catch (e: any) { showMsg('error', e.message) }
   }
 
@@ -761,8 +761,8 @@ export default function TendersPage() {
       {/* TENDERS TAB */}
       {activeTab === 'tenders' && (
         <div style={{ display:'flex', gap:0, flex:1, minHeight:0 }}>
-          {/* Left: tender list */}
-          <div style={{ flex: selectedTender ? '0 0 420px' : '1', display:'flex', flexDirection:'column', gap:0, overflowY:'auto', paddingRight: selectedTender ? 16 : 0 }}>
+          {/* Tender list */}
+          <div style={{ flex: 1, display:'flex', flexDirection:'column', gap:0, overflowY:'auto' }}>
             {/* Filters */}
             <div style={{ display:'flex', gap:8, marginBottom:14, flexShrink:0, flexWrap:'wrap' }}>
               <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}
@@ -804,10 +804,9 @@ export default function TendersPage() {
                 {tenders.map(tender => {
                   const sc = tender.ai_score || 60
                   const sm = STATUS_META[tender.status] || STATUS_META.active
-                  const isSelected = selectedTender?.id === tender.id
                   return (
-                    <div key={tender.id} onClick={() => setSelectedTender(isSelected ? null : tender)}
-                      style={{ ...card, padding:'14px 16px', cursor:'pointer', border:`1px solid ${isSelected ? 'rgba(139,92,246,0.4)' : '#e2e8f0'}`, background: isSelected ? 'rgba(139,92,246,0.06)' : '#ffffff', display:'flex', alignItems:'flex-start', gap:12, transition:'all 0.15s' }}>
+                    <div key={tender.id} onClick={() => router.push('/tenders/' + tender.id)}
+                      style={{ ...card, padding:'14px 16px', cursor:'pointer', border:'1px solid #e2e8f0', background:'#ffffff', display:'flex', alignItems:'flex-start', gap:12, transition:'all 0.15s' }}>
                       {/* Score circle */}
                       <div style={{ width:44, height:44, borderRadius:11, background:scoreColors.bg(sc), border:`1px solid ${scoreColors.border(sc)}`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                         <span style={{ color:scoreColor(sc), fontSize:14, fontWeight:900, lineHeight:1 }}>{sc}</span>
@@ -830,12 +829,6 @@ export default function TendersPage() {
             )}
           </div>
 
-          {/* Right: detail panel */}
-          {selectedTender && (
-            <div style={{ flex:1, ...card, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-              <TenderDetail tender={selectedTender} onUpdate={updateStatus} onClose={() => setSelectedTender(null)} />
-            </div>
-          )}
         </div>
       )}
 
@@ -848,7 +841,7 @@ export default function TendersPage() {
               <p style={{ color:'#047857', fontSize:14, margin:0 }}>{t('tenders.vadesi_yaklasan_ihale_yok', 'Vadesi yaklaşan ihale yok — tüm ihaleler güvende')}</p>
             </div>
           ) : alerts.map((al: any) => (
-            <div key={al.id} onClick={() => { setSelectedTender(al); setActiveTab('tenders') }}
+            <div key={al.id} onClick={() => router.push('/tenders/' + al.id)}
               style={{ ...card, padding:'16px 20px', cursor:'pointer', display:'flex', alignItems:'center', gap:14, border:'1px solid rgba(239,68,68,0.2)' }}>
               <div style={{ width:42, height:42, borderRadius:10, background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 <Clock size={18} color="#dc2626" />
@@ -866,7 +859,7 @@ export default function TendersPage() {
       {/* ANALYTICS TAB */}
       {activeTab === 'analytics' && (
         <div style={{ display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap:14 }}>
             {[
               { l:t('tenders.total_applied','Toplam Başvuru'), v:analytics?.totalApplied||0, c:'#0f766e' },
               { l:'Kazanılan', v:analytics?.wonCount||0, c:'#059669' },
