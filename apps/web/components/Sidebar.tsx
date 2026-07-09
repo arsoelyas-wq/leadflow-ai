@@ -19,14 +19,8 @@ import {
   Swords, Eye, Tag, LineChart, Languages, PieChart,
   Banknote, Award, FileSpreadsheet,
   ClipboardList, GraduationCap, Cog, Webhook, Code,
-  CreditCard, Shield, Box, X, Command, Mic, QrCode,
+  CreditCard, Shield, Box, X, Command, Mic,
 } from 'lucide-react'
-
-interface NavSubItem {
-  href: string
-  label: string
-  icon: any
-}
 
 interface NavItem {
   href: string
@@ -34,7 +28,6 @@ interface NavItem {
   icon: any
   plan?: 'growth' | 'pro' | 'enterprise'
   badge?: string
-  children?: NavSubItem[]
 }
 
 interface NavGroup {
@@ -73,12 +66,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/proposals', label: 'nav.proposals', icon: FileText },
       { href: '/products',  label: 'nav.products',  icon: Package,  badge: 'AI' },
-      { href: '/digital-tools', label: 'nav.digital_tools', icon: Box, badge: 'AI', children: [
-        { href: '/digital-tools?tab=ar',         label: 'AR Deneyimi',   icon: Box },
-        { href: '/digital-tools?tab=microsites', label: 'Mikrositeler',  icon: FileText },
-        { href: '/digital-tools?tab=qr',         label: 'QR Kodlar',     icon: QrCode },
-        { href: '/digital-tools?tab=markets',    label: 'Pazar Sayfaları', icon: Globe2 },
-      ]},
+      { href: '/digital-tools', label: 'nav.digital_tools', icon: Box, badge: 'AI' },
       { href: '/agent',     label: 'nav.agent',     icon: Bot },
     ],
   },
@@ -154,7 +142,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
   const isMobile = useIsMobile()
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
-  const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({})
   const [ctaDismissed, setCtaDismissed] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -202,10 +189,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
       })
       return next
     })
-    // Auto-open digital-tools submenu when on that page
-    if (pathname === '/digital-tools') {
-      setOpenSubMenus(prev => ({ ...prev, '/digital-tools': true }))
-    }
   }, [pathname])
 
   // Rota değişince mobilede sidebar'ı kapat — sadece pathname değişince çalış
@@ -519,45 +502,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
 
               {isOpen && (
                 <div style={{ marginTop: 1 }}>
-                  {group.items.map((item) => {
-                    const { href, label, icon: Icon, plan, badge, children } = item
-
-                    if (children) {
-                      const isSubOpen = openSubMenus[href] || pathname === href
-                      return (
-                        <div key={href}>
-                          <button onClick={() => setOpenSubMenus(prev => ({ ...prev, [href]: !prev[href] }))}
-                            style={{ ...itemStyle(pathname === href, '#2563eb'), cursor: 'pointer', border: 'none', width: '100%', textAlign: 'left' }}>
-                            <Icon size={13} style={{ flexShrink: 0 }} />
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {t(label, label)}
-                            </span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                              {badge && (
-                                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#eff6ff', color: '#3b82f6' }}>
-                                  {badge}
-                                </span>
-                              )}
-                              <ChevronDown size={10} style={{ transform: isSubOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
-                            </div>
-                          </button>
-                          {isSubOpen && (
-                            <div style={{ paddingLeft: 10, display: 'flex', flexDirection: 'column', gap: 1, marginTop: 1 }}>
-                              {children.map(child => (
-                                <Link key={child.href} href={child.href}
-                                  style={{ ...itemStyle(false, '#2563eb'), padding: '5px 8px', fontSize: 11 }}>
-                                  <child.icon size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {child.label}
-                                  </span>
-                                </Link>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    }
-
+                  {group.items.map(({ href, label, icon: Icon, plan, badge }) => {
                     const active = pathname === href
                     const locked = plan && (
                       (plan === 'enterprise' && !['enterprise'].includes(user?.planType ?? '')) ||
