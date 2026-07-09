@@ -126,12 +126,16 @@ export default function ReferralPage() {
     <div style={{ padding:0 }}>
       <div style={{ position:'relative', overflow:'hidden', background:'linear-gradient(135deg,#ffffff,#fffbeb 65%,#ffffff)', borderRadius:20, padding:'32px 28px', marginBottom:24, border:'1px solid #fde68a' }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(217,119,6,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(217,119,6,0.02) 1px,transparent 1px)', backgroundSize:'36px 36px', zIndex:0 }} />
-        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:24 }}>
-          <NetworkWeb size={95} expanding={running} />
-          <div style={{ flex:1 }}>
-            <h1 style={{ color:'#0f172a', fontSize:26, fontWeight:800, margin:'0 0 6px' }}>Referral Loop</h1>
-            <p style={{ color:'#64748b', fontSize:14, margin:'0 0 14px' }}>{t('referral.kazanilan_musterilerden_o', 'Kazanılan müşterilerden otomatik referans kampanyası')}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:12 }}>
+        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8, flexWrap:'wrap' }}>
+              <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#78350f,#d97706)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(217,119,6,0.3)' }}>
+                <Users size={20} style={{ color:'#ffffff' }} />
+              </div>
+              <h1 style={{ color:'#0f172a', fontSize:22, fontWeight:800, margin:0 }}>Referral Loop</h1>
+            </div>
+            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 12px' }}>{t('referral.kazanilan_musterilerden_o', 'Kazanılan müşterilerden otomatik referans kampanyası')}</p>
+            <div className="grid grid-cols-3" style={{ gap:12, maxWidth:280 }}>
               {[{label: t('Gönderilen','Gönderilen'),value:stats?.sent||0,color:accentTeal},{label:'Referans',value:stats?.referralsReceived||0,color:'#d97706'},{label: t('Kazanılan','Kazanılan'),value:stats?.referralsWon||0,color:accentEmerald}].map(m => (
                 <div key={m.label} style={{ textAlign:'center' }}>
                   <p style={{ color:m.color, fontSize:20, fontWeight:800, margin:0 }}>{m.value}</p>

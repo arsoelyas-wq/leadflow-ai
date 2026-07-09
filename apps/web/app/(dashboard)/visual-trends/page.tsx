@@ -391,58 +391,56 @@ export default function VisualTrendPage() {
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(139,92,246,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(236,72,153,0.02) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div style={{ position: 'absolute', top: -60, right: -20, width: 300, height: 300, background: 'radial-gradient(circle,rgba(139,92,246,0.05) 0%,rgba(236,72,153,0.03) 50%,transparent 70%)', zIndex: 0 }} />
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 28 }}>
-          <ChromaScope size={100} scanning={loading} colors={report?.dominantColors?.slice(0,6)} />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <h1 style={{ color: '#0f172a', fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>Visual Trend Catcher</h1>
-              <span style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#7c3aed,#ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}>
+              <Zap size={20} style={{ color: '#ffffff' }} />
             </div>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 16px' }}>{t('visual_trends.pinterest_instagramdan_tr', 'Pinterest & Instagram\'dan trend sinyalleri yakala — AI ile kampanya fikirleri üret')}</p>
-
-            {/* Search bar */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input value={keyword} onChange={e => setKeyword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !loading && analyze()}
-                  placeholder={t('visual_trends.trend_arama_kelimesi_orn', 'Trend arama kelimesi (örn: duvar panel, dekorasyon...)')}
-                  maxLength={100}
-                  style={{ width: '100%', background: '#ffffff', border: `1px solid ${keyword ? '#c4b5fd' : '#e2e8f0'}`, borderRadius: 12, padding: '12px 16px 12px 44px', color: '#0f172a', fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
-                <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+            <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Visual Trend Catcher</h1>
+            <span style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
+            {report && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                <TrendGauge score={report.trendScore || 0} momentum={report.trendMomentum} />
+                <span style={{ color: '#475569', fontSize: 11 }}>Trend Skoru</span>
               </div>
-              <div style={{ position: 'relative', minWidth: 160 }}>
-                <select value={sector} onChange={e => setSector(e.target.value)}
-                  style={{ width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 32px 12px 14px', color: sector ? '#0f172a' : '#94a3b8', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer' }}>
-                  <option value="">{t('visual_trends.sektor_opsiyonel', 'Sektör (opsiyonel)')}</option>
-                  {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', fontSize: 12 }}>▾</span>
-              </div>
-              <button onClick={analyze} disabled={loading || !keyword}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, border: 'none', cursor: loading || !keyword ? 'not-allowed' : 'pointer', background: keyword && !loading ? 'linear-gradient(135deg,#5b21b6,#7c3aed,#ec4899)' : '#f1f5f9', color: keyword && !loading ? '#fff' : '#94a3b8', fontSize: 14, fontWeight: 700, opacity: !keyword ? 0.4 : 1, boxShadow: keyword && !loading ? '0 6px 24px rgba(124,58,237,0.4)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {loading ? <RefreshCw size={16} style={{ animation: 'vt-spin 1s linear infinite' }} /> : <Zap size={16} />}
-                {loading ? 'Taranıyor...' : 'Trend Analiz Et'}
-              </button>
-            </div>
+            )}
+          </div>
+          <p style={{ color: '#475569', fontSize: 13, margin: '0 0 14px' }}>{t('visual_trends.pinterest_instagramdan_tr', 'Pinterest & Instagram\'dan trend sinyalleri yakala — AI ile kampanya fikirleri üret')}</p>
 
-            {/* Quick keywords */}
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-              {QUICK_KEYWORDS.map(kw => (
-                <button key={kw} onClick={() => setKeyword(kw)}
-                  style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid #ddd6fe', background: keyword === kw ? '#f5f3ff' : '#f8fafc', color: keyword === kw ? '#7c3aed' : '#475569', fontSize: 11, cursor: 'pointer', transition: 'all 0.15s' }}>
-                  {kw}
-                </button>
-              ))}
+          {/* Search bar */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 180, position: 'relative' }}>
+              <input value={keyword} onChange={e => setKeyword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !loading && analyze()}
+                placeholder={t('visual_trends.trend_arama_kelimesi_orn', 'Trend arama kelimesi (örn: duvar panel, dekorasyon...)')}
+                maxLength={100}
+                style={{ width: '100%', background: '#ffffff', border: `1px solid ${keyword ? '#c4b5fd' : '#e2e8f0'}`, borderRadius: 12, padding: '12px 16px 12px 44px', color: '#0f172a', fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
+              <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
             </div>
+            <div style={{ position: 'relative', minWidth: 140 }}>
+              <select value={sector} onChange={e => setSector(e.target.value)}
+                style={{ width: '100%', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 32px 12px 14px', color: sector ? '#0f172a' : '#94a3b8', fontSize: 13, outline: 'none', appearance: 'none', cursor: 'pointer' }}>
+                <option value="">{t('visual_trends.sektor_opsiyonel', 'Sektör (opsiyonel)')}</option>
+                {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', fontSize: 12 }}>▾</span>
+            </div>
+            <button onClick={analyze} disabled={loading || !keyword}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 22px', borderRadius: 12, border: 'none', cursor: loading || !keyword ? 'not-allowed' : 'pointer', background: keyword && !loading ? 'linear-gradient(135deg,#5b21b6,#7c3aed,#ec4899)' : '#f1f5f9', color: keyword && !loading ? '#fff' : '#94a3b8', fontSize: 14, fontWeight: 700, opacity: !keyword ? 0.4 : 1, boxShadow: keyword && !loading ? '0 6px 24px rgba(124,58,237,0.4)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {loading ? <RefreshCw size={16} style={{ animation: 'vt-spin 1s linear infinite' }} /> : <Zap size={16} />}
+              {loading ? 'Taranıyor...' : 'Trend Analiz Et'}
+            </button>
           </div>
 
-          {/* Trend score (when result available) */}
-          {report && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <TrendGauge score={report.trendScore || 0} momentum={report.trendMomentum} />
-              <span style={{ color: '#475569', fontSize: 11, textAlign: 'center' }}>Trend<br/>Skoru</span>
-            </div>
-          )}
+          {/* Quick keywords */}
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            {QUICK_KEYWORDS.map(kw => (
+              <button key={kw} onClick={() => setKeyword(kw)}
+                style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid #ddd6fe', background: keyword === kw ? '#f5f3ff' : '#f8fafc', color: keyword === kw ? '#7c3aed' : '#475569', fontSize: 11, cursor: 'pointer', transition: 'all 0.15s' }}>
+                {kw}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

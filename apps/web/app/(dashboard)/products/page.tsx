@@ -271,19 +271,18 @@ export default function ProductsPage() {
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#eef2ff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #e0e7ff' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(99,102,241,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.04) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
-        <div style={{ position: 'absolute', top: -60, right: -40, width: 240, height: 240, background: 'radial-gradient(circle,rgba(99,102,241,0.08) 0%,transparent 70%)', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-            <QuantumOrb size={56} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: tx1, fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('products.urun_katalogu', 'Ürün Kataloğu')}</h1>
-                <span style={{ background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(79,70,229,0.3)' }}>
+                <Package size={20} style={{ color: '#ffffff' }} />
               </div>
-              <p style={{ color: tx2, fontSize: 14, margin: 0, maxWidth: 540 }}>{t('products.urunlerinizi_ekleyin_ai_t', 'Ürünlerinizi ekleyin — AI tüm kampanya, WhatsApp ve çağrılarda bunları öğrenip müşterilere özel teklifler sunar')}</p>
+              <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('products.urun_katalogu', 'Ürün Kataloğu')}</h1>
+              <span style={{ background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
             </div>
+            <p style={{ color: tx2, fontSize: 13, margin: 0 }}>{t('products.urunlerinizi_ekleyin_ai_t', 'Ürünlerinizi ekleyin — AI tüm kampanya, WhatsApp ve çağrılarda bunları öğrenip müşterilere özel teklifler sunar')}</p>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
             <a href={`${API_URL}/api/products/excel-template`} download
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: '1px solid rgba(5,150,105,0.25)', cursor: 'pointer', background: 'rgba(5,150,105,0.07)', color: accentEmerald, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', textDecoration: 'none' }}>
               <Upload size={15} style={{ transform: 'rotate(180deg)' }} /> Şablon İndir

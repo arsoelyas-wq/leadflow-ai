@@ -403,28 +403,23 @@ export default function ShadowPage() {
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #ede9fe' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(124,58,237,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.025) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
-        <div style={{ position: 'absolute', top: -50, right: -30, width: 280, height: 280, background: 'radial-gradient(circle,rgba(124,58,237,0.06) 0%,transparent 70%)', zIndex: 0 }} />
-        <div style={{ position: 'absolute', top: 22, right: 200, zIndex: 1, opacity: 0.5 }}><FloatOrb size={16} delay="0s" color="#7c3aed" /></div>
-        <div style={{ position: 'absolute', top: 65, right: 260, zIndex: 1, opacity: 0.4 }}><FloatOrb size={10} delay="1.2s" color="#a78bfa" /></div>
-        <div style={{ position: 'absolute', bottom: 28, right: 215, zIndex: 1, opacity: 0.4 }}><FloatOrb size={12} delay="2s" color="#4f46e5" /></div>
-
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <ShadowOrb size={100} scanning={scanning !== null} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Shadow Competitor Monitoring</h1>
-                <span style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>PRO</span>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}>
+                <Eye size={20} style={{ color: '#ffffff' }} />
               </div>
-              <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('shadow.rakiplerinizi_surekli_izl', 'Rakiplerinizi sürekli izleyin — fiyat, ürün, yorum ve strateji değişikliklerini anında fark edin')}</p>
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                {['🎯 Tehdit Skoru','💰 Fiyat Takibi','📊 Trend Grafik','⚡ WhatsApp Alarm','🤖 AI Strateji','🌍 75 Ülke'].map(f => (
-                  <span key={f} style={{ background: '#f5f3ff', border: '1px solid #ede9fe', color: '#7c3aed', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
-                ))}
-              </div>
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Shadow Competitor Monitoring</h1>
+              <span style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>PRO</span>
+            </div>
+            <p style={{ color: '#475569', fontSize: 13, margin: '0 0 12px' }}>{t('shadow.rakiplerinizi_surekli_izl', 'Rakiplerinizi sürekli izleyin — fiyat, ürün, yorum ve strateji değişikliklerini anında fark edin')}</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['🎯 Tehdit Skoru','💰 Fiyat Takibi','📊 Trend Grafik','⚡ WhatsApp Alarm','🤖 AI Strateji','🌍 75 Ülke'].map(f => (
+                <span key={f} style={{ background: '#f5f3ff', border: '1px solid #ede9fe', color: '#7c3aed', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
+              ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
             <button onClick={() => setAddForm(!addForm)}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid #ddd6fe', cursor: 'pointer', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#ffffff', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(124,58,237,0.25)' }}>
               + Rakip Ekle

@@ -450,15 +450,17 @@ export default function CulturalPage() {
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.025) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div style={{ position: 'absolute', top: -50, right: -20, width: 280, height: 280, background: 'radial-gradient(circle,rgba(6,182,212,0.05) 0%,rgba(139,92,246,0.03) 50%,transparent 70%)', zIndex: 0 }} />
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 28 }}>
-          <CulturalGlobe size={100} activeCountries={allSelectedCountries} rotating={adapting || translating} />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 900, margin: 0, letterSpacing: -0.5 }}>{t('cultural.kulturel_uyum_ceviri', 'Kültürel Uyum & Çeviri')}</h1>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#0891b2,#0d9488)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(6,182,212,0.3)' }}>
+                <Globe size={20} style={{ color: '#ffffff' }} />
+              </div>
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('cultural.kulturel_uyum_ceviri', 'Kültürel Uyum & Çeviri')}</h1>
               <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>{t('cultural.75_ulke', '75 ÜLKE')}</span>
             </div>
-            <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px' }}>{t('cultural.50_dil_kulturel_uyum_glob', '50+ dil, kültürel uyum, global kampanya çevirisi — AI ile saniyeler içinde')}</p>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+            <p style={{ color: '#475569', fontSize: 13, margin: '0 0 12px' }}>{t('cultural.50_dil_kulturel_uyum_glob', '50+ dil, kültürel uyum, global kampanya çevirisi — AI ile saniyeler içinde')}</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {['🌍 75 Ülke', '🤖 AI Profil', '💬 Mesaj Uyarla', '📱 Kampanya Çevir', '⚡ Anında'].map(f => (
                 <span key={f} style={{ background: '#ecfeff', border: '1px solid #a5f3fc', color: '#0d9488', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
               ))}

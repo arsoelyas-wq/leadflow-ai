@@ -645,24 +645,24 @@ export default function HunterSettingsPage() {
           <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius: 20, padding: '28px 28px', marginBottom: 24, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.04) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
 
-            <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <HunterOrb size={100} scanning={running} />
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                    <h1 style={{ color: tx1, fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>7/24 Otonom Lead Avcısı</h1>
-                    <span style={{ background: active ? 'linear-gradient(135deg,#059669,#10b981)' : '#94a3b8', color: '#ffffff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700 }}>{active ? 'AKTIF' : 'PASIF'}</span>
+            <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#064e3b,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}>
+                    <Target size={20} style={{ color: '#ffffff' }} />
                   </div>
-                  <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px', maxWidth: 420 }}>AI destekli, 7 kaynaklı otonom lead bulma motoru. Google Maps, Instagram, Facebook, OSM, Yelp, Foursquare ve HERE'den sürekli lead arar.</p>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {['Google Maps', 'Instagram', 'Facebook', 'OSM', 'AI Expansion', 'Email Discovery'].map(f => (
-                      <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: surf, border: '1px solid #f1f5f9', color: tx2, fontSize: 10, padding: '3px 8px', borderRadius: 20 }}>{f}</span>
-                    ))}
-                  </div>
+                  <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>7/24 Otonom Lead Avcısı</h1>
+                  <span style={{ background: active ? 'linear-gradient(135deg,#059669,#10b981)' : '#94a3b8', color: '#ffffff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700 }}>{active ? 'AKTIF' : 'PASIF'}</span>
+                </div>
+                <p style={{ color: tx2, fontSize: 13, margin: '0 0 10px' }}>AI destekli, 7 kaynaklı otonom lead bulma motoru. Google Maps, Instagram, Facebook, OSM, Yelp, Foursquare ve HERE'den sürekli lead arar.</p>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {['Google Maps', 'Instagram', 'Facebook', 'OSM', 'AI Expansion', 'Email Discovery'].map(f => (
+                    <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: surf, border: '1px solid #f1f5f9', color: tx2, fontSize: 10, padding: '3px 8px', borderRadius: 20 }}>{f}</span>
+                  ))}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
                 <button onClick={runNow} disabled={running}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: 'none', cursor: running ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#b45309,#f59e0b)', color: '#ffffff', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(245,158,11,0.3)' }}>
                   {running ? <RefreshCw size={14} style={{ animation: 'hunterSpin 1s linear infinite' }} /> : <Zap size={14} />}

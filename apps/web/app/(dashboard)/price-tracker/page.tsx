@@ -464,28 +464,23 @@ export default function PriceTrackerPage() {
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fffbeb 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fde68a' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.025) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
-        <div style={{ position: 'absolute', top: -50, right: -20, width: 280, height: 280, background: 'radial-gradient(circle,rgba(16,185,129,0.05) 0%,transparent 70%)', zIndex: 0 }} />
-        <div style={{ position: 'absolute', top: 22, right: 210, zIndex: 1, opacity: 0.5 }}><FloatTicker size={14} delay="0s" color="#10b981" /></div>
-        <div style={{ position: 'absolute', top: 65, right: 270, zIndex: 1, opacity: 0.4 }}><FloatTicker size={10} delay="0.8s" color="#f59e0b" /></div>
-        <div style={{ position: 'absolute', bottom: 28, right: 225, zIndex: 1, opacity: 0.4 }}><FloatTicker size={12} delay="1.6s" color="#ef4444" /></div>
-
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <PriceSphere size={100} direction={sphereDir} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Rakip Fiyat Takibi</h1>
-                <span style={{ background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>7/24</span>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#065f46,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                <TrendingDown size={20} style={{ color: '#ffffff' }} />
               </div>
-              <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px', maxWidth: 500 }}>{t('price_tracker.rakiplerin_fiyatlarini_72', 'Rakiplerin fiyatlarını 7/24 izle — hedef fiyata düşünce WhatsApp\'a alarm al')}</p>
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                {['📉 Fiyat Düşüş Alarmı', '🎯 Hedef Fiyat', '📊 Trend Grafiği', '⚡ WhatsApp Bildirim', '🌍 Her Site'].map(f => (
-                  <span key={f} style={{ background: '#ecfdf5', border: '1px solid #d1fae5', color: '#059669', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
-                ))}
-              </div>
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Rakip Fiyat Takibi</h1>
+              <span style={{ background: 'linear-gradient(135deg,#065f46,#10b981)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>7/24</span>
+            </div>
+            <p style={{ color: '#475569', fontSize: 13, margin: '0 0 12px' }}>{t('price_tracker.rakiplerin_fiyatlarini_72', 'Rakiplerin fiyatlarını 7/24 izle — hedef fiyata düşünce WhatsApp\'a alarm al')}</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {['📉 Fiyat Düşüş Alarmı', '🎯 Hedef Fiyat', '📊 Trend Grafiği', '⚡ WhatsApp Bildirim', '🌍 Her Site'].map(f => (
+                <span key={f} style={{ background: '#ecfdf5', border: '1px solid #d1fae5', color: '#059669', fontSize: 11, padding: '3px 10px', borderRadius: 20 }}>{f}</span>
+              ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
             <button onClick={checkAll} disabled={checking === 'all' || !trackers.length}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid #a7f3d0', cursor: checking === 'all' || !trackers.length ? 'not-allowed' : 'pointer', background: '#ecfdf5', color: '#059669', fontSize: 13, fontWeight: 600, opacity: !trackers.length ? 0.4 : 1 }}>
               {checking === 'all' ? <RefreshCw size={13} style={{ animation: 'pt-spin 1s linear infinite' }} /> : <RefreshCw size={13} />}

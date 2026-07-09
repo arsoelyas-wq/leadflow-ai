@@ -240,15 +240,15 @@ export default function DecisionMakerPage() {
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f5f3ff 65%,#ffffff)', borderRadius: 20, padding: '28px', marginBottom: 24, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(124,58,237,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,0.03) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'linear-gradient(135deg,#7c3aed,#a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(124,58,237,0.3)', flexShrink: 0 }}>
-              <Crosshair size={28} style={{ color: '#ffffff' }} />
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#7c3aed,#a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(124,58,237,0.3)', flexShrink: 0 }}>
+                <Crosshair size={20} style={{ color: '#ffffff' }} />
+              </div>
+              <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0 }}>{L.title}</h1>
             </div>
-            <div>
-              <h1 style={{ color: tx1, fontSize: 24, fontWeight: 800, margin: '0 0 4px' }}>{L.title}</h1>
-              <p style={{ color: tx2, fontSize: 13, margin: 0, maxWidth: 420 }}>Lead'leriniz için karar vericileri otomatik bulun — isim, ünvan, email ve telefon bilgilerini keşfedin</p>
-            </div>
+            <p style={{ color: tx2, fontSize: 13, margin: 0 }}>Lead'leriniz için karar vericileri otomatik bulun — isim, ünvan, email ve telefon bilgilerini keşfedin</p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -278,7 +278,7 @@ export default function DecisionMakerPage() {
 
         {/* Stats */}
         {stats && (
-          <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 20 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 20 }}>
             {[
               { label: L.total_lead, value: stats.totalLeads, color: '#2563eb', Icon: Users },
               { label: L.with_contact, value: stats.withContact, color: '#059669', Icon: UserCheck },

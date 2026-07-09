@@ -360,11 +360,15 @@ export default function TeamPage() {
       {/* ── HERO ── */}
       <div style={{ background:'linear-gradient(135deg,#f5f3ff 0%,#eff6ff 100%)', border:`1px solid ${C.violetBd}`, borderRadius:20, padding:'24px 28px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(circle at 2px 2px, rgba(124,58,237,0.06) 1px, transparent 0)', backgroundSize:'28px 28px', zIndex:0 }} />
-        <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
-          <TeamOrb size={80} members={members} scanning={loading} />
-          <div style={{ flex:1, minWidth:200 }}>
-            <h1 style={{ color:C.text1, fontSize:22, fontWeight:800, margin:'0 0 4px' }}>{t('team.title','Ekip Yönetimi')}</h1>
-            <p style={{ color:C.text3, fontSize:12, margin:'0 0 18px' }}>Ekibi yönet · Otomatik lead dağıt · AI koçluk · Performans takibi</p>
+        <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8, flexWrap:'wrap' }}>
+              <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#4c1d95,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(124,58,237,0.3)' }}>
+                <Users size={20} style={{ color:'#ffffff' }} />
+              </div>
+              <h1 style={{ color:C.text1, fontSize:22, fontWeight:800, margin:0 }}>{t('team.title','Ekip Yönetimi')}</h1>
+            </div>
+            <p style={{ color:C.text3, fontSize:12, margin:'0 0 14px' }}>Ekibi yönet · Otomatik lead dağıt · AI koçluk · Performans takibi</p>
             <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
               {[
                 { l:'Toplam Üye',   v:stats?.total||0,               c:C.text2,    bg:'#ffffff',  bd:C.border },
