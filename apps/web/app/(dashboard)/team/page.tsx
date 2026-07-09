@@ -360,7 +360,7 @@ export default function TeamPage() {
       {/* ── HERO ── */}
       <div style={{ background:'linear-gradient(135deg,#f5f3ff 0%,#eff6ff 100%)', border:`1px solid ${C.violetBd}`, borderRadius:20, padding:'24px 28px', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(circle at 2px 2px, rgba(124,58,237,0.06) 1px, transparent 0)', backgroundSize:'28px 28px', zIndex:0 }} />
-        <div style={{ position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap' }}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between" style={{ position:'relative', zIndex:1 }}>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8, flexWrap:'wrap' }}>
               <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#4c1d95,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(124,58,237,0.3)' }}>
@@ -384,7 +384,7 @@ export default function TeamPage() {
               ))}
             </div>
           </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:8, flexShrink:0 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             <button onClick={()=>setShowAdd(true)}
               style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#4c1d95,#7c3aed)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(124,58,237,0.3)', whiteSpace:'nowrap' }}>
               <Plus size={14} /> Üye Ekle

@@ -145,7 +145,7 @@ export default function ReferralPage() {
             </div>
           </div>
           <button onClick={runCampaign} disabled={running}
-            style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 22px', borderRadius:12, border:'none', cursor:running?'not-allowed':'pointer', background:'linear-gradient(135deg,#78350f,#d97706)', color:'#fff', fontSize:13, fontWeight:700, flexShrink:0 }}>
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 22px', borderRadius:12, border:'none', cursor:running?'not-allowed':'pointer', background:'linear-gradient(135deg,#78350f,#d97706)', color:'#fff', fontSize:13, fontWeight:700 }}>
             {running ? <RefreshCw size={15} style={{ animation:'rf-spin 1s linear infinite' }} /> : <Play size={15} />}
             {running ? `${runProgress}%` : 'Kampanya Başlat'}
           </button>

@@ -2,6 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api'
 import { MARKET_SLUGS } from '@/lib/market-pages'
 import {
@@ -495,9 +496,14 @@ type PageSummary = {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function DigitalToolsPage() {
   const { t } = useI18n()
+  const searchParams = useSearchParams()
 
-  // ── Top-level tab state
-  const [tab, setTab] = useState<'ar' | 'microsites' | 'qr' | 'markets'>('ar')
+  // ── Top-level tab state (URL param support: ?tab=ar|microsites|qr|markets)
+  const validTabs = ['ar', 'microsites', 'qr', 'markets'] as const
+  const urlTab = searchParams.get('tab') as typeof validTabs[number] | null
+  const [tab, setTab] = useState<'ar' | 'microsites' | 'qr' | 'markets'>(
+    urlTab && validTabs.includes(urlTab) ? urlTab : 'ar'
+  )
   const [arLoaded, setArLoaded] = useState(false)
   const [msLoaded, setMsLoaded] = useState(false)
   const [qrLoaded, setQrLoaded] = useState(false)
@@ -987,22 +993,18 @@ export default function DigitalToolsPage() {
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fdf2f8 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fce7f3' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(236,72,153,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(236,72,153,0.04) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div style={{ position: 'absolute', top: -60, left: -60, width: 200, height: 200, background: 'radial-gradient(circle,rgba(236,72,153,0.12) 0%,transparent 70%)', zIndex: 0 }} />
-        <div style={{ position: 'absolute', top: 20, right: 80, zIndex: 1, opacity: 0.6 }}><FloatCube size={18} delay="0s" color="#ec4899" /></div>
-        <div style={{ position: 'absolute', top: 50, right: 140, zIndex: 1, opacity: 0.5 }}><FloatCube size={12} delay="0.8s" color="#8b5cf6" /></div>
-        <div style={{ position: 'absolute', bottom: 20, right: 60, zIndex: 1, opacity: 0.5 }}><FloatCube size={16} delay="1.6s" color="#3b82f6" /></div>
-
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <Cube3D size={64} />
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <h1 style={{ color: tx1, fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('ar_experience.ar_urun_deneyimi', 'AR Ürün Deneyimi')}</h1>
-              <span style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>3D • AR</span>
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#be185d,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(190,24,93,0.3)' }}>
+              <Box size={20} style={{ color: '#ffffff' }} />
             </div>
-            <p style={{ color: tx2, fontSize: 14, margin: 0, maxWidth: 480 }}>{t('ar_experience.3d_modellerinizi_musterin', '3D modellerinizi müşterinin mekanında gösterin — artırılmış gerçeklik ile satışı kapatın')}</p>
+            <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('ar_experience.ar_urun_deneyimi', 'AR Ürün Deneyimi')}</h1>
+            <span style={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>3D • AR</span>
           </div>
+          <p style={{ color: tx2, fontSize: 13, margin: '0 0 16px' }}>{t('ar_experience.3d_modellerinizi_musterin', '3D modellerinizi müşterinin mekanında gösterin — artırılmış gerçeklik ile satışı kapatın')}</p>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 8 }}>
           {[
             { Icon: Package, title: t('3D Model Yükle','3D Model Yükle'), desc: '.glb / .usdz / AI ile', color: '#db2777' },
             { Icon: Globe, title: 'AR Link + QR', desc: t('Otomatik oluşur','Otomatik oluşur'), color: '#7c3aed' },
@@ -1028,7 +1030,7 @@ export default function DigitalToolsPage() {
 
       {/* ── STATS ─────────────────────────────────────────────────────────── */}
       {arStats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 16, marginBottom: 24 }}>
           {AR_STAT_CONFIG.map(({ label, key, color, glow, Icon }) => (
             <div key={key} style={{ ...card, border: `1px solid ${color}33`, padding: '20px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, left: '50%', transform: 'translateX(-50%)', width: 80, height: 80, background: `radial-gradient(circle,${glow} 0%,transparent 70%)` }} />
@@ -1363,28 +1365,24 @@ export default function DigitalToolsPage() {
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfeff 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #cffafe' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.04) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
         <div style={{ position: 'absolute', top: -60, right: -40, width: 220, height: 220, background: 'radial-gradient(circle,rgba(6,182,212,0.08) 0%,transparent 70%)', zIndex: 0 }} />
-        <div style={{ position: 'absolute', top: 20, right: 100, zIndex: 1, opacity: 0.6 }}><FloatOrb size={18} delay="0s" color="#06b6d4" /></div>
-        <div style={{ position: 'absolute', top: 50, right: 160, zIndex: 1, opacity: 0.5 }}><FloatOrb size={12} delay="1s" color="#8b5cf6" /></div>
-        <div style={{ position: 'absolute', bottom: 20, right: 70, zIndex: 1, opacity: 0.5 }}><FloatOrb size={14} delay="2s" color="#14b8a6" /></div>
-
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-            <QuantumOrb size={64} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: tx1, fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('microsites.kisisel_katalog_sayfalari', 'Kişisel Katalog Sayfaları')}</h1>
-                <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between" style={{ position: 'relative', zIndex: 2 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#0891b2,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(8,145,178,0.3)' }}>
+                <LayoutTemplate size={20} style={{ color: '#ffffff' }} />
               </div>
-              <p style={{ color: tx2, fontSize: 14, margin: 0, maxWidth: 520 }}>{t('microsites.her_musteri_icin_ai_ile_k', 'Her müşteri için AI ile kişisel katalog sayfası — WhatsApp\'tan link gönder, açtığında haber al')}</p>
+              <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('microsites.kisisel_katalog_sayfalari', 'Kişisel Katalog Sayfaları')}</h1>
+              <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>AI</span>
             </div>
+            <p style={{ color: tx2, fontSize: 13, margin: 0 }}>{t('microsites.her_musteri_icin_ai_ile_k', 'Her müşteri için AI ile kişisel katalog sayfası — WhatsApp\'tan link gönder, açtığında haber al')}</p>
           </div>
           <button onClick={() => setMsShowCreate(!msShowCreate)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 22px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 24px rgba(8,145,178,0.3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 22px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 6px 24px rgba(8,145,178,0.3)', whiteSpace: 'nowrap' }}>
             <Plus size={16} /> {t('Yeni Katalog','Yeni Katalog')}
           </button>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 20 }}>
           {[
             { Icon: Bot, title: t('AI İçerik','AI İçerik'), desc: t('Sektöre özel otomatik','Sektöre özel otomatik'), color: accentTeal },
             { Icon: Link2, title: t('Kişisel Link','Kişisel Link'), desc: t('Benzersiz slug oluşur','Benzersiz slug oluşur'), color: '#7c3aed' },
@@ -1410,7 +1408,7 @@ export default function DigitalToolsPage() {
 
       {/* ── STATS ─────────────────────────────────────────────────────────── */}
       {msStats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 16, marginBottom: 24 }}>
           {MS_STAT_CONFIG.map(({ label, key, color, glow, Icon }) => (
             <div key={key} style={{ ...card, border: `1px solid ${color}33`, padding: '20px 16px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, left: '50%', transform: 'translateX(-50%)', width: 80, height: 80, background: `radial-gradient(circle,${glow} 0%,transparent 70%)` }} />
@@ -1578,31 +1576,24 @@ export default function DigitalToolsPage() {
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(6,182,212,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(6,182,212,0.04) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
         <div style={{ position: 'absolute', top: -60, right: -20, width: 260, height: 260, background: 'radial-gradient(circle,rgba(6,182,212,0.07) 0%,transparent 70%)', zIndex: 0 }} />
 
-        {/* Floating pixels */}
-        <div style={{ position: 'absolute', top: 18, right: 220, zIndex: 1 }}><FloatPixel size={9} delay="0s" /></div>
-        <div style={{ position: 'absolute', top: 60, right: 170, zIndex: 1 }}><FloatPixel size={6} color="#8b5cf6" delay="1.2s" /></div>
-        <div style={{ position: 'absolute', bottom: 24, right: 230, zIndex: 1 }}><FloatPixel size={7} color="#10b981" delay="0.5s" /></div>
-
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <QRScanFrame size={100} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: tx1, fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('qr_codes.qr_kod_uretici', 'QR Kod Üretici')}</h1>
-                <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>PRO</span>
-              </div>
-              <p style={{ color: tx2, fontSize: 14, margin: '0 0 14px', maxWidth: 480 }}>{t('qr_codes.microsite_whatsapp_web_si', 'Microsite, WhatsApp, web sitesi, WiFi — anında QR oluştur, tarama sayısını takip et')}</p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {[{ Icon: Globe, l: 'Web' }, { Icon: MessageCircle, l: 'WhatsApp' }, { Icon: Phone, l: 'Telefon' }, { Icon: Wifi, l: 'WiFi' }, { Icon: Mail, l: 'E-Posta' }].map(({ Icon, l }) => (
-                  <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(13,148,136,0.06)', border: '1px solid #cffafe', color: tx2, fontSize: 11, padding: '3px 10px', borderRadius: 20 }}><Icon size={11} /> {l}</span>
-                ))}
-              </div>
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#0891b2,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(8,145,178,0.3)' }}>
+              <QrCode size={20} style={{ color: '#ffffff' }} />
             </div>
+            <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('qr_codes.qr_kod_uretici', 'QR Kod Üretici')}</h1>
+            <span style={{ background: 'linear-gradient(135deg,#0891b2,#7c3aed)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>PRO</span>
+          </div>
+          <p style={{ color: tx2, fontSize: 13, margin: '0 0 12px' }}>{t('qr_codes.microsite_whatsapp_web_si', 'Microsite, WhatsApp, web sitesi, WiFi — anında QR oluştur, tarama sayısını takip et')}</p>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[{ Icon: Globe, l: 'Web' }, { Icon: MessageCircle, l: 'WhatsApp' }, { Icon: Phone, l: 'Telefon' }, { Icon: Wifi, l: 'WiFi' }, { Icon: Mail, l: 'E-Posta' }].map(({ Icon, l }) => (
+              <span key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(13,148,136,0.06)', border: '1px solid #cffafe', color: tx2, fontSize: 11, padding: '3px 10px', borderRadius: 20 }}><Icon size={11} /> {l}</span>
+            ))}
           </div>
         </div>
 
         {/* Stats */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginTop: 24 }}>
+        <div className="grid grid-cols-2 sm:grid-cols-4" style={{ position: 'relative', zIndex: 2, gap: 12, marginTop: 20 }}>
           {QR_STAT_CONFIG.map(({ label, value, color, Icon }) => (
             <div key={label} style={{ background: surf, borderRadius: 12, padding: '14px 12px', border: `1px solid ${color}22`, textAlign: 'center' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}><Icon size={20} style={{ color }} /></div>
@@ -1752,14 +1743,18 @@ export default function DigitalToolsPage() {
           PAZAR SAYFALARI TAB
       ══════════════════════════════════════════════════════════════════ */}
       {tab === 'markets' && (<>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(13,148,136,0.1)', border: '1px solid rgba(13,148,136,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Globe2 size={20} style={{ color: accentTeal }} />
-        </div>
-        <div>
-          <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0 }}>{t('digital_tools.pazar_sayfalari', 'Pazar Sayfaları')}</h1>
-          <p style={{ color: tx2, fontSize: 13, margin: '4px 0 0' }}>{t('digital_tools.pazar_sayfalari_aciklama', 'Her ülke için ayrı pazarlama sayfası oluşturun. Her pazar farklı içerik, fiyat ve videoyla çalışır.')}</p>
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#f0fdf4 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #d1fae5' }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(13,148,136,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(13,148,136,0.03) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#0d9488,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(13,148,136,0.3)' }}>
+              <Globe2 size={20} style={{ color: '#ffffff' }} />
+            </div>
+            <h1 style={{ color: tx1, fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('digital_tools.pazar_sayfalari', 'Pazar Sayfaları')}</h1>
+            <span style={{ background: 'linear-gradient(135deg,#0d9488,#059669)', color: '#fff', fontSize: 10, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1 }}>GLOBAL</span>
+          </div>
+          <p style={{ color: tx2, fontSize: 13, margin: 0 }}>{t('digital_tools.pazar_sayfalari_aciklama', 'Her ülke için ayrı pazarlama sayfası oluşturun. Her pazar farklı içerik, fiyat ve videoyla çalışır.')}</p>
         </div>
       </div>
 

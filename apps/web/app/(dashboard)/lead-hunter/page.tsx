@@ -645,7 +645,7 @@ export default function HunterSettingsPage() {
           <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius: 20, padding: '28px 28px', marginBottom: 24, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.04) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
 
-            <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between" style={{ position: 'relative', zIndex: 2 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#064e3b,#059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}>
@@ -662,7 +662,7 @@ export default function HunterSettingsPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button onClick={runNow} disabled={running}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, border: 'none', cursor: running ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#b45309,#f59e0b)', color: '#ffffff', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 14px rgba(245,158,11,0.3)' }}>
                   {running ? <RefreshCw size={14} style={{ animation: 'hunterSpin 1s linear infinite' }} /> : <Zap size={14} />}

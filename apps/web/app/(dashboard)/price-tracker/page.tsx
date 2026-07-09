@@ -464,7 +464,7 @@ export default function PriceTrackerPage() {
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fffbeb 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fde68a' }}>
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.025) 1px,transparent 1px)', backgroundSize: '36px 36px' }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between" style={{ position: 'relative', zIndex: 2 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#065f46,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
@@ -480,7 +480,7 @@ export default function PriceTrackerPage() {
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button onClick={checkAll} disabled={checking === 'all' || !trackers.length}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 12, border: '1px solid #a7f3d0', cursor: checking === 'all' || !trackers.length ? 'not-allowed' : 'pointer', background: '#ecfdf5', color: '#059669', fontSize: 13, fontWeight: 600, opacity: !trackers.length ? 0.4 : 1 }}>
               {checking === 'all' ? <RefreshCw size={13} style={{ animation: 'pt-spin 1s linear infinite' }} /> : <RefreshCw size={13} />}
