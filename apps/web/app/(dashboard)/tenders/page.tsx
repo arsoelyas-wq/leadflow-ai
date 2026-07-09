@@ -805,7 +805,7 @@ export default function TendersPage() {
                   const sc = tender.ai_score || 60
                   const sm = STATUS_META[tender.status] || STATUS_META.active
                   return (
-                    <div key={tender.id} onClick={() => router.push('/tenders/' + tender.id)}
+                    <div key={tender.id} onClick={() => { try { sessionStorage.setItem('tender_cache', JSON.stringify(tender)) } catch {} router.push('/tenders/' + tender.id) }}
                       style={{ ...card, padding:'14px 16px', cursor:'pointer', border:'1px solid #e2e8f0', background:'#ffffff', display:'flex', alignItems:'flex-start', gap:12, transition:'all 0.15s' }}>
                       {/* Score circle */}
                       <div style={{ width:44, height:44, borderRadius:11, background:scoreColors.bg(sc), border:`1px solid ${scoreColors.border(sc)}`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -841,7 +841,7 @@ export default function TendersPage() {
               <p style={{ color:'#047857', fontSize:14, margin:0 }}>{t('tenders.vadesi_yaklasan_ihale_yok', 'Vadesi yaklaşan ihale yok — tüm ihaleler güvende')}</p>
             </div>
           ) : alerts.map((al: any) => (
-            <div key={al.id} onClick={() => router.push('/tenders/' + al.id)}
+            <div key={al.id} onClick={() => { try { sessionStorage.setItem('tender_cache', JSON.stringify(al)) } catch {} router.push('/tenders/' + al.id) }}
               style={{ ...card, padding:'16px 20px', cursor:'pointer', display:'flex', alignItems:'center', gap:14, border:'1px solid rgba(239,68,68,0.2)' }}>
               <div style={{ width:42, height:42, borderRadius:10, background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 <Clock size={18} color="#dc2626" />

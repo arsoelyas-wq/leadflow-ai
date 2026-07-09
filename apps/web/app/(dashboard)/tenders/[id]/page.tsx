@@ -49,11 +49,26 @@ export default function TenderDetailPage() {
 
   useEffect(() => {
     if (!id) return
+    // Use cached tender data from list page for instant render
+    try {
+      const cached = sessionStorage.getItem('tender_cache')
+      if (cached) {
+        const t = JSON.parse(cached)
+        if (t.id === id || t.id === String(id)) {
+          setTender(t)
+          setProposal(t.proposal_draft || null)
+          setLoading(false)
+          sessionStorage.removeItem('tender_cache')
+          return
+        }
+      }
+    } catch {}
+    // Fall back to API fetch
     const fetchTender = async () => {
       try {
         const data: any = await api.get('/api/tenders/' + id)
-        setTender(data.tender)
-        setProposal(data.tender?.proposal_draft || null)
+        setTender(data.tender || data)
+        setProposal((data.tender || data)?.proposal_draft || null)
       } catch {}
       setLoading(false)
     }
