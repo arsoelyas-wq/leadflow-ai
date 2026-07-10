@@ -121,20 +121,22 @@ export default function WhitelabelPage() {
   return (
     <div style={{ padding: 0 }}>
       {/* Hero — compact */}
-      <div style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: '#f5f3ff', border: '1px solid #e9d5ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🏢</div>
-          <div>
-            <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>White-Label / Bayi</h1>
-            <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Özel marka ile bayiler oluşturun</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: '#f5f3ff', border: '1px solid #e9d5ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🏢</div>
+            <div>
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>White-Label / Bayi</h1>
+              <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Özel marka ile bayiler oluşturun</p>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 16, marginLeft: 16 }}>
+          <div style={{ display: 'flex', gap: 16 }}>
             {[{l:'Bayi',v:summary?.totalBrands||0,c:'#8b5cf6'},{l:'Aktif',v:summary?.activeBrands||0,c:'#10b981'},{l:'Gelir',v:`₺${(summary?.estimatedMonthlyRevenue||0).toLocaleString()}`,c:'#f59e0b'}].map(m => (
               <div key={m.l} style={{ textAlign:'center' }}><p style={{ color:m.c, fontSize:18, fontWeight:800, margin:0 }}>{m.v}</p><p style={{ color:'#94a3b8', fontSize:9, margin:0 }}>{m.l}</p></div>
             ))}
           </div>
         </div>
-        <button onClick={()=>setShowForm(!showForm)} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#3b0764,#8b5cf6)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', flexShrink:0 }}><Plus size={14} /> Yeni Bayi</button>
+        <button onClick={()=>setShowForm(!showForm)} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 18px', borderRadius:11, border:'none', background:'linear-gradient(135deg,#3b0764,#8b5cf6)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}><Plus size={14} /> Yeni Bayi</button>
       </div>
 
       {/* Enterprise warning */}

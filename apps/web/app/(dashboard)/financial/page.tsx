@@ -271,16 +271,18 @@ export default function FinancialPage() {
   return (
     <div style={{ padding: 0 }}>
       {/* ── COMPACT HERO (no heavy animation) */}
-      <div style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Brain size={22} style={{ color: '#7c3aed' }} />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#ffffff', border: '1px solid #ede9fe', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Brain size={22} style={{ color: '#7c3aed' }} />
+            </div>
+            <div>
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Büyüme Zekası</h1>
+              <p style={{ color: '#64748b', fontSize: 12, margin: 0 }}>6 aylık trend, churn tespiti, AI büyüme önerileri</p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>Büyüme Zekası</h1>
-            <p style={{ color: '#64748b', fontSize: 12, margin: 0 }}>6 aylık trend, churn tespiti, AI büyüme önerileri</p>
-          </div>
-          <div style={{ display: 'flex', gap: 6, marginLeft: 16 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: growth >= 0 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${growth >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: growth >= 0 ? '#047857' : '#dc2626' }}>
               {growth >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />} {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
             </span>

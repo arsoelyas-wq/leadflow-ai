@@ -292,32 +292,31 @@ export default function AnalyticsPage() {
       {/* ── HERO */}
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#ecfdf5 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #d1fae5' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(16,185,129,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.025) 1px,transparent 1px)', backgroundSize: '36px 36px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <DataFlowSphere size={90} active={loading} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: 0 }}>{t('analytics.title','Analitik Dashboard')}</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', borderRadius: 20, padding: '3px 10px' }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#059669', animation: 'df-ping 2s ease-in-out infinite' }} />
-                  <span style={{ color: '#047857', fontSize: 11, fontWeight: 600 }}>{t('analytics.canli', 'Canlı')}</span>
-                </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between" style={{ position: 'relative', zIndex: 2 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#047857,#10b981)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}>
+                <BarChart3 size={20} style={{ color: '#ffffff' }} />
               </div>
-              <p style={{ color: '#475569', fontSize: 14, margin: '0 0 14px' }}>
-                {lastRefresh ? `Son güncelleme: ${lastRefresh.toLocaleTimeString()}` : 'Veriler yükleniyor...'}
-              </p>
-              {/* Period selector */}
-              <div style={{ display: 'flex', gap: 6 }}>
-                {(['7d','30d','90d'] as const).map(p => (
-                  <button key={p} onClick={() => setPeriod(p)}
-                    style={{ padding: '6px 16px', borderRadius: 20, border: `1px solid ${period===p?'rgba(5,150,105,0.5)':'#e2e8f0'}`, background: period===p?'rgba(5,150,105,0.12)':'transparent', color: period===p?'#047857':'#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                    {p === '7d' ? t('analytics.last7d','Son 7 Gün') : p === '30d' ? t('analytics.last30d','Son 30 Gün') : t('analytics.last90d','Son 90 Gün')}
-                  </button>
-                ))}
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('analytics.title','Analitik Dashboard')}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.3)', borderRadius: 20, padding: '3px 10px' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#059669' }} />
+                <span style={{ color: '#047857', fontSize: 11, fontWeight: 600 }}>{t('analytics.canli', 'Canlı')}</span>
               </div>
             </div>
+            <p style={{ color: '#475569', fontSize: 13, margin: '0 0 12px' }}>
+              {lastRefresh ? `Son güncelleme: ${lastRefresh.toLocaleTimeString()}` : 'Veriler yükleniyor...'}
+            </p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {(['7d','30d','90d'] as const).map(p => (
+                <button key={p} onClick={() => setPeriod(p)}
+                  style={{ padding: '6px 14px', borderRadius: 20, border: `1px solid ${period===p?'rgba(5,150,105,0.5)':'#e2e8f0'}`, background: period===p?'rgba(5,150,105,0.12)':'transparent', color: period===p?'#047857':'#475569', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  {p === '7d' ? t('analytics.last7d','Son 7 Gün') : p === '30d' ? t('analytics.last30d','Son 30 Gün') : t('analytics.last90d','Son 90 Gün')}
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 11, border: '1px solid rgba(5,150,105,0.3)', background: 'rgba(5,150,105,0.08)', color: '#047857', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               <Download size={13} /> CSV İndir
             </button>

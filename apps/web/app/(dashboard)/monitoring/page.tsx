@@ -131,15 +131,15 @@ export default function MonitoringPage() {
   return (
     <div style={{ padding: 0 }}>
       {/* Hero — compact */}
-      <div style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 16, padding: '18px 22px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#ffffff', border: '1px solid #d1fae5', borderRadius: 16, padding: '18px 22px', marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: health > 80 ? '#ecfdf5' : health > 50 ? '#fffbeb' : '#fef2f2', border: `1px solid ${health > 80 ? '#a7f3d0' : health > 50 ? '#fde68a' : '#fecaca'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>{health > 80 ? '💚' : health > 50 ? '🟡' : '🔴'}</div>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: health > 80 ? '#ecfdf5' : health > 50 ? '#fffbeb' : '#fef2f2', border: `1px solid ${health > 80 ? '#a7f3d0' : health > 50 ? '#fde68a' : '#fecaca'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{health > 80 ? '💚' : health > 50 ? '🟡' : '🔴'}</div>
           <div>
             <h1 style={{ color: '#0f172a', fontSize: 20, fontWeight: 800, margin: '0 0 3px' }}>Sistem Monitörü</h1>
             <p style={{ color: '#475569', fontSize: 11, margin: 0 }}>Sağlık: %{health} {lastUpdate ? `· Son: ${lastUpdate.toLocaleTimeString()}` : ''}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 14 }}>
             {[{l:'Hata',v:status?.errors?.lastHour||0,c:status?.errors?.lastHour>0?'#ef4444':'#10b981'},{l:'Uptime',v:`%${status?.uptime?.percent24h||100}`,c:'#22c55e'},{l:'Yanıt',v:`${status?.uptime?.avgResponseMs||0}ms`,c:'#06b6d4'}].map(m => (
               <div key={m.l} style={{ textAlign:'center' }}><p style={{ color:m.c, fontSize:16, fontWeight:800, margin:0 }}>{m.v}</p><p style={{ color:'#94a3b8', fontSize:9, margin:0 }}>{m.l}</p></div>

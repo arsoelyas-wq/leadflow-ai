@@ -263,62 +263,63 @@ function MicrositeCard({ ms, onCopy, onDelete, onToggle, onSend, copied }: any) 
       style={{ transition: hovered ? 'transform 0.05s ease' : 'transform 0.3s ease', transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`, position: 'relative' }}>
       {/* Holographic border */}
       <div style={{ position: 'absolute', inset: -1.5, borderRadius: 18, zIndex: 0, background: hovered ? 'linear-gradient(135deg,#06b6d4,#8b5cf6,#14b8a6,#3b82f6,#06b6d4)' : `linear-gradient(135deg,${heatColor}33,#8b5cf633)`, backgroundSize: '300% 300%', animation: hovered ? 'msBorder 2s linear infinite' : 'none' }} />
-      <div style={{ position: 'relative', zIndex: 1, ...card, padding: '18px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+      <div style={{ position: 'relative', zIndex: 1, ...card, padding: '16px 20px' }}>
+        {/* Top row: icon + content */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 12 }}>
           {/* Icon */}
-          <div style={{ width: 52, height: 52, borderRadius: 14, flexShrink: 0, background: 'linear-gradient(135deg,rgba(13,148,136,0.1),rgba(124,58,237,0.1))', border: '1px solid #cffafe', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: hovered ? '0 0 20px rgba(6,182,212,0.18)' : 'none', transition: 'box-shadow 0.3s' }}>
-            {hovered ? <QuantumOrb size={32} /> : <Globe size={22} style={{ color: accentTeal }} />}
+          <div style={{ width: 48, height: 48, borderRadius: 13, flexShrink: 0, background: 'linear-gradient(135deg,rgba(13,148,136,0.1),rgba(124,58,237,0.1))', border: '1px solid #cffafe', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: hovered ? '0 0 20px rgba(6,182,212,0.18)' : 'none', transition: 'box-shadow 0.3s' }}>
+            {hovered ? <QuantumOrb size={28} /> : <Globe size={20} style={{ color: accentTeal }} />}
           </div>
 
           {/* Content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
               <p style={{ color: tx1, fontWeight: 700, fontSize: 15, margin: 0 }}>{ms.leads?.company_name}</p>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: heatColor, background: `${heatColor}14`, padding: '2px 8px', borderRadius: 20, border: `1px solid ${heatColor}33` }}><HeatIcon size={11} /> {heatLabel}</span>
               {!ms.active && <span style={{ fontSize: 10, color: tx2, background: surf, padding: '2px 8px', borderRadius: 20, border: '1px solid #e2e8f0' }}>Pasif</span>}
             </div>
             <p style={{ color: tx2, fontSize: 13, margin: '0 0 6px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ms.headline}</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: tx2 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={11} /> {ms.views} görüntüleme</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: tx2, flexWrap: 'wrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={11} /> {ms.views}</span>
               {ms.leads?.city && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={11} /> {ms.leads.city}</span>}
               <span>{new Date(ms.created_at).toLocaleDateString()}</span>
-              <span style={{ color: tx3, fontFamily: 'monospace', fontSize: 11 }}>/{ms.slug.slice(0, 20)}{ms.slug.length > 20 ? '…' : ''}</span>
+              <span style={{ color: tx3, fontFamily: 'monospace', fontSize: 10 }}>/{ms.slug.slice(0, 18)}{ms.slug.length > 18 ? '…' : ''}</span>
             </div>
           </div>
+        </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <a href={CATALOG_BASE + ms.slug} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid #e2e8f0', background: surf, color: tx2, fontSize: 12, textDecoration: 'none', cursor: 'pointer' }}>
-              <ExternalLink size={12} /> Önizle
-            </a>
-            <button onClick={() => onCopy(CATALOG_BASE + ms.slug, ms.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', background: copied === ms.id ? 'rgba(5,150,105,0.12)' : 'rgba(13,148,136,0.1)', color: copied === ms.id ? accentEmerald : accentTeal, fontSize: 12 }}>
-              {copied === ms.id ? <CheckCircle size={12} /> : <Copy size={12} />}
-              {copied === ms.id ? 'Kopyalandı' : 'Link Kopyala'}
+        {/* Bottom row: actions */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <a href={CATALOG_BASE + ms.slug} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: '1px solid #e2e8f0', background: surf, color: tx2, fontSize: 12, textDecoration: 'none', cursor: 'pointer' }}>
+            <ExternalLink size={12} /> Önizle
+          </a>
+          <button onClick={() => onCopy(CATALOG_BASE + ms.slug, ms.id)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', background: copied === ms.id ? 'rgba(5,150,105,0.12)' : 'rgba(13,148,136,0.1)', color: copied === ms.id ? accentEmerald : accentTeal, fontSize: 12 }}>
+            {copied === ms.id ? <CheckCircle size={12} /> : <Copy size={12} />}
+            {copied === ms.id ? 'Kopyalandı' : 'Link Kopyala'}
+          </button>
+          <button onClick={handleSend} disabled={sending || !ms.leads?.phone}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', cursor: !ms.leads?.phone ? 'not-allowed' : 'pointer', background: 'rgba(5,150,105,0.1)', color: accentEmerald, fontSize: 12, opacity: !ms.leads?.phone ? 0.4 : 1 }}>
+            {sending ? <RefreshCw size={12} style={{ animation: 'msSpin 1s linear infinite' }} /> : <Send size={12} />}
+            WA Gönder
+          </button>
+          <button onClick={() => onToggle(ms.id, ms.active)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', background: ms.active ? 'rgba(5,150,105,0.1)' : '#f1f5f9', color: ms.active ? accentEmerald : tx2, fontSize: 12 }}>
+            {ms.active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+            {ms.active ? 'Aktif' : 'Pasif'}
+          </button>
+          {!confirmDelete ? (
+            <button onClick={() => setConfirmDelete(true)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}>
+              <Trash2 size={13} />
             </button>
-            <button onClick={handleSend} disabled={sending || !ms.leads?.phone}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: 'none', cursor: !ms.leads?.phone ? 'not-allowed' : 'pointer', background: 'rgba(5,150,105,0.1)', color: accentEmerald, fontSize: 12, opacity: !ms.leads?.phone ? 0.4 : 1 }}>
-              {sending ? <RefreshCw size={12} style={{ animation: 'msSpin 1s linear infinite' }} /> : <Send size={12} />}
-              WA Gönder
+          ) : (
+            <button onClick={() => onDelete(ms.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(220,38,38,0.18)', color: '#dc2626', fontSize: 12, fontWeight: 700 }}>
+              Sil?
             </button>
-            <button onClick={() => onToggle(ms.id, ms.active)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: 'none', cursor: 'pointer', background: ms.active ? 'rgba(5,150,105,0.1)' : '#f1f5f9', color: ms.active ? accentEmerald : tx2, fontSize: 12 }}>
-              {ms.active ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-              {ms.active ? 'Aktif' : 'Pasif'}
-            </button>
-            {!confirmDelete ? (
-              <button onClick={() => setConfirmDelete(true)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}>
-                <Trash2 size={13} />
-              </button>
-            ) : (
-              <button onClick={() => onDelete(ms.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgba(220,38,38,0.18)', color: '#dc2626', fontSize: 12, fontWeight: 700 }}>
-                Sil?
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
