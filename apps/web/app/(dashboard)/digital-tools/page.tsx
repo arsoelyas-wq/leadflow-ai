@@ -1044,9 +1044,9 @@ export default function DigitalToolsPage() {
       )}
 
       {/* ── AR SUB-TABS ───────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 4, background: surf, padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 20, border: '1px solid #e2e8f0' }}>
+      <div className="flex" style={{ gap: 4, background: surf, padding: 4, borderRadius: 12, marginBottom: 20, border: '1px solid #e2e8f0' }}>
         {[{ id: 'models', label: `Modellerim (${arModels.length})`, Icon: Target }, { id: 'upload', label: t('Model Yükle','Model Yükle'), Icon: Plus }].map(tb => (
-          <button key={tb.id} onClick={() => setArTab(tb.id as any)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 20px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s', background: arTab === tb.id ? 'linear-gradient(135deg,#be185d,#7c3aed)' : 'transparent', color: arTab === tb.id ? '#fff' : tx2, boxShadow: arTab === tb.id ? '0 4px 16px rgba(190,24,93,0.3)' : 'none' }}>
+          <button key={tb.id} onClick={() => setArTab(tb.id as any)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '10px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s', background: arTab === tb.id ? 'linear-gradient(135deg,#be185d,#7c3aed)' : 'transparent', color: arTab === tb.id ? '#fff' : tx2, boxShadow: arTab === tb.id ? '0 4px 16px rgba(190,24,93,0.3)' : 'none' }}>
             <tb.Icon size={14} />
             {tb.label}
           </button>
@@ -1057,12 +1057,12 @@ export default function DigitalToolsPage() {
       {arTab === 'upload' && (
         <div>
           {/* Sub-tab switcher */}
-          <div style={{ display: 'flex', gap: 4, background: surf, padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 20, border: '1px solid #e2e8f0' }}>
+          <div className="flex" style={{ gap: 4, background: surf, padding: 4, borderRadius: 12, marginBottom: 20, border: '1px solid #e2e8f0' }}>
             {[
               { id: 'file', label: t('Dosya Yükle','Dosya Yükle'), sub: '.glb / .usdz', Icon: Folder },
               { id: 'ai',   label: t('AI ile Oluştur','AI ile Oluştur'), sub: t('Fotoğraftan 3D','Fotoğraftan 3D'), Icon: Sparkles },
             ].map(m => (
-              <button key={m.id} onClick={() => setArUploadMode(m.id as any)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, lineHeight: 1.4, transition: 'all 0.2s', background: arUploadMode === m.id ? (m.id === 'ai' ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'linear-gradient(135deg,#be185d,#7c3aed)') : 'transparent', color: arUploadMode === m.id ? '#fff' : tx2, boxShadow: arUploadMode === m.id ? '0 4px 16px rgba(124,58,237,0.3)' : 'none' }}>
+              <button key={m.id} onClick={() => setArUploadMode(m.id as any)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, lineHeight: 1.4, transition: 'all 0.2s', background: arUploadMode === m.id ? (m.id === 'ai' ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'linear-gradient(135deg,#be185d,#7c3aed)') : 'transparent', color: arUploadMode === m.id ? '#fff' : tx2, boxShadow: arUploadMode === m.id ? '0 4px 16px rgba(124,58,237,0.3)' : 'none' }}>
                 <m.Icon size={15} />
                 <span>{m.label}<br /><span style={{ fontSize: 10, opacity: 0.7 }}>{m.sub}</span></span>
               </button>
@@ -1071,7 +1071,7 @@ export default function DigitalToolsPage() {
 
           {/* ── FILE UPLOAD (existing) ── */}
           {arUploadMode === 'file' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div style={{ ...card, padding: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
                   <Sparkles size={18} style={{ color: '#db2777' }} />
@@ -1308,10 +1308,11 @@ export default function DigitalToolsPage() {
       {arTab === 'models' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ ...card, padding: 20 }}>
-            <p style={{ color: tx2, fontSize: 12, fontWeight: 600, margin: '0 0 12px', letterSpacing: 1, textTransform: 'uppercase' }}>{t('ar_experience.lead_sec_ar_gonderimi_ici', 'Lead Seç — AR gönderimi için')}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <p style={{ color: tx2, fontSize: 12, fontWeight: 600, margin: '0 0 14px', letterSpacing: 1, textTransform: 'uppercase' }}>{t('ar_experience.lead_sec_ar_gonderimi_ici', 'Lead Seç — AR gönderimi için')}</p>
+            <div className="flex flex-col gap-4 sm:grid sm:grid-cols-2 sm:gap-[16px]">
+              {/* Tek Lead */}
               <div>
-                <label style={{ color: tx2, fontSize: 12, display: 'block', marginBottom: 6 }}>Tek Lead</label>
+                <label style={{ color: tx2, fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Tek Lead</label>
                 <div style={{ position: 'relative' }}>
                   <select value={arSelectedLead} onChange={e => setArSelectedLead(e.target.value)}
                     style={{ ...inp, width: '100%', appearance: 'none', cursor: 'pointer' }}>
@@ -1321,13 +1322,21 @@ export default function DigitalToolsPage() {
                   <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: tx2, pointerEvents: 'none' }}>▾</span>
                 </div>
               </div>
+              {/* Toplu Seçim */}
               <div>
-                <label style={{ color: tx2, fontSize: 12, display: 'block', marginBottom: 6 }}>Toplu Seçim ({arSelectedLeads.length} seçili)</label>
-                <div style={{ maxHeight: 110, overflowY: 'auto', background: surf, borderRadius: 10, padding: '8px 6px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <label style={{ color: tx2, fontSize: 12, fontWeight: 600 }}>Toplu Seçim</label>
+                  {arSelectedLeads.length > 0 && (
+                    <span style={{ background: 'rgba(190,24,93,0.12)', color: '#be185d', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, border: '1px solid rgba(190,24,93,0.25)' }}>
+                      {arSelectedLeads.length} seçili
+                    </span>
+                  )}
+                </div>
+                <div style={{ maxHeight: 140, overflowY: 'auto', background: surf, borderRadius: 10, padding: '6px', border: '1px solid #e2e8f0' }}>
                   {arLeads.slice(0, 100).map(l => (
-                    <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', cursor: 'pointer', borderRadius: 6 }}>
-                      <input type="checkbox" checked={arSelectedLeads.includes(l.id)} onChange={e => setArSelectedLeads(prev => e.target.checked ? [...prev, l.id] : prev.filter(id => id !== l.id))} style={{ accentColor: '#ec4899' }} />
-                      <span style={{ color: tx2, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.company_name}</span>
+                    <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', cursor: 'pointer', borderRadius: 8, background: arSelectedLeads.includes(l.id) ? 'rgba(190,24,93,0.06)' : 'transparent' }}>
+                      <input type="checkbox" checked={arSelectedLeads.includes(l.id)} onChange={e => setArSelectedLeads(prev => e.target.checked ? [...prev, l.id] : prev.filter(id => id !== l.id))} style={{ accentColor: '#ec4899', width: 15, height: 15, flexShrink: 0 }} />
+                      <span style={{ color: arSelectedLeads.includes(l.id) ? '#be185d' : tx2, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: arSelectedLeads.includes(l.id) ? 600 : 400 }}>{l.company_name}</span>
                     </label>
                   ))}
                 </div>
