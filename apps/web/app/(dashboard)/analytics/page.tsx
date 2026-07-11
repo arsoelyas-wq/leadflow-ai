@@ -328,7 +328,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── TAB BAR */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#f8fafc', padding: 4, borderRadius: 12, width: 'fit-content', border: '1px solid #f1f5f9' }}>
+      <div className="flex overflow-x-auto" style={{ gap: 6, marginBottom: 20, background: '#f8fafc', padding: 4, borderRadius: 12, border: '1px solid #f1f5f9', scrollbarWidth: 'none' }}>
         {[
           { id: 'overview', label: 'Genel Bakış', Icon: BarChart3 },
           { id: 'reports', label: 'Raporlar', Icon: Trophy },
@@ -336,7 +336,7 @@ export default function AnalyticsPage() {
           { id: 'forecast', label: 'Tahmin', Icon: DollarSign },
         ].map(tb => (
           <button key={tb.id} onClick={() => setTab(tb.id as any)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: tab === tb.id ? '#ffffff' : 'transparent', color: tab === tb.id ? '#047857' : '#94a3b8', boxShadow: tab === tb.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: tab === tb.id ? '#ffffff' : 'transparent', color: tab === tb.id ? '#047857' : '#94a3b8', boxShadow: tab === tb.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <tb.Icon size={13} /> {tb.label}
           </button>
         ))}

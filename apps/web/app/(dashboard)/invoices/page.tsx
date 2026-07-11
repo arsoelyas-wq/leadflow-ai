@@ -338,11 +338,15 @@ export default function InvoicesPage() {
       {/* Hero */}
       <div style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg,#ffffff,#fef2f2 65%,#ffffff)', borderRadius: 20, padding: '32px 28px', marginBottom: 24, border: '1px solid #fee2e2' }}>
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(220,38,38,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(220,38,38,0.02) 1px,transparent 1px)', backgroundSize: '40px 40px', zIndex: 0 }} />
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <VaultShield size={95} overduePct={overduePct} scanning={loading} />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start" style={{ position: 'relative', zIndex: 2 }}>
           <div style={{ flex: 1 }}>
-            <h1 style={{ color: '#0f172a', fontSize: 26, fontWeight: 800, margin: '0 0 6px' }}>{t('debt_collector.tahsilat_yonetimi', 'Tahsilat Yönetimi')}</h1>
-            <p style={{ color: '#64748b', fontSize: 14, margin: '0 0 16px' }}>{t('debt_collector.gecikmis_fatura_takibi_ot', 'Gecikmiş fatura takibi, otomatik hatırlatma ve yasal süreç yönetimi')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg,#7f1d1d,#ef4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(220,38,38,0.3)' }}>
+                <Shield size={20} style={{ color: '#ffffff' }} />
+              </div>
+              <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>{t('debt_collector.tahsilat_yonetimi', 'Tahsilat Yönetimi')}</h1>
+            </div>
+            <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>{t('debt_collector.gecikmis_fatura_takibi_ot', 'Gecikmiş fatura takibi, otomatik hatırlatma ve yasal süreç yönetimi')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 12 }}>
               {[
                 { label: 'Toplam Fatura', value: enriched.length, color: '#475569' },
@@ -357,7 +361,7 @@ export default function InvoicesPage() {
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={() => setShowAddModal(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#7f1d1d,#ef4444)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
               <Plus size={13} /> Fatura Ekle
@@ -393,10 +397,10 @@ export default function InvoicesPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, background: '#f8fafc', padding: 4, borderRadius: 12, width: 'fit-content', marginBottom: 20, border: '1px solid #e2e8f0' }}>
+      <div className="flex overflow-x-auto" style={{ gap: 4, background: '#f8fafc', padding: 4, borderRadius: 12, marginBottom: 20, border: '1px solid #e2e8f0', scrollbarWidth: 'none' }}>
         {[{ id: 'invoices', label: 'Faturalar', Icon: FileText }, { id: 'escalation', label: 'Eskalasyon', Icon: Zap }, { id: 'compliance', label: 'Uyum', Icon: Shield }, { id: 'formal', label: 'Resmi Fatura', Icon: FileSpreadsheet }].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as 'invoices' | 'escalation' | 'compliance' | 'formal')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeTab === tab.id ? 'linear-gradient(135deg,#7f1d1d,#ef4444)' : 'transparent', color: activeTab === tab.id ? '#fff' : '#475569', boxShadow: activeTab === tab.id ? '0 3px 12px rgba(239,68,68,0.3)' : 'none' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: activeTab === tab.id ? 'linear-gradient(135deg,#7f1d1d,#ef4444)' : 'transparent', color: activeTab === tab.id ? '#fff' : '#475569', boxShadow: activeTab === tab.id ? '0 3px 12px rgba(239,68,68,0.3)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <tab.Icon size={13} /> {tab.label}
           </button>
         ))}
