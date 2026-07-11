@@ -23,8 +23,8 @@ const PRICES = {
   perplexity: {
     per_request: 0.005,            // Online model ~$0.005/search
   },
-  resend: {
-    per_email: 20 / 50_000,       // $20/month for 50K emails
+  smtp: {
+    per_email: 0,                  // kendi SMTP sunucumuz — maliyet 0
   },
   stripe: {
     per_transaction: 0.30,         // fixed part, percentage excluded
@@ -147,31 +147,6 @@ export async function logPerplexityCall(opts: {
   }
 }
 
-// ── Log a Resend email ────────────────────────────────────────────────────────
-export async function logResendCall(opts: {
-  userId?: string;
-  feature: string;
-  emails?: number;
-  success?: boolean;
-  metadata?: Record<string, any>;
-}) {
-  try {
-    const emails = opts.emails || 1;
-    const costUsd = emails * PRICES.resend.per_email;
-    await supabase.from('ai_cost_logs').insert([{
-      user_id:   opts.userId || null,
-      service:   'resend',
-      feature:   opts.feature,
-      units:     emails,
-      unit_type: 'emails',
-      cost_usd:  parseFloat(costUsd.toFixed(6)),
-      success:   opts.success !== false,
-      metadata:  opts.metadata || {},
-    }]);
-  } catch (e) {
-    console.error('[aiCostLogger] resend log error:', e);
-  }
-}
 
 // ── Get cost summary for admin ────────────────────────────────────────────────
 export async function getCostSummary(days = 30) {

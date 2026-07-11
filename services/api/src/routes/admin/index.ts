@@ -339,7 +339,7 @@ router.get('/system/config', async (req: any, res: any) => {
         perplexity:    !!process.env.PERPLEXITY_API_KEY,
         stripe:        !!process.env.STRIPE_SECRET_KEY,
         google_places: !!process.env.GOOGLE_PLACES_API_KEY,
-        resend:        !!process.env.RESEND_API_KEY,
+        smtp:          true, // kendi SMTP sistemimiz aktif
         google_ads:    !!process.env.GOOGLE_ADS_CLIENT_ID,
       },
       errors_24h: (errCount as any) || 0,
@@ -942,7 +942,6 @@ router.get('/ai-status', async (req: any, res: any) => {
 
     // ── Ödeme & Altyapı
     keyCheck(process.env.STRIPE_SECRET_KEY, 'stripe');
-    keyCheck(process.env.RESEND_API_KEY, 'resend');
     keyCheck(process.env.REDIS_URL, 'redis');
     keyCheck(process.env.SUPABASE_URL, 'supabase');
     keyCheck(process.env.VAPID_PUBLIC_KEY, 'vapid');

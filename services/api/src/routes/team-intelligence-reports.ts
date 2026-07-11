@@ -3,17 +3,26 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ── EMAIL GÖNDER (Resend HTTP API) ───────────────────────
-async function sendEmail(to: string, subject: string, html: string) {
-  await axios.post('https://api.resend.com/emails', {
-    from: `LeadFlow AI <${process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'}>`,
-    to: [to], subject, html,
-  }, { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } });
+// ── EMAIL GÖNDER (kullanıcının SMTP ayarları) ────────────
+async function sendEmail(userId: string, to: string, subject: string, html: string) {
+  const { data: smtp } = await supabase.from('smtp_settings').select('*').eq('user_id', userId).single();
+  if (!smtp?.smtp_host) throw new Error('SMTP ayarları eksik');
+  const transporter = nodemailer.createTransport({
+    host: smtp.smtp_host, port: smtp.smtp_port || 587,
+    secure: smtp.smtp_port === 465,
+    auth: { user: smtp.smtp_user, pass: smtp.smtp_pass },
+    tls: { rejectUnauthorized: false },
+  });
+  await transporter.sendMail({
+    from: `${smtp.from_name} <${smtp.from_email}>`,
+    to, subject, html,
+  });
 }
 
 // ── BENCHMARK SKORLARI ───────────────────────────────────
@@ -212,6 +221,7 @@ router.post('/send-weekly', async (req: any, res: any) => {
     if (!report) return res.status(400).json({ error: 'Rapor oluşturulamadı' });
 
     await sendEmail(
+      userId,
       report.userEmail,
       `📊 Haftalık Ekip Raporu — Ort. Skor: ${report.avgScore}`,
       buildEmailHtml(report)
@@ -356,6 +366,7 @@ router.post('/alert', async (req: any, res: any) => {
       </div>`;
 
     await sendEmail(
+      userId,
       userEmail,
       `⚠️ ${analyses.length} Düşük Performanslı Konuşma Tespit Edildi`,
       alertHtml

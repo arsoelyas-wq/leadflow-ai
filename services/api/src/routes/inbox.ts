@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
 const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
+const nodemailer = require('nodemailer');
 
 const router  = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -105,16 +106,20 @@ router.post('/send', async (req: any, res: any) => {
       await sendWhatsAppMessage(req.userId, lead.phone, content);
     } else if (channel === 'email') {
       if (!lead.email) return res.status(400).json({ error: 'Email adresi yok' });
-      const resendKey = process.env.RESEND_API_KEY;
-      if (!resendKey) return res.status(400).json({ error: 'RESEND_API_KEY ayarlanmamış' });
-      const { data: profile } = await supabase.from('business_profiles')
-        .select('company').eq('user_id', req.userId).single();
-      await axios.post('https://api.resend.com/emails', {
-        from: `${profile?.company?.name || 'LeadFlow'} <noreply@sovlo.io>`,
+      const { data: smtp } = await supabase.from('smtp_settings').select('*').eq('user_id', req.userId).single();
+      if (!smtp?.smtp_host) return res.status(400).json({ error: 'SMTP ayarları eksik — Ayarlar sayfasından SMTP bilgilerini girin' });
+      const transporter = nodemailer.createTransport({
+        host: smtp.smtp_host, port: smtp.smtp_port || 587,
+        secure: smtp.smtp_port === 465,
+        auth: { user: smtp.smtp_user, pass: smtp.smtp_pass },
+        tls: { rejectUnauthorized: false },
+      });
+      await transporter.sendMail({
+        from: `${smtp.from_name} <${smtp.from_email}>`,
         to: lead.email,
         subject: `${lead.company_name} için mesaj`,
         text: content,
-      }, { headers: { Authorization: `Bearer ${resendKey}` } });
+      });
     }
 
     const now = new Date().toISOString();
