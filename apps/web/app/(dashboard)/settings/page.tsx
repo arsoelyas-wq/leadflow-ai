@@ -377,13 +377,14 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div style={{ display:'flex', gap:20 }}>
-        {/* Sidebar nav */}
-        <div style={{ width:200, flexShrink:0 }}>
-          <div style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:16, padding:8, display:'flex', flexDirection:'column', gap:3 }}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+        {/* Nav — horizontal scroll strip on mobile, vertical sidebar on desktop */}
+        <div className="w-full sm:w-[200px] sm:flex-shrink-0">
+          <div className="flex sm:flex-col overflow-x-auto sm:overflow-visible pb-1 sm:pb-0" style={{ background:'#ffffff', border:'1px solid #e2e8f0', borderRadius:16, padding:8, gap:4, scrollbarWidth:'none' }}>
             {tabs.map(({ id, label, icon: Icon, color }) => (
               <button key={id} onClick={() => setTab(id as any)}
-                style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:10, border:'none', cursor:'pointer', background:tab===id?`${color}15`:'transparent', color:tab===id?color:'#64748b', fontSize:12, fontWeight:tab===id?700:500, textAlign:'left', transition:'all 0.15s', boxShadow:tab===id?`inset 0 0 0 1px ${color}30`:'none', width:'100%' }}>
+                className="w-auto sm:w-full"
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 12px', borderRadius:10, border:'none', cursor:'pointer', background:tab===id?`${color}15`:'transparent', color:tab===id?color:'#64748b', fontSize:12, fontWeight:tab===id?700:500, textAlign:'left', transition:'all 0.15s', boxShadow:tab===id?`inset 0 0 0 1px ${color}30`:'none', whiteSpace:'nowrap', flexShrink:0 }}>
                 <Icon size={14} />
                 {label}
               </button>
@@ -399,17 +400,19 @@ export default function SettingsPage() {
               {/* Profile card */}
               <div style={card}>
                 <h2 style={cardTitle}>👤 Profil Bilgileri</h2>
-                <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20, paddingBottom:20, borderBottom:'1px solid #e2e8f0' }}>
-                  <div style={{ width:64, height:64, borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:24, fontWeight:900, flexShrink:0 }}>
-                    {user?.name?.[0]?.toUpperCase() || 'U'}
+                <div className="flex flex-col sm:flex-row sm:items-center" style={{ gap:14, marginBottom:20, paddingBottom:20, borderBottom:'1px solid #e2e8f0' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:14, flex:1, minWidth:0 }}>
+                    <div style={{ width:56, height:56, borderRadius:'50%', background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:22, fontWeight:900, flexShrink:0 }}>
+                      {user?.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div style={{ minWidth:0 }}>
+                      <p style={{ color:'#0f172a', fontWeight:700, fontSize:15, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.name}</p>
+                      <p style={{ color:'#475569', fontSize:12, margin:'3px 0 0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+                    </div>
                   </div>
-                  <div style={{ flex:1 }}>
-                    <p style={{ color:'#0f172a', fontWeight:700, fontSize:16, margin:0 }}>{user?.name}</p>
-                    <p style={{ color:'#475569', fontSize:12, margin:'3px 0 0' }}>{user?.email}</p>
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
-                    <span style={{ background:'#eff6ff', border:'1px solid #bfdbfe', color:'#2563eb', fontSize:10, padding:'3px 10px', borderRadius:20, fontWeight:700 }}>{user?.planType === 'enterprise' ? 'Enterprise' : user?.planType === 'growth' ? 'Büyüme' : 'Başlangıç'}</span>
-                    <span style={{ color:'#94a3b8', fontSize:10 }}>Üye: {(user as any)?.created_at ? new Date((user as any).created_at).toLocaleDateString('tr-TR') : '—'}</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <span style={{ background:'#eff6ff', border:'1px solid #bfdbfe', color:'#2563eb', fontSize:10, padding:'3px 10px', borderRadius:20, fontWeight:700, whiteSpace:'nowrap' }}>{user?.planType === 'enterprise' ? 'Enterprise' : user?.planType === 'growth' ? 'Büyüme' : 'Başlangıç'}</span>
+                    <span style={{ color:'#94a3b8', fontSize:10, whiteSpace:'nowrap' }}>Üye: {(user as any)?.created_at ? new Date((user as any).created_at).toLocaleDateString('tr-TR') : '—'}</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12 }}>
