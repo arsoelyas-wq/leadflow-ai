@@ -405,10 +405,10 @@ export default function TeamPage() {
       )}
 
       {/* ── TABS ── */}
-      <div style={{ display:'flex', gap:2, background:C.inpBg, padding:4, borderRadius:12, width:'fit-content', border:C.cardBd }}>
+      <div className="flex overflow-x-auto" style={{ gap:2, background:C.inpBg, padding:4, borderRadius:12, border:C.cardBd, scrollbarWidth:'none' }}>
         {TABS.map(tab=>(
           <button key={tab.id} onClick={()=>setActiveTab(tab.id as any)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, whiteSpace:'nowrap', transition:'all 0.15s',
+            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, whiteSpace:'nowrap', flexShrink:0, transition:'all 0.15s',
               background:activeTab===tab.id?'#ffffff':'transparent',
               color:activeTab===tab.id?C.violet:C.text3,
               boxShadow:activeTab===tab.id?'0 1px 4px rgba(0,0,0,0.08)':'none',

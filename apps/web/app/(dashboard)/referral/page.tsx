@@ -158,10 +158,10 @@ export default function ReferralPage() {
       </div>
 
       {/* TABS */}
-      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
+      <div className="flex overflow-x-auto" style={{ gap:4, background:'#f1f5f9', padding:4, borderRadius:12, marginBottom:20, border:'1px solid #e2e8f0', scrollbarWidth:'none' }}>
         {[{id:'main',label:'Ayarlar',Icon:Settings},{id:'leaderboard',label:'Liderlik',Icon:Trophy},{id:'rewards',label:'Ödüller',Icon:Gift}].map(tb => (
           <button key={tb.id} onClick={() => setActiveTab(tb.id as any)}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tb.id?'linear-gradient(135deg,#78350f,#d97706)':'transparent', color:activeTab===tb.id?'#fff':tx2, boxShadow:activeTab===tb.id?'0 3px 12px rgba(217,119,6,0.3)':'none' }}>
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, whiteSpace:'nowrap', flexShrink:0, background:activeTab===tb.id?'linear-gradient(135deg,#78350f,#d97706)':'transparent', color:activeTab===tb.id?'#fff':tx2, boxShadow:activeTab===tb.id?'0 3px 12px rgba(217,119,6,0.3)':'none' }}>
             <tb.Icon size={14} />
             {tb.label}
           </button>

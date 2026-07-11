@@ -153,7 +153,7 @@ export default function SMSPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-white">{stats?.totalSent || 0}</p>
           <p className="text-slate-400 text-xs mt-1">{t('sms_campaigns.gonderilen', 'Gönderilen')}</p>

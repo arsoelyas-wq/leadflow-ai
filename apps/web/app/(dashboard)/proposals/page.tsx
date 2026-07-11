@@ -238,7 +238,7 @@ export default function ProposalsPage() {
     <div className="p-6 max-w-5xl mx-auto space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <FileText className="w-5 h-5 text-emerald-400" /> Teklif & Pazarlık
@@ -281,14 +281,14 @@ export default function ProposalsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-800/60 p-1 rounded-xl border border-slate-700/50 w-fit">
+      <div className="flex overflow-x-auto bg-slate-800/60 p-1 rounded-xl border border-slate-700/50" style={{ scrollbarWidth:'none' }}>
         {[
           { id: 'list',      label: `Teklifler (${proposals.length})` },
           { id: 'create',    label: 'Yeni Teklif' },
           { id: 'negotiate', label: t('Pazarlık AI','Pazarlık AI') },
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === t.id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap shrink-0 ${tab === t.id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'}`}>
             {t.label}
           </button>
         ))}

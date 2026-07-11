@@ -749,11 +749,11 @@ export default function TendersPage() {
       {msg && <div style={{ marginBottom:12, padding:'10px 16px', background:msg.type==='success'?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)', border:`1px solid ${msg.type==='success'?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`, borderRadius:10, flexShrink:0 }}><p style={{ color:msg.type==='success'?'#059669':'#dc2626', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, marginBottom:16, border:'1px solid #e2e8f0', flexShrink:0, minWidth:0 }}>
+      <div className="flex overflow-x-auto" style={{ gap:4, background:'#f1f5f9', padding:4, borderRadius:12, marginBottom:16, border:'1px solid #e2e8f0', flexShrink:0, scrollbarWidth:'none' }}>
         {[{id:'tenders',label:`${t('tenders.tenders_tab','İhaleler')} (${tenders.length})`,Icon:FileText},{id:'alerts',label:`${t('tenders.approaching','Vadesi Yaklaşan')}${alerts.length>0?` (${alerts.length})`:''}`,Icon:Clock},{id:'analytics',label:`${t('tenders.analytics_tab','Analitik')}`,Icon:BarChart2},{id:'prefs',label:`Otomatik (${prefs.length})`,Icon:Bell}].map(tb => (
           <button key={tb.id} onClick={() => setActiveTab(tb.id as any)}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'7px 8px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:activeTab===tb.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===tb.id?'#fff':'#64748b', boxShadow:activeTab===tb.id?'0 3px 12px rgba(124,58,237,0.3)':'none', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0 }}>
-            <tb.Icon size={13} style={{ flexShrink:0 }} /> <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', minWidth:0 }}>{tb.label}</span>
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'7px 14px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, whiteSpace:'nowrap', flexShrink:0, background:activeTab===tb.id?'linear-gradient(135deg,#4c1d95,#7c3aed)':'transparent', color:activeTab===tb.id?'#fff':'#64748b', boxShadow:activeTab===tb.id?'0 3px 12px rgba(124,58,237,0.3)':'none' }}>
+            <tb.Icon size={13} style={{ flexShrink:0 }} /> {tb.label}
           </button>
         ))}
       </div>

@@ -592,7 +592,7 @@ export default function LeadDetailPage() {
             </div>
 
             {scoring && (scoring.strengths?.length > 0 || scoring.weaknesses?.length > 0) && (
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:8 }}>
                 {scoring.strengths?.length > 0 && (
                   <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:12, padding:'12px' }}>
                     <h4 style={{ color:'#15803d', fontSize:11, fontWeight:700, margin:'0 0 8px', display:'flex', alignItems:'center', gap:3 }}>

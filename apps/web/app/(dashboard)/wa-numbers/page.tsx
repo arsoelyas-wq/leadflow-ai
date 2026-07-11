@@ -98,9 +98,9 @@ export default function WANumbersPage() {
   return (
     <div style={{ padding: 0 }}>
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <div style={{ ...card, padding: '22px 24px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ ...card, padding: '22px 24px', marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Phone size={24} style={{ color: accentGreen }} />
           </div>
           <div>
@@ -109,7 +109,7 @@ export default function WANumbersPage() {
           </div>
         </div>
         <button onClick={() => setShowAdd(!showAdd)}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#14532d,#22c55e)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: 'none', background: 'linear-gradient(135deg,#14532d,#22c55e)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           <Plus size={14} /> Numara Ekle
         </button>
       </div>

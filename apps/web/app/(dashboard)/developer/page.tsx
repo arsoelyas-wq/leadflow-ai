@@ -132,9 +132,9 @@ export default function DeveloperPage() {
   return (
     <div style={{ padding: 0 }}>
       {/* Hero — compact, no animation */}
-      <div style={{ background: '#ffffff', border: '1px solid #cffafe', borderRadius: 16, padding: '20px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ background: '#ffffff', border: '1px solid #cffafe', borderRadius: 16, padding: '20px 24px', marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: '#ecfeff', border: '1px solid #a5f3fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🔑</div>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: '#ecfeff', border: '1px solid #a5f3fc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🔑</div>
           <div>
             <h1 style={{ color: '#0f172a', fontSize: 22, fontWeight: 800, margin: '0 0 4px' }}>{t('developer.api_erisimi', 'API Erişimi')}</h1>
             <p style={{ color: '#475569', fontSize: 12, margin: 0 }}>Uygulamalarınızı Sovlo AI ile entegre edin</p>
@@ -150,10 +150,10 @@ export default function DeveloperPage() {
       {msg && <div style={{ marginBottom:14, padding:'10px 16px', background:msg.type==='success'?'#ecfdf5':'#fef2f2', border:`1px solid ${msg.type==='success'?'#a7f3d0':'#fca5a5'}`, borderRadius:10 }}><p style={{ color:msg.type==='success'?'#059669':'#dc2626', fontSize:12, margin:0 }}>{msg.text}</p></div>}
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:4, background:'#f1f5f9', padding:4, borderRadius:12, width:'fit-content', marginBottom:20, border:'1px solid #e2e8f0' }}>
+      <div className="flex overflow-x-auto" style={{ gap:4, background:'#f1f5f9', padding:4, borderRadius:12, marginBottom:20, border:'1px solid #e2e8f0', scrollbarWidth:'none' }}>
         {[{id:'keys',label:'🔑 API Keys'},{id:'docs',label: t('📖 Dokümantasyon','📖 Dokümantasyon')},{id:'usage',label: t('📊 Kullanım','📊 Kullanım')}].map(tabItem => (
           <button key={tabItem.id} onClick={()=>setTab(tabItem.id as any)}
-            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, background:tab===tabItem.id?'linear-gradient(135deg,#164e63,#06b6d4)':'transparent', color:tab===tabItem.id?'#fff':'#64748b', boxShadow:tab===tabItem.id?'0 3px 12px rgba(6,182,212,0.25)':'none' }}>
+            style={{ padding:'7px 16px', borderRadius:9, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, whiteSpace:'nowrap', flexShrink:0, background:tab===tabItem.id?'linear-gradient(135deg,#164e63,#06b6d4)':'transparent', color:tab===tabItem.id?'#fff':'#64748b', boxShadow:tab===tabItem.id?'0 3px 12px rgba(6,182,212,0.25)':'none' }}>
             {tabItem.label}
           </button>
         ))}
@@ -170,7 +170,7 @@ export default function DeveloperPage() {
             </div>
             <div style={{ marginBottom:16 }}>
               <label style={{ color:'#64748b', fontSize:11, display:'block', marginBottom:8 }}>{t('developer.izinler_scopes', 'İzinler (Scopes)')}</label>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap:8 }}>
                 {SCOPE_OPTIONS.map(scope => (
                   <label key={scope.id} onClick={()=>toggleScope(scope.id)}
                     style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'10px 12px', borderRadius:10, border:`1px solid ${selectedScopes.includes(scope.id)?'#a5f3fc':'#e2e8f0'}`, background:selectedScopes.includes(scope.id)?'#ecfeff':'transparent', cursor:'pointer' }}>
@@ -221,14 +221,14 @@ export default function DeveloperPage() {
 
       {tab === 'docs' && docs && (
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap:12 }}>
             <div style={{ background:'#ffffff', border:'1px solid rgba(6,182,212,0.15)', borderRadius:14, padding:16 }}>
               <p style={{ color:'#64748b', fontSize:11, margin:'0 0 6px' }}>Base URL</p>
-              <code style={{ color:'#22d3ee', fontSize:12, fontFamily:'monospace' }}>{(docs as any).baseUrl}</code>
+              <code style={{ color:'#22d3ee', fontSize:12, fontFamily:'monospace', wordBreak:'break-all' }}>{(docs as any).baseUrl}</code>
             </div>
             <div style={{ background:'#ffffff', border:'1px solid rgba(6,182,212,0.15)', borderRadius:14, padding:16 }}>
               <p style={{ color:'#64748b', fontSize:11, margin:'0 0 6px' }}>Authentication</p>
-              <code style={{ color:'#22d3ee', fontSize:12, fontFamily:'monospace' }}>Authorization: Bearer YOUR_KEY</code>
+              <code style={{ color:'#22d3ee', fontSize:12, fontFamily:'monospace', wordBreak:'break-all' }}>Authorization: Bearer YOUR_KEY</code>
             </div>
           </div>
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
