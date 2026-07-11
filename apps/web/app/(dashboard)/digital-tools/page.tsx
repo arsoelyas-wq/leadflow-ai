@@ -1613,7 +1613,7 @@ export default function DigitalToolsPage() {
       )}
 
       {/* ── CREATE SECTION ────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 20, marginBottom: 28 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px] gap-5" style={{ marginBottom: 28 }}>
         {/* Form */}
         <div style={{ ...card }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
@@ -1651,7 +1651,7 @@ export default function DigitalToolsPage() {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, marginBottom: 18, alignItems: 'flex-end' }}>
+          <div className="flex flex-col sm:grid sm:grid-cols-[1fr_auto] gap-3 sm:gap-[12px]" style={{ marginBottom: 18 }}>
             <div>
               <label style={{ color: tx2, fontSize: 11, display: 'block', marginBottom: 5 }}>Etiket (opsiyonel)</label>
               <input value={qrLabel} onChange={e => setQrLabel(e.target.value)} placeholder="Ana Sayfa QR, WhatsApp QR..."
@@ -1659,10 +1659,10 @@ export default function DigitalToolsPage() {
             </div>
             <div>
               <label style={{ color: tx2, fontSize: 11, display: 'block', marginBottom: 5 }}>Renk</label>
-              <div style={{ display: 'flex', gap: 5 }}>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                 {QR_COLORS.map(c => (
                   <button key={c.value} onClick={() => setQrColor(c.value)} title={c.label}
-                    style={{ width: 28, height: 28, borderRadius: 6, border: `2px solid ${qrColor === c.value ? tx1 : 'transparent'}`, background: `#${c.value}`, cursor: 'pointer', transition: 'border 0.15s' }} />
+                    style={{ width: 30, height: 30, borderRadius: 7, border: `2px solid ${qrColor === c.value ? tx1 : 'transparent'}`, background: `#${c.value}`, cursor: 'pointer', transition: 'border 0.15s' }} />
                 ))}
               </div>
             </div>
@@ -1708,11 +1708,11 @@ export default function DigitalToolsPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <h2 style={{ color: tx1, fontSize: 15, fontWeight: 700, margin: 0 }}>QR Kodlarım {qrCodes.length > 0 && <span style={{ color: tx3, fontWeight: 400, fontSize: 13 }}>({qrCodes.length})</span>}</h2>
           {qrCodes.length > 0 && (
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button onClick={() => setQrFilter('')} style={{ padding: '5px 12px', borderRadius: 8, border: `1px solid ${!qrFilter ? 'rgba(13,148,136,0.4)' : '#e2e8f0'}`, background: !qrFilter ? 'rgba(13,148,136,0.08)' : 'transparent', color: !qrFilter ? accentTeal : tx2, fontSize: 11, cursor: 'pointer' }}>{t('qr_codes.tumu', 'Tümü')}</button>
               {QR_TYPES.filter(qt => qrCodes.some(q => q.type === qt.key)).map(qt => (
                 <button key={qt.key} onClick={() => setQrFilter(qrFilter === qt.key ? '' : qt.key)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: `1px solid ${qrFilter === qt.key ? `${qt.color}50` : '#e2e8f0'}`, background: qrFilter === qt.key ? `${qt.color}15` : 'transparent', color: qrFilter === qt.key ? qt.color : tx2, fontSize: 11, cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, border: `1px solid ${qrFilter === qt.key ? `${qt.color}50` : '#e2e8f0'}`, background: qrFilter === qt.key ? `${qt.color}15` : 'transparent', color: qrFilter === qt.key ? qt.color : tx2, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   <qt.Icon size={11} /> {qt.label}
                 </button>
               ))}
