@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useFeatureFlags } from '@/hooks/useFeatureFlags'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
@@ -120,6 +121,47 @@ const SPECIAL_TOOLS = [
   { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
 ]
 
+// href → feature flag key mapping
+const HREF_FLAG: Record<string, string> = {
+  '/dashboard':       'dashboard',
+  '/lead-machine':    'lead_machine',
+  '/leads':           'leads',
+  '/pipeline':        'pipeline',
+  '/automations':     'automations',
+  '/inbox':           'inbox',
+  '/lead-hunter':     'lead_hunter',
+  '/decision-maker':  'decision_maker',
+  '/trade-fair':      'trade_fair',
+  '/referral':        'referral',
+  '/proposals':       'proposals',
+  '/products':        'products',
+  '/digital-tools':   'digital_tools',
+  '/agent':           'agent',
+  '/tenders':         'tenders',
+  '/export':          'export',
+  '/voice-outreach':  'voice_outreach',
+  '/video-outreach':  'video_outreach',
+  '/sms-campaigns':   'sms_campaigns',
+  '/email-campaigns': 'email_campaigns',
+  '/wa-numbers':      'wa_numbers',
+  '/ads':             'ads',
+  '/google-ads':      'google_ads',
+  '/competitor':      'competitor',
+  '/shadow':          'shadow',
+  '/price-tracker':   'price_tracker',
+  '/visual-trends':   'visual_trends',
+  '/cultural':        'cultural',
+  '/analytics':       'analytics',
+  '/financial':       'financial',
+  '/monitoring':      'monitoring',
+  '/team':            'team',
+  '/webhooks':        'webhooks',
+  '/developer':       'developer',
+  '/whitelabel':      'whitelabel',
+  '/settings':        'settings',
+  '/billing':         'billing',
+}
+
 // Komut paleti için düzleştirilmiş arama indeksi — tüm öğeler tek listede
 const ALL_NAV_ITEMS: { href: string; label: string; icon: any; groupLabel?: string }[] = [
   ...CORE_ITEMS.map(i => ({ href: i.href, label: i.label, icon: i.icon })),
@@ -138,6 +180,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
   const router = useRouter()
   const { user, logout } = useAuth()
   const { t } = useI18n()
+  const { getStatus } = useFeatureFlags()
 
   const isMobile = useIsMobile()
 
@@ -380,20 +423,22 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
         {/* CORE — her zaman görünür */}
         {CORE_ITEMS.map(({ href, label, icon: Icon, badge }) => {
           const active = pathname === href
+          const flagStatus = getStatus(HREF_FLAG[href] || '')
+          const isComingSoon = flagStatus === 'coming_soon'
+          const isDisabled = flagStatus === 'disabled'
           return (
-            <Link key={href} href={href} style={itemStyle(active)}>
+            <Link key={href} href={isDisabled ? '#' : href}
+              onClick={isDisabled ? (e) => e.preventDefault() : undefined}
+              style={{ ...itemStyle(active, '#2563eb', isDisabled), opacity: isDisabled ? 0.45 : 1 }}>
               <Icon size={14} style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t(label, label)}
               </span>
-              {badge && (
-                <span style={{
-                  fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                  background: '#ecfdf5', color: '#10b981', flexShrink: 0,
-                }}>
-                  {badge}
-                </span>
-              )}
+              {isComingSoon ? (
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#fffbeb', color: '#d97706', flexShrink: 0 }}>YAKINDA</span>
+              ) : badge ? (
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#ecfdf5', color: '#10b981', flexShrink: 0 }}>{badge}</span>
+              ) : null}
             </Link>
           )
         })}
@@ -422,13 +467,16 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
               <div id="ai-clone-sub" style={{ display: cloneActive ? 'flex' : 'none', flexDirection: 'column', gap: 1, paddingLeft: 12 }}>
                 {AI_CLONE_ITEMS.map(({ href, label, icon: Icon }) => {
                   const active = pathname === href
+                  const flagStatus = getStatus(HREF_FLAG[href] || '')
+                  const isComingSoon = flagStatus === 'coming_soon'
+                  const isDisabled = flagStatus === 'disabled'
                   return (
-                    <Link key={href} href={href} style={{
-                      ...itemStyle(active, cloneColor),
-                      padding: '5px 8px', fontSize: 11,
-                    }}>
+                    <Link key={href} href={isDisabled ? '#' : href}
+                      onClick={isDisabled ? (e) => e.preventDefault() : undefined}
+                      style={{ ...itemStyle(active, cloneColor), padding: '5px 8px', fontSize: 11, opacity: isDisabled ? 0.45 : 1 }}>
                       <Icon size={12} style={{ color: active ? cloneColor : '#94a3b8', flexShrink: 0 }} />
                       <span style={{ flex: 1 }}>{t(label, label)}</span>
+                      {isComingSoon && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#fffbeb', color: '#d97706', flexShrink: 0 }}>YAKINDA</span>}
                     </Link>
                   )
                 })}
@@ -440,25 +488,24 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
         {/* ÖZEL ARAÇLAR — kompakt pill */}
         {SPECIAL_TOOLS.map(({ href, label, icon: Icon, color, badge }) => {
           const active = pathname === href
+          const flagStatus = getStatus(HREF_FLAG[href] || '')
+          const isComingSoon = flagStatus === 'coming_soon'
+          const isDisabled = flagStatus === 'disabled'
           return (
-            <Link key={href} href={href} style={itemStyle(active, color)}>
-              <div style={{
-                width: 21, height: 21, borderRadius: 6,
-                background: `${color}16`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
+            <Link key={href} href={isDisabled ? '#' : href}
+              onClick={isDisabled ? (e) => e.preventDefault() : undefined}
+              style={{ ...itemStyle(active, color), opacity: isDisabled ? 0.45 : 1 }}>
+              <div style={{ width: 21, height: 21, borderRadius: 6, background: `${color}16`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon size={11} color={color} />
               </div>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t(label, label)}
               </span>
-              <span style={{
-                fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                background: `${color}14`, color, flexShrink: 0,
-              }}>
-                {badge}
-              </span>
+              {isComingSoon ? (
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#fffbeb', color: '#d97706', flexShrink: 0 }}>YAKINDA</span>
+              ) : (
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: `${color}14`, color, flexShrink: 0 }}>{badge}</span>
+              )}
             </Link>
           )
         })}
@@ -510,32 +557,26 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                       (plan === 'growth'     && !['growth','pro','enterprise'].includes(user?.planType ?? ''))
                     )
                     const pm = plan ? PLAN_META[plan] : null
+                    const flagStatus = getStatus(HREF_FLAG[href] || '')
+                    const isComingSoon = flagStatus === 'coming_soon'
+                    const isDisabled = flagStatus === 'disabled'
 
                     return (
-                      <Link key={href} href={href} style={itemStyle(active, '#2563eb', !!locked)}>
+                      <Link key={href} href={isDisabled ? '#' : href}
+                        onClick={isDisabled ? (e) => e.preventDefault() : undefined}
+                        style={{ ...itemStyle(active, '#2563eb', !!locked || isDisabled), opacity: isDisabled ? 0.45 : 1 }}>
                         <Icon size={13} style={{ flexShrink: 0 }} />
-                        <span style={{
-                          flex: 1,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {t(label, label)}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                          {badge && !active && (
-                            <span style={{
-                              fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                              background: '#eff6ff', color: '#3b82f6',
-                            }}>
-                              {badge}
-                            </span>
-                          )}
+                          {isComingSoon ? (
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#fffbeb', color: '#d97706' }}>YAKINDA</span>
+                          ) : badge && !active ? (
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#eff6ff', color: '#3b82f6' }}>{badge}</span>
+                          ) : null}
                           {locked && pm && (
-                            <span style={{
-                              fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                              background: pm.bg, color: pm.color,
-                            }}>
-                              {pm.label}
-                            </span>
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: pm.bg, color: pm.color }}>{pm.label}</span>
                           )}
                         </div>
                       </Link>

@@ -2,6 +2,7 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
+const crypto = require('crypto');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -57,52 +58,49 @@ async function autoMigrate() {
   }
 }
 
+async function autoMigrateColumns() {
+  try {
+    const sql = `
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS webhook_token TEXT;
+      ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+      UPDATE feature_flags SET status = CASE WHEN is_enabled THEN 'active' ELSE 'disabled' END WHERE status IS NULL OR status = '';
+    `;
+    await axios.post(
+      `${process.env.SUPABASE_URL}/rest/v1/sql`,
+      sql,
+      {
+        headers: {
+          'Content-Type': 'text/plain',
+          'apikey': process.env.SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+          'Prefer': 'return=minimal',
+        },
+        timeout: 20000,
+      }
+    );
+    console.log('[AutoMigrate] ✅ webhook_token + feature_flags.status kolonları hazır');
+  } catch (e: any) {
+    console.log('[AutoMigrate] Kolon migrasyonu atlanıyor:', e?.response?.data?.message || e.message);
+  }
+}
+
 // Backend başladığında ve her 5 dakikada bir dene (Railway restart sonrası)
 autoMigrate();
+autoMigrateColumns();
 setTimeout(autoMigrate, 5000);
 
-// POST /api/automations/webhook â€” Gelen webhook'u iÅŸle
-router.post('/webhook/:userId', async (req: any, res: any) => {
-  try {
-    const { userId } = req.params;
-    const data = req.body;
-
-    // Webhook'u kaydet
-    await supabase.from('automation_logs').insert([{
-      user_id: userId, type: 'incoming',
-      payload: JSON.stringify(data),
-      source: req.headers['x-source'] || 'webhook',
-      received_at: new Date().toISOString(),
-    }]);
-
-    // Lead olarak ekle
-    if (data.name || data.company || data.phone || data.email) {
-      const { data: existing } = await supabase.from('leads').select('id')
-        .eq('user_id', userId)
-        .eq('phone', data.phone || '').maybeSingle();
-
-      if (!existing && (data.phone || data.email)) {
-        await supabase.from('leads').insert([{
-          user_id: userId,
-          company_name: data.company || data.name || 'Webhook Lead',
-          contact_name: data.name || null,
-          phone: data.phone || null,
-          email: data.email || null,
-          source: data.source || 'zapier',
-          status: 'new',
-          notes: data.notes || null,
-        }]);
-      }
-    }
-
-    res.json({ success: true, message: 'Webhook iÅŸlendi' });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-// GET /api/automations/webhook-url â€” Webhook URL'sini al
+// GET /api/automations/webhook-url — Webhook URL'sini al (token otomatik oluşturulur)
 router.get('/webhook-url', async (req: any, res: any) => {
-  const url = `https://leadflow-ai-production.up.railway.app/api/automations/webhook/${req.userId}`;
-  res.json({ url, userId: req.userId });
+  try {
+    const { data: user } = await supabase.from('users').select('webhook_token').eq('id', req.userId).maybeSingle();
+    let token = user?.webhook_token;
+    if (!token) {
+      token = crypto.randomBytes(32).toString('hex');
+      await supabase.from('users').update({ webhook_token: token }).eq('id', req.userId);
+    }
+    const url = `https://leadflow-ai-production.up.railway.app/api/automations/webhook/${req.userId}?token=${token}`;
+    res.json({ url, userId: req.userId, token });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/automations/zap â€” Zapier'e veri gÃ¶nder

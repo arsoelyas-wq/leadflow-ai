@@ -43,7 +43,9 @@ const paymentLimiter  = rateLimit({ windowMs: 60*60*1000, max: 20,  message: { e
 const creditLimiter   = rateLimit({ windowMs: 15*60*1000, max: 30,  message: { error: 'Kredi sorgu limiti aşıldı.' } });
 
 app.use(generalLimiter);
+// Webhooks that need raw body for signature verification — BEFORE global json parser
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/voice/webhook/elevenlabs', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Ensure all JSON responses explicitly declare UTF-8
@@ -86,8 +88,20 @@ app.get('/api/meta/webhook', (req: any, res: any) => {
   }
 });
 
-// Automations — webhook paths verified by signature inside route, rest requires auth
+// Automations — public webhook (token-verified), rest requires auth
+app.post('/api/automations/webhook/:userId', require('./routes/automations-webhook-public'));
 app.use('/api/automations', authMiddleware, require('./routes/automations'));
+
+// Public feature-flags endpoint — no auth, cached 60s by CDN/client
+app.get('/api/feature-flags', async (req: any, res: any) => {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const { data } = await sb.from('feature_flags').select('flag_key,status,is_enabled').order('flag_key');
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json({ flags: data || [] });
+  } catch { res.json({ flags: [] }); }
+});
 
 // Portal (public - token ile erisim)
 app.use('/api/portal', require('./routes/portal'));
@@ -104,7 +118,10 @@ if (process.env.NODE_ENV !== 'production') {
 // PROTECTED
 app.use('/api/leads',                authMiddleware, creditLimiter, require('./routes/leads'));
 app.use('/api/scrape',               authMiddleware, scrapeLimiter, require('./routes/scrape'));
-app.use('/api/payments',             authMiddleware, paymentLimiter, require('./routes/payments'));
+// Stripe webhook — public (Stripe signature verified inside route, no JWT)
+const paymentsRouter = require('./routes/payments');
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), (req: any, res: any, next: any) => { req.url = '/webhook'; paymentsRouter(req, res, next); });
+app.use('/api/payments',             authMiddleware, paymentLimiter, paymentsRouter);
 app.use('/api/analytics',            authMiddleware, require('./routes/analytics'));
 app.use('/api/ai',                   authMiddleware, aiLimiter, require('./routes/ai'));
 app.use('/api/campaigns',            authMiddleware, campaignLimiter, require('./routes/campaigns'));

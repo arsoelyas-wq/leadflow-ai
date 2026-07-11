@@ -595,14 +595,35 @@ router.get('/flags', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/flags', async (req: any, res: any) => {
+// PATCH /api/admin/flags/:key — set status for a single flag
+router.patch('/flags/:key', async (req: any, res: any) => {
   try {
-    const { flag_key, is_enabled, description, enabled_for_plans, rollout_percent } = req.body;
+    const flag_key = req.params.key;
+    const { status } = req.body; // 'active' | 'disabled' | 'coming_soon'
+    if (!['active', 'disabled', 'coming_soon'].includes(status)) {
+      return res.status(400).json({ error: 'status must be active|disabled|coming_soon' });
+    }
+    const is_enabled = status === 'active';
     const { data, error } = await supabase.from('feature_flags')
-      .upsert([{ flag_key, is_enabled, description: description || '', enabled_for_plans: enabled_for_plans || [], rollout_percent: rollout_percent || 0, updated_at: new Date().toISOString() }], { onConflict: 'flag_key' })
+      .upsert([{ flag_key, status, is_enabled, updated_at: new Date().toISOString() }], { onConflict: 'flag_key' })
       .select().single();
     if (error) throw error;
-    await audit(req.adminEmail, `flag.${is_enabled?'enable':'disable'}`, undefined, { flag_key }, req.ip);
+    await audit(req.adminEmail, `flag.${status}`, undefined, { flag_key }, req.ip);
+    res.json({ flag: data });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/flags', async (req: any, res: any) => {
+  try {
+    const { flag_key, is_enabled, status, description, enabled_for_plans, rollout_percent } = req.body;
+    // Accept either status string or legacy is_enabled boolean
+    const resolvedStatus = status || (is_enabled ? 'active' : 'disabled');
+    const resolvedEnabled = resolvedStatus === 'active';
+    const { data, error } = await supabase.from('feature_flags')
+      .upsert([{ flag_key, status: resolvedStatus, is_enabled: resolvedEnabled, description: description || '', enabled_for_plans: enabled_for_plans || [], rollout_percent: rollout_percent || 0, updated_at: new Date().toISOString() }], { onConflict: 'flag_key' })
+      .select().single();
+    if (error) throw error;
+    await audit(req.adminEmail, `flag.${resolvedStatus}`, undefined, { flag_key }, req.ip);
     res.json({ flag: data });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

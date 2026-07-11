@@ -16,6 +16,7 @@ const multer   = require('multer');
 const fs       = require('fs');
 const FormData = require('form-data');
 const Anthropic = require('@anthropic-ai/sdk');
+const crypto   = require('crypto');
 const { synthesizeXtts, warmUpXtts } = require('../services/xtts-engine');
 
 const router    = express.Router();
@@ -1085,7 +1086,24 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
 // POST /api/voice/webhook/elevenlabs + vapi
 router.post('/webhook/elevenlabs', async (req: any, res: any) => {
   try {
-    const { conversation_id, transcript, analysis, call_id } = req.body;
+    // HMAC-SHA256 verification (ElevenLabs xi-signature header)
+    const secret = process.env.ELEVENLABS_WEBHOOK_SECRET;
+    if (secret) {
+      const rawBody: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+      const sig = req.headers['xi-signature'] as string || '';
+      // xi-signature format: "t=<timestamp>,v1=<hex_hmac>"
+      const tMatch = sig.match(/t=(\d+)/);
+      const v1Match = sig.match(/v1=([a-f0-9]+)/);
+      if (!tMatch || !v1Match) return res.status(401).json({ error: 'Missing xi-signature' });
+      const expected = crypto.createHmac('sha256', secret).update(`${tMatch[1]}.${rawBody.toString('utf8')}`).digest('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(v1Match[1], 'hex'), Buffer.from(expected, 'hex'))) {
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+    }
+
+    // req.body may be a Buffer if raw parser was used — parse it
+    const parsed = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString('utf8')) : req.body;
+    const { conversation_id, transcript, analysis, call_id } = parsed;
     res.sendStatus(200);
     const convId = conversation_id || call_id;
     if (!convId) return;

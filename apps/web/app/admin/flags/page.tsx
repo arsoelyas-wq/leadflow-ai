@@ -8,92 +8,249 @@ async function req(path: string, opts: RequestInit = {}) {
   return r.json()
 }
 
-const PREDEFINED_FLAGS = [
-  { key: 'ai_video_outreach', label: '🎬 AI Video Outreach', desc: 'Kişiselleştirilmiş video kampanyaları', plan: 'pro' },
-  { key: 'voice_cloning', label: '🎙️ Ses Klonlama', desc: 'ElevenLabs ile ses klonlama', plan: 'pro' },
-  { key: 'ar_experience', label: '🥽 AR Deneyimi', desc: '3D model ve artırılmış gerçeklik', plan: 'enterprise' },
-  { key: 'ai_agent', label: '🤖 AI Satış Ajanı', desc: '7/24 otonom lead araştırma', plan: 'growth' },
-  { key: 'white_label', label: '🏢 White-label', desc: 'Özel marka ve domain', plan: 'enterprise' },
-  { key: 'team_intelligence', label: '👥 Takım Zekası', desc: 'Gelişmiş takım analitikleri', plan: 'pro' },
-  { key: 'export_intelligence', label: '🌍 İhracat Zekası', desc: 'Global alıcı bulma', plan: 'enterprise' },
-  { key: 'beta_new_feature', label: '🚀 Beta: Yeni Özellik', desc: 'Geliştirme aşamasındaki özellik', plan: 'all' },
+type FlagStatus = 'active' | 'disabled' | 'coming_soon'
+
+interface FlagDef {
+  key: string
+  label: string
+  desc: string
+  category: string
+  emoji: string
+}
+
+const FLAG_CATEGORIES: { id: string; label: string; flags: FlagDef[] }[] = [
+  {
+    id: 'core', label: 'Temel',
+    flags: [
+      { key: 'dashboard',       label: 'Dashboard',         desc: 'Ana gösterge paneli',           category: 'core',    emoji: '📊' },
+      { key: 'leads',           label: 'Leads',             desc: 'Lead listesi ve yönetimi',      category: 'core',    emoji: '👥' },
+      { key: 'pipeline',        label: 'Pipeline',          desc: 'Satış hattı (Kanban)',          category: 'core',    emoji: '🗂' },
+      { key: 'inbox',           label: 'Inbox',             desc: 'Mesaj kutusu',                  category: 'core',    emoji: '📥' },
+      { key: 'automations',     label: 'Automasyonlar',     desc: 'Otomasyon kuralları ve Zapier', category: 'core',    emoji: '⚡' },
+      { key: 'lead_machine',    label: 'Lead Machine',      desc: 'AI destekli lead bulma',        category: 'core',    emoji: '🤖' },
+    ],
+  },
+  {
+    id: 'discovery', label: 'Keşif',
+    flags: [
+      { key: 'lead_hunter',     label: 'Lead Hunter',       desc: 'Otomatik lead arama',           category: 'discovery', emoji: '🎯' },
+      { key: 'decision_maker',  label: 'Karar Verici',      desc: 'Şirkette yetkili bulma',        category: 'discovery', emoji: '👤' },
+      { key: 'trade_fair',      label: 'Fuar & Etkinlik',   desc: 'Fuar ve etkinlik takvimi',      category: 'discovery', emoji: '🎪' },
+      { key: 'referral',        label: 'Referans',          desc: 'Referans programı',             category: 'discovery', emoji: '🔗' },
+    ],
+  },
+  {
+    id: 'sales', label: 'Satış',
+    flags: [
+      { key: 'proposals',       label: 'Teklifler',         desc: 'Teklif oluşturma ve takibi',   category: 'sales',   emoji: '📄' },
+      { key: 'products',        label: 'Ürünler',           desc: 'Ürün kataloğu',                category: 'sales',   emoji: '📦' },
+      { key: 'digital_tools',   label: 'Dijital Araçlar',   desc: 'Dijital araç önerileri',       category: 'sales',   emoji: '🛠' },
+      { key: 'agent',           label: 'AI Satış Ajanı',    desc: '7/24 otonom lead araştırma',   category: 'sales',   emoji: '🤖' },
+      { key: 'tenders',         label: 'İhaleler',          desc: 'İhale takibi ve bildirimleri', category: 'sales',   emoji: '📜' },
+      { key: 'export',          label: 'İhracat Zekası',    desc: 'Global alıcı bulma',           category: 'sales',   emoji: '🌍' },
+    ],
+  },
+  {
+    id: 'outreach', label: 'Kampanyalar',
+    flags: [
+      { key: 'voice_outreach',  label: 'Sesli Arama',       desc: 'ElevenLabs AI arama',          category: 'outreach', emoji: '📞' },
+      { key: 'video_outreach',  label: 'Video Outreach',    desc: 'Kişiselleştirilmiş video',     category: 'outreach', emoji: '🎬' },
+      { key: 'sms_campaigns',   label: 'SMS Kampanyaları',  desc: 'Toplu SMS gönderimi',          category: 'outreach', emoji: '💬' },
+      { key: 'email_campaigns', label: 'E-posta Kampanyaları', desc: 'E-posta kampanyaları',      category: 'outreach', emoji: '📧' },
+      { key: 'wa_numbers',      label: 'WhatsApp Numaraları', desc: 'WA numarası yönetimi',       category: 'outreach', emoji: '📱' },
+    ],
+  },
+  {
+    id: 'marketing', label: 'Pazarlama',
+    flags: [
+      { key: 'ads',             label: 'Reklam Yönetimi',   desc: 'Meta/sosyal medya reklamları', category: 'marketing', emoji: '📢' },
+      { key: 'google_ads',      label: 'Google Ads',        desc: 'Google reklam kampanyaları',   category: 'marketing', emoji: '🔍' },
+    ],
+  },
+  {
+    id: 'intelligence', label: 'Pazar Zekası',
+    flags: [
+      { key: 'competitor',      label: 'Rakip Analizi',     desc: 'Rakip izleme ve analiz',       category: 'intelligence', emoji: '⚔️' },
+      { key: 'shadow',          label: 'Shadow',            desc: 'Piyasa izleme',                category: 'intelligence', emoji: '👁' },
+      { key: 'price_tracker',   label: 'Fiyat Takipçisi',   desc: 'Rakip fiyat izleme',           category: 'intelligence', emoji: '🏷' },
+      { key: 'visual_trends',   label: 'Görsel Trendler',   desc: 'Görsel trend analizi',         category: 'intelligence', emoji: '📈' },
+      { key: 'cultural',        label: 'Kültürel Analiz',   desc: 'Uluslararası kültür rehberi',  category: 'intelligence', emoji: '🌐' },
+    ],
+  },
+  {
+    id: 'analytics', label: 'Analitik',
+    flags: [
+      { key: 'analytics',       label: 'Analitik',          desc: 'Performans raporları',         category: 'analytics', emoji: '📊' },
+      { key: 'financial',       label: 'Finansal',          desc: 'Gelir ve gider takibi',        category: 'analytics', emoji: '💰' },
+      { key: 'monitoring',      label: 'İzleme',            desc: 'Sistem sağlık izleme',         category: 'analytics', emoji: '🔍' },
+    ],
+  },
+  {
+    id: 'system', label: 'Sistem',
+    flags: [
+      { key: 'team',            label: 'Takım',             desc: 'Takım üyesi yönetimi',         category: 'system', emoji: '👥' },
+      { key: 'webhooks',        label: 'Webhooks',          desc: 'Webhook yönetimi',             category: 'system', emoji: '🔗' },
+      { key: 'developer',       label: 'Geliştirici',       desc: 'API anahtarları ve dökümanlar', category: 'system', emoji: '💻' },
+      { key: 'whitelabel',      label: 'White-label',       desc: 'Özel marka ve domain',         category: 'system', emoji: '🏢' },
+      { key: 'settings',        label: 'Ayarlar',           desc: 'Hesap ve uygulama ayarları',   category: 'system', emoji: '⚙️' },
+      { key: 'billing',         label: 'Faturalama',        desc: 'Plan ve kredi yönetimi',       category: 'system', emoji: '💳' },
+    ],
+  },
 ]
 
+const STATUS_CONFIG: Record<FlagStatus, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  active:       { label: 'Aktif',    color: '#10b981', bg: 'rgba(16,185,129,0.12)',   border: 'rgba(16,185,129,0.3)',   dot: '#10b981' },
+  coming_soon:  { label: 'Yakında',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',   border: 'rgba(245,158,11,0.3)',   dot: '#f59e0b' },
+  disabled:     { label: 'Kapalı',   color: '#64748b', bg: 'rgba(100,116,139,0.08)',  border: 'rgba(100,116,139,0.2)', dot: '#94a3b8' },
+}
+
 export default function AdminFlagsPage() {
-  const [flags, setFlags] = useState<Record<string,boolean>>({})
-  const [saving, setSaving] = useState<string|null>(null)
+  const [flags, setFlags] = useState<Record<string, FlagStatus>>({})
+  const [saving, setSaving] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
+  const [activeCategory, setActiveCategory] = useState('all')
 
   useEffect(() => {
     req('/flags').then(d => {
-      const map: Record<string,boolean> = {}
-      ;(d.flags||[]).forEach((f:any) => { map[f.flag_key] = f.is_enabled })
+      const map: Record<string, FlagStatus> = {}
+      ;(d.flags || []).forEach((f: any) => {
+        map[f.flag_key] = f.status || (f.is_enabled ? 'active' : 'disabled')
+      })
       setFlags(map)
-    }).catch(()=>{})
+    }).catch(() => {})
   }, [])
 
-  const toggle = async (key: string) => {
-    const newVal = !flags[key]
+  const setStatus = async (key: string, status: FlagStatus) => {
     setSaving(key)
     try {
-      await req('/flags', { method: 'POST', body: JSON.stringify({ flag_key: key, is_enabled: newVal }) })
-      setFlags(prev => ({ ...prev, [key]: newVal }))
-      setMsg(newVal ? `✅ "${key}" aktive edildi` : `⚪ "${key}" deaktive edildi`)
+      await req(`/flags/${key}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      setFlags(prev => ({ ...prev, [key]: status }))
+      const cfg = STATUS_CONFIG[status]
+      setMsg(`${cfg.label}: "${key}" güncellendi`)
       setTimeout(() => setMsg(''), 3000)
-    } catch(e:any) { setMsg('❌ Hata: '+e.message) }
+    } catch (e: any) { setMsg('❌ Hata: ' + e.message) }
     finally { setSaving(null) }
   }
 
-  const card: React.CSSProperties = { background:'linear-gradient(135deg,rgba(8,16,40,0.9),rgba(5,10,28,0.95))',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:18,marginBottom:10 }
-  const PLAN_COLOR: Record<string,string> = { pro:'#8b5cf6', enterprise:'#f59e0b', growth:'#3b82f6', all:'#64748b' }
+  const card: React.CSSProperties = {
+    background: 'linear-gradient(135deg,rgba(8,16,40,0.9),rgba(5,10,28,0.95))',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 12,
+    padding: '14px 16px',
+    marginBottom: 8,
+  }
+
+  const allFlags = FLAG_CATEGORIES.flatMap(c => c.flags)
+  const filteredCategories = activeCategory === 'all'
+    ? FLAG_CATEGORIES
+    : FLAG_CATEGORIES.filter(c => c.id === activeCategory)
+
+  const totalActive   = allFlags.filter(f => (flags[f.key] || 'active') === 'active').length
+  const totalComing   = allFlags.filter(f => flags[f.key] === 'coming_soon').length
+  const totalDisabled = allFlags.filter(f => flags[f.key] === 'disabled').length
 
   return (
     <div>
-      <h1 style={{color:'#fff',fontSize:22,fontWeight:900,margin:'0 0 8px',letterSpacing:'-0.02em'}}>🚩 Feature Flags</h1>
-      <p style={{color:'#334155',fontSize:13,margin:'0 0 28px'}}>Özellikleri kullanıcılara veya planlara göre açıp kapatın</p>
+      <h1 style={{ color: '#fff', fontSize: 22, fontWeight: 900, margin: '0 0 4px', letterSpacing: '-0.02em' }}>🚩 Feature Flags</h1>
+      <p style={{ color: '#475569', fontSize: 13, margin: '0 0 20px' }}>
+        Özellikleri tek tıkla aç, kapat veya &ldquo;yakında&rdquo; olarak işaretle
+      </p>
 
-      {msg && <div style={{padding:'11px 16px',borderRadius:10,marginBottom:16,background:msg.startsWith('✅')?'rgba(16,185,129,0.1)':'rgba(239,68,68,0.1)',border:`1px solid ${msg.startsWith('✅')?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`,color:msg.startsWith('✅')?'#34d399':'#f87171',fontSize:13}}>{msg}</div>}
-
-      <div style={{background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:12,padding:'12px 16px',marginBottom:20,fontSize:12,color:'#93c5fd'}}>
-        💡 Feature flag'ler özelliği belirli planlardaki veya test kullanıcılarındaki kullanıcılara açar/kapatır. Değişiklikler anında yayına girer.
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        {[
+          { label: 'Aktif',   value: totalActive,   color: '#10b981' },
+          { label: 'Yakında', value: totalComing,   color: '#f59e0b' },
+          { label: 'Kapalı', value: totalDisabled, color: '#64748b' },
+        ].map(s => (
+          <div key={s.label} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 16px', minWidth: 90 }}>
+            <div style={{ color: s.color, fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>{s.label}</div>
+          </div>
+        ))}
       </div>
 
-      {PREDEFINED_FLAGS.map(f => {
-        const enabled = flags[f.key] || false
-        const isSaving = saving === f.key
-        return (
-          <div key={f.key} style={{...card, opacity: isSaving ? 0.7 : 1}}>
-            <div style={{display:'flex',alignItems:'center',gap:14}}>
-              <div style={{flex:1}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                  <span style={{color:'#fff',fontSize:13,fontWeight:700}}>{f.label}</span>
-                  <span style={{padding:'2px 7px',borderRadius:20,fontSize:10,fontWeight:700,background:`${PLAN_COLOR[f.plan]||'#64748b'}20`,color:PLAN_COLOR[f.plan]||'#64748b'}}>{f.plan}</span>
-                </div>
-                <div style={{color:'#64748b',fontSize:12}}>{f.desc}</div>
-                <code style={{color:'#334155',fontSize:10,marginTop:4,display:'block'}}>{f.key}</code>
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <span style={{fontSize:12,color:enabled?'#34d399':'#64748b',fontWeight:600}}>{enabled?'Aktif':'Pasif'}</span>
-                <button onClick={() => toggle(f.key)} disabled={isSaving}
-                  style={{
-                    width:44,height:24,borderRadius:12,border:'none',cursor:isSaving?'not-allowed':'pointer',
-                    background:enabled?'#10b981':'rgba(255,255,255,0.08)',
-                    position:'relative',transition:'background 0.2s',
-                    flexShrink:0,
-                  }}>
-                  <div style={{
-                    width:18,height:18,borderRadius:'50%',background:'#fff',
-                    position:'absolute',top:3,
-                    left:enabled?22:4,
-                    transition:'left 0.2s',
-                    boxShadow:'0 1px 3px rgba(0,0,0,0.3)',
-                  }}/>
-                </button>
-              </div>
-            </div>
+      {/* Toast */}
+      {msg && (
+        <div style={{ padding: '10px 14px', borderRadius: 9, marginBottom: 16, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399', fontSize: 13 }}>
+          {msg}
+        </div>
+      )}
+
+      {/* Category tabs */}
+      <div className="flex overflow-x-auto" style={{ gap: 6, marginBottom: 20, scrollbarWidth: 'none' }}>
+        {[{ id: 'all', label: 'Tümü' }, ...FLAG_CATEGORIES].map(c => (
+          <button key={c.id} onClick={() => setActiveCategory(c.id)}
+            style={{
+              padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+              background: activeCategory === c.id ? '#2563eb' : 'rgba(255,255,255,0.06)',
+              color: activeCategory === c.id ? '#fff' : '#64748b',
+              transition: 'all 0.15s',
+            }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Flag groups */}
+      {filteredCategories.map(category => (
+        <div key={category.id} style={{ marginBottom: 24 }}>
+          <div style={{ color: '#94a3b8', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            {category.label}
           </div>
-        )
-      })}
+          {category.flags.map(flag => {
+            const status: FlagStatus = flags[flag.key] || 'active'
+            const isSaving = saving === flag.key
+            const cfg = STATUS_CONFIG[status]
+
+            return (
+              <div key={flag.key} style={{ ...card, opacity: isSaving ? 0.7 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ fontSize: 18, flexShrink: 0, lineHeight: 1, marginTop: 2 }}>{flag.emoji}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#e2e8f0', fontSize: 13, fontWeight: 700 }}>{flag.label}</span>
+                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: 10.5, fontWeight: 700, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, display: 'inline-block', flexShrink: 0 }} />
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <div style={{ color: '#475569', fontSize: 11.5 }}>{flag.desc}</div>
+                    <code style={{ color: '#334155', fontSize: 10, marginTop: 3, display: 'block' }}>{flag.key}</code>
+                  </div>
+                  {/* 3-state control */}
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {(['active', 'coming_soon', 'disabled'] as FlagStatus[]).map(s => {
+                      const c2 = STATUS_CONFIG[s]
+                      const isSelected = status === s
+                      return (
+                        <button key={s} onClick={() => !isSaving && setStatus(flag.key, s)}
+                          disabled={isSaving}
+                          title={c2.label}
+                          style={{
+                            padding: '4px 10px', borderRadius: 7,
+                            border: isSelected ? `1px solid ${c2.color}` : '1px solid rgba(255,255,255,0.08)',
+                            background: isSelected ? c2.bg : 'transparent',
+                            color: isSelected ? c2.color : '#475569',
+                            fontSize: 10.5, fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s', whiteSpace: 'nowrap',
+                          }}>
+                          {s === 'active' ? '✓ Aktif' : s === 'coming_soon' ? '⏳ Yakında' : '✕ Kapalı'}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      <div style={{ color: '#1e293b', fontSize: 11.5, textAlign: 'center', paddingTop: 8, paddingBottom: 16 }}>
+        Değişiklikler anında yayına girer · Aktif = görünür · Yakında = sarı badge · Kapalı = gizlenmiş
+      </div>
     </div>
   )
 }
