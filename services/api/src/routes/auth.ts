@@ -10,6 +10,24 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+const FREE_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com',
+  'hotmail.com', 'hotmail.co.uk', 'hotmail.com.tr', 'hotmail.tr', 'hotmail.de', 'hotmail.fr', 'hotmail.es',
+  'yahoo.com', 'yahoo.co.uk', 'yahoo.com.tr', 'yahoo.tr', 'yahoo.de', 'yahoo.fr',
+  'outlook.com', 'outlook.com.tr',
+  'live.com', 'live.tr', 'live.co.uk',
+  'icloud.com', 'me.com', 'mac.com',
+  'yandex.com', 'yandex.ru', 'yandex.com.tr',
+  'mail.com', 'aol.com', 'msn.com', 'windowslive.com',
+  'protonmail.com', 'proton.me',
+  'tutanota.com', 'tutamail.com',
+]);
+
+function isBusinessEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return !!domain && !FREE_EMAIL_DOMAINS.has(domain);
+}
+
 // Field isimlerini frontend formatına çevir
 function formatUser(u: any) {
   return {
@@ -29,44 +47,53 @@ function formatUser(u: any) {
   }
 }
 
-// KAYIT OL
+// KAYIT OL — hesap oluştur + OTP gönder (token döndürmez, verify-otp ile tamamlanır)
 router.post('/register', async (req: any, res: any) => {
   try {
     const { email, password, name, company } = req.body;
     if (!email || !password || !name)
-      return res.status(400).json({ error: 'Email, sifre ve isim zorunlu' });
+      return res.status(400).json({ error: 'Email, şifre ve isim zorunludur' });
     if (password.length < 6)
-      return res.status(400).json({ error: 'Sifre en az 6 karakter olmali' });
+      return res.status(400).json({ error: 'Şifre en az 6 karakter olmalıdır' });
+
+    const emailLower = email.trim().toLowerCase();
+
+    if (!isBusinessEmail(emailLower))
+      return res.status(400).json({ error: 'Lütfen kurumsal e-posta adresinizi kullanın (Gmail, Hotmail vb. kabul edilmez)' });
 
     const { data: existing } = await supabase
-      .from('users').select('id').eq('email', email).single();
+      .from('users').select('id').eq('email', emailLower).single();
     if (existing)
-      return res.status(400).json({ error: 'Bu email zaten kayitli' });
+      return res.status(400).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const { data: user, error } = await supabase
       .from('users')
       .insert([{
-        email, name, company: company || null,
+        email: emailLower, name: name.trim(), company: company?.trim() || null,
         password_hash: hashedPassword,
         plan_type: 'starter',
         credits_total: 50,
         credits_used: 0,
         onboarding_done: false
       }])
-      .select('id, email, name, company, plan_type, credits_total, credits_used, onboarding_done')
+      .select('id, email, name')
       .single();
 
     if (error) throw error;
 
-    const jti = require('crypto').randomUUID();
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, jti },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // OTP gönder — kullanıcı verify-otp ile tamamlayacak
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    await supabase.from('users').update({
+      otp_code: otp, otp_expires: expires, otp_attempts: 0,
+    }).eq('id', user.id);
+    await sendOTPEmail(emailLower, name.trim(), otp);
 
-    res.status(201).json({ message: 'Kayit basarili!', token, user: formatUser(user) });
+    const [local, domain] = emailLower.split('@');
+    const masked = local.slice(0, 2) + '***@' + domain;
+
+    res.status(201).json({ ok: true, masked_email: masked });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -77,7 +104,10 @@ router.post('/login', async (req: any, res: any) => {
   try {
     const { email, password } = req.body;
     if (!email || !password)
-      return res.status(400).json({ error: 'Email ve sifre zorunlu' });
+      return res.status(400).json({ error: 'E-posta ve şifre zorunludur' });
+
+    if (!isBusinessEmail(email.trim()))
+      return res.status(400).json({ error: 'Lütfen kurumsal e-posta adresinizi kullanın' });
 
     const { data: user, error } = await supabase
       .from('users').select('*').eq('email', email).single();
