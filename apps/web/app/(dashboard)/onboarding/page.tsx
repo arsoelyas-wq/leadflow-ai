@@ -4,9 +4,10 @@ import { useRouter } from 'next/navigation'
 import {
   Building2, Package, Users, Mic2, MessageSquare, CheckCircle,
   ArrowRight, ArrowLeft, Globe, Sparkles, Plus, X, Loader2,
-  TrendingUp, Phone, ChevronDown, Star,
+  Phone, ChevronDown, Star, Check,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import SovloLogo from '@/components/SovloLogo'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -137,50 +138,131 @@ function calcScore(c: Company, p: Product, t: Target, s: SalesStyle, faq: FAQ[],
   return Math.min(sc, 100)
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+
+const C = {
+  bg:          '#070d1a',
+  panel:       '#0c1323',
+  panelBorder: 'rgba(255,255,255,0.06)',
+  card:        'rgba(255,255,255,0.03)',
+  cardBorder:  'rgba(255,255,255,0.07)',
+  cardActive:  'rgba(59,130,246,0.04)',
+  cardActiveBorder: 'rgba(59,130,246,0.18)',
+  inputBg:     'rgba(255,255,255,0.04)',
+  inputBorder: 'rgba(255,255,255,0.1)',
+  text:        '#e2e8f0',
+  textMuted:   '#64748b',
+  textLabel:   '#94a3b8',
+  blue:        '#3b82f6',
+  blueLight:   '#60a5fa',
+  green:       '#10b981',
+  purple:      '#8b5cf6',
+  red:         '#ef4444',
+}
 
 const S = {
-  page:    { minHeight: '100vh', background: '#0f172a', color: '#f1f5f9', fontFamily: 'inherit', paddingBottom: 60 } as React.CSSProperties,
-  topBar:  { position: 'sticky' as const, top: 0, zIndex: 50, background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.07)', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16 },
-  wrap:    { maxWidth: 740, margin: '0 auto', padding: '32px 20px 0' },
-  card:    { background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '24px', marginBottom: 20 },
-  label:   { display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 7, letterSpacing: 0.4, textTransform: 'uppercase' as const },
-  input:   { width: '100%', padding: '10px 14px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' as const },
-  textarea: { width: '100%', padding: '10px 14px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f1f5f9', fontSize: 14, fontFamily: 'inherit', outline: 'none', resize: 'vertical' as const, minHeight: 90, boxSizing: 'border-box' as const },
-  row2:    { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 } as React.CSSProperties,
-  btn:     { padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s' } as React.CSSProperties,
-  btnPrimary: { background: 'linear-gradient(135deg,#3b82f6,#2563eb)', color: '#fff', border: 'none' } as React.CSSProperties,
-  btnGhost:   { background: 'rgba(255,255,255,0.06)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.1)' } as React.CSSProperties,
-  errBox:  { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, color: '#f87171', fontSize: 13 } as React.CSSProperties,
+  card: {
+    background: C.card,
+    border: `1px solid ${C.cardBorder}`,
+    borderRadius: 14,
+    padding: '22px 24px',
+    marginBottom: 16,
+  } as React.CSSProperties,
+
+  cardHighlight: {
+    background: C.cardActive,
+    border: `1px solid ${C.cardActiveBorder}`,
+    borderRadius: 14,
+    padding: '22px 24px',
+    marginBottom: 16,
+  } as React.CSSProperties,
+
+  label: {
+    display: 'block', fontSize: 11, fontWeight: 700,
+    color: C.textLabel, marginBottom: 8,
+    letterSpacing: 0.6, textTransform: 'uppercase' as const,
+  },
+
+  input: {
+    width: '100%', padding: '11px 14px',
+    background: C.inputBg,
+    border: `1px solid ${C.inputBorder}`,
+    borderRadius: 10, color: C.text, fontSize: 14,
+    fontFamily: 'inherit', outline: 'none',
+    boxSizing: 'border-box' as const,
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+  },
+
+  textarea: {
+    width: '100%', padding: '11px 14px',
+    background: C.inputBg,
+    border: `1px solid ${C.inputBorder}`,
+    borderRadius: 10, color: C.text, fontSize: 14,
+    fontFamily: 'inherit', outline: 'none',
+    resize: 'vertical' as const, minHeight: 90,
+    boxSizing: 'border-box' as const,
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+  },
+
+  row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 } as React.CSSProperties,
+
+  btn: {
+    padding: '11px 22px', borderRadius: 10, border: 'none', cursor: 'pointer',
+    fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+    display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s',
+  } as React.CSSProperties,
+
+  btnPrimary: {
+    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+    color: '#fff', border: 'none',
+    boxShadow: '0 0 0 0 rgba(59,130,246,0)',
+  } as React.CSSProperties,
+
+  btnGhost: {
+    background: 'rgba(255,255,255,0.04)',
+    color: C.textLabel,
+    border: `1px solid ${C.cardBorder}`,
+  } as React.CSSProperties,
+
+  errBox: {
+    background: 'rgba(239,68,68,0.08)',
+    border: '1px solid rgba(239,68,68,0.2)',
+    borderRadius: 10, padding: '12px 16px',
+    marginBottom: 16, color: '#f87171', fontSize: 13,
+  } as React.CSSProperties,
 }
 
 // ─── Shared Sub-Components ────────────────────────────────────────────────────
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 16 }}>
-      <label style={S.label}>{label}{required && <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>}</label>
+    <div style={{ marginBottom: 18 }}>
+      <label style={S.label}>
+        {label}
+        {required && <span style={{ color: C.red, marginLeft: 3 }}>*</span>}
+      </label>
       {children}
+      {hint && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 5 }}>{hint}</div>}
     </div>
   )
 }
 
 function Inp({ value, onChange, placeholder, type = 'text' }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
-  return <input style={S.input} type={type} value={value} placeholder={placeholder || ''} onChange={e => onChange(e.target.value)} />
+  return <input className="ob-input" style={S.input} type={type} value={value} placeholder={placeholder || ''} onChange={e => onChange(e.target.value)} />
 }
 
 function Txta({ value, onChange, placeholder, minH = 90 }: { value: string; onChange: (v: string) => void; placeholder?: string; minH?: number }) {
-  return <textarea style={{ ...S.textarea, minHeight: minH }} value={value} placeholder={placeholder || ''} onChange={e => onChange(e.target.value)} />
+  return <textarea className="ob-input" style={{ ...S.textarea, minHeight: minH }} value={value} placeholder={placeholder || ''} onChange={e => onChange(e.target.value)} />
 }
 
 function Sel({ value, onChange, options, placeholder = 'Seçin...' }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
   return (
     <div style={{ position: 'relative' }}>
-      <select style={{ ...S.input, appearance: 'none', cursor: 'pointer', paddingRight: 36 }} value={value} onChange={e => onChange(e.target.value)}>
+      <select className="ob-input" style={{ ...S.input, appearance: 'none', cursor: 'pointer', paddingRight: 36 }} value={value} onChange={e => onChange(e.target.value)}>
         <option value="">{placeholder}</option>
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
-      <ChevronDown size={15} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} />
+      <ChevronDown size={14} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }} />
     </div>
   )
 }
@@ -204,7 +286,7 @@ export default function OnboardingPage() {
   const [faq,        setFaq]        = useState<FAQ[]>([{ q: '', a: '' }, { q: '', a: '' }])
   const [objections, setObjections] = useState<FAQ[]>(DEFAULT_OBJECTIONS.map(q => ({ q, a: '' })))
 
-  // Load saved profile ─────────────────────────────────────────────────────────
+  // Load saved profile
   useEffect(() => {
     async function load() {
       try {
@@ -221,7 +303,6 @@ export default function OnboardingPage() {
           return
         }
       } catch {}
-      // Fallback: localStorage
       try {
         const saved = localStorage.getItem('ob_data')
         if (saved) {
@@ -239,14 +320,13 @@ export default function OnboardingPage() {
     load()
   }, [])
 
-  // Auto-save to localStorage ──────────────────────────────────────────────────
+  // Auto-save to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('ob_data', JSON.stringify({ company, product, target, salesStyle, faq, objections, step }))
     } catch {}
   }, [company, product, target, salesStyle, faq, objections, step])
 
-  // Validation ─────────────────────────────────────────────────────────────────
   function validate(): boolean {
     const errs: string[] = []
     if (step === 1) {
@@ -261,7 +341,6 @@ export default function OnboardingPage() {
     return errs.length === 0
   }
 
-  // AI website analysis ────────────────────────────────────────────────────────
   async function analyzeWebsite() {
     if (!company.website.trim()) return
     setAnalyzing(true); setAnalyzeErr('')
@@ -281,7 +360,6 @@ export default function OnboardingPage() {
     setAnalyzing(false)
   }
 
-  // Sector template ────────────────────────────────────────────────────────────
   function applyTemplate() {
     const tmpl = TEMPLATES[company.sector]
     if (!tmpl) return
@@ -292,7 +370,6 @@ export default function OnboardingPage() {
     setObjections(DEFAULT_OBJECTIONS.map((q, i) => ({ q, a: tmpl.obj_answers[i] || '' })))
   }
 
-  // Navigation ─────────────────────────────────────────────────────────────────
   async function goNext() {
     if (!validate()) return
     try { await api.patch('/api/settings', { onboarding_step: step }) } catch {}
@@ -307,7 +384,6 @@ export default function OnboardingPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Finish ─────────────────────────────────────────────────────────────────────
   async function finish() {
     setSaving(true)
     try {
@@ -331,81 +407,205 @@ export default function OnboardingPage() {
     }
   }
 
-  // Derived ────────────────────────────────────────────────────────────────────
-  const score   = calcScore(company, product, target, salesStyle, faq, objections)
-  const preview = generatePreview(company, product, salesStyle)
+  const score    = calcScore(company, product, target, salesStyle, faq, objections)
+  const preview  = generatePreview(company, product, salesStyle)
   const progress = ((step - 1) / (STEPS.length - 1)) * 100
 
-  // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={S.page}>
-      {/* Top bar */}
-      <div style={S.topBar}>
-        <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Star size={14} color="#fff" fill="#fff" />
+    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'inherit', display: 'flex' }}>
+
+      {/* ── Left Panel ────────────────────────────────────────────────────── */}
+      <div id="ob-left-panel" style={{
+        width: 260, flexShrink: 0,
+        background: C.panel,
+        borderRight: `1px solid ${C.panelBorder}`,
+        display: 'flex', flexDirection: 'column',
+        position: 'sticky', top: 0, height: '100vh',
+        overflow: 'hidden',
+      }}>
+        {/* Logo */}
+        <div style={{ padding: '28px 24px 24px', borderBottom: `1px solid ${C.panelBorder}` }}>
+          <SovloLogo size="md" theme="dark" />
         </div>
-        <span style={{ fontWeight: 700, fontSize: 15, color: '#f1f5f9' }}>Sovlo AI — Kurulum</span>
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{step} / {STEPS.length}</span>
-      </div>
-
-      {/* Progress bar */}
-      <div style={{ height: 3, background: '#1e293b' }}>
-        <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg,#3b82f6,#8b5cf6)', transition: 'width 0.4s ease' }} />
-      </div>
-
-      <div style={S.wrap}>
-        {/* Step header */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            {(() => { const Icon = STEPS[step - 1].icon; return <Icon size={20} color="#3b82f6" /> })()}
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#f1f5f9', margin: 0 }}>{STEPS[step - 1].title}</h1>
-          </div>
-          <p style={{ margin: 0, fontSize: 14, color: '#64748b' }}>{STEPS[step - 1].desc}</p>
-        </div>
-
-        {/* Step dots */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
-          {STEPS.map(s => (
-            <div key={s.id} style={{
-              height: 4, borderRadius: 2,
-              flex: s.id === step ? 2 : 1,
-              background: s.id < step ? '#3b82f6' : s.id === step ? 'linear-gradient(90deg,#3b82f6,#8b5cf6)' : '#1e293b',
-              transition: 'all 0.3s',
-            }} />
-          ))}
-        </div>
-
-        {/* Errors */}
-        {errors.length > 0 && (
-          <div style={S.errBox}>
-            {errors.map((e, i) => <div key={i}>• {e}</div>)}
-          </div>
-        )}
 
         {/* Steps */}
-        {step === 1 && <Step1Company company={company} setCompany={setCompany} analyzing={analyzing} analyzeErr={analyzeErr} onAnalyze={analyzeWebsite} onTemplate={applyTemplate} profileLoaded={profileLoaded} />}
-        {step === 2 && <Step2Product product={product} setProduct={setProduct} />}
-        {step === 3 && <Step3Target target={target} setTarget={setTarget} />}
-        {step === 4 && <Step4Style salesStyle={salesStyle} setSalesStyle={setSalesStyle} preview={preview} />}
-        {step === 5 && <Step5FAQ faq={faq} setFaq={setFaq} objections={objections} setObjections={setObjections} />}
-        {step === 6 && <Step6Done company={company} product={product} salesStyle={salesStyle} score={score} saving={saving} onFinish={finish} />}
-
-        {/* Nav buttons */}
-        {step < 6 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            {step > 1
-              ? <button style={{ ...S.btn, ...S.btnGhost }} onClick={goBack}><ArrowLeft size={15} /> Geri</button>
-              : <div />
-            }
-            <button style={{ ...S.btn, ...S.btnPrimary }} onClick={goNext}>
-              {step === 5 ? 'Tamamla' : 'İleri'} <ArrowRight size={15} />
-            </button>
+        <div style={{ padding: '20px 16px', flex: 1, overflowY: 'auto' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: 1, textTransform: 'uppercase', padding: '0 8px', marginBottom: 12 }}>
+            Kurulum Adımları
           </div>
-        )}
+          {STEPS.map(s => {
+            const done   = step > s.id
+            const active = step === s.id
+            const Icon   = s.icon
+            return (
+              <div key={s.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 12px', borderRadius: 10, marginBottom: 2,
+                background: active ? 'rgba(59,130,246,0.1)' : 'transparent',
+                border: active ? '1px solid rgba(59,130,246,0.22)' : '1px solid transparent',
+                transition: 'all 0.2s',
+              }}>
+                {/* Circle indicator */}
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: done
+                    ? 'rgba(16,185,129,0.15)'
+                    : active
+                      ? 'rgba(59,130,246,0.2)'
+                      : 'rgba(255,255,255,0.04)',
+                  border: done
+                    ? '1.5px solid rgba(16,185,129,0.35)'
+                    : active
+                      ? '1.5px solid rgba(59,130,246,0.45)'
+                      : `1.5px solid ${C.panelBorder}`,
+                  transition: 'all 0.2s',
+                }}>
+                  {done
+                    ? <Check size={13} color={C.green} strokeWidth={2.5} />
+                    : <Icon size={13} color={active ? C.blueLight : C.textMuted} />
+                  }
+                </div>
+                {/* Label */}
+                <div>
+                  <div style={{
+                    fontSize: 13, fontWeight: active ? 600 : 500,
+                    color: active ? C.text : done ? '#6b7f9a' : C.textMuted,
+                    lineHeight: 1.2,
+                  }}>
+                    {s.title}
+                  </div>
+                  {active && (
+                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{s.desc}</div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Bottom progress */}
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${C.panelBorder}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, color: C.textMuted }}>İlerleme</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.blueLight }}>{Math.round(progress)}%</span>
+          </div>
+          <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              width: `${progress}%`,
+              background: 'linear-gradient(90deg, #2563eb, #8b5cf6)',
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>Adım {step} / {STEPS.length}</div>
+        </div>
       </div>
 
-      <style>{`@keyframes ob-spin{to{transform:rotate(360deg)}}`}</style>
+      {/* ── Right Content ─────────────────────────────────────────────────── */}
+      <div id="ob-right-panel" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+
+        {/* Mobile top bar (hidden on desktop) */}
+        <div id="ob-mobile-top" style={{ display: 'none' }}>
+          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.panelBorder}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <SovloLogo size="sm" theme="dark" />
+            <div style={{ flex: 1 }} />
+            <span style={{ fontSize: 12, color: C.textMuted }}>{step}/{STEPS.length}</span>
+          </div>
+          <div style={{ height: 3, background: 'rgba(255,255,255,0.06)' }}>
+            <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg,#2563eb,#8b5cf6)', transition: 'width 0.4s' }} />
+          </div>
+        </div>
+
+        {/* Form area */}
+        <div style={{ flex: 1, padding: '40px 48px 60px', maxWidth: 720, width: '100%' }} id="ob-form-area">
+
+          {/* Step header */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              {(() => { const Icon = STEPS[step - 1].icon; return <Icon size={22} color={C.blue} /> })()}
+              <h1 style={{ fontSize: 26, fontWeight: 700, color: C.text, margin: 0, letterSpacing: -0.3 }}>
+                {STEPS[step - 1].title}
+              </h1>
+            </div>
+            <p style={{ margin: 0, fontSize: 15, color: C.textMuted, lineHeight: 1.5 }}>
+              {STEPS[step - 1].desc}
+            </p>
+          </div>
+
+          {/* Errors */}
+          {errors.length > 0 && (
+            <div style={S.errBox}>
+              {errors.map((e, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ opacity: 0.7 }}>•</span> {e}</div>)}
+            </div>
+          )}
+
+          {/* Step content */}
+          {step === 1 && <Step1Company company={company} setCompany={setCompany} analyzing={analyzing} analyzeErr={analyzeErr} onAnalyze={analyzeWebsite} onTemplate={applyTemplate} profileLoaded={profileLoaded} />}
+          {step === 2 && <Step2Product product={product} setProduct={setProduct} />}
+          {step === 3 && <Step3Target target={target} setTarget={setTarget} />}
+          {step === 4 && <Step4Style salesStyle={salesStyle} setSalesStyle={setSalesStyle} preview={preview} />}
+          {step === 5 && <Step5FAQ faq={faq} setFaq={setFaq} objections={objections} setObjections={setObjections} />}
+          {step === 6 && <Step6Done company={company} product={product} salesStyle={salesStyle} score={score} saving={saving} onFinish={finish} />}
+
+          {/* Navigation */}
+          {step < 6 && (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginTop: 32, paddingTop: 24,
+              borderTop: `1px solid ${C.panelBorder}`,
+            }}>
+              {step > 1
+                ? (
+                  <button className="ob-btn-ghost" style={{ ...S.btn, ...S.btnGhost }} onClick={goBack}>
+                    <ArrowLeft size={15} /> Geri
+                  </button>
+                )
+                : <div />
+              }
+              <button className="ob-btn-primary" style={{ ...S.btn, ...S.btnPrimary }} onClick={goNext}>
+                {step === 5 ? 'Profili Kaydet' : 'Devam Et'} <ArrowRight size={15} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Global styles */}
+      <style>{`
+        @keyframes ob-spin { to { transform: rotate(360deg) } }
+        @keyframes ob-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+        .ob-input:focus {
+          border-color: #3b82f6 !important;
+          box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important;
+          background: rgba(59,130,246,0.04) !important;
+        }
+        .ob-input::placeholder { color: rgba(100,116,139,0.7); }
+        .ob-input option { background: #1e293b; color: #e2e8f0; }
+
+        .ob-btn-primary:hover:not(:disabled) {
+          background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+          box-shadow: 0 4px 16px rgba(59,130,246,0.35) !important;
+          transform: translateY(-1px);
+        }
+        .ob-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+        .ob-btn-ghost:hover {
+          background: rgba(255,255,255,0.07) !important;
+          color: #e2e8f0 !important;
+        }
+        .ob-tag:hover { opacity: 0.85; }
+
+        @media (max-width: 768px) {
+          #ob-left-panel { display: none !important; }
+          #ob-mobile-top { display: block !important; }
+          #ob-form-area { padding: 24px 20px 80px !important; max-width: 100% !important; }
+        }
+        @media (min-width: 769px) and (max-width: 1100px) {
+          #ob-left-panel { width: 220px !important; }
+          #ob-form-area { padding: 32px 32px 60px !important; }
+        }
+      `}</style>
     </div>
   )
 }
@@ -422,26 +622,31 @@ function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, o
   return (
     <div>
       {profileLoaded && (
-        <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, color: '#34d399', fontSize: 13 }}>
-          Mevcut profiliniz yüklendi. Düzenleyip devam edebilirsiniz.
+        <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#34d399', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Check size={14} /> Mevcut profiliniz yüklendi. Düzenleyip devam edebilirsiniz.
         </div>
       )}
 
-      {/* AI fill box */}
-      <div style={{ ...S.card, background: 'rgba(59,130,246,0.05)', borderColor: 'rgba(59,130,246,0.18)', padding: '18px 20px', marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+      {/* AI auto-fill */}
+      <div style={S.cardHighlight}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.blueLight, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, letterSpacing: 0.6, textTransform: 'uppercase' }}>
           <Sparkles size={13} /> AI ile Otomatik Doldur
+        </div>
+        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 12 }}>
+          Web sitenizi girin — AI şirket adı, sektör, ürün bilgilerini otomatik analiz edip doldurur.
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input
-            style={{ ...S.input, flex: '1 1 200px', minWidth: 0 }}
+            className="ob-input"
+            style={{ ...S.input, flex: '1 1 180px', minWidth: 0 }}
             placeholder="https://sirketiniz.com"
             value={company.website}
             onChange={e => setCompany(p => ({ ...p, website: e.target.value }))}
             onKeyDown={e => e.key === 'Enter' && onAnalyze()}
           />
           <button
-            style={{ ...S.btn, ...S.btnPrimary, flexShrink: 0, opacity: analyzing || !company.website.trim() ? 0.6 : 1 }}
+            className="ob-btn-primary"
+            style={{ ...S.btn, ...S.btnPrimary, flexShrink: 0, opacity: analyzing || !company.website.trim() ? 0.55 : 1 }}
             onClick={onAnalyze}
             disabled={analyzing || !company.website.trim()}
           >
@@ -452,7 +657,6 @@ function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, o
           </button>
         </div>
         {analyzeErr && <div style={{ color: '#f87171', fontSize: 12, marginTop: 8 }}>{analyzeErr}</div>}
-        {!analyzeErr && <div style={{ fontSize: 12, color: '#475569', marginTop: 7 }}>Web sitenizi girin — AI tüm bilgileri otomatik dolduracak.</div>}
       </div>
 
       <div style={S.card}>
@@ -466,12 +670,17 @@ function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, o
 
         {/* Template suggestion */}
         {tmplAvail && (
-          <div style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, color: '#c4b5fd' }}>
-              <strong>{company.sector}</strong> sektörü için hazır şablon var — tüm adımlar dolar.
-            </span>
-            <button style={{ ...S.btn, padding: '6px 14px', fontSize: 12, background: 'rgba(139,92,246,0.15)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.3)', flexShrink: 0 }} onClick={onTemplate}>
-              Şablon Yükle
+          <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 10, padding: '12px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 13, color: '#c4b5fd', fontWeight: 500 }}>Hazır şablon mevcut</div>
+              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{company.sector} sektörü için tüm adımları dolduracak</div>
+            </div>
+            <button
+              className="ob-tag"
+              style={{ ...S.btn, padding: '7px 14px', fontSize: 12, background: 'rgba(139,92,246,0.14)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.28)', flexShrink: 0 }}
+              onClick={onTemplate}
+            >
+              <Star size={12} fill="currentColor" /> Şablon Yükle
             </button>
           </div>
         )}
@@ -485,7 +694,7 @@ function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, o
           </Field>
         </div>
 
-        <Field label="Telefon">
+        <Field label="Şirket Telefonu">
           <Inp value={company.phone} onChange={set('phone')} placeholder="+90 555 000 0000" type="tel" />
         </Field>
       </div>
@@ -504,10 +713,9 @@ function Step2Product({ product, setProduct }: { product: Product; setProduct: R
         <Field label="Ürün / Hizmet Adı" required>
           <Inp value={product.name} onChange={set('name')} placeholder="Örn: CRM Yazılımı, İnşaat Hizmetleri, Toptan Tekstil..." />
         </Field>
-        <Field label="Açıklama" required>
-          <Txta value={product.description} onChange={set('description')} minH={110}
+        <Field label="Açıklama" required hint={`${product.description.length} karakter — AI sisteminiz bu metni kullanacak, net ve ikna edici yazın`}>
+          <Txta value={product.description} onChange={set('description')} minH={120}
             placeholder="Ne iş yapıyorsunuz? Müşterilerinize ne sağlıyorsunuz? AI sisteminiz bu metni kullanarak müşterilerle konuşacak — net ve ikna edici yazın." />
-          <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>{product.description.length} karakter</div>
         </Field>
         <div style={S.row2}>
           <Field label="Fiyat Aralığı">
@@ -520,24 +728,27 @@ function Step2Product({ product, setProduct }: { product: Product; setProduct: R
       </div>
 
       <div style={S.card}>
-        <label style={S.label}>3 Temel Avantaj</label>
-        <div style={{ marginTop: 8 }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-              <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
-              <input
-                style={{ ...S.input, flex: 1 }}
-                placeholder={['\%40 daha az manuel iş', '24 saatte kurulum ve eğitim', '7/24 teknik destek'][i]}
-                value={product.advantages[i] || ''}
-                onChange={e => {
-                  const adv = [...product.advantages]
-                  adv[i] = e.target.value
-                  set('advantages')(adv)
-                }}
-              />
-            </div>
-          ))}
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 14 }}>
+          3 Temel Avantaj
         </div>
+        {[0, 1, 2].map(i => (
+          <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
+            <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.blueLight, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+              {i + 1}
+            </div>
+            <input
+              className="ob-input"
+              style={{ ...S.input, flex: 1 }}
+              placeholder={['%40 daha az manuel iş', '24 saatte kurulum ve eğitim', '7/24 teknik destek'][i]}
+              value={product.advantages[i] || ''}
+              onChange={e => {
+                const adv = [...product.advantages]
+                adv[i] = e.target.value
+                set('advantages')(adv)
+              }}
+            />
+          </div>
+        ))}
       </div>
 
       <div style={S.card}>
@@ -565,16 +776,18 @@ function Step3Target({ target, setTarget }: { target: Target; setTarget: React.D
   return (
     <div>
       <div style={S.card}>
-        <label style={S.label}>Hedef Sektörler</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 14 }}>
+          Hedef Sektörler
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {SECTORS.map(s => {
             const sel = (target.sectors || []).includes(s)
             return (
-              <button key={s} onClick={() => toggleSector(s)} style={{
-                padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit',
-                background: sel ? 'rgba(59,130,246,0.2)' : 'rgba(255,255,255,0.05)',
-                border: sel ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.1)',
-                color: sel ? '#60a5fa' : '#94a3b8', transition: 'all 0.15s',
+              <button key={s} className="ob-tag" onClick={() => toggleSector(s)} style={{
+                padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit',
+                background: sel ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
+                border: sel ? '1px solid rgba(59,130,246,0.4)' : `1px solid ${C.cardBorder}`,
+                color: sel ? C.blueLight : C.textMuted, transition: 'all 0.15s', fontWeight: sel ? 600 : 400,
               }}>{s}</button>
             )
           })}
@@ -596,12 +809,14 @@ function Step3Target({ target, setTarget }: { target: Target; setTarget: React.D
       </div>
 
       <div style={S.card}>
-        <label style={S.label}>Hedef Müşterinin 3 Temel Sorunu</label>
-        <div style={{ fontSize: 12, color: '#475569', margin: '6px 0 14px' }}>AI sisteminiz bu sorunları vurgulayarak konuşma açacak.</div>
+        <Field label="Hedef Müşterinin 3 Temel Sorunu" hint="AI sisteminiz bu sorunları vurgulayarak konuşma açacak">
+          <div />
+        </Field>
         {[0, 1, 2].map(i => (
           <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-            <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+            <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
             <input
+              className="ob-input"
               style={{ ...S.input, flex: 1 }}
               placeholder={['Manuel süreçler çok zaman alıyor', 'Proje gecikmesi ve maliyet aşımı', 'Müşteri takibi yetersiz'][i]}
               value={target.pain_points[i] || ''}
@@ -626,22 +841,24 @@ function Step4Style({ salesStyle, setSalesStyle, preview }: { salesStyle: SalesS
   return (
     <div>
       <div style={S.card}>
-        <Field label="AI Temsilci Adı">
-          <Inp value={salesStyle.agent_name} onChange={set('agent_name')} placeholder="Örn: Ayşe, Mert, Alex — müşteriye bu isimle tanışacak" />
+        <Field label="AI Temsilci Adı" hint="Müşteriye bu isimle tanışacak (Örn: Ayşe, Mert, Alex)">
+          <Inp value={salesStyle.agent_name} onChange={set('agent_name')} placeholder="Örn: Ayşe, Mert, Alex" />
         </Field>
       </div>
 
       <div style={S.card}>
-        <label style={S.label}>Konuşma Tonu</label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 14 }}>
+          Konuşma Tonu
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {TONES.map(t => {
             const sel = salesStyle.tone === t.key
             return (
-              <button key={t.key} onClick={() => set('tone')(t.key)} style={{
+              <button key={t.key} className="ob-tag" onClick={() => set('tone')(t.key)} style={{
                 padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
-                background: sel ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)',
-                border: sel ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.1)',
-                color: sel ? '#93c5fd' : '#94a3b8', textAlign: 'left', fontFamily: 'inherit', transition: 'all 0.15s',
+                background: sel ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.03)',
+                border: sel ? '1.5px solid rgba(59,130,246,0.4)' : `1px solid ${C.cardBorder}`,
+                color: sel ? '#93c5fd' : C.textMuted, textAlign: 'left', fontFamily: 'inherit', transition: 'all 0.15s',
               }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{t.label}</div>
                 <div style={{ fontSize: 12, opacity: 0.7 }}>{t.desc}</div>
@@ -652,10 +869,9 @@ function Step4Style({ salesStyle, setSalesStyle, preview }: { salesStyle: SalesS
       </div>
 
       <div style={S.card}>
-        <Field label="Konuşma Açılış Cümlesi">
-          <Txta value={salesStyle.opening_line} onChange={set('opening_line')} minH={80}
+        <Field label="Konuşma Açılış Cümlesi" hint="[AD] → temsilci adı, [ŞİRKET] → şirket adınız">
+          <Txta value={salesStyle.opening_line} onChange={set('opening_line')} minH={90}
             placeholder="Merhaba, [AD] [ŞİRKET]'den arıyorum. Şirketinizin süreçlerini iyileştirmeye yönelik bir çözümümüz var — kısa bir bilgi verebilir miyim?" />
-          <div style={{ fontSize: 12, color: '#475569', marginTop: 5 }}>[AD] → temsilci adı, [ŞİRKET] → şirket adınız</div>
         </Field>
         <Field label="Kullanılmayacak Kelimeler">
           <Inp value={salesStyle.avoid_words} onChange={set('avoid_words')} placeholder="yapay zeka, robot, veri toplama (virgülle ayırın)" />
@@ -663,24 +879,24 @@ function Step4Style({ salesStyle, setSalesStyle, preview }: { salesStyle: SalesS
       </div>
 
       {/* WhatsApp Preview */}
-      <div style={{ ...S.card, background: 'rgba(37,211,102,0.04)', borderColor: 'rgba(37,211,102,0.15)' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+      <div style={{ ...S.card, background: 'rgba(37,211,102,0.03)', border: '1px solid rgba(37,211,102,0.12)' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6, letterSpacing: 0.6, textTransform: 'uppercase' as const }}>
           <Phone size={13} /> Örnek WhatsApp Mesajı
         </div>
-        <div style={{ background: '#0f172a', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#25d366,#128c7e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+        <div style={{ background: '#0a1221', borderRadius: 14, padding: '16px', border: `1px solid ${C.panelBorder}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${C.panelBorder}` }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#25d366,#128c7e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
               {salesStyle.agent_name?.charAt(0)?.toUpperCase() || 'S'}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{salesStyle.agent_name || 'AI Temsilci'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{salesStyle.agent_name || 'AI Temsilci'}</div>
               <div style={{ fontSize: 11, color: '#25d366' }}>Çevrimiçi</div>
             </div>
           </div>
-          <div style={{ background: '#25d366', borderRadius: '2px 14px 14px 14px', padding: '12px 14px', maxWidth: '88%', fontSize: 13, color: '#000', lineHeight: 1.55 }}>
+          <div style={{ background: '#25d366', borderRadius: '2px 14px 14px 14px', padding: '12px 14px', maxWidth: '88%', fontSize: 13, color: '#000', lineHeight: 1.6 }}>
             {preview || 'Ton seçin veya açılış cümlesi yazın...'}
           </div>
-          <div style={{ fontSize: 11, color: '#475569', marginTop: 6 }}>
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
             {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
@@ -696,30 +912,34 @@ function Step5FAQ({ faq, setFaq, objections, setObjections }: { faq: FAQ[]; setF
     <div>
       <div style={S.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <label style={{ ...S.label, margin: 0 }}>Sık Sorulan Sorular</label>
-          <button style={{ ...S.btn, padding: '6px 12px', fontSize: 12, ...S.btnGhost }} onClick={() => setFaq(f => [...f, { q: '', a: '' }])}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const }}>
+            Sık Sorulan Sorular
+          </div>
+          <button className="ob-btn-ghost" style={{ ...S.btn, ...S.btnGhost, padding: '6px 12px', fontSize: 12 }} onClick={() => setFaq(f => [...f, { q: '', a: '' }])}>
             <Plus size={13} /> Ekle
           </button>
         </div>
         {faq.map((f, i) => (
-          <div key={i} style={{ background: '#0f172a', borderRadius: 10, padding: '14px', marginBottom: 10, border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Soru {i + 1}</span>
-              {faq.length > 1 && <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 0, lineHeight: 1 }} onClick={() => setFaq(f => f.filter((_, j) => j !== i))}><X size={14} /></button>}
+          <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px', marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+              <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Soru {i + 1}</span>
+              {faq.length > 1 && <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, padding: 0, lineHeight: 1 }} onClick={() => setFaq(f => f.filter((_, j) => j !== i))}><X size={14} /></button>}
             </div>
-            <input style={{ ...S.input, marginBottom: 8 }} placeholder="Müşteri ne soruyor?" value={f.q} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, q: e.target.value } : x))} />
-            <textarea style={{ ...S.textarea, minHeight: 64 }} placeholder="AI temsilci ne cevap vermeli?" value={f.a} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
+            <input className="ob-input" style={{ ...S.input, marginBottom: 8 }} placeholder="Müşteri ne soruyor?" value={f.q} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, q: e.target.value } : x))} />
+            <textarea className="ob-input" style={{ ...S.textarea, minHeight: 64 }} placeholder="AI temsilci ne cevap vermeli?" value={f.a} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
           </div>
         ))}
       </div>
 
       <div style={S.card}>
-        <label style={{ ...S.label, marginBottom: 6 }}>İtiraz Karşılama</label>
-        <div style={{ fontSize: 12, color: '#475569', marginBottom: 16 }}>Müşteri bu itirazları dile getirdiğinde AI temsilci ne söyleyecek?</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 6 }}>
+          İtiraz Karşılama
+        </div>
+        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>Müşteri bu itirazları dile getirdiğinde AI temsilci ne söyleyecek?</div>
         {objections.map((obj, i) => (
-          <div key={i} style={{ background: '#0f172a', borderRadius: 10, padding: '14px', marginBottom: 10, border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#f87171', marginBottom: 8 }}>"{obj.q}"</div>
-            <textarea style={{ ...S.textarea, minHeight: 64 }} placeholder="AI temsilci bunu duyduğunda ne söylemeli?" value={obj.a} onChange={e => setObjections(objs => objs.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
+          <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#f87171', marginBottom: 10 }}>"{obj.q}"</div>
+            <textarea className="ob-input" style={{ ...S.textarea, minHeight: 64 }} placeholder="AI temsilci bunu duyduğunda ne söylemeli?" value={obj.a} onChange={e => setObjections(objs => objs.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
           </div>
         ))}
       </div>
@@ -735,29 +955,45 @@ function Step6Done({ company, product, salesStyle, score, saving, onFinish }: {
 }) {
   const agent = salesStyle.agent_name || 'AI Temsilci'
   const co    = company.name || 'Şirketiniz'
-  const scoreColor = score >= 80 ? '#10b981' : score >= 55 ? '#f59e0b' : '#ef4444'
-  const scoreLabel = score >= 80 ? 'Mükemmel profil' : score >= 55 ? 'İyi — biraz daha doldurun' : 'Eksik — profili tamamlayın'
+  const scoreColor = score >= 80 ? C.green : score >= 55 ? '#f59e0b' : C.red
+  const scoreLabel = score >= 80 ? 'Mükemmel profil' : score >= 55 ? 'İyi — biraz daha detay ekleyin' : 'Eksik — profili tamamlayın'
 
   return (
     <div>
-      {/* Score */}
-      <div style={{ ...S.card, textAlign: 'center', padding: '32px 24px' }}>
-        <div style={{ fontSize: 64, fontWeight: 800, color: scoreColor, lineHeight: 1, marginBottom: 6 }}>{score}</div>
-        <div style={{ fontSize: 14, color: scoreColor, fontWeight: 600, marginBottom: 4 }}>{scoreLabel}</div>
-        <div style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>Profil Tamamlanma Puanı / 100</div>
-        <div style={{ height: 8, background: '#0f172a', borderRadius: 4, overflow: 'hidden', maxWidth: 280, margin: '0 auto 20px' }}>
-          <div style={{ height: '100%', width: `${score}%`, background: `linear-gradient(90deg,${scoreColor},${scoreColor}99)`, borderRadius: 4, transition: 'width 0.7s ease' }} />
+      {/* Score card */}
+      <div style={{ ...S.card, textAlign: 'center', padding: '36px 28px' }}>
+        {/* Circular score */}
+        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
+          <div style={{ position: 'relative', width: 100, height: 100, marginBottom: 16 }}>
+            <svg viewBox="0 0 100 100" style={{ width: 100, height: 100, transform: 'rotate(-90deg)' }}>
+              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+              <circle cx="50" cy="50" r="42" fill="none" stroke={scoreColor} strokeWidth="8" strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 42}`}
+                strokeDashoffset={`${2 * Math.PI * 42 * (1 - score / 100)}`}
+                style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+              />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+              <span style={{ fontSize: 26, fontWeight: 800, color: scoreColor, lineHeight: 1 }}>{score}</span>
+              <span style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>/ 100</span>
+            </div>
+          </div>
+          <div style={{ fontSize: 15, color: scoreColor, fontWeight: 700, marginBottom: 4 }}>{scoreLabel}</div>
+          <div style={{ fontSize: 13, color: C.textMuted }}>Profil Tamamlanma Puanı</div>
         </div>
-        <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.7 }}>
-          <strong style={{ color: '#f1f5f9' }}>{agent}</strong> artık{' '}
-          <strong style={{ color: '#f1f5f9' }}>{co}</strong> adına<br />
+
+        <div style={{ fontSize: 14, color: C.textMuted, lineHeight: 1.8 }}>
+          <strong style={{ color: C.text }}>{agent}</strong> artık{' '}
+          <strong style={{ color: C.text }}>{co}</strong> adına<br />
           profesyonel satış görüşmeleri yapacak.
         </div>
       </div>
 
       {/* Summary */}
       <div style={S.card}>
-        <label style={{ ...S.label, marginBottom: 14 }}>Kurulum Özeti</label>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 16 }}>
+          Kurulum Özeti
+        </div>
         {[
           { label: 'Şirket', value: co },
           { label: 'Sektör', value: company.sector || '—' },
@@ -766,42 +1002,48 @@ function Step6Done({ company, product, salesStyle, score, saving, onFinish }: {
           { label: 'AI Temsilci', value: agent },
           { label: 'Satış Tonu', value: { professional: 'Profesyonel', friendly: 'Samimi', consultative: 'Danışmancı', direct: 'Direkt' }[salesStyle.tone] || salesStyle.tone },
         ].map(row => (
-          <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <span style={{ color: '#64748b', fontSize: 13 }}>{row.label}</span>
-            <span style={{ color: '#f1f5f9', fontSize: 13, fontWeight: 500, textAlign: 'right', maxWidth: '60%' }}>{row.value}</span>
+          <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
+            <span style={{ color: C.textMuted, fontSize: 13 }}>{row.label}</span>
+            <span style={{ color: C.text, fontSize: 13, fontWeight: 500, textAlign: 'right', maxWidth: '60%' }}>{row.value}</span>
           </div>
         ))}
       </div>
 
       {/* What's ready */}
       <div style={S.card}>
-        <label style={{ ...S.label, marginBottom: 16 }}>Sisteminiz Hazır</label>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 16 }}>
+          Sisteminiz Hazır
+        </div>
         {[
-          { icon: TrendingUp, color: '#3b82f6', title: 'Lead Scraper',        desc: "Google Maps'ten hedef müşteri listesi çekin" },
-          { icon: Phone,       color: '#10b981', title: 'AI Satış Görüşmesi', desc: `${agent} müşterilerle otomatik görüşecek` },
-          { icon: MessageSquare, color: '#8b5cf6', title: 'WhatsApp Kampanya', desc: 'Kişiselleştirilmiş mesajlar otomatik gider' },
-          { icon: Star,        color: '#f59e0b', title: 'Rakip Analizi',       desc: 'Sektördeki rakiplerinizi takip edin' },
-        ].map(({ icon: Icon, color, title, desc }) => (
-          <div key={title} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Icon size={17} color={color} />
+          'AI Satış Temsilciniz aktif ve eğitildi',
+          'WhatsApp & Arama kampanyaları açılabilir',
+          'Lead scraping sonuçları kişiselleştirilecek',
+          'Rakip analizi sektörünüze göre yapılacak',
+        ].map(item => (
+          <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Check size={11} color={C.green} strokeWidth={2.5} />
             </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{title}</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{desc}</div>
-            </div>
+            <span style={{ fontSize: 13, color: C.textMuted }}>{item}</span>
           </div>
         ))}
       </div>
 
+      {/* CTA */}
       <button
-        style={{ ...S.btn, ...S.btnPrimary, width: '100%', justifyContent: 'center', padding: '14px 24px', fontSize: 15, borderRadius: 12, opacity: saving ? 0.65 : 1 }}
+        className="ob-btn-primary"
         onClick={onFinish}
         disabled={saving}
+        style={{
+          ...S.btn, ...S.btnPrimary,
+          width: '100%', justifyContent: 'center',
+          padding: '14px 28px', fontSize: 15, borderRadius: 12,
+          marginTop: 8,
+        }}
       >
         {saving
-          ? <><Loader2 size={16} style={{ animation: 'ob-spin 1s linear infinite' }} /> Kaydediliyor...</>
-          : <>Dashboard'a Git <ArrowRight size={16} /></>
+          ? <><Loader2 size={16} style={{ animation: 'ob-spin 1s linear infinite' }} /> Dashboard açılıyor...</>
+          : <>Dashboard&apos;a Git <ArrowRight size={16} /></>
         }
       </button>
     </div>
