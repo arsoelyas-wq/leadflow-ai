@@ -235,6 +235,62 @@ router.post('/reset-password', async (req: any, res: any) => {
   }
 });
 
+// KAYIT + OTP GÖNDER — POST /api/auth/register-send-otp
+router.post('/register-send-otp', async (req: any, res: any) => {
+  try {
+    const { name, company, email } = req.body;
+    if (!name?.trim() || !email?.trim())
+      return res.status(400).json({ error: 'İsim ve e-posta zorunludur' });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim()))
+      return res.status(400).json({ error: 'Geçerli bir e-posta adresi giriniz' });
+
+    const emailLower = email.trim().toLowerCase();
+
+    const { data: existing } = await supabase
+      .from('users').select('id').eq('email', emailLower).single();
+
+    if (existing)
+      return res.status(400).json({ error: 'Bu e-posta zaten kayıtlı. Giriş yapabilirsiniz.' });
+
+    const { data: newUser, error: createErr } = await supabase
+      .from('users')
+      .insert([{
+        email: emailLower,
+        name: name.trim(),
+        company: company?.trim() || null,
+        plan_type: 'starter',
+        credits_total: 50,
+        credits_used: 0,
+        onboarding_done: false,
+      }])
+      .select('id, email, name')
+      .single();
+
+    if (createErr) throw createErr;
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await supabase.from('users').update({
+      otp_code: otp,
+      otp_expires: expires,
+      otp_attempts: 0,
+    }).eq('id', newUser.id);
+
+    await sendOTPEmail(emailLower, name.trim(), otp);
+
+    const [local, domain] = emailLower.split('@');
+    const masked = local.slice(0, 2) + '***@' + domain;
+
+    res.status(201).json({ ok: true, masked_email: masked });
+  } catch (e: any) {
+    console.error('[register-send-otp]', e.message);
+    res.status(500).json({ error: e.message || 'Kayıt başarısız. Tekrar deneyin.' });
+  }
+});
+
 // ── OTP YARDIMCI FONKSİYONLARI ──────────────────────────────────────────────────
 
 function normalizePhone(raw: string): string {
