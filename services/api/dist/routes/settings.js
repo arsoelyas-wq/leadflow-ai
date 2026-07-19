@@ -208,7 +208,7 @@ async function startWhatsApp(userId) {
         const makeWASocket = baileys.default;
         const { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = baileys;
         const pino = require('pino');
-        const authDir = path.join('/tmp', 'wa_auth', userId);
+        const authDir = path.join(process.env.WA_AUTH_DIR || '/tmp', 'wa_auth', userId);
         fs.mkdirSync(authDir, { recursive: true });
         const { state, saveCreds } = await useMultiFileAuthState(authDir);
         const { version } = await fetchLatestBaileysVersion();
@@ -324,6 +324,29 @@ router.post('/', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+// PATCH /api/settings — onboarding_done, onboarding_step, company_name, sector, city, website
+router.patch('/', async (req, res) => {
+    try {
+        const userId = req.userId;
+        const ALLOWED = ['company_name', 'sector', 'city', 'website', 'onboarding_done', 'onboarding_step'];
+        const update = { user_id: userId, updated_at: new Date().toISOString() };
+        for (const key of ALLOWED) {
+            if (req.body[key] !== undefined)
+                update[key] = req.body[key];
+        }
+        const { error } = await supabase.from('user_settings').upsert(update, { onConflict: 'user_id' });
+        if (error)
+            throw error;
+        // onboarding_done must also be written to users table — auth /me reads from there
+        if (req.body.onboarding_done !== undefined) {
+            await supabase.from('users').update({ onboarding_done: req.body.onboarding_done }).eq('id', userId);
+        }
+        res.json({ ok: true });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 router.post('/whatsapp/connect', async (req, res) => {
     try {
         const userId = req.userId;
@@ -363,7 +386,7 @@ router.post('/whatsapp/disconnect', async (req, res) => {
             catch { }
         }
         waState[userId] = { status: 'disconnected', qr: '', sock: null };
-        const authDir = path.join('/tmp', 'wa_auth', userId);
+        const authDir = path.join(process.env.WA_AUTH_DIR || '/tmp', 'wa_auth', userId);
         fs.rmSync(authDir, { recursive: true, force: true });
         await supabase.from('user_settings').upsert({
             user_id: userId,
