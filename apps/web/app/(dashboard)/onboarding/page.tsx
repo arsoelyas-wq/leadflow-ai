@@ -220,8 +220,9 @@ function Sel(props: { value: string; onChange: (v: string) => void; options: str
 export default function OnboardingPage() {
   const [step, setStep]           = useState(1)
   const [errors, setErrors]       = useState<string[]>([])
-  const [saving, setSaving]       = useState(false)
-  const [analyzing, setAnalyzing] = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [saveError, setSaveError]   = useState('')
+  const [analyzing, setAnalyzing]   = useState(false)
   const [analyzeErr, setAnalyzeErr] = useState('')
   const [profileLoaded, setProfileLoaded] = useState(false)
 
@@ -328,21 +329,37 @@ export default function OnboardingPage() {
 
   async function finish() {
     setSaving(true)
+    setSaveError('')
     try {
-      await api.post('/api/settings/business-profile', {
-        company, product, target, salesStyle,
-        faq: faq.filter(f => f.q?.trim() && f.a?.trim()),
-        objections: objections.filter(o => o.a?.trim()),
-      })
+      // Step 1: Save business profile (non-critical — don't block redirect if fails)
+      try {
+        await api.post('/api/settings/business-profile', {
+          company, product, target, salesStyle,
+          faq: faq.filter(f => f.q?.trim() && f.a?.trim()),
+          objections: objections.filter(o => o.a?.trim()),
+        })
+      } catch (profileErr: any) {
+        console.warn('[onboarding] business-profile save failed:', profileErr?.message)
+        // non-critical: continue to mark onboarding done
+      }
+
+      // Step 2: Mark onboarding as complete (critical)
       await api.patch('/api/settings', {
-        company_name: company.name, sector: company.sector,
-        city: company.city, website: company.website,
+        company_name: company.name,
+        sector: company.sector,
+        city: company.city,
+        website: company.website,
         onboarding_done: true,
       })
+
       localStorage.removeItem('ob_data')
-      await new Promise(r => setTimeout(r, 300))
+      // Wait for DB propagation before redirect
+      await new Promise(r => setTimeout(r, 600))
       window.location.href = '/dashboard'
-    } catch { setSaving(false) }
+    } catch (e: any) {
+      setSaving(false)
+      setSaveError(e?.message || 'Kayıt sırasında hata oluştu. Lütfen tekrar deneyin.')
+    }
   }
 
   const score    = calcScore(company, product, target, salesStyle, faq, objections)
@@ -431,7 +448,7 @@ export default function OnboardingPage() {
         {step === 3 && <Step3Target  target={target}   setTarget={setTarget} />}
         {step === 4 && <Step4Style   salesStyle={salesStyle} setSalesStyle={setSalesStyle} preview={preview} />}
         {step === 5 && <Step5FAQ     faq={faq} setFaq={setFaq} objections={objections} setObjections={setObjections} />}
-        {step === 6 && <Step6Done    company={company} product={product} salesStyle={salesStyle} score={score} saving={saving} onFinish={finish} />}
+        {step === 6 && <Step6Done    company={company} product={product} salesStyle={salesStyle} score={score} saving={saving} saveError={saveError} onFinish={finish} />}
 
         {/* Navigation */}
         {step < 6 && (
@@ -1137,9 +1154,9 @@ function Step5FAQ({ faq, setFaq, objections, setObjections }: { faq: FAQ[]; setF
 
 // ─── Step 6 ───────────────────────────────────────────────────────────────────
 
-function Step6Done({ company, product, salesStyle, score, saving, onFinish }: {
+function Step6Done({ company, product, salesStyle, score, saving, saveError, onFinish }: {
   company: Company; product: Product; salesStyle: SalesStyle
-  score: number; saving: boolean; onFinish: () => void
+  score: number; saving: boolean; saveError: string; onFinish: () => void
 }) {
   const agent = salesStyle.agent_name || 'AI Temsilci'
   const co    = company.name || 'Şirketiniz'
@@ -1210,15 +1227,34 @@ function Step6Done({ company, product, salesStyle, score, saving, onFinish }: {
         ))}
       </div>
 
+      {/* Error display */}
+      {saveError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca',
+          borderRadius: 10, padding: '12px 16px', marginTop: 12,
+          color: '#dc2626', fontSize: 13,
+          display: 'flex', alignItems: 'flex-start', gap: 8,
+        }}>
+          <span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span>
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: 3 }}>Kayıt sırasında hata oluştu</div>
+            <div style={{ opacity: 0.85 }}>{saveError}</div>
+            <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+              Tekrar deneyin. Sorun devam ederse sayfayı yenileyin.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CTA */}
       <button
         className="ob-btn ob-btn-primary"
         onClick={onFinish}
         disabled={saving}
-        style={{ width: '100%', justifyContent: 'center', padding: '13px', fontSize: 15, borderRadius: 10, marginTop: 8 }}
+        style={{ width: '100%', justifyContent: 'center', padding: '14px', fontSize: 15, borderRadius: 10, marginTop: 12 }}
       >
         {saving
-          ? <><Loader2 size={16} style={{ animation: 'ob-spin 1s linear infinite' }} /> Dashboard açılıyor...</>
+          ? <><Loader2 size={16} style={{ animation: 'ob-spin 1s linear infinite' }} /> Kaydediliyor...</>
           : <>Dashboard&apos;a Git <ArrowRight size={16} /></>
         }
       </button>

@@ -321,22 +321,40 @@ router.post('/', async (req: any, res: any) => {
 
 // PATCH /api/settings — onboarding_done, onboarding_step, company_name, sector, city, website
 router.patch('/', async (req: any, res: any) => {
+  const userId = req.userId;
+  const errors: string[] = [];
+
   try {
-    const userId = req.userId;
+    // Build update object — only include fields present in the request
     const ALLOWED = ['company_name', 'sector', 'city', 'website', 'onboarding_done', 'onboarding_step'];
     const update: Record<string, any> = { user_id: userId, updated_at: new Date().toISOString() };
     for (const key of ALLOWED) {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
-    const { error } = await supabase.from('user_settings').upsert(update, { onConflict: 'user_id' });
-    if (error) throw error;
 
-    // onboarding_done must also be written to users table — auth /me reads from there
-    if (req.body.onboarding_done !== undefined) {
-      await supabase.from('users').update({ onboarding_done: req.body.onboarding_done }).eq('id', userId);
+    // Try user_settings upsert (non-critical — column might be missing in some envs)
+    try {
+      const { error } = await supabase.from('user_settings').upsert(update, { onConflict: 'user_id' });
+      if (error) errors.push(`user_settings: ${error.message}`);
+    } catch (e: any) {
+      errors.push(`user_settings: ${e.message}`);
     }
 
-    res.json({ ok: true });
+    // Critical: write onboarding_done to users table — this is what /me reads
+    if (req.body.onboarding_done !== undefined) {
+      const { error: userErr } = await supabase
+        .from('users')
+        .update({ onboarding_done: req.body.onboarding_done })
+        .eq('id', userId);
+      if (userErr) {
+        // If column doesn't exist yet, this is a hard error — tell client
+        return res.status(500).json({
+          error: `onboarding_done yazılamadı: ${userErr.message}. Supabase migration'ını çalıştırın.`
+        });
+      }
+    }
+
+    res.json({ ok: true, warnings: errors.length ? errors : undefined });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
