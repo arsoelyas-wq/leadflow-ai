@@ -66,6 +66,14 @@ router.post('/register', async (req: any, res: any) => {
     if (existing)
       return res.status(400).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
 
+    // Domain trial kontrolü — aynı domain'den daha önce trial kullanılmış mı?
+    const emailDomain = emailLower.split('@')[1];
+    const { data: domainTrial } = await supabase
+      .from('domain_trials').select('domain, account_count').eq('domain', emailDomain).single();
+
+    const isFirstFromDomain = !domainTrial;
+    const trialCredits = isFirstFromDomain ? 50 : 0;
+
     const hashedPassword = await bcrypt.hash(password, 12);
     const { data: user, error } = await supabase
       .from('users')
@@ -73,7 +81,7 @@ router.post('/register', async (req: any, res: any) => {
         email: emailLower, name: name.trim(), company: company?.trim() || null,
         password_hash: hashedPassword,
         plan_type: 'starter',
-        credits_total: 50,
+        credits_total: trialCredits,
         credits_used: 0,
         onboarding_done: false
       }])
@@ -81,6 +89,19 @@ router.post('/register', async (req: any, res: any) => {
       .single();
 
     if (error) throw error;
+
+    // Domain trial kaydını güncelle
+    if (isFirstFromDomain) {
+      await supabase.from('domain_trials').insert([{
+        domain: emailDomain,
+        first_user_id: user.id,
+        account_count: 1,
+      }]);
+    } else {
+      await supabase.from('domain_trials').update({
+        account_count: (domainTrial.account_count || 1) + 1,
+      }).eq('domain', emailDomain);
+    }
 
     // OTP gönder — kullanıcı verify-otp ile tamamlayacak
     const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -90,10 +111,14 @@ router.post('/register', async (req: any, res: any) => {
     }).eq('id', user.id);
     await sendOTPEmail(emailLower, name.trim(), otp);
 
-    const [local, domain] = emailLower.split('@');
-    const masked = local.slice(0, 2) + '***@' + domain;
+    const [local] = emailLower.split('@');
+    const masked = local.slice(0, 2) + '***@' + emailDomain;
 
-    res.status(201).json({ ok: true, masked_email: masked });
+    res.status(201).json({
+      ok: true,
+      masked_email: masked,
+      trial_granted: isFirstFromDomain,
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
