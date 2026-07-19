@@ -60,14 +60,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#f8fafc',
+        background: pathname === '/onboarding' ? '#0f172a' : '#f8fafc',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       }}>
         <div style={{
           width: 32, height: 32,
-          border: '2.5px solid #e2e8f0',
+          border: '2.5px solid #1e293b',
           borderTopColor: '#3b82f6',
           borderRadius: '50%',
           animation: 'ls-spin .7s linear infinite',
@@ -78,6 +78,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   if (!user) return null
+
+  // Onboarding sayfası — sidebar/topbar gösterme, tam izole
+  if (pathname === '/onboarding') {
+    return <>{children}</>
+  }
 
   return (
     <div style={{
