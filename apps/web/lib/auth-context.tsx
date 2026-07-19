@@ -25,6 +25,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (data: { email: string; password: string; name: string; company: string }) => Promise<void>
   logout: () => void
+  verifyOTP: (identifier: string, code: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType)
@@ -90,6 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/onboarding')
   }
 
+  const verifyOTP = async (identifier: string, code: string) => {
+    const data = await api.post('/api/auth/verify-otp', { identifier, code })
+    localStorage.setItem('token', data.token)
+    setUser(data.user)
+    if (!data.user?.onboardingDone) {
+      router.push('/onboarding')
+    } else {
+      router.push('/dashboard')
+    }
+  }
+
   const logout = () => {
     localStorage.removeItem('token')
     setUser(null)
@@ -97,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, verifyOTP }}>
       {children}
     </AuthContext.Provider>
   )
