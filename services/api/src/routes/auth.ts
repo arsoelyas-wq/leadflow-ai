@@ -68,8 +68,18 @@ router.post('/register', async (req: any, res: any) => {
 
     // Domain trial kontrolü — aynı domain'den daha önce trial kullanılmış mı?
     const emailDomain = emailLower.split('@')[1];
-    const { data: domainTrial } = await supabase
+    const { data: domainTrial, error: domainErr } = await supabase
       .from('domain_trials').select('domain, account_count').eq('domain', emailDomain).single();
+
+    // PGRST116 = "0 rows" (normal, ilk kayıt) — diğer hata = tablo yok veya DB sorunu
+    const tableError = domainErr && domainErr.code !== 'PGRST116';
+    if (tableError) {
+      console.error('[register] domain_trials sorgu hatası:', domainErr.code, domainErr.message);
+      // Tablo yoksa sistemi koru: trial verme (migration çalıştırılana kadar)
+      return res.status(500).json({
+        error: 'Sistem yapılandırması eksik. Lütfen yönetici ile iletişime geçin. (domain_trials tablosu bulunamadı — migration çalıştırılması gerekiyor)'
+      });
+    }
 
     const isFirstFromDomain = !domainTrial;
     const trialCredits = isFirstFromDomain ? 50 : 0;
@@ -137,11 +147,11 @@ router.post('/login', async (req: any, res: any) => {
     const { data: user, error } = await supabase
       .from('users').select('*').eq('email', email).single();
     if (error || !user)
-      return res.status(401).json({ error: 'Email veya sifre yanlis' });
+      return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid)
-      return res.status(401).json({ error: 'Email veya sifre yanlis' });
+      return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
 
     const jti = require('crypto').randomUUID();
     const token = jwt.sign(
@@ -150,7 +160,7 @@ router.post('/login', async (req: any, res: any) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ message: 'Giris basarili!', token, user: formatUser(user) });
+    res.json({ message: 'Giriş başarılı!', token, user: formatUser(user) });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
