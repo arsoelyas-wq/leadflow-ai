@@ -69,24 +69,25 @@ router.post('/analyze-website', async (req: any, res: any) => {
     const fullUrl = url.startsWith('http') ? url : `https://${url}`;
     let pageText = '';
     try {
-      const https = require('https');
-      const http = require('http');
-      const client = fullUrl.startsWith('https') ? https : http;
-      pageText = await new Promise((resolve, reject) => {
-        const request = client.get(fullUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LeadflowBot/1.0)' },
-          timeout: 10000,
-        }, (r: any) => {
-          let data = '';
-          r.setEncoding('utf8');
-          r.on('data', (chunk: string) => { if (data.length < 200000) data += chunk; });
-          r.on('end', () => resolve(data));
-        });
-        request.on('error', reject);
-        request.on('timeout', () => { request.destroy(); reject(new Error('timeout')); });
+      const axios = require('axios');
+      const response = await axios.get(fullUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+        },
+        timeout: 15000,
+        maxRedirects: 10,
+        responseType: 'text',
+        validateStatus: (status: number) => status < 500,
       });
-    } catch {
-      return res.status(400).json({ error: 'Website erişilemedi. URL\'yi kontrol edin.' });
+      pageText = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+    } catch (fetchErr: any) {
+      const msg = fetchErr?.code === 'ECONNREFUSED' ? 'Siteye bağlanılamadı'
+        : fetchErr?.code === 'ETIMEDOUT' || fetchErr?.code === 'ECONNABORTED' ? 'Site yanıt vermedi (zaman aşımı)'
+        : fetchErr?.response?.status ? `Site ${fetchErr.response.status} hatası döndürdü`
+        : 'Website erişilemedi';
+      return res.status(400).json({ error: `${msg}. Farklı bir URL deneyin.` });
     }
 
     // HTML'i temizle ve kısalt

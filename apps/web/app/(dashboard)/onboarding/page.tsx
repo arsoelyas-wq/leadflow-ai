@@ -288,7 +288,7 @@ export default function OnboardingPage() {
     setAnalyzing(true); setAnalyzeErr('')
     try {
       const res = await api.post('/api/settings/business-profile/analyze-website', { url: company.website.trim() })
-      const d = res.data.data
+      const d = res.data   // api.ts returns JSON body directly (not Axios wrapper)
       if (d.company_name && !company.name.trim()) setCompany(p => ({ ...p, name: d.company_name }))
       if (d.sector && SECTORS.includes(d.sector)) setCompany(p => ({ ...p, sector: d.sector }))
       if (d.city && !company.city.trim())          setCompany(p => ({ ...p, city: d.city }))
@@ -297,7 +297,7 @@ export default function OnboardingPage() {
       if (d.advantages?.length)  setProduct(p => ({ ...p, advantages: [...d.advantages.slice(0, 3), ...p.advantages].slice(0, 3) }))
       if (d.target_result)       setProduct(p => ({ ...p, target_result: d.target_result }))
     } catch (e: any) {
-      setAnalyzeErr(e?.response?.data?.error || 'Website analiz edilemedi.')
+      setAnalyzeErr(e?.message || 'Website analiz edilemedi.')
     }
     setAnalyzing(false)
   }
