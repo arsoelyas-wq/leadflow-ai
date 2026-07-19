@@ -32,12 +32,12 @@ interface FAQ { q: string; a: string }
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { id: 1, icon: Building2,     title: 'Şirket Profili',  desc: 'Temel bilgilerinizi girin' },
-  { id: 2, icon: Package,       title: 'Ürün & Hizmet',   desc: 'Ne sattığınızı anlayalım' },
-  { id: 3, icon: Users,         title: 'Hedef Müşteri',   desc: 'Kimi arıyorsunuz?' },
-  { id: 4, icon: Mic2,          title: 'Satış Tarzı',     desc: 'Nasıl konuşuyorsunuz?' },
-  { id: 5, icon: MessageSquare, title: 'SSS & İtirazlar', desc: 'Hazır cevaplar oluşturun' },
-  { id: 6, icon: CheckCircle,   title: 'Hazır!',          desc: 'Sisteminiz kuruldu' },
+  { id: 1, icon: Building2,     title: 'Şirket',   fullTitle: 'Şirket Profili',  desc: 'Temel bilgilerinizi girin' },
+  { id: 2, icon: Package,       title: 'Ürün',     fullTitle: 'Ürün & Hizmet',   desc: 'Ne sattığınızı anlayalım' },
+  { id: 3, icon: Users,         title: 'Hedef',    fullTitle: 'Hedef Müşteri',   desc: 'Kimi arıyorsunuz?' },
+  { id: 4, icon: Mic2,          title: 'Tarz',     fullTitle: 'Satış Tarzı',     desc: 'Nasıl konuşuyorsunuz?' },
+  { id: 5, icon: MessageSquare, title: 'SSS',      fullTitle: 'SSS & İtirazlar', desc: 'Hazır cevaplar oluşturun' },
+  { id: 6, icon: CheckCircle,   title: 'Hazır',    fullTitle: 'Tamamlandı',      desc: 'Sisteminiz kuruldu' },
 ]
 
 const SECTORS = [
@@ -74,7 +74,7 @@ const TEMPLATES: Record<string, { product: Partial<Product>; target: Partial<Tar
     product: { name: 'SaaS Yazılım Platformu', description: 'İşletmelerin satış, operasyon ve müşteri yönetimi süreçlerini dijitalleştiren bulut tabanlı yazılım. Entegre raporlama ve otomasyon özellikleriyle ekipleriniz daha az manuel iş yaparak daha fazla sonuç alıyor.', price_range: '500-5.000 TL/ay', delivery_time: '1-3 iş günü', advantages: ['%40 daha az manuel iş ve hata', '24 saat içinde kurulum ve eğitim', '7/24 teknik destek dahil'], target_result: 'İlk 3 ayda %30 verimlilik artışı', guarantee: '30 gün ücretsiz deneme, sözleşme yok' },
     target: { sectors: ['Teknoloji / Yazılım', 'Danışmanlık / Hizmet', 'Perakende / E-ticaret'], company_size: '11-50 kişi', decision_maker: 'CEO, CTO, Operasyon Müdürü', pain_points: ['Manuel süreçler çok zaman alıyor', 'Ekipler arası koordinasyon zor', 'Raporlama ve görünürlük yetersiz'], geography: 'Tüm Türkiye' },
     salesStyle: { tone: 'consultative', language_style: 'formal', opening_line: "Merhaba, [AD] [ŞİRKET]'den arıyorum. Şirketinizin operasyon süreçlerini iyileştirmeye yönelik bir çözümümüz var — kısa bir bilgi verebilir miyim?", avoid_words: 'yapay zeka, robot, veri toplama' },
-    faq: [{ q: 'Kurulum ne kadar sürer?', a: '24-72 saat içinde sisteminizi kuruyoruz, verilerinizi aktarıyor ve ekibinizi eğitiyoruz.' }, { q: 'Mevcut sistemlerimizle entegre olur mu?', a: 'Yaygın ERP ve CRM sistemleriyle API entegrasyonu sağlıyoruz. Özel entegrasyon da yapıyoruz.' }, { q: 'Güvenlik nasıl sağlanıyor?', a: 'Verileriniz şifrelenmiş Türkiye sunucularında saklanıyor, KVKK uyumluyuz.' }],
+    faq: [{ q: 'Kurulum ne kadar sürer?', a: '24-72 saat içinde sisteminizi kuruyoruz, verilerinizi aktarıyor ve ekibinizi eğitiyoruz.' }, { q: 'Mevcut sistemlerimizle entegre olur mu?', a: 'Yaygın ERP ve CRM sistemleriyle API entegrasyonu sağlıyoruz. Özel entegrasyon da yapıyoruz.' }],
     obj_answers: ["Müşterilerimizin %87'si ilk 3 ayda yatırımını geri alıyor. Detaylı ROI hesabı yapabilir miyim?", 'Ücretsiz denemeyle başlayın, bütçe açıldığında zaten sistemi kurmuş olursunuz.', 'Mevcut çözümünüzle karşılaştırmalı bir demo yapalım, karar tamamen size kalır.', 'Sizi bekleyeceğim — ne zaman tekrar aramalıyım?', 'Anlıyorum, size özet bir e-posta atayım, uygun zamanda incelersiniz.'],
   },
   'İnşaat / Gayrimenkul': {
@@ -100,26 +100,22 @@ const TEMPLATES: Record<string, { product: Partial<Product>; target: Partial<Tar
   },
 }
 
-// ─── Preview Generator ────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function generatePreview(company: Company, product: Product, style: SalesStyle): string {
   const agent = style.agent_name || 'Temsilci'
-  const co = company.name || 'Şirketimiz'
-  const adv = (product.advantages || []).find(Boolean) || 'özel avantajlarımız var'
-  const result = product.target_result || 'büyük fark yaşanıyor'
-  if (style.opening_line) {
-    return style.opening_line.replace('[AD]', agent).replace('[ŞİRKET]', co)
-  }
-  const variants: Record<string, string> = {
+  const co    = company.name || 'Şirketimiz'
+  const adv   = (product.advantages || []).find(Boolean) || 'özel avantajlarımız var'
+  const result= product.target_result || 'büyük fark yaşanıyor'
+  if (style.opening_line) return style.opening_line.replace('[AD]', agent).replace('[ŞİRKET]', co)
+  const v: Record<string, string> = {
     professional: `Merhaba, ben ${agent}, ${co} adına iletişime geçiyorum. ${product.name || 'Ürünümüz'} konusunda size özel bir teklifimiz var — ${adv}. ${result}. Uygun bir zamanda görüşebilir miyiz?`,
     friendly:     `Merhaba! Ben ${agent}, ${co}'dan yazıyorum. ${product.name || 'Ürünümüz'} hakkında kısa bir bilgi vermek istedim — ${adv}. ${result}. 5 dakikan var mı?`,
     consultative: `Merhaba, ben ${agent}. ${co} olarak sektörünüzdeki firmalara ${product.name || 'çözümlerimizle'} destek veriyoruz. ${result}. Şu an bu alanda nasıl çalışıyorsunuz?`,
     direct:       `Merhaba, ${agent} — ${co}. ${product.name || 'Çözümümüz'}: ${adv}. ${result}. Görüşelim mi?`,
   }
-  return variants[style.tone] || variants.friendly
+  return v[style.tone] || v.friendly
 }
-
-// ─── Score ────────────────────────────────────────────────────────────────────
 
 function calcScore(c: Company, p: Product, t: Target, s: SalesStyle, faq: FAQ[], obj: FAQ[]): number {
   let sc = 0
@@ -138,140 +134,90 @@ function calcScore(c: Company, p: Product, t: Target, s: SalesStyle, faq: FAQ[],
   return Math.min(sc, 100)
 }
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
+// ─── Design Tokens (Light) ────────────────────────────────────────────────────
 
-const C = {
-  bg:          '#070d1a',
-  panel:       '#0c1323',
-  panelBorder: 'rgba(255,255,255,0.06)',
-  card:        'rgba(255,255,255,0.03)',
-  cardBorder:  'rgba(255,255,255,0.07)',
-  cardActive:  'rgba(59,130,246,0.04)',
-  cardActiveBorder: 'rgba(59,130,246,0.18)',
-  inputBg:     'rgba(255,255,255,0.04)',
-  inputBorder: 'rgba(255,255,255,0.1)',
-  text:        '#e2e8f0',
-  textMuted:   '#64748b',
-  textLabel:   '#94a3b8',
-  blue:        '#3b82f6',
-  blueLight:   '#60a5fa',
-  green:       '#10b981',
-  purple:      '#8b5cf6',
-  red:         '#ef4444',
-}
-
-const S = {
-  card: {
-    background: C.card,
-    border: `1px solid ${C.cardBorder}`,
-    borderRadius: 14,
-    padding: '22px 24px',
-    marginBottom: 16,
-  } as React.CSSProperties,
-
-  cardHighlight: {
-    background: C.cardActive,
-    border: `1px solid ${C.cardActiveBorder}`,
-    borderRadius: 14,
-    padding: '22px 24px',
-    marginBottom: 16,
-  } as React.CSSProperties,
-
-  label: {
-    display: 'block', fontSize: 11, fontWeight: 700,
-    color: C.textLabel, marginBottom: 8,
-    letterSpacing: 0.6, textTransform: 'uppercase' as const,
-  },
-
-  input: {
-    width: '100%', padding: '11px 14px',
-    background: C.inputBg,
-    border: `1px solid ${C.inputBorder}`,
-    borderRadius: 10, color: C.text, fontSize: 14,
-    fontFamily: 'inherit', outline: 'none',
-    boxSizing: 'border-box' as const,
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  },
-
-  textarea: {
-    width: '100%', padding: '11px 14px',
-    background: C.inputBg,
-    border: `1px solid ${C.inputBorder}`,
-    borderRadius: 10, color: C.text, fontSize: 14,
-    fontFamily: 'inherit', outline: 'none',
-    resize: 'vertical' as const, minHeight: 90,
-    boxSizing: 'border-box' as const,
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  },
-
-  row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 } as React.CSSProperties,
-
-  btn: {
-    padding: '11px 22px', borderRadius: 10, border: 'none', cursor: 'pointer',
-    fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
-    display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s',
-  } as React.CSSProperties,
-
-  btnPrimary: {
-    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-    color: '#fff', border: 'none',
-    boxShadow: '0 0 0 0 rgba(59,130,246,0)',
-  } as React.CSSProperties,
-
-  btnGhost: {
-    background: 'rgba(255,255,255,0.04)',
-    color: C.textLabel,
-    border: `1px solid ${C.cardBorder}`,
-  } as React.CSSProperties,
-
-  errBox: {
-    background: 'rgba(239,68,68,0.08)',
-    border: '1px solid rgba(239,68,68,0.2)',
-    borderRadius: 10, padding: '12px 16px',
-    marginBottom: 16, color: '#f87171', fontSize: 13,
-  } as React.CSSProperties,
+const T = {
+  pageBg:       '#f1f5f9',
+  headerBg:     '#ffffff',
+  cardBg:       '#ffffff',
+  inputBg:      '#f8fafc',
+  border:       '#e2e8f0',
+  borderFocus:  '#2563eb',
+  primary:      '#2563eb',
+  primaryHover: '#1d4ed8',
+  primaryLight: '#eff6ff',
+  primaryBorder:'#bfdbfe',
+  text:         '#0f172a',
+  textMuted:    '#64748b',
+  textLabel:    '#475569',
+  success:      '#059669',
+  successLight: '#ecfdf5',
+  successBorder:'#a7f3d0',
+  warning:      '#d97706',
+  error:        '#dc2626',
+  errorLight:   '#fef2f2',
+  purple:       '#7c3aed',
+  purpleLight:  '#faf5ff',
+  purpleBorder: '#e9d5ff',
 }
 
 // ─── Shared Sub-Components ────────────────────────────────────────────────────
 
 function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <label style={S.label}>
-        {label}
-        {required && <span style={{ color: C.red, marginLeft: 3 }}>*</span>}
+    <div className="ob-field">
+      <label className="ob-label">
+        {label}{required && <span style={{ color: T.error, marginLeft: 2 }}>*</span>}
       </label>
       {children}
-      {hint && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 5 }}>{hint}</div>}
+      {hint && <div className="ob-hint">{hint}</div>}
     </div>
   )
 }
 
-function Inp({ value, onChange, placeholder, type = 'text' }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
-  return <input className="ob-input" style={S.input} type={type} value={value} placeholder={placeholder || ''} onChange={e => onChange(e.target.value)} />
+function Inp(props: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+  return (
+    <input
+      className="ob-input"
+      type={props.type || 'text'}
+      value={props.value}
+      placeholder={props.placeholder || ''}
+      onChange={e => props.onChange(e.target.value)}
+    />
+  )
 }
 
-function Txta({ value, onChange, placeholder, minH = 90 }: { value: string; onChange: (v: string) => void; placeholder?: string; minH?: number }) {
-  return <textarea className="ob-input" style={{ ...S.textarea, minHeight: minH }} value={value} placeholder={placeholder || ''} onChange={e => onChange(e.target.value)} />
+function Txta(props: { value: string; onChange: (v: string) => void; placeholder?: string; minH?: number }) {
+  return (
+    <textarea
+      className="ob-input ob-textarea"
+      style={{ minHeight: props.minH || 96 }}
+      value={props.value}
+      placeholder={props.placeholder || ''}
+      onChange={e => props.onChange(e.target.value)}
+    />
+  )
 }
 
-function Sel({ value, onChange, options, placeholder = 'Seçin...' }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
+function Sel(props: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
   return (
     <div style={{ position: 'relative' }}>
-      <select className="ob-input" style={{ ...S.input, appearance: 'none', cursor: 'pointer', paddingRight: 36 }} value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">{placeholder}</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      <select
+        className="ob-input ob-select"
+        value={props.value}
+        onChange={e => props.onChange(e.target.value)}
+      >
+        <option value="">{props.placeholder || 'Seçin...'}</option>
+        {props.options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
-      <ChevronDown size={14} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: C.textMuted, pointerEvents: 'none' }} />
+      <ChevronDown size={15} className="ob-select-arrow" />
     </div>
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
-  const router = useRouter()
-
   const [step, setStep]           = useState(1)
   const [errors, setErrors]       = useState<string[]>([])
   const [saving, setSaving]       = useState(false)
@@ -286,7 +232,6 @@ export default function OnboardingPage() {
   const [faq,        setFaq]        = useState<FAQ[]>([{ q: '', a: '' }, { q: '', a: '' }])
   const [objections, setObjections] = useState<FAQ[]>(DEFAULT_OBJECTIONS.map(q => ({ q, a: '' })))
 
-  // Load saved profile
   useEffect(() => {
     async function load() {
       try {
@@ -320,21 +265,18 @@ export default function OnboardingPage() {
     load()
   }, [])
 
-  // Auto-save to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem('ob_data', JSON.stringify({ company, product, target, salesStyle, faq, objections, step }))
-    } catch {}
+    try { localStorage.setItem('ob_data', JSON.stringify({ company, product, target, salesStyle, faq, objections, step })) } catch {}
   }, [company, product, target, salesStyle, faq, objections, step])
 
   function validate(): boolean {
     const errs: string[] = []
     if (step === 1) {
       if (!company.name.trim()) errs.push('Şirket adı zorunludur')
-      if (!company.sector) errs.push('Sektör seçimi zorunludur')
+      if (!company.sector)      errs.push('Sektör seçimi zorunludur')
     }
     if (step === 2) {
-      if (!product.name.trim()) errs.push('Ürün / hizmet adı zorunludur')
+      if (!product.name.trim())          errs.push('Ürün / hizmet adı zorunludur')
       if (product.description.length < 20) errs.push('Ürün açıklaması en az 20 karakter olmalıdır')
     }
     setErrors(errs)
@@ -347,27 +289,27 @@ export default function OnboardingPage() {
     try {
       const res = await api.post('/api/settings/business-profile/analyze-website', { url: company.website.trim() })
       const d = res.data.data
-      if (d.company_name && !company.name.trim()) setCompany(prev => ({ ...prev, name: d.company_name }))
-      if (d.sector && SECTORS.includes(d.sector)) setCompany(prev => ({ ...prev, sector: d.sector }))
-      if (d.city && !company.city.trim()) setCompany(prev => ({ ...prev, city: d.city }))
-      if (d.product_name)       setProduct(prev => ({ ...prev, name: d.product_name }))
-      if (d.product_description) setProduct(prev => ({ ...prev, description: d.product_description }))
-      if (d.advantages?.length)  setProduct(prev => ({ ...prev, advantages: [...d.advantages.slice(0, 3), ...prev.advantages].slice(0, 3) }))
-      if (d.target_result)       setProduct(prev => ({ ...prev, target_result: d.target_result }))
+      if (d.company_name && !company.name.trim()) setCompany(p => ({ ...p, name: d.company_name }))
+      if (d.sector && SECTORS.includes(d.sector)) setCompany(p => ({ ...p, sector: d.sector }))
+      if (d.city && !company.city.trim())          setCompany(p => ({ ...p, city: d.city }))
+      if (d.product_name)        setProduct(p => ({ ...p, name: d.product_name }))
+      if (d.product_description) setProduct(p => ({ ...p, description: d.product_description }))
+      if (d.advantages?.length)  setProduct(p => ({ ...p, advantages: [...d.advantages.slice(0, 3), ...p.advantages].slice(0, 3) }))
+      if (d.target_result)       setProduct(p => ({ ...p, target_result: d.target_result }))
     } catch (e: any) {
-      setAnalyzeErr(e?.response?.data?.error || 'Website analiz edilemedi. Lütfen manuel doldurun.')
+      setAnalyzeErr(e?.response?.data?.error || 'Website analiz edilemedi.')
     }
     setAnalyzing(false)
   }
 
   function applyTemplate() {
-    const tmpl = TEMPLATES[company.sector]
-    if (!tmpl) return
-    setProduct(prev => ({ ...prev, ...tmpl.product }))
-    setTarget(prev => ({ ...prev, ...tmpl.target }))
-    setSalesStyle(prev => ({ ...prev, ...tmpl.salesStyle }))
-    setFaq(tmpl.faq)
-    setObjections(DEFAULT_OBJECTIONS.map((q, i) => ({ q, a: tmpl.obj_answers[i] || '' })))
+    const t = TEMPLATES[company.sector]
+    if (!t) return
+    setProduct(p => ({ ...p, ...t.product }))
+    setTarget(p => ({ ...p, ...t.target }))
+    setSalesStyle(p => ({ ...p, ...t.salesStyle }))
+    setFaq(t.faq)
+    setObjections(DEFAULT_OBJECTIONS.map((q, i) => ({ q, a: t.obj_answers[i] || '' })))
   }
 
   async function goNext() {
@@ -393,262 +335,539 @@ export default function OnboardingPage() {
         objections: objections.filter(o => o.a?.trim()),
       })
       await api.patch('/api/settings', {
-        company_name: company.name,
-        sector: company.sector,
-        city: company.city,
-        website: company.website,
+        company_name: company.name, sector: company.sector,
+        city: company.city, website: company.website,
         onboarding_done: true,
       })
       localStorage.removeItem('ob_data')
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 300))
       window.location.href = '/dashboard'
-    } catch {
-      setSaving(false)
-    }
+    } catch { setSaving(false) }
   }
 
   const score    = calcScore(company, product, target, salesStyle, faq, objections)
   const preview  = generatePreview(company, product, salesStyle)
   const progress = ((step - 1) / (STEPS.length - 1)) * 100
+  const current  = STEPS[step - 1]
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'inherit', display: 'flex' }}>
+    <div className="ob-page">
 
-      {/* ── Left Panel ────────────────────────────────────────────────────── */}
-      <div id="ob-left-panel" style={{
-        width: 260, flexShrink: 0,
-        background: C.panel,
-        borderRight: `1px solid ${C.panelBorder}`,
-        display: 'flex', flexDirection: 'column',
-        position: 'sticky', top: 0, height: '100vh',
-        overflow: 'hidden',
-      }}>
-        {/* Logo */}
-        <div style={{ padding: '28px 24px 24px', borderBottom: `1px solid ${C.panelBorder}` }}>
-          <SovloLogo size="md" theme="dark" />
-        </div>
-
-        {/* Steps */}
-        <div style={{ padding: '20px 16px', flex: 1, overflowY: 'auto' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, letterSpacing: 1, textTransform: 'uppercase', padding: '0 8px', marginBottom: 12 }}>
-            Kurulum Adımları
+      {/* ── Top Header ───────────────────────────────────────────────────── */}
+      <header className="ob-header">
+        <div className="ob-header-inner">
+          <SovloLogo size="sm" theme="light" />
+          <div className="ob-header-right">
+            <span className="ob-step-badge">Adım {step}/{STEPS.length}</span>
           </div>
-          {STEPS.map(s => {
+        </div>
+      </header>
+
+      {/* ── Step Bar (desktop) ────────────────────────────────────────────── */}
+      <div className="ob-stepbar-wrap">
+        <div className="ob-stepbar">
+          {STEPS.map((s, i) => {
             const done   = step > s.id
             const active = step === s.id
             const Icon   = s.icon
             return (
-              <div key={s.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 12px', borderRadius: 10, marginBottom: 2,
-                background: active ? 'rgba(59,130,246,0.1)' : 'transparent',
-                border: active ? '1px solid rgba(59,130,246,0.22)' : '1px solid transparent',
-                transition: 'all 0.2s',
-              }}>
-                {/* Circle indicator */}
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: done
-                    ? 'rgba(16,185,129,0.15)'
-                    : active
-                      ? 'rgba(59,130,246,0.2)'
-                      : 'rgba(255,255,255,0.04)',
-                  border: done
-                    ? '1.5px solid rgba(16,185,129,0.35)'
-                    : active
-                      ? '1.5px solid rgba(59,130,246,0.45)'
-                      : `1.5px solid ${C.panelBorder}`,
-                  transition: 'all 0.2s',
-                }}>
+              <div key={s.id} className={`ob-step-item ${active ? 'ob-step-active' : done ? 'ob-step-done' : 'ob-step-pending'}`}>
+                {/* Connector line (before each step except first) */}
+                {i > 0 && (
+                  <div className={`ob-step-line ${done || active ? 'ob-step-line-filled' : ''}`} />
+                )}
+                {/* Circle */}
+                <div className="ob-step-circle">
                   {done
-                    ? <Check size={13} color={C.green} strokeWidth={2.5} />
-                    : <Icon size={13} color={active ? C.blueLight : C.textMuted} />
+                    ? <Check size={13} strokeWidth={2.5} />
+                    : active
+                      ? <Icon size={13} />
+                      : <span className="ob-step-num">{s.id}</span>
                   }
                 </div>
                 {/* Label */}
-                <div>
-                  <div style={{
-                    fontSize: 13, fontWeight: active ? 600 : 500,
-                    color: active ? C.text : done ? '#6b7f9a' : C.textMuted,
-                    lineHeight: 1.2,
-                  }}>
-                    {s.title}
-                  </div>
-                  {active && (
-                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{s.desc}</div>
-                  )}
-                </div>
+                <span className="ob-step-label">{s.title}</span>
               </div>
             )
           })}
         </div>
+      </div>
 
-        {/* Bottom progress */}
-        <div style={{ padding: '16px 24px', borderTop: `1px solid ${C.panelBorder}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: C.textMuted }}>İlerleme</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.blueLight }}>{Math.round(progress)}%</span>
+      {/* Mobile progress bar (shown instead of step circles on small screens) */}
+      <div className="ob-mobile-progress">
+        <div className="ob-mobile-progress-info">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {(() => { const Icon = current.icon; return <Icon size={15} color={T.primary} /> })()}
+            <span className="ob-mobile-step-title">{current.fullTitle}</span>
           </div>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
-            <div style={{
-              height: '100%', borderRadius: 2,
-              width: `${progress}%`,
-              background: 'linear-gradient(90deg, #2563eb, #8b5cf6)',
-              transition: 'width 0.4s ease',
-            }} />
-          </div>
-          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>Adım {step} / {STEPS.length}</div>
+          <span className="ob-mobile-step-count">{step} / {STEPS.length}</span>
+        </div>
+        <div className="ob-mobile-bar-track">
+          <div className="ob-mobile-bar-fill" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
-      {/* ── Right Content ─────────────────────────────────────────────────── */}
-      <div id="ob-right-panel" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-
-        {/* Mobile top bar (hidden on desktop) */}
-        <div id="ob-mobile-top" style={{ display: 'none' }}>
-          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.panelBorder}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <SovloLogo size="sm" theme="dark" />
-            <div style={{ flex: 1 }} />
-            <span style={{ fontSize: 12, color: C.textMuted }}>{step}/{STEPS.length}</span>
+      {/* ── Form Content ─────────────────────────────────────────────────── */}
+      <main className="ob-main">
+        {/* Step heading */}
+        <div className="ob-step-heading">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {(() => { const Icon = current.icon; return <Icon size={20} color={T.primary} /> })()}
+            <h1 className="ob-step-title-text">{current.fullTitle}</h1>
           </div>
-          <div style={{ height: 3, background: 'rgba(255,255,255,0.06)' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg,#2563eb,#8b5cf6)', transition: 'width 0.4s' }} />
-          </div>
+          <p className="ob-step-desc">{current.desc}</p>
         </div>
 
-        {/* Form area */}
-        <div style={{ flex: 1, padding: '40px 48px 60px', maxWidth: 720, width: '100%' }} id="ob-form-area">
-
-          {/* Step header */}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              {(() => { const Icon = STEPS[step - 1].icon; return <Icon size={22} color={C.blue} /> })()}
-              <h1 style={{ fontSize: 26, fontWeight: 700, color: C.text, margin: 0, letterSpacing: -0.3 }}>
-                {STEPS[step - 1].title}
-              </h1>
-            </div>
-            <p style={{ margin: 0, fontSize: 15, color: C.textMuted, lineHeight: 1.5 }}>
-              {STEPS[step - 1].desc}
-            </p>
+        {/* Errors */}
+        {errors.length > 0 && (
+          <div className="ob-error-box">
+            {errors.map((e, i) => <div key={i} className="ob-error-item">• {e}</div>)}
           </div>
+        )}
 
-          {/* Errors */}
-          {errors.length > 0 && (
-            <div style={S.errBox}>
-              {errors.map((e, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ opacity: 0.7 }}>•</span> {e}</div>)}
+        {/* Step content */}
+        {step === 1 && <Step1Company company={company} setCompany={setCompany} analyzing={analyzing} analyzeErr={analyzeErr} onAnalyze={analyzeWebsite} onTemplate={applyTemplate} profileLoaded={profileLoaded} />}
+        {step === 2 && <Step2Product product={product} setProduct={setProduct} />}
+        {step === 3 && <Step3Target  target={target}   setTarget={setTarget} />}
+        {step === 4 && <Step4Style   salesStyle={salesStyle} setSalesStyle={setSalesStyle} preview={preview} />}
+        {step === 5 && <Step5FAQ     faq={faq} setFaq={setFaq} objections={objections} setObjections={setObjections} />}
+        {step === 6 && <Step6Done    company={company} product={product} salesStyle={salesStyle} score={score} saving={saving} onFinish={finish} />}
+
+        {/* Navigation */}
+        {step < 6 && (
+          <div className="ob-nav">
+            <div>
+              {step > 1 && (
+                <button className="ob-btn ob-btn-ghost" onClick={goBack}>
+                  <ArrowLeft size={15} /> Geri
+                </button>
+              )}
             </div>
-          )}
+            <button className="ob-btn ob-btn-primary" onClick={goNext}>
+              {step === 5 ? 'Profili Kaydet' : 'Devam Et'} <ArrowRight size={15} />
+            </button>
+          </div>
+        )}
+      </main>
 
-          {/* Step content */}
-          {step === 1 && <Step1Company company={company} setCompany={setCompany} analyzing={analyzing} analyzeErr={analyzeErr} onAnalyze={analyzeWebsite} onTemplate={applyTemplate} profileLoaded={profileLoaded} />}
-          {step === 2 && <Step2Product product={product} setProduct={setProduct} />}
-          {step === 3 && <Step3Target target={target} setTarget={setTarget} />}
-          {step === 4 && <Step4Style salesStyle={salesStyle} setSalesStyle={setSalesStyle} preview={preview} />}
-          {step === 5 && <Step5FAQ faq={faq} setFaq={setFaq} objections={objections} setObjections={setObjections} />}
-          {step === 6 && <Step6Done company={company} product={product} salesStyle={salesStyle} score={score} saving={saving} onFinish={finish} />}
-
-          {/* Navigation */}
-          {step < 6 && (
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              marginTop: 32, paddingTop: 24,
-              borderTop: `1px solid ${C.panelBorder}`,
-            }}>
-              {step > 1
-                ? (
-                  <button className="ob-btn-ghost" style={{ ...S.btn, ...S.btnGhost }} onClick={goBack}>
-                    <ArrowLeft size={15} /> Geri
-                  </button>
-                )
-                : <div />
-              }
-              <button className="ob-btn-primary" style={{ ...S.btn, ...S.btnPrimary }} onClick={goNext}>
-                {step === 5 ? 'Profili Kaydet' : 'Devam Et'} <ArrowRight size={15} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Global styles */}
+      {/* ── Styles ───────────────────────────────────────────────────────── */}
       <style>{`
-        @keyframes ob-spin { to { transform: rotate(360deg) } }
-        @keyframes ob-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        * { box-sizing: border-box; }
 
-        .ob-input:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important;
-          background: rgba(59,130,246,0.04) !important;
+        .ob-page {
+          min-height: 100vh;
+          background: ${T.pageBg};
+          color: ${T.text};
+          font-family: inherit;
         }
-        .ob-input::placeholder { color: rgba(100,116,139,0.7); }
-        .ob-input option { background: #1e293b; color: #e2e8f0; }
 
+        /* Header */
+        .ob-header {
+          position: sticky; top: 0; z-index: 50;
+          background: ${T.headerBg};
+          border-bottom: 1px solid ${T.border};
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .ob-header-inner {
+          max-width: 860px; margin: 0 auto;
+          padding: 14px 24px;
+          display: flex; align-items: center; justify-content: space-between;
+        }
+        .ob-header-right { display: flex; align-items: center; gap: 12; }
+        .ob-step-badge {
+          font-size: 12px; font-weight: 600;
+          color: ${T.textMuted};
+          background: ${T.pageBg};
+          border: 1px solid ${T.border};
+          border-radius: 20px; padding: 3px 10px;
+        }
+
+        /* Step bar (desktop) */
+        .ob-stepbar-wrap {
+          background: ${T.headerBg};
+          border-bottom: 1px solid ${T.border};
+          padding: 0 24px;
+        }
+        .ob-stepbar {
+          max-width: 860px; margin: 0 auto;
+          display: flex; align-items: center;
+          padding: 16px 0;
+          position: relative;
+        }
+        .ob-step-item {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 6px; flex: 1; position: relative;
+          cursor: default;
+        }
+        .ob-step-line {
+          position: absolute; top: 16px;
+          right: 50%; width: 100%;
+          height: 2px; background: ${T.border};
+          z-index: 0;
+          transition: background 0.3s;
+        }
+        .ob-step-line-filled { background: ${T.primary}; }
+
+        .ob-step-circle {
+          width: 32px; height: 32px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 12px; font-weight: 700;
+          position: relative; z-index: 1;
+          transition: all 0.2s;
+          flex-shrink: 0;
+        }
+        .ob-step-active .ob-step-circle {
+          background: ${T.primary}; color: #fff;
+          box-shadow: 0 0 0 4px ${T.primaryLight};
+        }
+        .ob-step-done .ob-step-circle {
+          background: ${T.success}; color: #fff;
+        }
+        .ob-step-pending .ob-step-circle {
+          background: ${T.headerBg}; color: ${T.textMuted};
+          border: 2px solid ${T.border};
+        }
+
+        .ob-step-label {
+          font-size: 11px; font-weight: 500;
+          white-space: nowrap;
+          transition: color 0.2s;
+        }
+        .ob-step-active  .ob-step-label { color: ${T.primary}; font-weight: 700; }
+        .ob-step-done    .ob-step-label { color: ${T.success}; }
+        .ob-step-pending .ob-step-label { color: ${T.textMuted}; }
+        .ob-step-num { font-size: 12px; font-weight: 700; }
+
+        /* Mobile progress (hidden on desktop) */
+        .ob-mobile-progress { display: none; }
+
+        /* Main content */
+        .ob-main {
+          max-width: 720px; margin: 0 auto;
+          padding: 32px 24px 80px;
+        }
+        .ob-step-heading { margin-bottom: 24px; }
+        .ob-step-title-text {
+          font-size: 22px; font-weight: 700;
+          color: ${T.text}; margin: 0;
+          letter-spacing: -0.3px;
+        }
+        .ob-step-desc {
+          margin: 6px 0 0; font-size: 14px; color: ${T.textMuted};
+        }
+
+        /* Cards */
+        .ob-card {
+          background: ${T.cardBg};
+          border: 1px solid ${T.border};
+          border-radius: 12px;
+          padding: 22px 22px;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .ob-card-blue {
+          background: ${T.primaryLight};
+          border: 1px solid ${T.primaryBorder};
+          border-radius: 12px;
+          padding: 20px 22px;
+          margin-bottom: 16px;
+        }
+        .ob-card-green {
+          background: ${T.successLight};
+          border: 1px solid ${T.successBorder};
+          border-radius: 12px;
+          padding: 20px 22px;
+          margin-bottom: 16px;
+        }
+        .ob-card-purple {
+          background: ${T.purpleLight};
+          border: 1px solid ${T.purpleBorder};
+          border-radius: 10px;
+          padding: 14px 16px;
+          margin-bottom: 18px;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; flex-wrap: wrap;
+        }
+
+        /* Fields */
+        .ob-field { margin-bottom: 18px; }
+        .ob-field:last-child { margin-bottom: 0; }
+        .ob-label {
+          display: block;
+          font-size: 12px; font-weight: 600;
+          color: ${T.textLabel};
+          margin-bottom: 6px;
+          letter-spacing: 0.3px;
+        }
+        .ob-hint {
+          font-size: 11.5px; color: ${T.textMuted};
+          margin-top: 5px; line-height: 1.4;
+        }
+
+        /* Inputs */
+        .ob-input {
+          width: 100%; padding: 10px 13px;
+          background: ${T.inputBg};
+          border: 1.5px solid ${T.border};
+          border-radius: 8px;
+          color: ${T.text}; font-size: 14px;
+          font-family: inherit; outline: none;
+          transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+          display: block;
+        }
+        .ob-input:focus {
+          border-color: ${T.borderFocus};
+          box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+          background: #fff;
+        }
+        .ob-input::placeholder { color: #b0bec5; }
+        .ob-textarea { resize: vertical; min-height: 96px; }
+        .ob-select { appearance: none; cursor: pointer; padding-right: 36px; }
+        .ob-select option { background: #fff; color: ${T.text}; }
+        .ob-select-arrow {
+          position: absolute; right: 11px; top: 50%;
+          transform: translateY(-50%);
+          color: ${T.textMuted}; pointer-events: none;
+        }
+
+        /* Row 2 grid */
+        .ob-row2 {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        }
+
+        /* Section label */
+        .ob-section-label {
+          font-size: 11px; font-weight: 700;
+          color: ${T.textLabel}; letter-spacing: 0.5px;
+          text-transform: uppercase; margin-bottom: 14px;
+        }
+
+        /* Buttons */
+        .ob-btn {
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 10px 20px; border-radius: 8px;
+          font-size: 14px; font-weight: 600;
+          font-family: inherit; cursor: pointer;
+          border: none; transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .ob-btn-primary {
+          background: ${T.primary}; color: #fff;
+          box-shadow: 0 1px 3px rgba(37,99,235,0.25);
+        }
         .ob-btn-primary:hover:not(:disabled) {
-          background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-          box-shadow: 0 4px 16px rgba(59,130,246,0.35) !important;
+          background: ${T.primaryHover};
+          box-shadow: 0 4px 12px rgba(37,99,235,0.35);
           transform: translateY(-1px);
         }
-        .ob-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+        .ob-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .ob-btn-ghost {
+          background: #fff; color: ${T.textMuted};
+          border: 1.5px solid ${T.border};
+        }
         .ob-btn-ghost:hover {
-          background: rgba(255,255,255,0.07) !important;
-          color: #e2e8f0 !important;
+          background: ${T.pageBg};
+          border-color: #cbd5e1;
+          color: ${T.text};
         }
-        .ob-tag:hover { opacity: 0.85; }
+        .ob-btn-sm {
+          padding: 7px 14px; font-size: 12px; border-radius: 7px;
+        }
+        .ob-btn-purple {
+          background: ${T.purpleLight}; color: ${T.purple};
+          border: 1.5px solid ${T.purpleBorder};
+        }
+        .ob-btn-purple:hover { background: #f3e8ff; }
 
-        @media (max-width: 768px) {
-          #ob-left-panel { display: none !important; }
-          #ob-mobile-top { display: block !important; }
-          #ob-form-area { padding: 24px 20px 80px !important; max-width: 100% !important; }
+        /* Errors */
+        .ob-error-box {
+          background: ${T.errorLight};
+          border: 1px solid #fecaca;
+          border-radius: 8px; padding: 12px 16px;
+          margin-bottom: 18px;
         }
-        @media (min-width: 769px) and (max-width: 1100px) {
-          #ob-left-panel { width: 220px !important; }
-          #ob-form-area { padding: 32px 32px 60px !important; }
+        .ob-error-item { color: ${T.error}; font-size: 13px; margin-bottom: 2px; }
+
+        /* Success banner */
+        .ob-success-banner {
+          background: ${T.successLight};
+          border: 1px solid ${T.successBorder};
+          border-radius: 8px; padding: 10px 14px;
+          margin-bottom: 16px; color: #065f46;
+          font-size: 13px; display: flex; align-items: center; gap: 7px;
         }
+
+        /* Navigation */
+        .ob-nav {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-top: 28px; padding-top: 20px;
+          border-top: 1px solid ${T.border};
+        }
+
+        /* Tags (sector chips etc.) */
+        .ob-tag {
+          display: inline-block; padding: 6px 14px;
+          border-radius: 20px; cursor: pointer;
+          font-size: 12.5px; font-family: inherit;
+          border: 1.5px solid ${T.border};
+          background: #fff; color: ${T.textMuted};
+          transition: all 0.15s; font-weight: 400;
+        }
+        .ob-tag:hover { border-color: #93c5fd; color: ${T.primary}; }
+        .ob-tag.ob-tag-sel {
+          background: ${T.primaryLight}; color: ${T.primary};
+          border-color: ${T.primaryBorder}; font-weight: 600;
+        }
+
+        /* Tone cards */
+        .ob-tone-card {
+          padding: 14px; border-radius: 10px; cursor: pointer;
+          background: #f8fafc; border: 1.5px solid ${T.border};
+          color: ${T.textMuted}; text-align: left;
+          font-family: inherit; transition: all 0.15s;
+        }
+        .ob-tone-card:hover { border-color: #93c5fd; }
+        .ob-tone-card.ob-tone-sel {
+          background: ${T.primaryLight};
+          border-color: ${T.primary}; color: ${T.primary};
+        }
+
+        /* Number badge */
+        .ob-num-badge {
+          width: 26px; height: 26px; border-radius: 7px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 700; flex-shrink: 0;
+        }
+        .ob-num-blue { background: #dbeafe; color: ${T.primary}; }
+        .ob-num-red  { background: #fee2e2; color: ${T.error}; }
+
+        /* Completion score circle */
+        .ob-score-ring { display: flex; flex-direction: column; align-items: center; }
+
+        /* WA preview */
+        .ob-wa-preview {
+          background: #ece5dd;
+          border-radius: 12px; padding: 16px;
+          border: 1px solid #d4c9c0;
+        }
+        .ob-wa-header {
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 14px; padding-bottom: 12px;
+          border-bottom: 1px solid rgba(0,0,0,0.08);
+        }
+        .ob-wa-avatar {
+          width: 36px; height: 36px; border-radius: 50%;
+          background: linear-gradient(135deg,#25d366,#128c7e);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;
+        }
+        .ob-wa-bubble {
+          background: #dcf8c6;
+          border-radius: 2px 14px 14px 14px;
+          padding: 12px 14px; max-width: 88%;
+          font-size: 13px; color: #111;
+          line-height: 1.6;
+        }
+        .ob-wa-time { font-size: 11px; color: #888; margin-top: 6px; }
+
+        /* ── Mobile ────────────────────────────────────────────────────── */
+        @media (max-width: 640px) {
+          /* Hide step bar on mobile */
+          .ob-stepbar-wrap { display: none; }
+
+          /* Show mobile progress */
+          .ob-mobile-progress {
+            display: block;
+            background: ${T.headerBg};
+            border-bottom: 1px solid ${T.border};
+            padding: 12px 16px;
+          }
+          .ob-mobile-progress-info {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 8px;
+          }
+          .ob-mobile-step-title {
+            font-size: 13px; font-weight: 600; color: ${T.text};
+          }
+          .ob-mobile-step-count {
+            font-size: 12px; color: ${T.textMuted};
+          }
+          .ob-mobile-bar-track {
+            height: 4px; background: ${T.border}; border-radius: 2px;
+          }
+          .ob-mobile-bar-fill {
+            height: 100%; background: ${T.primary};
+            border-radius: 2px; transition: width 0.4s ease;
+          }
+
+          /* Main padding */
+          .ob-main { padding: 20px 16px 80px; }
+          .ob-step-title-text { font-size: 19px; }
+          .ob-header-inner { padding: 12px 16px; }
+
+          /* Row2 → single column */
+          .ob-row2 { grid-template-columns: 1fr !important; gap: 0; }
+
+          /* Tone grid → 1 col on narrow */
+          .ob-tone-grid { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+
+          /* Card padding */
+          .ob-card, .ob-card-blue, .ob-card-green { padding: 16px; }
+
+          /* Nav buttons full width on mobile */
+          .ob-nav { flex-direction: column-reverse; gap: 10px; }
+          .ob-nav > div, .ob-btn-primary { width: 100%; justify-content: center; }
+          .ob-btn-ghost { width: 100%; justify-content: center; }
+        }
+
+        @keyframes ob-spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   )
 }
 
-// ─── Step 1: Şirket Profili ───────────────────────────────────────────────────
+// ─── Step 1 ───────────────────────────────────────────────────────────────────
 
 function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, onTemplate, profileLoaded }: {
   company: Company; setCompany: React.Dispatch<React.SetStateAction<Company>>
   analyzing: boolean; analyzeErr: string; onAnalyze: () => void; onTemplate: () => void; profileLoaded: boolean
 }) {
   const set = (k: keyof Company) => (v: string) => setCompany(p => ({ ...p, [k]: v }))
-  const tmplAvail = !!TEMPLATES[company.sector]
+  const tmpl = !!TEMPLATES[company.sector]
 
   return (
     <div>
       {profileLoaded && (
-        <div style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#34d399', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Check size={14} /> Mevcut profiliniz yüklendi. Düzenleyip devam edebilirsiniz.
+        <div className="ob-success-banner">
+          <Check size={15} /> Mevcut profiliniz yüklendi. Düzenleyip devam edebilirsiniz.
         </div>
       )}
 
-      {/* AI auto-fill */}
-      <div style={S.cardHighlight}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.blueLight, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, letterSpacing: 0.6, textTransform: 'uppercase' }}>
-          <Sparkles size={13} /> AI ile Otomatik Doldur
+      {/* AI fill */}
+      <div className="ob-card-blue">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+          <Sparkles size={14} color="#2563eb" />
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#1d4ed8', letterSpacing: 0.4, textTransform: 'uppercase' as const }}>
+            AI ile Otomatik Doldur
+          </span>
         </div>
-        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 12 }}>
-          Web sitenizi girin — AI şirket adı, sektör, ürün bilgilerini otomatik analiz edip doldurur.
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <p style={{ fontSize: 13, color: '#3b5bdb', margin: '0 0 12px' }}>
+          Web sitenizi girin — AI şirket adı, sektör, ürün bilgilerini otomatik analiz eder.
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
           <input
             className="ob-input"
-            style={{ ...S.input, flex: '1 1 180px', minWidth: 0 }}
+            style={{ flex: '1 1 180px', minWidth: 0, background: '#fff' }}
             placeholder="https://sirketiniz.com"
             value={company.website}
             onChange={e => setCompany(p => ({ ...p, website: e.target.value }))}
             onKeyDown={e => e.key === 'Enter' && onAnalyze()}
           />
           <button
-            className="ob-btn-primary"
-            style={{ ...S.btn, ...S.btnPrimary, flexShrink: 0, opacity: analyzing || !company.website.trim() ? 0.55 : 1 }}
+            className="ob-btn ob-btn-primary"
             onClick={onAnalyze}
             disabled={analyzing || !company.website.trim()}
+            style={{ flexShrink: 0 }}
           >
             {analyzing
               ? <><Loader2 size={14} style={{ animation: 'ob-spin 1s linear infinite' }} /> Analiz ediliyor...</>
@@ -656,10 +875,10 @@ function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, o
             }
           </button>
         </div>
-        {analyzeErr && <div style={{ color: '#f87171', fontSize: 12, marginTop: 8 }}>{analyzeErr}</div>}
+        {analyzeErr && <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>{analyzeErr}</div>}
       </div>
 
-      <div style={S.card}>
+      <div className="ob-card">
         <Field label="Şirket Adı" required>
           <Inp value={company.name} onChange={set('name')} placeholder="Örn: Özkan Tekstil A.Ş." />
         </Field>
@@ -668,24 +887,19 @@ function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, o
           <Sel value={company.sector} onChange={set('sector')} options={SECTORS} placeholder="Sektör seçin..." />
         </Field>
 
-        {/* Template suggestion */}
-        {tmplAvail && (
-          <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.18)', borderRadius: 10, padding: '12px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        {tmpl && (
+          <div className="ob-card-purple">
             <div>
-              <div style={{ fontSize: 13, color: '#c4b5fd', fontWeight: 500 }}>Hazır şablon mevcut</div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{company.sector} sektörü için tüm adımları dolduracak</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#6d28d9' }}>Hazır şablon mevcut</div>
+              <div style={{ fontSize: 12, color: '#7c3aed', marginTop: 2 }}>{company.sector} sektörü için tüm adımları dolduracak</div>
             </div>
-            <button
-              className="ob-tag"
-              style={{ ...S.btn, padding: '7px 14px', fontSize: 12, background: 'rgba(139,92,246,0.14)', color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.28)', flexShrink: 0 }}
-              onClick={onTemplate}
-            >
+            <button className="ob-btn ob-btn-purple ob-btn-sm" onClick={onTemplate}>
               <Star size={12} fill="currentColor" /> Şablon Yükle
             </button>
           </div>
         )}
 
-        <div style={S.row2}>
+        <div className="ob-row2">
           <Field label="Şehir">
             <Inp value={company.city} onChange={set('city')} placeholder="İstanbul" />
           </Field>
@@ -702,22 +916,22 @@ function Step1Company({ company, setCompany, analyzing, analyzeErr, onAnalyze, o
   )
 }
 
-// ─── Step 2: Ürün & Hizmet ───────────────────────────────────────────────────
+// ─── Step 2 ───────────────────────────────────────────────────────────────────
 
 function Step2Product({ product, setProduct }: { product: Product; setProduct: React.Dispatch<React.SetStateAction<Product>> }) {
   const set = (k: keyof Product) => (v: any) => setProduct(p => ({ ...p, [k]: v }))
 
   return (
     <div>
-      <div style={S.card}>
+      <div className="ob-card">
         <Field label="Ürün / Hizmet Adı" required>
           <Inp value={product.name} onChange={set('name')} placeholder="Örn: CRM Yazılımı, İnşaat Hizmetleri, Toptan Tekstil..." />
         </Field>
-        <Field label="Açıklama" required hint={`${product.description.length} karakter — AI sisteminiz bu metni kullanacak, net ve ikna edici yazın`}>
-          <Txta value={product.description} onChange={set('description')} minH={120}
-            placeholder="Ne iş yapıyorsunuz? Müşterilerinize ne sağlıyorsunuz? AI sisteminiz bu metni kullanarak müşterilerle konuşacak — net ve ikna edici yazın." />
+        <Field label="Açıklama" required hint={`${product.description.length} karakter — AI sisteminiz bu metni kullanarak müşterilerle konuşacak`}>
+          <Txta value={product.description} onChange={set('description')} minH={110}
+            placeholder="Ne iş yapıyorsunuz? Müşterilerinize ne sağlıyorsunuz? Net ve ikna edici yazın." />
         </Field>
-        <div style={S.row2}>
+        <div className="ob-row2">
           <Field label="Fiyat Aralığı">
             <Inp value={product.price_range} onChange={set('price_range')} placeholder="2.000-10.000 TL/ay" />
           </Field>
@@ -727,31 +941,25 @@ function Step2Product({ product, setProduct }: { product: Product; setProduct: R
         </div>
       </div>
 
-      <div style={S.card}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 14 }}>
-          3 Temel Avantaj
-        </div>
+      <div className="ob-card">
+        <div className="ob-section-label">3 Temel Avantaj</div>
         {[0, 1, 2].map(i => (
           <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-            <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.blueLight, fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-              {i + 1}
-            </div>
+            <div className="ob-num-badge ob-num-blue">{i + 1}</div>
             <input
               className="ob-input"
-              style={{ ...S.input, flex: 1 }}
+              style={{ flex: 1 }}
               placeholder={['%40 daha az manuel iş', '24 saatte kurulum ve eğitim', '7/24 teknik destek'][i]}
               value={product.advantages[i] || ''}
               onChange={e => {
-                const adv = [...product.advantages]
-                adv[i] = e.target.value
-                set('advantages')(adv)
+                const adv = [...product.advantages]; adv[i] = e.target.value; set('advantages')(adv)
               }}
             />
           </div>
         ))}
       </div>
 
-      <div style={S.card}>
+      <div className="ob-card">
         <Field label="Müşteriye Sağlanan Kazanım">
           <Inp value={product.target_result} onChange={set('target_result')} placeholder="Müşterilerimiz ilk 3 ayda %30 verimlilik artışı yaşıyor" />
         </Field>
@@ -763,39 +971,29 @@ function Step2Product({ product, setProduct }: { product: Product; setProduct: R
   )
 }
 
-// ─── Step 3: Hedef Müşteri ────────────────────────────────────────────────────
+// ─── Step 3 ───────────────────────────────────────────────────────────────────
 
 function Step3Target({ target, setTarget }: { target: Target; setTarget: React.Dispatch<React.SetStateAction<Target>> }) {
   const set = (k: keyof Target) => (v: any) => setTarget(p => ({ ...p, [k]: v }))
-
-  const toggleSector = (s: string) => {
+  const toggle = (s: string) => {
     const cur = target.sectors || []
     setTarget(p => ({ ...p, sectors: cur.includes(s) ? cur.filter(x => x !== s) : [...cur, s] }))
   }
 
   return (
     <div>
-      <div style={S.card}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 14 }}>
-          Hedef Sektörler
-        </div>
+      <div className="ob-card">
+        <div className="ob-section-label">Hedef Sektörler</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {SECTORS.map(s => {
             const sel = (target.sectors || []).includes(s)
-            return (
-              <button key={s} className="ob-tag" onClick={() => toggleSector(s)} style={{
-                padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit',
-                background: sel ? 'rgba(59,130,246,0.18)' : 'rgba(255,255,255,0.04)',
-                border: sel ? '1px solid rgba(59,130,246,0.4)' : `1px solid ${C.cardBorder}`,
-                color: sel ? C.blueLight : C.textMuted, transition: 'all 0.15s', fontWeight: sel ? 600 : 400,
-              }}>{s}</button>
-            )
+            return <button key={s} className={`ob-tag${sel ? ' ob-tag-sel' : ''}`} onClick={() => toggle(s)}>{s}</button>
           })}
         </div>
       </div>
 
-      <div style={S.card}>
-        <div style={S.row2}>
+      <div className="ob-card">
+        <div className="ob-row2">
           <Field label="Şirket Büyüklüğü">
             <Sel value={target.company_size} onChange={set('company_size')} options={['1-10 kişi', '11-50 kişi', '51-200 kişi', '201-500 kişi', '500+ kişi']} />
           </Field>
@@ -808,22 +1006,21 @@ function Step3Target({ target, setTarget }: { target: Target; setTarget: React.D
         </Field>
       </div>
 
-      <div style={S.card}>
-        <Field label="Hedef Müşterinin 3 Temel Sorunu" hint="AI sisteminiz bu sorunları vurgulayarak konuşma açacak">
-          <div />
-        </Field>
+      <div className="ob-card">
+        <div className="ob-section-label">Hedef Müşterinin 3 Temel Sorunu</div>
+        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14, marginTop: -4 }}>
+          AI sisteminiz bu sorunları vurgulayarak konuşma açacak.
+        </p>
         {[0, 1, 2].map(i => (
           <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center' }}>
-            <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+            <div className="ob-num-badge ob-num-red">{i + 1}</div>
             <input
               className="ob-input"
-              style={{ ...S.input, flex: 1 }}
+              style={{ flex: 1 }}
               placeholder={['Manuel süreçler çok zaman alıyor', 'Proje gecikmesi ve maliyet aşımı', 'Müşteri takibi yetersiz'][i]}
               value={target.pain_points[i] || ''}
               onChange={e => {
-                const pts = [...(target.pain_points || ['', '', ''])]
-                pts[i] = e.target.value
-                set('pain_points')(pts)
+                const pts = [...(target.pain_points || ['', '', ''])]; pts[i] = e.target.value; set('pain_points')(pts)
               }}
             />
           </div>
@@ -833,70 +1030,63 @@ function Step3Target({ target, setTarget }: { target: Target; setTarget: React.D
   )
 }
 
-// ─── Step 4: Satış Tarzı ─────────────────────────────────────────────────────
+// ─── Step 4 ───────────────────────────────────────────────────────────────────
 
 function Step4Style({ salesStyle, setSalesStyle, preview }: { salesStyle: SalesStyle; setSalesStyle: React.Dispatch<React.SetStateAction<SalesStyle>>; preview: string }) {
   const set = (k: keyof SalesStyle) => (v: string) => setSalesStyle(p => ({ ...p, [k]: v }))
 
   return (
     <div>
-      <div style={S.card}>
-        <Field label="AI Temsilci Adı" hint="Müşteriye bu isimle tanışacak (Örn: Ayşe, Mert, Alex)">
+      <div className="ob-card">
+        <Field label="AI Temsilci Adı" hint="Müşteriye bu isimle tanışacak">
           <Inp value={salesStyle.agent_name} onChange={set('agent_name')} placeholder="Örn: Ayşe, Mert, Alex" />
         </Field>
       </div>
 
-      <div style={S.card}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 14 }}>
-          Konuşma Tonu
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {TONES.map(t => {
-            const sel = salesStyle.tone === t.key
-            return (
-              <button key={t.key} className="ob-tag" onClick={() => set('tone')(t.key)} style={{
-                padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
-                background: sel ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.03)',
-                border: sel ? '1.5px solid rgba(59,130,246,0.4)' : `1px solid ${C.cardBorder}`,
-                color: sel ? '#93c5fd' : C.textMuted, textAlign: 'left', fontFamily: 'inherit', transition: 'all 0.15s',
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{t.label}</div>
-                <div style={{ fontSize: 12, opacity: 0.7 }}>{t.desc}</div>
-              </button>
-            )
-          })}
+      <div className="ob-card">
+        <div className="ob-section-label">Konuşma Tonu</div>
+        <div className="ob-tone-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {TONES.map(t => (
+            <button key={t.key} className={`ob-tone-card${salesStyle.tone === t.key ? ' ob-tone-sel' : ''}`} onClick={() => set('tone')(t.key)}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>{t.label}</div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>{t.desc}</div>
+            </button>
+          ))}
         </div>
       </div>
 
-      <div style={S.card}>
+      <div className="ob-card">
         <Field label="Konuşma Açılış Cümlesi" hint="[AD] → temsilci adı, [ŞİRKET] → şirket adınız">
-          <Txta value={salesStyle.opening_line} onChange={set('opening_line')} minH={90}
-            placeholder="Merhaba, [AD] [ŞİRKET]'den arıyorum. Şirketinizin süreçlerini iyileştirmeye yönelik bir çözümümüz var — kısa bir bilgi verebilir miyim?" />
+          <Txta value={salesStyle.opening_line} onChange={set('opening_line')} minH={88}
+            placeholder="Merhaba, [AD] [ŞİRKET]'den arıyorum. Kısa bir bilgi verebilir miyim?" />
         </Field>
         <Field label="Kullanılmayacak Kelimeler">
           <Inp value={salesStyle.avoid_words} onChange={set('avoid_words')} placeholder="yapay zeka, robot, veri toplama (virgülle ayırın)" />
         </Field>
       </div>
 
-      {/* WhatsApp Preview */}
-      <div style={{ ...S.card, background: 'rgba(37,211,102,0.03)', border: '1px solid rgba(37,211,102,0.12)' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6, letterSpacing: 0.6, textTransform: 'uppercase' as const }}>
-          <Phone size={13} /> Örnek WhatsApp Mesajı
+      {/* WA Preview */}
+      <div className="ob-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+          <Phone size={14} color="#25d366" />
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', letterSpacing: 0.5, textTransform: 'uppercase' as const }}>
+            Örnek WhatsApp Mesajı
+          </span>
         </div>
-        <div style={{ background: '#0a1221', borderRadius: 14, padding: '16px', border: `1px solid ${C.panelBorder}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${C.panelBorder}` }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#25d366,#128c7e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+        <div className="ob-wa-preview">
+          <div className="ob-wa-header">
+            <div className="ob-wa-avatar">
               {salesStyle.agent_name?.charAt(0)?.toUpperCase() || 'S'}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{salesStyle.agent_name || 'AI Temsilci'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{salesStyle.agent_name || 'AI Temsilci'}</div>
               <div style={{ fontSize: 11, color: '#25d366' }}>Çevrimiçi</div>
             </div>
           </div>
-          <div style={{ background: '#25d366', borderRadius: '2px 14px 14px 14px', padding: '12px 14px', maxWidth: '88%', fontSize: 13, color: '#000', lineHeight: 1.6 }}>
+          <div className="ob-wa-bubble">
             {preview || 'Ton seçin veya açılış cümlesi yazın...'}
           </div>
-          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
+          <div className="ob-wa-time">
             {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
@@ -905,41 +1095,39 @@ function Step4Style({ salesStyle, setSalesStyle, preview }: { salesStyle: SalesS
   )
 }
 
-// ─── Step 5: SSS & İtirazlar ─────────────────────────────────────────────────
+// ─── Step 5 ───────────────────────────────────────────────────────────────────
 
 function Step5FAQ({ faq, setFaq, objections, setObjections }: { faq: FAQ[]; setFaq: React.Dispatch<React.SetStateAction<FAQ[]>>; objections: FAQ[]; setObjections: React.Dispatch<React.SetStateAction<FAQ[]>> }) {
   return (
     <div>
-      <div style={S.card}>
+      <div className="ob-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const }}>
-            Sık Sorulan Sorular
-          </div>
-          <button className="ob-btn-ghost" style={{ ...S.btn, ...S.btnGhost, padding: '6px 12px', fontSize: 12 }} onClick={() => setFaq(f => [...f, { q: '', a: '' }])}>
+          <div className="ob-section-label" style={{ margin: 0 }}>Sık Sorulan Sorular</div>
+          <button className="ob-btn ob-btn-ghost ob-btn-sm" onClick={() => setFaq(f => [...f, { q: '', a: '' }])}>
             <Plus size={13} /> Ekle
           </button>
         </div>
         {faq.map((f, i) => (
-          <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px', marginBottom: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Soru {i + 1}</span>
-              {faq.length > 1 && <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, padding: 0, lineHeight: 1 }} onClick={() => setFaq(f => f.filter((_, j) => j !== i))}><X size={14} /></button>}
+          <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.4 }}>Soru {i + 1}</span>
+              {faq.length > 1 && <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }} onClick={() => setFaq(f => f.filter((_, j) => j !== i))}><X size={14} /></button>}
             </div>
-            <input className="ob-input" style={{ ...S.input, marginBottom: 8 }} placeholder="Müşteri ne soruyor?" value={f.q} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, q: e.target.value } : x))} />
-            <textarea className="ob-input" style={{ ...S.textarea, minHeight: 64 }} placeholder="AI temsilci ne cevap vermeli?" value={f.a} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
+            <input className="ob-input" style={{ marginBottom: 8, background: '#fff' }} placeholder="Müşteri ne soruyor?" value={f.q} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, q: e.target.value } : x))} />
+            <textarea className="ob-input ob-textarea" style={{ minHeight: 64, background: '#fff' }} placeholder="AI temsilci ne cevap vermeli?" value={f.a} onChange={e => setFaq(faq => faq.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
           </div>
         ))}
       </div>
 
-      <div style={S.card}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 6 }}>
-          İtiraz Karşılama
-        </div>
-        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>Müşteri bu itirazları dile getirdiğinde AI temsilci ne söyleyecek?</div>
+      <div className="ob-card">
+        <div className="ob-section-label" style={{ marginBottom: 6 }}>İtiraz Karşılama</div>
+        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16, marginTop: 0 }}>
+          Müşteri bu itirazları dile getirdiğinde AI temsilci ne söyleyecek?
+        </p>
         {objections.map((obj, i) => (
-          <div key={i} style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px', marginBottom: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#f87171', marginBottom: 10 }}>"{obj.q}"</div>
-            <textarea className="ob-input" style={{ ...S.textarea, minHeight: 64 }} placeholder="AI temsilci bunu duyduğunda ne söylemeli?" value={obj.a} onChange={e => setObjections(objs => objs.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
+          <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14, marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#dc2626', marginBottom: 8 }}>"{obj.q}"</div>
+            <textarea className="ob-input ob-textarea" style={{ minHeight: 64, background: '#fff' }} placeholder="AI temsilci bunu duyduğunda ne söylemeli?" value={obj.a} onChange={e => setObjections(o => o.map((x, j) => j === i ? { ...x, a: e.target.value } : x))} />
           </div>
         ))}
       </div>
@@ -947,7 +1135,7 @@ function Step5FAQ({ faq, setFaq, objections, setObjections }: { faq: FAQ[]; setF
   )
 }
 
-// ─── Step 6: Tamamlandı ───────────────────────────────────────────────────────
+// ─── Step 6 ───────────────────────────────────────────────────────────────────
 
 function Step6Done({ company, product, salesStyle, score, saving, onFinish }: {
   company: Company; product: Product; salesStyle: SalesStyle
@@ -955,45 +1143,40 @@ function Step6Done({ company, product, salesStyle, score, saving, onFinish }: {
 }) {
   const agent = salesStyle.agent_name || 'AI Temsilci'
   const co    = company.name || 'Şirketiniz'
-  const scoreColor = score >= 80 ? C.green : score >= 55 ? '#f59e0b' : C.red
-  const scoreLabel = score >= 80 ? 'Mükemmel profil' : score >= 55 ? 'İyi — biraz daha detay ekleyin' : 'Eksik — profili tamamlayın'
+  const scoreColor = score >= 80 ? '#059669' : score >= 55 ? '#d97706' : '#dc2626'
+  const scoreLabel = score >= 80 ? 'Mükemmel profil' : score >= 55 ? 'İyi — biraz daha doldurun' : 'Eksik — profili tamamlayın'
 
   return (
     <div>
-      {/* Score card */}
-      <div style={{ ...S.card, textAlign: 'center', padding: '36px 28px' }}>
-        {/* Circular score */}
-        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
-          <div style={{ position: 'relative', width: 100, height: 100, marginBottom: 16 }}>
-            <svg viewBox="0 0 100 100" style={{ width: 100, height: 100, transform: 'rotate(-90deg)' }}>
-              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
-              <circle cx="50" cy="50" r="42" fill="none" stroke={scoreColor} strokeWidth="8" strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 42}`}
-                strokeDashoffset={`${2 * Math.PI * 42 * (1 - score / 100)}`}
+      {/* Score */}
+      <div className="ob-card" style={{ textAlign: 'center', padding: '36px 24px' }}>
+        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ position: 'relative', width: 96, height: 96, marginBottom: 14 }}>
+            <svg viewBox="0 0 96 96" width={96} height={96} style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="48" cy="48" r="40" fill="none" stroke="#e2e8f0" strokeWidth="7" />
+              <circle cx="48" cy="48" r="40" fill="none" stroke={scoreColor} strokeWidth="7" strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 40}`}
+                strokeDashoffset={`${2 * Math.PI * 40 * (1 - score / 100)}`}
                 style={{ transition: 'stroke-dashoffset 0.8s ease' }}
               />
             </svg>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-              <span style={{ fontSize: 26, fontWeight: 800, color: scoreColor, lineHeight: 1 }}>{score}</span>
-              <span style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>/ 100</span>
+              <span style={{ fontSize: 24, fontWeight: 800, color: scoreColor, lineHeight: 1 }}>{score}</span>
+              <span style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>/100</span>
             </div>
           </div>
-          <div style={{ fontSize: 15, color: scoreColor, fontWeight: 700, marginBottom: 4 }}>{scoreLabel}</div>
-          <div style={{ fontSize: 13, color: C.textMuted }}>Profil Tamamlanma Puanı</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: scoreColor }}>{scoreLabel}</div>
         </div>
-
-        <div style={{ fontSize: 14, color: C.textMuted, lineHeight: 1.8 }}>
-          <strong style={{ color: C.text }}>{agent}</strong> artık{' '}
-          <strong style={{ color: C.text }}>{co}</strong> adına<br />
+        <p style={{ margin: '0', fontSize: 14, color: '#64748b', lineHeight: 1.8 }}>
+          <strong style={{ color: '#0f172a' }}>{agent}</strong> artık{' '}
+          <strong style={{ color: '#0f172a' }}>{co}</strong> adına<br />
           profesyonel satış görüşmeleri yapacak.
-        </div>
+        </p>
       </div>
 
       {/* Summary */}
-      <div style={S.card}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 16 }}>
-          Kurulum Özeti
-        </div>
+      <div className="ob-card">
+        <div className="ob-section-label">Kurulum Özeti</div>
         {[
           { label: 'Şirket', value: co },
           { label: 'Sektör', value: company.sector || '—' },
@@ -1002,44 +1185,37 @@ function Step6Done({ company, product, salesStyle, score, saving, onFinish }: {
           { label: 'AI Temsilci', value: agent },
           { label: 'Satış Tonu', value: { professional: 'Profesyonel', friendly: 'Samimi', consultative: 'Danışmancı', direct: 'Direkt' }[salesStyle.tone] || salesStyle.tone },
         ].map(row => (
-          <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: `1px solid rgba(255,255,255,0.05)` }}>
-            <span style={{ color: C.textMuted, fontSize: 13 }}>{row.label}</span>
-            <span style={{ color: C.text, fontSize: 13, fontWeight: 500, textAlign: 'right', maxWidth: '60%' }}>{row.value}</span>
+          <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid #f1f5f9' }}>
+            <span style={{ fontSize: 13, color: '#64748b' }}>{row.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', textAlign: 'right', maxWidth: '60%' }}>{row.value}</span>
           </div>
         ))}
       </div>
 
       {/* What's ready */}
-      <div style={S.card}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.textLabel, letterSpacing: 0.6, textTransform: 'uppercase' as const, marginBottom: 16 }}>
-          Sisteminiz Hazır
-        </div>
+      <div className="ob-card-green">
+        <div className="ob-section-label" style={{ color: '#065f46', marginBottom: 14 }}>Sisteminiz Hazır</div>
         {[
           'AI Satış Temsilciniz aktif ve eğitildi',
           'WhatsApp & Arama kampanyaları açılabilir',
           'Lead scraping sonuçları kişiselleştirilecek',
           'Rakip analizi sektörünüze göre yapılacak',
         ].map(item => (
-          <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid rgba(255,255,255,0.04)` }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Check size={11} color={C.green} strokeWidth={2.5} />
+          <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid #bbf7d0' }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Check size={11} color="#059669" strokeWidth={2.5} />
             </div>
-            <span style={{ fontSize: 13, color: C.textMuted }}>{item}</span>
+            <span style={{ fontSize: 13, color: '#065f46' }}>{item}</span>
           </div>
         ))}
       </div>
 
       {/* CTA */}
       <button
-        className="ob-btn-primary"
+        className="ob-btn ob-btn-primary"
         onClick={onFinish}
         disabled={saving}
-        style={{
-          ...S.btn, ...S.btnPrimary,
-          width: '100%', justifyContent: 'center',
-          padding: '14px 28px', fontSize: 15, borderRadius: 12,
-          marginTop: 8,
-        }}
+        style={{ width: '100%', justifyContent: 'center', padding: '13px', fontSize: 15, borderRadius: 10, marginTop: 8 }}
       >
         {saving
           ? <><Loader2 size={16} style={{ animation: 'ob-spin 1s linear infinite' }} /> Dashboard açılıyor...</>
