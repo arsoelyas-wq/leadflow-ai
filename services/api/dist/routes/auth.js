@@ -55,6 +55,21 @@ router.post('/register', async (req, res) => {
             .from('users').select('id').eq('email', emailLower).single();
         if (existing)
             return res.status(400).json({ error: 'Bu e-posta adresi zaten kayıtlı' });
+        // Domain trial kontrolü — aynı domain'den daha önce trial kullanılmış mı?
+        const emailDomain = emailLower.split('@')[1];
+        const { data: domainTrial, error: domainErr } = await supabase
+            .from('domain_trials').select('domain, account_count').eq('domain', emailDomain).single();
+        // PGRST116 = "0 rows" (normal, ilk kayıt) — diğer hata = tablo yok veya DB sorunu
+        const tableError = domainErr && domainErr.code !== 'PGRST116';
+        if (tableError) {
+            console.error('[register] domain_trials sorgu hatası:', domainErr.code, domainErr.message);
+            // Tablo yoksa sistemi koru: trial verme (migration çalıştırılana kadar)
+            return res.status(500).json({
+                error: 'Sistem yapılandırması eksik. Lütfen yönetici ile iletişime geçin. (domain_trials tablosu bulunamadı — migration çalıştırılması gerekiyor)'
+            });
+        }
+        const isFirstFromDomain = !domainTrial;
+        const trialCredits = isFirstFromDomain ? 50 : 0;
         const hashedPassword = await bcrypt.hash(password, 12);
         const { data: user, error } = await supabase
             .from('users')
@@ -62,7 +77,7 @@ router.post('/register', async (req, res) => {
                 email: emailLower, name: name.trim(), company: company?.trim() || null,
                 password_hash: hashedPassword,
                 plan_type: 'starter',
-                credits_total: 50,
+                credits_total: trialCredits,
                 credits_used: 0,
                 onboarding_done: false
             }])
@@ -70,6 +85,19 @@ router.post('/register', async (req, res) => {
             .single();
         if (error)
             throw error;
+        // Domain trial kaydını güncelle
+        if (isFirstFromDomain) {
+            await supabase.from('domain_trials').insert([{
+                    domain: emailDomain,
+                    first_user_id: user.id,
+                    account_count: 1,
+                }]);
+        }
+        else {
+            await supabase.from('domain_trials').update({
+                account_count: (domainTrial.account_count || 1) + 1,
+            }).eq('domain', emailDomain);
+        }
         // OTP gönder — kullanıcı verify-otp ile tamamlayacak
         const otp = String(Math.floor(100000 + Math.random() * 900000));
         const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
@@ -77,9 +105,13 @@ router.post('/register', async (req, res) => {
             otp_code: otp, otp_expires: expires, otp_attempts: 0,
         }).eq('id', user.id);
         await sendOTPEmail(emailLower, name.trim(), otp);
-        const [local, domain] = emailLower.split('@');
-        const masked = local.slice(0, 2) + '***@' + domain;
-        res.status(201).json({ ok: true, masked_email: masked });
+        const [local] = emailLower.split('@');
+        const masked = local.slice(0, 2) + '***@' + emailDomain;
+        res.status(201).json({
+            ok: true,
+            masked_email: masked,
+            trial_granted: isFirstFromDomain,
+        });
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -96,13 +128,13 @@ router.post('/login', async (req, res) => {
         const { data: user, error } = await supabase
             .from('users').select('*').eq('email', email).single();
         if (error || !user)
-            return res.status(401).json({ error: 'Email veya sifre yanlis' });
+            return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
         const isValid = await bcrypt.compare(password, user.password_hash);
         if (!isValid)
-            return res.status(401).json({ error: 'Email veya sifre yanlis' });
+            return res.status(401).json({ error: 'E-posta veya şifre hatalı' });
         const jti = require('crypto').randomUUID();
         const token = jwt.sign({ userId: user.id, email: user.email, jti }, process.env.JWT_SECRET, { expiresIn: '7d' });
-        res.json({ message: 'Giris basarili!', token, user: formatUser(user) });
+        res.json({ message: 'Giriş başarılı!', token, user: formatUser(user) });
     }
     catch (error) {
         res.status(500).json({ error: error.message });

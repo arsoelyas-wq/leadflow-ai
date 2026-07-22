@@ -2,11 +2,10 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
-const Anthropic = require('@anthropic-ai/sdk');
+const { gptChat } = require('../lib/openai-client');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const GOOGLE_ADS_BASE = 'https://googleads.googleapis.com/v17';
 const CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID;
@@ -381,27 +380,15 @@ router.get('/extract-leads', async (req: any, res: any) => {
           const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
           setTimeout(async () => {
             try {
-              await axios.post(
-                'https://api.elevenlabs.io/v1/convai/twilio/outbound-call',
-                {
-                  agent_id: process.env.ELEVENLABS_AGENT_ID,
-                  agent_phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
-                  to_number: lead.phone,
-                  conversation_initiation_client_data: {
-                    dynamic_variables: {
-                      agent_name: vsettings?.agent_name || 'Satis Temsilcisi',
-                      company_name: profile?.company?.name || 'Sirketimiz',
-                      product_description: profile?.product?.description || '',
-                      lead_name: lead.name || '',
-                      lead_company: lead.company || '',
-                      language: 'tr',
-                      avoid_words: '',
-                      opening_line: `Merhaba! Google reklamimizi gordunuz ve ilginizi cekti, kisa bilgi vermek istedim.`,
-                    },
-                  },
-                },
-                { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' } }
-              );
+              const { triggerOutboundCall } = require('../services/call-engine');
+              await triggerOutboundCall({
+                toNumber:    lead.phone,
+                agentName:   vsettings?.agent_name || 'Satis Temsilcisi',
+                companyName: profile?.company?.name || 'Sirketimiz',
+                productDesc: profile?.product?.description || '',
+                openingLine: `Merhaba! Google reklamimizi gordunuz ve ilginizi cekti, kisa bilgi vermek istedim.`,
+                language:    'tr',
+              });
             } catch {}
           }, delay);
         }
@@ -439,43 +426,7 @@ router.post('/ai-optimize', async (req: any, res: any) => {
     const { campaignName, metrics } = req.body;
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
 
-    const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `Google Ads kampanyasi analiz et.
-Sirket: ${profile?.company?.name || ''}
-Urun: ${profile?.product?.description || ''}
-Kampanya: ${campaignName}
-Metrikler (son 7 gun):
-- Harcama: $${metrics?.spend || 0}
-- Gosterim: ${metrics?.impressions || 0}
-- Tiklama: ${metrics?.clicks || 0}
-- CTR: %${metrics?.ctr || 0}
-- Ort. CPC: $${metrics?.avg_cpc || 0}
-- Donusum: ${metrics?.conversions || 0}
-- Donusum Bas. Maliyet: $${metrics?.cost_per_conversion || 0}
-
-Google Ads benchmark: CTR %2-5, CPC $1-3 olmali.
-
-JSON don:
-{
-  "overall_score": 1-10,
-  "summary": "Turkce ozet",
-  "health": "good|warning|critical",
-  "problems": ["sorun"],
-  "quick_wins": [{"action": "is", "impact": "high|medium|low"}],
-  "keyword_suggestions": ["anahtar kelime 1", "anahtar kelime 2"],
-  "negative_keywords": ["negatif kelime 1"],
-  "ad_copy_alternatives": ["alternatif metin 1", "alternatif metin 2"],
-  "bidding_suggestion": "teklif stratejisi onerisi",
-  "audience_suggestion": "hedef kitle onerisi"
-}`
-      }],
-    });
-
-    const text = r.content[0]?.text || '';
+    const text = await gptChat({ max_tokens: 1200, messages: [{ role: 'user', content: `Google Ads kampanyasi analiz et.\nSirket: ${profile?.company?.name || ''}\nUrun: ${profile?.product?.description || ''}\nKampanya: ${campaignName}\nMetrikler (son 7 gun):\n- Harcama: $${metrics?.spend || 0}\n- Gosterim: ${metrics?.impressions || 0}\n- Tiklama: ${metrics?.clicks || 0}\n- CTR: %${metrics?.ctr || 0}\n- Ort. CPC: $${metrics?.avg_cpc || 0}\n- Donusum: ${metrics?.conversions || 0}\n- Donusum Bas. Maliyet: $${metrics?.cost_per_conversion || 0}\n\nGoogle Ads benchmark: CTR %2-5, CPC $1-3 olmali.\n\nJSON don:\n{\n  "overall_score": 1-10,\n  "summary": "Turkce ozet",\n  "health": "good|warning|critical",\n  "problems": ["sorun"],\n  "quick_wins": [{"action": "is", "impact": "high|medium|low"}],\n  "keyword_suggestions": ["anahtar kelime 1", "anahtar kelime 2"],\n  "negative_keywords": ["negatif kelime 1"],\n  "ad_copy_alternatives": ["alternatif metin 1", "alternatif metin 2"],\n  "bidding_suggestion": "teklif stratejisi onerisi",\n  "audience_suggestion": "hedef kitle onerisi"\n}` }] });
     const match = text.match(/\{[\s\S]*\}/);
     const analysis = match ? JSON.parse(match[0]) : { summary: text };
     res.json({ ok: true, analysis });

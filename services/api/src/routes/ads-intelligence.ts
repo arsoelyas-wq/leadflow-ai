@@ -32,33 +32,13 @@ async function triggerFiveMinuteCall(userId: string, lead: any) {
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', userId).single();
     if (!lead.phone) return;
 
-    const agentName = vsettings?.agent_name || 'Satis Temsilcisi';
+    const agentName   = vsettings?.agent_name || 'Satis Temsilcisi';
     const companyName = profile?.company?.name || 'Sirketimiz';
     const productDesc = profile?.product?.description || '';
-
     const openingLine = `Merhaba ${lead.contact_name || lead.company_name || ''}! Ben ${agentName}, ${companyName}'den ariyorum. Az once reklamimizi gordunuz ve ilginizi cekti, size kisa bir bilgi vermek istedim, uygun musunuz?`;
 
-    await axios.post(
-      'https://api.elevenlabs.io/v1/convai/twilio/outbound-call',
-      {
-        agent_id: process.env.ELEVENLABS_AGENT_ID,
-        agent_phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
-        to_number: lead.phone,
-        conversation_initiation_client_data: {
-          dynamic_variables: {
-            agent_name: agentName,
-            company_name: companyName,
-            product_description: productDesc,
-            lead_name: lead.contact_name || lead.company_name || '',
-            lead_company: lead.company_name || '',
-            language: 'tr',
-            avoid_words: '',
-            opening_line: openingLine,
-          },
-        },
-      },
-      { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' }, timeout: 30000 }
-    );
+    const { triggerOutboundCall } = require('../services/call-engine');
+    await triggerOutboundCall({ toNumber: lead.phone, agentName, companyName, productDesc, openingLine, language: 'tr' });
 
     await supabase.from('leads').update({
       status: 'contacted',
@@ -589,7 +569,7 @@ router.post('/ai-optimize', async (req: any, res: any) => {
     const { campaignId, campaignName, metrics } = req.body;
     const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', req.userId).single();
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       messages: [{
         role: 'user',
@@ -714,7 +694,7 @@ router.post('/ai-create-campaign', async (req: any, res: any) => {
     } catch {}
 
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       system: `You are Meta's top advertising strategist with 10+ years managing campaigns for businesses in Turkey. Expert in Facebook/Instagram audience targeting, scroll-stopping ad copy, and budget optimization.
 

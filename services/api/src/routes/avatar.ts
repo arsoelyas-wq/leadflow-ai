@@ -1,9 +1,7 @@
 export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
-const axios = require('axios');
 const multer = require('multer');
-const FormData = require('form-data');
 
 const router = express.Router();
 const supabase = createClient(
@@ -11,162 +9,98 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const HEYGEN_API_KEY = process.env.HEYGEN_API_KEY;
-const HEYGEN_BASE = 'https://api.heygen.com';
-
-function heygenHeaders(contentType = 'application/json') {
-  return {
-    'X-Api-Key': HEYGEN_API_KEY,
-    'Content-Type': contentType,
-  };
-}
-
 // Multer — memory storage
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
 });
 
-// ── AVATAR YÜKLE ──────────────────────────────────────────
-// HeyGen Instant Avatar — video yükle
+// ── AVATAR VIDEO YÜKLE (Kendi Sistemimiz — Supabase Storage) ──────────────────
+// Video Supabase'e yüklenir, URL user_settings'e kaydedilir.
+// MuseTalk seed video olarak kullanılır.
 router.post('/upload-avatar', upload.single('video'), async (req: any, res: any) => {
   try {
     const userId = req.userId;
     if (!req.file) return res.status(400).json({ error: 'Video dosyası zorunlu' });
 
-    // 1. HeyGen'e video yükle
-    const formData = new FormData();
-    formData.append('video', req.file.buffer, {
-      filename: req.file.originalname || 'avatar_video.mp4',
-      contentType: req.file.mimetype || 'video/mp4',
-    });
+    const filename = `avatars/${userId}/seed_${Date.now()}.mp4`;
+    const { error: uploadError } = await supabase.storage
+      .from('video-assets')
+      .upload(filename, req.file.buffer, {
+        contentType: req.file.mimetype || 'video/mp4',
+        upsert: true,
+      });
+    if (uploadError) throw new Error(`Depolama hatası: ${uploadError.message}`);
 
-    const uploadResponse = await axios.post(
-      `${HEYGEN_BASE}/v1/avatar.create`,
-      formData,
-      {
-        headers: {
-          'X-Api-Key': HEYGEN_API_KEY,
-          ...formData.getHeaders(),
-        },
-        timeout: 120000, // 2 dakika
-      }
-    );
+    const { data: urlData } = supabase.storage.from('video-assets').getPublicUrl(filename);
+    const seedVideoUrl = urlData.publicUrl;
 
-    const avatarId = uploadResponse.data?.data?.avatar_id;
-    const status = uploadResponse.data?.data?.status;
-
-    if (!avatarId) throw new Error('Avatar ID alınamadı');
-
-    // Kullanıcı ayarlarına kaydet
     await supabase.from('user_settings').upsert({
       user_id: userId,
-      heygen_avatar_id: avatarId,
-      heygen_avatar_status: status || 'processing',
+      heygen_avatar_id: seedVideoUrl,     // seed video URL (alan adı korundu)
+      heygen_avatar_status: 'ready',
+      heygen_avatar_type: 'video',
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
 
     res.json({
-      avatarId,
-      status,
-      message: status === 'completed'
-        ? 'Avatar başarıyla oluşturuldu!'
-        : 'Avatar işleniyor (~5-10 dakika)',
+      seedVideoUrl,
+      status: 'ready',
+      message: 'Avatar videosu yüklendi! MuseTalk ile kullanıma hazır.',
     });
   } catch (e: any) {
-    console.error('Avatar upload error:', e.response?.data || e.message);
-    res.status(500).json({ error: e.response?.data?.message || e.message });
+    console.error('Avatar upload error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ── FOTOĞRAFTAN AVATAR ────────────────────────────────────
-router.post('/upload-photo-avatar', upload.single('photo'), async (req: any, res: any) => {
-  try {
-    const userId = req.userId;
-    if (!req.file) return res.status(400).json({ error: 'Fotoğraf zorunlu' });
-
-    const formData = new FormData();
-    formData.append('image', req.file.buffer, {
-      filename: req.file.originalname || 'avatar_photo.jpg',
-      contentType: req.file.mimetype || 'image/jpeg',
-    });
-
-    const uploadResponse = await axios.post(
-      `${HEYGEN_BASE}/v1/photo_avatar/create`,
-      formData,
-      {
-        headers: {
-          'X-Api-Key': HEYGEN_API_KEY,
-          ...formData.getHeaders(),
-        },
-        timeout: 60000,
-      }
-    );
-
-    const avatarId = uploadResponse.data?.data?.photo_avatar_id ||
-                     uploadResponse.data?.data?.avatar_id;
-
-    if (!avatarId) throw new Error('Photo avatar ID alınamadı');
-
-    await supabase.from('user_settings').upsert({
-      user_id: userId,
-      heygen_avatar_id: avatarId,
-      heygen_avatar_type: 'photo',
-      heygen_avatar_status: 'completed',
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-
-    res.json({ avatarId, status: 'completed', message: 'Fotoğraf avatarı oluşturuldu!' });
-  } catch (e: any) {
-    console.error('Photo avatar error:', e.response?.data || e.message);
-    res.status(500).json({ error: e.response?.data?.message || e.message });
-  }
-});
-
-// ── SES KLONLAMA ──────────────────────────────────────────
+// ── SES KLONLAMA (Kendi Sistemimiz — XTTS) ────────────────────────────────────
+// Ses dosyası Supabase'e yüklenir, cloned_voices tablosuna kaydedilir.
+// XTTS zero-shot sentezi için sample_url kullanılır.
 router.post('/upload-voice', upload.single('audio'), async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { voiceName } = req.body;
     if (!req.file) return res.status(400).json({ error: 'Ses dosyası zorunlu' });
 
-    const formData = new FormData();
-    formData.append('audio', req.file.buffer, {
-      filename: req.file.originalname || 'voice_sample.mp3',
-      contentType: req.file.mimetype || 'audio/mp3',
-    });
-    if (voiceName) formData.append('name', voiceName);
+    const filename = `voice-samples/${userId}/sample_${Date.now()}.mp3`;
+    const { error: uploadError } = await supabase.storage
+      .from('video-assets')
+      .upload(filename, req.file.buffer, {
+        contentType: req.file.mimetype || 'audio/mp3',
+        upsert: true,
+      });
+    if (uploadError) throw new Error(`Depolama hatası: ${uploadError.message}`);
 
-    const response = await axios.post(
-      `${HEYGEN_BASE}/v2/voice/clone`,
-      formData,
-      {
-        headers: {
-          'X-Api-Key': HEYGEN_API_KEY,
-          ...formData.getHeaders(),
-        },
-        timeout: 60000,
-      }
-    );
+    const { data: urlData } = supabase.storage.from('video-assets').getPublicUrl(filename);
+    const sampleUrl = urlData.publicUrl;
 
-    const voiceId = response.data?.data?.voice_id;
-    if (!voiceId) throw new Error('Voice ID alınamadı');
+    // cloned_voices tablosuna kaydet
+    const { data: cloneRecord, error: cloneError } = await supabase
+      .from('cloned_voices')
+      .insert([{ user_id: userId, name: voiceName || 'Kişisel Ses', sample_url: sampleUrl }])
+      .select('id')
+      .single();
+    if (cloneError) throw new Error(`Ses kaydı hatası: ${cloneError.message}`);
 
+    const cloneId = cloneRecord.id;
+
+    // user_settings'e referans kaydet
     await supabase.from('user_settings').upsert({
       user_id: userId,
-      heygen_voice_id: voiceId,
+      heygen_voice_id: cloneId,           // XTTS clone ID (alan adı korundu)
       heygen_voice_name: voiceName || 'Kişisel Ses',
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
 
-    res.json({ voiceId, message: 'Ses klonu oluşturuldu! 🎙️' });
+    res.json({ voiceId: cloneId, message: 'Ses klonu oluşturuldu! XTTS ile kullanıma hazır.' });
   } catch (e: any) {
-    console.error('Voice clone error:', e.response?.data || e.message);
-    res.status(500).json({ error: e.response?.data?.message || e.message });
+    console.error('Voice clone error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// ── AVATAR DURUMU ─────────────────────────────────────────
+// ── AVATAR DURUMU ─────────────────────────────────────────────────────────────
 router.get('/avatar-status', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -180,31 +114,10 @@ router.get('/avatar-status', async (req: any, res: any) => {
       return res.json({ hasAvatar: false, hasVoice: false });
     }
 
-    // HeyGen'den güncel durumu al
-    let currentStatus = settings.heygen_avatar_status;
-    if (currentStatus === 'processing') {
-      try {
-        const response = await axios.get(
-          `${HEYGEN_BASE}/v2/avatars`,
-          { headers: heygenHeaders(), timeout: 8000 }
-        );
-        const avatars = response.data?.data?.avatars || [];
-        const myAvatar = avatars.find((a: any) => a.avatar_id === settings.heygen_avatar_id);
-        if (myAvatar) {
-          currentStatus = 'completed';
-          await supabase.from('user_settings').upsert({
-            user_id: userId,
-            heygen_avatar_status: 'completed',
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id' });
-        }
-      } catch {}
-    }
-
     res.json({
       hasAvatar: true,
-      avatarId: settings.heygen_avatar_id,
-      avatarStatus: currentStatus,
+      seedVideoUrl: settings.heygen_avatar_id,  // seed video URL
+      avatarStatus: settings.heygen_avatar_status || 'ready',
       avatarType: settings.heygen_avatar_type || 'video',
       hasVoice: !!settings.heygen_voice_id,
       voiceId: settings.heygen_voice_id,
@@ -215,7 +128,7 @@ router.get('/avatar-status', async (req: any, res: any) => {
   }
 });
 
-// ── AVATAR SİL ────────────────────────────────────────────
+// ── AVATAR SİL ────────────────────────────────────────────────────────────────
 router.delete('/avatar', async (req: any, res: any) => {
   try {
     const userId = req.userId;

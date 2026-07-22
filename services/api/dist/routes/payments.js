@@ -10,21 +10,73 @@ function formatPrice(kurus) {
     return (kurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 // ── GET /api/payments/plans ───────────────────────────────────────────────────
-router.get('/plans', (_req, res) => {
+const DEFAULT_ENTERPRISE = {
+    title: 'Enterprise',
+    desc: 'Büyük ekipler için özel çözüm',
+    price_label: 'Özel Fiyat',
+    features: ['Sınırsız kredi & ekip', 'White-Label & API', 'SLA %99.9 garantisi', 'Dedicated Account Manager'],
+    cta_text: 'Bizimle İletişime Geçin',
+    cta_url: 'mailto:enterprise@sovlo.io',
+    color: '#ec4899',
+};
+const DEFAULT_COMPARISON = {
+    title: 'Neden Sovlo?',
+    items: [
+        { label: 'Apollo Pro + Smartlead + WA aracı', price: '≈ ₺10.500/ay', icon: '🔴' },
+        { label: 'Sovlo Growth — hepsi tek pakette', price: '₺2.990/ay', icon: '🟢' },
+        { label: 'Kredi rollover (rakipler sıfırlıyor)', price: '2 ay taşınır', icon: '✅' },
+        { label: 'WhatsApp mesajı (rakipler +₺0.50/msj)', price: 'Sınırsız ücretsiz', icon: '✅' },
+    ],
+};
+router.get('/plans', async (_req, res) => {
+    // Read admin overrides from site_settings
+    let adminCfg = null;
+    try {
+        const { data } = await supabase
+            .from('site_settings')
+            .select('value')
+            .eq('key', 'landing_home')
+            .single();
+        if (data?.value)
+            adminCfg = data.value;
+    }
+    catch (_e) { /* use defaults */ }
+    // Build admin plan lookup by id
+    const adminPlans = {};
+    if (Array.isArray(adminCfg?.plans)) {
+        for (const p of adminCfg.plans) {
+            if (p.id)
+                adminPlans[p.id] = p;
+        }
+    }
     const subscriptionPlans = Object.values(PLANS)
         .filter((p) => p.id !== 'enterprise')
-        .map((p) => ({
-        id: p.id,
-        name: p.name,
-        nameLocal: p.nameLocal,
-        monthlyCredits: p.monthlyCredits,
-        rolloverMonths: p.rolloverMonths,
-        priceMonthly: p.priceMonthly,
-        priceAnnual: p.priceAnnual,
-        color: p.color,
-        popular: p.popular,
-        features: p.features,
-    }));
+        .map((p) => {
+        const adm = adminPlans[p.id];
+        const features = adm?.features
+            ? adm.features.filter((f) => f.inc !== false).map((f) => f.text)
+            : p.features;
+        const priceMonthly = adm?.monthly_price != null ? Math.round(adm.monthly_price * 100) : p.priceMonthly;
+        const priceAnnual = adm?.annual_price != null ? Math.round(adm.annual_price * 100) : p.priceAnnual;
+        const monthlyCredits = adm?.credits != null
+            ? parseInt(String(adm.credits).replace(/[^\d]/g, ''), 10) || p.monthlyCredits
+            : p.monthlyCredits;
+        return {
+            id: p.id,
+            name: p.name,
+            nameLocal: adm?.name || p.nameLocal,
+            desc: adm?.desc || '',
+            monthlyCredits,
+            rolloverMonths: p.rolloverMonths,
+            priceMonthly,
+            priceAnnual,
+            color: p.color,
+            popular: adm ? (adm.popular ?? p.popular) : p.popular,
+            features,
+            ctaText: adm?.cta_text || '',
+            ctaUrl: adm?.cta_url || '',
+        };
+    });
     const topupPackages = Object.entries(TOPUP_PACKAGES).map(([id, pkg]) => ({
         id,
         name: pkg.name,
@@ -34,7 +86,9 @@ router.get('/plans', (_req, res) => {
         popular: pkg.popular || false,
         pricePerCredit: Math.round(pkg.price / pkg.credits),
     }));
-    res.json({ subscriptionPlans, topupPackages });
+    const enterprise = { ...DEFAULT_ENTERPRISE, ...(adminCfg?.enterprise || {}) };
+    const comparison = { ...DEFAULT_COMPARISON, ...(adminCfg?.comparison || {}) };
+    res.json({ subscriptionPlans, topupPackages, enterprise, comparison });
 });
 // ── POST /api/payments/topup ──────────────────────────────────────────────────
 router.post('/topup', async (req, res) => {
@@ -254,11 +308,82 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
                 }
             }
         }
+        // Subscription cancelled (user cancelled or payment failed after retries)
+        if (event.type === 'customer.subscription.deleted') {
+            const sub = event.data.object;
+            const { data: user } = await supabase
+                .from('users')
+                .select('id, plan_type')
+                .eq('stripe_customer_id', sub.customer)
+                .single();
+            if (user) {
+                const starterPlan = PLANS['starter'];
+                await supabase.from('users').update({
+                    plan_type: 'starter',
+                    credits_total: starterPlan?.monthlyCredits || 50,
+                    credits_used: 0,
+                    subscription_renews_at: null,
+                }).eq('id', user.id);
+                await supabase.from('credit_transactions').insert({
+                    user_id: user.id,
+                    action: 'subscription_cancelled',
+                    amount: 0,
+                    description: `${user.plan_type || 'Plan'} iptal edildi — Starter'a geçildi`,
+                    balance_after: starterPlan?.monthlyCredits || 50,
+                });
+            }
+        }
+        // Payment failed (Stripe retries before issuing subscription.deleted)
+        if (event.type === 'invoice.payment_failed') {
+            const invoice = event.data.object;
+            const { data: user } = await supabase
+                .from('users')
+                .select('id')
+                .eq('stripe_customer_id', invoice.customer)
+                .single();
+            if (user) {
+                await supabase.from('credit_transactions').insert({
+                    user_id: user.id,
+                    action: 'payment_failed',
+                    amount: 0,
+                    description: `Ödeme başarısız — ₺${((invoice.amount_due || 0) / 100).toFixed(0)} (${invoice.attempt_count}. deneme)`,
+                    balance_after: 0,
+                });
+            }
+        }
         res.json({ received: true });
     }
     catch (e) {
         console.error('Webhook error:', e.message);
         res.status(400).json({ error: e.message });
+    }
+});
+// ── POST /api/payments/portal — Stripe müşteri portalı (abonelik iptal, fatura, kart güncelle) ──
+router.post('/portal', async (req, res) => {
+    try {
+        const userId = req.userId;
+        if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith('sk_test_placeholder')) {
+            return res.json({ url: `${APP_URL}/billing` });
+        }
+        const { data: user } = await supabase
+            .from('users')
+            .select('email, stripe_customer_id')
+            .eq('id', userId)
+            .single();
+        if (!user?.stripe_customer_id) {
+            return res.status(400).json({ error: 'Aktif abonelik bulunamadı' });
+        }
+        const Stripe = require('stripe');
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+        const session = await stripe.billingPortal.sessions.create({
+            customer: user.stripe_customer_id,
+            return_url: `${APP_URL}/billing`,
+        });
+        res.json({ url: session.url });
+    }
+    catch (e) {
+        console.error('Portal error:', e.message);
+        res.status(500).json({ error: e.message });
     }
 });
 // ── GET /api/payments/history ─────────────────────────────────────────────────

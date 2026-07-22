@@ -193,6 +193,17 @@ export default function BillingPage() {
     setLoadingBtn(null)
   }
 
+  async function handleManageSubscription() {
+    setLoadingBtn('portal')
+    try {
+      const data = await apiRequest('/api/payments/portal', { method: 'POST' })
+      if (data.url) window.location.href = data.url
+    } catch (e: any) {
+      setMsg({ type: 'err', text: e.message || 'Portal açılamadı' })
+    }
+    setLoadingBtn(null)
+  }
+
   async function redeemPromo() {
     if (!promoCode.trim()) return
     setLoadingBtn('promo')
@@ -264,10 +275,19 @@ export default function BillingPage() {
               </p>
             )}
             {balance?.renewsAt && (
-              <p style={{ color: '#94a3b8', fontSize: 11, margin: '4px 0 0' }}>
-                Yenileme: {new Date(balance.renewsAt).toLocaleDateString('tr-TR')}
-                {rollover > 0 && ` · ${rollover.toLocaleString()} rollover kredi mevcut`}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                <p style={{ color: '#94a3b8', fontSize: 11, margin: 0 }}>
+                  Yenileme: {new Date(balance.renewsAt).toLocaleDateString('tr-TR')}
+                  {rollover > 0 && ` · ${rollover.toLocaleString()} rollover kredi mevcut`}
+                </p>
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={loadingBtn === 'portal'}
+                  style={{ fontSize: 10, fontWeight: 700, color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 6, padding: '2px 8px', background: '#f8fafc', cursor: 'pointer' }}
+                >
+                  {loadingBtn === 'portal' ? '...' : 'Aboneliği Yönet'}
+                </button>
+              </div>
             )}
           </div>
 

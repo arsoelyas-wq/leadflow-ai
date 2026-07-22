@@ -9,10 +9,21 @@ const supabase = createClient(
 // ── Pricing (USD) ─────────────────────────────────────────────────────────────
 const PRICES = {
   anthropic: {
+    'claude-sonnet-4-6':           { input: 3.00 / 1_000_000, output: 15.00 / 1_000_000 },
     'claude-sonnet-4-20250514':    { input: 3.00 / 1_000_000, output: 15.00 / 1_000_000 },
     'claude-opus-4-8':             { input: 15.00 / 1_000_000, output: 75.00 / 1_000_000 },
     'claude-haiku-4-5-20251001':   { input: 0.80 / 1_000_000, output: 4.00  / 1_000_000 },
     'default':                     { input: 3.00 / 1_000_000, output: 15.00 / 1_000_000 },
+  },
+  openai: {
+    'gpt-4o':                      { input: 2.50 / 1_000_000, output: 10.00 / 1_000_000 },
+    'gpt-4o-mini':                 { input: 0.15 / 1_000_000, output: 0.60  / 1_000_000 },
+    'default':                     { input: 2.50 / 1_000_000, output: 10.00 / 1_000_000 },
+  },
+  gemini: {
+    'gemini-2.5-flash':            { input: 0.30 / 1_000_000, output: 2.50  / 1_000_000 },
+    'gemini-1.5-pro':              { input: 3.50 / 1_000_000, output: 10.50 / 1_000_000 },
+    'default':                     { input: 0.30 / 1_000_000, output: 2.50  / 1_000_000 },
   },
   elevenlabs: {
     per_character: 0.30 / 1000,   // ~$0.30 per 1000 chars (~1 minute of speech)
@@ -66,6 +77,68 @@ export async function logAnthropicCall(opts: {
   } catch (e) {
     // Never block main flow
     console.error('[aiCostLogger] anthropic log error:', e);
+  }
+}
+
+// ── Log an OpenAI (GPT) call ──────────────────────────────────────────────────
+export async function logGptCall(opts: {
+  userId?: string;
+  feature: string;
+  model?: string;
+  usage: { prompt_tokens: number; completion_tokens: number };
+  success?: boolean;
+  metadata?: Record<string, any>;
+}) {
+  try {
+    const model = opts.model || 'gpt-4o';
+    const pricing = (PRICES.openai as any)[model] || PRICES.openai['default'];
+    const costUsd = (opts.usage.prompt_tokens * pricing.input) + (opts.usage.completion_tokens * pricing.output);
+    await supabase.from('ai_cost_logs').insert([{
+      user_id:      opts.userId || null,
+      service:      'openai',
+      feature:      opts.feature,
+      model,
+      input_tokens:  opts.usage.prompt_tokens,
+      output_tokens: opts.usage.completion_tokens,
+      units:         opts.usage.prompt_tokens + opts.usage.completion_tokens,
+      unit_type:     'tokens',
+      cost_usd:      parseFloat(costUsd.toFixed(6)),
+      success:       opts.success !== false,
+      metadata:      opts.metadata || {},
+    }]);
+  } catch (e) {
+    console.error('[aiCostLogger] openai log error:', e);
+  }
+}
+
+// ── Log a Gemini call ─────────────────────────────────────────────────────────
+export async function logGeminiCall(opts: {
+  userId?: string;
+  feature: string;
+  model?: string;
+  usage: { input_tokens: number; output_tokens: number };
+  success?: boolean;
+  metadata?: Record<string, any>;
+}) {
+  try {
+    const model = opts.model || 'gemini-2.5-flash';
+    const pricing = (PRICES.gemini as any)[model] || PRICES.gemini['default'];
+    const costUsd = (opts.usage.input_tokens * pricing.input) + (opts.usage.output_tokens * pricing.output);
+    await supabase.from('ai_cost_logs').insert([{
+      user_id:      opts.userId || null,
+      service:      'gemini',
+      feature:      opts.feature,
+      model,
+      input_tokens:  opts.usage.input_tokens,
+      output_tokens: opts.usage.output_tokens,
+      units:         opts.usage.input_tokens + opts.usage.output_tokens,
+      unit_type:     'tokens',
+      cost_usd:      parseFloat(costUsd.toFixed(6)),
+      success:       opts.success !== false,
+      metadata:      opts.metadata || {},
+    }]);
+  } catch (e) {
+    console.error('[aiCostLogger] gemini log error:', e);
   }
 }
 

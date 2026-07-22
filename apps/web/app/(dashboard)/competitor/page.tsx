@@ -430,7 +430,7 @@ export default function CompetitorPage() {
 
         <div style={{ position: 'relative', zIndex: 2 }}>
           {/* Top row: radar + text */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, minWidth: 0, flexWrap: 'wrap' }}>
             <RadarScanner size={80} scanning={scanning !== null} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>

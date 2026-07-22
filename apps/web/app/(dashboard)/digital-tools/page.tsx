@@ -758,12 +758,12 @@ export default function DigitalToolsPage() {
 
   const msSendWhatsApp = async (ms: any) => {
     try {
-      const phone = ms.leads?.phone
-      if (!phone) return msShowMsg('error', 'Lead telefon numarası yok')
+      const leadId = ms.lead_id || ms.leads?.id
+      if (!leadId) return msShowMsg('error', 'Lead bulunamadı')
       const url = `${CATALOG_BASE}${ms.slug}`
-      const message = `Merhaba ${ms.leads?.contact_name || ms.leads?.company_name}! 🌟\n\nSizin için özel bir katalog sayfası hazırladık:\n${url}\n\nÜrünlerimizi incelemenizi rica ederiz.`
-      await api.post('/api/whatsapp/send', { phone, message })
-      msShowMsg('success', `WhatsApp gönderildi: ${phone}`)
+      const content = `Merhaba ${ms.leads?.contact_name || ms.leads?.company_name}! 🌟\n\nSizin için özel bir katalog sayfası hazırladık:\n${url}\n\nÜrünlerimizi incelemenizi rica ederiz.`
+      await api.post('/api/inbox/send', { leadId, content, channel: 'whatsapp' })
+      msShowMsg('success', `WhatsApp gönderildi`)
     } catch (e: any) { msShowMsg('error', e.message) }
   }
 

@@ -206,12 +206,9 @@ router.delete('/:id', async (req: any, res: any) => {
 
     if (!replica) return res.status(404).json({ error: 'Not found' });
 
-    // Delete ElevenLabs voice clone
-    if (replica.elevenlabs_voice_id && process.env.ELEVENLABS_API_KEY) {
-      await axios.delete(
-        `https://api.elevenlabs.io/v1/voices/${replica.elevenlabs_voice_id}`,
-        { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY } }
-      ).catch(() => {});
+    // XTTS zero-shot — ses eğitimi yok, temizlik gerekmiyor
+    if (replica.elevenlabs_voice_id) {
+      await supabase.from('cloned_voices').delete().eq('id', replica.elevenlabs_voice_id).eq('user_id', req.userId).catch(() => {});
     }
 
     await supabase.from('user_replicas').delete().eq('id', req.params.id).eq('user_id', req.userId);
@@ -235,25 +232,19 @@ router.post('/:id/test-video', async (req: any, res: any) => {
     if (!replica) return res.status(404).json({ error: 'Not found' });
     if (replica.status !== 'ready') return res.status(400).json({ error: 'Replica henüz hazır değil' });
 
-    // Generate audio with cloned voice
-    const voiceId = replica.elevenlabs_voice_id || process.env.ELEVENLABS_DEFAULT_VOICE_ID;
-    if (!voiceId) return res.status(400).json({ error: 'Voice ID bulunamadı' });
-
-    const ttsRes = await axios.post(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        text,
-        model_id: 'eleven_turbo_v2_5',
-        voice_settings: { stability: 0.75, similarity_boost: 0.85, style: 0.5, use_speaker_boost: true },
-      },
-      {
-        headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        responseType: 'arraybuffer',
-        timeout: 30000,
-      }
-    );
-
-    const audioBuffer = Buffer.from(ttsRes.data);
+    // XTTS ile ses üret — klonlanmış ses ID'si varsa sample_url'yi al, yoksa serbest TTS
+    let audioBuffer: Buffer;
+    if (replica.elevenlabs_voice_id) {
+      const { synthesizeXtts } = require('../services/xtts-engine');
+      const { data: cv } = await supabase.from('cloned_voices').select('sample_url').eq('id', replica.elevenlabs_voice_id).single();
+      if (!cv?.sample_url) return res.status(400).json({ error: 'Ses örneği bulunamadı' });
+      audioBuffer = await synthesizeXtts(text, cv.sample_url, 'tr');
+    } else {
+      // Serbest TTS fallback (Google Translate)
+      const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text.slice(0, 200))}&tl=tr&client=tw-ob`;
+      const ttsRes = await axios.get(ttsUrl, { responseType: 'arraybuffer', timeout: 15000 });
+      audioBuffer = Buffer.from(ttsRes.data);
+    }
 
     // Generate video
     const { generateVideo } = require('../services/video-engine');
@@ -302,39 +293,33 @@ async function runTrainingPipeline(
   try {
     let voiceId: string | null = null;
 
-    // Step 1: Clone voice (ElevenLabs)
-    if (cloneVoice && process.env.ELEVENLABS_API_KEY) {
+    // Step 1: Ses klonu — XTTS zero-shot (kendi sistemimiz, eğitim gerektirmez)
+    // Seed video ses örneği olarak cloned_voices tablosuna kaydedilir
+    if (cloneVoice) {
       try {
         await supabase.from('replica_jobs').insert([{
           replica_id: replicaId, user_id: userId,
-          job_type: 'voice_clone', provider: 'elevenlabs', status: 'running',
+          job_type: 'voice_clone', provider: 'xtts', status: 'running',
           started_at: new Date().toISOString(),
         }]);
 
         const { data: replica } = await supabase.from('user_replicas').select('name').eq('id', replicaId).single();
 
-        // Download seed video to buffer
-        const videoRes = await axios.get(seedVideoUrl, { responseType: 'arraybuffer', timeout: 120_000 });
-        const videoBuffer = Buffer.from(videoRes.data);
+        // seed video URL → cloned_voices tablosuna kaydet (XTTS zero-shot için sample_url kullanılır)
+        const { data: cloneRecord, error: cloneErr } = await supabase
+          .from('cloned_voices')
+          .insert([{ user_id: userId, name: replica?.name || `Replica_${replicaId.slice(0, 8)}`, sample_url: seedVideoUrl }])
+          .select('id')
+          .single();
 
-        const FormData = require('form-data');
-        const fd = new FormData();
-        fd.append('name', replica?.name || `Replica_${replicaId.slice(0, 8)}`);
-        fd.append('files', videoBuffer, { filename: 'seed.mp4', contentType: 'video/mp4' });
-        fd.append('remove_background_noise', 'true');
+        if (cloneErr) throw cloneErr;
+        voiceId = cloneRecord.id;
 
-        const cloneRes = await axios.post(
-          'https://api.elevenlabs.io/v1/voices/add',
-          fd,
-          { headers: { ...fd.getHeaders(), 'xi-api-key': process.env.ELEVENLABS_API_KEY }, timeout: 120_000 }
-        );
-
-        voiceId = cloneRes.data?.voice_id;
         if (voiceId) {
           await supabase.from('user_replicas').update({ elevenlabs_voice_id: voiceId }).eq('id', replicaId);
           await supabase.from('replica_jobs').update({ status: 'succeeded', finished_at: new Date().toISOString() })
             .eq('replica_id', replicaId).eq('job_type', 'voice_clone');
-          console.log(`[Replica] Voice cloned: ${voiceId}`);
+          console.log(`[Replica] XTTS voice clone kaydedildi: ${voiceId}`);
         }
       } catch (voiceErr: any) {
         console.error('[Replica] Voice clone error:', voiceErr.message);

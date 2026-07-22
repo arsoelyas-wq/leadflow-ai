@@ -113,7 +113,7 @@ async function claudeAnalyze(prompt: string, maxTokens = 300): Promise<string> {
   const Anthropic = require('@anthropic-ai/sdk');
   const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const r = await ai.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-6',
     max_tokens: maxTokens,
     messages: [{ role: 'user', content: prompt }],
   });

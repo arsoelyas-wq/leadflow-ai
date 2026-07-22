@@ -247,7 +247,7 @@ export default function AgentPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-violet-500/10 rounded-xl border border-violet-500/20">
             <Bot className="w-6 h-6 text-violet-400" />
@@ -258,7 +258,7 @@ export default function AgentPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {profile && (
             <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${profile.is_active ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'bg-slate-600/30 text-slate-400 border border-slate-600/30'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${profile.is_active ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />

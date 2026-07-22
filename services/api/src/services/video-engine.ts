@@ -8,10 +8,9 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export interface VideoEngineParams {
-  engine:          'museTalk' | 'latentsync' | 'heygen' | 'gaussian';
+  engine:          'museTalk' | 'latentsync' | 'gaussian';
   audioBuffer:     Buffer;
   avatarVideoUrl?: string;   // seed video (personal replica or stock avatar)
-  avatarId?:       string;   // HeyGen avatar ID
   backgroundUrl?:  string;
   aspectRatio?:    string;   // '9:16' | '16:9' | '1:1'
   emotionProfile?: any;
@@ -31,8 +30,7 @@ export interface VideoEngineResult {
 // ─── QUALITY NOTES ────────────────────────────────────────────────────────────
 // museTalk (RunPod):  ⭐⭐⭐⭐⭐ head movement + eye blink + CodeFormer + 4x upscale
 // latentsync (Repl):  ⭐⭐⭐⭐  lips only, photorealistic, no head movement
-// heygen:             ⭐⭐⭐⭐⭐ industry standard, but expensive
-// Priority: museTalk → latentsync → heygen
+// Priority: museTalk → latentsync
 
 // ─── MAIN DISPATCHER ──────────────────────────────────────────────────────────
 
@@ -74,9 +72,7 @@ export async function generateVideo(params: VideoEngineParams): Promise<VideoEng
     return { videoUrl: url, engine: 'latentsync', durationMs: Date.now() - t0 };
   }
 
-  // HeyGen (fallback / explicit)
-  const url = await generateWithHeyGen(params);
-  return { videoUrl: url, engine: 'heygen', durationMs: Date.now() - t0 };
+  throw new Error(`Desteklenmeyen video motoru: ${params.engine}. Desteklenen motorlar: museTalk, latentsync, gaussian`);
 }
 
 // ─── MUSETALK (RunPod) ────────────────────────────────────────────────────────
@@ -176,58 +172,6 @@ async function generateWithLatentSync(params: VideoEngineParams): Promise<string
   if (!predictionId) throw new Error('Replicate prediction failed to start');
 
   return pollReplicatePrediction(predictionId, 180_000);
-}
-
-// ─── HEYGEN ───────────────────────────────────────────────────────────────────
-
-async function generateWithHeyGen(params: VideoEngineParams): Promise<string> {
-  const { audioBuffer, avatarId, backgroundUrl, aspectRatio = '9:16' } = params;
-  if (!avatarId) throw new Error('HeyGen requires avatarId');
-  if (!process.env.HEYGEN_API_KEY) throw new Error('HEYGEN_API_KEY not set');
-
-  const HEYGEN_BASE = 'https://api.heygen.com';
-
-  const formData = new FormData();
-  formData.append('audio', audioBuffer, { filename: 'audio.mp3', contentType: 'audio/mpeg' });
-  const uploadRes = await axios.post(`${HEYGEN_BASE}/v1/asset`, formData, {
-    headers: { ...formData.getHeaders(), 'X-Api-Key': process.env.HEYGEN_API_KEY },
-    timeout: 30000,
-  });
-  const audioAssetId = uploadRes.data?.data?.id;
-  if (!audioAssetId) throw new Error('HeyGen audio upload failed');
-
-  const character: any = { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' };
-  if (backgroundUrl) { character.scale = 0.4; character.offset = { x: -0.4, y: -0.35 }; }
-
-  const videoInput: any = { character, voice: { type: 'audio', audio_asset_id: audioAssetId } };
-  if (backgroundUrl) videoInput.background = { type: 'image', url: backgroundUrl };
-
-  const createRes = await axios.post(
-    `${HEYGEN_BASE}/v2/video/generate`,
-    {
-      video_inputs: [{ ...videoInput }],
-      dimension: aspectRatio === '16:9'
-        ? { width: 1280, height: 720 }
-        : aspectRatio === '1:1'
-          ? { width: 720, height: 720 }
-          : { width: 720, height: 1280 },
-    },
-    { headers: { 'X-Api-Key': process.env.HEYGEN_API_KEY, 'Content-Type': 'application/json' }, timeout: 30000 }
-  );
-
-  const videoId = createRes.data?.data?.video_id;
-  if (!videoId) throw new Error('HeyGen video creation failed');
-
-  for (let i = 0; i < 90; i++) {
-    await new Promise(r => setTimeout(r, 10000));
-    const statusRes = await axios.get(`${HEYGEN_BASE}/v1/video_status.get?video_id=${videoId}`, {
-      headers: { 'X-Api-Key': process.env.HEYGEN_API_KEY },
-    });
-    const status = statusRes.data?.data?.status;
-    if (status === 'completed') return statusRes.data.data.video_url;
-    if (status === 'failed') throw new Error('HeyGen video generation failed');
-  }
-  throw new Error('HeyGen timeout');
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────

@@ -2,11 +2,10 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
-const Anthropic = require('@anthropic-ai/sdk');
+const { gptChat } = require('../lib/openai-client');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const GOOGLE_ADS_BASE = 'https://googleads.googleapis.com/v17';
 const CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID;
@@ -382,17 +381,13 @@ Return ONLY valid JSON with this exact structure:
   "expert_notes": "string"
 }`;
 
-    const aiResp = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
-      system: "You are the world's leading Google Ads expert with 15+ years managing $500M+ in ad spend. Create complete, highly optimized campaigns that achieve Quality Score 8-10 from day one. Focus on: keyword-ad-landing page relevance trifecta, compelling RSA copy with clear CTAs, negative keyword prevention of wasted spend, and bid strategy matched to conversion goals. Output ONLY valid JSON.",
-      messages: [{ role: 'user', content: userMessage }],
-    });
-
-    const text: string = aiResp.content?.[0]?.text || '';
+    const text: string = await gptChat({ max_tokens: 4500, messages: [
+      { role: 'system', content: "You are the world's leading Google Ads expert with 15+ years managing $500M+ in ad spend. Create complete, highly optimized campaigns that achieve Quality Score 8-10 from day one. Focus on: keyword-ad-landing page relevance trifecta, compelling RSA copy with clear CTAs, negative keyword prevention of wasted spend, and bid strategy matched to conversion goals. Output ONLY valid JSON." },
+      { role: 'user', content: userMessage },
+    ] });
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
-      console.error('[GoogleAdsCampaign] Claude JSON parse hata, raw:', text.slice(0, 200));
+      console.error('[GoogleAdsCampaign] GPT JSON parse hata, raw:', text.slice(0, 200));
       return res.status(500).json({ error: 'AI yaniti JSON formatinda degil' });
     }
 
@@ -752,31 +747,7 @@ router.post('/auto-optimize', async (req: any, res: any) => {
         if (clicks <= 100) continue;
 
         // AI ile optimizasyon onerisi al
-        const aiResp = await anthropic.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 600,
-          messages: [
-            {
-              role: 'user',
-              content: `Google Ads kampanya optimizasyonu:
-Kampanya: ${campaign.name}
-Hedef: ${campaign.goal || 'MAXIMIZE_CONVERSIONS'}
-Son 7 Gun Performans:
-- Tiklama: ${performanceData.clicks}
-- Gosterim: ${performanceData.impressions}
-- Harcama: $${performanceData.spend}
-- CTR: %${performanceData.ctr}
-- Donusum: ${performanceData.conversions}
-- Donusum Maliyeti: $${performanceData.cost_per_conversion}
-- Ort. CPC: $${performanceData.avg_cpc}
-
-JSON ile 3 somut optimizasyon onerisi ver:
-{"recommendations":[{"action":"string","reason":"string","priority":"high|medium|low"}],"overall_health":"good|warning|critical","summary":"string"}`,
-            },
-          ],
-        });
-
-        const aiText: string = aiResp.content?.[0]?.text || '';
+        const aiText: string = await gptChat({ max_tokens: 700, messages: [{ role: 'user', content: `Google Ads kampanya optimizasyonu:\nKampanya: ${campaign.name}\nHedef: ${campaign.goal || 'MAXIMIZE_CONVERSIONS'}\nSon 7 Gun Performans:\n- Tiklama: ${performanceData.clicks}\n- Gosterim: ${performanceData.impressions}\n- Harcama: $${performanceData.spend}\n- CTR: %${performanceData.ctr}\n- Donusum: ${performanceData.conversions}\n- Donusum Maliyeti: $${performanceData.cost_per_conversion}\n- Ort. CPC: $${performanceData.avg_cpc}\n\nJSON ile 3 somut optimizasyon onerisi ver:\n{"recommendations":[{"action":"string","reason":"string","priority":"high|medium|low"}],"overall_health":"good|warning|critical","summary":"string"}` }] });
         const aiMatch = aiText.match(/\{[\s\S]*\}/);
         let optimizationResult: any = { recommendations: [], summary: aiText.slice(0, 200) };
         if (aiMatch) {
@@ -832,44 +803,7 @@ router.post('/generate-keywords', async (req: any, res: any) => {
       return res.status(400).json({ error: 'businessType ve product zorunlu' });
     }
 
-    const aiResp = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2000,
-      messages: [
-        {
-          role: 'user',
-          content: `Google Ads anahtar kelime uzmani olarak su isletme icin 50 anahtar kelime uret:
-
-Isletme Turu: ${businessType}
-Urun/Hizmet: ${product}
-Konum: ${location || 'Turkiye'}
-Dil: ${language || 'Turkce'}
-
-50 anahtar kelimeyi 3 intent grubuna ayir (informational, commercial, transactional). Her kelime icin match type belirt.
-
-JSON formatinda don:
-{
-  "keywords": [
-    {
-      "keyword": "string",
-      "match_type": "BROAD|PHRASE|EXACT",
-      "intent": "informational|commercial|transactional",
-      "estimated_cpc": 0.50,
-      "competition": "low|medium|high"
-    }
-  ],
-  "groups": {
-    "informational": ["keyword1", "keyword2"],
-    "commercial": ["keyword1", "keyword2"],
-    "transactional": ["keyword1", "keyword2"]
-  },
-  "negative_suggestions": ["negatif1", "negatif2", "negatif3"]
-}`,
-        },
-      ],
-    });
-
-    const text: string = aiResp.content?.[0]?.text || '';
+    const text: string = await gptChat({ max_tokens: 2400, messages: [{ role: 'user', content: `Google Ads anahtar kelime uzmani olarak su isletme icin 50 anahtar kelime uret:\n\nIsletme Turu: ${businessType}\nUrun/Hizmet: ${product}\nKonum: ${location || 'Turkiye'}\nDil: ${language || 'Turkce'}\n\n50 anahtar kelimeyi 3 intent grubuna ayir (informational, commercial, transactional). Her kelime icin match type belirt.\n\nJSON formatinda don:\n{\n  "keywords": [\n    {\n      "keyword": "string",\n      "match_type": "BROAD|PHRASE|EXACT",\n      "intent": "informational|commercial|transactional",\n      "estimated_cpc": 0.50,\n      "competition": "low|medium|high"\n    }\n  ],\n  "groups": {\n    "informational": ["keyword1", "keyword2"],\n    "commercial": ["keyword1", "keyword2"],\n    "transactional": ["keyword1", "keyword2"]\n  },\n  "negative_suggestions": ["negatif1", "negatif2", "negatif3"]\n}` }] });
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
       return res.status(500).json({ error: 'AI yaniti parse edilemedi' });
@@ -919,30 +853,10 @@ router.post('/ai-create-simple', async (req: any, res: any) => {
       SALES: 'Satış artır'
     };
 
-    const aiResp = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 3000,
-      system: `Sen Google'ın en iyi sertifikalı reklam uzmanısın, Platinum Partner seviyesinde, $50M+ yıllık reklam bütçesi yönetiyorsun. Google'ın Quality Score algoritmasını içinden biliyorsun.
-
-TÜRK PAZARI (HER ZAMAN UYGULA):
-- Sadece yüksek niyetli, ticari/işlemsel anahtar kelimeler hedefle
-- Mobile-first: Türk kullanıcıların %78'i mobilde
-- Türkçe reklam metinleri kullan
-- Aciliyet ve sosyal kanıt kullan: "5000+ müşteri", "Ücretsiz danışmanlık", "Hemen ara"
-- Fiyat duyarlı pazar: değer mesajı ver
-- Gerçekçi TRY TBM: düşük rekabet ≈ 2-5 TRY, yüksek ≈ 10-25 TRY
-- Konum: ${location || 'Türkiye'}
-
-Quality Score 8+ hedefle. Sıkı reklam grubu yapısı kullan (tema başına 1 grup).
-
-SADECE geçerli JSON döndür, markdown yok.`,
-      messages: [{
-        role: 'user',
-        content: `İşletme: ${fullDescription}\nHedef: ${goalMap[goal] || goal}\nGünlük Bütçe: ${dailyBudget || 150} TRY\nOrtalama Müşteri Değeri: ${avgDealValue || 'belirtilmedi'} TRY`
-      }],
-    });
-
-    const text: string = aiResp.content?.[0]?.text || '';
+    const text: string = await gptChat({ max_tokens: 3500, messages: [
+      { role: 'system', content: `Sen Google'ın en iyi sertifikalı reklam uzmanısın, Platinum Partner seviyesinde, $50M+ yıllık reklam bütçesi yönetiyorsun. Google'ın Quality Score algoritmasını içinden biliyorsun.\n\nTÜRK PAZARI (HER ZAMAN UYGULA):\n- Sadece yüksek niyetli, ticari/işlemsel anahtar kelimeler hedefle\n- Mobile-first: Türk kullanıcıların %78'i mobilde\n- Türkçe reklam metinleri kullan\n- Aciliyet ve sosyal kanıt kullan: "5000+ müşteri", "Ücretsiz danışmanlık", "Hemen ara"\n- Fiyat duyarlı pazar: değer mesajı ver\n- Gerçekçi TRY TBM: düşük rekabet ≈ 2-5 TRY, yüksek ≈ 10-25 TRY\n- Konum: ${location || 'Türkiye'}\n\nQuality Score 8+ hedefle. Sıkı reklam grubu yapısı kullan (tema başına 1 grup).\n\nSADECE geçerli JSON döndür, markdown yok.` },
+      { role: 'user', content: `İşletme: ${fullDescription}\nHedef: ${goalMap[goal] || goal}\nGünlük Bütçe: ${dailyBudget || 150} TRY\nOrtalama Müşteri Değeri: ${avgDealValue || 'belirtilmedi'} TRY` },
+    ] });
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return res.status(500).json({ ok: false, error: 'AI yanıtı işlenemedi' });
 

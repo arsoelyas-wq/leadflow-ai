@@ -4,7 +4,7 @@ export {};
  *
  * İki arama yolu:
  *   1. Klonlanmış ses  → XTTS-v2 (RunPod) TTS + Vapi çağrı altyapısı
- *   2. Ses kütüphanesi → ElevenLabs sesleri + ElevenLabs çağrı altyapısı
+ *   2. Ses kütüphanesi → XTTS klonlanmış sesler + Vapi çağrı altyapısı
  *
  * Klonlar Supabase Storage'da saklanır (bizde kayıtlı).
  */
@@ -25,7 +25,6 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetr
 const upload    = multer({ dest: '/tmp/voice/' });
 
 // ─── 5 KONUŞMA TARZI ─────────────────────────────────────────────────────────
-// Her tarzın ElevenLabs ses ayarları (stability=sakin↔enerjik, style=duygusal yoğunluk)
 const STYLE_VOICE_SETTINGS: Record<string, { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean }> = {
   consultant: { stability: 0.72, similarity_boost: 0.87, style: 0.20, use_speaker_boost: true },   // sakin, güven verici
   challenger: { stability: 0.48, similarity_boost: 0.82, style: 0.62, use_speaker_boost: true },   // dinamik, provokatif
@@ -33,11 +32,6 @@ const STYLE_VOICE_SETTINGS: Record<string, { stability: number; similarity_boost
   direct:     { stability: 0.42, similarity_boost: 0.80, style: 0.70, use_speaker_boost: true },   // net, hızlı
   corporate:  { stability: 0.88, similarity_boost: 0.96, style: 0.08, use_speaker_boost: false },  // resmi, kurumsal
 };
-
-const ELEVEN_KEY      = process.env.ELEVENLABS_API_KEY;
-const ELEVEN_BASE     = 'https://api.elevenlabs.io/v1';
-const ELEVEN_AGENT_ID = process.env.ELEVENLABS_AGENT_ID   || '';
-const ELEVEN_PHONE_ID = process.env.ELEVENLABS_PHONE_NUMBER_ID || '';
 
 const VAPI_KEY    = process.env.VAPI_API_KEY || '';
 // Twilio imported number — uluslararası arama destekli
@@ -54,8 +48,6 @@ const CALL_VOICES: Record<string, string> = {
   ar: '3b554bf4-e0d4-4a74-ae96-3c1f6db66f82',
   default: 'b7d50908-b17c-442d-ad8d-810c63997ed9',
 };
-
-function elevenHeaders() { return { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }; }
 
 // Telefon numarasını E.164 formatına çevir
 function normalizePhoneE164(phone: string, countryCode?: string): string {
@@ -130,8 +122,8 @@ Kural:
 
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 120,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 180,
       messages: [{ role: 'user', content: prompt }],
     });
     return ((r.content[0] as any)?.text || '').trim();
@@ -378,15 +370,12 @@ async function makeVapiCall(params: {
     ru: 'ru', es: 'es', it: 'it', nl: 'nl',
   };
 
-  // ElevenLabs Flash v2.5 — 75ms gecikme (eleven_turbo_v2 eski modele göre 3x hızlı)
+  // Cartesia — dil bazında varsayılan ses (kendi sistemimizde kullanılan TTS)
   const defaultVoice = {
-    provider: '11labs',
-    voiceId: 'pNInz6obpgDQGcFmaJgB',
-    model: 'eleven_turbo_v2_5',   // Flash model — en düşük gecikme
-    stability: STYLE_VOICE_SETTINGS[conversationStyle]?.stability ?? 0.72,
-    similarityBoost: STYLE_VOICE_SETTINGS[conversationStyle]?.similarity_boost ?? 0.87,
-    style: STYLE_VOICE_SETTINGS[conversationStyle]?.style ?? 0.2,
-    useSpeakerBoost: STYLE_VOICE_SETTINGS[conversationStyle]?.use_speaker_boost ?? true,
+    provider: 'cartesia',
+    voiceId: CALL_VOICES[language] || CALL_VOICES.default,
+    model: 'sonic-2',
+    language: language === 'tr' ? 'tr' : undefined,
   };
 
   // Tarz bazlı interrupt sensitivity: Direkt tarz = daha az interrupt (hızlı geçiş)
@@ -418,10 +407,10 @@ async function makeVapiCall(params: {
       },
       model: {
         provider: 'anthropic',
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-4-6',
         messages: [{ role: 'system', content: systemPrompt }],
-        temperature: 0.4,                       // Daha tutarlı cevaplar
-        maxTokens: 120,                         // Kısa yanıt = daha hızlı TTS başlangıcı
+        temperature: 0.4,
+        maxTokens: 150,                         // Kısa yanıt = daha hızlı TTS başlangıcı
         toolChoice: 'auto',
         tools: [
           {
@@ -493,32 +482,6 @@ async function makeVapiCall(params: {
   };
 }
 
-// ─── ELEVENLABs ÇAĞRISI (ses kütüphanesi yolu) ───────────────────────────────
-
-async function makeElevenLabsCall(params: any) {
-  const { toNumber, agentName, companyName, productDescription, leadName, leadCompany, language, openingLine, voiceId } = params;
-  const body: any = {
-    agent_id: ELEVEN_AGENT_ID,
-    agent_phone_number_id: ELEVEN_PHONE_ID,
-    to_number: toNumber,
-    conversation_initiation_client_data: {
-      dynamic_variables: {
-        agent_name: agentName, company_name: companyName,
-        product_description: productDescription, lead_name: leadName,
-        lead_company: leadCompany, language, opening_line: openingLine,
-      },
-    },
-  };
-  if (voiceId) body.voice_id = voiceId;
-
-  const r = await axios.post(
-    `${ELEVEN_BASE}/convai/twilio/outbound-call`,
-    body,
-    { headers: elevenHeaders(), timeout: 30000 }
-  );
-  return { conversationId: r.data.conversation_id || '', callSid: r.data.callSid || '' };
-}
-
 // ─── ÇAĞRI YÖNLENDIRICI ───────────────────────────────────────────────────────
 
 async function dispatchCall(params: {
@@ -556,8 +519,7 @@ async function dispatchCall(params: {
         callMemory,
       });
 
-      // XTTS mevcut ise klonlanmış ses, değilse Cartesia fallback
-      const styleVoiceSettings = STYLE_VOICE_SETTINGS[conversationStyle] || STYLE_VOICE_SETTINGS.consultant;
+      // XTTS — kendi ses sentezi sistemimiz (RunPod serverless)
       let voiceConfig: any;
       if (process.env.RUNPOD_XTTS_ENDPOINT_ID) {
         voiceConfig = {
@@ -565,15 +527,11 @@ async function dispatchCall(params: {
           server: { url: `${API_BASE}/api/voice/tts-xtts/${clonedVoiceId}` },
         };
       } else {
-        // ElevenLabs ile ses tarzı ayarları
+        // XTTS endpoint yoksa Cartesia fallback
         voiceConfig = {
-          provider: '11labs',
-          voiceId: clonedVoiceId,
-          stability: styleVoiceSettings.stability,
-          similarityBoost: styleVoiceSettings.similarity_boost,
-          style: styleVoiceSettings.style,
-          useSpeakerBoost: styleVoiceSettings.use_speaker_boost,
-          model: 'eleven_turbo_v2_5',
+          provider: 'cartesia',
+          voiceId: CALL_VOICES['tr'],
+          model: 'sonic-2',
         };
       }
 
@@ -600,14 +558,7 @@ async function dispatchCall(params: {
     return { ...result, provider: 'vapi' };
   }
 
-  // Fallback: ElevenLabs
-  const result = await makeElevenLabsCall({
-    toNumber: params.toNumber, agentName: params.agentName,
-    companyName: params.companyName, productDescription: params.productDesc,
-    leadName: params.leadName, leadCompany: params.leadCompany,
-    language, openingLine, voiceId: libraryVoiceId,
-  });
-  return { ...result, provider: 'elevenlabs' };
+  throw new Error('Vapi API anahtarı yapılandırılmamış — sesli arama için VAPI_API_KEY gereklidir');
 }
 
 // ─── ROTALAR ─────────────────────────────────────────────────────────────────
@@ -650,55 +601,28 @@ router.get('/my-voices', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/library-voices — hazır ses kütüphanesi (platform ismi olmadan)
+// GET /api/voice/library-voices — kendi klonlanmış sesler (XTTS)
 router.get('/library-voices', async (req: any, res: any) => {
   try {
-    const { language = 'tr', limit = 80 } = req.query;
-    if (!ELEVEN_KEY) return res.json({ voices: [], total: 0 });
-
-    const [r1, r2] = await Promise.allSettled([
-      axios.get(`${ELEVEN_BASE}/voices`, { headers: elevenHeaders() }),
-      axios.get(`${ELEVEN_BASE}/shared-voices?page_size=${limit}&language=${language}`, { headers: elevenHeaders() }),
-    ]);
-
-    const norm = (v: any) => ({
-      id:         v.voice_id,
-      name:       v.name,
-      gender:     v.gender || v.labels?.gender || null,
-      accent:     v.labels?.accent || null,
-      category:   v.category || 'genel',
-      previewUrl: v.preview_url || null,
-    });
-
-    const myVoices     = r1.status === 'fulfilled' ? r1.value.data.voices.map(norm) : [];
-    const sharedVoices = r2.status === 'fulfilled' ? r2.value.data.voices.map(norm) : [];
-
-    res.json({
-      myVoices,
-      voices: sharedVoices,
-      total: sharedVoices.length,
-    });
+    const { data } = await supabase
+      .from('cloned_voices')
+      .select('id, name, sample_url, created_at')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false });
+    res.json({ voices: data || [], total: (data || []).length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/eleven-voices — geriye dönük uyumluluk
+// GET /api/voice/eleven-voices — geriye dönük uyumluluk (kendi klonlarını döndürür)
 router.get('/eleven-voices', async (req: any, res: any) => {
   try {
-    const { language = 'tr' } = req.query;
-    if (!ELEVEN_KEY) return res.json({ categories: { my: [], language: [], all: [] }, total: 0 });
-
-    const [r1, r2] = await Promise.allSettled([
-      axios.get(`${ELEVEN_BASE}/voices`, { headers: elevenHeaders() }),
-      axios.get(`${ELEVEN_BASE}/shared-voices?page_size=100&language=${language}`, { headers: elevenHeaders() }),
-    ]);
-    const norm = (v: any, src: string) => ({
-      voice_id: v.voice_id, name: v.name, category: v.category || src,
-      preview_url: v.preview_url || null,
-      gender: v.labels?.gender || v.gender || null,
-    });
-    const myV   = r1.status === 'fulfilled' ? r1.value.data.voices.map((v: any) => norm(v, 'my')) : [];
-    const langV = r2.status === 'fulfilled' ? r2.value.data.voices.map((v: any) => norm(v, 'shared')) : [];
-    res.json({ categories: { my: myV, language: langV, all: [...myV, ...langV] }, total: langV.length });
+    const { data } = await supabase
+      .from('cloned_voices')
+      .select('id, name, sample_url, created_at')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false });
+    const voices = (data || []).map((v: any) => ({ voice_id: v.id, name: v.name, category: 'klonlanmış', preview_url: v.sample_url }));
+    res.json({ categories: { my: voices, language: [], all: voices }, total: voices.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1083,91 +1007,6 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
   if (!pending?.length) await supabase.from('voice_campaigns').update({ status: 'completed', completed_at: new Date() }).eq('id', campaignId);
 }
 
-// POST /api/voice/webhook/elevenlabs + vapi
-router.post('/webhook/elevenlabs', async (req: any, res: any) => {
-  try {
-    // HMAC-SHA256 verification (ElevenLabs xi-signature header)
-    const secret = process.env.ELEVENLABS_WEBHOOK_SECRET;
-    if (secret) {
-      const rawBody: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
-      const sig = req.headers['xi-signature'] as string || '';
-      // xi-signature format: "t=<timestamp>,v1=<hex_hmac>"
-      const tMatch = sig.match(/t=(\d+)/);
-      const v1Match = sig.match(/v1=([a-f0-9]+)/);
-      if (!tMatch || !v1Match) return res.status(401).json({ error: 'Missing xi-signature' });
-      const expected = crypto.createHmac('sha256', secret).update(`${tMatch[1]}.${rawBody.toString('utf8')}`).digest('hex');
-      if (!crypto.timingSafeEqual(Buffer.from(v1Match[1], 'hex'), Buffer.from(expected, 'hex'))) {
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
-    }
-
-    // req.body may be a Buffer if raw parser was used — parse it
-    const parsed = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString('utf8')) : req.body;
-    const { conversation_id, transcript, analysis, call_id } = parsed;
-    res.sendStatus(200);
-    const convId = conversation_id || call_id;
-    if (!convId) return;
-
-    const { data: call } = await supabase.from('voice_calls')
-      .select('*, leads(*)').eq('eleven_conversation_id', convId).single();
-    if (!call) return;
-
-    const updates: any = { status: 'completed', ended_at: new Date().toISOString() };
-    if (transcript) updates.transcript = typeof transcript === 'string' ? transcript : JSON.stringify(transcript);
-
-    if (transcript) {
-      try {
-        const transcriptText = typeof transcript === 'string'
-          ? transcript
-          : (transcript.transcript || JSON.stringify(transcript)).slice(0, 3000);
-
-        const analysisResult = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 300,
-          messages: [{
-            role: 'user',
-            content: `Bu telefon görüşmesi transkriptini analiz et ve JSON döndür:
-
-Transkript:
-${transcriptText}
-
-JSON:
-{
-  "interest_score": 1-10,
-  "sentiment": "positive|neutral|negative",
-  "objections": ["itiraz 1"],
-  "next_action": "callback|email|whatsapp|no_action",
-  "outcome": "positive|neutral|negative",
-  "crm_note": "CRM'e girilecek kısa not"
-}`,
-          }],
-        });
-
-        const analysisText = (analysisResult.content[0] as any)?.text || '';
-        const match = analysisText.match(/\{[\s\S]*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          updates.analysis = parsed;
-          updates.outcome = parsed.outcome === 'positive' ? 'positive' : 'negative';
-          if (parsed.crm_note && call.lead_id) {
-            await supabase.from('leads').update({
-              notes: parsed.crm_note,
-              status: parsed.outcome === 'positive' ? 'responded' : 'contacted',
-            }).eq('id', call.lead_id);
-          }
-        }
-      } catch {}
-    }
-
-    if (analysis && !updates.analysis) {
-      updates.analysis = analysis;
-      updates.outcome = analysis.success_evaluation === 'success' ? 'positive' : 'negative';
-    }
-
-    await supabase.from('voice_calls').update(updates).eq('eleven_conversation_id', convId);
-  } catch (e: any) { console.error('Webhook error:', e.message); }
-});
-
 router.post('/webhook/vapi', async (req: any, res: any) => {
   try {
     const { message } = req.body;
@@ -1210,8 +1049,8 @@ router.post('/webhook/vapi', async (req: any, res: any) => {
     if (transcript.length > 50) {
       try {
         const analysisResult = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
+          model: 'claude-sonnet-4-6',
+          max_tokens: 600,
           messages: [{ role: 'user', content: `Aşağıdaki telefon satış görüşmesini analiz et ve JSON döndür:
 Transkript: "${transcript.slice(0, 4000)}"
 
@@ -1634,7 +1473,7 @@ router.get('/provider-status', async (_req: any, res: any) => {
     xttsConfigured:       !!endpointId,
     xttsHealth,
     vapiConfigured:       !!VAPI_KEY && !!VAPI_PHONE_ID,
-    libraryConfigured:    !!ELEVEN_KEY,
+    libraryConfigured:    true,
     perplexityConfigured: !!process.env.PERPLEXITY_API_KEY,
   });
 });

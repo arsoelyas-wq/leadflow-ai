@@ -64,6 +64,14 @@ async function autoMigrateColumns() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS webhook_token TEXT;
       ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
       UPDATE feature_flags SET status = CASE WHEN is_enabled THEN 'active' ELSE 'disabled' END WHERE status IS NULL OR status = '';
+
+      -- API key gerektiren özellikler: yoksa "coming_soon" olarak işaretle (mevcut kaydı değiştirme)
+      INSERT INTO feature_flags (flag_key, status, is_enabled, description)
+        VALUES
+          ('voice_outreach', 'coming_soon', false, 'AI Sesli Arama'),
+          ('video_outreach', 'coming_soon', false, 'AI Video Outreach'),
+          ('sms_campaigns',  'coming_soon', false, 'SMS Kampanyaları')
+        ON CONFLICT (flag_key) DO NOTHING;
     `;
     await axios.post(
       `${process.env.SUPABASE_URL}/rest/v1/sql`,
@@ -78,7 +86,7 @@ async function autoMigrateColumns() {
         timeout: 20000,
       }
     );
-    console.log('[AutoMigrate] ✅ webhook_token + feature_flags.status kolonları hazır');
+    console.log('[AutoMigrate] ✅ webhook_token + feature_flags.status + coming_soon flags hazır');
   } catch (e: any) {
     console.log('[AutoMigrate] Kolon migrasyonu atlanıyor:', e?.response?.data?.message || e.message);
   }

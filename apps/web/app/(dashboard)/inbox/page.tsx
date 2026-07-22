@@ -627,7 +627,12 @@ export default function UnifiedInboxPage() {
               toast.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
             }`}>
               {toast.type === 'error' && <AlertCircle size={12}/>}
-              {toast.text}
+              <span className="flex-1">{toast.text}</span>
+              {toast.type === 'error' && toast.text?.includes('SMTP') && (
+                <Link href="/settings#channels" className="underline font-semibold text-red-700 hover:text-red-900 whitespace-nowrap ml-1">
+                  SMTP Ayarla →
+                </Link>
+              )}
             </div>
           )}
 

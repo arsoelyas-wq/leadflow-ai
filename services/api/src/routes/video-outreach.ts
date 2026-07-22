@@ -13,15 +13,9 @@ const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SE
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
 const { synthesizeXtts } = require('../services/xtts-engine');
 
-const HEYGEN_KEY  = process.env.HEYGEN_API_KEY;
-const ELEVEN_KEY  = process.env.ELEVENLABS_API_KEY;
-const HEYGEN_BASE = 'https://api.heygen.com';
-const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
 const API_BASE    = process.env.API_URL || 'https://leadflow-ai-production.up.railway.app';
 
 const MAX_CAMPAIGN_LEADS = 20;
-
-function heygenHeaders() { return { 'X-Api-Key': HEYGEN_KEY, 'Content-Type': 'application/json' }; }
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function makeTrackingCode() { return crypto.randomBytes(10).toString('hex'); }
 function trackingUrl(code: string) { return `${API_BASE}/v/${code}`; }
@@ -324,7 +318,7 @@ async function researchFromWebsite(lead: any, profile: any): Promise<LeadResearc
   // Claude sector-based analysis
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       messages: [{
         role: 'user',
@@ -442,7 +436,7 @@ async function generateHooks(lead: any, profile: any, research?: LeadResearch | 
 
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 200,
       messages: [{
         role: 'user',
@@ -623,7 +617,7 @@ async function generateScript(lead: any, profile: any, language: string, researc
       + (opportunity ? 'Fayda: ' + opportunity + '. ' : '')
       + 'Hook ile ac (Merhaba deme), sorunu adlandir, cozum anlat, kanit ver, 15 dk gorusme iste. Her bolum ' + brandName + ' icin ozel. Sadece metin.';
     const fb = await anthropic.messages.create(
-      { model: 'claude-haiku-4-5-20251001', max_tokens: 600, messages: [{ role: 'user', content: fp }] },
+      { model: 'claude-sonnet-4-6', max_tokens: 600, messages: [{ role: 'user', content: fp }] },
       { timeout: 22000 }
     );
     const ft = ((fb.content[0] as any)?.text || '').trim();
@@ -637,7 +631,7 @@ async function generateScript(lead: any, profile: any, language: string, researc
   try {
     const mp = brandName + ' icin ' + (lead.sector || 'ticaret') + ' sektorunde ' + lang + ' satis scripti yaz. 150 kelime. Sorun: ' + (pains[0] || 'musteri kaybi') + '. Hook ile ac, sorunu belirt, cozum sun, gorusme iste.';
     const mr = await anthropic.messages.create(
-      { model: 'claude-haiku-4-5-20251001', max_tokens: 500, messages: [{ role: 'user', content: mp }] },
+      { model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: mp }] },
       { timeout: 18000 }
     );
     const mt = ((mr.content[0] as any)?.text || '').trim();
@@ -661,7 +655,7 @@ async function generateWhatsAppIntro(lead: any, profile: any, research?: LeadRes
   try {
     const contactFirst = normalizeText(lead.contact_name?.split(' ')[0] || brandName.split(' ')[0]);
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 120,
       messages: [{
         role: 'user',
@@ -814,7 +808,7 @@ async function generateReviewCardBackground(research: LeadResearch, brandName: s
 
 // ─── EMOTION + VIDEO ENGINE INTEGRATION ──────────────────────────────────────
 
-const { analyzeEmotion, buildElevenLabsVoiceSettings, enrichScriptWithPauses, serializeProfile } = require('../services/emotion-engine');
+const { analyzeEmotion, enrichScriptWithPauses, serializeProfile } = require('../services/emotion-engine');
 const { generateVideo: generateVideoEngine } = require('../services/video-engine');
 
 // Yardımcı: migration 20260630_video_outreach_columns.sql çalışana kadar
@@ -883,7 +877,7 @@ async function generateFreeAudio(text: string, language = 'tr'): Promise<Buffer>
   return Buffer.concat(buffers);
 }
 
-// ─── AUDIO PIPELINE — Azure Neural TTS → ElevenLabs (cloned voices) → Google ──
+// ─── AUDIO PIPELINE — XTTS (cloned voices) → Azure Neural TTS → Google ─────────
 
 const { synthesize: ttsSynthesize } = require('../services/tts-engine');
 
@@ -926,31 +920,16 @@ async function generateAudio(text: string, voiceId: string, emotionProfile?: any
     return ttsSynthesize({ text, language, voiceId, provider: 'cartesia' });
   }
 
-  // ElevenLabs path (kept for cloned voices — alphanumeric IDs)
-  const voiceSettings = emotionProfile
-    ? buildElevenLabsVoiceSettings(emotionProfile)
-    : { stability: 0.75, similarity_boost: 0.85, style: 0.2, use_speaker_boost: true };
-
+  // Unknown voice ID — fall back to Azure then Google TTS
   try {
-    const r = await axios.post(
-      `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
-      { text, model_id: 'eleven_turbo_v2_5', voice_settings: voiceSettings },
-      { headers: { 'xi-api-key': ELEVEN_KEY, 'Content-Type': 'application/json' }, responseType: 'arraybuffer', timeout: 30000 }
-    );
-    return Buffer.from(r.data);
-  } catch (err: any) {
-    console.warn(`[Audio] ElevenLabs failed (${err?.response?.status || 'network'}): ${err.message?.slice(0, 60)}`);
-    // Auto-fallback: try Azure, then free Google TTS
-    try {
-      return await ttsSynthesize({ text, language, provider: 'azure' });
-    } catch {
-      console.warn('[Audio] Azure TTS also failed — using free Google TTS');
-      return generateFreeAudio(text, language);
-    }
+    return await ttsSynthesize({ text, language, provider: 'azure' });
+  } catch {
+    console.warn('[Audio] Azure TTS failed — using free Google TTS');
+    return generateFreeAudio(text, language);
   }
 }
 
-// Resolve replica for user — returns null if no replica found (falls back to HeyGen)
+// Resolve replica for user — returns null if no replica found
 async function getUserReplica(userId: string, replicaId?: string): Promise<any | null> {
   try {
     const query = supabase.from('user_replicas').select('*').eq('user_id', userId).eq('status', 'ready');
@@ -974,57 +953,6 @@ async function getStockAvatarVideoUrl(stockAvatarId: string): Promise<string | n
   } catch { return null; }
 }
 
-async function uploadAudioToHeygen(audioBuffer: Buffer): Promise<string> {
-  const r = await axios.post(
-    'https://upload.heygen.com/v1/asset',
-    audioBuffer,
-    { headers: { 'X-Api-Key': HEYGEN_KEY, 'Content-Type': 'audio/mpeg', 'Content-Length': audioBuffer.length }, timeout: 30000, maxBodyLength: Infinity }
-  );
-  const assetId = r.data?.data?.id;
-  if (!assetId) throw new Error('HeyGen asset ID alınamadı: ' + JSON.stringify(r.data));
-  return assetId;
-}
-
-async function generateHeygenVideo(params: { avatarId: string; audioBuffer: Buffer; aspectRatio: string; backgroundUrl?: string }): Promise<string> {
-  const { avatarId, audioBuffer, aspectRatio, backgroundUrl } = params;
-  const audioAssetId = await uploadAudioToHeygen(audioBuffer);
-  const dimensions: Record<string, { width: number; height: number }> = {
-    '9:16': { width: 720, height: 1280 },
-    '16:9': { width: 1280, height: 720 },
-    '1:1':  { width: 720, height: 720 },
-  };
-  const dim = dimensions[aspectRatio] || dimensions['9:16'];
-
-  const character: any = { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' };
-  if (backgroundUrl) {
-    // PIP mode: avatar in bottom-left corner at 40% scale
-    character.scale  = 0.4;
-    character.offset = { x: -0.4, y: -0.35 };
-  }
-
-  const videoInput: any = { character, voice: { type: 'audio', audio_asset_id: audioAssetId } };
-  if (backgroundUrl) {
-    videoInput.background = { type: 'image', url: backgroundUrl };
-  }
-
-  const r = await axios.post(
-    `${HEYGEN_BASE}/v2/video/generate`,
-    { video_inputs: [videoInput], dimension: dim },
-    { headers: heygenHeaders(), timeout: 30000 }
-  );
-  const videoId = r.data?.data?.video_id;
-  if (!videoId) throw new Error('HeyGen video ID alınamadı: ' + JSON.stringify(r.data));
-  return videoId;
-}
-
-async function checkVideoStatus(heygenVideoId: string): Promise<{ status: string; url?: string; thumbnail?: string }> {
-  const r = await axios.get(
-    `${HEYGEN_BASE}/v1/video_status.get?video_id=${heygenVideoId}`,
-    { headers: heygenHeaders(), timeout: 10000 }
-  );
-  const d = r.data?.data;
-  return { status: d?.status || 'processing', url: d?.video_url, thumbnail: d?.thumbnail_url };
-}
 
 async function sendWhatsApp(userId: string, phone: string, message: string) {
   const { sendWhatsAppMessage } = require('./settings');
@@ -1033,40 +961,39 @@ async function sendWhatsApp(userId: string, phone: string, message: string) {
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 
-// GET /api/video-outreach/avatars
+// GET /api/video-outreach/avatars — stok avatarlar (avatar-library'den) + kullanıcı replikalari
 router.get('/avatars', async (req: any, res: any) => {
   try {
-    const { search = '', gender = '', page = 1 } = req.query;
-    const r = await axios.get(`${HEYGEN_BASE}/v2/avatars`, { headers: heygenHeaders(), timeout: 15000 });
-    let avatars = r.data?.data?.avatars || [];
-    if (search) avatars = avatars.filter((a: any) => a.avatar_name?.toLowerCase().includes((search as string).toLowerCase()));
-    if (gender) avatars = avatars.filter((a: any) => a.gender?.toLowerCase() === gender);
+    const { search = '', page = 1 } = req.query;
     const pageSize = 30;
     const pageNum  = Number(page);
-    const total    = avatars.length;
+    const { data: stockAvatars } = await supabase
+      .from('stock_avatars')
+      .select('id, name:display_name, gender, preview_image:thumbnail_url, preview_video:latentsync_video_url, tags')
+      .eq('is_active', true)
+      .ilike('display_name', search ? `%${search}%` : '%')
+      .range((pageNum - 1) * pageSize, pageNum * pageSize - 1);
+    const total = (stockAvatars || []).length;
     res.json({
-      avatars: avatars.slice((pageNum - 1) * pageSize, pageNum * pageSize).map((a: any) => ({
-        avatar_id: a.avatar_id, name: a.avatar_name, gender: a.gender,
-        preview_image: a.preview_image_url || a.preview_video_url,
-        preview_video: a.preview_video_url, tags: a.tags || [],
+      avatars: (stockAvatars || []).map((a: any) => ({
+        avatar_id: a.id, name: a.name, gender: a.gender,
+        preview_image: a.preview_image, preview_video: a.preview_video, tags: a.tags || [],
       })),
       total, page: pageNum, pages: Math.ceil(total / pageSize),
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/video-outreach/eleven-voices
+// GET /api/video-outreach/eleven-voices — kullanıcının klonlanmış sesleri (XTTS)
 router.get('/eleven-voices', async (req: any, res: any) => {
   try {
-    const { language = 'tr' } = req.query;
-    const norm = (v: any) => ({ voice_id: v.voice_id, name: v.name, preview_url: v.preview_url || null, gender: v.labels?.gender || v.gender || null, accent: v.labels?.accent || v.accent || null });
-    const [r1, r2] = await Promise.allSettled([
-      axios.get(`${ELEVEN_BASE}/voices`, { headers: { 'xi-api-key': ELEVEN_KEY } }),
-      axios.get(`${ELEVEN_BASE}/shared-voices?page_size=100&language=${language}`, { headers: { 'xi-api-key': ELEVEN_KEY } }),
-    ]);
-    const myV   = r1.status === 'fulfilled' ? r1.value.data.voices.map(norm) : [];
-    const langV = r2.status === 'fulfilled' ? r2.value.data.voices.map(norm) : [];
-    res.json({ my: myV, language: langV, total: langV.length });
+    const { data } = await supabase
+      .from('cloned_voices')
+      .select('id, name, sample_url, created_at')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false });
+    const voices = (data || []).map((v: any) => ({ voice_id: v.id, name: v.name, preview_url: v.sample_url }));
+    res.json({ my: voices, language: [], total: voices.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1087,7 +1014,7 @@ router.get('/check-duplicates', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/video-outreach/status/:id — single video with live HeyGen check
+// GET /api/video-outreach/status/:id — single video status
 router.get('/status/:id', async (req: any, res: any) => {
   try {
     const { data: video } = await supabase
@@ -1097,19 +1024,6 @@ router.get('/status/:id', async (req: any, res: any) => {
       .eq('user_id', req.userId)
       .single();
     if (!video) return res.status(404).json({ error: 'Video bulunamadı' });
-
-    if (video.status === 'processing' && video.heygen_video_id) {
-      try {
-        const result = await checkVideoStatus(video.heygen_video_id);
-        if (result.status === 'completed' && result.url) {
-          await supabase.from('video_outreach').update({ status: 'completed', video_url: result.url, thumbnail_url: result.thumbnail }).eq('id', video.id);
-          return res.json({ ...video, status: 'completed', video_url: result.url, thumbnail_url: result.thumbnail });
-        } else if (result.status === 'failed') {
-          await supabase.from('video_outreach').update({ status: 'failed' }).eq('id', video.id);
-          return res.json({ ...video, status: 'failed' });
-        }
-      } catch {}
-    }
     res.json(video);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -1250,13 +1164,13 @@ router.post('/generate/single', async (req: any, res: any) => {
           const audioRes = await axios.get(testAudioUrl, { responseType: 'arraybuffer' });
           audioBuffer = Buffer.from(audioRes.data);
         } else {
-          audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id || voiceId, emotionProfile, language, userId);
+          audioBuffer = await generateAudio(enrichedScript, replica?.elevenlabs_voice_id ? `clone:${replica.elevenlabs_voice_id}` : voiceId, emotionProfile, language, userId);
         }
 
         let finalVideoUrl: string | undefined;
-        let usedEngine = 'heygen';
+        let usedEngine = 'none';
 
-        // Priority: stock avatar > personal replica > HeyGen
+        // Priority: stock avatar > personal replica
         let lastEngineError = '';
         if (stockSeedUrl) {
           // Stock avatar: MuseTalk if RunPod ready, else LatentSync fallback
@@ -1289,29 +1203,20 @@ router.post('/generate/single', async (req: any, res: any) => {
             finalVideoUrl = result.videoUrl;
             usedEngine    = result.engine;
           } catch (engineErr: any) {
-            console.warn(`[Video] ${replica.engine} failed, falling back to HeyGen:`, engineErr.message);
+            lastEngineError = engineErr.message;
+            console.warn(`[Video] ${replica.engine} failed:`, engineErr.message);
           }
         }
 
-        if (!finalVideoUrl && stockSeedUrl) {
+        if (!finalVideoUrl) {
           const isTimeout = lastEngineError.includes('timed out') || lastEngineError.includes('timeout') || lastEngineError.includes('IN_QUEUE');
           if (isTimeout) {
             throw new Error('RunPod GPU kuyruğu dolu — şu an işlenebilecek GPU kapasitesi yok. Birkaç dakika sonra tekrar deneyin.');
           }
-          throw new Error(lastEngineError || 'Video motoru başlatılamadı. RunPod env vars (RUNPOD_API_KEY, RUNPOD_ENDPOINT_ID) kontrol edin.');
+          throw new Error(lastEngineError || 'Video motoru başlatılamadı. Lütfen bir replica veya stok avatar seçin ve RUNPOD_API_KEY / RUNPOD_ENDPOINT_ID ortam değişkenlerini kontrol edin.');
         }
 
-        if (!finalVideoUrl) {
-          // Fallback: HeyGen (only for personal replicas / standard flow)
-          const heygenVideoId = await generateHeygenVideo({ avatarId, audioBuffer, aspectRatio, backgroundUrl });
-          await supabase.from('video_outreach').update({
-            heygen_video_id: heygenVideoId, status: 'processing',
-            engine: 'heygen',
-            emotion_profile: serializedEmotion,
-            replica_id: replica?.id || null,
-          }).eq('id', videoRecord?.id);
-          console.log(`[Video] HeyGen ID: ${heygenVideoId} (${research.brandName}) score:${score}${backgroundUrl ? ' +reviewCard' : ''}`);
-        } else {
+        if (finalVideoUrl) {
           // Direct video URL from VideoEngine — fallback olmadan status asla 'completed' olmaz
           const { error: phase3Err } = await supabase.from('video_outreach').update({
             video_url: finalVideoUrl,
@@ -1425,7 +1330,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
           const campReplica       = await getUserReplica(userId, req.body.replicaId);
           const campStockAvatarId = req.body.stockAvatarId as string | undefined;
           const campStockSeedUrl  = campStockAvatarId ? await getStockAvatarVideoUrl(campStockAvatarId) : null;
-          const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id || voiceId, campEmotion, callLang, userId);
+          const audio = await generateAudio(campEnrichedScript, campReplica?.elevenlabs_voice_id ? `clone:${campReplica.elevenlabs_voice_id}` : voiceId, campEmotion, callLang, userId);
           const code  = makeTrackingCode();
 
           let campFinalUrl: string | undefined;
@@ -1458,7 +1363,7 @@ router.post('/generate/campaign', async (req: any, res: any) => {
               });
               campFinalUrl = result.videoUrl;
               campEngine   = result.engine;
-            } catch { /* fall through to HeyGen */ }
+            } catch (e: any) { campLastEngineErr = e.message; console.warn('[Campaign] MuseTalk (replica) failed:', e.message); }
           }
 
           if (!campFinalUrl && campStockSeedUrl) {
@@ -1466,14 +1371,14 @@ router.post('/generate/campaign', async (req: any, res: any) => {
             throw new Error(isTmo ? 'RunPod GPU kuyruğu dolu — şu an işlenebilecek GPU kapasitesi yok. Birkaç dakika sonra tekrar deneyin.' : (campLastEngineErr || 'Video motoru başlatılamadı.'));
           }
           if (!campFinalUrl) {
-            campHeygenId = await generateHeygenVideo({ avatarId, audioBuffer: audio, aspectRatio, backgroundUrl: campaignBgUrl });
-            campEngine   = 'heygen';
+            const isTmo = campLastEngineErr.includes('timed out') || campLastEngineErr.includes('timeout') || campLastEngineErr.includes('IN_QUEUE');
+            throw new Error(isTmo ? 'RunPod GPU kuyruğu dolu — şu an işlenebilecek GPU kapasitesi yok. Birkaç dakika sonra tekrar deneyin.' : (campLastEngineErr || 'Video motoru başlatılamadı.'));
           }
 
           const campPayload = {
             user_id: userId, lead_id: leadId, campaign_id: campaign?.id,
             avatar_id: avatarId, voice_id: voiceId,
-            heygen_video_id: campHeygenId,
+            heygen_video_id: null,
             video_url: campFinalUrl,
             status: campFinalUrl ? 'completed' : 'processing',
             engine: campEngine,
@@ -1549,7 +1454,7 @@ router.post('/retry/:id', async (req: any, res: any) => {
         }
 
         const retryReplica = await getUserReplica(req.userId, video.replica_id);
-        const audio = await generateAudio(retryScript, retryReplica?.elevenlabs_voice_id || video.voice_id, retryEmotion, video.language || 'tr', req.userId);
+        const audio = await generateAudio(retryScript, retryReplica?.elevenlabs_voice_id ? `clone:${retryReplica.elevenlabs_voice_id}` : video.voice_id, retryEmotion, video.language || 'tr', req.userId);
 
         let retryFinalUrl: string | undefined;
         let retryEngine = 'heygen';
@@ -1570,11 +1475,7 @@ router.post('/retry/:id', async (req: any, res: any) => {
         }
 
         if (!retryFinalUrl) {
-          const heygenId = await generateHeygenVideo({ avatarId: video.avatar_id, audioBuffer: audio, aspectRatio: video.aspect_ratio, backgroundUrl: retryBgUrl });
-          await supabase.from('video_outreach').update({
-            heygen_video_id: heygenId, status: 'processing', engine: 'heygen',
-            emotion_profile: retryEmotion ? serializeProfile(retryEmotion) : null,
-          }).eq('id', video.id);
+          throw new Error(retryFinalUrl === undefined ? 'Replica veya stok avatar bulunamadı — video yeniden denenemedi.' : 'Video motoru başlatılamadı.');
         } else {
           const { error: retryErr } = await supabase.from('video_outreach').update({
             video_url: retryFinalUrl, status: 'completed', engine: retryEngine,
@@ -1709,45 +1610,6 @@ router.post('/preview-script', async (req: any, res: any) => {
   }
 });
 
-// POST /api/video-outreach/heygen-webhook — HeyGen video ready notification
-router.post('/heygen-webhook', async (req: any, res: any) => {
-  try {
-    res.sendStatus(200);
-    const { event, event_data } = req.body;
-    if (!event_data?.video_id) return;
-
-    const heygenVideoId = event_data.video_id;
-    const { data: video } = await supabase.from('video_outreach')
-      .select('id, user_id, lead_id, auto_send, tracking_code, research_data')
-      .eq('heygen_video_id', heygenVideoId)
-      .single();
-    if (!video) return;
-
-    if (event === 'video_status.success') {
-      await supabase.from('video_outreach').update({
-        status: 'completed',
-        video_url: event_data.video_url,
-        thumbnail_url: event_data.thumbnail_url,
-      }).eq('id', video.id);
-
-      if (video.auto_send) {
-        const { data: lead }    = await supabase.from('leads').select('phone, contact_name, company_name').eq('id', video.lead_id).single();
-        const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', video.user_id).single();
-        if (lead?.phone) {
-          const intro   = await generateWhatsAppIntro(lead, profile, video.research_data);
-          const tUrl    = video.tracking_code ? trackingUrl(video.tracking_code) : event_data.video_url;
-          await sendWhatsApp(video.user_id, lead.phone, `${intro}\n\n${tUrl}`).catch(() => {});
-          await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', video.id);
-          const { createSequenceForSentVideo } = require('./video-sequences');
-          createSequenceForSentVideo(video.id, video.user_id, video.lead_id, video.research_data, profile).catch(() => {});
-        }
-      }
-    } else if (event === 'video_status.fail') {
-      await supabase.from('video_outreach').update({ status: 'failed', error_message: event_data.error || 'HeyGen hatası' }).eq('id', video.id);
-    }
-  } catch (e: any) { console.error('[HeyGen Webhook]', e.message); }
-});
-
 // GET /api/video-outreach/test-ai — diagnose Anthropic connectivity
 router.get('/test-ai', async (req: any, res: any) => {
   const results: any = { env_key_set: !!process.env.ANTHROPIC_API_KEY };
@@ -1835,41 +1697,7 @@ function getLanguageByCountry(countryCode: string): string {
   return map[countryCode?.toUpperCase()] || 'en';
 }
 
-// ─── 5 DAKİKA POLLING — HeyGen webhook yedek ─────────────────────────────────
-setInterval(async () => {
-  try {
-    const { data: processing } = await supabase.from('video_outreach')
-      .select('id, heygen_video_id, auto_send, lead_id, user_id, tracking_code, research_data')
-      .eq('status', 'processing').limit(10);
-
-    for (const v of processing || []) {
-      try {
-        const result = await checkVideoStatus(v.heygen_video_id);
-        if (result.status === 'completed' && result.url) {
-          await supabase.from('video_outreach').update({
-            status: 'completed', video_url: result.url, thumbnail_url: result.thumbnail,
-          }).eq('id', v.id);
-
-          if (v.auto_send) {
-            const { data: lead }    = await supabase.from('leads').select('phone, contact_name, company_name').eq('id', v.lead_id).single();
-            const { data: profile } = await supabase.from('business_profiles').select('*').eq('user_id', v.user_id).single();
-            if (lead?.phone) {
-              const intro   = await generateWhatsAppIntro(lead, profile, v.research_data);
-              const tUrl    = v.tracking_code ? trackingUrl(v.tracking_code) : result.url;
-              await sendWhatsApp(v.user_id, lead.phone, `${intro}\n\n${tUrl}`).catch(() => {});
-              await supabase.from('video_outreach').update({ sent_at: new Date().toISOString(), sent_via: 'whatsapp' }).eq('id', v.id);
-              const { createSequenceForSentVideo } = require('./video-sequences');
-              createSequenceForSentVideo(v.id, v.user_id, v.lead_id, v.research_data, profile).catch(() => {});
-            }
-          }
-        } else if (result.status === 'failed') {
-          await supabase.from('video_outreach').update({ status: 'failed' }).eq('id', v.id);
-        }
-        await sleep(500);
-      } catch {}
-    }
-  } catch {}
-}, 5 * 60 * 1000);
+// Not: HeyGen polling kaldırıldı — video üretimi artık MuseTalk/LatentSync üzerinden senkron tamamlanıyor.
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // VIDEO ARCHIVE / DELETE

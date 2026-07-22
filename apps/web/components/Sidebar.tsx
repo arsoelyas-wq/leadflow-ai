@@ -48,7 +48,7 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/lead-machine', label: 'nav.lead_machine', icon: Sparkles, badge: 'AI' },
   { href: '/leads',        label: 'nav.leads',        icon: Users },
   { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
-  { href: '/automations', label: 'nav.automations', icon: Megaphone, badge: 'AI' },
+  { href: '/automations', label: 'nav.automations', icon: Megaphone },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
 ]
 
@@ -66,8 +66,8 @@ const GROUPS: NavGroup[] = [
     id: 'sales', label: 'nav.sales',
     items: [
       { href: '/proposals', label: 'nav.proposals', icon: FileText },
-      { href: '/products',  label: 'nav.products',  icon: Package,  badge: 'AI' },
-      { href: '/digital-tools', label: 'nav.digital_tools', icon: Box, badge: 'AI' },
+      { href: '/products',  label: 'nav.products',  icon: Package },
+      { href: '/digital-tools', label: 'nav.digital_tools', icon: Box },
       { href: '/agent',     label: 'nav.agent',     icon: Bot },
     ],
   },
@@ -90,7 +90,7 @@ const GROUPS: NavGroup[] = [
   {
     id: 'analytics', label: 'nav.group_analytics',
     items: [
-      { href: '/analytics', label: 'nav.analytics', icon: PieChart, badge: 'AI' },
+      { href: '/analytics', label: 'nav.analytics', icon: PieChart },
       { href: '/financial', label: 'nav.financial', icon: Banknote, badge: 'Pro' },
     ],
   },
@@ -117,7 +117,7 @@ const AI_CLONE_ITEMS = [
 const SPECIAL_TOOLS = [
   { href: '/competitor',     label: 'nav.competitor', icon: Swords,     color: '#e11d48', badge: 'AI' },
   { href: '/tenders', label: 'nav.tenders', icon: ScrollText,  color: '#d97706', badge: 'PRO' },
-  { href: '/export',  label: 'nav.export',  icon: Globe2,      color: '#059669', badge: 'AI' },
+  { href: '/export',  label: 'nav.export',  icon: Globe2,      color: '#059669', badge: 'PRO' },
   { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
 ]
 

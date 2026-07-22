@@ -931,7 +931,7 @@ export default function WorkflowPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Zap size={22} className="text-amber-400" /> Otomasyon
@@ -948,7 +948,7 @@ export default function WorkflowPage() {
 
       {/* Stats */}
       {workflows.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {[
             { label: 'Aktif Otomasyon',  value: activeCount,    color: 'text-amber-400' },
             { label: 'Aktif Lead',        value: totalEnrolled,  color: 'text-cyan-400' },

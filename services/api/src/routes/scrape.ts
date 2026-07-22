@@ -8,7 +8,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY
+  || process.env.GOOGLE_MAPS_API_KEY
+  || process.env.GOOGLE_CUSTOM_SEARCH_KEY;
 
 // ── In-memory job store ───────────────────────────────────────────────────────
 interface Job {
@@ -751,8 +753,8 @@ router.post('/google-maps', async (req: any, res: any) => {
         keyword, city, country, phase: 'Başlatılıyor...', startedAt: Date.now(),
       });
 
-      // Reserve credits
-      await supabase.from('users').update({ credits_used: (userData.credits_used || 0) + limit }).eq('id', userId);
+      // Reserve credits atomically
+      await supabase.rpc('increment_credits_used', { user_id: userId, amount: limit });
 
       scrapeLeads({
         keyword, city, country, maxResults: limit,
@@ -773,15 +775,16 @@ router.post('/google-maps', async (req: any, res: any) => {
           if (skipped > 0) j.phase = `${count} kaydedildi, ${skipped} tekrar atlandı`;
           if (count === 0 && apiError) j.error = `Google Places API hatası: ${apiError}`;
         }
-        // Refund unused credits
+        // Refund unused credits atomically
         const diff = limit - count;
         if (diff > 0) {
-          supabase.from('users').update({ credits_used: Math.max(0, (userData.credits_used || 0) + count) }).eq('id', userId);
+          supabase.rpc('decrement_credits_used', { user_id: userId, amount: diff });
         }
       }).catch(e => {
         const j = jobs.get(jobId);
         if (j) { j.status = 'error'; j.error = e.message; }
-        supabase.from('users').update({ credits_used: userData.credits_used || 0 }).eq('id', userId);
+        // Full refund on error
+        supabase.rpc('decrement_credits_used', { user_id: userId, amount: limit });
       });
 
       return res.json({ jobId, async: true, total: limit, message: 'Arka planda çalışıyor...' });
@@ -793,9 +796,7 @@ router.post('/google-maps', async (req: any, res: any) => {
       userId, minScore, requirePhone, requireWebsite, discoverEmails: false,
     });
 
-    await supabase.from('users').update({
-      credits_used: (userData.credits_used || 0) + saved,
-    }).eq('id', userId);
+    await supabase.rpc('increment_credits_used', { user_id: userId, amount: saved });
 
     if (saved === 0 && apiError) {
       return res.status(502).json({

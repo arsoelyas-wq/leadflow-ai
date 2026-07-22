@@ -60,7 +60,7 @@ async function executeStep(
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
         const response = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-4-6',
           max_tokens: 300,
           system: step.ai_prompt || `Sen bir satış temsilcisisin. Müşteriye ${step.channel === 'whatsapp' ? 'WhatsApp' : 'email'} üzerinden takip mesajı yaz. Kısa, samimi, Türkçe. Max 3 cümle.`,
           messages: conversationHistory.length > 0 ? conversationHistory : [

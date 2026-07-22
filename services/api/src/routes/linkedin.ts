@@ -106,7 +106,7 @@ async function analyzeEmployees(employees: any[], companyName: string, sector: s
     const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
     const resp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       messages: [{
         role: 'user',
@@ -149,7 +149,7 @@ async function predictDecisionMakers(companyName: string, sector: string): Promi
     const Anthropic = require('@anthropic-ai/sdk');
     const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
     const resp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 400,
       messages: [{
         role: 'user',
@@ -210,7 +210,7 @@ router.post('/find-decision-makers', async (req: any, res: any) => {
       const Anthropic = require('@anthropic-ai/sdk');
       const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
       const aiResp = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 400,
+        model: 'claude-sonnet-4-6', max_tokens: 400,
         messages: [{ role: 'user', content: 'Return ONLY valid JSON, no markdown, no explanation. Format: {"persons":[{"name":"Ali Yilmaz","title":"CEO","personalizedOpener":"Merhaba, gorusmek istiyordum","approachStrategy":"Dogrudan yak"}]}. Company: ' + lead.company_name + ' Sector: ' + (lead.sector || 'general') }]
       });
       const aiText = aiResp.content[0]?.text || '';

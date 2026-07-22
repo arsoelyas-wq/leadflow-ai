@@ -2,11 +2,10 @@ export {};
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
-const Anthropic = require('@anthropic-ai/sdk');
+const { gptChat } = require('../lib/openai-client');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const GRAPH = 'https://graph.facebook.com/v20.0';
 
@@ -107,16 +106,10 @@ router.post('/creative-generate', async (req: any, res: any) => {
 
     let parsed: any;
     try {
-      const msg = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: 'You are a world-class Meta Ads copywriter specializing in Turkish market. Generate 3 high-converting ad variants. Rules: headline max 40 chars (Turkish), primary text max 125 chars, description max 30 chars. Use emotional triggers, urgency, social proof. Return ONLY valid JSON.',
-        messages: [{
-          role: 'user',
-          content: `Product: ${product}\nGoal: ${goal}\nTarget: ${targetAudience}\nCurrent headline: ${currentTitle}\nCurrent body: ${currentBody}\n\nGenerate 3 improved variants:\n{ "variants": [{ "headline": string, "primaryText": string, "description": string, "callToAction": string, "emotionalHook": string }, ...] }`,
-        }],
-      });
-      const text = (msg.content[0] as any).text;
+      const text = await gptChat({ max_tokens: 1200, messages: [
+        { role: 'system', content: 'You are a world-class Meta Ads copywriter specializing in Turkish market. Generate 3 high-converting ad variants. Rules: headline max 40 chars (Turkish), primary text max 125 chars, description max 30 chars. Use emotional triggers, urgency, social proof. Return ONLY valid JSON.' },
+        { role: 'user', content: `Product: ${product}\nGoal: ${goal}\nTarget: ${targetAudience}\nCurrent headline: ${currentTitle}\nCurrent body: ${currentBody}\n\nGenerate 3 improved variants:\n{ "variants": [{ "headline": string, "primaryText": string, "description": string, "callToAction": string, "emotionalHook": string }, ...] }` },
+      ] });
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
     } catch (e: any) {
@@ -333,16 +326,10 @@ router.get('/budget-optimizer', async (req: any, res: any) => {
         `${c.name}: Budget=$${(c.daily_budget / 100).toFixed(0)}/day, Spend=$${c.spend}, Leads=${c.leads}, CPL=${c.cpl ?? 'N/A'}`
       ).join('\n');
 
-      const msg = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system: 'You are a Meta Ads budget optimization expert. Analyze campaign performance and recommend budget reallocation to maximize leads. Return ONLY valid JSON.',
-        messages: [{
-          role: 'user',
-          content: `Campaigns (last 30 days):\n${campaignLines}\n\nReturn: { "recommendations": [{ "campaignId": string, "campaignName": string, "action": "increase"|"decrease"|"pause", "newBudget": number, "reason": string, "expectedImpact": string }], "summary": string }`,
-        }],
-      });
-      const text = (msg.content[0] as any).text;
+      const text = await gptChat({ max_tokens: 1200, messages: [
+        { role: 'system', content: 'You are a Meta Ads budget optimization expert. Analyze campaign performance and recommend budget reallocation to maximize leads. Return ONLY valid JSON.' },
+        { role: 'user', content: `Campaigns (last 30 days):\n${campaignLines}\n\nReturn: { "recommendations": [{ "campaignId": string, "campaignName": string, "action": "increase"|"decrease"|"pause", "newBudget": number, "reason": string, "expectedImpact": string }], "summary": string }` },
+      ] });
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
       recommendations = parsed.recommendations || [];
@@ -399,16 +386,10 @@ router.post('/ai-campaign/plan', async (req: any, res: any) => {
 
     let plan: any;
     try {
-      const msg = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
-        system: 'You are a world-class Meta Ads strategist with 10+ years experience. Create a complete campaign plan for the Turkish market. Return ONLY valid JSON.',
-        messages: [{
-          role: 'user',
-          content: `Product/Service: ${product}\nDaily Budget: $${budget}\nGoal: ${goal}\nLocation: ${location}\nAge: ${targetAge}\nGender: ${targetGender}\nLanguage: ${language}\n\nCreate a complete Meta Ads campaign plan:\n{\n  "campaignName": string,\n  "objective": "OUTCOME_LEADS"|"OUTCOME_SALES"|"OUTCOME_AWARENESS",\n  "adSetName": string,\n  "targeting": { "ageMin": number, "ageMax": number, "genders": [1,2], "interests": [{"id": "6003067", "name": string}], "locales": [24] },\n  "ads": [{ "headline": string, "primaryText": string, "description": string, "callToAction": "LEARN_MORE"|"SIGN_UP"|"GET_QUOTE"|"CONTACT_US" }],\n  "estimatedCPL": number,\n  "estimatedLeadsPerDay": number,\n  "strategyRationale": string,\n  "warnings": [string]\n}`,
-        }],
-      });
-      const text = (msg.content[0] as any).text;
+      const text = await gptChat({ max_tokens: 2400, messages: [
+        { role: 'system', content: 'You are a world-class Meta Ads strategist with 10+ years experience. Create a complete campaign plan for the Turkish market. Return ONLY valid JSON.' },
+        { role: 'user', content: `Product/Service: ${product}\nDaily Budget: $${budget}\nGoal: ${goal}\nLocation: ${location}\nAge: ${targetAge}\nGender: ${targetGender}\nLanguage: ${language}\n\nCreate a complete Meta Ads campaign plan:\n{\n  "campaignName": string,\n  "objective": "OUTCOME_LEADS"|"OUTCOME_SALES"|"OUTCOME_AWARENESS",\n  "adSetName": string,\n  "targeting": { "ageMin": number, "ageMax": number, "genders": [1,2], "interests": [{"id": "6003067", "name": string}], "locales": [24] },\n  "ads": [{ "headline": string, "primaryText": string, "description": string, "callToAction": "LEARN_MORE"|"SIGN_UP"|"GET_QUOTE"|"CONTACT_US" }],\n  "estimatedCPL": number,\n  "estimatedLeadsPerDay": number,\n  "strategyRationale": string,\n  "warnings": [string]\n}` },
+      ] });
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       plan = JSON.parse(jsonMatch ? jsonMatch[0] : text);
     } catch (e: any) {

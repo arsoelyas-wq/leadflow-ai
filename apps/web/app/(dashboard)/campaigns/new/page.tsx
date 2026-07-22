@@ -84,7 +84,14 @@ export default function NewCampaignPage() {
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduleAt, setScheduleAt] = useState('')
   const [leadsTotal, setLeadsTotal] = useState(0)
+  const [waConnected, setWaConnected] = useState<boolean | null>(null)
   const isMobile = useIsMobile()
+
+  useEffect(() => {
+    api.get('/api/settings/whatsapp/status')
+      .then((d: any) => setWaConnected(d.status === 'connected'))
+      .catch(() => setWaConnected(false))
+  }, [])
 
   useEffect(() => { if (step === 3) loadLeads() }, [step])
 
@@ -120,8 +127,11 @@ export default function NewCampaignPage() {
       ? selectedLeads.filter(id => !filteredLeads.some(l => l.id === id))
       : [...new Set([...selectedLeads, ...filteredLeads.map(l => l.id)])])
 
+  const waRequired = channel === 'whatsapp' || channel === 'multi'
+  const waBlocked  = waRequired && waConnected === false
+
   const canNext = () => {
-    if (step === 1) return name.trim().length > 0 && channel.length > 0 && (!isScheduled || scheduleAt.length > 0)
+    if (step === 1) return name.trim().length > 0 && channel.length > 0 && (!isScheduled || scheduleAt.length > 0) && !waBlocked
     if (step === 2) return customMessage.trim().length > 0
     if (step === 3) return selectedLeads.length > 0
     return false
@@ -233,6 +243,20 @@ export default function NewCampaignPage() {
                   )
                 })}
               </div>
+
+              {/* WhatsApp bağlantı uyarısı */}
+              {waBlocked && (
+                <div className="mt-3 flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                  <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-red-300 font-semibold text-sm">WhatsApp Bağlı Değil</p>
+                    <p className="text-red-400/80 text-xs mt-1">
+                      WhatsApp kampanyası göndermek için önce bağlantı kurmanız gerekiyor.{' '}
+                      <a href="/settings" className="underline text-red-300 hover:text-white">Ayarlar → WhatsApp</a> sayfasından QR kodu okutun.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Scheduling */}

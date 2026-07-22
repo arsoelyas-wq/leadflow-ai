@@ -351,10 +351,92 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: a
       }
     }
 
+    // Subscription cancelled (user cancelled or payment failed after retries)
+    if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      const { data: user } = await supabase
+        .from('users')
+        .select('id, plan_type')
+        .eq('stripe_customer_id', sub.customer)
+        .single();
+
+      if (user) {
+        const starterPlan = PLANS['starter'];
+        await supabase.from('users').update({
+          plan_type:             'starter',
+          credits_total:         starterPlan?.monthlyCredits || 50,
+          credits_used:          0,
+          subscription_renews_at: null,
+        }).eq('id', user.id);
+
+        await supabase.from('credit_transactions').insert({
+          user_id:       user.id,
+          action:        'subscription_cancelled',
+          amount:        0,
+          description:   `${user.plan_type || 'Plan'} iptal edildi — Starter'a geçildi`,
+          balance_after: starterPlan?.monthlyCredits || 50,
+        });
+      }
+    }
+
+    // Payment failed (Stripe retries before issuing subscription.deleted)
+    if (event.type === 'invoice.payment_failed') {
+      const invoice = event.data.object;
+      const { data: user } = await supabase
+        .from('users')
+        .select('id')
+        .eq('stripe_customer_id', invoice.customer)
+        .single();
+
+      if (user) {
+        await supabase.from('credit_transactions').insert({
+          user_id:       user.id,
+          action:        'payment_failed',
+          amount:        0,
+          description:   `Ödeme başarısız — ₺${((invoice.amount_due || 0) / 100).toFixed(0)} (${invoice.attempt_count}. deneme)`,
+          balance_after: 0,
+        });
+      }
+    }
+
     res.json({ received: true });
   } catch (e: any) {
     console.error('Webhook error:', e.message);
     res.status(400).json({ error: e.message });
+  }
+});
+
+// ── POST /api/payments/portal — Stripe müşteri portalı (abonelik iptal, fatura, kart güncelle) ──
+
+router.post('/portal', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith('sk_test_placeholder')) {
+      return res.json({ url: `${APP_URL}/billing` });
+    }
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('email, stripe_customer_id')
+      .eq('id', userId)
+      .single();
+
+    if (!user?.stripe_customer_id) {
+      return res.status(400).json({ error: 'Aktif abonelik bulunamadı' });
+    }
+
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const session = await stripe.billingPortal.sessions.create({
+      customer:   user.stripe_customer_id,
+      return_url: `${APP_URL}/billing`,
+    });
+
+    res.json({ url: session.url });
+  } catch (e: any) {
+    console.error('Portal error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 

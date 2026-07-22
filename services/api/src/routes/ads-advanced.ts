@@ -31,19 +31,9 @@ router.post('/smart-launch', async (req: any, res: any) => {
     if (!product || !budget) return res.status(400).json({ error: 'product ve budget zorunlu' });
 
     // AI ile reklam içeriği üret
-    const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const aiResp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
-      messages: [{
-        role: 'user',
-        content: `Meta reklam kampanyası için JSON üret:
-Ürün: ${product}, Sektör: ${sector || 'genel'}
-{"campaignName":"kampanya adı","headline":"max 30 karakter","description":"max 90 karakter","objective":"OUTCOME_LEADS","targetInterests":["ilgi1","ilgi2"]}`
-      }]
-    });
-    const m = aiResp.content[0]?.text?.match(/\{[\s\S]*\}/);
+    const { gptChat } = require('../lib/openai-client');
+    const _gpt1 = await gptChat({ max_tokens: 400, messages: [{ role: 'user', content: `Meta reklam kampanyası için JSON üret:\nÜrün: ${product}, Sektör: ${sector || 'genel'}\n{"campaignName":"kampanya adı","headline":"max 30 karakter","description":"max 90 karakter","objective":"OUTCOME_LEADS","targetInterests":["ilgi1","ilgi2"]}` }] });
+    const m = _gpt1.match(/\{[\s\S]*\}/);
     const adContent = m ? JSON.parse(m[0]) : { campaignName: `${product} Kampanyası`, headline: product, description: `${product} için özel teklif`, objective: 'OUTCOME_LEADS', targetInterests: [] };
 
     // Kampanya oluştur
@@ -223,23 +213,10 @@ router.post('/competitor-ads/analyze', async (req: any, res: any) => {
     const { ads } = req.body;
     if (!ads?.length) return res.status(400).json({ error: 'ads zorunlu' });
 
-    const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const { gptChat } = require('../lib/openai-client');
     const summary = ads.slice(0, 5).map((a: any) => `${a.pageName}: "${a.title}" - ${a.body?.slice(0, 100)}`).join('\n');
-
-    const resp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `Bu rakip reklamları analiz et ve JSON döndür:
-${summary}
-
-{"patterns":["ortak tema1","ortak tema2"],"weaknesses":["zayıflık1"],"opportunities":["fırsat1"],"suggestedAngle":"önerilen açı","hookIdea":"dikkat çekici başlık önerisi"}`
-      }]
-    });
-
-    const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+    const _gpt2 = await gptChat({ max_tokens: 500, messages: [{ role: 'user', content: `Bu rakip reklamları analiz et ve JSON döndür:\n${summary}\n\n{"patterns":["ortak tema1","ortak tema2"],"weaknesses":["zayıflık1"],"opportunities":["fırsat1"],"suggestedAngle":"önerilen açı","hookIdea":"dikkat çekici başlık önerisi"}` }] });
+    const m = _gpt2.match(/\{[\s\S]*\}/);
     res.json({ analysis: m ? JSON.parse(m[0]) : null });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -259,9 +236,7 @@ router.post('/predict-roas', async (req: any, res: any) => {
     );
 
     const campaigns = campResp.data?.data || [];
-
-    const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const { gptChat } = require('../lib/openai-client');
 
     const perfData = campaigns.map((c: any) => {
       const ins = c.insights?.data?.[0] || {};
@@ -270,19 +245,8 @@ router.post('/predict-roas', async (req: any, res: any) => {
       return `${c.name}: ROAS=${roas}, Harcama=$${ins.spend || 0}, Tıklama=${ins.clicks || 0}, Satın Alma=${purchases}`;
     }).join('\n');
 
-    const resp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      messages: [{
-        role: 'user',
-        content: `Bu Meta reklam verilerine göre 30 günlük ROAS tahmini yap ve JSON döndür:
-${perfData || 'Veri yok — genel tahmin yap'}
-
-{"predicted30DayRoas":2.5,"confidenceScore":75,"budgetRecommendation":"Günlük bütçeyi $20 artır","topPerformer":"kampanya adı","pauseRecommendation":"düşük performanslı kampanya","keyInsight":"ana içgörü","actionPlan":["adım1","adım2","adım3"]}`
-      }]
-    });
-
-    const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+    const _gpt3 = await gptChat({ max_tokens: 600, messages: [{ role: 'user', content: `Bu Meta reklam verilerine göre 30 günlük ROAS tahmini yap ve JSON döndür:\n${perfData || 'Veri yok — genel tahmin yap'}\n\n{"predicted30DayRoas":2.5,"confidenceScore":75,"budgetRecommendation":"Günlük bütçeyi $20 artır","topPerformer":"kampanya adı","pauseRecommendation":"düşük performanslı kampanya","keyInsight":"ana içgörü","actionPlan":["adım1","adım2","adım3"]}` }] });
+    const m = _gpt3.match(/\{[\s\S]*\}/);
     const prediction = m ? JSON.parse(m[0]) : null;
 
     // Kaydet
@@ -329,26 +293,12 @@ router.post('/keyword-intelligence', async (req: any, res: any) => {
       } catch {}
     }
 
-    // AI ile analiz
-    const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const { gptChat } = require('../lib/openai-client');
     const termsText = searchTerms.slice(0, 20).map((t: any) =>
       `"${t.searchTermView?.searchTerm}": ${t.metrics?.clicks || 0} tıklama, ${t.metrics?.conversions || 0} dönüşüm`
     ).join('\n') || 'Google Ads verisi yok — genel analiz';
 
-    const resp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `Google Ads keyword analizi yap. SADECE asagidaki JSON formatinda yanit ver, baska hicbir sey yazma:
-${termsText}
-
-{"negativeKeywords":["ucuz","bedava","indir"],"positiveKeywords":["satin al","fiyat","siparis"],"broadToExact":["mobilya genis->mobilya tam"],"insight":"Kisa ozet","estimatedWastedBudget":"%20"}`
-      }]
-    });
-
-    const rawText = resp.content[0]?.text || '';
+    const rawText = await gptChat({ max_tokens: 500, messages: [{ role: 'user', content: `Google Ads keyword analizi yap. SADECE asagidaki JSON formatinda yanit ver, baska hicbir sey yazma:\n${termsText}\n\n{"negativeKeywords":["ucuz","bedava","indir"],"positiveKeywords":["satin al","fiyat","siparis"],"broadToExact":["mobilya genis->mobilya tam"],"insight":"Kisa ozet","estimatedWastedBudget":"%20"}` }] });
     let analysis = null;
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -388,25 +338,13 @@ router.post('/bid-sentinel/analyze', async (req: any, res: any) => {
       } catch {}
     }
 
-    const Anthropic = require('@anthropic-ai/sdk');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const { gptChat } = require('../lib/openai-client');
     const auctionText = auctionData.slice(0, 10).map((a: any) =>
       `${a.auctionInsight?.domain}: IS=${a.auctionInsight?.impressionShare}, Overlap=${a.auctionInsight?.overlapRate}`
     ).join('\n') || 'Google Ads bağlantısı yok — genel strateji öner';
 
-    const resp = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `Google Ads açık artırma analizi yap. JSON döndür:
-${auctionText}
-
-{"mainCompetitors":["rakip1","rakip2"],"bidStrategy":"önerilen teklif stratejisi","impressionShareTarget":"%70","budgetIncrease":"gerekli bütçe artışı","actionItems":["adım1","adım2"],"urgencyLevel":"low/medium/high"}`
-      }]
-    });
-
-    const m = resp.content[0]?.text?.match(/\{[\s\S]*\}/);
+    const _gpt5 = await gptChat({ max_tokens: 500, messages: [{ role: 'user', content: `Google Ads açık artırma analizi yap. JSON döndür:\n${auctionText}\n\n{"mainCompetitors":["rakip1","rakip2"],"bidStrategy":"önerilen teklif stratejisi","impressionShareTarget":"%70","budgetIncrease":"gerekli bütçe artışı","actionItems":["adım1","adım2"],"urgencyLevel":"low/medium/high"}` }] });
+    const m = _gpt5.match(/\{[\s\S]*\}/);
     res.json({ analysis: m ? JSON.parse(m[0]) : null, competitorsFound: auctionData.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

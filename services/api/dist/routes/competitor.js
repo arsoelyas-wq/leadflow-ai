@@ -1065,43 +1065,8 @@ router.post('/analyze', async (req, res) => {
         const trustpilot = trustpilotRes.status === 'fulfilled' ? trustpilotRes.value : null;
         const linkedin = linkedinRes.status === 'fulfilled' ? linkedinRes.value[0] : null;
         const socialMentions = socialRes.status === 'fulfilled' ? socialRes.value.slice(0, 5) : [];
-        const Anthropic = require('@anthropic-ai/sdk');
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        const analysis = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 1500,
-            messages: [{
-                    role: 'user',
-                    content: `Rakip SWOT analizi: "${competitorName}" — ${city || ''} (${countryConf.name})
-
-VERİLER:
-Google Maps: ${googlePlace ? `Rating: ${googlePlace.rating}/5, ${googlePlace.reviewCount} yorum, Adres: ${googlePlace.address || 'yok'}` : 'Bulunamadı'}
-Şikayetvar: ${complaints ? `${complaints.complaintCount} şikayet. Örnekler: ${(complaints.complaints || []).slice(0, 3).join(' | ')}` : 'Veri yok'}
-Trustpilot: ${trustpilot ? `Rating: ${trustpilot.rating}` : 'Veri yok'}
-LinkedIn: ${linkedin ? linkedin.name : 'Veri yok'}
-Sosyal medya şikayetleri: ${socialMentions.length} paylaşım${socialMentions.length > 0 ? '. Örnekler: ' + socialMentions.slice(0, 2).map((s) => s.notes?.slice(0, 80) || '').join(' | ') : ''}
-
-SADECE JSON döndür (Türkçe yaz):
-{
-  "swot": {
-    "strengths": ["güçlü yön 1", "güçlü yön 2", "güçlü yön 3"],
-    "weaknesses": ["zayıf yön 1", "zayıf yön 2", "zayıf yön 3"],
-    "opportunities": ["fırsat 1", "fırsat 2", "fırsat 3"],
-    "threats": ["tehdit 1", "tehdit 2", "tehdit 3"]
-  },
-  "threatLevel": "low|medium|high",
-  "overallScore": 1-100,
-  "customerComplaints": ["en sık şikayet konusu 1", "2"],
-  "targetCustomerProfile": "bu rakibin kaybedebileceği ideal müşteri profili",
-  "competitorStrength": "rakibin en güçlü yanı, 1 cümle",
-  "attackStrategy": "bu rakibin müşterilerini kazanmak için en etkili strateji, 2-3 cümle",
-  "suggestedWhatsApp": "max 200 karakter WhatsApp mesajı (rakibin zayıf yönüne vurgu yap)",
-  "suggestedEmail": { "subject": "konu satırı", "preview": "ilk cümle" },
-  "suggestedCallScript": "telefon açılış cümlesi (15 kelime max)"
-}`
-                }],
-        });
-        const rawText = analysis.content[0]?.text || '';
+        const { geminiChat } = require('../lib/gemini-client');
+        const rawText = await geminiChat({ max_tokens: 1800, prompt: `Rakip SWOT analizi: "${competitorName}" — ${city || ''} (${countryConf.name})\n\nVERİLER:\nGoogle Maps: ${googlePlace ? `Rating: ${googlePlace.rating}/5, ${googlePlace.reviewCount} yorum, Adres: ${googlePlace.address || 'yok'}` : 'Bulunamadı'}\nŞikayetvar: ${complaints ? `${complaints.complaintCount} şikayet. Örnekler: ${(complaints.complaints || []).slice(0, 3).join(' | ')}` : 'Veri yok'}\nTrustpilot: ${trustpilot ? `Rating: ${trustpilot.rating}` : 'Veri yok'}\nLinkedIn: ${linkedin ? linkedin.name : 'Veri yok'}\nSosyal medya şikayetleri: ${socialMentions.length} paylaşım${socialMentions.length > 0 ? '. Örnekler: ' + socialMentions.slice(0, 2).map((s) => s.notes?.slice(0, 80) || '').join(' | ') : ''}\n\nSADECE JSON döndür (Türkçe yaz):\n{\n  "swot": {\n    "strengths": ["güçlü yön 1", "güçlü yön 2", "güçlü yön 3"],\n    "weaknesses": ["zayıf yön 1", "zayıf yön 2", "zayıf yön 3"],\n    "opportunities": ["fırsat 1", "fırsat 2", "fırsat 3"],\n    "threats": ["tehdit 1", "tehdit 2", "tehdit 3"]\n  },\n  "threatLevel": "low|medium|high",\n  "overallScore": 1-100,\n  "customerComplaints": ["en sık şikayet konusu 1", "2"],\n  "targetCustomerProfile": "bu rakibin kaybedebileceği ideal müşteri profili",\n  "competitorStrength": "rakibin en güçlü yanı, 1 cümle",\n  "attackStrategy": "bu rakibin müşterilerini kazanmak için en etkili strateji, 2-3 cümle",\n  "suggestedWhatsApp": "max 200 karakter WhatsApp mesajı (rakibin zayıf yönüne vurgu yap)",\n  "suggestedEmail": { "subject": "konu satırı", "preview": "ilk cümle" },\n  "suggestedCallScript": "telefon açılış cümlesi (15 kelime max)"\n}` });
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
         // Backward compat: map swot fields to old format too

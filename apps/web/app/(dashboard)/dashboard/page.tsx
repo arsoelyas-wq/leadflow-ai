@@ -352,6 +352,43 @@ export default function DashboardPage() {
         )
       })()}
 
+      {/* ── GETTING STARTED — boş hesap için ── */}
+      {!loading && (stats?.totalLeads || 0) === 0 && (stats?.activeCampaigns || 0) === 0 && (
+        <div style={{ background:'linear-gradient(135deg,#eff6ff 0%,#f8fafc 100%)', border:'1.5px solid #bfdbfe', borderRadius:16, padding: isMobile ? '20px 16px' : '28px 32px', animation:'fadeIn 0.35s ease' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#1d4ed8,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <Zap size={17} color="#fff"/>
+            </div>
+            <div>
+              <p style={{ color:'#1e3a5f', fontSize: isMobile ? 14 : 15, fontWeight:800, margin:0 }}>Hoş geldiniz! Sisteminizi kurmaya başlayın</p>
+              <p style={{ color:'#64748b', fontSize:12, margin:'2px 0 0' }}>Aşağıdaki adımları tamamlayarak ilk ledinizi bulun</p>
+            </div>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap:10 }}>
+            {[
+              { num:1, emoji:'🏢', title:'Şirketinizi tanıtın', desc:'AI asistanınızı eğitin', href:'/onboarding', color:'#2563eb', bg:'#eff6ff', border:'#bfdbfe' },
+              { num:2, emoji:'🎯', title:'İlk leadleri bulun', desc:'Google Maps\'ten otomatik', href:'/lead-machine', color:'#7c3aed', bg:'#faf5ff', border:'#ddd6fe' },
+              { num:3, emoji:'📧', title:'SMTP e-postanızı kurun', desc:'Email göndermek için gerekli', href:'/settings#channels', color:'#059669', bg:'#ecfdf5', border:'#a7f3d0' },
+              { num:4, emoji:'💬', title:'WhatsApp bağlayın', desc:'Müşterilerle mesajlaşın', href:'/wa-numbers', color:'#d97706', bg:'#fffbeb', border:'#fde68a' },
+            ].map(step => (
+              <Link key={step.num} href={step.href} style={{ textDecoration:'none', display:'flex', flexDirection:'column', gap:8, padding: isMobile ? '12px 10px' : '14px 16px', background:step.bg, border:`1.5px solid ${step.border}`, borderRadius:12, transition:'all 0.15s', cursor:'pointer' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                  <span style={{ fontSize:18, lineHeight:1 }}>{step.emoji}</span>
+                  <span style={{ width:18, height:18, borderRadius:'50%', background:step.color, color:'#fff', fontSize:10, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{step.num}</span>
+                </div>
+                <div>
+                  <p style={{ color:step.color, fontSize: isMobile ? 11 : 12, fontWeight:700, margin:0, lineHeight:1.3 }}>{step.title}</p>
+                  <p style={{ color:'#64748b', fontSize: isMobile ? 10 : 11, margin:'2px 0 0', lineHeight:1.4 }}>{step.desc}</p>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:4, color:step.color, fontSize:11, fontWeight:600 }}>
+                  Başla <ArrowRight size={10}/>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════════════════
           STAT CARDS
           Mobile:  2×2 flexbox (calc widths — no grid overflow possible)

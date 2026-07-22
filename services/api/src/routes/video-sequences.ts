@@ -122,24 +122,8 @@ async function triggerVoiceCall(userId: string, phone: string, ctx: { brandName:
     const companyName = ctx.companyName || 'Şirketimiz';
     const openingLine = `Merhaba! Ben ${agentName}, ${companyName}'dan arıyorum. Size özel gönderdiğimiz videoyu izlediğinizi gördük — uygun musunuz?`;
 
-    await axios.post(
-      'https://api.elevenlabs.io/v1/convai/twilio/outbound-call',
-      {
-        agent_id: process.env.ELEVENLABS_AGENT_ID,
-        agent_phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
-        to_number: phone,
-        conversation_initiation_client_data: {
-          dynamic_variables: {
-            agent_name: agentName,
-            company_name: companyName,
-            product_description: ctx.product || '',
-            opening_line: openingLine,
-            language: 'tr',
-          },
-        },
-      },
-      { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' } }
-    );
+    const { triggerOutboundCall } = require('../services/call-engine');
+    await triggerOutboundCall({ toNumber: phone, agentName, companyName, productDesc: ctx.product || '', openingLine, language: 'tr' });
     console.log(`[Sequence] Sesli arama tetiklendi: ${phone}`);
   } catch (e: any) {
     console.error('[Sequence] Sesli arama hatası:', e.message);

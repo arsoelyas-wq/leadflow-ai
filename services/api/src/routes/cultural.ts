@@ -123,7 +123,7 @@ async function getDynamicProfile(countryCode: string): Promise<any> {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const res = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 600,
       messages: [{
         role: 'user',
@@ -290,7 +290,7 @@ router.post('/translate-campaign', async (req: any, res: any) => {
       try {
         const profile = await getDynamicProfile(countryCode);
         const res2 = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-4-6',
           max_tokens: 250,
           messages: [{
             role: 'user',

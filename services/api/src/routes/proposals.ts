@@ -297,8 +297,8 @@ async function htmlToPDF(html: string): Promise<Buffer> {
 
 async function analyzeLeadMessage(message: string, lead: any, history: any[]) {
   const r = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 400,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 600,
     messages: [{
       role: 'user',
       content: `Lead mesajını analiz et.
@@ -316,8 +316,8 @@ SADECE JSON döndür:
 
 async function generateNegotiationResponse(lead: any, message: string, analysis: any, proposal: any) {
   const r = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 400,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 600,
     messages: [{
       role: 'user',
       content: `B2B pazarlık yanıtı üret.

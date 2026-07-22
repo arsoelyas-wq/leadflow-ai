@@ -1374,7 +1374,7 @@ export default function VideoOutreachPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">AI Video Outreach</h1>
-                <p className="text-purple-300/70 text-xs">MuseTalk + ElevenLabs · Kişisel AI video mesajları</p>
+                <p className="text-purple-300/70 text-xs">MuseTalk + XTTS-v2 · Kişisel AI video mesajları</p>
               </div>
             </div>
           </div>

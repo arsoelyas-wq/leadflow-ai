@@ -165,25 +165,10 @@ router.get('/:code', async (req: any, res: any) => {
             const agentName   = vsettings?.agent_name || 'Satış Temsilcisi';
             const companyName = profile?.company?.name || 'Şirketimiz';
             const brandName   = video.research_data?.brandName || '';
+            const openingLine = `Merhaba${brandName ? ' ' + brandName.split(' ')[0] : ''}! Ben ${agentName}, ${companyName}'den arıyorum. Gönderdiğimiz videoyu izlediğinizi gördük, sorularınız var mı?`;
 
-            await axios.post(
-              'https://api.elevenlabs.io/v1/convai/twilio/outbound-call',
-              {
-                agent_id: process.env.ELEVENLABS_AGENT_ID,
-                agent_phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
-                to_number: lead.phone,
-                conversation_initiation_client_data: {
-                  dynamic_variables: {
-                    agent_name:          agentName,
-                    company_name:        companyName,
-                    product_description: profile?.product?.description || '',
-                    opening_line:        `Merhaba${brandName ? ' ' + brandName.split(' ')[0] : ''}! Ben ${agentName}, ${companyName}'den arıyorum. Gönderdiğimiz videoyu izlediğinizi gördük, sorularınız var mı?`,
-                    language:            'tr',
-                  },
-                },
-              },
-              { headers: { 'xi-api-key': process.env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' } }
-            );
+            const { triggerOutboundCall } = require('../services/call-engine');
+            await triggerOutboundCall({ toNumber: lead.phone, agentName, companyName, productDesc: profile?.product?.description || '', openingLine, language: 'tr' });
             await supabase.from('video_outreach').update({ auto_call_triggered: true }).eq('id', video.id);
           } catch (err: any) { console.error('[AutoCall]', err.message); }
         }, delayMs);

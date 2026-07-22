@@ -217,7 +217,7 @@ router.get('/ai-suggest/:leadId', async (req: any, res: any) => {
     const productDesc = profile?.product?.description || 'ürün ve hizmetlerimiz';
 
     const r = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 400,
       messages: [{
         role: 'user',

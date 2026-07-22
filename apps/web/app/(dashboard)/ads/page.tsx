@@ -349,7 +349,7 @@ export default function AdsPage() {
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
         {/* Hero */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3V2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -460,7 +460,7 @@ export default function AdsPage() {
             <div className="h-2 bg-blue-100 rounded-full mb-3">
               <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500" style={{ width: `${onboardingData.progress}%` }} />
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {(onboardingData.steps || []).map((s: any) => {
                 const stepLinks: Record<string, string> = { connect: '', extract: '', capi: '/settings', campaign: '' };
                 const stepActions: Record<string, string> = { extract: 'Lead Çek', capi: 'CAPI Ayarla', campaign: 'Kampanya Oluştur' };
@@ -970,7 +970,7 @@ export default function AdsPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs text-slate-600 mb-2 block">{t('ads.gunluk_butce_try', 'Günlük Bütçe (TRY)')}</label>
-                      <div className="grid grid-cols-4 gap-2 mb-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                         {['100', '200', '500', '1000'].map(v => (
                           <button
                             key={v}
@@ -1060,7 +1060,7 @@ export default function AdsPage() {
                         <span className="text-xs font-bold text-slate-500">{creatives.length} kreatif yüklendi</span>
                         <span className="text-[10px] text-emerald-600 font-semibold">✓ Meta&apos;ya aktarıldı</span>
                       </div>
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {creatives.map((c, i) => (
                           <div key={i} className="relative group">
                             {c.type === 'video' ? (

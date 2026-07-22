@@ -2,6 +2,7 @@ require('dotenv').config();
 const ws = require('ws');
 global.WebSocket = ws;
 const express = require('express');
+const { initMonitoring } = require('./lib/error-monitor');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -203,9 +204,7 @@ app.use('/api/abtests',              authMiddleware, require('./routes/ab-testin
 app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-numbers'));
 app.use('/api/shadow',               authMiddleware, require('./routes/shadow'));
 app.use('/api/visual-trends',        authMiddleware, require('./routes/visual-trends'));
-// HeyGen webhook public (no auth, called by HeyGen servers)
 const videoOutreachRouter = require('./routes/video-outreach');
-app.post('/api/video-outreach/heygen-webhook', (req: any, res: any, next: any) => { req.url = '/heygen-webhook'; videoOutreachRouter(req, res, next); });
 // video-outreach test-ai — DEV only
 if (process.env.NODE_ENV !== 'production') {
   app.get('/api/video-outreach/test-ai', (req: any, res: any, next: any) => { req.url = '/test-ai'; videoOutreachRouter(req, res, next); });
@@ -351,4 +350,5 @@ require('node-cron').schedule('*/10 * * * *', () => { checkAndAdvanceSequences()
 // Security: clean expired JWT blocklist entries daily at 03:00
 require('node-cron').schedule('0 3 * * *', () => { require('./lib/security').cleanBlocklist(); });
 
+initMonitoring(app).catch(console.error);
 app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));

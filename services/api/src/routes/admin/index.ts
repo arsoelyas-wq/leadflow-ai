@@ -335,7 +335,7 @@ router.get('/system/config', async (req: any, res: any) => {
       },
       api_keys: {
         anthropic:     !!process.env.ANTHROPIC_API_KEY,
-        elevenlabs:    !!process.env.ELEVENLABS_API_KEY,
+        cartesia:      !!process.env.CARTESIA_API_KEY,
         perplexity:    !!process.env.PERPLEXITY_API_KEY,
         stripe:        !!process.env.STRIPE_SECRET_KEY,
         google_places: !!process.env.GOOGLE_PLACES_API_KEY,
@@ -872,37 +872,8 @@ router.get('/ai-status', async (req: any, res: any) => {
       }
     }
 
-    // ── ElevenLabs: subscription endpoint for real quota data
-    const elKey = process.env.ELEVENLABS_API_KEY;
-    if (!elKey) {
-      result.elevenlabs = { status: 'missing', message: 'API anahtarı ayarlanmamış', checked_at: checkedAt };
-    } else {
-      try {
-        const elRes = await fetch('https://api.elevenlabs.io/v1/user/subscription', {
-          headers: { 'xi-api-key': elKey },
-        });
-        if (!elRes.ok) {
-          result.elevenlabs = { status: elRes.status === 401 ? 'invalid_key' : 'error', message: `HTTP ${elRes.status}`, checked_at: checkedAt };
-        } else {
-          const sub: any = await elRes.json();
-          const used  = sub.character_count   || 0;
-          const limit = sub.character_limit   || 0;
-          const pct   = limit > 0 ? Math.round((used / limit) * 100) : 0;
-          const resetDate = sub.next_character_count_reset_unix
-            ? new Date(sub.next_character_count_reset_unix * 1000).toLocaleDateString('tr-TR')
-            : null;
-          result.elevenlabs = {
-            status: pct >= 100 ? 'quota_exceeded' : 'ok',
-            chars_used: used, chars_limit: limit, pct_used: pct,
-            tier: sub.tier || null, reset_date: resetDate,
-            message: `${used.toLocaleString('tr-TR')} / ${limit.toLocaleString('tr-TR')} karakter (%${pct} kullanıldı)`,
-            checked_at: checkedAt,
-          };
-        }
-      } catch (e: any) {
-        result.elevenlabs = { status: 'error', message: (e.message || '').slice(0, 100), checked_at: checkedAt };
-      }
-    }
+    // ElevenLabs kaldırıldı — XTTS (RunPod) ve Cartesia kullanılıyor
+    result.elevenlabs = { status: 'removed', message: 'ElevenLabs kaldırıldı. Ses klonlama: XTTS (RunPod). Çağrı sesi: Cartesia (Vapi).', checked_at: checkedAt };
 
     // Helper: simple key check
     const keyCheck = (key: string | undefined, svc: string) => {
@@ -914,7 +885,6 @@ router.get('/ai-status', async (req: any, res: any) => {
     // ── AI & LLM
     keyCheck(process.env.PERPLEXITY_API_KEY, 'perplexity');
     keyCheck(process.env.GROQ_API_KEY, 'groq');
-    keyCheck(process.env.HEYGEN_API_KEY, 'heygen');
     keyCheck(process.env.VAPI_API_KEY, 'vapi');
     keyCheck(process.env.CARTESIA_API_KEY, 'cartesia');
     keyCheck(process.env.AZURE_SPEECH_KEY, 'azure_speech');
