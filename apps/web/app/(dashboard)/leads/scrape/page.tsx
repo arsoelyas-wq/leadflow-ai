@@ -122,7 +122,7 @@ export default function LeadFinderPage() {
     try {
       const r = await fetch(`${API}/api/credits/balance`, { headers: authH() })
       const d = await r.json()
-      setCredits({ total: d.credits_total || d.total || 0, used: d.credits_used || d.used || 0 })
+      setCredits({ total: d.monthly || d.credits_total || d.total || 0, used: d.used || d.credits_used || 0 })
     } catch {}
   }
 
