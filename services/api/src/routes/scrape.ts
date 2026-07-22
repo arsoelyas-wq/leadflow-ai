@@ -401,17 +401,25 @@ async function fetchPlacesPage(opts: {
     };
   }
 
-  const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': GOOGLE_API_KEY!,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.businessStatus,places.regularOpeningHours,places.primaryTypeDisplayName,places.photos',
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+  let resp: Response;
+  try {
+    resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_API_KEY!,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.businessStatus,places.regularOpeningHours,places.primaryTypeDisplayName,places.photos',
+      },
+      body: JSON.stringify(body),
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
-  if (!resp.ok) throw new Error(`Places API error: ${await resp.text()}`);
+  if (!resp!.ok) throw new Error(`Places API error: ${await resp!.text()}`);
   const data: any = await resp.json();
   return { places: data.places || [], nextPageToken: data.nextPageToken || null };
 }
