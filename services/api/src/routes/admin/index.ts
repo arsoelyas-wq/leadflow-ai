@@ -985,6 +985,68 @@ router.patch('/leads-config', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/admin/businesses — global business cache stats + browse ───────────
+router.get('/businesses', async (req: any, res: any) => {
+  try {
+    const { page = '1', city = '', sector = '', search = '' } = req.query as any;
+    const limit = 50;
+    const offset = (parseInt(page) - 1) * limit;
+
+    let q = supabase.from('businesses')
+      .select('id, company_name, phone, website, city, country, sector_normalized, rating, source, last_fetched_at, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (city)   q = q.ilike('city', `%${city}%`);
+    if (sector) q = q.ilike('sector_normalized', `%${sector}%`);
+    if (search) q = q.ilike('company_name', `%${search}%`);
+
+    const { data, count, error } = await q;
+    if (error) throw error;
+
+    // Stats
+    const [statsCity, statsSector] = await Promise.all([
+      supabase.from('businesses').select('city').limit(0, { count: 'estimated' }),
+      supabase.rpc('businesses_sector_counts').catch(() => ({ data: null })),
+    ]);
+
+    res.json({ items: data || [], total: count || 0, page: parseInt(page), limit });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/admin/businesses/stats ──────────────────────────────────────────
+router.get('/businesses/stats', async (req: any, res: any) => {
+  try {
+    const [total, byCityRaw, bySectorRaw] = await Promise.all([
+      supabase.from('businesses').select('id', { count: 'exact', head: true }),
+      supabase.from('businesses').select('city').limit(1000),
+      supabase.from('businesses').select('sector_normalized').limit(1000),
+    ]);
+
+    // Count by city
+    const cityMap: Record<string, number> = {};
+    (byCityRaw.data || []).forEach((r: any) => {
+      const k = r.city || 'Bilinmiyor';
+      cityMap[k] = (cityMap[k] || 0) + 1;
+    });
+    const byCity = Object.entries(cityMap)
+      .sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([city, count]) => ({ city, count }));
+
+    // Count by sector
+    const secMap: Record<string, number> = {};
+    (bySectorRaw.data || []).forEach((r: any) => {
+      const k = r.sector_normalized || 'other';
+      secMap[k] = (secMap[k] || 0) + 1;
+    });
+    const bySector = Object.entries(secMap)
+      .sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([sector, count]) => ({ sector, count }));
+
+    res.json({ total: total.count || 0, byCity, bySector });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;
 
 // ── Banner click/dismiss tracking (public — no admin auth) ─────────────────────

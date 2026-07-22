@@ -20,6 +20,7 @@ const NAV = [
   { group: 'ANALİTİK' },
   { href: '/admin/analytics', icon: '📊', label: 'Platform Analitik' },
   { href: '/admin/ai-costs', icon: '🤖', label: 'AI Maliyet Merkezi' },
+  { href: '/admin/businesses', icon: '🏢', label: 'Business Havuzu' },
   { group: 'SİSTEM' },
   { href: '/admin/churn', icon: '📉', label: 'Churn & Toplu İşlem' },
   { href: '/admin/invoices', icon: '🧾', label: 'Fatura Yönetimi' },
