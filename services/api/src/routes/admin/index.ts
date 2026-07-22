@@ -1004,12 +1004,6 @@ router.get('/businesses', async (req: any, res: any) => {
     const { data, count, error } = await q;
     if (error) throw error;
 
-    // Stats
-    const [statsCity, statsSector] = await Promise.all([
-      supabase.from('businesses').select('city').limit(0, { count: 'estimated' }),
-      supabase.rpc('businesses_sector_counts').catch(() => ({ data: null })),
-    ]);
-
     res.json({ items: data || [], total: count || 0, page: parseInt(page), limit });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
