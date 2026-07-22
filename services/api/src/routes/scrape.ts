@@ -320,7 +320,7 @@ async function enrichWithEmails(
   leads: any[],
   onProgress?: (enriched: number) => void
 ): Promise<any[]> {
-  const CONCURRENCY = 6;
+  const CONCURRENCY = 10;
   let enriched = 0;
 
   for (let i = 0; i < leads.length; i += CONCURRENCY) {
@@ -559,88 +559,90 @@ async function scrapeLeads(opts: {
   const cName = countryName[country] || country;
   const langCode = lang[country] || 'en';
 
-  let queryIdx = 0;
-
   onProgress?.('Tarama başlatılıyor...', 0, 0, 0);
 
-  outer:
   for (const district of districts) {
+    if (collected.length >= maxResults) break;
+
     const location = district.toLowerCase() === city.toLowerCase()
       ? `${city} ${cName}`
       : `${district} ${city} ${cName}`;
 
-    for (const kw of keywords) {
-      if (collected.length >= maxResults) break outer;
+    // Run keywords in parallel batches of 3 (rate-limit friendly)
+    for (let ki = 0; ki < keywords.length; ki += 3) {
+      if (collected.length >= maxResults) break;
 
-      const query = `${kw} ${location}`;
-      let pageToken: string | null = null;
-      let pages = 0;
+      const kwBatch = keywords.slice(ki, ki + 3);
+      await Promise.allSettled(kwBatch.map(async (kw) => {
+        if (collected.length >= maxResults) return;
 
-      do {
-        if (collected.length >= maxResults) break;
-        try {
-          const { places, nextPageToken } = await fetchPlacesPage({
-            query,
-            lang: langCode,
-            coords: coords && !pageToken ? coords : undefined,
-            pageToken: pageToken || undefined,
-          });
+        const query = `${kw} ${location}`;
+        let pageToken: string | null = null;
+        let pages = 0;
 
-          for (const p of places) {
-            if (collected.length >= maxResults) break;
-            if (p.businessStatus === 'CLOSED_PERMANENTLY') continue;
-            if (seenIds.has(p.id)) continue;
-
-            const name = (p.displayName?.text || '').trim();
-            if (!name) continue;
-            const nameLower = name.toLowerCase();
-            const phone = validatePhone(
-              p.nationalPhoneNumber || p.internationalPhoneNumber || '',
-              country
-            );
-
-            // Dedup against CRM and within batch
-            if (existingNames.has(nameLower) || seenNames.has(nameLower)) { skippedDuplicates++; continue; }
-            if (phone && existingPhones.has(phone)) { skippedDuplicates++; continue; }
-
-            // Quality filter: require phone
-            if (requirePhone && !phone) continue;
-            // Quality filter: require website
-            if (requireWebsite && !p.websiteUri) continue;
-
-            seenIds.add(p.id);
-            seenNames.add(nameLower);
-
-            const score = calcScore(p);
-            if (score < minScore) continue;
-
-            collected.push({
-              _placeId: p.id,
-              name,
-              phone: phone || null,
-              website: p.websiteUri || null,
-              address: p.formattedAddress || null,
-              rating: p.rating || null,
-              reviewCount: p.userRatingCount || 0,
-              score,
-              district: district.toLowerCase() !== city.toLowerCase() ? district : null,
-              email: null as string | null,
+        do {
+          if (collected.length >= maxResults) break;
+          try {
+            const { places, nextPageToken } = await fetchPlacesPage({
+              query,
+              lang: langCode,
+              coords: coords && !pageToken ? coords : undefined,
+              pageToken: pageToken || undefined,
             });
+
+            for (const p of places) {
+              if (collected.length >= maxResults) break;
+              if (p.businessStatus === 'CLOSED_PERMANENTLY') continue;
+              if (seenIds.has(p.id)) continue;
+
+              const name = (p.displayName?.text || '').trim();
+              if (!name) continue;
+              const nameLower = name.toLowerCase();
+              const phone = validatePhone(
+                p.nationalPhoneNumber || p.internationalPhoneNumber || '',
+                country
+              );
+
+              // Dedup against CRM and within batch
+              if (existingNames.has(nameLower) || seenNames.has(nameLower)) { skippedDuplicates++; continue; }
+              if (phone && existingPhones.has(phone)) { skippedDuplicates++; continue; }
+
+              // Quality filter: require phone
+              if (requirePhone && !phone) continue;
+              // Quality filter: require website
+              if (requireWebsite && !p.websiteUri) continue;
+
+              seenIds.add(p.id);
+              seenNames.add(nameLower);
+
+              const score = calcScore(p);
+              if (score < minScore) continue;
+
+              collected.push({
+                _placeId: p.id,
+                name,
+                phone: phone || null,
+                website: p.websiteUri || null,
+                address: p.formattedAddress || null,
+                rating: p.rating || null,
+                reviewCount: p.userRatingCount || 0,
+                score,
+                district: district.toLowerCase() !== city.toLowerCase() ? district : null,
+                email: null as string | null,
+              });
+            }
+
+            pageToken = nextPageToken;
+            pages++;
+            onProgress?.(`"${kw}" taranıyor...`, collected.length, 0, 0);
+            if (pageToken) await sleep(2200);
+          } catch (e: any) {
+            console.error(`[Scrape] query "${query}" failed:`, e.message);
+            if (!firstApiError) firstApiError = e.message;
+            break;
           }
-
-          pageToken = nextPageToken;
-          pages++;
-          onProgress?.(`"${kw}" taranıyor...`, collected.length, 0, 0);
-          if (pageToken) await sleep(2200);
-        } catch (e: any) {
-          console.error(`[Scrape] query "${query}" failed:`, e.message);
-          if (!firstApiError) firstApiError = e.message;
-          break;
-        }
-      } while (pageToken && pages < 3);
-
-      queryIdx++;
-      if (queryIdx % 4 === 0 && collected.length < maxResults) await sleep(300);
+        } while (pageToken && pages < 3);
+      }));
     }
   }
 
