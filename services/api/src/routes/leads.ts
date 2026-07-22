@@ -11,6 +11,40 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+// Business cache helper — her lead eklendiğinde global havuza upsert et (fire-and-forget)
+function upsertToBusinessCache(leads: any[]) {
+  const toCache = leads
+    .filter(l => l.company_name?.trim())
+    .map(l => ({
+      external_id: l.maps_url
+        ? 'maps_' + require('crypto').createHash('md5').update(l.maps_url.toLowerCase().trim()).digest('hex')
+        : 'legacy_' + require('crypto').createHash('md5').update(
+            (l.company_name || '').toLowerCase().trim() + '|' +
+            (l.city || '').toLowerCase().trim() + '|' +
+            (l.phone || '').toLowerCase().trim()
+          ).digest('hex'),
+      company_name:     l.company_name?.trim(),
+      phone:            l.phone    || null,
+      website:          l.website  || null,
+      city:             l.city     || null,
+      country:          'TR',
+      sector_normalized: l.sector  || null,
+      maps_url:         l.maps_url || null,
+      opening_hours:    l.opening_hours || null,
+      source:           l.source   || 'manuel',
+      last_fetched_at:  new Date().toISOString(),
+    }));
+
+  if (!toCache.length) return;
+  supabase
+    .from('businesses')
+    .upsert(toCache, { onConflict: 'external_id', ignoreDuplicates: false })
+    .then(({ error }: any) => {
+      if (error) console.error('[BusinessCache] Upsert error:', error.message?.slice(0, 100));
+    })
+    .catch(() => {});
+}
+
 // Audit log helper — her alan değişikliğini kaydeder
 async function logFieldChange(leadId: string, userId: string, field: string, oldVal: any, newVal: any, action = 'update') {
   await supabase.from('lead_field_history').insert([{
@@ -347,6 +381,8 @@ router.post('/', authMiddleware, async (req: any, res: any) => {
     // Audit log — yeni kayıt
     await logFieldChange(data.id, req.userId, 'status', null, data.status, 'create');
 
+    upsertToBusinessCache([data]);
+
     try { await fireCapiEvent(supabase, req.userId, data, 'Lead'); } catch {}
     res.json({ lead: data });
   } catch (e: any) {
@@ -494,6 +530,8 @@ router.post('/import', authMiddleware, upload.single('file'), async (req: any, r
       if (!insErr) inserted += batch.length;
       else console.warn('[Import] Batch error:', insErr.message?.slice(0, 80));
     }
+
+    upsertToBusinessCache(toInsert);
 
     res.json({ ok: true, inserted, skipped: errors.length, total: rows.length, errors: errors.slice(0, 10) });
   } catch (e: any) {
