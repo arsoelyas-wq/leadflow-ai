@@ -762,13 +762,22 @@ export default function LeadFinderPage() {
             </div>
 
             {selectedCities.length > 1 && (
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {selectedCities.map(c => (
-                  <span key={c} className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/15 border border-blue-500/25 text-blue-300 text-xs rounded-lg">
+              <div className="flex items-center gap-1.5 pt-0.5 min-w-0">
+                {selectedCities.slice(0, 3).map(c => (
+                  <span key={c} className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/15 border border-blue-500/25 text-blue-300 text-xs rounded-lg shrink-0">
                     {c}
                     <button type="button" onClick={() => toggleCity(c)} className="text-blue-400 hover:text-white leading-none ml-0.5">×</button>
                   </span>
                 ))}
+                {selectedCities.length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setCityOpen(true)}
+                    className="px-2.5 py-0.5 bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs rounded-lg hover:bg-blue-500/20 transition font-medium shrink-0"
+                  >
+                    +{selectedCities.length - 3} şehir
+                  </button>
+                )}
               </div>
             )}
           </div>
