@@ -1386,6 +1386,40 @@ async function runFinder(params: FinderParams): Promise<{
     }
   } catch {}
 
+  // Upsert to global businesses cache (fire-and-forget — future cache-first serving)
+  const toCache = unique
+    .filter(l => !!l.external_id)
+    .map(l => ({
+      external_id:       l.external_id!,
+      company_name:      l.company_name,
+      phone:             l.phone             || null,
+      website:           l.website           || null,
+      address:           l.address           || null,
+      city:              l.searchCity        || cities[0],
+      country,
+      sector_normalized: classifySector(query, l.category),
+      lat:               l.lat               || null,
+      lng:               l.lng               || null,
+      rating:            l.rating            || null,
+      review_count:      l.review_count      || null,
+      category:          l.category          || null,
+      maps_url:          l.maps_url          || null,
+      opening_hours:     l.opening_hours     || null,
+      source:            l.source            || 'lead_finder',
+      last_fetched_at:   new Date().toISOString(),
+    }));
+
+  if (toCache.length > 0) {
+    supabase
+      .from('businesses')
+      .upsert(toCache, { onConflict: 'external_id', ignoreDuplicates: false })
+      .then(({ error }: any) => {
+        if (error) console.error('[BusinessCache] Upsert error:', error.message?.slice(0, 100));
+        else console.log(`[BusinessCache] ${toCache.length} businesses cached`);
+      })
+      .catch(() => {});
+  }
+
   return { saved, skipped, sourceBreakdown, savedLeadIds: insertedIds };
 }
 
