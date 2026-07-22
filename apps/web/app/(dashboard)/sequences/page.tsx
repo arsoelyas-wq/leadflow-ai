@@ -315,7 +315,7 @@ export default function SequencesPage() {
                     if (selectedSeq?.id !== seq.id) loadEnrollments(seq.id)
                   }}
                     className="p-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg transition text-xs flex items-center gap-1">
-                    <Users size={13} /> Lead Ekle
+                    <Users size={13} /> Müşteri Ekle
                   </button>
                   <button onClick={() => pauseSequence(seq.id)}
                     className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 rounded-lg transition">
@@ -342,7 +342,7 @@ export default function SequencesPage() {
                 ))}
               </div>
 
-              {/* Lead Ekleme Paneli */}
+              {/* Müşteri Ekleme Paneli */}
               {selectedSeq?.id === seq.id && (
                 <div className="border-t border-slate-700 p-5 space-y-4">
                   <div className="grid lg:grid-cols-2 gap-4">

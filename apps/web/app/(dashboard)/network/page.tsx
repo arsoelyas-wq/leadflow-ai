@@ -9,7 +9,7 @@ const NET: Record<string, Record<string, string>> = {
   tr: {
     title: 'Ağ Haritası', firms: 'firma', connections: 'bağlantı',
     add_btn: 'Bağlantı Ekle', total_firms: 'Toplam Firma',
-    total_conn: 'Bağlantı', hot: 'Sıcak Lead', grade_a: 'A Sınıfı',
+    total_conn: 'Bağlantı', hot: 'Sıcak Müşteri', grade_a: 'A Sınıfı',
     search: 'Firma adı, şehir veya sektör ara...',
     empty_title: 'Henüz Ağ Bağlantısı Yok',
     empty_desc: 'Leadleriniz arasında referans, tanışıklık veya ortak ağ bağlantıları ekleyin. Bu bağlantılar satışlarınızı hızlandırır.',

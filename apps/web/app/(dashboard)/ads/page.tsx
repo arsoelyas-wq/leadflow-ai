@@ -18,7 +18,7 @@ function getToken() { return typeof window !== 'undefined' ? localStorage.getIte
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
 const GOALS = [
-  { id: 'LEADS', label: 'Lead Toplama', desc: 'WhatsApp/form ile potansiyel müşteri topla', detail: 'Meta Lead Form veya Messenger ile müşteri adayı bilgilerini toplar. AI otomatik lead çekme + 5dk kuralı ile anında arama.', Icon: Users, color: '#2563eb', estimate: '₺15-40 / lead' },
+  { id: 'LEADS', label: 'Müşteri Toplama', desc: 'WhatsApp/form ile potansiyel müşteri topla', detail: 'Meta Lead Form veya Messenger ile müşteri adayı bilgilerini toplar. AI otomatik lead çekme + 5dk kuralı ile anında arama.', Icon: Users, color: '#2563eb', estimate: '₺15-40 / lead' },
   { id: 'AWARENESS', label: 'Marka Bilinirliği', desc: 'Binlerce kişiye markanı göster', detail: 'Hedef kitlenin feed ve hikayelerinde markanız görünür. Erişim ve frekans optimizasyonu yapılır.', Icon: Megaphone, color: '#7c3aed', estimate: '₺2-8 / 1000 gösterim' },
   { id: 'TRAFFIC', label: 'Web Trafiği', desc: 'Siteye veya kataloğa trafik çek', detail: 'Landing page, ürün sayfası veya online kataloğunuza tıklama optimizasyonu. Link tıklama bazlı faturalandırma.', Icon: Globe, color: '#059669', estimate: '₺1-5 / tıklama' },
   { id: 'SALES', label: 'Satış & Dönüşüm', desc: 'Doğrudan satış veya teklif oluştur', detail: 'Satın alma veya teklif formu doldurma hedefli. CAPI ile dönüşüm takibi + değer bazlı optimizasyon.', Icon: ShoppingCart, color: '#dc2626', estimate: '₺30-100 / dönüşüm' },
@@ -1152,7 +1152,7 @@ export default function AdsPage() {
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Hedef</label>
-                        <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700">{goal === 'LEADS' ? 'Lead Toplama' : goal === 'AWARENESS' ? 'Marka Bilinirliği' : goal === 'TRAFFIC' ? 'Web Trafiği' : 'Satış'}</div>
+                        <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700">{goal === 'LEADS' ? 'Müşteri Toplama' : goal === 'AWARENESS' ? 'Marka Bilinirliği' : goal === 'TRAFFIC' ? 'Web Trafiği' : 'Satış'}</div>
                       </div>
                     </div>
                     {draft.target_audience && (

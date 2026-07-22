@@ -669,7 +669,7 @@ export default function CompetitorPage() {
             {/* Stats bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 10, marginBottom: 16 }}>
               {[
-                { label: 'Toplam Lead', value: leads.length, color: '#7c3aed', Icon: Users },
+                { label: 'Toplam Müşteri', value: leads.length, color: '#7c3aed', Icon: Users },
                 { label: 'Yüksek Kalite', value: highQuality, color: accentEmerald, Icon: Award },
                 { label: 'Ort. Skor', value: `${avgScore}%`, color: '#2563eb', Icon: BarChart3 },
                 { label: 'Seçili', value: selectedLeads.size, color: '#b45309', Icon: CheckCircle },

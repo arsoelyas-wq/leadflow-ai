@@ -9,7 +9,7 @@ const HS: Record<string, Record<string, string>> = {
   tr: {
     title: 'Müşteri Başarı Skoru',
     subtitle: 'Her lead için sağlık skoru, churn riski ve öneriler',
-    avg: 'Ort. Skor', hot: 'Sıcak Leadler', customers: 'Müşteriler', churn: 'Churn Riski',
+    avg: 'Ort. Skor', hot: 'Sıcak Müşteriler', customers: 'Müşteriler', churn: 'Churn Riski',
     sent: 'gönderildi', replied: 'cevap', ago: 'g önce',
     high: 'Yüksek Risk', mid: 'Orta Risk', low: 'Düşük Risk',
     stage_musteri: '🏆 Müşteri', stage_teklif: '📋 Teklif', stage_ilgili: '⚡ İlgili',

@@ -696,7 +696,7 @@ export default function MetaOptimizer({ connected }: { connected: boolean }) {
                   value={wizardData.goal}
                   onChange={e => setWizardData(prev => ({ ...prev, goal: e.target.value }))}
                 >
-                  <option value="OUTCOME_LEADS">Lead Toplama (OUTCOME_LEADS)</option>
+                  <option value="OUTCOME_LEADS">Müşteri Toplama (OUTCOME_LEADS)</option>
                   <option value="OUTCOME_SALES">Satış (OUTCOME_SALES)</option>
                   <option value="OUTCOME_AWARENESS">Farkındalık (OUTCOME_AWARENESS)</option>
                 </select>

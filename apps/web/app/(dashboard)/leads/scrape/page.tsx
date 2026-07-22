@@ -327,7 +327,7 @@ export default function LeadFinderPage() {
                   </div>
                 )}
                 <div>
-                  <h2 className="text-3xl font-bold text-white">{totalSaved} Lead Toplandı</h2>
+                  <h2 className="text-3xl font-bold text-white">{totalSaved} Müşteri Toplandı</h2>
                   <p className="text-slate-400 text-sm mt-1">
                     <span className="text-slate-300">"{jobStatus.query}"</span> · {jobStatus.city}
                   </p>

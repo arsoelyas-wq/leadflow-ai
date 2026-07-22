@@ -254,7 +254,7 @@ export default function AnalyticsPage() {
     if (!data) return
     const rows = [
       ['Metrik','Değer'],
-      ['Toplam Lead', data.totalLeads],
+      ['Toplam Müşteri', data.totalLeads],
       ['Yeni Lead', data.newLeads],
       ['Aktif Kampanya', data.activeCampaigns],
       ['Cevap Oranı %', data.replyRate],
@@ -346,7 +346,7 @@ export default function AnalyticsPage() {
       {/* ── STAT CARDS */}
       {data && (
         <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 16, marginBottom: 24 }}>
-          <StatCard label={t('analytics.total_leads','Toplam Lead')} value={data.totalLeads} sub={`+${data.newLeads} ${t('analytics.new_leads','yeni')}`} color="#059669" Icon={Users} trend={12} />
+          <StatCard label={t('analytics.total_leads','Toplam Müşteri')} value={data.totalLeads} sub={`+${data.newLeads} ${t('analytics.new_leads','yeni')}`} color="#059669" Icon={Users} trend={12} />
           <StatCard label={t('analytics.conversion','Cevap Oranı')} value={`${data.replyRate}%`} sub={t('analytics.campaigns','kampanya bazlı')} color="#7c3aed" Icon={MessageSquare} trend={data.replyRate > 10 ? 5 : -8} />
           <StatCard label={t('analytics.campaigns','Aktif Kampanya')} value={data.activeCampaigns} sub={t('analytics.overview','devam eden')} color="#0d9488" Icon={Megaphone} />
           <StatCard label={t('billing.credits_remaining','Kalan Kredi')} value={data.credits} sub={t('analytics.export','kullanılabilir')} color="#b45309" Icon={Zap} />

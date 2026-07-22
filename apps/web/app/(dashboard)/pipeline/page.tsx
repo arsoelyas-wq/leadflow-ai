@@ -166,7 +166,7 @@ export default function PipelinePage() {
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: 'Toplam Lead',  value: stats.total,        sub: 'pipeline geneli',       Icon: BarChart3,  iconBg: 'bg-slate-500/15',   iconColor: 'text-slate-400'   },
+            { label: 'Toplam Müşteri',  value: stats.total,        sub: 'pipeline geneli',       Icon: BarChart3,  iconBg: 'bg-slate-500/15',   iconColor: 'text-slate-400'   },
             { label: 'Aktif Süreç',  value: stats.inProgress,   sub: 'işlem devam ediyor',    Icon: TrendingUp, iconBg: 'bg-blue-500/15',    iconColor: 'text-blue-400'    },
             { label: 'Kazanıldı',    value: stats.won,          sub: 'başarıyla kapandı',     Icon: Trophy,     iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-400' },
             { label: 'Win Rate',     value: `${stats.winRate}%`, sub: `${stats.lost} kaybedildi`, Icon: Target,  iconBg: 'bg-amber-500/15',   iconColor: 'text-amber-400'   },
@@ -629,7 +629,7 @@ export default function PipelinePage() {
                   {/* Load more */}
                   {analytics.hasMore && !search && (
                     <button
-                      onClick={() => showMsg('success', 'Tüm leadleri görmek için Lead Veritabanına gidin')}
+                      onClick={() => showMsg('success', 'Tüm leadleri görmek için Müşteri Veritabanına gidin')}
                       className="w-full py-2.5 text-[11px] text-slate-500 hover:text-blue-400 border border-dashed border-slate-700/40 hover:border-blue-500/30 rounded-xl transition flex items-center justify-center gap-1.5"
                     >
                       <ChevronDown size={12} /> +{(analytics.count || 0) - allCards.length} daha göster

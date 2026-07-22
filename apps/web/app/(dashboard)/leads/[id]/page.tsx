@@ -751,7 +751,7 @@ export default function LeadDetailPage() {
         <div className="flex items-center gap-2 shrink-0">
           {(lead.hot_score || 0) >= 30 && (
             <span className="flex items-center gap-1 px-2.5 py-1 bg-red-500/15 border border-red-500/30 text-red-400 text-xs rounded-lg font-semibold animate-pulse">
-              <Flame size={12} /> Sıcak Lead
+              <Flame size={12} /> Sıcak Müşteri
             </span>
           )}
           {lead.ai_grade && (

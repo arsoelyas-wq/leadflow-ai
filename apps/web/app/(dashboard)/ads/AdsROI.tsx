@@ -138,7 +138,7 @@ export default function AdsROI({ connected }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           {
-            label: 'Toplam Lead',
+            label: 'Toplam Müşteri',
             value: totalLeads.toLocaleString(),
             sub: 'Son 30 gün',
             icon: <Users className="w-3.5 h-3.5 text-blue-400" />,

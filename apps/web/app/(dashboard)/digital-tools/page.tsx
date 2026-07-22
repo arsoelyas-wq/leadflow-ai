@@ -956,7 +956,7 @@ export default function DigitalToolsPage() {
     { label: t('Toplam Katalog','Toplam Katalog'), key: 'total',      color: accentTeal, glow: 'rgba(13,148,136,0.18)',   Icon: Globe },
     { label: t('Aktif','Aktif'),                   key: 'active',     color: accentEmerald, glow: 'rgba(5,150,105,0.18)',  Icon: CheckCircle },
     { label: t('Toplam Görüntüleme','Toplam Görüntüleme'), key: 'totalViews', color: '#7c3aed', glow: 'rgba(124,58,237,0.18)', Icon: Eye },
-    { label: t('Sıcak Lead','Sıcak Lead'),         key: 'hotLeads',   color: '#dc2626', glow: 'rgba(220,38,38,0.18)',   Icon: Flame },
+    { label: t('Sıcak Müşteri','Sıcak Müşteri'),         key: 'hotLeads',   color: '#dc2626', glow: 'rgba(220,38,38,0.18)',   Icon: Flame },
   ]
 
   // ══ QR consts ═══════════════════════════════════════════════════════════════

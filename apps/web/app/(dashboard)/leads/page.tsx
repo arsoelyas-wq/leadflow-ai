@@ -360,7 +360,7 @@ function ExcelImportModal({ open, onClose, onDone }: { open: boolean; onClose: (
   )
 }
 
-/* ─── Manuel Lead Ekleme Drawer ──────────────────────────────── */
+/* ─── Manuel Müşteri Ekleme Drawer ──────────────────────────────── */
 const SOURCES = ['Manuel','WhatsApp Gelen','Google Maps','Instagram','Facebook','LinkedIn','Website Formu','Referans','Soğuk Arama','Fuar / Etkinlik','Diğer']
 const STATUS_OPTS = ['new','contacted','qualified','replied','offered','won','lost']
 
@@ -420,7 +420,7 @@ function AddLeadDrawer({
               <Plus size={16} className="text-white"/>
             </div>
             <div>
-              <h2 className="text-slate-900 font-bold text-base leading-tight">Manuel Lead Ekle</h2>
+              <h2 className="text-slate-900 font-bold text-base leading-tight">Manuel Müşteri Ekle</h2>
               <p className="text-slate-400 text-xs">Tüm alanları doldurmanıza gerek yok</p>
             </div>
           </div>
@@ -570,7 +570,7 @@ function AddLeadDrawer({
             <button onClick={()=>save(false)} disabled={saving||!form.company_name.trim()}
               className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{background:form.company_name.trim()?'linear-gradient(135deg,#4F46E5,#7C3AED)':'#e2e8f0'}}>
-              {saving?<><RefreshCw size={14} className="animate-spin"/>Kaydediliyor...</>:<><Plus size={14}/>Lead Ekle</>}
+              {saving?<><RefreshCw size={14} className="animate-spin"/>Kaydediliyor...</>:<><Plus size={14}/>Müşteri Ekle</>}
             </button>
           </div>
           <p className="text-center text-[11px] text-slate-400 mt-2">Enter tuşu ile de kaydedebilirsiniz</p>
@@ -676,11 +676,11 @@ export default function LeadsPage() {
   const featureBulkDelete = ldCfg?.feature_bulk_delete !== false
   const featureScoreBadge = ldCfg?.feature_score_badge !== false
   const featureHotBadge   = ldCfg?.feature_hot_badge !== false
-  const pageTitle         = ldCfg?.page_title || 'Lead Veritabanı'
+  const pageTitle         = ldCfg?.page_title || 'Müşteri Veritabanı'
   const statTodayLabel    = ldCfg?.stat_today_label || 'Bugün Eklenen'
   const statWonLabel      = ldCfg?.stat_won_label || 'Kazanılan'
-  const statHotLabel      = ldCfg?.stat_hot_label || 'Sıcak Lead'
-  const statTotalLabel    = ldCfg?.stat_total_label || 'Toplam Lead'
+  const statHotLabel      = ldCfg?.stat_hot_label || 'Sıcak Müşteri'
+  const statTotalLabel    = ldCfg?.stat_total_label || 'Toplam Müşteri'
   const visibleCols       = ldCfg?.visible_columns || null
   const scoreHighColor    = ldCfg?.score_high_color || 'green'
   const scoreMedColor     = ldCfg?.score_medium_color || 'purple'
@@ -941,11 +941,11 @@ export default function LeadsPage() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
             <button onClick={()=>setShowAddLead(true)}
               style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'11px 0', borderRadius:12, border:'none', background:'linear-gradient(135deg,#059669,#0d9488)', color:'#ffffff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-              <Plus size={14}/> Lead Ekle
+              <Plus size={14}/> Müşteri Ekle
             </button>
             <Link href="/leads/scrape"
               style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'11px 0', borderRadius:12, background:'linear-gradient(135deg,#4F46E5,#7C3AED)', color:'#ffffff', fontSize:13, fontWeight:700, textDecoration:'none' }}>
-              <Plus size={14}/> Lead Topla
+              <Plus size={14}/> Müşteri Topla
             </Link>
           </div>
         </div>
@@ -978,12 +978,12 @@ export default function LeadsPage() {
             <button onClick={()=>setShowAddLead(true)}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
               style={{background:'linear-gradient(135deg,#059669,#0d9488)'}}>
-              <Plus size={14}/> Lead Ekle
+              <Plus size={14}/> Müşteri Ekle
             </button>
             <Link href="/leads/scrape"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
               style={{background:'linear-gradient(135deg,#4F46E5,#7C3AED)'}}>
-              <Plus size={14}/> Lead Topla
+              <Plus size={14}/> Müşteri Topla
             </Link>
           </div>
         </div>
@@ -1039,7 +1039,7 @@ export default function LeadsPage() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {[
-              {label:'Toplam Lead',val:pipelineStats.total,color:'#4F46E5'},
+              {label:'Toplam Müşteri',val:pipelineStats.total,color:'#4F46E5'},
               {label:'Kazanılan',val:pipelineStats.wonCount,color:'#16A34A'},
               {label:'Dönüşüm',val:`%${pipelineStats.conversionRate}`,color:'#D97706'},
               {label:'Kazanılan Değer',val:`₺${(pipelineStats.wonValue||0).toLocaleString('tr-TR')}`,color:'#059669'},
@@ -1234,7 +1234,7 @@ export default function LeadsPage() {
               </div>
               <Link href="/scrape"
                 className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">
-                + Lead Topla
+                + Müşteri Topla
               </Link>
             </div>
           ) : leads.map(lead => {
@@ -1360,7 +1360,7 @@ export default function LeadsPage() {
                     </div>
                     <Link href="/leads/scrape"
                       className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors">
-                      + Lead Topla
+                      + Müşteri Topla
                     </Link>
                   </div>
                 </td></tr>

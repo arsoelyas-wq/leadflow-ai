@@ -174,7 +174,7 @@ export default function LeadMachinePage() {
       {showReferral && (
         <div className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-4 space-y-3">
           <h3 className="text-white font-semibold text-sm flex items-center gap-2">
-            <Users size={14} className="text-purple-400"/> Referans ile Lead Ekle
+            <Users size={14} className="text-purple-400"/> Referans ile Müşteri Ekle
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -212,7 +212,7 @@ export default function LeadMachinePage() {
             <button onClick={addReferral} disabled={referralLoading||!referralForm.companyName||!referralForm.phone}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs rounded-lg transition cursor-pointer">
               {referralLoading?<RefreshCw size={12} className="animate-spin"/>:<Plus size={12}/>}
-              {referralLoading ? t("lead_machine.adding","Ekleniyor...") : t("lead_machine.add_lead","Lead Ekle")}
+              {referralLoading ? t("lead_machine.adding","Ekleniyor...") : t("lead_machine.add_lead","Müşteri Ekle")}
             </button>
             <button onClick={()=>setShowReferral(false)}
               className="px-4 py-2 bg-slate-700 text-slate-300 text-xs rounded-lg hover:bg-slate-600 transition cursor-pointer">
@@ -236,7 +236,7 @@ export default function LeadMachinePage() {
             </h3>
             <div className="text-center p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl mb-3">
               <p className="text-2xl font-bold text-emerald-400">{totalLeads}</p>
-              <p className="text-slate-400 text-xs">{t('lead_machine.toplam_lead','Toplam Lead')}</p>
+              <p className="text-slate-400 text-xs">{t('lead_machine.toplam_lead','Toplam Müşteri')}</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {SOURCES.map(s => (

@@ -1137,7 +1137,7 @@ export default function WorkflowPage() {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
               <div>
-                <h2 className="text-white font-semibold">Lead Ekle</h2>
+                <h2 className="text-white font-semibold">Müşteri Ekle</h2>
                 <p className="text-slate-500 text-xs mt-0.5">{t('workflow.secilen_leadler_bu_workfl', 'Seçilen leadler bu workflow\'a dahil edilir')}</p>
               </div>
               <button onClick={() => setEnrollModalWfId(null)} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
@@ -1177,7 +1177,7 @@ export default function WorkflowPage() {
               <button onClick={doEnroll} disabled={enrolling || !enrollSelected.length}
                 className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-900 font-bold rounded-xl text-sm transition flex items-center justify-center gap-2">
                 {enrolling ? <RefreshCw size={14} className="animate-spin" /> : <Users size={14} />}
-                {enrolling ? 'Ekleniyor...' : `${enrollSelected.length} Lead Ekle`}
+                {enrolling ? 'Ekleniyor...' : `${enrollSelected.length} Müşteri Ekle`}
               </button>
             </div>
           </div>

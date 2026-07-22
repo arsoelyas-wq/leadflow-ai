@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react'
 const DM: Record<string, Record<string, string>> = {
   tr: {
     title:'Karar Verici Bulucu', subtitle:'LinkdAPI + Claude AI ile karar vericileri otomatik bul ve kaydet',
-    total_lead:'Toplam Lead', with_contact:'Yetkili Bulunan', with_email:'Email Bulunan', coverage:'Kapsama Oranı',
+    total_lead:'Toplam Müşteri', with_contact:'Yetkili Bulunan', with_email:'Email Bulunan', coverage:'Kapsama Oranı',
     search:'Şirket veya şehir ara...', all:'Hepsi', no_contact:'Yetkili Yok', has_contact:'Yetkili Var',
     select_all:'Tümünü Seç', deselect_all:'Seçimi Kaldır', select_lead:'Lead Seçin', score:'Puan',
   },

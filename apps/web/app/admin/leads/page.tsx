@@ -66,11 +66,11 @@ const ALL_COLUMNS = [
 ]
 
 const DEFAULT: Record<string,any> = {
-  page_title:       'Lead Veritabanı',
+  page_title:       'Müşteri Veritabanı',
   stat_today_label: 'Bugün Eklenen',
   stat_won_label:   'Kazanılan',
-  stat_hot_label:   'Sıcak Lead',
-  stat_total_label: 'Toplam Lead',
+  stat_hot_label:   'Sıcak Müşteri',
+  stat_total_label: 'Toplam Müşteri',
   statuses:         DEFAULT_STATUSES,
   score_high:       75,
   score_medium:     50,
@@ -303,13 +303,13 @@ export default function AdminLeadsPage() {
         <div style={card}>
           <span style={sec}>Sayfa Başlığı & İstatistik Etiketleri</span>
           <F label="Sayfa Başlığı" error={errors.page_title}>
-            <input value={cfg.page_title||''} onChange={e=>set('page_title',e.target.value)} style={inp} placeholder="Lead Veritabanı"/>
+            <input value={cfg.page_title||''} onChange={e=>set('page_title',e.target.value)} style={inp} placeholder="Müşteri Veritabanı"/>
           </F>
           <G2>
             <F label="Bugün Eklenen Etiketi"><input value={cfg.stat_today_label||''} onChange={e=>set('stat_today_label',e.target.value)} style={inp} placeholder="Bugün Eklenen"/></F>
             <F label="Kazanılan Etiketi"><input value={cfg.stat_won_label||''} onChange={e=>set('stat_won_label',e.target.value)} style={inp} placeholder="Kazanılan"/></F>
-            <F label="Sıcak Lead Etiketi"><input value={cfg.stat_hot_label||''} onChange={e=>set('stat_hot_label',e.target.value)} style={inp} placeholder="Sıcak Lead"/></F>
-            <F label="Toplam Lead Etiketi"><input value={cfg.stat_total_label||''} onChange={e=>set('stat_total_label',e.target.value)} style={inp} placeholder="Toplam Lead"/></F>
+            <F label="Sıcak Müşteri Etiketi"><input value={cfg.stat_hot_label||''} onChange={e=>set('stat_hot_label',e.target.value)} style={inp} placeholder="Sıcak Müşteri"/></F>
+            <F label="Toplam Müşteri Etiketi"><input value={cfg.stat_total_label||''} onChange={e=>set('stat_total_label',e.target.value)} style={inp} placeholder="Toplam Müşteri"/></F>
           </G2>
         </div>
       )}
@@ -370,11 +370,11 @@ export default function AdminLeadsPage() {
             ))}
           </div>
           <div style={card}>
-            <span style={sec}>Sıcak Lead & Sayfa Boyutu</span>
+            <span style={sec}>Sıcak Müşteri & Sayfa Boyutu</span>
             <G2>
-              <F label={`Sıcak Lead Eşiği (${cfg.hot_threshold??75})`}>
+              <F label={`Sıcak Müşteri Eşiği (${cfg.hot_threshold??75})`}>
                 <input type="number" min={0} max={100} value={cfg.hot_threshold??75} onChange={e=>set('hot_threshold',Number(e.target.value))} style={inp}/>
-                <p style={{ color:'#475569',fontSize:11,marginTop:4 }}>Bu puan ve üzeri "Sıcak Lead" sayılır</p>
+                <p style={{ color:'#475569',fontSize:11,marginTop:4 }}>Bu puan ve üzeri "Sıcak Müşteri" sayılır</p>
               </F>
               <F label="Varsayılan Sayfa Boyutu">
                 <select value={cfg.default_page_size??20} onChange={e=>set('default_page_size',Number(e.target.value))} style={{...inp,cursor:'pointer'}}>
@@ -424,7 +424,7 @@ export default function AdminLeadsPage() {
             {key:'feature_export',label:'Excel / CSV Dışa Aktar',desc:'Leadleri Excel olarak indirme'},
             {key:'feature_bulk_delete',label:'Toplu Silme',desc:'Birden fazla lead silebilme'},
             {key:'feature_score_badge',label:'Puan Göstergesi',desc:'Lead kartlarında renk kodlu puan rozeti'},
-            {key:'feature_hot_badge',label:'Sıcak Lead Rozeti',desc:'Yüksek puanlı leadler için alev ikonu'},
+            {key:'feature_hot_badge',label:'Sıcak Müşteri Rozeti',desc:'Yüksek puanlı leadler için alev ikonu'},
           ].map(({key,label,desc})=>(
             <div key={key} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 0',borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
               <div>

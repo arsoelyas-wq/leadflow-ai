@@ -50,7 +50,7 @@ function LeadResultCard({ results }: { results: AssistantLeadResult[] }) {
       <div className="grid grid-cols-2 gap-2.5 mb-3">
         <div className="text-center p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
           <p className="text-xl font-bold text-emerald-400">{totalAdded}</p>
-          <p className="text-slate-400 text-[11px]">Lead Eklendi</p>
+          <p className="text-slate-400 text-[11px]">Müşteri Eklendi</p>
         </div>
         <div className="text-center p-2.5 bg-slate-900 rounded-lg">
           <p className="text-xl font-bold text-slate-300">{totalFound}</p>
