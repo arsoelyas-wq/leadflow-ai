@@ -213,9 +213,25 @@ const DISTRICTS: Record<string, string[]> = {
   london:   ['City of London','Shoreditch','Camden','Hackney','Islington','Southwark','Lambeth','Wandsworth','Greenwich','Canary Wharf'],
 };
 
-function getDistricts(city: string, maxResults: number): string[] {
-  if (maxResults <= 100) return [city];
-  return DISTRICTS[normCityKey(city)] || [city];
+function getScaledDistricts(city: string, maxResults: number, keywordCount: number): string[] {
+  const allDistricts = DISTRICTS[normCityKey(city)];
+
+  // Unknown city or tiny count — one city-wide search is enough
+  if (!allDistricts || maxResults <= 60) return [city];
+
+  // Realistic unique results per (district × keyword) after dedup + quality filters ≈ 36
+  const uniquePerCombo = 36;
+  const districtsNeeded = Math.ceil(maxResults / (keywordCount * uniquePerCombo));
+
+  if (districtsNeeded >= allDistricts.length) return allDistricts;
+  return allDistricts.slice(0, Math.max(1, districtsNeeded));
+}
+
+// Returns max pagination pages per query based on desired lead count
+function getMaxPages(maxResults: number): number {
+  if (maxResults <= 20)  return 1; // 1 page × 20 results = enough
+  if (maxResults <= 100) return 2; // 2 pages × 20 = 40 results per query
+  return 3;                        // 3 pages × 20 = 60 results per query (Places API max)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -424,19 +440,79 @@ async function fetchPlacesPage(opts: {
   return { places: data.places || [], nextPageToken: data.nextPageToken || null };
 }
 
-// ── Keyword expansion ─────────────────────────────────────────────────────────
-function expandKeywords(base: string): string[] {
-  const b = base.trim();
-  return [
-    b,
-    `${b} firması`,
-    `${b} mağazası`,
-    `${b} şirketi`,
-    `${b} toptancısı`,
-    `${b} imalatçı`,
-    `${b} satış`,
-    `${b} toptan`,
-  ].filter((v, i, a) => a.indexOf(v) === i);
+// ── Smart keyword engine ──────────────────────────────────────────────────────
+// Turkish → English map: surfaces businesses registered in English on Google Maps
+const TR_TO_EN: Record<string, string> = {
+  // Yiyecek & İçecek
+  'restoran':'restaurant','lokanta':'restaurant','cafe':'cafe','kafe':'cafe',
+  'fırın':'bakery','pastane':'pastry shop','kasap':'butcher','market':'supermarket',
+  'manav':'grocery store','büfe':'snack bar','kebap':'kebab restaurant',
+  'pizza':'pizza restaurant','börek':'pastry shop','balık':'fish restaurant',
+  // Sağlık
+  'eczane':'pharmacy','hastane':'hospital','klinik':'clinic',
+  'diş':'dentist','doktor':'doctor','optik':'optician',
+  'veteriner':'veterinarian','diş hekimi':'dental clinic','psikolog':'psychologist',
+  // Güzellik & Kişisel Bakım
+  'kuaför':'hair salon','berber':'barber shop','güzellik':'beauty salon',
+  'spa':'spa','masaj':'massage','tırnak':'nail salon','bayan kuaför':'hair salon',
+  // Hukuk & Finans
+  'avukat':'lawyer','noter':'notary','muhasebe':'accounting firm',
+  'mali müşavir':'financial advisor','sigorta':'insurance','banka':'bank',
+  'döviz':'currency exchange','finans':'finance','vergi':'tax consultant',
+  // Emlak & İnşaat
+  'emlak':'real estate','inşaat':'construction','mimarlık':'architecture',
+  'tadilat':'renovation','müteahhit':'contractor','yapı':'construction',
+  // Otomotiv
+  'oto':'auto service','araba':'car dealer','lastik':'tire shop',
+  'oto yıkama':'car wash','servis':'auto repair','çekici':'towing',
+  // Eğitim
+  'okul':'school','kurs':'course center','dershane':'tutoring center',
+  'anaokulu':'kindergarten','kolej':'college','üniversite':'university',
+  // Konaklama
+  'otel':'hotel','pansiyon':'guesthouse','apart':'apartment hotel','hostel':'hostel',
+  // Teknoloji
+  'bilişim':'IT services','yazılım':'software company','bilgisayar':'computer repair',
+  'telefon':'phone repair','elektronik':'electronics store',
+  // Lojistik
+  'nakliye':'logistics','kargo':'cargo','depo':'warehouse','taşımacılık':'moving company',
+  // Perakende
+  'mobilya':'furniture store','tekstil':'textile','giyim':'clothing store',
+  'ayakkabı':'shoe store','hırdavat':'hardware store','kırtasiye':'stationery',
+  // Hizmetler
+  'temizlik':'cleaning service','güvenlik':'security company',
+  'matbaa':'printing shop','reklam':'advertising agency',
+  // Gıda Üretim & Toptan
+  'gıda':'food distributor','tarım':'agriculture',
+};
+
+// Turkish synonyms: genuinely different words for same sector (different registrations on Maps)
+const TR_SYNONYMS: Record<string, string> = {
+  'restoran':'lokanta','eczane':'ilaçevi','avukat':'hukuk bürosu',
+  'kuaför':'güzellik salonu','cafe':'kahvehane','otel':'konaklama tesisi',
+  'inşaat':'müteahhit','emlak':'gayrimenkul','doktor':'klinik',
+  'market':'süpermarket','giyim':'butik','mobilya':'ev dekorasyonu',
+  'diş':'diş hekimi','güvenlik':'özel güvenlik','temizlik':'temizlik şirketi',
+};
+
+function getSmartKeywords(keyword: string, maxResults: number): string[] {
+  const b = keyword.trim().toLowerCase();
+  const keywords: string[] = [keyword.trim()]; // Tier 1: always — original Turkish
+
+  if (maxResults >= 100) {
+    // Tier 2: English equivalent — surfaces English-registered businesses
+    const en = TR_TO_EN[b]
+      ?? Object.entries(TR_TO_EN).find(([k]) => b.includes(k) || k.includes(b))?.[1];
+    if (en && !keywords.includes(en)) keywords.push(en);
+  }
+
+  if (maxResults >= 500) {
+    // Tier 3: Turkish synonym — different word, genuinely different search results
+    const syn = TR_SYNONYMS[b]
+      ?? Object.entries(TR_SYNONYMS).find(([k]) => b.includes(k))?.[1];
+    if (syn && !keywords.includes(syn)) keywords.push(syn);
+  }
+
+  return keywords; // max 3, all semantically distinct
 }
 
 // ── Core scraping engine ──────────────────────────────────────────────────────
@@ -553,11 +629,12 @@ async function scrapeLeads(opts: {
   const collected: any[] = [];
   let skippedDuplicates = 0;
 
-  const keywords = expandKeywords(keyword);
-  const districts = getDistricts(city, maxResults);
-  const coords = getCityCoords(city);
-  const cName = countryName[country] || country;
-  const langCode = lang[country] || 'en';
+  const keywords  = getSmartKeywords(keyword, maxResults);   // 1–3 semantically distinct keywords
+  const districts = getScaledDistricts(city, maxResults, keywords.length);
+  const maxPages  = getMaxPages(maxResults);
+  const coords    = getCityCoords(city);
+  const cName     = countryName[country] || country;
+  const langCode  = lang[country] || 'en';
 
   onProgress?.('Tarama başlatılıyor...', 0, 0, 0);
 
@@ -568,82 +645,82 @@ async function scrapeLeads(opts: {
       ? `${city} ${cName}`
       : `${district} ${city} ${cName}`;
 
-    // Run keywords in parallel batches of 3 (rate-limit friendly)
-    for (let ki = 0; ki < keywords.length; ki += 3) {
-      if (collected.length >= maxResults) break;
+    // All keywords for this district run in parallel (max 3 concurrent)
+    await Promise.allSettled(keywords.map(async (kw) => {
+      if (collected.length >= maxResults) return;
 
-      const kwBatch = keywords.slice(ki, ki + 3);
-      await Promise.allSettled(kwBatch.map(async (kw) => {
-        if (collected.length >= maxResults) return;
+      const query = `${kw} ${location}`;
+      let pageToken: string | null = null;
+      let pages = 0;
 
-        const query = `${kw} ${location}`;
-        let pageToken: string | null = null;
-        let pages = 0;
+      do {
+        if (collected.length >= maxResults) break;
+        try {
+          const { places, nextPageToken } = await fetchPlacesPage({
+            query,
+            lang: langCode,
+            coords: coords && !pageToken ? coords : undefined,
+            pageToken: pageToken || undefined,
+          });
 
-        do {
-          if (collected.length >= maxResults) break;
-          try {
-            const { places, nextPageToken } = await fetchPlacesPage({
-              query,
-              lang: langCode,
-              coords: coords && !pageToken ? coords : undefined,
-              pageToken: pageToken || undefined,
+          let newOnThisPage = 0;
+          for (const p of places) {
+            if (collected.length >= maxResults) break;
+            if (p.businessStatus === 'CLOSED_PERMANENTLY') continue;
+            if (seenIds.has(p.id)) continue;
+
+            const name = (p.displayName?.text || '').trim();
+            if (!name) continue;
+            const nameLower = name.toLowerCase();
+            const phone = validatePhone(
+              p.nationalPhoneNumber || p.internationalPhoneNumber || '',
+              country
+            );
+
+            // Dedup against CRM and within batch
+            if (existingNames.has(nameLower) || seenNames.has(nameLower)) { skippedDuplicates++; continue; }
+            if (phone && existingPhones.has(phone)) { skippedDuplicates++; continue; }
+
+            // Quality filter: require phone
+            if (requirePhone && !phone) continue;
+            // Quality filter: require website
+            if (requireWebsite && !p.websiteUri) continue;
+
+            seenIds.add(p.id);
+            seenNames.add(nameLower);
+
+            const score = calcScore(p);
+            if (score < minScore) continue;
+
+            collected.push({
+              _placeId: p.id,
+              name,
+              phone: phone || null,
+              website: p.websiteUri || null,
+              address: p.formattedAddress || null,
+              rating: p.rating || null,
+              reviewCount: p.userRatingCount || 0,
+              score,
+              district: district.toLowerCase() !== city.toLowerCase() ? district : null,
+              email: null as string | null,
             });
-
-            for (const p of places) {
-              if (collected.length >= maxResults) break;
-              if (p.businessStatus === 'CLOSED_PERMANENTLY') continue;
-              if (seenIds.has(p.id)) continue;
-
-              const name = (p.displayName?.text || '').trim();
-              if (!name) continue;
-              const nameLower = name.toLowerCase();
-              const phone = validatePhone(
-                p.nationalPhoneNumber || p.internationalPhoneNumber || '',
-                country
-              );
-
-              // Dedup against CRM and within batch
-              if (existingNames.has(nameLower) || seenNames.has(nameLower)) { skippedDuplicates++; continue; }
-              if (phone && existingPhones.has(phone)) { skippedDuplicates++; continue; }
-
-              // Quality filter: require phone
-              if (requirePhone && !phone) continue;
-              // Quality filter: require website
-              if (requireWebsite && !p.websiteUri) continue;
-
-              seenIds.add(p.id);
-              seenNames.add(nameLower);
-
-              const score = calcScore(p);
-              if (score < minScore) continue;
-
-              collected.push({
-                _placeId: p.id,
-                name,
-                phone: phone || null,
-                website: p.websiteUri || null,
-                address: p.formattedAddress || null,
-                rating: p.rating || null,
-                reviewCount: p.userRatingCount || 0,
-                score,
-                district: district.toLowerCase() !== city.toLowerCase() ? district : null,
-                email: null as string | null,
-              });
-            }
-
-            pageToken = nextPageToken;
-            pages++;
-            onProgress?.(`"${kw}" taranıyor...`, collected.length, 0, 0);
-            if (pageToken) await sleep(2200);
-          } catch (e: any) {
-            console.error(`[Scrape] query "${query}" failed:`, e.message);
-            if (!firstApiError) firstApiError = e.message;
-            break;
+            newOnThisPage++;
           }
-        } while (pageToken && pages < 3);
-      }));
-    }
+
+          pageToken = nextPageToken;
+          pages++;
+          onProgress?.(`"${kw}" taranıyor...`, collected.length, 0, 0);
+
+          // Smart stop: if this page added 0 new unique results, further pages won't help
+          if (newOnThisPage === 0) break;
+          if (pageToken) await sleep(2200);
+        } catch (e: any) {
+          console.error(`[Scrape] query "${query}" failed:`, e.message);
+          if (!firstApiError) firstApiError = e.message;
+          break;
+        }
+      } while (pageToken && pages < maxPages);
+    }));
   }
 
   // ── Email discovery phase ──────────────────────────────────────────────────
