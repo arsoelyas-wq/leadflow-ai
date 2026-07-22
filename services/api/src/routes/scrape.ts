@@ -663,11 +663,16 @@ async function scrapeLeads(opts: {
             pageToken: pageToken || undefined,
           });
 
-          let newOnThisPage = 0;
+          // Track genuinely new place IDs (before quality filters) for smart stop
+          let newSeenOnPage = 0;
           for (const p of places) {
             if (collected.length >= maxResults) break;
             if (p.businessStatus === 'CLOSED_PERMANENTLY') continue;
-            if (seenIds.has(p.id)) continue;
+            if (seenIds.has(p.id)) continue; // already seen by this or parallel keyword
+
+            // Mark as seen immediately (before quality filters)
+            seenIds.add(p.id);
+            newSeenOnPage++;
 
             const name = (p.displayName?.text || '').trim();
             if (!name) continue;
@@ -686,7 +691,6 @@ async function scrapeLeads(opts: {
             // Quality filter: require website
             if (requireWebsite && !p.websiteUri) continue;
 
-            seenIds.add(p.id);
             seenNames.add(nameLower);
 
             const score = calcScore(p);
@@ -704,15 +708,14 @@ async function scrapeLeads(opts: {
               district: district.toLowerCase() !== city.toLowerCase() ? district : null,
               email: null as string | null,
             });
-            newOnThisPage++;
           }
 
           pageToken = nextPageToken;
           pages++;
           onProgress?.(`"${kw}" taranıyor...`, collected.length, 0, 0);
 
-          // Smart stop: if this page added 0 new unique results, further pages won't help
-          if (newOnThisPage === 0) break;
+          // Smart stop: 0 new unique IDs means next pages are exhausted or fully overlapping
+          if (newSeenOnPage === 0) break;
           if (pageToken) await sleep(2200);
         } catch (e: any) {
           console.error(`[Scrape] query "${query}" failed:`, e.message);
@@ -789,7 +792,12 @@ router.post('/google-maps', async (req: any, res: any) => {
       discoverEmails = false,
     } = req.body;
 
-    if (!keyword || !city) {
+    // Multi-city support: frontend sends cities[] array, fall back to single city
+    const citiesList: string[] = (Array.isArray(req.body.cities) && req.body.cities.length > 0)
+      ? req.body.cities
+      : [city || ''];
+
+    if (!keyword || citiesList.length === 0 || !citiesList[0]) {
       return res.status(400).json({ error: 'keyword ve city zorunlu' });
     }
 
@@ -832,54 +840,83 @@ router.post('/google-maps', async (req: any, res: any) => {
     }
 
     // Large requests → background job
-    if (limit > 100 || discoverEmails) {
+    if (limit > 100 || discoverEmails || citiesList.length > 1) {
       const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const cityDisplay = citiesList.join(', ');
       jobs.set(jobId, {
         status: 'running', total: limit, found: 0, saved: 0, enriched: 0,
         withPhone: 0, withEmail: 0, withWebsite: 0,
-        keyword, city, country, phase: 'Başlatılıyor...', startedAt: Date.now(),
+        keyword, city: cityDisplay, country, phase: 'Başlatılıyor...', startedAt: Date.now(),
       });
 
       // Reserve credits atomically
       await supabase.rpc('increment_credits_used', { user_id: userId, amount: limit });
 
-      scrapeLeads({
-        keyword, city, country, maxResults: limit,
-        userId, minScore, requirePhone, requireWebsite, discoverEmails,
-        onProgress: (phase, found, saved, enriched) => {
+      // Run each city sequentially, splitting the target count proportionally
+      const perCity = Math.ceil(limit / citiesList.length);
+      (async () => {
+        let totalSaved = 0;
+        let totalSkipped = 0;
+        const totalStats = { withPhone: 0, withEmail: 0, withWebsite: 0 };
+        let lastApiError: string | undefined;
+
+        for (const c of citiesList) {
           const j = jobs.get(jobId);
-          if (j) {
-            j.phase = phase; j.found = found; j.saved = saved; j.enriched = enriched;
-            if (found > j.total) j.total = found; // dynamic update if more found
+          if (!j) break;
+          const cityLimit = Math.min(perCity, limit - totalSaved);
+          if (cityLimit <= 0) break;
+
+          try {
+            const { saved: count, skipped, stats, apiError } = await scrapeLeads({
+              keyword, city: c, country, maxResults: cityLimit,
+              userId, minScore, requirePhone, requireWebsite, discoverEmails,
+              onProgress: (phase, found, _saved, enriched) => {
+                const jj = jobs.get(jobId);
+                if (jj) {
+                  jj.phase = citiesList.length > 1 ? `${c}: ${phase}` : phase;
+                  jj.found = totalSaved + found;
+                  jj.enriched = enriched;
+                }
+              },
+            });
+            totalSaved += count;
+            totalSkipped += skipped;
+            totalStats.withPhone  += stats.withPhone;
+            totalStats.withEmail  += stats.withEmail;
+            totalStats.withWebsite += stats.withWebsite;
+            if (apiError) lastApiError = apiError;
+
+            const jj = jobs.get(jobId);
+            if (jj) { jj.saved = totalSaved; }
+          } catch (e: any) {
+            lastApiError = e.message;
           }
-        },
-      }).then(({ saved: count, skipped, stats, apiError }) => {
+        }
+
         const j = jobs.get(jobId);
         if (j) {
-          j.status = count === 0 && apiError ? 'error' : 'done';
-          j.saved = count;
-          j.withPhone = stats.withPhone; j.withEmail = stats.withEmail; j.withWebsite = stats.withWebsite;
-          if (skipped > 0) j.phase = `${count} kaydedildi, ${skipped} tekrar atlandı`;
-          if (count === 0 && apiError) j.error = `Google Places API hatası: ${apiError}`;
+          j.status = totalSaved === 0 && lastApiError ? 'error' : 'done';
+          j.saved = totalSaved;
+          j.withPhone = totalStats.withPhone; j.withEmail = totalStats.withEmail; j.withWebsite = totalStats.withWebsite;
+          if (totalSkipped > 0) j.phase = `${totalSaved} kaydedildi, ${totalSkipped} tekrar atlandı`;
+          if (totalSaved === 0 && lastApiError) j.error = `Google Places API hatası: ${lastApiError}`;
         }
-        // Refund unused credits atomically
-        const diff = limit - count;
-        if (diff > 0) {
-          supabase.rpc('decrement_credits_used', { user_id: userId, amount: diff });
-        }
-      }).catch(e => {
+
+        // Refund unused credits
+        const diff = limit - totalSaved;
+        if (diff > 0) supabase.rpc('decrement_credits_used', { user_id: userId, amount: diff });
+      })().catch(e => {
         const j = jobs.get(jobId);
         if (j) { j.status = 'error'; j.error = e.message; }
-        // Full refund on error
         supabase.rpc('decrement_credits_used', { user_id: userId, amount: limit });
       });
 
       return res.json({ jobId, async: true, total: limit, message: 'Arka planda çalışıyor...' });
     }
 
-    // Small synchronous request
+    // Small synchronous request (single city, no email discovery)
     const { saved, skipped, stats, apiError } = await scrapeLeads({
-      keyword, city, country, maxResults: limit,
+      keyword, city: citiesList[0], country, maxResults: limit,
       userId, minScore, requirePhone, requireWebsite, discoverEmails: false,
     });
 
