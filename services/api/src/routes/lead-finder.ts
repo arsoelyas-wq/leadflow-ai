@@ -1337,9 +1337,10 @@ async function runFinder(params: FinderParams): Promise<{
     }
   }
 
-  // Social media extraction — scrape website for FB/IG/YT/LI/TW links
+  // Social media extraction — cap at 20 for multi-city to keep total time reasonable
   updateJob({ phase: 'Sosyal medya linkleri aranıyor...' });
-  const toSocial = unique.filter(l => l.website && !l.instagram && !l.facebook).slice(0, 80);
+  const socialCap = cities.length > 1 ? 20 : 80;
+  const toSocial = unique.filter(l => l.website && !l.instagram && !l.facebook).slice(0, socialCap);
   const SOC_CONCURRENCY = 8;
   for (let i = 0; i < toSocial.length; i += SOC_CONCURRENCY) {
     await Promise.allSettled(

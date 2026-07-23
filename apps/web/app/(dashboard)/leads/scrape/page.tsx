@@ -160,13 +160,27 @@ export default function LeadFinderPage() {
 
   function startPolling(id: string) {
     setCurrentJobId(id)
+    let pollCount = 0
+    const MAX_POLLS = 450 // 15 minutes max
     pollRef.current = setInterval(async () => {
       try {
+        pollCount++
+        if (pollCount > MAX_POLLS) {
+          clearInterval(pollRef.current!)
+          setJobStatus((prev: any) => ({ ...prev, status: 'error', error: 'Zaman aşımı — lütfen tekrar deneyin.' }))
+          return
+        }
         const r = await fetch(`${API}/api/lead-finder/job/${id}`, { headers: authH() })
         const d = await r.json()
+        // Job not found: server restarted (Railway deploy) — don't hang at 0% forever
+        if (!r.ok || d.error) {
+          clearInterval(pollRef.current!)
+          setJobStatus((prev: any) => ({ ...prev, status: 'error', error: 'Sunucu yeniden başlatıldı — lütfen tekrar arama yapın.' }))
+          return
+        }
         setJobStatus(d)
         if (d.status === 'done' || d.status === 'error') {
-          if (pollRef.current) clearInterval(pollRef.current)
+          clearInterval(pollRef.current!)
           fetchCredits()
           if (d.status === 'done') fetchPreview(id)
         }
