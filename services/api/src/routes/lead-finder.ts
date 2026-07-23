@@ -196,6 +196,7 @@ async function googlePlacesSearch(params: {
   radiusKm: number;
   langCode: string;
   targetCount: number;
+  onProgress?: (partialCount: number) => void;
 }): Promise<RawLead[]> {
   if (!GOOGLE_PLACES_KEY) return [];
 
@@ -311,6 +312,7 @@ async function googlePlacesSearch(params: {
       } while (pageToken && page < 3);
 
       await sleep(80); // brief pause between grid cells
+      params.onProgress?.(leads.length);
     }
   }
 
@@ -806,23 +808,71 @@ async function registrySearch(params: {
 // ── Geocoding ─────────────────────────────────────────────────────────────────
 
 const STATIC_COORDS: Record<string, { lat: number; lng: number }> = {
-  istanbul: { lat: 41.0082, lng: 28.9784 }, ankara:   { lat: 39.9334, lng: 32.8597 },
-  izmir:    { lat: 38.4192, lng: 27.1287 }, bursa:    { lat: 40.1826, lng: 29.0665 },
-  antalya:  { lat: 36.8969, lng: 30.7133 }, london:   { lat: 51.5074, lng: -0.1278 },
-  paris:    { lat: 48.8566, lng: 2.3522  }, berlin:   { lat: 52.5200, lng: 13.4050 },
-  madrid:   { lat: 40.4168, lng: -3.7038 }, rome:     { lat: 41.9028, lng: 12.4964 },
-  amsterdam:{ lat: 52.3676, lng: 4.9041  }, dubai:    { lat: 25.2048, lng: 55.2708 },
-  riyadh:   { lat: 24.7136, lng: 46.6753 }, cairo:    { lat: 30.0444, lng: 31.2357 },
-  newyork:  { lat: 40.7128, lng: -74.0060}, losangeles:{ lat: 34.0522, lng: -118.2437 },
-  chicago:  { lat: 41.8781, lng: -87.6298}, toronto:  { lat: 43.6532, lng: -79.3832 },
-  sydney:   { lat: -33.8688, lng: 151.2093}, melbourne:{ lat: -37.8136, lng: 144.9631 },
-  tokyo:    { lat: 35.6762, lng: 139.6503}, seoul:    { lat: 37.5665, lng: 126.9780 },
-  singapore:{ lat: 1.3521, lng: 103.8198 }, mumbai:   { lat: 19.0760, lng: 72.8777 },
-  delhi:    { lat: 28.6139, lng: 77.2090 }, beijing:  { lat: 39.9042, lng: 116.4074 },
-  shanghai: { lat: 31.2304, lng: 121.4737}, moscow:   { lat: 55.7558, lng: 37.6173 },
-  saopaulo: { lat: -23.5505, lng: -46.6333}, buenosaires:{ lat: -34.6037, lng: -58.3816 },
-  mexico:   { lat: 19.4326, lng: -99.1332}, johannesburg:{ lat: -26.2041, lng: 28.0473 },
-  lagos:    { lat: 6.5244, lng: 3.3792   }, nairobi:  { lat: -1.2921, lng: 36.8219 },
+  // ── Turkey — all 81 provinces ────────────────────────────────────────────────
+  istanbul:       { lat: 41.0082, lng: 28.9784 }, ankara:        { lat: 39.9334, lng: 32.8597 },
+  izmir:          { lat: 38.4192, lng: 27.1287 }, bursa:         { lat: 40.1826, lng: 29.0665 },
+  antalya:        { lat: 36.8969, lng: 30.7133 }, adana:         { lat: 37.0000, lng: 35.3213 },
+  konya:          { lat: 37.8746, lng: 32.4932 }, gaziantep:     { lat: 37.0662, lng: 37.3833 },
+  mersin:         { lat: 36.8121, lng: 34.6415 }, icel:          { lat: 36.8121, lng: 34.6415 },
+  diyarbakir:     { lat: 37.9144, lng: 40.2306 }, kayseri:       { lat: 38.7312, lng: 35.4787 },
+  eskisehir:      { lat: 39.7767, lng: 30.5206 }, samsun:        { lat: 41.2928, lng: 36.3313 },
+  trabzon:        { lat: 41.0015, lng: 39.7178 }, sanliurfa:     { lat: 37.1591, lng: 38.7969 },
+  urfa:           { lat: 37.1591, lng: 38.7969 }, malatya:       { lat: 38.3552, lng: 38.3095 },
+  manisa:         { lat: 38.6191, lng: 27.4289 }, kocaeli:       { lat: 40.7654, lng: 29.9408 },
+  izmit:          { lat: 40.7654, lng: 29.9408 }, denizli:       { lat: 37.7765, lng: 29.0864 },
+  hatay:          { lat: 36.4018, lng: 36.3498 }, antakya:       { lat: 36.2021, lng: 36.1606 },
+  sakarya:        { lat: 40.6940, lng: 30.4358 }, adapazari:     { lat: 40.6940, lng: 30.4358 },
+  tekirdag:       { lat: 40.9781, lng: 27.5115 }, balikesir:     { lat: 39.6484, lng: 27.8826 },
+  van:            { lat: 38.4891, lng: 43.4089 }, mugla:         { lat: 37.2153, lng: 28.3636 },
+  bodrum:         { lat: 37.0344, lng: 27.4305 }, marmaris:      { lat: 36.8558, lng: 28.2727 },
+  fethiye:        { lat: 36.6553, lng: 29.1222 }, erzurum:       { lat: 39.9055, lng: 41.2658 },
+  afyonkarahisar: { lat: 38.7507, lng: 30.5567 }, afyon:         { lat: 38.7507, lng: 30.5567 },
+  aydin:          { lat: 37.8444, lng: 27.8458 }, kuşadasi:      { lat: 37.8610, lng: 27.2615 },
+  erzincan:       { lat: 39.7500, lng: 39.5000 }, zonguldak:     { lat: 41.4564, lng: 31.7987 },
+  sivas:          { lat: 39.7477, lng: 37.0179 }, kahramanmaras: { lat: 37.5858, lng: 36.9371 },
+  mardin:         { lat: 37.3212, lng: 40.7245 }, tokat:         { lat: 40.3167, lng: 36.5500 },
+  kastamonu:      { lat: 41.3887, lng: 33.7827 }, kutahya:       { lat: 39.4167, lng: 29.9833 },
+  isparta:        { lat: 37.7648, lng: 30.5566 }, burdur:        { lat: 37.7204, lng: 30.2906 },
+  canakkale:      { lat: 40.1553, lng: 26.4142 }, corum:         { lat: 40.5488, lng: 34.9535 },
+  amasya:         { lat: 40.6499, lng: 35.8353 }, ordu:          { lat: 40.9860, lng: 37.8797 },
+  rize:           { lat: 41.0201, lng: 40.5234 }, kirikkale:     { lat: 39.8468, lng: 33.5153 },
+  karabuk:        { lat: 41.2061, lng: 32.6204 }, bolu:          { lat: 40.7360, lng: 31.6086 },
+  giresun:        { lat: 40.9128, lng: 38.3895 }, nevşehir:      { lat: 38.6249, lng: 34.7237 },
+  nevsehir:       { lat: 38.6249, lng: 34.7237 }, kappadokya:    { lat: 38.6249, lng: 34.7237 },
+  nigde:          { lat: 37.9667, lng: 34.6833 }, aksaray:       { lat: 38.3687, lng: 34.0370 },
+  karaman:        { lat: 37.1759, lng: 33.2287 }, batman:        { lat: 37.8812, lng: 41.1351 },
+  kirşehir:       { lat: 39.1425, lng: 34.1600 }, kirsehir:      { lat: 39.1425, lng: 34.1600 },
+  yozgat:         { lat: 39.8181, lng: 34.8147 }, cankiri:       { lat: 40.6013, lng: 33.6114 },
+  bilecik:        { lat: 40.1420, lng: 29.9792 }, edirne:        { lat: 41.6818, lng: 26.5623 },
+  kirklareli:     { lat: 41.7333, lng: 27.2167 }, elazig:        { lat: 38.6810, lng: 39.2264 },
+  bingol:         { lat: 38.8854, lng: 40.4983 }, mus:           { lat: 38.7432, lng: 41.5064 },
+  bitlis:         { lat: 38.4007, lng: 42.1234 }, siirt:         { lat: 37.9333, lng: 41.9500 },
+  hakkari:        { lat: 37.5744, lng: 43.7408 }, agri:          { lat: 39.7191, lng: 43.0503 },
+  kars:           { lat: 40.6013, lng: 43.0975 }, ardahan:       { lat: 41.1105, lng: 42.7022 },
+  igdir:          { lat: 39.9167, lng: 44.0333 }, tunceli:       { lat: 39.1079, lng: 39.5479 },
+  adiyaman:       { lat: 37.7648, lng: 38.2786 }, gaziosmanpasa: { lat: 41.0553, lng: 28.9133 },
+  gebze:          { lat: 40.8021, lng: 29.4298 }, yalova:        { lat: 40.6500, lng: 29.2667 },
+  duzce:          { lat: 40.8438, lng: 31.1565 }, bartin:        { lat: 41.6344, lng: 32.3375 },
+  sinop:          { lat: 42.0231, lng: 35.1531 }, bayburt:       { lat: 40.2552, lng: 40.2249 },
+  gumushane:      { lat: 40.4608, lng: 39.4814 }, artvin:        { lat: 41.1828, lng: 41.8183 },
+  sirnak:         { lat: 37.5164, lng: 42.4611 }, osmaniye:      { lat: 37.0742, lng: 36.2463 },
+  kilis:          { lat: 36.7184, lng: 37.1212 }, usak:          { lat: 38.6741, lng: 29.4058 },
+  // ── World cities ─────────────────────────────────────────────────────────────
+  london:       { lat: 51.5074, lng: -0.1278  }, paris:         { lat: 48.8566, lng: 2.3522  },
+  berlin:       { lat: 52.5200, lng: 13.4050  }, madrid:        { lat: 40.4168, lng: -3.7038 },
+  rome:         { lat: 41.9028, lng: 12.4964  }, amsterdam:     { lat: 52.3676, lng: 4.9041  },
+  dubai:        { lat: 25.2048, lng: 55.2708  }, riyadh:        { lat: 24.7136, lng: 46.6753 },
+  cairo:        { lat: 30.0444, lng: 31.2357  }, newyork:       { lat: 40.7128, lng: -74.0060 },
+  losangeles:   { lat: 34.0522, lng: -118.2437}, chicago:       { lat: 41.8781, lng: -87.6298 },
+  toronto:      { lat: 43.6532, lng: -79.3832 }, sydney:        { lat: -33.8688, lng: 151.2093 },
+  melbourne:    { lat: -37.8136, lng: 144.9631}, tokyo:         { lat: 35.6762, lng: 139.6503 },
+  seoul:        { lat: 37.5665, lng: 126.9780 }, singapore:     { lat: 1.3521, lng: 103.8198 },
+  mumbai:       { lat: 19.0760, lng: 72.8777  }, delhi:         { lat: 28.6139, lng: 77.2090 },
+  beijing:      { lat: 39.9042, lng: 116.4074 }, shanghai:      { lat: 31.2304, lng: 121.4737 },
+  moscow:       { lat: 55.7558, lng: 37.6173  }, saopaulo:      { lat: -23.5505, lng: -46.6333 },
+  buenosaires:  { lat: -34.6037, lng: -58.3816}, mexico:        { lat: 19.4326, lng: -99.1332 },
+  johannesburg: { lat: -26.2041, lng: 28.0473 }, lagos:         { lat: 6.5244, lng: 3.3792 },
+  nairobi:      { lat: -1.2921, lng: 36.8219  },
 };
 
 async function geocodeCity(city: string, countryName: string): Promise<{ lat: number; lng: number }> {
@@ -1141,7 +1191,10 @@ async function runFinder(params: FinderParams): Promise<{
       const cityName = cities[i];
       updateJob({ phase: cities.length > 1 ? `${cityName} Google Maps taranıyor... (${i + 1}/${cities.length})` : 'Google Places taranıyor...' });
       const coords = await geocodeCity(cityName, countryName);
-      const gpLeads = await googlePlacesSearch({ query, city: cityName, lat: coords.lat, lng: coords.lng, radiusKm, langCode, targetCount: perCityTarget });
+      const gpLeads = await googlePlacesSearch({
+        query, city: cityName, lat: coords.lat, lng: coords.lng, radiusKm, langCode, targetCount: perCityTarget,
+        onProgress: (partial) => updateJob({ found: allLeads.length + partial }),
+      });
       gpLeads.forEach(l => { l.searchCity = cityName; });
       allLeads.push(...gpLeads);
       sourceBreakdown.google_places += gpLeads.length;
@@ -1445,10 +1498,10 @@ router.post('/search', async (req: any, res: any) => {
 
     const limit = Math.max(10, Math.min(Number(targetCount), 1000));
 
-    // Credit check
+    // Credit check (includes rollover)
     const { data: userData } = await supabase
-      .from('users').select('credits_total, credits_used').eq('id', userId).single();
-    const available = (userData?.credits_total || 0) - (userData?.credits_used || 0);
+      .from('users').select('credits_total, credits_used, credits_rollover').eq('id', userId).single();
+    const available = Math.max(0, (userData?.credits_total || 0) - (userData?.credits_used || 0)) + (userData?.credits_rollover || 0);
     if (available < limit) {
       return res.status(400).json({
         error: `Yetersiz kredi. Gerekli: ${limit}, Mevcut: ${available}`,
