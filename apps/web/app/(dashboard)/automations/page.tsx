@@ -86,6 +86,7 @@ export default function AutomationsPage() {
   const [lists, setLists] = useState<string[]>([])
   const [selectedList, setSelectedList] = useState('')
   const listMounted = useRef(false)
+  const autoSelectOnLoad = useRef(false)
 
   // Canlı Monitör & Funnel Analytics
   const [liveMonitor, setLiveMonitor] = useState<any>(null)
@@ -138,12 +139,23 @@ export default function AutomationsPage() {
   useEffect(() => {
     const m = searchParams.get('mode') as Mode | null
     if (m && ['broadcast', 'sequence', 'workflow'].includes(m)) setMode(m)
+    const l = searchParams.get('list')
+    if (l) { autoSelectOnLoad.current = true; setSelectedList(l) }
   }, [])
 
   useEffect(() => {
     if (!listMounted.current) { listMounted.current = true; return }
-    const url = selectedList ? `/api/leads?limit=200&list=${encodeURIComponent(selectedList)}` : '/api/leads?limit=200'
-    api.get(url).then((d: any) => { setLeads(d.leads || []); setSelectedLeads([]) }).catch(() => {})
+    const url = selectedList ? `/api/leads?limit=500&list=${encodeURIComponent(selectedList)}` : '/api/leads?limit=200'
+    api.get(url).then((d: any) => {
+      const loaded: any[] = d.leads || []
+      setLeads(loaded)
+      if (autoSelectOnLoad.current) {
+        autoSelectOnLoad.current = false
+        setSelectedLeads(loaded.filter((l: any) => l.phone || l.email).map((l: any) => l.id))
+      } else {
+        setSelectedLeads([])
+      }
+    }).catch(() => {})
   }, [selectedList])
 
   // Canlı monitör — seçili sekans varsa 10sn'de bir güncelle

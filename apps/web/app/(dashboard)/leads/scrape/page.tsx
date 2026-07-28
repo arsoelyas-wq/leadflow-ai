@@ -493,18 +493,24 @@ export default function LeadFinderPage() {
               <div className="bg-slate-800/30 border border-slate-700/40 rounded-xl p-4">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Sıradaki Adım</p>
                 <div className="space-y-2">
-                  <button onClick={() => router.push('/automations?mode=broadcast')}
+                  <button onClick={() => {
+                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : ''
+                      router.push(`/automations?mode=broadcast${list}`)
+                    }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition text-left group">
                     <div className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
                       <Megaphone size={15} className="text-blue-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white">Kampanya Oluştur</p>
-                      <p className="text-xs text-slate-400">Bu leadlere toplu WhatsApp veya email gönder</p>
+                      <p className="text-xs text-slate-400">{totalSaved} lead otomatik seçili gelecek</p>
                     </div>
                     <ChevronRight size={14} className="text-slate-500 group-hover:text-blue-400 transition shrink-0" />
                   </button>
-                  <button onClick={() => router.push('/automations?mode=sequence')}
+                  <button onClick={() => {
+                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : ''
+                      router.push(`/automations?mode=sequence${list}`)
+                    }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition text-left group">
                     <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
                       <Bot size={15} className="text-emerald-400" />
