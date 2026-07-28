@@ -34,12 +34,24 @@ async function getDailyCount(userId: string, channel: string): Promise<number> {
 }
 
 function personalizeMessage(template: string, lead: any): string {
+  const firma  = lead.company_name || lead.contact_name || 'Sayın Yetkili';
+  const isim   = lead.contact_name || lead.company_name || 'Yetkili';
+  const sehir  = lead.city    || '';
+  const sektor = lead.sector  || '';
+  const tel    = lead.phone   || '';
   return template
-    .replace(/\[FIRMA_ADI\]/g, lead.company_name || lead.contact_name || 'Sayın Yetkili')
-    .replace(/\[SEHIR\]/g, lead.city || '')
-    .replace(/\[SEKTOR\]/g, lead.sector || '')
-    .replace(/\[AD\]/g, lead.contact_name || '')
-    .replace(/\[TELEFON\]/g, lead.phone || '');
+    // {{firma}} style (from AI generator)
+    .replace(/\{\{firma\}\}/gi,  firma)
+    .replace(/\{\{isim\}\}/gi,   isim)
+    .replace(/\{\{sehir\}\}/gi,  sehir)
+    .replace(/\{\{sektor\}\}/gi, sektor)
+    .replace(/\{\{telefon\}\}/gi, tel)
+    // [FIRMA_ADI] legacy style
+    .replace(/\[FIRMA_ADI\]/g, firma)
+    .replace(/\[SEHIR\]/g,     sehir)
+    .replace(/\[SEKTOR\]/g,    sektor)
+    .replace(/\[AD\]/g,        isim)
+    .replace(/\[TELEFON\]/g,   tel);
 }
 
 // ── ROUTES ────────────────────────────────────────────────
@@ -162,11 +174,21 @@ Amaç: ${goal}
 ${exampleLead.sector ? `Örnek müşteri sektörü: ${exampleLead.sector}` : ''}
 ${exampleLead.city ? `Örnek şehir: ${exampleLead.city}` : ''}
 
-Kurallar:
-- Mesajda şu değişkenleri kullan: {{firma}} (şirket adı), {{sektor}} (sektör), {{sehir}} (şehir), {{isim}} (yetkili adı)
-- ${isWA ? 'WhatsApp için: kısa (max 3 cümle), samimi, doğal, 1-2 emoji kullanabilirsin' : 'Email için: profesyonel, 4-5 cümle, resmi dil'}
-- Türkçe yaz, nazik ve ikna edici ol
-- SADECE mesaj metnini döndür, başka hiçbir şey yazma` }]
+Değişkenler (HEP bu formatta kullan):
+- {{firma}} → şirket/işletme adı
+- {{sektor}} → sektör
+- {{sehir}} → şehir
+
+YASAK:
+- {{isim}} kullanma — kişi adı ve cinsiyeti bilinmiyor
+- "hanım/bey", "sayın" gibi resmi selamlar kullanma
+- Selamlama doğrudan {{firma}} ile başlasın
+
+${isWA
+  ? 'WhatsApp: kısa (2-3 cümle), samimi, 1-2 emoji, direkt konuya gir'
+  : 'Email: profesyonel, 4-5 cümle, paragraflar halinde'}
+- Türkçe, ikna edici, doğal bir dil kullan
+- SADECE mesaj metnini döndür` }]
     });
     const message = ((resp.content[0] as any)?.text || '').trim();
     res.json({ message });
@@ -176,7 +198,7 @@ Kurallar:
     const goal = req.body.goal || '';
     const fallback = isWA
       ? `Merhaba {{firma}} 👋\n\n{{sektor}} sektöründeki işletmeniz için ${goal} hakkında bilgi vermek istedim. Uygun olduğunuzda kısa bir görüşme yapabilir miyiz? 🙏`
-      : `Sayın {{isim}},\n\n{{firma}} firması için ${goal} konusunda özel hazırladığımız çözümü sizinle paylaşmak istiyoruz.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`;
+      : `{{firma}} ekibine,\n\n{{sektor}} sektörüne özel ${goal} konusunda hazırladığımız çözümü paylaşmak istiyoruz.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`;
     res.json({ message: fallback });
   }
 });
