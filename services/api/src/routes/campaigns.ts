@@ -146,6 +146,41 @@ SADECE JSON dondur:
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+router.post('/generate-message', async (req: any, res: any) => {
+  try {
+    const { goal, channel, leads = [] } = req.body;
+    if (!goal) return res.status(400).json({ error: 'goal zorunlu' });
+    const isWA = channel === 'whatsapp';
+    const exampleLead = leads[0] || {};
+    const Anthropic = require('@anthropic-ai/sdk');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const resp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 400,
+      messages: [{ role: 'user', content: `Türkiye'de B2B satış yapan bir firma adına ${isWA ? 'WhatsApp' : 'email'} mesajı yaz.
+
+Amaç: ${goal}
+${exampleLead.sector ? `Örnek müşteri sektörü: ${exampleLead.sector}` : ''}
+${exampleLead.city ? `Örnek şehir: ${exampleLead.city}` : ''}
+
+Kurallar:
+- Mesajda şu değişkenleri kullan: {{firma}} (şirket adı), {{sektor}} (sektör), {{sehir}} (şehir), {{isim}} (yetkili adı)
+- ${isWA ? 'WhatsApp için: kısa (max 3 cümle), samimi, doğal, 1-2 emoji kullanabilirsin' : 'Email için: profesyonel, 4-5 cümle, resmi dil'}
+- Türkçe yaz, nazik ve ikna edici ol
+- SADECE mesaj metnini döndür, başka hiçbir şey yazma` }]
+    });
+    const message = ((resp.content[0] as any)?.text || '').trim();
+    res.json({ message });
+  } catch (e: any) {
+    // Fallback template if Claude API unavailable
+    const isWA = req.body.channel === 'whatsapp';
+    const goal = req.body.goal || '';
+    const fallback = isWA
+      ? `Merhaba {{firma}} 👋\n\n{{sektor}} sektöründeki işletmeniz için ${goal} hakkında bilgi vermek istedim. Uygun olduğunuzda kısa bir görüşme yapabilir miyiz? 🙏`
+      : `Sayın {{isim}},\n\n{{firma}} firması için ${goal} konusunda özel hazırladığımız çözümü sizinle paylaşmak istiyoruz.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`;
+    res.json({ message: fallback });
+  }
+});
+
 router.get('/segments', async (req: any, res: any) => {
   try {
     const { min_score, max_score, city, sector, source, status, has_phone, has_email, limit: lmt = 200 } = req.query;

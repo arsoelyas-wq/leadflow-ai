@@ -75,6 +75,8 @@ export default function AutomationsPage() {
   const [segOptions, setSegOptions] = useState<any>({ cities: [], sectors: [], sources: [] })
   const [optimizing, setOptimizing] = useState(false)
   const [optimized, setOptimized] = useState<any>(null)
+  const [goalInput, setGoalInput] = useState('')
+  const [generating, setGenerating] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [activeSubTab, setActiveSubTab] = useState<'compose' | 'templates' | 'analytics'>('compose')
@@ -185,6 +187,31 @@ export default function AutomationsPage() {
         '{{firma}} değişkeni kişiselleştirme ekler, yanıt oranını %30-40 artırır',
       ]
     }
+  }
+
+  const substituteVars = (template: string, lead: any) =>
+    template
+      .replace(/\{\{firma\}\}/gi, lead?.company_name || 'Firma Adı')
+      .replace(/\{\{sektor\}\}/gi, lead?.sector || 'sektörünüz')
+      .replace(/\{\{sehir\}\}/gi, lead?.city || 'şehriniz')
+      .replace(/\{\{isim\}\}/gi, lead?.contact_name || lead?.company_name || 'Yetkili')
+
+  const generateMessage = async () => {
+    if (!goalInput.trim()) return
+    setGenerating(true); setBcMessage(''); setOptimized(null)
+    const previewLeads = selectedLeads.length
+      ? leads.filter(l => selectedLeads.includes(l.id)).slice(0, 3)
+      : leads.slice(0, 3)
+    try {
+      const data = await api.post('/api/campaigns/generate-message', { goal: goalInput, channel: bcChannel, leads: previewLeads })
+      setBcMessage(data.message || '')
+    } catch {
+      const isWA = bcChannel === 'whatsapp'
+      setBcMessage(isWA
+        ? `Merhaba {{firma}} 👋\n\n{{sektor}} sektöründeki işletmeniz için ${goalInput} hakkında bilgi vermek istedim. Uygun olduğunuzda kısa bir görüşme yapabilir miyiz? 🙏`
+        : `Sayın {{isim}},\n\n{{firma}} için ${goalInput} konusunda özel hazırladığımız çözümü paylaşmak istiyoruz.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`)
+    }
+    setGenerating(false)
   }
 
   const optimizeMessage = async () => {
@@ -356,11 +383,11 @@ export default function AutomationsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Compose form */}
                 <div style={{ ...card, padding: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}><Megaphone size={15} style={{ color: accentBlue }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Mesaj Oluştur</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}><Megaphone size={15} style={{ color: accentBlue }} /><h2 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: 0 }}>Kampanya Oluştur</h2>
                     {smartTiming && <span style={{ marginLeft: 'auto', color: accentEmerald, fontSize: 10, background: '#ecfdf5', padding: '2px 8px', borderRadius: 10 }}>En iyi saat: {smartTiming.bestHour}</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <input value={bcName} onChange={e => setBcName(e.target.value)} placeholder="Kampanya adi *" style={inputStyle} />
+                    <input value={bcName} onChange={e => setBcName(e.target.value)} placeholder="Kampanya adı *" style={inputStyle} />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                       {(['whatsapp', 'email'] as const).map(ch => (
                         <button key={ch} onClick={() => setBcChannel(ch)} style={{ padding: '9px', borderRadius: 9, border: `2px solid ${bcChannel === ch ? accentBlue : '#e2e8f0'}`, background: bcChannel === ch ? '#eff6ff' : '#fff', color: bcChannel === ch ? accentBlue : tx2, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: 0 }}>
@@ -368,8 +395,53 @@ export default function AutomationsPage() {
                         </button>
                       ))}
                     </div>
-                    <textarea value={bcMessage} onChange={e => { setBcMessage(e.target.value); setOptimized(null) }} rows={4} placeholder="Merhaba {{firma}}, {{sektor}} alaninda size ozel teklifimiz var..." style={{ ...inputStyle, resize: 'vertical' as const }} />
-                    <p style={{ color: tx3, fontSize: 9, margin: '-6px 0 0' }}>Degiskenler: {'{{firma}} {{isim}} {{sehir}} {{sektor}}'}</p>
+
+                    {/* AI Mesaj Oluşturma */}
+                    <div style={{ background: 'linear-gradient(135deg,#faf5ff,#eff6ff)', border: '1px solid #e9d5ff', borderRadius: 10, padding: '12px 14px' }}>
+                      <p style={{ color: accentViolet, fontSize: 11, fontWeight: 700, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 5 }}><Sparkles size={12} /> AI ile Mesaj Oluştur</p>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          value={goalInput}
+                          onChange={e => setGoalInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && generateMessage()}
+                          placeholder="Ne sunmak istiyorsunuz? (ör: kozmetik salonlarına randevu sistemi)"
+                          style={{ ...inputStyle, fontSize: 11, flex: 1 }}
+                        />
+                        <button onClick={generateMessage} disabled={generating || !goalInput.trim()}
+                          style={{ padding: '8px 14px', borderRadius: 9, border: 'none', background: goalInput.trim() ? `linear-gradient(135deg,${accentViolet},#9333ea)` : '#e2e8f0', color: goalInput.trim() ? '#fff' : tx3, fontSize: 11, fontWeight: 700, cursor: generating || !goalInput.trim() ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                          {generating ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Sparkles size={11} />}
+                          {generating ? 'Yazıyor...' : 'Yaz'}
+                        </button>
+                      </div>
+                      <p style={{ color: tx3, fontSize: 9, margin: '5px 0 0' }}>AI her firmaya özel mesaj şablonu oluşturur — siz sadece hedefi yazın</p>
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <textarea value={bcMessage} onChange={e => { setBcMessage(e.target.value); setOptimized(null) }} rows={4}
+                        placeholder="Ya da kendiniz yazın... ({{firma}}, {{sektor}}, {{sehir}}, {{isim}} değişkenlerini kullanabilirsiniz)"
+                        style={{ ...inputStyle, resize: 'vertical' as const }} />
+                      {generating && (
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: accentViolet, fontWeight: 600 }}>
+                          <RefreshCw size={13} style={{ animation: 'autoSpin 1s linear infinite' }} /> AI mesajı hazırlıyor...
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Kişiselleştirilmiş önizleme */}
+                    {bcMessage && selectedLeads.length > 0 && (() => {
+                      const previewLead = leads.find(l => selectedLeads.includes(l.id))
+                      if (!previewLead) return null
+                      return (
+                        <div style={{ padding: '10px 13px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 9 }}>
+                          <p style={{ color: accentEmerald, fontSize: 9, fontWeight: 700, margin: '0 0 5px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Önizleme — {previewLead.company_name}
+                          </p>
+                          <p style={{ color: '#166534', fontSize: 11, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                            {substituteVars(bcMessage, previewLead)}
+                          </p>
+                        </div>
+                      )
+                    })()}
 
                     {bcChannel === 'whatsapp' && waConnected === false && (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', background: '#fffbeb', border: '1px solid #fbbf24', borderRadius: 9 }}>
