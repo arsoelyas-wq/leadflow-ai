@@ -179,10 +179,11 @@ Değişkenler (HEP bu formatta kullan):
 - {{sektor}} → sektör
 - {{sehir}} → şehir
 
-YASAK:
-- {{isim}} kullanma — kişi adı ve cinsiyeti bilinmiyor
-- "hanım/bey", "sayın" gibi resmi selamlar kullanma
-- Selamlama doğrudan {{firma}} ile başlasın
+KURALLAR:
+- Mesaja "Merhaba!" veya "İyi günler!" gibi doğal bir selamlama ile başla — {{firma}} ile başlama
+- {{firma}} değişkenini mesajın ORTASINDA doğal bir cümle içinde kullan (ör: "{{firma}} için özel bir teklifimiz var" veya "{{firma}} gibi işletmelere...")
+- {{isim}} KULLANMA — kişi adı ve cinsiyeti bilinmiyor
+- "hanım/bey", "sayın" gibi resmi selamlar KULLANMA
 
 ${isWA
   ? 'WhatsApp: kısa (2-3 cümle), samimi, 1-2 emoji, direkt konuya gir'
@@ -197,8 +198,8 @@ ${isWA
     const isWA = req.body.channel === 'whatsapp';
     const goal = req.body.goal || '';
     const fallback = isWA
-      ? `Merhaba {{firma}} 👋\n\n{{sektor}} sektöründeki işletmeniz için ${goal} hakkında bilgi vermek istedim. Uygun olduğunuzda kısa bir görüşme yapabilir miyiz? 🙏`
-      : `{{firma}} ekibine,\n\n{{sektor}} sektörüne özel ${goal} konusunda hazırladığımız çözümü paylaşmak istiyoruz.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`;
+      ? `Merhaba! 👋\n\n{{firma}} gibi {{sektor}} işletmeleri için ${goal} sunuyoruz. Kısa bir görüşme için uygun olduğunuzda yazabilirsiniz 🙏`
+      : `İyi günler,\n\n{{firma}} için ${goal} konusunda özel hazırladığımız çözümü paylaşmak istedik.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`;
     res.json({ message: fallback });
   }
 });

@@ -208,8 +208,8 @@ export default function AutomationsPage() {
     } catch {
       const isWA = bcChannel === 'whatsapp'
       setBcMessage(isWA
-        ? `Merhaba {{firma}} 👋\n\n{{sektor}} sektöründeki işletmeniz için ${goalInput} hakkında bilgi vermek istedim. Uygun olduğunuzda kısa bir görüşme yapabilir miyiz? 🙏`
-        : `{{firma}} ekibine,\n\n{{sektor}} sektörüne özel ${goalInput} konusunda hazırladığımız çözümü paylaşmak istiyoruz.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`)
+        ? `Merhaba! 👋\n\n{{firma}} gibi {{sektor}} işletmeleri için ${goalInput} sunuyoruz. Kısa bir görüşme için uygun olduğunuzda yazabilirsiniz 🙏`
+        : `İyi günler,\n\n{{firma}} için ${goalInput} konusunda özel hazırladığımız çözümü paylaşmak istedik.\n\nGörüşme için uygun bir zaman belirleyebilir miyiz?\n\nSaygılarımızla`)
     }
     setGenerating(false)
   }
