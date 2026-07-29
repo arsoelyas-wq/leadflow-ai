@@ -139,8 +139,22 @@ export default function AutomationsPage() {
   useEffect(() => {
     const m = searchParams.get('mode') as Mode | null
     if (m && ['broadcast', 'sequence', 'workflow'].includes(m)) setMode(m)
+
     const l = searchParams.get('list')
-    if (l) { autoSelectOnLoad.current = true; setSelectedList(l) }
+    if (l) { autoSelectOnLoad.current = true; setSelectedList(l); return }
+
+    // ?fresh=N — no list name, select the N most recently added leads
+    const fresh = parseInt(searchParams.get('fresh') || '0', 10)
+    if (fresh > 0) {
+      const n = Math.min(fresh, 500)
+      api.get(`/api/leads?limit=${n}&sortBy=created_at&sortDir=desc`)
+        .then((d: any) => {
+          const loaded: any[] = d.leads || []
+          setLeads(loaded)
+          setSelectedLeads(loaded.filter((l: any) => l.phone || l.email).map((l: any) => l.id))
+        })
+        .catch(() => {})
+    }
   }, [])
 
   useEffect(() => {

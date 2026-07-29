@@ -494,7 +494,7 @@ export default function LeadFinderPage() {
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Sıradaki Adım</p>
                 <div className="space-y-2">
                   <button onClick={() => {
-                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : ''
+                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : `&fresh=${totalSaved}`
                       router.push(`/automations?mode=broadcast${list}`)
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 transition text-left group">
@@ -508,7 +508,7 @@ export default function LeadFinderPage() {
                     <ChevronRight size={14} className="text-slate-500 group-hover:text-blue-400 transition shrink-0" />
                   </button>
                   <button onClick={() => {
-                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : ''
+                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : `&fresh=${totalSaved}`
                       router.push(`/automations?mode=sequence${list}`)
                     }}
                     className="w-full flex items-center gap-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 transition text-left group">
