@@ -847,26 +847,33 @@ export default function LeadFinderPage() {
         <div className="space-y-3">
           <label className="text-slate-300 text-sm font-medium">{t('leads.kac_lead_istiyorsunuz', 'Kaç lead istiyorsunuz?')}</label>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {LEAD_COUNTS.map(opt => (
-              <button
-                type="button"
-                key={opt.value}
-                onClick={() => { setMaxResults(opt.value); setShowCustom(false); setCustomCount('') }}
-                className={`relative py-2.5 px-1 rounded-xl border text-center transition ${
-                  !showCustom && maxResults === opt.value
-                    ? 'bg-blue-600/20 border-blue-500 text-white'
-                    : `${opt.color} text-slate-400 bg-slate-800/40`
-                }`}
-              >
-                {opt.badge && (
-                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                    {opt.badge}
-                  </span>
-                )}
-                <p className="text-sm font-bold">{opt.label}</p>
-                <p className="text-[10px] opacity-60 mt-0.5">{getTimeEstimate(opt.value, selectedCities.length, radiusKm)}</p>
-              </button>
-            ))}
+            {LEAD_COUNTS.map(opt => {
+              const tooFewForProvince = radiusKm >= 500 && opt.value < 200
+              return (
+                <button
+                  type="button"
+                  key={opt.value}
+                  disabled={tooFewForProvince}
+                  onClick={() => { if (!tooFewForProvince) { setMaxResults(opt.value); setShowCustom(false); setCustomCount('') } }}
+                  title={tooFewForProvince ? 'İl Geneli için min. 200 lead gerekli' : undefined}
+                  className={`relative py-2.5 px-1 rounded-xl border text-center transition ${
+                    tooFewForProvince
+                      ? 'opacity-30 cursor-not-allowed border-slate-700 text-slate-600 bg-slate-800/20'
+                      : !showCustom && maxResults === opt.value
+                        ? 'bg-blue-600/20 border-blue-500 text-white'
+                        : `${opt.color} text-slate-400 bg-slate-800/40`
+                  }`}
+                >
+                  {opt.badge && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                      {opt.badge}
+                    </span>
+                  )}
+                  <p className="text-sm font-bold">{opt.label}</p>
+                  <p className="text-[10px] opacity-60 mt-0.5">{getTimeEstimate(opt.value, selectedCities.length, radiusKm)}</p>
+                </button>
+              )
+            })}
           </div>
 
           {/* Custom count */}
@@ -958,7 +965,10 @@ export default function LeadFinderPage() {
                       <button
                         key={p.km}
                         type="button"
-                        onClick={() => setRadiusKm(p.km)}
+                        onClick={() => {
+                          setRadiusKm(p.km)
+                          if (p.km >= 500 && maxResults < 200) { setMaxResults(200); setShowCustom(false) }
+                        }}
                         className={`flex-1 py-2 rounded-lg border text-xs font-medium transition ${
                           radiusKm === p.km
                             ? 'bg-blue-600/20 border-blue-500/60 text-blue-300'
