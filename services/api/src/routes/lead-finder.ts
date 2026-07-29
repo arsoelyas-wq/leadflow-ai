@@ -211,9 +211,10 @@ async function googlePlacesSearch(params: {
   const rLat = r / 111;       // degrees latitude per r km
   const rLng = rLat / cos;    // degrees longitude per r km
 
-  // Province uses 1 query variant; normal uses full query + first word (broader match)
+  // Large radius (>50km) uses 1 variant — location bias does the narrowing;
+  // normal radius uses full query + first word for broader match
   const words = params.query.trim().split(/\s+/);
-  const queryVariants = isProvinceMode
+  const queryVariants = (isProvinceMode || r > 50)
     ? [params.query]
     : [...new Set([params.query, words[0]])];
 
@@ -368,27 +369,32 @@ async function googlePlacesSearch(params: {
     return leads;
   }
 
-  // Phase 4 — 4×4 dense grid, 1 page  (up to 32 more req) — kicks in for 200+ targets
+  // minGs: minimum gridSize so cells have no gaps at 50km API cap
+  // Formula: cell_spacing = 2r/gs must be ≤ 50km×1.33 (33% overlap)
+  // → gs ≥ r/33
+  const minGs = Math.ceil(r / 33);
+
+  // Phase 4 — dense grid, 1 page — kicks in for 200+ targets
   if (params.targetCount >= 200) {
-    await searchGrid(4, 1);
+    await searchGrid(Math.min(Math.max(4, minGs), 10), 1);
     if (leads.length >= rawCap) {
       console.log(`[LeadFinder] Adaptive done at phase 4 — ${leads.length} results`);
       return leads;
     }
   }
 
-  // Phase 5 — 6×6 dense grid, 2 pages  (up to 144 more req) — kicks in for 500+ targets
+  // Phase 5 — denser grid, 2 pages — kicks in for 500+ targets
   if (params.targetCount >= 500) {
-    await searchGrid(6, 2);
+    await searchGrid(Math.min(Math.max(6, minGs + 1), 12), 2);
     if (leads.length >= rawCap) {
       console.log(`[LeadFinder] Adaptive done at phase 5 — ${leads.length} results`);
       return leads;
     }
   }
 
-  // Phase 6 — 8×8 dense grid, 2 pages  (up to 256 more req) — kicks in for 1000+ targets
+  // Phase 6 — densest grid, 2 pages — kicks in for 1000+ targets
   if (params.targetCount >= 1000) {
-    await searchGrid(8, 2);
+    await searchGrid(Math.min(Math.max(8, minGs + 2), 12), 2);
   }
 
   console.log(`[LeadFinder] Adaptive all phases "${params.query}" ${params.city}: ${leads.length} results`);

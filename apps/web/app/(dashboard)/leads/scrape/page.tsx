@@ -26,7 +26,7 @@ function getTimeEstimate(count: number, cityCount = 1, radiusKm = 20): string {
   const base = count <= 20   ?  8  : count <= 50   ? 15  : count <= 100  ?  30
              : count <= 200  ? 60  : count <= 500  ? 150 : count <= 1000 ? 300
              : count <= 2000 ? 600 : 1200
-  const radiusMult = radiusKm >= 50 ? 1.3 : radiusKm >= 20 ? 1 : 0.7
+  const radiusMult = radiusKm >= 200 ? 2.5 : radiusKm >= 100 ? 1.8 : radiusKm >= 50 ? 1.3 : radiusKm >= 20 ? 1 : 0.7
   const total = Math.round(base * radiusMult) + (cityCount - 1) * 20
   if (total < 60)  return `~${total} sn`
   const m = Math.ceil(total / 60)
@@ -40,16 +40,17 @@ const LEAD_COUNTS = [
   { value: 200,  label: '200',  badge: null,       color: 'border-slate-600 hover:border-slate-500', minRadius: 0   },
   { value: 500,  label: '500',  badge: 'Pro',      color: 'border-purple-500/50 hover:border-purple-400', minRadius: 20 },
   { value: 1000, label: '1K',   badge: 'Max',      color: 'border-amber-500/50 hover:border-amber-400', minRadius: 50 },
-  { value: 2000, label: '2K',   badge: 'Ultra',    color: 'border-rose-500/50 hover:border-rose-400', minRadius: 50  },
-  { value: 5000, label: '5K',   badge: 'Elite',    color: 'border-fuchsia-500/50 hover:border-fuchsia-400', minRadius: 999 },
+  { value: 2000, label: '2K',   badge: 'Ultra',    color: 'border-rose-500/50 hover:border-rose-400', minRadius: 50   },
+  { value: 5000, label: '5K',   badge: 'Elite',    color: 'border-fuchsia-500/50 hover:border-fuchsia-400', minRadius: 100 },
 ]
 
 const RADIUS_PRESETS = [
-  { label: 'Yakın',     km: 5,   desc: '5 km'         },
-  { label: 'Orta',      km: 20,  desc: '20 km'        },
-  { label: 'Geniş',     km: 50,  desc: '50 km'        },
-  { label: 'Çok Geniş', km: 100, desc: '100 km'       },
-  { label: 'İl Geneli', km: 999, desc: 'Tüm ilçeler'  },
+  { label: 'Yakın',     km: 5,   desc: '5 km'        },
+  { label: 'Orta',      km: 20,  desc: '20 km'       },
+  { label: 'Geniş',     km: 50,  desc: '50 km'       },
+  { label: 'Çok Geniş', km: 100, desc: '100 km'      },
+  { label: 'Bölge',     km: 200, desc: '200 km·çok il'},
+  { label: 'İl Geneli', km: 999, desc: 'Tüm ilçeler' },
 ]
 
 const SECTOR_CHIPS = [
@@ -1009,7 +1010,13 @@ export default function LeadFinderPage() {
                   {radiusKm >= 500 && (
                     <p className="text-[10px] text-amber-400/80 flex items-center gap-1 mt-1">
                       <span>⚡</span>
-                      <span>200km×200km il taraması — 64 istek, ~1 dk, ~$2 Google API maliyeti</span>
+                      <span>İl geneli: 200km×200km alan, 64 istek (~$2) — ~1 dk</span>
+                    </p>
+                  )}
+                  {radiusKm === 200 && (
+                    <p className="text-[10px] text-sky-400/80 flex items-center gap-1 mt-1">
+                      <span>🗺</span>
+                      <span>Birden fazla il kapsar — Google Places 50km/istek limitini çok noktalı grid ile aşar</span>
                     </p>
                   )}
                 </div>
