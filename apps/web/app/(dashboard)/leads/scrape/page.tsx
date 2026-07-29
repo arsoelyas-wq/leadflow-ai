@@ -18,27 +18,30 @@ function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type
 
 function getTimeEstimate(count: number, cityCount = 1, radiusKm = 20): string {
   if (radiusKm >= 500) {
-    // Province mode: 8×8 grid × 1 query × no pagination = 64 requests ≈ 1 min per city
-    const secs = 60 + (cityCount - 1) * 45
+    // Province mode: 8×8 grid, 1 variant, no pagination = 64 req ≈ 1 min per city
+    const secs = 65 + (cityCount - 1) * 50
     return secs < 60 ? `~${secs} sn` : `~${Math.ceil(secs / 60)} dk`
   }
-  const radiusMult = radiusKm >= 100 ? 1.8 : radiusKm >= 50 ? 1 : radiusKm >= 20 ? 0.7 : 0.4
-  const base = count <= 20 ? 20 : count <= 50 ? 40 : count <= 100 ? 90
-             : count <= 200 ? 180 : count <= 300 ? 300 : count <= 500 ? 420
-             : count <= 750 ? 660 : 900
-  const total = Math.round(base * radiusMult) + (cityCount - 1) * 12
+  // Adaptive phases: stop early when target reached — these are upper bounds
+  const base = count <= 20   ?  8  : count <= 50   ? 15  : count <= 100  ?  30
+             : count <= 200  ? 60  : count <= 500  ? 150 : count <= 1000 ? 300
+             : count <= 2000 ? 600 : 1200
+  const radiusMult = radiusKm >= 50 ? 1.3 : radiusKm >= 20 ? 1 : 0.7
+  const total = Math.round(base * radiusMult) + (cityCount - 1) * 20
   if (total < 60)  return `~${total} sn`
   const m = Math.ceil(total / 60)
   return m < 60 ? `~${m} dk` : `~${(m / 60).toFixed(1)} sa`
 }
 
 const LEAD_COUNTS = [
-  { value: 20,   label: '20',   badge: null,      color: 'border-slate-600 hover:border-slate-500' },
-  { value: 50,   label: '50',   badge: null,      color: 'border-slate-600 hover:border-slate-500' },
-  { value: 100,  label: '100',  badge: 'Popüler', color: 'border-blue-500/50 hover:border-blue-400' },
-  { value: 200,  label: '200',  badge: null,      color: 'border-slate-600 hover:border-slate-500' },
-  { value: 500,  label: '500',  badge: 'Pro',     color: 'border-purple-500/50 hover:border-purple-400' },
-  { value: 1000, label: '1000', badge: 'Max',     color: 'border-amber-500/50 hover:border-amber-400' },
+  { value: 20,   label: '20',   badge: null,       color: 'border-slate-600 hover:border-slate-500', minRadius: 0   },
+  { value: 50,   label: '50',   badge: null,       color: 'border-slate-600 hover:border-slate-500', minRadius: 0   },
+  { value: 100,  label: '100',  badge: 'Popüler',  color: 'border-blue-500/50 hover:border-blue-400', minRadius: 0  },
+  { value: 200,  label: '200',  badge: null,       color: 'border-slate-600 hover:border-slate-500', minRadius: 0   },
+  { value: 500,  label: '500',  badge: 'Pro',      color: 'border-purple-500/50 hover:border-purple-400', minRadius: 20 },
+  { value: 1000, label: '1K',   badge: 'Max',      color: 'border-amber-500/50 hover:border-amber-400', minRadius: 50 },
+  { value: 2000, label: '2K',   badge: 'Ultra',    color: 'border-rose-500/50 hover:border-rose-400', minRadius: 50  },
+  { value: 5000, label: '5K',   badge: 'Elite',    color: 'border-fuchsia-500/50 hover:border-fuchsia-400', minRadius: 999 },
 ]
 
 const RADIUS_PRESETS = [
@@ -846,18 +849,27 @@ export default function LeadFinderPage() {
         {/* ── 3. Lead count ── */}
         <div className="space-y-3">
           <label className="text-slate-300 text-sm font-medium">{t('leads.kac_lead_istiyorsunuz', 'Kaç lead istiyorsunuz?')}</label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-4 lg:grid-cols-8">
             {LEAD_COUNTS.map(opt => {
               const tooFewForProvince = radiusKm >= 500 && opt.value < 200
+              const isDisabled = tooFewForProvince
+              const disabledTitle = tooFewForProvince ? 'İl Geneli için min. 200 lead gerekli' : undefined
               return (
                 <button
                   type="button"
                   key={opt.value}
-                  disabled={tooFewForProvince}
-                  onClick={() => { if (!tooFewForProvince) { setMaxResults(opt.value); setShowCustom(false); setCustomCount('') } }}
-                  title={tooFewForProvince ? 'İl Geneli için min. 200 lead gerekli' : undefined}
+                  disabled={isDisabled}
+                  onClick={() => {
+                    if (isDisabled) return
+                    setMaxResults(opt.value)
+                    setShowCustom(false)
+                    setCustomCount('')
+                    // auto-bump radius to minimum required for this count
+                    if (opt.minRadius > radiusKm) setRadiusKm(opt.minRadius)
+                  }}
+                  title={disabledTitle}
                   className={`relative py-2.5 px-1 rounded-xl border text-center transition ${
-                    tooFewForProvince
+                    isDisabled
                       ? 'opacity-30 cursor-not-allowed border-slate-700 text-slate-600 bg-slate-800/20'
                       : !showCustom && maxResults === opt.value
                         ? 'bg-blue-600/20 border-blue-500 text-white'
@@ -875,6 +887,20 @@ export default function LeadFinderPage() {
               )
             })}
           </div>
+
+          {/* Large count notes */}
+          {maxResults >= 5000 && (
+            <p className="text-[10px] text-fuchsia-400/80 flex items-center gap-1">
+              <span>⚡</span>
+              <span>5K: İl Geneli radius gerekli. Sadece büyük şehirler + mega sektörlerde (restoran, kafe) mümkündür. ~10-20 dk sürer.</span>
+            </p>
+          )}
+          {maxResults >= 2000 && maxResults < 5000 && (
+            <p className="text-[10px] text-rose-400/70 flex items-center gap-1">
+              <span>⚡</span>
+              <span>2K: Geniş radius (50km+) ile büyük şehirlerde çalışır. ~5-10 dk sürer.</span>
+            </p>
+          )}
 
           {/* Custom count */}
           <div

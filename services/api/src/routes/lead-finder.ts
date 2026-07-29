@@ -202,48 +202,27 @@ async function googlePlacesSearch(params: {
 
   const leads: RawLead[] = [];
   const seenIds = new Set<string>();
+  // Stop collecting when we have 50% more than target — tight buffer keeps cost low
+  const rawCap = Math.ceil(params.targetCount * 1.5);
 
-  // Province mode (radiusKm >= 500): 8×8 grid over 100km radius, single query variant,
-  // no pagination → 64 fixed requests (~$2, ~50 sec), 200km×200km coverage
   const isProvinceMode = params.radiusKm >= 500;
-  const effectiveRadius = isProvinceMode ? 100 : params.radiusKm;
-  const gridSize = isProvinceMode ? 8
-                 : params.targetCount <= 30  ? 2
-                 : params.targetCount <= 80  ? 3
-                 : params.targetCount <= 200 ? 4
-                 : params.targetCount <= 500 ? 5 : 6;
+  const r = isProvinceMode ? 100 : params.radiusKm; // effective radius km
+  const cos = Math.cos(params.lat * Math.PI / 180) || 1;
+  const rLat = r / 111;       // degrees latitude per r km
+  const rLng = rLat / cos;    // degrees longitude per r km
 
-  const stepLatDeg  = (effectiveRadius * 2 / gridSize) / 111;
-  const cosLat      = Math.cos(params.lat * Math.PI / 180);
-  const stepLngDeg  = stepLatDeg / (cosLat || 1);
-  const cellRadiusM = (effectiveRadius / gridSize) * 1000 * 1.5; // overlap cells slightly
-
-  const gridPoints: { lat: number; lng: number }[] = [];
-  for (let i = 0; i < gridSize; i++) {
-    for (let j = 0; j < gridSize; j++) {
-      gridPoints.push({
-        lat: params.lat - effectiveRadius / 111 + i * stepLatDeg + stepLatDeg / 2,
-        lng: params.lng - (effectiveRadius / 111 / cosLat) + j * stepLngDeg + stepLngDeg / 2,
-      });
-    }
-  }
-
-  // Province mode uses single query variant (location bias is enough); normal mode uses 2
+  // Province uses 1 query variant; normal uses full query + first word (broader match)
   const words = params.query.trim().split(/\s+/);
   const queryVariants = isProvinceMode
     ? [params.query]
     : [...new Set([params.query, words[0]])];
 
-  const rawCap = params.targetCount * 4; // buffer for dedup
-
-  outer:
-  for (const point of gridPoints) {
+  // ── Core helper: search one lat/lng point with optional pagination ─────────
+  async function searchPoint(lat: number, lng: number, radiusM: number, maxPages: number): Promise<void> {
     for (const queryText of queryVariants) {
-      if (leads.length >= rawCap) break outer;
-
+      if (leads.length >= rawCap) return;
       let pageToken: string | null = null;
       let page = 0;
-
       do {
         if (leads.length >= rawCap) break;
         try {
@@ -252,18 +231,16 @@ async function googlePlacesSearch(params: {
             languageCode: params.langCode,
             maxResultCount: 20,
           };
-          // When using pageToken, DO NOT include locationBias (API requirement)
           if (pageToken) {
             body.pageToken = pageToken;
           } else {
             body.locationBias = {
               circle: {
-                center: { latitude: point.lat, longitude: point.lng },
-                radius: Math.min(cellRadiusM, 50000),
+                center: { latitude: lat, longitude: lng },
+                radius: Math.min(radiusM, 50000),
               },
             };
           }
-
           const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
             method: 'POST',
             headers: {
@@ -274,13 +251,11 @@ async function googlePlacesSearch(params: {
             body: JSON.stringify(body),
             signal: AbortSignal.timeout(10000),
           });
-
           if (!resp.ok) {
-            const errText = await resp.text().catch(() => '');
-            console.error(`[LeadFinder] Google Places HTTP ${resp.status}:`, errText.slice(0, 200));
+            const err = await resp.text().catch(() => '');
+            console.error(`[LeadFinder] Google Places HTTP ${resp.status}:`, err.slice(0, 200));
             break;
           }
-
           const data: any = await resp.json();
           for (const p of (data.places || [])) {
             if (!p.id || seenIds.has(p.id)) continue;
@@ -303,11 +278,9 @@ async function googlePlacesSearch(params: {
               category:      p.primaryTypeDisplayName?.text ?? null,
               maps_url:      p.googleMapsUri || null,
               opening_hours: p.regularOpeningHours?.weekdayDescriptions
-                ? JSON.stringify(p.regularOpeningHours.weekdayDescriptions)
-                : null,
+                ? JSON.stringify(p.regularOpeningHours.weekdayDescriptions) : null,
             } as RawLead);
           }
-
           pageToken = data.nextPageToken || null;
           page++;
           if (pageToken) await sleep(2100); // Google requires >2s between paginated requests
@@ -315,14 +288,110 @@ async function googlePlacesSearch(params: {
           console.error('[LeadFinder] Google Places error:', e.message?.slice(0, 100));
           break;
         }
-      } while (pageToken && page < (isProvinceMode ? 1 : 3));
-
-      await sleep(80); // brief pause between grid cells
+      } while (pageToken && page < maxPages);
+      await sleep(80);
       params.onProgress?.(leads.length);
     }
   }
 
-  console.log(`[LeadFinder] Google Places grid "${params.query}" in ${params.city}: ${leads.length} results (${gridSize}x${gridSize} grid)`);
+  // Helper for dense grid phase
+  async function searchGrid(gridSize: number, maxPagesPerCell: number): Promise<void> {
+    const stepLat = (r * 2 / gridSize) / 111;
+    const stepLng = stepLat / cos;
+    const cellR   = (r / gridSize) * 1000 * 1.5;
+    for (let i = 0; i < gridSize && leads.length < rawCap; i++) {
+      for (let j = 0; j < gridSize && leads.length < rawCap; j++) {
+        const lat = params.lat - rLat + i * stepLat + stepLat / 2;
+        const lng = params.lng - rLng + j * stepLng + stepLng / 2;
+        await searchPoint(lat, lng, Math.min(cellR, 50000), maxPagesPerCell);
+      }
+    }
+  }
+
+  // ── Province mode: 8×8 fixed grid, 1 variant, no pagination ──────────────
+  // Covers 200km×200km, 64 requests, ~1 min, ~$2
+  if (isProvinceMode) {
+    await searchGrid(8, 1);
+    console.log(`[LeadFinder] Province "${params.query}" ${params.city}: ${leads.length} results (8×8)`);
+    return leads;
+  }
+
+  // ── Adaptive phases: start small, expand only if target not yet reached ───
+  // Each phase covers more area; early-stop saves requests and cost.
+
+  // Phase 0 — city center, full radius, up to 3 pages  (2–6 req)
+  // Catches the most relevant/central businesses first.
+  await searchPoint(params.lat, params.lng, r * 1000, 3);
+  if (leads.length >= rawCap) {
+    console.log(`[LeadFinder] Adaptive done at phase 0 — ${leads.length} results`);
+    return leads;
+  }
+
+  // Phase 1 — 4-point cardinal ring at 0.45r, 2 pages each  (4–16 req cumulative)
+  for (const [dlat, dlng] of [
+    [rLat * 0.45, 0], [-rLat * 0.45, 0], [0, rLng * 0.45], [0, -rLng * 0.45],
+  ]) {
+    if (leads.length >= rawCap) break;
+    await searchPoint(params.lat + dlat, params.lng + dlng, r * 0.55 * 1000, 2);
+  }
+  if (leads.length >= rawCap) {
+    console.log(`[LeadFinder] Adaptive done at phase 1 — ${leads.length} results`);
+    return leads;
+  }
+
+  // Phase 2 — 4-point diagonal ring at 0.54r, 2 pages each  (8–32 req cumulative)
+  const d2 = 0.38;
+  for (const [dlat, dlng] of [
+    [rLat * d2, rLng * d2], [rLat * d2, -rLng * d2],
+    [-rLat * d2, rLng * d2], [-rLat * d2, -rLng * d2],
+  ]) {
+    if (leads.length >= rawCap) break;
+    await searchPoint(params.lat + dlat, params.lng + dlng, r * 0.55 * 1000, 2);
+  }
+  if (leads.length >= rawCap) {
+    console.log(`[LeadFinder] Adaptive done at phase 2 — ${leads.length} results`);
+    return leads;
+  }
+
+  // Phase 3 — 8-point outer ring at 0.8r, 1 page each  (16–48 req cumulative)
+  const r3 = 0.8;
+  for (const [dlat, dlng] of [
+    [rLat * r3, 0], [-rLat * r3, 0], [0, rLng * r3], [0, -rLng * r3],
+    [rLat * r3 * 0.7, rLng * r3 * 0.7], [rLat * r3 * 0.7, -rLng * r3 * 0.7],
+    [-rLat * r3 * 0.7, rLng * r3 * 0.7], [-rLat * r3 * 0.7, -rLng * r3 * 0.7],
+  ]) {
+    if (leads.length >= rawCap) break;
+    await searchPoint(params.lat + dlat, params.lng + dlng, r * 0.4 * 1000, 1);
+  }
+  if (leads.length >= rawCap) {
+    console.log(`[LeadFinder] Adaptive done at phase 3 — ${leads.length} results`);
+    return leads;
+  }
+
+  // Phase 4 — 4×4 dense grid, 1 page  (up to 32 more req) — kicks in for 200+ targets
+  if (params.targetCount >= 200) {
+    await searchGrid(4, 1);
+    if (leads.length >= rawCap) {
+      console.log(`[LeadFinder] Adaptive done at phase 4 — ${leads.length} results`);
+      return leads;
+    }
+  }
+
+  // Phase 5 — 6×6 dense grid, 2 pages  (up to 144 more req) — kicks in for 500+ targets
+  if (params.targetCount >= 500) {
+    await searchGrid(6, 2);
+    if (leads.length >= rawCap) {
+      console.log(`[LeadFinder] Adaptive done at phase 5 — ${leads.length} results`);
+      return leads;
+    }
+  }
+
+  // Phase 6 — 8×8 dense grid, 2 pages  (up to 256 more req) — kicks in for 1000+ targets
+  if (params.targetCount >= 1000) {
+    await searchGrid(8, 2);
+  }
+
+  console.log(`[LeadFinder] Adaptive all phases "${params.query}" ${params.city}: ${leads.length} results`);
   return leads;
 }
 
