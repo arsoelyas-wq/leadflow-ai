@@ -203,23 +203,26 @@ async function googlePlacesSearch(params: {
   const leads: RawLead[] = [];
   const seenIds = new Set<string>();
 
-  // Grid size scales with target count — larger grids give better city coverage
-  const gridSize = params.targetCount <= 30  ? 2
+  // Province mode (radiusKm >= 500): cover full province with 8×8 grid over 80km radius
+  const isProvinceMode = params.radiusKm >= 500;
+  const effectiveRadius = isProvinceMode ? 80 : params.radiusKm;
+  const gridSize = isProvinceMode ? 8
+                 : params.targetCount <= 30  ? 2
                  : params.targetCount <= 80  ? 3
                  : params.targetCount <= 200 ? 4
                  : params.targetCount <= 500 ? 5 : 6;
 
-  const stepLatDeg  = (params.radiusKm * 2 / gridSize) / 111;
+  const stepLatDeg  = (effectiveRadius * 2 / gridSize) / 111;
   const cosLat      = Math.cos(params.lat * Math.PI / 180);
   const stepLngDeg  = stepLatDeg / (cosLat || 1);
-  const cellRadiusM = (params.radiusKm / gridSize) * 1000 * 1.5; // overlap cells slightly
+  const cellRadiusM = (effectiveRadius / gridSize) * 1000 * 1.5; // overlap cells slightly
 
   const gridPoints: { lat: number; lng: number }[] = [];
   for (let i = 0; i < gridSize; i++) {
     for (let j = 0; j < gridSize; j++) {
       gridPoints.push({
-        lat: params.lat - params.radiusKm / 111 + i * stepLatDeg + stepLatDeg / 2,
-        lng: params.lng - (params.radiusKm / 111 / cosLat) + j * stepLngDeg + stepLngDeg / 2,
+        lat: params.lat - effectiveRadius / 111 + i * stepLatDeg + stepLatDeg / 2,
+        lng: params.lng - (effectiveRadius / 111 / cosLat) + j * stepLngDeg + stepLngDeg / 2,
       });
     }
   }
@@ -1034,9 +1037,46 @@ async function expandSearchTerms(query: string, langCode: string, targetCount: n
 // For 300+ lead requests in large cities, also search popular districts.
 
 const CITY_SUBAREAS: Record<string, string[]> = {
-  istanbul:    ['Kadıköy', 'Beşiktaş', 'Şişli', 'Fatih', 'Üsküdar', 'Maltepe', 'Ümraniye', 'Bağcılar', 'Esenyurt', 'Bakırköy'],
-  ankara:      ['Çankaya', 'Keçiören', 'Yenimahalle', 'Etimesgut', 'Sincan', 'Gölbaşı'],
-  izmir:       ['Bornova', 'Karşıyaka', 'Buca', 'Konak', 'Çiğli', 'Bayraklı'],
+  // Türkiye — büyük iller tam ilçe listesi
+  istanbul:       ['Kadıköy', 'Beşiktaş', 'Şişli', 'Fatih', 'Üsküdar', 'Maltepe', 'Ümraniye', 'Bağcılar', 'Esenyurt', 'Bakırköy', 'Pendik', 'Kartal', 'Ataşehir', 'Beyoğlu', 'Başakşehir', 'Sultangazi', 'Gaziosmanpaşa', 'Bahçelievler', 'Zeytinburnu', 'Güngören', 'Esenler', 'Avcılar', 'Büyükçekmece', 'Küçükçekmece', 'Bayrampaşa', 'Sarıyer', 'Beykoz', 'Tuzla', 'Silivri', 'Çatalca'],
+  ankara:         ['Çankaya', 'Keçiören', 'Yenimahalle', 'Etimesgut', 'Sincan', 'Gölbaşı', 'Mamak', 'Altındağ', 'Pursaklar', 'Kazan', 'Polatlı', 'Beypazarı'],
+  izmir:          ['Bornova', 'Karşıyaka', 'Buca', 'Konak', 'Çiğli', 'Bayraklı', 'Gaziemir', 'Karabağlar', 'Narlıdere', 'Güzelbahçe', 'Balçova', 'Menemen', 'Aliağa', 'Selçuk', 'Kuşadası', 'Torbalı', 'Kemalpaşa', 'Tire', 'Bergama', 'Ödemiş'],
+  bursa:          ['Osmangazi', 'Nilüfer', 'Yıldırım', 'İnegöl', 'Gemlik', 'Mudanya', 'Mustafakemalpaşa', 'Kestel', 'Gürsu', 'Orhangazi', 'Karacabey', 'Yenişehir'],
+  antalya:        ['Muratpaşa', 'Konyaaltı', 'Kepez', 'Alanya', 'Manavgat', 'Serik', 'Aksu', 'Döşemealtı', 'Gazipaşa', 'Kemer', 'Finike', 'Kaş'],
+  adana:          ['Seyhan', 'Yüreğir', 'Çukurova', 'Sarıçam', 'Kozan', 'Ceyhan', 'Karataş', 'İmamoğlu'],
+  konya:          ['Selçuklu', 'Karatay', 'Meram', 'Ereğli', 'Akşehir', 'Seydişehir', 'Kulu', 'Ilgın', 'Beyşehir', 'Cihanbeyli'],
+  gaziantep:      ['Şahinbey', 'Şehitkamil', 'Nizip', 'Nurdağı', 'İslahiye', 'Oğuzeli', 'Araban'],
+  mersin:         ['Akdeniz', 'Mezitli', 'Yenişehir', 'Toroslar', 'Tarsus', 'Erdemli', 'Silifke', 'Anamur', 'Mut'],
+  kayseri:        ['Kocasinan', 'Melikgazi', 'Talas', 'Develi', 'Bünyan', 'Yahyalı', 'Pınarbaşı', 'İncesu'],
+  kocaeli:        ['İzmit', 'Gebze', 'Körfez', 'Darıca', 'Çayırova', 'Gölcük', 'Karamürsel', 'Kartepe', 'Başiskele'],
+  diyarbakir:     ['Bağlar', 'Kayapınar', 'Sur', 'Yenişehir', 'Ergani', 'Bismil', 'Silvan', 'Çınar'],
+  sanliurfa:      ['Eyyübiye', 'Haliliye', 'Karaköprü', 'Siverek', 'Viranşehir', 'Birecik', 'Bozova', 'Ceylanpınar', 'Harran'],
+  hatay:          ['Antakya', 'İskenderun', 'Kırıkhan', 'Belen', 'Samandağ', 'Erzin', 'Dörtyol', 'Reyhanlı', 'Hassa', 'Altınözü'],
+  manisa:         ['Şehzadeler', 'Yunusemre', 'Akhisar', 'Soma', 'Turgutlu', 'Salihli', 'Kula', 'Alaşehir', 'Demirci'],
+  mugla:          ['Menteşe', 'Fethiye', 'Bodrum', 'Marmaris', 'Milas', 'Datça', 'Köyceğiz', 'Ortaca', 'Ula', 'Seydikemer'],
+  balikesir:      ['Altıeylül', 'Karesi', 'Bandırma', 'Edremit', 'Burhaniye', 'Ayvalık', 'Bigadiç', 'Gönen', 'Dursunbey'],
+  aydin:          ['Efeler', 'Kuşadası', 'Nazilli', 'Söke', 'Didim', 'İncirliova', 'Germencik', 'Çine'],
+  sakarya:        ['Adapazarı', 'Erenler', 'Serdivan', 'Arifiye', 'Hendek', 'Akyazı', 'Karapürçek'],
+  tekirdağ:       ['Süleymanpaşa', 'Ergene', 'Çorlu', 'Çerkezköy', 'Kapaklı', 'Malkara', 'Hayrabolu'],
+  tekirdag:       ['Süleymanpaşa', 'Ergene', 'Çorlu', 'Çerkezköy', 'Kapaklı', 'Malkara', 'Hayrabolu'],
+  denizli:        ['Pamukkale', 'Merkezefendi', 'Tavas', 'Acıpayam', 'Sarayköy', 'Buldan', 'Çivril', 'Honaz'],
+  malatya:        ['Battalgazi', 'Yeşilyurt', 'Akçadağ', 'Doğanşehir', 'Darende', 'Hekimhan'],
+  eskisehir:      ['Odunpazarı', 'Tepebaşı', 'Sivrihisar', 'Alpu', 'Çifteler', 'Mahmudiye'],
+  trabzon:        ['Ortahisar', 'Akçaabat', 'Arsin', 'Araklı', 'Yomra', 'Maçka', 'Of', 'Sürmene', 'Tonya'],
+  samsun:         ['İlkadım', 'Canik', 'Atakum', 'Tekkeköy', 'Bafra', 'Çarşamba', 'Terme', 'Alaçam'],
+  erzurum:        ['Yakutiye', 'Palandöken', 'Aziziye', 'Horasan', 'Tortum', 'Oltu', 'Narman', 'İspir'],
+  canakkale:      ['Merkez', 'Biga', 'Çan', 'Gelibolu', 'Ezine', 'Lapseki'],
+  kütahya:        ['Merkez', 'Gediz', 'Tavşanlı', 'Simav', 'Emet'],
+  kutahya:        ['Merkez', 'Gediz', 'Tavşanlı', 'Simav', 'Emet'],
+  isparta:        ['Merkez', 'Yalvaç', 'Eğirdir', 'Aksu', 'Şarkikaraağaç'],
+  corum:          ['Merkez', 'Sungurlu', 'İskilip', 'Osmancık', 'Alaca'],
+  tokat:          ['Merkez', 'Erbaa', 'Niksar', 'Turhal', 'Zile'],
+  kastamonu:      ['Merkez', 'Tosya', 'Cide', 'Taşköprü', 'İnebolu'],
+  van:            ['İpekyolu', 'Tuşba', 'Edremit', 'Erciş', 'Gürpınar', 'Gevaş'],
+  ordu:           ['Altınordu', 'Fatsa', 'Ünye', 'Perşembe', 'Korgan', 'Gülyalı'],
+  yalova:         ['Merkez', 'Altınova', 'Armutlu', 'Çınarcık', 'Çiftlikköy'],
+  kirsehir:       ['Merkez', 'Kaman', 'Mucur', 'Çiçekdağı'],
+  kirklareli:     ['Merkez', 'Lüleburgaz', 'Babaeski', 'Vize'],
   london:      ['Camden', 'Islington', 'Hackney', 'Tower Hamlets', 'Southwark', 'Lambeth', 'Croydon'],
   paris:       ['Montmartre', 'Le Marais', 'Batignolles', 'Belleville', 'Vincennes'],
   berlin:      ['Mitte', 'Prenzlauer Berg', 'Friedrichshain', 'Kreuzberg', 'Charlottenburg'],

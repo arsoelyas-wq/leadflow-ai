@@ -16,11 +16,17 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.u
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
-function getTimeEstimate(count: number, cityCount = 1): string {
+function getTimeEstimate(count: number, cityCount = 1, radiusKm = 20): string {
+  if (radiusKm >= 500) {
+    // Province mode: 8×8 grid = 64 cells × 2 queries = ~5-8 min per city
+    const m = 5 + (cityCount - 1) * 5
+    return m < 60 ? `~${m}-${m + 3} dk` : `~${(m / 60).toFixed(1)} sa`
+  }
+  const radiusMult = radiusKm >= 100 ? 1.8 : radiusKm >= 50 ? 1 : radiusKm >= 20 ? 0.7 : 0.4
   const base = count <= 20 ? 20 : count <= 50 ? 40 : count <= 100 ? 90
              : count <= 200 ? 180 : count <= 300 ? 300 : count <= 500 ? 420
              : count <= 750 ? 660 : 900
-  const total = base + (cityCount - 1) * 12
+  const total = Math.round(base * radiusMult) + (cityCount - 1) * 12
   if (total < 60)  return `~${total} sn`
   const m = Math.ceil(total / 60)
   return m < 60 ? `~${m} dk` : `~${(m / 60).toFixed(1)} sa`
@@ -36,9 +42,11 @@ const LEAD_COUNTS = [
 ]
 
 const RADIUS_PRESETS = [
-  { label: 'Yakın',  km: 5,  desc: '5 km'  },
-  { label: 'Orta',   km: 20, desc: '20 km' },
-  { label: 'Geniş',  km: 50, desc: '50 km' },
+  { label: 'Yakın',     km: 5,   desc: '5 km'         },
+  { label: 'Orta',      km: 20,  desc: '20 km'        },
+  { label: 'Geniş',     km: 50,  desc: '50 km'        },
+  { label: 'Çok Geniş', km: 100, desc: '100 km'       },
+  { label: 'İl Geneli', km: 999, desc: 'Tüm ilçeler'  },
 ]
 
 const SECTOR_CHIPS = [
@@ -638,7 +646,7 @@ export default function LeadFinderPage() {
     : null
 
   const timeEst = keyword && selectedCities.length > 0
-    ? getTimeEstimate(effectiveCount, selectedCities.length)
+    ? getTimeEstimate(effectiveCount, selectedCities.length, radiusKm)
     : null
 
   return (
@@ -856,7 +864,7 @@ export default function LeadFinderPage() {
                   </span>
                 )}
                 <p className="text-sm font-bold">{opt.label}</p>
-                <p className="text-[10px] opacity-60 mt-0.5">{getTimeEstimate(opt.value, selectedCities.length)}</p>
+                <p className="text-[10px] opacity-60 mt-0.5">{getTimeEstimate(opt.value, selectedCities.length, radiusKm)}</p>
               </button>
             ))}
           </div>
@@ -962,6 +970,12 @@ export default function LeadFinderPage() {
                       </button>
                     ))}
                   </div>
+                  {radiusKm >= 500 && (
+                    <p className="text-[10px] text-amber-400/80 flex items-center gap-1 mt-1">
+                      <span>⚡</span>
+                      <span>Tüm il sınırlarını tarar — arama ~5-10 dk sürebilir</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* Min score */}
