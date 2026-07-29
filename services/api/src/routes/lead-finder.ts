@@ -203,11 +203,11 @@ async function googlePlacesSearch(params: {
   const leads: RawLead[] = [];
   const seenIds = new Set<string>();
 
-  // Province mode (radiusKm >= 500): cover full province with 10×10 grid over 100km radius,
-  // no pagination per cell (200 fixed requests) → ~2 min, 200km×200km coverage
+  // Province mode (radiusKm >= 500): 8×8 grid over 100km radius, single query variant,
+  // no pagination → 64 fixed requests (~$2, ~50 sec), 200km×200km coverage
   const isProvinceMode = params.radiusKm >= 500;
   const effectiveRadius = isProvinceMode ? 100 : params.radiusKm;
-  const gridSize = isProvinceMode ? 10
+  const gridSize = isProvinceMode ? 8
                  : params.targetCount <= 30  ? 2
                  : params.targetCount <= 80  ? 3
                  : params.targetCount <= 200 ? 4
@@ -228,9 +228,11 @@ async function googlePlacesSearch(params: {
     }
   }
 
-  // Two query variants per grid cell: full keyword + first word (broader match)
+  // Province mode uses single query variant (location bias is enough); normal mode uses 2
   const words = params.query.trim().split(/\s+/);
-  const queryVariants = [...new Set([params.query, words[0]])];
+  const queryVariants = isProvinceMode
+    ? [params.query]
+    : [...new Set([params.query, words[0]])];
 
   const rawCap = params.targetCount * 4; // buffer for dedup
 

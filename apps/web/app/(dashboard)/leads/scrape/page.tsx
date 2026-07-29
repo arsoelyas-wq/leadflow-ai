@@ -18,9 +18,9 @@ function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type
 
 function getTimeEstimate(count: number, cityCount = 1, radiusKm = 20): string {
   if (radiusKm >= 500) {
-    // Province mode: 8×8 grid = 64 cells × 2 queries = ~5-8 min per city
-    const m = 5 + (cityCount - 1) * 5
-    return m < 60 ? `~${m}-${m + 3} dk` : `~${(m / 60).toFixed(1)} sa`
+    // Province mode: 8×8 grid × 1 query × no pagination = 64 requests ≈ 1 min per city
+    const secs = 60 + (cityCount - 1) * 45
+    return secs < 60 ? `~${secs} sn` : `~${Math.ceil(secs / 60)} dk`
   }
   const radiusMult = radiusKm >= 100 ? 1.8 : radiusKm >= 50 ? 1 : radiusKm >= 20 ? 0.7 : 0.4
   const base = count <= 20 ? 20 : count <= 50 ? 40 : count <= 100 ? 90
@@ -983,7 +983,7 @@ export default function LeadFinderPage() {
                   {radiusKm >= 500 && (
                     <p className="text-[10px] text-amber-400/80 flex items-center gap-1 mt-1">
                       <span>⚡</span>
-                      <span>Tüm il sınırlarını tarar — arama ~5-10 dk sürebilir</span>
+                      <span>200km×200km il taraması — 64 istek, ~1 dk, ~$2 Google API maliyeti</span>
                     </p>
                   )}
                 </div>
