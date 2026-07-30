@@ -584,6 +584,7 @@ router.post('/tts-xtts/:voiceId', async (req: any, res: any) => {
     const language = req.body?.message?.language || 'tr';
 
     const XTTS_TIMEOUT_MS = 22000;
+    // TODO: Capture setTimeout ID and clear on settle to prevent timer leak
     const audioBuffer = await Promise.race([
       synthesizeXtts(text, voice.sample_url, language),
       new Promise<never>((_, reject) =>
@@ -594,12 +595,12 @@ router.post('/tts-xtts/:voiceId', async (req: any, res: any) => {
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(audioBuffer);
   } catch (err: any) {
-    if (err.message === 'XTTS_TIMEOUT' || err.message?.includes('timeout')) {
+    if (err.message === 'XTTS_TIMEOUT') {
       console.warn('[XTTS] Cold start timeout — returning 503 for Vapi fallback');
       return res.status(503).json({ error: 'Voice synthesizer warming up, using fallback voice' });
     }
     console.error('[XTTS] Error:', err.message);
-    return res.status(503).json({ error: 'TTS unavailable' });
+    return res.status(500).json({ error: 'TTS unavailable' });
   }
 });
 
