@@ -61,11 +61,10 @@ router.get('/plans', async (_req: any, res: any) => {
       const features = adm?.features
         ? adm.features.filter((f: any) => f.inc !== false).map((f: any) => f.text)
         : p.features;
-      const priceMonthly = adm?.monthly_price != null ? Math.round(adm.monthly_price * 100) : p.priceMonthly;
-      const priceAnnual  = adm?.annual_price  != null ? Math.round(adm.annual_price  * 100) : p.priceAnnual;
-      const monthlyCredits = adm?.credits != null
-        ? parseInt(String(adm.credits).replace(/[^\d]/g, ''), 10) || p.monthlyCredits
-        : p.monthlyCredits;
+      // Prices always come from plan-limits.ts — admin DB cannot override them
+      const priceMonthly   = p.priceMonthly;
+      const priceAnnual    = p.priceAnnual;
+      const monthlyCredits = p.monthlyCredits;
       return {
         id:             p.id,
         name:           p.name,
