@@ -124,9 +124,9 @@ const DEFAULT: Record<string,any> = {
   pricing_subheadline:'İhtiyacınıza göre planı seçin. İstediğiniz zaman yükseltin veya iptal edin.',
   pricing_annual_badge:'Yıllık ödemede %20 indirim',
   plans:[
-    {id:'starter',name:'Starter',desc:'Küçük ekipler için',monthly_price:79,annual_price:63,credits:'1,000',popular:false,cta_text:'Ücretsiz Başla',cta_url:'/register?plan=starter',features:[{text:'1.000 kredi/ay',inc:true},{text:'WhatsApp — 1 numara',inc:true},{text:'Email kampanya sınırsız',inc:true},{text:'Lead Scraper',inc:true},{text:'AI Mesaj Kişiselleştirme',inc:true},{text:'AI Sesli Arama',inc:false},{text:'Ekip Yönetimi',inc:false}]},
-    {id:'growth',name:'Growth',desc:'Büyüyen ekipler için',monthly_price:199,annual_price:159,credits:'5,000',popular:true,cta_text:'Ücretsiz Başla',cta_url:'/register?plan=growth',features:[{text:'5.000 kredi/ay',inc:true},{text:'WhatsApp — 3 numara',inc:true},{text:'Sequence & Workflow',inc:true},{text:'A/B Test',inc:true},{text:'AI Sesli Arama',inc:true},{text:'Ekip — 5 koltuk',inc:true},{text:'AI Video Outreach',inc:false}]},
-    {id:'scale',name:'Scale',desc:'Kurumsal ekipler için',monthly_price:499,annual_price:399,credits:'20,000',popular:false,cta_text:'Teklif Al',cta_url:'/register?plan=scale',features:[{text:'20.000 kredi/ay',inc:true},{text:'WhatsApp — 15 numara',inc:true},{text:'Sınırsız Workflow',inc:true},{text:'AI Sesli + Ses Klonlama',inc:true},{text:'AI Video Outreach',inc:true},{text:'API Erişimi',inc:true},{text:'SLA Garantisi',inc:true}]},
+    {id:'starter',name:'Starter',desc:'Küçük ekipler için',monthly_price:49,annual_price:39,credits:'1,000',popular:false,cta_text:'Ücretsiz Başla',cta_url:'/register?plan=starter',features:[{text:'1.000 kredi/ay (1 ay rollover)',inc:true},{text:'Lead Arama — 1 kr/lead',inc:true},{text:'WhatsApp & E-posta — 1 kr/gönderim',inc:true},{text:'AI Mesaj Üretimi — 3 kr',inc:true},{text:'Ses Klonlama & Video — kredi ile',inc:true},{text:'Pipeline CRM + Teklif/Fatura',inc:true},{text:'Ekip Yönetimi',inc:false}]},
+    {id:'growth',name:'Growth',desc:'Büyüyen ekipler için',monthly_price:149,annual_price:119,credits:'5,000',popular:true,cta_text:'Ücretsiz Başla',cta_url:'/register?plan=growth',features:[{text:'5.000 kredi/ay (2 ay rollover)',inc:true},{text:'WhatsApp — 3 numara',inc:true},{text:'Ses Klonlama (3) + Video (2 avatar)',inc:true},{text:'Sequence & Workflow Otomasyon',inc:true},{text:'A/B Test & Akıllı Zamanlama',inc:true},{text:'Ekip — 5 koltuk',inc:true},{text:'API Erişimi',inc:false}]},
+    {id:'scale',name:'Scale',desc:'Kurumsal ekipler için',monthly_price:399,annual_price:319,credits:'20,000',popular:false,cta_text:'Teklif Al',cta_url:'/register?plan=scale',features:[{text:'20.000 kredi/ay (3 ay rollover)',inc:true},{text:'WhatsApp — 15 numara',inc:true},{text:'Ses Klonlama (10) + Video (5 avatar)',inc:true},{text:'Sınırsız Sequence & Workflow',inc:true},{text:'AI Satış Koçu & Ekip Analizi',inc:true},{text:'API Erişimi (10K/gün)',inc:true},{text:'SLA Garantisi',inc:false}]},
   ],
 
   // FAQ
@@ -548,8 +548,8 @@ export default function AdminLandingPage() {
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:10}}>
                   <F label="Plan Adı"><input value={p.name||''} onChange={e=>arrSet('plans',pi,{name:e.target.value})} style={inp} /></F>
-                  <F label="Aylık Fiyat (₺)"><input type="number" value={p.monthly_price||0} onChange={e=>arrSet('plans',pi,{monthly_price:parseInt(e.target.value)||0})} style={inp} /></F>
-                  <F label="Yıllık Fiyat (₺/ay)"><input type="number" value={p.annual_price||0} onChange={e=>arrSet('plans',pi,{annual_price:parseInt(e.target.value)||0})} style={inp} /></F>
+                  <F label="Aylık Fiyat ($)"><input type="number" value={p.monthly_price||0} onChange={e=>arrSet('plans',pi,{monthly_price:parseInt(e.target.value)||0})} style={inp} /></F>
+                  <F label="Yıllık Fiyat ($/ay)"><input type="number" value={p.annual_price||0} onChange={e=>arrSet('plans',pi,{annual_price:parseInt(e.target.value)||0})} style={inp} /></F>
                   <F label="Kredi/Ay"><input value={p.credits||''} onChange={e=>arrSet('plans',pi,{credits:e.target.value})} style={inp} /></F>
                 </div>
                 <G2>
