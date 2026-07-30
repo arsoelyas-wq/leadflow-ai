@@ -43,27 +43,27 @@ const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.
 // Azure Neural + Cartesia — /api/voice/library-voices tarafından kullanılır
 const VOICE_CATALOG = [
   // Turkish
-  { id: 'tr-TR-EmelNeural',   name: 'Emel',    gender: 'female', language: 'tr', provider: 'azure',    style: 'professional', accent: 'TR' },
-  { id: 'tr-TR-AhmetNeural',  name: 'Ahmet',   gender: 'male',   language: 'tr', provider: 'azure',    style: 'professional', accent: 'TR' },
-  { id: 'tr-TR-GulNeural',    name: 'Gül',     gender: 'female', language: 'tr', provider: 'azure',    style: 'friendly',     accent: 'TR' },
+  { id: 'tr-TR-EmelNeural',   name: 'Emel',    gender: 'female', language: 'tr', provider: 'azure',    style: 'professional', accent: 'TR', previewUrl: '/api/voice-library/preview?id=tr-TR-EmelNeural&provider=azure' },
+  { id: 'tr-TR-AhmetNeural',  name: 'Ahmet',   gender: 'male',   language: 'tr', provider: 'azure',    style: 'professional', accent: 'TR', previewUrl: '/api/voice-library/preview?id=tr-TR-AhmetNeural&provider=azure' },
+  { id: 'tr-TR-GulNeural',    name: 'Gül',     gender: 'female', language: 'tr', provider: 'azure',    style: 'friendly',     accent: 'TR', previewUrl: '/api/voice-library/preview?id=tr-TR-GulNeural&provider=azure' },
   // English
-  { id: '79a125e8-cd45-4c13-8a67-188112f4dd22', name: 'Chris',   gender: 'male',   language: 'en', provider: 'cartesia', style: 'professional', accent: 'US' },
-  { id: 'a0e99841-438c-4a64-b679-ae501e7d6091', name: 'Barbera', gender: 'female', language: 'en', provider: 'cartesia', style: 'professional', accent: 'US' },
-  { id: 'en-US-JennyNeural',  name: 'Jenny',   gender: 'female', language: 'en', provider: 'azure',    style: 'friendly',     accent: 'US' },
-  { id: 'en-US-GuyNeural',    name: 'Guy',     gender: 'male',   language: 'en', provider: 'azure',    style: 'professional', accent: 'US' },
-  { id: 'en-GB-LibbyNeural',  name: 'Libby',   gender: 'female', language: 'en', provider: 'azure',    style: 'professional', accent: 'GB' },
+  { id: '79a125e8-cd45-4c13-8a67-188112f4dd22', name: 'Chris',   gender: 'male',   language: 'en', provider: 'cartesia', style: 'professional', accent: 'US', previewUrl: '/api/voice-library/preview?id=79a125e8-cd45-4c13-8a67-188112f4dd22&provider=cartesia' },
+  { id: 'a0e99841-438c-4a64-b679-ae501e7d6091', name: 'Barbera', gender: 'female', language: 'en', provider: 'cartesia', style: 'professional', accent: 'US', previewUrl: '/api/voice-library/preview?id=a0e99841-438c-4a64-b679-ae501e7d6091&provider=cartesia' },
+  { id: 'en-US-JennyNeural',  name: 'Jenny',   gender: 'female', language: 'en', provider: 'azure',    style: 'friendly',     accent: 'US', previewUrl: '/api/voice-library/preview?id=en-US-JennyNeural&provider=azure' },
+  { id: 'en-US-GuyNeural',    name: 'Guy',     gender: 'male',   language: 'en', provider: 'azure',    style: 'professional', accent: 'US', previewUrl: '/api/voice-library/preview?id=en-US-GuyNeural&provider=azure' },
+  { id: 'en-GB-LibbyNeural',  name: 'Libby',   gender: 'female', language: 'en', provider: 'azure',    style: 'professional', accent: 'GB', previewUrl: '/api/voice-library/preview?id=en-GB-LibbyNeural&provider=azure' },
   // German
-  { id: 'de-DE-KatjaNeural',  name: 'Katja',   gender: 'female', language: 'de', provider: 'azure',    style: 'professional', accent: 'DE' },
-  { id: 'de-DE-ConradNeural', name: 'Conrad',  gender: 'male',   language: 'de', provider: 'azure',    style: 'professional', accent: 'DE' },
+  { id: 'de-DE-KatjaNeural',  name: 'Katja',   gender: 'female', language: 'de', provider: 'azure',    style: 'professional', accent: 'DE', previewUrl: '/api/voice-library/preview?id=de-DE-KatjaNeural&provider=azure' },
+  { id: 'de-DE-ConradNeural', name: 'Conrad',  gender: 'male',   language: 'de', provider: 'azure',    style: 'professional', accent: 'DE', previewUrl: '/api/voice-library/preview?id=de-DE-ConradNeural&provider=azure' },
   // French
-  { id: 'fr-FR-DeniseNeural', name: 'Denise',  gender: 'female', language: 'fr', provider: 'azure',    style: 'professional', accent: 'FR' },
-  { id: 'fr-FR-HenriNeural',  name: 'Henri',   gender: 'male',   language: 'fr', provider: 'azure',    style: 'professional', accent: 'FR' },
+  { id: 'fr-FR-DeniseNeural', name: 'Denise',  gender: 'female', language: 'fr', provider: 'azure',    style: 'professional', accent: 'FR', previewUrl: '/api/voice-library/preview?id=fr-FR-DeniseNeural&provider=azure' },
+  { id: 'fr-FR-HenriNeural',  name: 'Henri',   gender: 'male',   language: 'fr', provider: 'azure',    style: 'professional', accent: 'FR', previewUrl: '/api/voice-library/preview?id=fr-FR-HenriNeural&provider=azure' },
   // Arabic
-  { id: 'ar-SA-ZariyahNeural', name: 'Zariyah', gender: 'female', language: 'ar', provider: 'azure',   style: 'professional', accent: 'SA' },
-  { id: 'ar-SA-HamedNeural',  name: 'Hamed',   gender: 'male',   language: 'ar', provider: 'azure',    style: 'professional', accent: 'SA' },
+  { id: 'ar-SA-ZariyahNeural', name: 'Zariyah', gender: 'female', language: 'ar', provider: 'azure',   style: 'professional', accent: 'SA', previewUrl: '/api/voice-library/preview?id=ar-SA-ZariyahNeural&provider=azure' },
+  { id: 'ar-SA-HamedNeural',  name: 'Hamed',   gender: 'male',   language: 'ar', provider: 'azure',    style: 'professional', accent: 'SA', previewUrl: '/api/voice-library/preview?id=ar-SA-HamedNeural&provider=azure' },
   // Spanish
-  { id: 'es-ES-ElviraNeural', name: 'Elvira',  gender: 'female', language: 'es', provider: 'azure',    style: 'professional', accent: 'ES' },
-  { id: 'es-ES-AlvaroNeural', name: 'Alvaro',  gender: 'male',   language: 'es', provider: 'azure',    style: 'professional', accent: 'ES' },
+  { id: 'es-ES-ElviraNeural', name: 'Elvira',  gender: 'female', language: 'es', provider: 'azure',    style: 'professional', accent: 'ES', previewUrl: '/api/voice-library/preview?id=es-ES-ElviraNeural&provider=azure' },
+  { id: 'es-ES-AlvaroNeural', name: 'Alvaro',  gender: 'male',   language: 'es', provider: 'azure',    style: 'professional', accent: 'ES', previewUrl: '/api/voice-library/preview?id=es-ES-AlvaroNeural&provider=azure' },
 ];
 
 // Cartesia ses ID'leri dil bazında (kütüphane aramalar için)
@@ -688,7 +688,7 @@ router.get('/library-voices', async (req: any, res: any) => {
     const { language, gender, limit = '80' } = req.query;
     let voices = [...VOICE_CATALOG];
     if (language && language !== 'all') {
-      voices = voices.filter(v => v.language === language);
+      voices = voices.filter(v => v.language === language.toLowerCase());
     }
     if (gender) {
       voices = voices.filter(v => v.gender === gender);
