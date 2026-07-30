@@ -8,7 +8,7 @@ import {
   Phone, Mail, Folder, Pencil, Clock, Target, Building2,
   Download, ExternalLink, Star, Database, SkipForward,
   TrendingUp, Eye, PhoneCall, MousePointerClick,
-  Megaphone, Bot, ChevronRight,
+  Megaphone, Bot, ChevronRight, Mic, Video,
 } from 'lucide-react'
 import { COUNTRIES, CITIES, REGIONS } from './countries-cities'
 
@@ -532,6 +532,34 @@ export default function LeadFinderPage() {
                       <p className="text-xs text-slate-400">AI ile günler boyunca otomatik takip mesajları</p>
                     </div>
                     <ChevronRight size={14} className="text-slate-500 group-hover:text-emerald-400 transition shrink-0" />
+                  </button>
+                  <button onClick={() => {
+                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : `&fresh=${totalSaved}`
+                      router.push(`/voice-outreach?${list.slice(1)}`)
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 transition text-left group">
+                    <div className="w-9 h-9 rounded-lg bg-violet-500/20 flex items-center justify-center shrink-0">
+                      <Mic size={15} className="text-violet-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white">Sesli Arama Gönder</p>
+                      <p className="text-xs text-slate-400">Klonlanmış sesinle {totalSaved} leade otomatik sesli mesaj</p>
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500 group-hover:text-violet-400 transition shrink-0" />
+                  </button>
+                  <button onClick={() => {
+                      const list = jobStatus?.listName ? `&list=${encodeURIComponent(jobStatus.listName)}` : `&fresh=${totalSaved}`
+                      router.push(`/video-outreach?${list.slice(1)}`)
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-pink-500/20 bg-pink-500/5 hover:bg-pink-500/10 transition text-left group">
+                    <div className="w-9 h-9 rounded-lg bg-pink-500/20 flex items-center justify-center shrink-0">
+                      <Video size={15} className="text-pink-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white">Video Mesaj Oluştur</p>
+                      <p className="text-xs text-slate-400">Avatar ile kişiselleştirilmiş video — {totalSaved} lead için</p>
+                    </div>
+                    <ChevronRight size={14} className="text-slate-500 group-hover:text-pink-400 transition shrink-0" />
                   </button>
                 </div>
               </div>
