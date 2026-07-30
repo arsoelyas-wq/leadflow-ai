@@ -402,7 +402,7 @@ async function makeVapiCall(params: {
   const styleVoice = STYLE_VOICE_SETTINGS[conversationStyle] || STYLE_VOICE_SETTINGS.consultant;
   const cartesiaSpeed = styleVoice.stability > 0.7 ? 'slow' : styleVoice.stability < 0.5 ? 'fast' : 'normal';
   const cartesiaEmotion = styleVoice.style > 0.5
-    ? (conversationStyle === 'challenger' ? ['curiosity:high'] : conversationStyle === 'direct' ? ['positivity:low'] : ['positivity:medium'])
+    ? (conversationStyle === 'challenger' ? ['curiosity:high'] : conversationStyle === 'direct' ? ['curiosity:high'] : ['positivity:medium'])
     : [];
 
   // Cartesia — dil bazında varsayılan ses (kendi sistemimizde kullanılan TTS)
