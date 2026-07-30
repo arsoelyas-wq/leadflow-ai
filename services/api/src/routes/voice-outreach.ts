@@ -82,7 +82,10 @@ function getLanguageByCountry(code: string): string {
 
 // ─── XTTS-v2 SENTEZİ ──────────────────────────────────────────────────────────
 // synthesizeXtts/warmUpXtts now live in ../services/xtts-engine (shared with video-outreach.ts)
-setTimeout(warmUpXtts, 5000);
+setTimeout(() => {
+  warmUpXtts();
+  setInterval(warmUpXtts, 4 * 60 * 1000);
+}, 5000);
 
 // ─── KİŞİSELLEŞTİRİLMİŞ AÇILIŞ SATIRI ───────────────────────────────────────
 
@@ -579,13 +582,24 @@ router.post('/tts-xtts/:voiceId', async (req: any, res: any) => {
     if (!voice) return res.status(404).send('voice not found');
 
     const language = req.body?.message?.language || 'tr';
-    const audioBuffer = await synthesizeXtts(text, voice.sample_url, language);
+
+    const XTTS_TIMEOUT_MS = 22000;
+    const audioBuffer = await Promise.race([
+      synthesizeXtts(text, voice.sample_url, language),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('XTTS_TIMEOUT')), XTTS_TIMEOUT_MS)
+      ),
+    ]);
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.send(audioBuffer);
-  } catch (e: any) {
-    console.error('[XTTS]', e.message);
-    res.status(500).json({ error: e.message });
+  } catch (err: any) {
+    if (err.message === 'XTTS_TIMEOUT' || err.message?.includes('timeout')) {
+      console.warn('[XTTS] Cold start timeout — returning 503 for Vapi fallback');
+      return res.status(503).json({ error: 'Voice synthesizer warming up, using fallback voice' });
+    }
+    console.error('[XTTS] Error:', err.message);
+    return res.status(503).json({ error: 'TTS unavailable' });
   }
 });
 
