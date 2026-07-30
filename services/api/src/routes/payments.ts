@@ -8,8 +8,8 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://sovlo.io';
 
-function formatPrice(kurus: number): string {
-  return (kurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+function formatPrice(cents: number): string {
+  return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 // ── GET /api/payments/plans ───────────────────────────────────────────────────
@@ -27,10 +27,10 @@ const DEFAULT_ENTERPRISE = {
 const DEFAULT_COMPARISON = {
   title: 'Neden Sovlo?',
   items: [
-    { label: 'Apollo Pro + Smartlead + WA aracı', price: '≈ ₺10.500/ay', icon: '🔴' },
-    { label: 'Sovlo Growth — hepsi tek pakette', price: '₺2.990/ay', icon: '🟢' },
-    { label: 'Kredi rollover (rakipler sıfırlıyor)', price: '2 ay taşınır', icon: '✅' },
-    { label: 'WhatsApp mesajı (rakipler +₺0.50/msj)', price: 'Sınırsız ücretsiz', icon: '✅' },
+    { label: 'Apollo + ElevenLabs + HeyGen + WA aracı', price: '≈ $200+/ay', icon: '🔴' },
+    { label: 'Sovlo Growth — hepsi tek pakette',         price: '$149/ay',    icon: '🟢' },
+    { label: 'Ses klonlama & video (kendi GPU altyapısı)', price: 'Dahil',    icon: '🎤' },
+    { label: 'Kredi rollover (rakipler sıfırlıyor)',     price: '2 ay taşınır', icon: '✅' },
   ],
 };
 
@@ -145,10 +145,10 @@ router.post('/topup', async (req: any, res: any) => {
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
-          currency: 'try',
+          currency: 'usd',
           product_data: {
-            name:        `Sovlo — ${pkg.name} Kredi Paketi`,
-            description: `${pkg.credits.toLocaleString('tr-TR')} kredi`,
+            name:        `Sovlo — ${pkg.name} Credit Pack`,
+            description: `${pkg.credits.toLocaleString('en-US')} credits`,
           },
           unit_amount: pkg.price,
         },
@@ -158,7 +158,7 @@ router.post('/topup', async (req: any, res: any) => {
       success_url: `${APP_URL}/billing?payment=success&credits=${pkg.credits}`,
       cancel_url:  `${APP_URL}/billing?payment=cancelled`,
       metadata:    { userId, type: 'topup', packageId, credits: pkg.credits.toString() },
-      locale:      'tr',
+      locale:      'auto',
     });
 
     res.json({ url: session.url });
@@ -233,11 +233,11 @@ router.post('/subscribe', async (req: any, res: any) => {
       payment_method_types: ['card'],
       line_items: [{
         price_data: {
-          currency:   'try',
+          currency:   'usd',
           recurring:  { interval: billing === 'annual' ? 'year' : 'month' },
           product_data: {
             name:        `Sovlo ${plan.name} Plan`,
-            description: `${plan.monthlyCredits.toLocaleString('tr-TR')} kredi/ay`,
+            description: `${plan.monthlyCredits.toLocaleString('en-US')} credits/month`,
           },
           unit_amount: billing === 'annual' ? price * 12 : price,
         },
@@ -247,7 +247,7 @@ router.post('/subscribe', async (req: any, res: any) => {
       success_url: `${APP_URL}/billing?payment=success&plan=${planId}`,
       cancel_url:  `${APP_URL}/billing?payment=cancelled`,
       metadata:    { userId, type: 'subscription', planId, billing },
-      locale:      'tr',
+      locale:      'auto',
     });
 
     res.json({ url: session.url });

@@ -34,18 +34,25 @@ interface TxRecord {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 
 const CREDIT_ACTION_LABELS: Record<string, { label: string; color: string; icon: string }> = {
-  lead_scrape:          { label: 'Lead Scraping',          color: '#06b6d4', icon: '🔍' },
-  ai_message:           { label: 'AI Kişiselleştirme',     color: '#8b5cf6', icon: '🤖' },
-  email_enrichment:     { label: 'İletişim Bul',           color: '#10b981', icon: '📧' },
-  decision_maker:       { label: 'Karar Verici',           color: '#3b82f6', icon: '👤' },
-  competitor_analysis:  { label: 'Rakip Analizi',          color: '#f59e0b', icon: '📊' },
-  voice_call_per_min:   { label: 'AI Sesli Arama',         color: '#ec4899', icon: '📞' },
-  video_generate:       { label: 'AI Video',               color: '#ef4444', icon: '🎬' },
+  lead_scrape:          { label: 'Lead Arama',             color: '#06b6d4', icon: '🔍' },
+  whatsapp_message:     { label: 'WhatsApp Gönderimi',     color: '#25d366', icon: '💬' },
+  email_send:           { label: 'E-posta Gönderimi',      color: '#3b82f6', icon: '📧' },
+  ai_message:           { label: 'AI Mesaj Üretimi',       color: '#8b5cf6', icon: '🤖' },
   ai_coach:             { label: 'Satış Koçu',             color: '#6366f1', icon: '🏋️' },
+  lead_score:           { label: 'Lead Skoru',             color: '#06b6d4', icon: '🎯' },
+  competitor_analysis:  { label: 'Rakip Analizi',          color: '#f59e0b', icon: '📊' },
+  battlecard:           { label: 'Rakip Kartı',            color: '#f97316', icon: '⚔️' },
+  email_enrichment:     { label: 'İletişim Bul',           color: '#10b981', icon: '🔎' },
+  decision_maker:       { label: 'Karar Verici',           color: '#3b82f6', icon: '👤' },
+  voice_clone_setup:    { label: 'Ses Profili Kurulum',    color: '#f59e0b', icon: '🎤' },
+  voice_message:        { label: 'Ses Mesajı (Klonlama)',  color: '#f59e0b', icon: '🔊' },
+  avatar_setup:         { label: 'Avatar Profil Kurulum',  color: '#ec4899', icon: '👤' },
+  video_generate:       { label: 'Video Mesaj (MuSeTalk)', color: '#ec4899', icon: '🎬' },
+  video_batch_10:       { label: 'Toplu Video (10 adet)',  color: '#ec4899', icon: '📦' },
+  voice_call_per_min:   { label: 'Sesli Arama',            color: '#f59e0b', icon: '📞' },
   topup:                { label: 'Kredi Satın Alındı',     color: '#10b981', icon: '💳' },
   subscription:         { label: 'Abonelik',               color: '#10b981', icon: '⭐' },
   monthly_refresh:      { label: 'Aylık Yenileme',         color: '#10b981', icon: '🔄' },
-  battlecard:           { label: 'Rakip Kartı',            color: '#f97316', icon: '⚔️' },
   proposal_pdf:         { label: 'Teklif PDF',             color: '#64748b', icon: '📄' },
   qr_generate:          { label: 'QR Kod',                 color: '#64748b', icon: '⬛' },
 }
@@ -58,7 +65,7 @@ const PLAN_COLORS: Record<string, string> = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatPrice(cents: number): string {
-  return '₺' + (cents / 100).toLocaleString('tr-TR', { maximumFractionDigits: 0 })
+  return '$' + (cents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
 function formatNum(n: number): string {
@@ -464,7 +471,7 @@ export default function BillingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 16, marginBottom: 24 }}>
             {topups.map(pkg => {
               const priceStr = formatPrice(pkg.price)
-              const perCr   = (pkg.price / pkg.credits / 100).toFixed(2)
+              const perCr   = (pkg.price / pkg.credits / 100).toFixed(3)
               const isLoad  = loadingBtn === `topup_${pkg.id}`
 
               return (
@@ -476,14 +483,15 @@ export default function BillingPage() {
                   )}
                   <p style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, margin: '0 0 4px' }}>{pkg.name}</p>
                   <p style={{ color: '#0f172a', fontSize: 28, fontWeight: 900, margin: '0 0 2px' }}>{pkg.credits.toLocaleString('tr-TR')}</p>
-                  <p style={{ color: '#64748b', fontSize: 11, margin: '0 0 16px' }}>kredi · ₺{perCr}/kredi</p>
+                  <p style={{ color: '#64748b', fontSize: 11, margin: '0 0 16px' }}>kredi · ${perCr}/kredi</p>
                   <p style={{ color: pkg.popular ? '#8b5cf6' : '#0f172a', fontSize: 22, fontWeight: 900, margin: '0 0 16px' }}>{priceStr}</p>
 
                   <div style={{ marginBottom: 16 }}>
                     {[
-                      `${Math.floor(pkg.credits / 5).toLocaleString('tr-TR')} lead scrape`,
-                      `${pkg.credits.toLocaleString('tr-TR')} AI mesaj`,
-                      `${Math.floor(pkg.credits / 15).toLocaleString('tr-TR')} dk sesli arama`,
+                      `${pkg.credits.toLocaleString('en-US')} lead arama`,
+                      `${Math.floor(pkg.credits / 3).toLocaleString('en-US')} AI mesaj üretimi`,
+                      `${Math.floor(pkg.credits / 10).toLocaleString('en-US')} ses mesajı`,
+                      `${Math.floor(pkg.credits / 30).toLocaleString('en-US')} video mesajı`,
                     ].map(f => (
                       <div key={f} style={{ display: 'flex', gap: 6, marginBottom: 5, alignItems: 'center' }}>
                         <CheckCircle size={11} color={pkg.popular ? '#8b5cf6' : '#10b981'} />
@@ -509,18 +517,20 @@ export default function BillingPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 0 }}>
               {[
-                { action: 'Lead Scraping (Google Maps)', cost: 5, free: false },
-                { action: 'AI Mesaj Kişiselleştirme', cost: 1, free: false },
-                { action: 'Email/Telefon Bulma', cost: 3, free: false },
-                { action: 'Karar Verici Profili', cost: 5, free: false },
-                { action: 'Rakip Analizi Raporu', cost: 10, free: false },
-                { action: 'AI Sesli Arama (dk)', cost: 15, free: false },
-                { action: 'AI Video Üretimi', cost: 80, free: false },
-                { action: 'WhatsApp Mesajı', cost: 0, free: true },
-                { action: 'Email Gönderimi', cost: 0, free: true },
-                { action: 'QR Kod Üretimi', cost: 1, free: false },
+                { action: '🔍 Lead Arama (Google Places)',    cost: 1,   free: false },
+                { action: '💬 WhatsApp Gönderimi',           cost: 1,   free: false },
+                { action: '📧 E-posta Gönderimi',            cost: 1,   free: false },
+                { action: '🤖 AI Mesaj Üretimi',             cost: 3,   free: false },
+                { action: '📊 Rakip Analizi Raporu',         cost: 5,   free: false },
+                { action: '🎯 Lead Skoru / Segmentasyon',    cost: 2,   free: false },
+                { action: '🎤 Ses Profili Kurulum (1 kez)',  cost: 20,  free: false },
+                { action: '🔊 Ses Mesajı (klonlanmış)',      cost: 10,  free: false },
+                { action: '👤 Avatar Profil Kurulum (1 kez)',cost: 50,  free: false },
+                { action: '🎬 Video Mesaj (MuSeTalk ~30sn)', cost: 30,  free: false },
+                { action: '📦 Toplu Video Batch (10 adet)',  cost: 250, free: false },
+                { action: '📄 Teklif PDF',                   cost: 2,   free: false },
               ].map((item, i) => (
-                <div key={item.action} style={{ padding: '11px 20px', borderBottom: i < 9 ? '1px solid #f1f5f9' : 'none', borderRight: i % 2 === 0 ? '1px solid #f1f5f9' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={item.action} style={{ padding: '11px 20px', borderBottom: i < 11 ? '1px solid #f1f5f9' : 'none', borderRight: i % 2 === 0 ? '1px solid #f1f5f9' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ color: '#475569', fontSize: 12 }}>{item.action}</span>
                   <span style={{ color: item.free ? '#10b981' : '#0f172a', fontSize: 12, fontWeight: 700 }}>
                     {item.free ? 'Ücretsiz' : `${item.cost} kr`}
