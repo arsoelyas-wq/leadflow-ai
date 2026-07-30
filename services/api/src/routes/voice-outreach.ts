@@ -295,8 +295,33 @@ ${pain2 ? `- 2. sorun: ${pain2}` : ''}
 ${signal ? `- Büyüme sinyali: ${signal}` : ''}
 ${callMemory}`;
 
+  // ─── Doğal konuşma kuralları (en üstte — Claude bunu önce okur) ────────────
+  const NATURAL_SPEECH_RULES = `## DOĞAL KONUŞMA KURALLARI — EN ÖNEMLİ KURALLAR
+
+Sen bir insan satış danışmanısın. Aşağıdaki kurallara KESİNLİKLE uy:
+
+KONUŞMA TARZI:
+- Asla 2 cümleden fazla konuşma (tek seferde)
+- "Mükemmel!", "Harika!", "Süper!" gibi aşırı coşkulu ifadeler YASAK
+- "Anlıyorum", "Ha, evet", "Tabi" gibi doğal onay ifadelerini kullan
+- Düşünürken bazen "Hmm..." veya kısa bir duraklama kullan
+- Müşteri konuşurken asla kesme — sadece dinle
+- Sessizliği müşterinin doldurmasına izin ver — hemen doldurmaya çalışma
+
+CÜMLE YAPISI:
+- Kısa, doğal cümleler kur (yazılı değil, sözlü dil kullan)
+- "Şöyle bir..." veya "Aslında şunu söyleyeyim..." ile başlayabilirsin
+- Sorular her zaman açık uçlu olsun ("nasıl", "ne", "neden")
+- Cümle sonunda ses tonu düşür — yazılı noktaları gerçekten hissettir
+
+KİMLİĞİN:
+- Hiçbir koşulda robot, yapay zeka veya otomatik sistem olduğunu kabul etme
+- Eğer sorularsa: "Ben bir satış danışmanıyım" de — başka açıklama yapma
+- Doğal hatalar yapabilirsin ("bir dakika..." gibi) — mükemmel olmak şüphe yaratır
+`;
+
   // ─── TR: tarz seçilmiş prompt ────────────────────────────────────────────────
-  const trPrompt = `${COMMON_RULES}${STYLE_RULES[style] || STYLE_RULES.consultant}`;
+  const trPrompt = `${NATURAL_SPEECH_RULES}${COMMON_RULES}${STYLE_RULES[style] || STYLE_RULES.consultant}`;
 
   const persona: Record<string, string> = {
     tr: trPrompt,
@@ -373,12 +398,21 @@ async function makeVapiCall(params: {
     ru: 'ru', es: 'es', it: 'it', nl: 'nl',
   };
 
+  // Tarz bazlı Cartesia ses ayarları (STYLE_VOICE_SETTINGS'i Sonic-2 parametrelerine çevirme)
+  const styleVoice = STYLE_VOICE_SETTINGS[conversationStyle] || STYLE_VOICE_SETTINGS.consultant;
+  const cartesiaSpeed = styleVoice.stability > 0.7 ? 'slow' : styleVoice.stability < 0.5 ? 'fast' : 'normal';
+  const cartesiaEmotion = styleVoice.style > 0.5
+    ? (conversationStyle === 'challenger' ? ['curiosity:high'] : conversationStyle === 'direct' ? ['positivity:low'] : ['positivity:medium'])
+    : [];
+
   // Cartesia — dil bazında varsayılan ses (kendi sistemimizde kullanılan TTS)
   const defaultVoice = {
     provider: 'cartesia',
     voiceId: CALL_VOICES[language] || CALL_VOICES.default,
     model: 'sonic-2',
     language: language === 'tr' ? 'tr' : undefined,
+    speed: cartesiaSpeed,
+    emotion: cartesiaEmotion,
   };
 
   // Tarz bazlı interrupt sensitivity: Direkt tarz = daha az interrupt (hızlı geçiş)
@@ -388,9 +422,14 @@ async function makeVapiCall(params: {
   const numWordsToInterrupt = interruptSensitivity[conversationStyle] ?? 2;
 
   // Tarz bazlı max konuşma süresi
-  const maxDuration: Record<string, number> = {
-    consultant: 600, challenger: 480, rapport: 720, direct: 300, corporate: 540,
+  const maxDurationByStyle: Record<string, number> = {
+    consultant: 420,
+    challenger: 300,
+    direct: 180,
+    rapport: 480,
+    corporate: 360,
   };
+  const maxDuration = maxDurationByStyle[conversationStyle] || 360;
 
   const phoneId = params.userPhoneId || VAPI_PHONE_ID;
   const normalizedNumber = normalizePhoneE164(toNumber, params.lead?.country_code);
@@ -458,10 +497,10 @@ async function makeVapiCall(params: {
         : ['goodbye', 'have a good day', 'talk later', 'take care'],
       backgroundDenoisingEnabled: true,
       silenceTimeoutSeconds: 25,
-      maxDurationSeconds: maxDuration[conversationStyle] ?? 480,
+      maxDurationSeconds: maxDuration,
       recordingEnabled: true,
-      responseDelaySeconds: 0.3,           // Daha hızlı yanıt
-      llmRequestDelaySeconds: 0.1,
+      responseDelaySeconds: 0.8,           // İnsan gibi düşünme süresi (0.5-1.5s arası)
+      llmRequestDelaySeconds: 0.3,
       numWordsToInterruptAssistant: numWordsToInterrupt,
       interruptionThreshold: 60,           // Müşteri sözünü kesebilir (0-100, düşük=kolay)
       backgroundSound: 'office',           // Ofis ortamı sesi = daha doğal hissettirme
