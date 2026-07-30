@@ -1207,9 +1207,9 @@ export default function VoicePage() {
   useEffect(() => {
     if (!liveCallId) return
     const iv = setInterval(async () => {
-      const r = await fetch(`${API}/api/voice/calls?limit=1`, { headers: authH() })
+      const r = await fetch(`${API}/api/voice/calls?id=${liveCallId}`, { headers: authH() })
       const d = await r.json()
-      const c = d.calls?.find((c: any) => c.id === liveCallId)
+      const c = d.calls?.[0]
       if (c) {
         setLiveCallStatus(c.status)
         if (['completed', 'failed', 'no-answer'].includes(c.status)) {

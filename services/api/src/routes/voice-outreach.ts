@@ -1007,6 +1007,62 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
   if (!pending?.length) await supabase.from('voice_campaigns').update({ status: 'completed', completed_at: new Date() }).eq('id', campaignId);
 }
 
+// ─── KAMPANYA YENIDEN BAŞLATMA ────────────────────────────────────────────────
+// Sunucu yeniden başladığında pending kalan kampanyaları devam ettir
+const _activeCampaignIds = new Set<string>();
+
+async function resumePendingCampaigns() {
+  try {
+    // Pending ve süresi geçmiş kuyruk kayıtlarını bul, campaign_id + user_id bazında grupla
+    const { data: pendingJobs, error } = await supabase
+      .from('campaign_queue')
+      .select('campaign_id, user_id')
+      .eq('status', 'pending')
+      .lte('scheduled_at', new Date().toISOString());
+
+    if (error) { console.error('[resumePendingCampaigns] Query error:', error.message); return; }
+    if (!pendingJobs?.length) return;
+
+    // Benzersiz (campaign_id, user_id) çiftlerini bul
+    const unique = new Map<string, { campaignId: string; userId: string }>();
+    for (const job of pendingJobs) {
+      const key = `${job.campaign_id}::${job.user_id}`;
+      if (!unique.has(key)) unique.set(key, { campaignId: job.campaign_id, userId: job.user_id });
+    }
+
+    for (const { campaignId, userId } of unique.values()) {
+      if (_activeCampaignIds.has(campaignId)) continue; // Zaten işleniyor
+      _activeCampaignIds.add(campaignId);
+
+      try {
+        const [{ data: settings }, { data: profile }, { data: userRow }] = await Promise.all([
+          supabase.from('voice_settings').select('*').eq('user_id', userId).single(),
+          supabase.from('business_profiles').select('*').eq('user_id', userId).single(),
+          supabase.from('users').select('name, company').eq('id', userId).single(),
+        ]);
+
+        const agentName   = settings?.agent_name         || userRow?.name    || 'Ahmet';
+        const companyName = settings?.company_name       || profile?.company?.name || userRow?.company || 'Şirketimiz';
+        const productDesc = settings?.product_description || profile?.product?.description || 'Ürün ve hizmetlerimiz hakkında bilgi vermek istiyorum';
+        const avoidWords  = profile?.sales_style?.avoid_words || '';
+        const voiceType      = (settings?.voice_provider === 'cloned' ? 'cloned' : 'library') as 'cloned' | 'library';
+        const clonedVoiceId  = voiceType === 'cloned'   ? settings?.elevenlabs_voice_id : undefined;
+        const libraryVoiceId = voiceType === 'library'  ? settings?.elevenlabs_voice_id : undefined;
+
+        console.log(`[resumePendingCampaigns] Resuming campaign ${campaignId} for user ${userId}`);
+        processCampaignQueue(userId, campaignId, { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent: 3 })
+          .catch(err => console.error(`[resumePendingCampaigns] Campaign ${campaignId} error:`, err.message))
+          .finally(() => _activeCampaignIds.delete(campaignId));
+      } catch (err: any) {
+        console.error(`[resumePendingCampaigns] Failed to resume campaign ${campaignId}:`, err.message);
+        _activeCampaignIds.delete(campaignId);
+      }
+    }
+  } catch (err: any) {
+    console.error('[resumePendingCampaigns] Unexpected error:', err.message);
+  }
+}
+
 router.post('/webhook/vapi', async (req: any, res: any) => {
   try {
     const { message } = req.body;
@@ -1159,10 +1215,11 @@ JSON (tüm alanları doldur):
 // GET /api/voice/calls
 router.get('/calls', async (req: any, res: any) => {
   try {
-    const { limit = 50, campaignId } = req.query;
+    const { limit = 50, campaignId, id } = req.query;
     let q = supabase.from('voice_calls')
       .select('*, leads(company_name, phone, contact_name, country)')
       .eq('user_id', req.userId).order('created_at', { ascending: false }).limit(Number(limit));
+    if (id) q = q.eq('id', id);
     if (campaignId) q = q.eq('campaign_id', campaignId);
     const { data } = await q;
     res.json({ calls: data || [] });
@@ -1491,5 +1548,11 @@ router.post('/warmup', async (_req: any, res: any) => {
     res.json({ ok: true, message: 'Warm-up ping gönderildi' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
+
+// Resume any campaigns that were pending when the server restarted
+setTimeout(async () => {
+  await resumePendingCampaigns();
+  setInterval(resumePendingCampaigns, 5 * 60 * 1000); // check every 5 min
+}, 10000);
 
 module.exports = router;
