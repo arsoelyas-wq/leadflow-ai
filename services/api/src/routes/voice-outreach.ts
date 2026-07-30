@@ -35,7 +35,7 @@ const STYLE_VOICE_SETTINGS: Record<string, { stability: number; similarity_boost
 
 const VAPI_KEY    = process.env.VAPI_API_KEY || '';
 // Twilio imported number — uluslararası arama destekli
-const VAPI_PHONE_ID = 'c5103fbb-47da-411e-b690-2329c2fe4f06';
+const VAPI_PHONE_ID = process.env.VAPI_PHONE_NUMBER_ID || 'c5103fbb-47da-411e-b690-2329c2fe4f06';
 
 const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app';
 
@@ -790,9 +790,9 @@ router.post('/call/single', async (req: any, res: any) => {
 
     // A/B Test: Yeterli veri yoksa otomatik A/B round-robin (her 2 aramada bir stil dene)
     let finalStyle = conversationStyle;
-    const { data: abCount } = await supabase.from('voice_calls')
-      .select('id', { count: 'exact' }).eq('user_id', userId);
-    const totalCalls = (abCount as any)?.length || 0;
+    const { count: abCount } = await supabase.from('voice_calls')
+      .select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    const totalCalls = abCount ?? 0;
     if (totalCalls < 40 && conversationStyle === 'consultant') {
       // İlk 40 aramada otomatik A/B — consultant vs direct dönüşümlü
       finalStyle = totalCalls % 4 === 0 ? 'direct' : totalCalls % 4 === 2 ? 'challenger' : 'consultant';
@@ -1244,7 +1244,7 @@ router.get('/settings', async (req: any, res: any) => {
 // PATCH /api/voice/settings — upsert (race condition fix)
 router.patch('/settings', async (req: any, res: any) => {
   try {
-    const { agent_name, company_name, product_description, transfer_number, vapi_phone_id, voice_speed, voice_pitch } = req.body;
+    const { agent_name, company_name, product_description, transfer_number, vapi_phone_id, voice_speed, voice_pitch, voice_bass, voice_treble, voice_warmth, voice_presence, voice_volume, voice_compress } = req.body;
     const updateData: any = { user_id: req.userId };
     if (agent_name !== undefined) updateData.agent_name = agent_name;
     if (company_name !== undefined) updateData.company_name = company_name;
@@ -1253,6 +1253,12 @@ router.patch('/settings', async (req: any, res: any) => {
     if (vapi_phone_id !== undefined) updateData.vapi_phone_id = vapi_phone_id;
     if (voice_speed !== undefined) updateData.voice_speed = voice_speed;
     if (voice_pitch !== undefined) updateData.voice_pitch = voice_pitch;
+    if (voice_bass !== undefined) updateData.voice_bass = voice_bass;
+    if (voice_treble !== undefined) updateData.voice_treble = voice_treble;
+    if (voice_warmth !== undefined) updateData.voice_warmth = voice_warmth;
+    if (voice_presence !== undefined) updateData.voice_presence = voice_presence;
+    if (voice_volume !== undefined) updateData.voice_volume = voice_volume;
+    if (voice_compress !== undefined) updateData.voice_compress = voice_compress;
 
     // Race condition'a karşı upsert (iki sekme eş zamanlı save'e karşı)
     await supabase.from('voice_settings').upsert([updateData], { onConflict: 'user_id' });

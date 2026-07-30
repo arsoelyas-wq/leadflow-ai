@@ -285,10 +285,12 @@ router.get('/stats/overview', async (req: any, res: any) => {
 // GET /api/calls/list
 router.get('/list', async (req: any, res: any) => {
   try {
+    const userId = req.userId;
     const { limit = 50, offset = 0 } = req.query;
     const { data, error } = await supabase
       .from('call_analyses')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(Number(offset), Number(offset) + Number(limit) - 1);
     if (error) throw error;
