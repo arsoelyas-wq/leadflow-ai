@@ -17,7 +17,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const upload = multer({ dest: '/tmp/recordings/' });
 
-async function transcribeAudio(filePath: string): Promise<string> {
+async function transcribeAudio(filePath: string, language?: string): Promise<string> {
   if (!GROQ_API_KEY) return '';
   try {
     const wavPath = filePath + '.wav';
@@ -29,7 +29,7 @@ async function transcribeAudio(filePath: string): Promise<string> {
       contentType: 'audio/wav',
     });
     form.append('model', 'whisper-large-v3-turbo');
-    form.append('language', 'tr');
+    form.append('language', language || 'tr');
     form.append('response_format', 'text');
     form.append('temperature', '0');
 
@@ -132,7 +132,7 @@ router.post('/process', upload.single('recording'), async (req: any, res: any) =
         let audioUrl = '';
 
         if (file && fs.existsSync(file.path)) {
-          transcript = await transcribeAudio(file.path);
+          transcript = await transcribeAudio(file.path, req.body.language);
           console.log(`Transkript: ${transcript.slice(0, 80)}`);
 
           try {
