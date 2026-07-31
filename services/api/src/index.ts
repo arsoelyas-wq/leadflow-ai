@@ -226,10 +226,17 @@ app.use('/api/developer',            authMiddleware, require('./routes/developer
 app.use('/api/whitelabel',           authMiddleware, require('./routes/whitelabel'));
 const voiceRouter = require('./routes/voice-outreach');
 app.post('/api/voice/webhook/elevenlabs', (req: any, res: any, next: any) => { req.url = '/webhook/elevenlabs'; voiceRouter(req, res, next); });
-app.post('/api/voice/webhook/vapi', (req: any, res: any, next: any) => { req.url = '/webhook/vapi'; voiceRouter(req, res, next); });
-// XTTS custom TTS endpoint — Vapi canlı arama sırasında bu URL'i çağırır (public, auth yok)
+// XTTS custom TTS endpoint (public, auth yok)
 app.post('/api/voice/tts-xtts/:voiceId', (req: any, res: any, next: any) => { req.url = `/tts-xtts/${req.params.voiceId}`; voiceRouter(req, res, next); });
 app.use('/api/voice',                authMiddleware, voiceRouter);
+
+// ── LeadFlow Voice Engine routes (public callbacks — Twilio imzası ile doğrulanır) ──
+const engineRouter = require('./routes/voice-engine');
+app.get('/api/engine/health', engineRouter);
+app.get('/api/engine/twiml/:sessionId',      engineRouter);
+app.post('/api/engine/twiml/:sessionId',     engineRouter);
+app.post('/api/engine/status/:sessionId',    engineRouter);
+app.post('/api/engine/recording/:sessionId', engineRouter);
 app.use('/api/voice-library',        authMiddleware, require('./routes/voice-library'));
 app.use('/api/push',                 authMiddleware, require('./routes/push'));
 app.use('/api/cultural',             authMiddleware, require('./routes/cultural'));
@@ -390,4 +397,11 @@ require('node-cron').schedule('*/10 * * * *', () => { checkAndAdvanceSequences()
 require('node-cron').schedule('0 3 * * *', () => { require('./lib/security').cleanBlocklist(); });
 
 initMonitoring(app).catch(console.error);
-app.listen(PORT, () => console.log(`LeadFlow API:${PORT}`));
+
+// ── LeadFlow Voice Engine — HTTP server + WebSocket upgrade ───────────────────
+// Express app'i HTTP server'a sar, Media Streams WebSocket'i aynı porta bağla
+const http = require('http');
+const { attachWss } = require('./engines/voice/call-engine');
+const server = http.createServer(app);
+attachWss(server);   // WebSocket upgrade handler'ı ekle
+server.listen(PORT, () => console.log(`LeadFlow API:${PORT} (Voice Engine etkin)`));

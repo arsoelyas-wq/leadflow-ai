@@ -924,12 +924,10 @@ router.post('/call/single', async (req: any, res: any) => {
     };
 
     console.log(`[CallSingle] Inserting voice_call: phone=${normalizedPhone} lang=${callLang} style=${finalStyle}`);
-    // conversation_style sütunu henüz migration'dan eklenmemiş olabilir
-    // notes alanında saklıyoruz, migration sonrası ayrı sütuna taşınacak
     const { data: callRecord, error: insertErr } = await supabase.from('voice_calls').insert([{
       user_id: userId, lead_id: leadId,
       callee_number: normalizedPhone,
-      caller_number: process.env.VAPI_PHONE_NUMBER || process.env.ELEVENLABS_CALLER_NUMBER || '',
+      caller_number: '',    // engine araması başlayınca Twilio numarası yazılır
       status: 'initiating', language: callLang,
       notes: `style:${finalStyle}`,
     }]).select().single();
@@ -954,23 +952,42 @@ router.post('/call/single', async (req: any, res: any) => {
 
     (async () => {
       try {
-        const result = await dispatchCall({
-          toNumber: lead.phone, agentName, companyName, productDesc,
-          leadName: lead.contact_name || lead.company_name,
-          leadCompany: lead.company_name, language: callLang, lead,
-          researchData,
-          avoidWords, voiceType, clonedVoiceId, libraryVoiceId,
-          transferNumber: settings?.transfer_number,
-          userPhoneId: settings?.vapi_phone_id,
-          conversationStyle: finalStyle,
-          callMemory,
+        // İlk mesajı üret — lead'e özel kişiselleştirilmiş açılış
+        const openingLine = await generatePersonalizedOpening({
+          lead, agentName, companyName, productDesc, language: callLang, researchData,
         });
+
+        // LeadFlow Voice Engine — Twilio tabanlı (Vapi yok)
+        const { makeCall: engineMakeCall } = require('../engines/voice/call-engine');
+        const { callSid } = await engineMakeCall({
+          to:            normalizedPhone,
+          voiceCallDbId: callRecord.id,
+          params: {
+            callSid:           '',           // Twilio tarafından atanır
+            sessionId:         callRecord.id,
+            voiceCallDbId:     callRecord.id,
+            agentName,
+            companyName,
+            productDesc,
+            leadName:          lead.contact_name || lead.company_name || '',
+            leadCompany:       lead.company_name || '',
+            language:          callLang,
+            conversationStyle: finalStyle,
+            firstMessage:      openingLine,
+            gender:            settings?.voice_gender || undefined,
+            transferNumber:    settings?.transfer_number || '',
+            avoidWords:        avoidWords || '',
+            pain1:             researchData?.pains?.[0] || '',
+            pain2:             researchData?.pains?.[1] || '',
+            callMemory:        callMemory || '',
+            maxDurationSec:    finalStyle === 'direct' ? 180 : finalStyle === 'challenger' ? 300 : 420,
+          },
+        });
+
         await supabase.from('voice_calls').update({
-          eleven_conversation_id: result.conversationId,
-          twilio_call_sid: result.callSid,
-          vapi_call_id: result.conversationId,
+          twilio_call_sid: callSid,
           status: 'calling',
-          notes: `Provider: ${result.provider} | Style: ${finalStyle}`,
+          notes: `Engine: twilio | Style: ${finalStyle}`,
         }).eq('id', callRecord?.id);
         await supabase.from('leads').update({
           status: 'contacted', last_contacted_at: new Date().toISOString(),
