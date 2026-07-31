@@ -431,8 +431,8 @@ async function makeVapiCall(params: {
     voiceId: cartesiaVoiceId,
     model: 'sonic-2',
     language: language === 'tr' ? 'tr' : undefined,
-    speed: cartesiaSpeed,
-    emotion: cartesiaEmotion,
+    // speed: removed (Vapi Cartesia API artık speed kabul etmiyor)
+    emotion: cartesiaEmotion.length > 0 ? cartesiaEmotion : undefined,
   };
 
   // Tarz bazlı interrupt sensitivity: Direkt tarz = daha az interrupt (hızlı geçiş)
@@ -459,12 +459,13 @@ async function makeVapiCall(params: {
     phoneNumberId: phoneId,
     customer: { number: normalizedNumber },
     assistant: {
+      serverUrl: `${API_BASE}/api/voice/webhook/vapi`,  // webhook — assistant seviyesinde
       transcriber: {
         provider: 'deepgram',
-        model: 'nova-3',                       // Nova-3 daha iyi TR doğruluğu
+        model: 'nova-3',
         language: deepgramLang[language] || 'tr',
         smartFormat: true,
-        endpointing: 250,                       // 250ms → 300ms'den daha hızlı tepki
+        endpointing: 250,
         keywords: ['merhaba', 'evet', 'hayır', 'tamam', 'görüşürüz', 'randevu', 'çarşamba', 'perşembe'],
       },
       model: {
@@ -472,11 +473,9 @@ async function makeVapiCall(params: {
         model: 'claude-sonnet-4-6',
         messages: [{ role: 'system', content: systemPrompt }],
         temperature: 0.4,
-        maxTokens: 150,                         // Kısa yanıt = daha hızlı TTS başlangıcı
-        toolChoice: 'auto',
+        maxTokens: 150,
         tools: [
           {
-            // Randevu tespit aracı — müşteri gün/saat söylediğinde tetiklenir
             type: 'function',
             function: {
               name: 'book_appointment',
@@ -492,16 +491,13 @@ async function makeVapiCall(params: {
             },
           },
           {
-            // Kara liste — "bir daha aramayın" tespiti
             type: 'function',
             function: {
               name: 'add_to_blacklist',
               description: 'Müşteri kesinlikle aranmak istemiyorsa kara listeye ekle.',
               parameters: {
                 type: 'object',
-                properties: {
-                  reason: { type: 'string' },
-                },
+                properties: { reason: { type: 'string' } },
                 required: [],
               },
             },
@@ -519,13 +515,11 @@ async function makeVapiCall(params: {
       silenceTimeoutSeconds: 25,
       maxDurationSeconds: maxDuration,
       recordingEnabled: true,
-      responseDelaySeconds: 0.8,           // İnsan gibi düşünme süresi (0.5-1.5s arası)
+      responseDelaySeconds: 0.8,
       llmRequestDelaySeconds: 0.3,
       numWordsToInterruptAssistant: numWordsToInterrupt,
-      interruptionThreshold: 60,           // Müşteri sözünü kesebilir (0-100, düşük=kolay)
-      backgroundSound: 'office',           // Ofis ortamı sesi = daha doğal hissettirme
+      backgroundSound: 'office',
     },
-    serverUrl: `${API_BASE}/api/voice/webhook/vapi`,
   };
   console.log('[Vapi Call] firstMessage:', body.assistant.firstMessage?.slice(0, 60));
 
