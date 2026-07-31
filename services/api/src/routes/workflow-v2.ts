@@ -220,7 +220,7 @@ async function execAction(lead: any, node: WorkflowNode, userId: string): Promis
       if (webhookUrl) {
         // Dead webhook kontrolü — devre dışı bırakıldıysa atla
         const { data: wfail } = await supabase.from('webhook_failures').select('disabled_at,fail_count')
-          .eq('user_id', userId).eq('webhook_url', webhookUrl).maybeSingle().catch(() => ({ data: null }));
+          .eq('user_id', userId).eq('webhook_url', webhookUrl).maybeSingle().then((r: any) => r, () => ({ data: null }));
         if (wfail?.disabled_at) {
           console.warn(`[Workflow] Skipping disabled webhook: ${webhookUrl}`);
           break;
@@ -247,16 +247,20 @@ async function execAction(lead: any, node: WorkflowNode, userId: string): Promis
         if (!webhookOk) {
           // Başarısız webhook'u kaydet, 3+ hatada devre dışı bırak
           const newCount = (wfail?.fail_count || 0) + 1;
-          await supabase.from('webhook_failures').upsert([{
-            user_id: userId, webhook_url: webhookUrl,
-            fail_count: newCount, last_error: `Workflow action failed`, last_failed_at: new Date(),
-            disabled_at: newCount >= 3 ? new Date() : null,
-          }], { onConflict: 'user_id,webhook_url' }).catch(() => {});
+          try {
+            await supabase.from('webhook_failures').upsert([{
+              user_id: userId, webhook_url: webhookUrl,
+              fail_count: newCount, last_error: `Workflow action failed`, last_failed_at: new Date(),
+              disabled_at: newCount >= 3 ? new Date() : null,
+            }], { onConflict: 'user_id,webhook_url' });
+          } catch {}
           console.error(`[Workflow] Webhook failed (attempt ${(wfail?.fail_count||0)+1}/3): ${webhookUrl}`);
         } else if (wfail?.fail_count) {
           // Başarılıysa hata sayacını sıfırla
-          await supabase.from('webhook_failures').update({ fail_count: 0, disabled_at: null })
-            .eq('user_id', userId).eq('webhook_url', webhookUrl).catch(() => {});
+          try {
+            await supabase.from('webhook_failures').update({ fail_count: 0, disabled_at: null })
+              .eq('user_id', userId).eq('webhook_url', webhookUrl);
+          } catch {}
         }
       }
       break;
@@ -463,11 +467,12 @@ function startWorkflowScheduler(): void {
     try {
       const now = new Date().toISOString();
       // 5 dakikadan eski processing_since'leri serbest bırak (orphan kilit temizliği)
-      await supabase.from('workflow_enrollments')
-        .update({ processing_since: null })
-        .eq('status', 'active')
-        .lt('processing_since', new Date(Date.now() - 5 * 60 * 1000).toISOString())
-        .catch(() => {});
+      try {
+        await supabase.from('workflow_enrollments')
+          .update({ processing_since: null })
+          .eq('status', 'active')
+          .lt('processing_since', new Date(Date.now() - 5 * 60 * 1000).toISOString());
+      } catch {}
 
       // Sadece kilit almamış kayıtları al (RACE CONDITION DÜZELTMESİ)
       const { data: pending } = await supabase
@@ -493,8 +498,7 @@ function startWorkflowScheduler(): void {
           await processEnrollment(e);
         } finally {
           // İşlem bitince kilidi serbest bırak
-          await supabase.from('workflow_enrollments')
-            .update({ processing_since: null }).eq('id', e.id).catch(() => {});
+          try { await supabase.from('workflow_enrollments').update({ processing_since: null }).eq('id', e.id); } catch {}
         }
       }));
     } catch (err: any) { console.error('[WorkflowCron]', err.message?.slice(0, 80)); }

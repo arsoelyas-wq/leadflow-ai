@@ -560,6 +560,7 @@ async function dispatchCall(params: {
 }): Promise<{ conversationId: string; callSid: string; provider: string }> {
   const { language, lead, researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, conversationStyle = 'consultant', callMemory = '' } = params;
 
+  console.log(`[dispatchCall] Başlıyor → ${params.toNumber} | lang=${language} | style=${conversationStyle} | voiceType=${voiceType}`);
   const openingLine = await generatePersonalizedOpening({
     lead, agentName: params.agentName, companyName: params.companyName,
     productDesc: params.productDesc, language, researchData,
