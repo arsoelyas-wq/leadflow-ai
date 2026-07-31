@@ -39,34 +39,11 @@ const VAPI_PHONE_ID = process.env.VAPI_PHONE_NUMBER_ID || 'c5103fbb-47da-411e-b6
 
 const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app';
 
-// ─── SES KÜTÜPHANESİ KATALOGU ────────────────────────────────────────────────
-// Azure Neural + Cartesia — /api/voice/library-voices tarafından kullanılır
-const VOICE_CATALOG = [
-  // Turkish
-  { id: 'tr-TR-EmelNeural',   name: 'Emel',    gender: 'female', language: 'tr', provider: 'azure',    style: 'professional', accent: 'TR', previewUrl: '/api/voice-library/preview?id=tr-TR-EmelNeural&provider=azure' },
-  { id: 'tr-TR-AhmetNeural',  name: 'Ahmet',   gender: 'male',   language: 'tr', provider: 'azure',    style: 'professional', accent: 'TR', previewUrl: '/api/voice-library/preview?id=tr-TR-AhmetNeural&provider=azure' },
-  { id: 'tr-TR-GulNeural',    name: 'Gül',     gender: 'female', language: 'tr', provider: 'azure',    style: 'friendly',     accent: 'TR', previewUrl: '/api/voice-library/preview?id=tr-TR-GulNeural&provider=azure' },
-  // English
-  { id: '79a125e8-cd45-4c13-8a67-188112f4dd22', name: 'Chris',   gender: 'male',   language: 'en', provider: 'cartesia', style: 'professional', accent: 'US', previewUrl: '/api/voice-library/preview?id=79a125e8-cd45-4c13-8a67-188112f4dd22&provider=cartesia' },
-  { id: 'a0e99841-438c-4a64-b679-ae501e7d6091', name: 'Barbera', gender: 'female', language: 'en', provider: 'cartesia', style: 'professional', accent: 'US', previewUrl: '/api/voice-library/preview?id=a0e99841-438c-4a64-b679-ae501e7d6091&provider=cartesia' },
-  { id: 'en-US-JennyNeural',  name: 'Jenny',   gender: 'female', language: 'en', provider: 'azure',    style: 'friendly',     accent: 'US', previewUrl: '/api/voice-library/preview?id=en-US-JennyNeural&provider=azure' },
-  { id: 'en-US-GuyNeural',    name: 'Guy',     gender: 'male',   language: 'en', provider: 'azure',    style: 'professional', accent: 'US', previewUrl: '/api/voice-library/preview?id=en-US-GuyNeural&provider=azure' },
-  { id: 'en-GB-LibbyNeural',  name: 'Libby',   gender: 'female', language: 'en', provider: 'azure',    style: 'professional', accent: 'GB', previewUrl: '/api/voice-library/preview?id=en-GB-LibbyNeural&provider=azure' },
-  // German
-  { id: 'de-DE-KatjaNeural',  name: 'Katja',   gender: 'female', language: 'de', provider: 'azure',    style: 'professional', accent: 'DE', previewUrl: '/api/voice-library/preview?id=de-DE-KatjaNeural&provider=azure' },
-  { id: 'de-DE-ConradNeural', name: 'Conrad',  gender: 'male',   language: 'de', provider: 'azure',    style: 'professional', accent: 'DE', previewUrl: '/api/voice-library/preview?id=de-DE-ConradNeural&provider=azure' },
-  // French
-  { id: 'fr-FR-DeniseNeural', name: 'Denise',  gender: 'female', language: 'fr', provider: 'azure',    style: 'professional', accent: 'FR', previewUrl: '/api/voice-library/preview?id=fr-FR-DeniseNeural&provider=azure' },
-  { id: 'fr-FR-HenriNeural',  name: 'Henri',   gender: 'male',   language: 'fr', provider: 'azure',    style: 'professional', accent: 'FR', previewUrl: '/api/voice-library/preview?id=fr-FR-HenriNeural&provider=azure' },
-  // Arabic
-  { id: 'ar-SA-ZariyahNeural', name: 'Zariyah', gender: 'female', language: 'ar', provider: 'azure',   style: 'professional', accent: 'SA', previewUrl: '/api/voice-library/preview?id=ar-SA-ZariyahNeural&provider=azure' },
-  { id: 'ar-SA-HamedNeural',  name: 'Hamed',   gender: 'male',   language: 'ar', provider: 'azure',    style: 'professional', accent: 'SA', previewUrl: '/api/voice-library/preview?id=ar-SA-HamedNeural&provider=azure' },
-  // Spanish
-  { id: 'es-ES-ElviraNeural', name: 'Elvira',  gender: 'female', language: 'es', provider: 'azure',    style: 'professional', accent: 'ES', previewUrl: '/api/voice-library/preview?id=es-ES-ElviraNeural&provider=azure' },
-  { id: 'es-ES-AlvaroNeural', name: 'Alvaro',  gender: 'male',   language: 'es', provider: 'azure',    style: 'professional', accent: 'ES', previewUrl: '/api/voice-library/preview?id=es-ES-AlvaroNeural&provider=azure' },
-];
+// Ses kütüphanesi artık ElevenLabs shared-voices API'den geliyor (voice-library.ts + tts-engine.ts)
+// /api/voice/library-voices → getElevenLabsSharedVoices() → 3000+ ses, tüm diller
 
-// Cartesia ses ID'leri dil bazında (kütüphane aramalar için)
+// Cartesia Sonic-2 ses ID'leri — gerçek aramalar için (dil + cinsiyet bazında)
+// sonic-2 multilingual model: aynı voice_id ile tüm dilleri destekler
 const CALL_VOICES: Record<string, string> = {
   tr: '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
   en: '79a125e8-cd45-4c13-8a67-188112f4dd22',
@@ -75,6 +52,20 @@ const CALL_VOICES: Record<string, string> = {
   ar: '3b554bf4-e0d4-4a74-ae96-3c1f6db66f82',
   default: 'b7d50908-b17c-442d-ad8d-810c63997ed9',
 };
+
+// Gender bazlı Cartesia sesi — kullanıcı EL library'den cinsiyet seçtiğinde kullanılır
+const CARTESIA_BY_GENDER: Record<'male'|'female'|'neutral', string> = {
+  male:    '79a125e8-cd45-4c13-8a67-188112f4dd22', // Chris — professional male
+  female:  'a0e99841-438c-4a64-b679-ae501e7d6091', // Barbara — professional female
+  neutral: 'b7d50908-b17c-442d-ad8d-810c63997ed9', // multilingual neutral
+};
+
+function getCallVoiceId(language: string, gender?: string): string {
+  if (gender && gender !== 'neutral' && CARTESIA_BY_GENDER[gender as 'male'|'female']) {
+    return CARTESIA_BY_GENDER[gender as 'male'|'female'];
+  }
+  return CALL_VOICES[language] || CALL_VOICES.default;
+}
 
 // Telefon numarasını E.164 formatına çevir
 function normalizePhoneE164(phone: string, countryCode?: string): string {
@@ -432,10 +423,12 @@ async function makeVapiCall(params: {
     ? (conversationStyle === 'challenger' ? ['curiosity:high'] : conversationStyle === 'direct' ? ['curiosity:high'] : ['positivity:medium'])
     : [];
 
-  // Cartesia — dil bazında varsayılan ses (kendi sistemimizde kullanılan TTS)
+  // Cartesia — cinsiyet bazlı ses seçimi (EL library'den cinsiyet bilgisi geliyorsa kullan)
+  const selectedGender = params.voiceConfig?.selectedGender as 'male'|'female'|'neutral' | undefined;
+  const cartesiaVoiceId = getCallVoiceId(language, selectedGender);
   const defaultVoice = {
     provider: 'cartesia',
-    voiceId: CALL_VOICES[language] || CALL_VOICES.default,
+    voiceId: cartesiaVoiceId,
     model: 'sonic-2',
     language: language === 'tr' ? 'tr' : undefined,
     speed: cartesiaSpeed,
@@ -682,18 +675,32 @@ router.get('/my-voices', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/voice/library-voices — Azure Neural + Cartesia ses katalogu
+// GET /api/voice/library-voices — ElevenLabs shared voice catalog (3000+ ses, 29 dil)
 router.get('/library-voices', async (req: any, res: any) => {
   try {
-    const { language, gender, limit = '80' } = req.query;
-    let voices = [...VOICE_CATALOG];
-    if (language && language !== 'all') {
-      voices = voices.filter(v => v.language === language.toLowerCase());
+    const { language, gender, limit = '100', search } = req.query;
+    const { getElevenLabsSharedVoices } = require('../services/tts-engine');
+
+    const langFilter = language && language !== 'all'
+      ? (language as string).toLowerCase()
+      : undefined;
+
+    let voices: any[] = await getElevenLabsSharedVoices(
+      langFilter,
+      gender as string | undefined,
+      Number(limit) || 100,
+    );
+
+    if (search) {
+      const q = (search as string).toLowerCase();
+      voices = voices.filter((v: any) =>
+        v.name.toLowerCase().includes(q) ||
+        (v.accent || '').toLowerCase().includes(q) ||
+        (v.description || '').toLowerCase().includes(q)
+      );
     }
-    if (gender) {
-      voices = voices.filter(v => v.gender === gender);
-    }
-    voices = voices.slice(0, Number(limit) || 80);
+
+    voices = voices.slice(0, Number(limit) || 100);
     res.json({ voices, total: voices.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -768,14 +775,24 @@ router.delete('/my-voices/:id', async (req: any, res: any) => {
 // POST /api/voice/set-voice
 router.post('/set-voice', async (req: any, res: any) => {
   try {
-    const { voiceId, voiceName, voiceType = 'library' } = req.body;
+    const { voiceId, voiceName, voiceType = 'library', gender } = req.body;
     // voiceType: 'cloned' | 'library'
-    await supabase.from('voice_settings').upsert([{
-      user_id: req.userId,
+    // gender: 'male' | 'female' | 'neutral' — EL library'den seçildiğinde gönderilir
+    const row: any = {
+      user_id:             req.userId,
       elevenlabs_voice_id: voiceId,
-      voice_name: voiceName,
-      voice_provider: voiceType,
-    }]);
+      voice_name:          voiceName,
+      voice_provider:      voiceType,
+    };
+    // voice_gender kolonu varsa ekle (yoksa hata oluşmaz, upsert partial update yapar)
+    if (gender) row.voice_gender = gender;
+
+    const { error } = await supabase.from('voice_settings').upsert([row]);
+    if (error && error.message?.includes('voice_gender')) {
+      // Kolon henüz yoksa gender olmadan kaydet
+      delete row.voice_gender;
+      await supabase.from('voice_settings').upsert([row]);
+    }
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

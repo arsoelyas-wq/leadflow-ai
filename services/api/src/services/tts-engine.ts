@@ -315,6 +315,115 @@ export async function generateAzurePreview(voiceId: string, language: string): P
   return synthesizeAzure({ text, language, voiceId });
 }
 
+// ─── ELEVENLABS CONFIG ────────────────────────────────────────────────────────
+
+const EL_KEY  = process.env.ELEVENLABS_API_KEY || '';
+const EL_BASE = 'https://api.elevenlabs.io/v1';
+
+// Cache: keyed by "lang_gender", 6h TTL
+let _elCache: Record<string, any[]>    = {};
+let _elCacheAt: Record<string, number> = {};
+
+export async function getElevenLabsSharedVoices(
+  lang?: string,
+  gender?: string,
+  pageSize = 100,
+): Promise<any[]> {
+  const key = `${lang || 'all'}_${gender || 'all'}`;
+  if (_elCache[key] && Date.now() - (_elCacheAt[key] || 0) < VOICE_CACHE_TTL) {
+    return _elCache[key];
+  }
+  if (!EL_KEY) return [];
+
+  try {
+    const params: Record<string, any> = { page_size: pageSize, sort: 'clones' };
+    if (lang)   params.language = lang;
+    if (gender) params.gender   = gender;
+
+    const r = await axios.get(`${EL_BASE}/shared-voices`, {
+      headers: { 'xi-api-key': EL_KEY },
+      params,
+      timeout: 15000,
+    });
+
+    const LANG_NAMES: Record<string, string> = {
+      tr: 'Türkçe', en: 'İngilizce', de: 'Almanca', fr: 'Fransızca',
+      ar: 'Arapça', ru: 'Rusça', es: 'İspanyolca', it: 'İtalyanca',
+      nl: 'Hollandaca', zh: 'Çince', ja: 'Japonca', ko: 'Korece',
+      pl: 'Lehçe', pt: 'Portekizce', hi: 'Hintçe', az: 'Azerbaycanca',
+      sv: 'İsveççe', uk: 'Ukraynaca', cs: 'Çekçe', ro: 'Rumence',
+      fi: 'Fince', el: 'Yunanca', id: 'Endonezce', ms: 'Malayca',
+      da: 'Danca', bg: 'Bulgarca', sk: 'Slovakça', hr: 'Hırvatça',
+      fil: 'Filipince', ta: 'Tamilce',
+    };
+
+    const voices: any[] = (r.data?.voices || []).map((v: any) => {
+      const labels = v.labels || {};
+      const rawGender = (labels.gender || v.gender || 'neutral').toLowerCase();
+      const g: 'male'|'female'|'neutral' = rawGender === 'male' ? 'male' : rawGender === 'female' ? 'female' : 'neutral';
+      const voiceLang = (lang || v.language || 'en').toLowerCase();
+      return {
+        voice_id:      v.voice_id,
+        name:          v.name,
+        gender:        g,
+        language:      voiceLang,
+        language_name: LANG_NAMES[voiceLang] || voiceLang,
+        accent:        labels.accent || '',
+        age:           labels.age    || '',
+        description:   v.description || labels.description || '',
+        use_case:      labels.use_case || '',
+        preview_url:   v.preview_url || null,
+        provider:      'elevenlabs',
+        category:      _elCategory(labels.use_case || ''),
+        styles:        [],
+      };
+    });
+
+    _elCache[key]   = voices;
+    _elCacheAt[key] = Date.now();
+    console.log(`[TTS] ElevenLabs shared voices (${key}): ${voices.length}`);
+    return voices;
+  } catch (e: any) {
+    console.error('[TTS] ElevenLabs voices error:', e.message?.slice(0, 80));
+    return _elCache[key] || [];
+  }
+}
+
+function _elCategory(uc: string): VoiceEntry['category'] {
+  const u = uc.toLowerCase();
+  if (/news|anchor|broadcast/.test(u))                   return 'news';
+  if (/professional|business|corporate|narrat/.test(u))  return 'professional';
+  if (/cheerful|friendly|warm|conversational/.test(u))   return 'warm';
+  if (/energetic|sport|excited/.test(u))                 return 'energetic';
+  return 'general';
+}
+
+export async function synthesizeElevenLabs(opts: TTSOptions): Promise<Buffer> {
+  if (!EL_KEY) throw new Error('ELEVENLABS_API_KEY yapılandırılmamış');
+  const voiceId = opts.voiceId || 'JBFqnCBsd6RMkjVDRZzb'; // George (professional fallback)
+
+  const r = await axios.post(
+    `${EL_BASE}/text-to-speech/${voiceId}`,
+    {
+      text:     opts.text,
+      model_id: 'eleven_flash_v2_5',
+      voice_settings: {
+        stability:         0.5,
+        similarity_boost:  0.75,
+        style:             0.2,
+        use_speaker_boost: true,
+      },
+      output_format: 'mp3_44100_128',
+    },
+    {
+      headers:      { 'xi-api-key': EL_KEY, 'Content-Type': 'application/json' },
+      responseType: 'arraybuffer',
+      timeout:      30000,
+    },
+  );
+  return Buffer.from(r.data);
+}
+
 // ─── CARTESIA VOICES CATALOG ─────────────────────────────────────────────────
 
 export function getCartesiaVoiceCatalog(): VoiceEntry[] {
