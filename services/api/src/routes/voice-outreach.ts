@@ -940,10 +940,12 @@ router.post('/call/single', async (req: any, res: any) => {
 
     // A/B test kaydı
     if (totalCalls < 40) {
-      await supabase.from('ab_test_assignments').insert([{
-        user_id: userId, test_name: 'auto_ab_first40',
-        variant: finalStyle, call_id: callRecord.id,
-      }]).catch(() => {});  // Tablo yoksa sessiz geç
+      try {
+        await supabase.from('ab_test_assignments').insert([{
+          user_id: userId, test_name: 'auto_ab_first40',
+          variant: finalStyle, call_id: callRecord.id,
+        }]);
+      } catch {}
     }
 
     res.json({ ok: true, callId: callRecord?.id, message: 'Arama başlatılıyor...', style: finalStyle });
@@ -1093,7 +1095,7 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
         await supabase.from('voice_calls').update({ eleven_conversation_id: result.conversationId, status: 'calling', notes: `Provider: ${result.provider}` }).eq('id', callRecord?.id);
         await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date() }).eq('id', lead.id);
         await supabase.from('campaign_queue').update({ status: 'done', finished_at: new Date(), call_id: callRecord?.id }).eq('id', job.id);
-        await supabase.from('voice_campaigns').update({ calls_made: supabase.rpc('increment_calls_made', { campaign_id: campaignId }) }).eq('id', campaignId).catch(() => {});
+        try { await supabase.from('voice_campaigns').update({ calls_made: supabase.rpc('increment_calls_made', { campaign_id: campaignId }) }).eq('id', campaignId); } catch {}
         processed++;
       } catch (err: any) {
         const attempts = (job.attempt_count || 0) + 1;
@@ -1344,7 +1346,7 @@ JSON (tüm alanları doldur):
         else console.log(`[CallIntelligence] Saved: style=${ciPayload.conversation_style}, outcome=${ciPayload.outcome}, interest=${ciPayload.interest_score}`);
 
         // A/B test sonucunu güncelle
-        await supabase.from('ab_test_assignments').update({ outcome: analysisData.outcome }).eq('call_id', call.id).catch(() => {});
+        try { await supabase.from('ab_test_assignments').update({ outcome: analysisData.outcome }).eq('call_id', call.id); } catch {}
       } catch (ciErr: any) {
         console.warn('[CallIntelligence] Unexpected error:', ciErr.message?.slice(0, 60));
       }

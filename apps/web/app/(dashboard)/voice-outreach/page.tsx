@@ -1274,7 +1274,8 @@ export default function VoicePage() {
         if (['completed', 'failed', 'no-answer'].includes(c.status)) {
           setCallPhase('ended'); stopRingtone(); stopCallTimer()
           setCalls((prev: any[]) => prev.map((p: any) => p.id === c.id ? c : p))
-          setTimeout(endLiveCall, 4000) // 4sn göster sonra kapat
+          // Tamamlandıysa 5sn sonra kapat, başarısızsa 12sn (hata okunabilsin)
+          setTimeout(endLiveCall, c.status === 'completed' ? 5000 : 12000)
           loadAll()
         }
       } catch {}
@@ -1560,12 +1561,18 @@ export default function VoicePage() {
 
               {/* Ended state */}
               {callPhase==='ended' && (
-                <div className="mb-6">
+                <div className="mb-6 w-full px-2">
                   <p className="text-sm font-semibold" style={{ color: liveCallData?.status==='completed'?'#6ee7b7':liveCallData?.status==='no-answer'?'#fbbf24':'#f87171' }}>
                     {liveCallData?.status==='completed'?'Görüşme tamamlandı':liveCallData?.status==='no-answer'?'Cevap verilmedi':'Arama başarısız'}
                   </p>
                   {liveCallData?.duration_seconds > 0 && (
                     <p className="text-xs mt-1" style={{ color:'rgba(255,255,255,0.4)' }}>Süre: {Math.floor(liveCallData.duration_seconds/60)}:{String(liveCallData.duration_seconds%60).padStart(2,'0')}</p>
+                  )}
+                  {liveCallData?.notes && liveCallData?.status==='failed' && (
+                    <div className="mt-3 px-3 py-2 rounded-xl text-left" style={{ background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color:'#f87171' }}>Hata Detayı</p>
+                      <p className="text-xs break-all" style={{ color:'rgba(255,255,255,0.6)', fontFamily:'monospace' }}>{liveCallData.notes}</p>
+                    </div>
                   )}
                 </div>
               )}
@@ -1804,8 +1811,16 @@ export default function VoicePage() {
                               )}
                             </div>
                           ) : (
-                            <div className="py-3 text-center text-xs" style={{ color:'#cbd5e1' }}>
-                              {c.status==='completed'?'Transkript işleniyor...':c.status==='calling'||c.status==='initiating'?'Arama devam ediyor...':'Transkript yok'}
+                            <div className="py-2">
+                              {c.status==='failed' && c.notes && (
+                                <div className="mb-2 px-3 py-2 rounded-xl" style={{ background:'#fef2f2', border:'1px solid #fecaca' }}>
+                                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color:'#dc2626' }}>Hata Detayı</p>
+                                  <p className="text-xs break-all" style={{ color:'#7f1d1d', fontFamily:'monospace' }}>{c.notes}</p>
+                                </div>
+                              )}
+                              <div className="text-center text-xs" style={{ color:'#cbd5e1' }}>
+                                {c.status==='completed'?'Transkript işleniyor...':c.status==='calling'||c.status==='initiating'?'Arama devam ediyor...':'Transkript yok'}
+                              </div>
                             </div>
                           )}
                         </td>
