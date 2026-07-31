@@ -431,8 +431,7 @@ async function makeVapiCall(params: {
     voiceId: cartesiaVoiceId,
     model: 'sonic-2',
     language: language === 'tr' ? 'tr' : undefined,
-    // speed: removed (Vapi Cartesia API artık speed kabul etmiyor)
-    emotion: cartesiaEmotion.length > 0 ? cartesiaEmotion : undefined,
+    // speed + emotion: Vapi Cartesia API artık bunları kabul etmiyor
   };
 
   // Tarz bazlı interrupt sensitivity: Direkt tarz = daha az interrupt (hızlı geçiş)
