@@ -931,12 +931,14 @@ router.post('/call/single', async (req: any, res: any) => {
     };
 
     console.log(`[CallSingle] Inserting voice_call: phone=${normalizedPhone} lang=${callLang} style=${finalStyle}`);
+    // conversation_style sütunu henüz migration'dan eklenmemiş olabilir
+    // notes alanında saklıyoruz, migration sonrası ayrı sütuna taşınacak
     const { data: callRecord, error: insertErr } = await supabase.from('voice_calls').insert([{
       user_id: userId, lead_id: leadId,
       callee_number: normalizedPhone,
       caller_number: process.env.VAPI_PHONE_NUMBER || process.env.ELEVENLABS_CALLER_NUMBER || '',
       status: 'initiating', language: callLang,
-      conversation_style: finalStyle,
+      notes: `style:${finalStyle}`,
     }]).select().single();
 
     if (!callRecord) {
@@ -1090,7 +1092,8 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
 
         const { data: callRecord } = await supabase.from('voice_calls').insert([{
           user_id: userId, lead_id: lead.id, campaign_id: campaignId,
-          callee_number: normPhone, status: 'initiating', language: callLang, conversation_style: conversationStyle,
+          callee_number: normPhone, status: 'initiating', language: callLang,
+          notes: `style:${conversationStyle}`,
         }]).select().single();
 
         const result = await dispatchCall({
