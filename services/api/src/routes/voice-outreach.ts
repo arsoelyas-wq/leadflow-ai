@@ -1180,8 +1180,38 @@ router.post('/webhook/vapi', async (req: any, res: any) => {
     if (!message || message.type !== 'end-of-call-report') return;
     const callId = message.call?.id;
     if (!callId) return;
-    const { data: call } = await supabase.from('voice_calls').select('*, leads(*)').eq('eleven_conversation_id', callId).single();
-    if (!call) return;
+
+    // Önce vapi_call_id ile bul; yoksa callee_number + zaman penceresi ile ara (race condition düzeltmesi)
+    let { data: call } = await supabase.from('voice_calls')
+      .select('*, leads(*)')
+      .eq('eleven_conversation_id', callId)
+      .maybeSingle();
+
+    if (!call) {
+      const calleeNum = message.call?.customer?.number;
+      if (calleeNum) {
+        const since2h = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+        const { data: fallback } = await supabase.from('voice_calls')
+          .select('*, leads(*)')
+          .eq('callee_number', calleeNum)
+          .in('status', ['initiating', 'calling'])
+          .gte('created_at', since2h)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (fallback) {
+          call = fallback;
+          // eleven_conversation_id güncelle — sonraki webhook'lar direkt bulabilsin
+          await supabase.from('voice_calls').update({ eleven_conversation_id: callId, vapi_call_id: callId }).eq('id', fallback.id);
+          console.log(`[Vapi Webhook] Fallback lookup matched by callee_number for callId=${callId}`);
+        }
+      }
+    }
+
+    if (!call) {
+      console.warn(`[Vapi Webhook] No matching call found for callId=${callId}`);
+      return;
+    }
 
     const transcript = message.transcript || message.artifact?.transcript || '';
     const durationSec = message.call?.duration || message.durationSeconds || 0;
@@ -1265,14 +1295,14 @@ JSON (tüm alanları doldur):
     for (const tc of toolCalls) {
       if (tc.name === 'book_appointment' && tc.result?.day) {
         const apptNote = `Randevu: ${tc.result.day}${tc.result.time ? ' ' + tc.result.time : ''} | Arama ID: ${callId}`;
-        await supabase.from('leads').update({ notes: apptNote, status: 'replied' }).eq('id', call.lead_id).catch(() => {});
+        try { await supabase.from('leads').update({ notes: apptNote, status: 'replied' }).eq('id', call.lead_id); } catch {}
         console.log(`[Webhook] Appointment booked: ${apptNote}`);
       }
       if (tc.name === 'add_to_blacklist' && call.lead_id) {
         const phone = normalizePhoneE164(call.callee_number, '');
-        await supabase.from('call_blacklist').upsert([{
+        try { await supabase.from('call_blacklist').upsert([{
           user_id: call.user_id, phone, reason: tc.result?.reason || 'Müşteri isteği', lead_id: call.lead_id,
-        }], { onConflict: 'user_id,phone' }).catch(() => {});
+        }], { onConflict: 'user_id,phone' }); } catch {}
         console.log(`[Webhook] Blacklisted: ${phone}`);
       }
     }
@@ -1282,14 +1312,14 @@ JSON (tüm alanları doldur):
       const dncPhrases = ['aramayın', 'a̋ramayın', 'istemiyorum', 'do not call', 'remove me'];
       if (dncPhrases.some(p => transcript.toLowerCase().includes(p))) {
         const phone = normalizePhoneE164(call.callee_number, '');
-        await supabase.from('call_blacklist').upsert([{
+        try { await supabase.from('call_blacklist').upsert([{
           user_id: call.user_id, phone, reason: 'Transcript analizi — DNC', lead_id: call.lead_id,
-        }], { onConflict: 'user_id,phone' }).catch(() => {});
+        }], { onConflict: 'user_id,phone' }); } catch {}
         console.log(`[Webhook] Auto-blacklisted from transcript: ${phone}`);
       }
     }
 
-    await supabase.from('voice_calls').update(updates).eq('eleven_conversation_id', callId);
+    await supabase.from('voice_calls').update(updates).eq('id', call.id);
     console.log(`[Vapi Webhook] Call ${callId}: ${updates.outcome || 'completed'}, ${durationSec}s, reason=${endReason}`);
 
     // Call Intelligence: öğrenme verisini kaydet
@@ -1664,5 +1694,24 @@ setTimeout(async () => {
   await resumePendingCampaigns();
   setInterval(resumePendingCampaigns, 5 * 60 * 1000); // check every 5 min
 }, 10000);
+
+// Zombie call cleanup — webhook gelmeden takılı kalan aramaları kapat
+async function cleanupZombieCalls(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // 30 dakikadan eski
+    const { data: zombies } = await supabase.from('voice_calls')
+      .select('id')
+      .in('status', ['initiating', 'calling'])
+      .lt('created_at', cutoff);
+    if (!zombies?.length) return;
+    const ids = zombies.map((z: any) => z.id);
+    await supabase.from('voice_calls')
+      .update({ status: 'failed', notes: 'Auto-closed: webhook alınmadı (>30dk)' })
+      .in('id', ids);
+    console.log(`[ZombieCleanup] ${ids.length} takılı arama kapatıldı`);
+  } catch {}
+}
+setTimeout(cleanupZombieCalls, 15000); // ilk çalışma: boot + 15s
+setInterval(cleanupZombieCalls, 15 * 60 * 1000); // her 15 dakikada bir
 
 module.exports = router;

@@ -1239,30 +1239,30 @@ export default function VoicePage() {
   }, [activeCampaignId])
 
   async function loadAll() {
+    const [l, c, ca, s, st, sr, ci, ab] = await Promise.allSettled([
+      fetch(`${API}/api/leads/with-phone`, { headers: authH() }),
+      fetch(`${API}/api/voice/calls?limit=50`, { headers: authH() }),
+      fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
+      fetch(`${API}/api/voice/settings`, { headers: authH() }),
+      fetch(`${API}/api/voice/stats`, { headers: authH() }),
+      fetch(`${API}/api/voice/style-recommendation`, { headers: authH() }),
+      fetch(`${API}/api/voice/call-intelligence`, { headers: authH() }),
+      fetch(`${API}/api/voice/ab-results`, { headers: authH() }),
+    ])
+    try { if (l.status === 'fulfilled') { const d = await (l.value as any).json(); setLeads(d.leads || []) } } catch {}
+    try { if (c.status === 'fulfilled') { const d = await (c.value as any).json(); setCalls(d.calls || []) } } catch {}
+    try { if (ca.status === 'fulfilled') { const d = await (ca.value as any).json(); setCampaigns(d.campaigns || []) } } catch {}
     try {
-      const [l, c, ca, s, st, sr, ci, ab] = await Promise.allSettled([
-        fetch(`${API}/api/leads/with-phone`, { headers: authH() }),
-        fetch(`${API}/api/voice/calls?limit=30`, { headers: authH() }),
-        fetch(`${API}/api/voice/campaigns`, { headers: authH() }),
-        fetch(`${API}/api/voice/settings`, { headers: authH() }),
-        fetch(`${API}/api/voice/stats`, { headers: authH() }),
-        fetch(`${API}/api/voice/style-recommendation`, { headers: authH() }),
-        fetch(`${API}/api/voice/call-intelligence`, { headers: authH() }),
-        fetch(`${API}/api/voice/ab-results`, { headers: authH() }),
-      ])
-      if (l.status === 'fulfilled') { const d = await (l.value as any).json(); setLeads(d.leads || []) }
-      if (c.status === 'fulfilled') { const d = await (c.value as any).json(); setCalls(d.calls || []) }
-      if (ca.status === 'fulfilled') { const d = await (ca.value as any).json(); setCampaigns(d.campaigns || []) }
       if (s.status === 'fulfilled') {
         const d = await (s.value as any).json(); const sv = d.settings || {}
         setSettings(sv); setSelectedVoiceId(sv.elevenlabs_voice_id || '')
         setSelectedVoiceName(sv.voice_name || ''); setSelectedVoiceType(sv.voice_provider === 'cloned' ? 'cloned' : 'library')
       }
-      if (st.status === 'fulfilled') { const d = await (st.value as any).json(); setStats(d) }
-      if (sr.status === 'fulfilled') { const d = await (sr.value as any).json(); setStyleRec(d); if (d.confidence >= 50) setConversationStyle(d.style) }
-      if (ci.status === 'fulfilled') { const d = await (ci.value as any).json(); setIntelligence(d) }
-      if (ab.status === 'fulfilled') { const d = await (ab.value as any).json(); setAbResults(d) }
     } catch {}
+    try { if (st.status === 'fulfilled') { const d = await (st.value as any).json(); setStats(d) } } catch {}
+    try { if (sr.status === 'fulfilled') { const d = await (sr.value as any).json(); setStyleRec(d); if (d.confidence >= 50) setConversationStyle(d.style) } } catch {}
+    try { if (ci.status === 'fulfilled') { const d = await (ci.value as any).json(); setIntelligence(d) } } catch {}
+    try { if (ab.status === 'fulfilled') { const d = await (ab.value as any).json(); setAbResults(d) } } catch {}
   }
 
   async function selectVoice(voiceId: string, voiceName: string, voiceType: 'cloned' | 'library') {
@@ -1282,8 +1282,10 @@ export default function VoicePage() {
       if (d.ok) {
         setLiveCallId(d.callId)
         setLiveCallStatus('calling')
+        setCalling(false)          // calling=false → "Arama Talebi Gönderildi!" göster
         showMsg('success', `Arama başladı! Tarz: ${d.style || conversationStyle}`)
-        setTimeout(loadAll, 5000)
+        loadAll()                  // hemen listede göster
+        setTimeout(loadAll, 6000) // 6s sonra tekrar (status güncellenmiş olabilir)
       } else {
         showMsg('error', d.error || 'Arama başlatılamadı')
         setCalling(false)
