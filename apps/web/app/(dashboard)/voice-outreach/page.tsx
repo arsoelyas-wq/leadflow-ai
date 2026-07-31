@@ -1369,7 +1369,7 @@ export default function VoicePage() {
         showMsg('error', d.error || 'Arama başlatılamadı')
         setCalling(false)
       }
-    } catch (e: any) { showMsg('error', e.message); setCalling(false) }
+    } catch (e: any) { showMsg('error', `Network: ${e.message}`); setCalling(false) }
   }
 
   async function startCampaign() {

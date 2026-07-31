@@ -863,17 +863,19 @@ router.post('/call/single', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { leadId, language, conversationStyle = 'consultant' } = req.body;
+    console.log(`[CallSingle] START userId=${userId} leadId=${leadId} lang=${language} style=${conversationStyle}`);
     if (!leadId) return res.status(400).json({ error: 'leadId zorunlu' });
 
-    const [{ data: lead }, { data: settings }, { data: profile }, { data: userRow }] = await Promise.all([
+    const [{ data: lead, error: leadErr }, { data: settings }, { data: profile }, { data: userRow }] = await Promise.all([
       supabase.from('leads').select('*').eq('id', leadId).eq('user_id', userId).single(),
       supabase.from('voice_settings').select('*').eq('user_id', userId).single(),
       supabase.from('business_profiles').select('*').eq('user_id', userId).single(),
       supabase.from('users').select('name, company').eq('id', userId).single(),
     ]);
+    console.log(`[CallSingle] Lead fetched: ${lead?.company_name || lead?.contact_name || 'null'} | err=${leadErr?.message}`);
 
-    if (!lead)       return res.status(404).json({ error: 'Lead bulunamadı' });
-    if (!lead.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
+    if (!lead)       { console.error(`[CallSingle] Lead not found: leadId=${leadId} userId=${userId}`); return res.status(404).json({ error: 'Lead bulunamadı' }); }
+    if (!lead.phone) { console.error(`[CallSingle] No phone for lead: ${leadId}`); return res.status(400).json({ error: 'Telefon numarası yok' }); }
 
     const agentName   = settings?.agent_name    || userRow?.name    || 'Ahmet';
     const companyName = settings?.company_name  || profile?.company?.name  || userRow?.company || 'Şirketimiz';
@@ -928,7 +930,8 @@ router.post('/call/single', async (req: any, res: any) => {
       quality: 'minimal',
     };
 
-    const { data: callRecord } = await supabase.from('voice_calls').insert([{
+    console.log(`[CallSingle] Inserting voice_call: phone=${normalizedPhone} lang=${callLang} style=${finalStyle}`);
+    const { data: callRecord, error: insertErr } = await supabase.from('voice_calls').insert([{
       user_id: userId, lead_id: leadId,
       callee_number: normalizedPhone,
       caller_number: process.env.VAPI_PHONE_NUMBER || process.env.ELEVENLABS_CALLER_NUMBER || '',
@@ -936,7 +939,11 @@ router.post('/call/single', async (req: any, res: any) => {
       conversation_style: finalStyle,
     }]).select().single();
 
-    if (!callRecord) throw new Error('voice_calls tablosu bulunamadı — migration çalıştırıldı mı? (20260702_voice_calls_tables.sql)');
+    if (!callRecord) {
+      console.error(`[CallSingle] Insert failed: ${insertErr?.message} | code=${insertErr?.code}`);
+      throw new Error(insertErr?.message || 'voice_calls insert başarısız');
+    }
+    console.log(`[CallSingle] Call record created: id=${callRecord.id}`);
 
     // A/B test kaydı
     if (totalCalls < 40) {
@@ -979,7 +986,10 @@ router.post('/call/single', async (req: any, res: any) => {
         await supabase.from('voice_calls').update({ status: 'failed', notes: errDetail }).eq('id', callRecord?.id);
       }
     })();
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    console.error(`[CallSingle] FATAL 500: ${e.message}`);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/voice/call/campaign
@@ -1715,5 +1725,47 @@ async function cleanupZombieCalls(): Promise<void> {
 }
 setTimeout(cleanupZombieCalls, 15000); // ilk çalışma: boot + 15s
 setInterval(cleanupZombieCalls, 15 * 60 * 1000); // her 15 dakikada bir
+
+// GET /api/voice/diag — Vapi + Supabase bağlantı testi
+router.get('/diag', async (req: any, res: any) => {
+  const results: Record<string, any> = {};
+
+  // 1. Ortam değişkenleri
+  results.env = {
+    VAPI_KEY: VAPI_KEY ? `${VAPI_KEY.slice(0, 8)}...` : 'EKSİK ❌',
+    VAPI_PHONE_ID: VAPI_PHONE_ID ? `${VAPI_PHONE_ID.slice(0, 8)}...` : 'EKSİK ❌',
+    VAPI_PHONE_NUMBER: process.env.VAPI_PHONE_NUMBER || 'boş',
+  };
+
+  // 2. Supabase voice_calls tablosu
+  try {
+    const { data, error } = await supabase.from('voice_calls').select('id, conversation_style').limit(1);
+    results.voice_calls_table = error ? `HATA: ${error.message}` : `OK (conversation_style sütunu ${data?.length ? 'var ✅' : 'kontrol edildi ✅'})`;
+  } catch (e: any) { results.voice_calls_table = `THROW: ${e.message}`; }
+
+  // 3. Vapi API bağlantısı — telefon numaraları
+  try {
+    if (!VAPI_KEY) { results.vapi_phones = 'VAPI_KEY eksik ❌'; }
+    else {
+      const r = await axios.get('https://api.vapi.ai/phone-number', {
+        headers: { Authorization: `Bearer ${VAPI_KEY}` }, timeout: 10000,
+      });
+      const phones = (r.data || []).map((p: any) => ({ id: p.id, number: p.number?.number || p.number, active: p.status }));
+      results.vapi_phones = phones.length ? phones : 'Hiç telefon yok ❌';
+      results.configured_phone_id_match = phones.some((p: any) => p.id === VAPI_PHONE_ID) ? '✅ MATCH' : `❌ NO MATCH — configured: ${VAPI_PHONE_ID}`;
+    }
+  } catch (e: any) { results.vapi_phones = `HATA: ${e.response?.data?.message || e.message}`; }
+
+  // 4. User info
+  try {
+    const { data: userRow } = await supabase.from('users').select('id, name').eq('id', req.userId).single();
+    results.user = userRow ? `${userRow.name} (${userRow.id?.slice(0, 8)})` : 'bulunamadı';
+    const { data: settings } = await supabase.from('voice_settings').select('agent_name, vapi_phone_id').eq('user_id', req.userId).single();
+    results.voice_settings = settings || 'yok';
+    if (settings?.vapi_phone_id) results.custom_phone_id = settings.vapi_phone_id;
+  } catch (e: any) { results.user = `HATA: ${e.message}`; }
+
+  res.json(results);
+});
 
 module.exports = router;
