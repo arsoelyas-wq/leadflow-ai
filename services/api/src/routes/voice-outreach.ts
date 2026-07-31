@@ -680,6 +680,7 @@ router.get('/library-voices', async (req: any, res: any) => {
   try {
     const { language, gender, limit = '100', search } = req.query;
     const { getElevenLabsSharedVoices } = require('../services/tts-engine');
+    const lim = Number(limit) || 100;
 
     const langFilter = language && language !== 'all'
       ? (language as string).toLowerCase()
@@ -688,8 +689,14 @@ router.get('/library-voices', async (req: any, res: any) => {
     let voices: any[] = await getElevenLabsSharedVoices(
       langFilter,
       gender as string | undefined,
-      Number(limit) || 100,
+      lim,
     );
+
+    // EL belirli diller için az ses döndürebilir (TR, AZ vb.)
+    // Bu durumda language filtresi olmadan top sesleri getir — EL sesleri zaten multilingual
+    if (voices.length === 0 && langFilter) {
+      voices = await getElevenLabsSharedVoices(undefined, gender as string | undefined, lim);
+    }
 
     if (search) {
       const q = (search as string).toLowerCase();
@@ -700,7 +707,7 @@ router.get('/library-voices', async (req: any, res: any) => {
       );
     }
 
-    voices = voices.slice(0, Number(limit) || 100);
+    voices = voices.slice(0, lim);
     res.json({ voices, total: voices.length });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

@@ -336,7 +336,8 @@ export async function getElevenLabsSharedVoices(
   if (!EL_KEY) return [];
 
   try {
-    const params: Record<string, any> = { page_size: pageSize, sort: 'clones' };
+    // NOT: sort parametresi EL API'de geçersiz olabilir — sadece zorunlu parametreler
+    const params: Record<string, any> = { page_size: pageSize };
     if (lang)   params.language = lang;
     if (gender) params.gender   = gender;
 
@@ -357,12 +358,16 @@ export async function getElevenLabsSharedVoices(
       fil: 'Filipince', ta: 'Tamilce',
     };
 
-    const voices: any[] = (r.data?.voices || []).map((v: any) => {
+    const rawList = r.data?.voices || r.data?.shared_voices || [];
+    const voices: any[] = rawList.map((v: any) => {
       const labels = v.labels || {};
       const rawGender = (labels.gender || v.gender || 'neutral').toLowerCase();
       const g: 'male'|'female'|'neutral' = rawGender === 'male' ? 'male' : rawGender === 'female' ? 'female' : 'neutral';
       const voiceLang = (lang || v.language || 'en').toLowerCase();
+      const previewUrl = v.preview_url || null;
       return {
+        // Frontend uses v.id — map voice_id → id
+        id:            v.voice_id,
         voice_id:      v.voice_id,
         name:          v.name,
         gender:        g,
@@ -372,7 +377,9 @@ export async function getElevenLabsSharedVoices(
         age:           labels.age    || '',
         description:   v.description || labels.description || '',
         use_case:      labels.use_case || '',
-        preview_url:   v.preview_url || null,
+        // Frontend uses v.previewUrl (camelCase) — map preview_url → previewUrl
+        previewUrl,
+        preview_url:   previewUrl,
         provider:      'elevenlabs',
         category:      _elCategory(labels.use_case || ''),
         styles:        [],
