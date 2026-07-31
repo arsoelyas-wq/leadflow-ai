@@ -1197,30 +1197,90 @@ export default function VoicePage() {
   const [campaignProgress, setCampaignProgress] = useState<any>(null)
   const [liveCallId, setLiveCallId] = useState<string | null>(null)
   const [liveCallStatus, setLiveCallStatus] = useState<string>('')
+  const [liveCallData, setLiveCallData] = useState<any>(null)
+  const [callTimer, setCallTimer] = useState(0)
+  const [callPhase, setCallPhase] = useState<'ringing' | 'connected' | 'ended' | null>(null)
+  const [expandedCallId, setExpandedCallId] = useState<string | null>(null)
+  const timerRef = useRef<any>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const ringIntervalRef = useRef<any>(null)
 
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 6000)
   }
   useEffect(() => { loadAll() }, [])
 
-  // Gerçek zamanlı arama durumu polling (10sn)
+  // Web Audio ringtone — Türk telefon zil sesi (beep-beep ... pause döngüsü)
+  function startRingtone() {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      audioCtxRef.current = ctx
+      let playing = true
+      async function ring() {
+        if (!playing) return
+        for (let i = 0; i < 2; i++) {
+          if (!playing) break
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain); gain.connect(ctx.destination)
+          osc.frequency.value = 440
+          gain.gain.setValueAtTime(0.3, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+          osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4)
+          await new Promise(r => setTimeout(r, 500))
+        }
+        await new Promise(r => setTimeout(r, 2000))
+        if (playing) ring()
+      }
+      ring()
+      ringIntervalRef.current = { stop: () => { playing = false; try { ctx.close() } catch {} } }
+    } catch {}
+  }
+  function stopRingtone() {
+    try { ringIntervalRef.current?.stop() } catch {}
+    ringIntervalRef.current = null
+    audioCtxRef.current = null
+  }
+
+  function startCallTimer() {
+    setCallTimer(0)
+    clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => setCallTimer(t => t + 1), 1000)
+  }
+  function stopCallTimer() { clearInterval(timerRef.current); timerRef.current = null }
+
+  function endLiveCall() {
+    stopRingtone(); stopCallTimer()
+    setLiveCallId(null); setLiveCallData(null); setCallPhase(null); setCallTimer(0)
+    loadAll()
+  }
+
+  // Canlı arama polling — 3sn'de bir durum kontrolü
   useEffect(() => {
     if (!liveCallId) return
     const iv = setInterval(async () => {
-      const r = await fetch(`${API}/api/voice/calls?id=${liveCallId}`, { headers: authH() })
-      const d = await r.json()
-      const c = d.calls?.[0]
-      if (c) {
+      try {
+        const r = await fetch(`${API}/api/voice/calls?id=${liveCallId}`, { headers: authH() })
+        const d = await r.json()
+        const c = d.calls?.[0]
+        if (!c) return
         setLiveCallStatus(c.status)
+        setLiveCallData(c)
+        if (c.status === 'calling' && callPhase === 'ringing') {
+          stopRingtone(); setCallPhase('connected'); startCallTimer()
+          // listeyi güncelle
+          setCalls((prev: any[]) => prev.map((p: any) => p.id === c.id ? c : p))
+        }
         if (['completed', 'failed', 'no-answer'].includes(c.status)) {
-          setLiveCallId(null)
-          setCalling(false)
+          setCallPhase('ended'); stopRingtone(); stopCallTimer()
+          setCalls((prev: any[]) => prev.map((p: any) => p.id === c.id ? c : p))
+          setTimeout(endLiveCall, 4000) // 4sn göster sonra kapat
           loadAll()
         }
-      }
-    }, 8000)
+      } catch {}
+    }, 3000)
     return () => clearInterval(iv)
-  }, [liveCallId])
+  }, [liveCallId, callPhase])
 
   // Kampanya ilerleme polling (15sn)
   useEffect(() => {
@@ -1280,12 +1340,30 @@ export default function VoicePage() {
       const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage, conversationStyle }) })
       const d = await r.json()
       if (d.ok) {
+        setCalling(false)
         setLiveCallId(d.callId)
-        setLiveCallStatus('calling')
-        setCalling(false)          // calling=false → "Arama Talebi Gönderildi!" göster
-        showMsg('success', `Arama başladı! Tarz: ${d.style || conversationStyle}`)
-        loadAll()                  // hemen listede göster
-        setTimeout(loadAll, 6000) // 6s sonra tekrar (status güncellenmiş olabilir)
+        setLiveCallStatus('initiating')
+        setCallPhase('ringing')
+        setShowCalls(true) // arama geçmişini aç
+
+        // Telefon modal için lead bilgisini hemen bul
+        const lead = leads.find((l: any) => l.id === selectedLead)
+        setLiveCallData({ id: d.callId, callee_number: lead?.phone || '', status: 'initiating', leads: lead, language: selectedLanguage, conversation_style: d.style || conversationStyle })
+
+        // Yeni call kaydını hemen listeye ekle (API'den bekleme)
+        const newCallRow = { id: d.callId, callee_number: lead?.phone || '', status: 'initiating', language: selectedLanguage, conversation_style: d.style || conversationStyle, leads: lead, created_at: new Date().toISOString() }
+        setCalls((prev: any[]) => [newCallRow, ...prev])
+
+        startRingtone()
+
+        // 6s sonra DB'den gerçek veriyi al
+        setTimeout(async () => {
+          try {
+            const cr = await fetch(`${API}/api/voice/calls?id=${d.callId}`, { headers: authH() })
+            const cd = await cr.json()
+            if (cd.calls?.[0]) { setLiveCallData(cd.calls[0]); setCalls((prev: any[]) => prev.map((p: any) => p.id === d.callId ? cd.calls[0] : p)) }
+          } catch {}
+        }, 6000)
       } else {
         showMsg('error', d.error || 'Arama başlatılamadı')
         setCalling(false)
@@ -1411,17 +1489,123 @@ export default function VoicePage() {
         </div>
       )}
 
-      {/* ── CANLI ARAMA DURUMU ────────────────────────────────────────────────── */}
-      {liveCallId && (
-        <div className="fade-in-up rounded-2xl p-4 flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#ecfdf5,#f0fdf4)', border: '1.5px solid #6ee7b7' }}>
-          <div className="w-3 h-3 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10b981' }}/>
-          <div className="flex-1">
-            <p className="font-semibold text-sm" style={{ color: '#065f46' }}>Arama Aktif</p>
-            <p className="text-xs" style={{ color: '#059669' }}>Durum: {liveCallStatus === 'calling' ? 'Çalıyor...' : liveCallStatus === 'completed' ? 'Tamamlandı' : liveCallStatus} · Tarz: {conversationStyle}</p>
+      {/* ── TELEFON EKRANI MODAL ──────────────────────────────────────────────── */}
+      {callPhase && liveCallData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.82)', backdropFilter:'blur(12px)' }}>
+          <div className="relative w-full max-w-sm mx-4 rounded-3xl overflow-hidden" style={{
+            background: callPhase==='ended'
+              ? 'linear-gradient(160deg,#1e293b,#0f172a)'
+              : callPhase==='connected'
+                ? 'linear-gradient(160deg,#064e3b,#065f46)'
+                : 'linear-gradient(160deg,#1e3a5f,#1e40af)',
+            boxShadow: '0 40px 80px rgba(0,0,0,0.6)',
+          }}>
+            {/* Status bar */}
+            <div className="px-6 pt-6 pb-2 flex items-center justify-between">
+              <span className="text-xs font-bold tracking-widest uppercase" style={{ color: callPhase==='connected'?'#6ee7b7':callPhase==='ended'?'#94a3b8':'#93c5fd' }}>
+                {callPhase==='ringing'?'📞 Çalıyor...':callPhase==='connected'?'🔗 Bağlı':'✓ Tamamlandı'}
+              </span>
+              <span className="text-xs font-mono" style={{ color:'rgba(255,255,255,0.4)' }}>
+                {new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}
+              </span>
+            </div>
+
+            {/* Lead info */}
+            <div className="px-6 pt-4 pb-6 text-center">
+              {/* Avatar with pulsing rings when ringing */}
+              <div className="relative flex items-center justify-center mx-auto mb-6" style={{ width:120, height:120 }}>
+                {callPhase==='ringing' && <>
+                  <div className="absolute inset-0 rounded-full animate-ping" style={{ background:'rgba(59,130,246,0.2)', animationDuration:'1.2s' }}/>
+                  <div className="absolute rounded-full animate-ping" style={{ inset:'-16px', background:'rgba(59,130,246,0.1)', animationDuration:'1.8s' }}/>
+                </>}
+                {callPhase==='connected' && <>
+                  <div className="absolute inset-0 rounded-full animate-ping" style={{ background:'rgba(16,185,129,0.2)', animationDuration:'2s' }}/>
+                </>}
+                <div className="relative w-28 h-28 rounded-full flex items-center justify-center text-5xl font-bold" style={{
+                  background: callPhase==='connected'?'rgba(16,185,129,0.25)':callPhase==='ended'?'rgba(100,116,139,0.25)':'rgba(59,130,246,0.25)',
+                  border: `3px solid ${callPhase==='connected'?'rgba(52,211,153,0.5)':callPhase==='ended'?'rgba(148,163,184,0.3)':'rgba(147,197,253,0.5)'}`,
+                }}>
+                  {(liveCallData?.leads?.contact_name || liveCallData?.leads?.company_name || '?')[0]?.toUpperCase()}
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold mb-1" style={{ color:'#ffffff' }}>
+                {liveCallData?.leads?.contact_name || liveCallData?.leads?.company_name || 'Bilinmeyen'}
+              </h2>
+              <p className="text-sm mb-1 font-mono" style={{ color:'rgba(255,255,255,0.6)' }}>
+                {liveCallData?.callee_number}
+              </p>
+              <p className="text-xs mb-6" style={{ color:'rgba(255,255,255,0.35)' }}>
+                {LANG_MAP[liveCallData?.language || 'tr']?.flag} {LANG_MAP[liveCallData?.language || 'tr']?.name} · {liveCallData?.conversation_style || conversationStyle}
+              </p>
+
+              {/* Timer when connected */}
+              {callPhase==='connected' && (
+                <div className="text-4xl font-mono font-bold mb-6" style={{ color:'#6ee7b7', letterSpacing:'0.1em' }}>
+                  {String(Math.floor(callTimer/60)).padStart(2,'0')}:{String(callTimer%60).padStart(2,'0')}
+                </div>
+              )}
+
+              {/* Ringing animation dots */}
+              {callPhase==='ringing' && (
+                <div className="flex items-center justify-center gap-1.5 mb-6">
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="rounded-full" style={{
+                      width:8, height:8, background:'rgba(147,197,253,0.7)',
+                      animation:`bounce 1.2s ease-in-out ${i*0.15}s infinite`,
+                    }}/>
+                  ))}
+                </div>
+              )}
+
+              {/* Ended state */}
+              {callPhase==='ended' && (
+                <div className="mb-6">
+                  <p className="text-sm font-semibold" style={{ color: liveCallData?.status==='completed'?'#6ee7b7':liveCallData?.status==='no-answer'?'#fbbf24':'#f87171' }}>
+                    {liveCallData?.status==='completed'?'Görüşme tamamlandı':liveCallData?.status==='no-answer'?'Cevap verilmedi':'Arama başarısız'}
+                  </p>
+                  {liveCallData?.duration_seconds > 0 && (
+                    <p className="text-xs mt-1" style={{ color:'rgba(255,255,255,0.4)' }}>Süre: {Math.floor(liveCallData.duration_seconds/60)}:{String(liveCallData.duration_seconds%60).padStart(2,'0')}</p>
+                  )}
+                </div>
+              )}
+
+              {/* AI işleme indicator */}
+              {callPhase==='ringing' && (
+                <div className="space-y-2 mb-6">
+                  {['AI Araştırması','Script Üretimi','Ses Sentezi','Bağlantı'].map((label, i) => (
+                    <div key={label} className="flex items-center gap-2 px-4 py-2 rounded-xl" style={{ background:'rgba(255,255,255,0.06)' }}>
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background:'#93c5fd', animationDelay:`${i*0.3}s` }}/>
+                      <span className="text-xs" style={{ color:'rgba(255,255,255,0.5)' }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Close button */}
+              <button
+                onClick={endLiveCall}
+                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto transition-transform hover:scale-110 active:scale-95"
+                style={{
+                  background: callPhase==='ended'?'rgba(148,163,184,0.2)':'rgba(220,38,38,0.85)',
+                  boxShadow: callPhase==='ended'?'none':'0 8px 24px rgba(220,38,38,0.4)',
+                }}
+              >
+                <Phone className="w-7 h-7 rotate-[135deg]" style={{ color:'#ffffff' }}/>
+              </button>
+              <p className="text-xs mt-2" style={{ color:'rgba(255,255,255,0.3)' }}>
+                {callPhase==='ended'?'Kapat':'Kapat (arama devam eder)'}
+              </p>
+            </div>
           </div>
-          <button onClick={() => { setLiveCallId(null); setCalling(false) }} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.1)', color: '#059669' }}>Kapat</button>
         </div>
       )}
+
+      <style>{`
+        @keyframes bounce {
+          0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)}
+        }
+      `}</style>
 
       {/* ── KAMPANYA PROGRESS ─────────────────────────────────────────────────── */}
       {activeCampaignId && campaignProgress && (
@@ -1558,19 +1742,76 @@ export default function VoicePage() {
               </thead>
               <tbody>
                 {calls.map(c => (
-                  <tr key={c.id} className="transition-colors hover:bg-slate-50" style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td className="px-5 py-3.5">
-                      <div className="text-xs font-semibold" style={{ color:'#0f172a' }}>{c.leads?.company_name||'—'}</div>
-                      <div className="text-xs" style={{ color:'#cbd5e1' }}>{c.leads?.country||''}</div>
-                    </td>
-                    <td className="px-5 py-3.5 font-mono text-xs" style={{ color:'#64748b' }}>{c.callee_number}</td>
-                    <td className="px-5 py-3.5 text-center text-lg">{LANG_MAP[c.language]?.flag||'🌍'}</td>
-                    <td className="px-5 py-3.5 text-center"><StatusBadge status={c.status}/></td>
-                    <td className="px-5 py-3.5 text-center">
-                      {c.outcome==='positive'?<span className="text-xs px-2.5 py-1 rounded-full" style={{ background:'#ecfdf5', color:'#059669', border:'1px solid #a7f3d0' }}>Olumlu</span>:c.outcome==='negative'?<span className="text-xs px-2.5 py-1 rounded-full" style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca' }}>Olumsuz</span>:<span className="text-xs" style={{ color:'#cbd5e1' }}>—</span>}
-                    </td>
-                    <td className="px-5 py-3.5 text-right text-xs" style={{ color:'#94a3b8' }}>{new Date(c.created_at).toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
-                  </tr>
+                  <>
+                    <tr key={c.id} className="transition-colors hover:bg-slate-50 cursor-pointer" style={{ borderBottom: expandedCallId===c.id?'none':'1px solid #f1f5f9' }} onClick={() => setExpandedCallId(expandedCallId===c.id?null:c.id)}>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          <ChevronRight className={`w-3 h-3 transition-transform duration-200 flex-shrink-0 ${expandedCallId===c.id?'rotate-90':''}`} style={{ color:'#cbd5e1' }}/>
+                          <div>
+                            <div className="text-xs font-semibold" style={{ color:'#0f172a' }}>{c.leads?.company_name||c.leads?.contact_name||'—'}</div>
+                            <div className="text-xs" style={{ color:'#cbd5e1' }}>{c.leads?.contact_name&&c.leads?.company_name?c.leads.contact_name:c.leads?.country||''}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 font-mono text-xs" style={{ color:'#64748b' }}>{c.callee_number}</td>
+                      <td className="px-5 py-3.5 text-center text-lg">{LANG_MAP[c.language]?.flag||'🌍'}</td>
+                      <td className="px-5 py-3.5 text-center"><StatusBadge status={c.status}/></td>
+                      <td className="px-5 py-3.5 text-center">
+                        {c.outcome==='positive'?<span className="text-xs px-2.5 py-1 rounded-full" style={{ background:'#ecfdf5', color:'#059669', border:'1px solid #a7f3d0' }}>Olumlu</span>:c.outcome==='negative'?<span className="text-xs px-2.5 py-1 rounded-full" style={{ background:'#fef2f2', color:'#dc2626', border:'1px solid #fecaca' }}>Olumsuz</span>:<span className="text-xs" style={{ color:'#cbd5e1' }}>—</span>}
+                      </td>
+                      <td className="px-5 py-3.5 text-right text-xs" style={{ color:'#94a3b8' }}>
+                        <div>{new Date(c.created_at).toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                        {c.duration_seconds>0 && <div style={{ color:'#cbd5e1' }}>{Math.floor(c.duration_seconds/60)}:{String(c.duration_seconds%60).padStart(2,'0')}</div>}
+                      </td>
+                    </tr>
+                    {expandedCallId===c.id && (
+                      <tr key={`${c.id}-detail`} style={{ borderBottom:'1px solid #f1f5f9' }}>
+                        <td colSpan={6} className="px-5 pb-4 pt-2">
+                          {c.transcript ? (
+                            <div className="rounded-xl p-4 space-y-3" style={{ background:'#f8fafc', border:'1px solid #e2e8f0' }}>
+                              <p className="text-xs font-bold uppercase tracking-wider" style={{ color:'#94a3b8' }}>Konuşma Transkripti</p>
+                              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                {c.transcript.split('\n').filter((line: string) => line.trim()).map((line: string, i: number) => {
+                                  const isAgent = line.startsWith('AI:') || line.startsWith('Assistant:') || line.startsWith('Bot:')
+                                  const isUser = line.startsWith('User:') || line.startsWith('Human:') || line.startsWith('Müşteri:')
+                                  const cleanLine = line.replace(/^(AI:|Assistant:|Bot:|User:|Human:|Müşteri:)\s*/,'')
+                                  return (
+                                    <div key={i} className={`flex gap-2 ${isAgent?'justify-start':isUser?'justify-end':'justify-start'}`}>
+                                      <div className="max-w-xs px-3 py-2 rounded-xl text-xs" style={{
+                                        background: isAgent?'#eff6ff':isUser?'#ecfdf5':'#f1f5f9',
+                                        color: isAgent?'#1d4ed8':isUser?'#065f46':'#475569',
+                                        borderRadius: isAgent?'4px 16px 16px 16px':isUser?'16px 4px 16px 16px':'16px',
+                                      }}>
+                                        {isAgent&&<span className="font-bold block text-[10px] mb-0.5" style={{ color:'#93c5fd' }}>AI Temsilci</span>}
+                                        {isUser&&<span className="font-bold block text-[10px] mb-0.5" style={{ color:'#6ee7b7' }}>Müşteri</span>}
+                                        {cleanLine || line}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                              {c.analysis?.transcript_summary && (
+                                <div className="pt-2 mt-2" style={{ borderTop:'1px solid #e2e8f0' }}>
+                                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color:'#94a3b8' }}>AI Özeti</p>
+                                  <p className="text-xs" style={{ color:'#475569' }}>{c.analysis.transcript_summary}</p>
+                                </div>
+                              )}
+                              {c.analysis?.next_action && (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background:'linear-gradient(135deg,#eff6ff,#f0f9ff)', border:'1px solid #bfdbfe' }}>
+                                  <span className="text-[10px] font-bold uppercase" style={{ color:'#3b82f6' }}>Sonraki Adım:</span>
+                                  <span className="text-xs" style={{ color:'#1d4ed8' }}>{c.analysis.next_action}</span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="py-3 text-center text-xs" style={{ color:'#cbd5e1' }}>
+                              {c.status==='completed'?'Transkript işleniyor...':c.status==='calling'||c.status==='initiating'?'Arama devam ediyor...':'Transkript yok'}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>
