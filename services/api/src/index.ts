@@ -324,6 +324,45 @@ app.use('/api/support', authMiddleware, supportRouter);
 // Health check — minimal info, no internal details
 app.get('/health', (_req: any, res: any) => res.json({ ok: true }));
 
+// PUBLIC voice diagnostic — no auth, shows Vapi/Supabase config status
+app.get('/api/voice-diag', async (_req: any, res: any) => {
+  const { createClient } = require('@supabase/supabase-js');
+  const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+  const axios = require('axios');
+  const VAPI_KEY = process.env.VAPI_API_KEY || process.env.VAPI_KEY || '';
+  const VAPI_PHONE_ID = process.env.VAPI_PHONE_NUMBER_ID || 'c5103fbb-47da-411e-b690-2329c2fe4f06';
+  const result: Record<string, any> = {
+    env: {
+      VAPI_KEY: VAPI_KEY ? `✅ set (${VAPI_KEY.slice(0,8)}...)` : '❌ MISSING',
+      VAPI_PHONE_ID: VAPI_PHONE_ID,
+      SUPABASE_URL: process.env.SUPABASE_URL ? '✅ set' : '❌ MISSING',
+      SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ? '✅ set' : '❌ MISSING',
+      NODE_ENV: process.env.NODE_ENV,
+    }
+  };
+  // Test voice_calls table
+  try {
+    const { data, error } = await sb.from('voice_calls').select('id, conversation_style, status').limit(2);
+    result.voice_calls_table = error ? `❌ ${error.message}` : `✅ OK (${data?.length} rows, conversation_style sütunu var)`;
+    result.sample_calls = data?.map((r: any) => ({ id: r.id?.slice(0,8), status: r.status }));
+  } catch (e: any) { result.voice_calls_table = `❌ THROW: ${e.message}`; }
+  // Test Vapi phone numbers
+  try {
+    if (!VAPI_KEY) { result.vapi = '❌ No VAPI_KEY'; }
+    else {
+      const r = await axios.get('https://api.vapi.ai/phone-number', {
+        headers: { Authorization: `Bearer ${VAPI_KEY}` }, timeout: 8000,
+      });
+      const phones = (r.data || []).map((p: any) => ({ id: p.id, number: p.number?.number || p.number, status: p.status }));
+      result.vapi_phones = phones;
+      result.phone_id_match = phones.some((p: any) => p.id === VAPI_PHONE_ID)
+        ? `✅ MATCH — ${VAPI_PHONE_ID}`
+        : `❌ NO MATCH — configured=${VAPI_PHONE_ID}, available=${phones.map((p: any) => p.id).join(', ') || 'none'}`;
+    }
+  } catch (e: any) { result.vapi = `❌ ${e.response?.data?.message || e.message}`; }
+  res.json(result);
+});
+
 // Global error handler — never expose stack traces to client
 app.use((err: any, _req: any, res: any, _next: any) => {
   const status = err.status || err.statusCode || 500;

@@ -1201,6 +1201,7 @@ export default function VoicePage() {
   const [callTimer, setCallTimer] = useState(0)
   const [callPhase, setCallPhase] = useState<'ringing' | 'connected' | 'ended' | null>(null)
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null)
+  const [callErrorDetail, setCallErrorDetail] = useState<string | null>(null)
   const timerRef = useRef<any>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const ringIntervalRef = useRef<any>(null)
@@ -1337,6 +1338,7 @@ export default function VoicePage() {
   async function makeSingleCall() {
     if (!selectedLead) return showMsg('error', 'Lead seçin')
     setCalling(true)
+    setCallErrorDetail(null)
     try {
       const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage, conversationStyle }) })
       const d = await r.json()
@@ -1366,10 +1368,17 @@ export default function VoicePage() {
           } catch {}
         }, 6000)
       } else {
-        showMsg('error', d.error || 'Arama başlatılamadı')
+        const errMsg = d.error || 'Arama başlatılamadı'
+        showMsg('error', errMsg)
+        setCallErrorDetail(errMsg)
         setCalling(false)
       }
-    } catch (e: any) { showMsg('error', `Network: ${e.message}`); setCalling(false) }
+    } catch (e: any) {
+      const errMsg = `Network: ${e.message}`
+      showMsg('error', errMsg)
+      setCallErrorDetail(errMsg)
+      setCalling(false)
+    }
   }
 
   async function startCampaign() {
@@ -1681,7 +1690,16 @@ export default function VoicePage() {
             {step===1 && <StepVoice selectedId={selectedVoiceId} selectedType={selectedVoiceType} onSelect={selectVoice} onMsg={showMsg} settings={settings} setSettings={setSettings} conversationStyle={conversationStyle} setConversationStyle={setConversationStyle} styleRec={styleRec}/>}
             {step===2 && <StepLead leads={leads} callMode={callMode} setCallMode={setCallMode} selectedLead={selectedLead} setSelectedLead={setSelectedLead} selectedLeads={selectedLeads} setSelectedLeads={setSelectedLeads} campaignName={campaignName} setCampaignName={setCampaignName} filterCountry={filterCountry} setFilterCountry={setFilterCountry}/>}
             {step===3 && <StepConfig selectedLanguage={selectedLanguage} setSelectedLanguage={setSelectedLanguage} callMode={callMode} delayMinutes={delayMinutes} setDelayMinutes={setDelayMinutes} settings={settings} setSettings={setSettings} onMsg={showMsg} setHasVerifiedPhone={setHasVerifiedPhone}/>}
-            {step===4 && <StepLaunch selectedVoiceName={selectedVoiceName} selectedVoiceType={selectedVoiceType} callMode={callMode} selectedLead={selectedLead} selectedLeads={selectedLeads} selectedLanguage={selectedLanguage} leads={leads} calling={calling} campaignRunning={campaignRunning} onCall={makeSingleCall} onCampaign={startCampaign}/>}
+            {step===4 && <>
+              <StepLaunch selectedVoiceName={selectedVoiceName} selectedVoiceType={selectedVoiceType} callMode={callMode} selectedLead={selectedLead} selectedLeads={selectedLeads} selectedLanguage={selectedLanguage} leads={leads} calling={calling} campaignRunning={campaignRunning} onCall={makeSingleCall} onCampaign={startCampaign}/>
+              {callErrorDetail && (
+                <div className="mt-4 p-4 rounded-2xl" style={{ background:'#fef2f2', border:'1px solid #fecaca' }}>
+                  <p className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color:'#dc2626' }}>⚠ Arama Hatası</p>
+                  <p className="text-sm" style={{ color:'#7f1d1d', fontFamily:'monospace', wordBreak:'break-all' }}>{callErrorDetail}</p>
+                  <p className="text-xs mt-2" style={{ color:'#dc2626' }}>Railway loglarını kontrol edin: [CallSingle] FATAL 500</p>
+                </div>
+              )}
+            </>}
           </div>
 
           {/* Navigation */}
