@@ -232,12 +232,7 @@ app.use('/api/voice/caller-ids',     authMiddleware, require('./routes/caller-id
 app.use('/api/voice',                authMiddleware, voiceRouter);
 
 // ── LeadFlow Voice Engine routes (public callbacks — Twilio imzası ile doğrulanır) ──
-const engineRouter = require('./routes/voice-engine');
-app.get('/api/engine/health', engineRouter);
-app.get('/api/engine/twiml/:sessionId',      engineRouter);
-app.post('/api/engine/twiml/:sessionId',     engineRouter);
-app.post('/api/engine/status/:sessionId',    engineRouter);
-app.post('/api/engine/recording/:sessionId', engineRouter);
+app.use('/api/engine', require('./routes/voice-engine'));
 app.use('/api/voice-library',        authMiddleware, require('./routes/voice-library'));
 app.use('/api/push',                 authMiddleware, require('./routes/push'));
 app.use('/api/cultural',             authMiddleware, require('./routes/cultural'));
