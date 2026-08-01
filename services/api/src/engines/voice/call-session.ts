@@ -368,13 +368,18 @@ export class CallSession extends EventEmitter {
     if (this.state === 'ended') return;
     this._setState('ending');
 
-    this._interrupt();   // TTS kuyruğunu temizle
+    this._interrupt();   // TTS kuyruğunu temizle (çift veda önleme)
     this._clearTimers();
 
-    // Veda mesajı söyle
-    try {
-      await this._speak(this.langCfg.callEndMessage);
-    } catch { /* hata olsa da aramanın bitmesine devam et */ }
+    // Veda mesajını sadece silence_timeout/blacklisted/ws_close dışında söyle
+    // AI tool call ile bitirdiyse zaten konuşmasında veda var (onSentence ile TTS'e gitti)
+    // Ama _interrupt() kuyruğu temizledi, o yüzden kısa veda yeterli
+    const needsGoodbye = !['ws_close', 'call_ended', 'voicemail_detected'].includes(reason);
+    if (needsGoodbye) {
+      try {
+        await this._speak(this.langCfg.callEndMessage);
+      } catch { /* hata olsa da aramanın bitmesine devam et */ }
+    }
 
     this._setState('ended');
     this.deepgram?.close();

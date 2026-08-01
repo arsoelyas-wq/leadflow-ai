@@ -125,11 +125,13 @@ router.post('/add', async (req: any, res: any) => {
 });
 
 // ─── POST /api/voice/caller-ids/verify ───────────────────────────────────────
-// Kullanıcı doğrulama kodunu girer
+// Twilio doğrulama çağrısı tamamlandıktan sonra çağrılır.
+// Twilio Verified Caller ID: kullanıcı kodu Twilio aramasında tuşlarla girer (bizim UI'a değil).
+// Burada Twilio outgoingCallerIds API'sini sorgularız — numara oradaysa doğrulanmış demektir.
 router.post('/verify', async (req: any, res: any) => {
   try {
-    const { phoneNumber, code } = req.body;
-    if (!phoneNumber || !code) return res.status(400).json({ error: 'phoneNumber ve code zorunlu' });
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber zorunlu' });
 
     const normalized = normalizeE164(phoneNumber);
 
@@ -143,20 +145,29 @@ router.post('/verify', async (req: any, res: any) => {
     if (!record) return res.status(404).json({ error: 'Numara bulunamadı. Önce ekleyin.' });
     if (record.is_verified) return res.json({ ok: true, message: 'Zaten doğrulanmış' });
 
-    // Twilio'dan validation_code ile karşılaştır
-    // Twilio validationRequests'te code DB'de saklıdır (validationCode field)
-    const storedCode = record.twilio_validation_sid || '';
-
-    // Twilio Verified Caller ID: kod eşleşmesi client side'da olmaz,
-    // Twilio kendi sisteminde tutar. Biz DB'deki kod ile karşılaştırırız
-    // (validationRequests.create() bize validationCode döner, kullanıcı bunu girer)
-    const enteredCode = String(code).replace(/\s/g, '');
-
-    if (storedCode && enteredCode !== storedCode) {
-      return res.status(400).json({ error: 'Yanlış doğrulama kodu. Telefonda söylenen kodu girin.' });
+    // Twilio outgoingCallerIds'de var mı kontrol et
+    // Kullanıcı Twilio arama sırasında kodu tuşladıysa numara burada görünür
+    let twilioVerified = false;
+    try {
+      const client = getTwilioClient();
+      const outgoing = await client.outgoingCallerIds.list({ phoneNumber: normalized });
+      twilioVerified = outgoing.length > 0;
+    } catch (tErr: any) {
+      console.warn('[CallerID] Twilio outgoingCallerIds check failed:', tErr.message);
+      // Twilio erişilemiyorsa test ortamı için geç (dev/staging only)
+      if (process.env.NODE_ENV !== 'production') {
+        twilioVerified = true;
+      }
     }
 
-    // Doğrulama başarılı — kayıt güncelle
+    if (!twilioVerified) {
+      return res.status(400).json({
+        error: 'Numara henüz Twilio tarafından doğrulanmamış. Twilio aramasını aldıysanız ve kodu telefon tuşlarınızla girdiyseniz birkaç saniye bekleyip tekrar deneyin.',
+        retry: true,
+      });
+    }
+
+    // Twilio onayladı — DB güncelle
     await supabase
       .from('user_caller_ids')
       .update({ is_verified: true, verified_at: new Date().toISOString() })
@@ -176,8 +187,8 @@ router.post('/verify', async (req: any, res: any) => {
         .eq('id', record.id);
     }
 
-    console.log(`[CallerID] Verified: ${normalized} userId=${req.userId}`);
-    res.json({ ok: true, message: `${normalized} başarıyla doğrulandı ve aramalar için hazır!` });
+    console.log(`[CallerID] Verified via Twilio: ${normalized} userId=${req.userId}`);
+    res.json({ ok: true, message: `${normalized} başarıyla doğrulandı! Aramalar artık bu numaradan görünür.` });
   } catch (e: any) {
     console.error('[CallerID] /verify error:', e.message);
     res.status(500).json({ error: e.message });

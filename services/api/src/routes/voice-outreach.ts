@@ -1114,16 +1114,43 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
           notes: `style:${conversationStyle}`,
         }]).select().single();
 
-        const result = await dispatchCall({
-          toNumber: lead.phone, agentName, companyName, productDesc,
-          leadName: lead.contact_name || lead.company_name,
-          leadCompany: lead.company_name, language: callLang, lead,
-          researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId,
-          transferNumber: settings?.transfer_number, userPhoneId: settings?.vapi_phone_id,
-          conversationStyle, callMemory,
+        // Kullanıcının varsayılan callerId'sini al
+        const { data: callerIdRow } = await supabase
+          .from('user_caller_ids')
+          .select('phone_number')
+          .eq('user_id', userId)
+          .eq('is_verified', true)
+          .eq('is_default', true)
+          .maybeSingle();
+
+        const openingLine = await generatePersonalizedOpening({
+          lead, agentName, companyName, productDesc, language: callLang, researchData,
         });
 
-        await supabase.from('voice_calls').update({ eleven_conversation_id: result.conversationId, status: 'calling', notes: `Provider: ${result.provider}` }).eq('id', callRecord?.id);
+        const { makeCall: engineMakeCall } = require('../engines/voice/call-engine');
+        const { callSid } = await engineMakeCall({
+          to:            normPhone,
+          voiceCallDbId: callRecord?.id,
+          params: {
+            callSid: '', sessionId: callRecord?.id, voiceCallDbId: callRecord?.id,
+            agentName, companyName, productDesc,
+            leadName:          lead.contact_name || lead.company_name || '',
+            leadCompany:       lead.company_name || '',
+            language:          callLang,
+            conversationStyle,
+            firstMessage:      openingLine,
+            gender:            settings?.voice_gender || undefined,
+            transferNumber:    settings?.transfer_number || '',
+            avoidWords:        avoidWords || '',
+            pain1:             researchData?.pains?.[0] || '',
+            pain2:             researchData?.pains?.[1] || '',
+            callMemory:        callMemory || '',
+            maxDurationSec:    conversationStyle === 'direct' ? 180 : conversationStyle === 'challenger' ? 300 : 420,
+            callerId:          callerIdRow?.phone_number || undefined,
+          },
+        });
+
+        await supabase.from('voice_calls').update({ twilio_call_sid: callSid, status: 'calling', notes: `Engine: twilio | Style: ${conversationStyle}` }).eq('id', callRecord?.id);
         await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date() }).eq('id', lead.id);
         await supabase.from('campaign_queue').update({ status: 'done', finished_at: new Date(), call_id: callRecord?.id }).eq('id', job.id);
         try { await supabase.from('voice_campaigns').update({ calls_made: supabase.rpc('increment_calls_made', { campaign_id: campaignId }) }).eq('id', campaignId); } catch {}

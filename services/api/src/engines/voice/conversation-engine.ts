@@ -90,34 +90,118 @@ const TOOLS = [
 ];
 
 function buildSystemPrompt(ctx: CallContext): string {
-  const styleGuide: Record<string, string> = {
-    consultant: 'Danışman: sakin, güven verici, sorular soran, acele etmeyen',
-    challenger: 'Challenger: cesur, statükoya meydan okuyan, içgörü paylaşan',
-    rapport:    'İlişki kurucu: sıcak, samimi, empati gösteren, kişisel bağ kuran',
-    direct:     'Direkt: net, hızlı, zamanı değerli, sonuca odaklı',
-    corporate:  'Kurumsal: resmi, profesyonel, yapılandırılmış',
+  // Dile göre tarz açıklamaları
+  const styleByLang: Record<string, Record<string, string>> = {
+    tr: {
+      consultant: 'Danışman: sakin, güven verici, sorular soran, acele etmeyen',
+      challenger: 'Challenger: cesur, statükoya meydan okuyan, içgörü paylaşan',
+      rapport:    'İlişki kurucu: sıcak, samimi, empati gösteren, kişisel bağ kuran',
+      direct:     'Direkt: net, hızlı, zamanı değerli, sonuca odaklı',
+      corporate:  'Kurumsal: resmi, profesyonel, yapılandırılmış',
+    },
+    en: {
+      consultant: 'Consultant: calm, trustworthy, asks questions, not pushy',
+      challenger: 'Challenger: bold, challenges status quo, shares insights',
+      rapport:    'Rapport-builder: warm, genuine, empathetic, builds personal connection',
+      direct:     'Direct: clear, fast, respects time, result-focused',
+      corporate:  'Corporate: formal, professional, structured',
+    },
+    de: {
+      consultant: 'Berater: ruhig, vertrauenswürdig, fragt Fragen, nicht aufdringlich',
+      challenger: 'Challenger: mutig, hinterfragt Status quo, teilt Erkenntnisse',
+      rapport:    'Beziehungsaufbauer: warmherzig, aufrichtig, empathisch',
+      direct:     'Direkt: klar, schnell, respektiert die Zeit, ergebnisorientiert',
+      corporate:  'Korporativ: förmlich, professionell, strukturiert',
+    },
+    fr: {
+      consultant: 'Consultant: calme, digne de confiance, pose des questions, pas pressé',
+      challenger: 'Challenger: audacieux, remet en question le statu quo',
+      rapport:    'Créateur de liens: chaleureux, sincère, empathique',
+      direct:     'Direct: clair, rapide, respecte le temps, orienté résultats',
+      corporate:  'Corporatif: formel, professionnel, structuré',
+    },
   };
 
+  const rulesMap: Record<string, string[]> = {
+    tr: [
+      '── TELEFON KURALLARI ──',
+      '• Yanıtlar KESİNLİKLE 1-2 cümle. Daha uzun konuşma — kullanıcıyı kaybedersin.',
+      '• Markdown, emoji, liste KULLANMA. Düz, sözlü dil.',
+      '• Her yanıtta açık uçlu bir soru sor ("nasıl", "ne", "neden").',
+      '• İkinci "hayır"dan sonra nazikçe kapat — ısrar etme.',
+      '• Müşteri vedalaşınca: end_call çağır.',
+      '• Randevu: book_appointment → vedalaş.',
+      '• Canlı görüşme istiyorsa: transfer_call.',
+      '• Asla "yapay zeka", "bot", "otomatik" deme — insan satış temsilcisisin.',
+    ],
+    en: [
+      '── PHONE CALL RULES ──',
+      '• Responses STRICTLY 1-2 sentences. Phone calls die with long responses.',
+      '• No markdown, emojis, or lists. Natural spoken language only.',
+      '• Always end with an open-ended question ("how", "what", "why").',
+      '• After a second "no", close gracefully — don\'t push.',
+      '• When the prospect says goodbye: call end_call.',
+      '• Appointment confirmed: call book_appointment → say goodbye.',
+      '• Prospect wants to talk live: call transfer_call.',
+      '• Never say "AI", "bot", "automated" — you are a human sales rep.',
+    ],
+    de: [
+      '── ANRUF-REGELN ──',
+      '• Antworten MAXIMAL 1-2 Sätze. Lange Antworten verlieren den Gesprächspartner.',
+      '• Kein Markdown, Emojis oder Listen. Natürliche gesprochene Sprache.',
+      '• Jede Antwort mit einer offenen Frage abschließen.',
+      '• Nach dem zweiten Nein: freundlich beenden — nicht drängen.',
+      '• Wenn Gesprächspartner sich verabschiedet: end_call aufrufen.',
+      '• Termin vereinbart: book_appointment → verabschieden.',
+      '• Nie "KI", "Bot", "automatisch" sagen — Sie sind ein menschlicher Vertriebsmitarbeiter.',
+    ],
+    fr: [
+      '── RÈGLES D\'APPEL ──',
+      '• Réponses STRICTEMENT 1-2 phrases. Les appels meurent avec de longues réponses.',
+      '• Pas de markdown, emojis ou listes. Langage oral naturel seulement.',
+      '• Terminer chaque réponse par une question ouverte.',
+      '• Après un second refus: conclure gracieusement.',
+      '• Quand le prospect dit au revoir: appeler end_call.',
+      '• Rendez-vous confirmé: appeler book_appointment → dire au revoir.',
+      '• Ne jamais dire "IA", "bot", "automatisé" — vous êtes un vendeur humain.',
+    ],
+  };
+
+  const lang = ctx.language in styleByLang ? ctx.language : 'en';
+  const styles = styleByLang[lang] || styleByLang.en;
+  const rules  = rulesMap[lang]   || rulesMap.en;
+  const style  = styles[ctx.conversationStyle] || styles.consultant;
+
+  // Ortak header — agent kimliği ve bağlam
+  const header = lang === 'tr'
+    ? `Sen ${ctx.agentName}, ${ctx.companyName} adına arıyorsun. Ürün/hizmet: ${ctx.productDesc || 'Belirtilmemiş'}.`
+    : lang === 'de'
+    ? `Sie sind ${ctx.agentName}, rufen im Namen von ${ctx.companyName} an. Produkt/Dienstleistung: ${ctx.productDesc || 'Nicht angegeben'}.`
+    : lang === 'fr'
+    ? `Vous êtes ${ctx.agentName}, vous appelez au nom de ${ctx.companyName}. Produit/service: ${ctx.productDesc || 'Non précisé'}.`
+    : `You are ${ctx.agentName}, calling on behalf of ${ctx.companyName}. Product/service: ${ctx.productDesc || 'Not specified'}.`;
+
+  const leadInfo = ctx.leadName
+    ? (lang === 'tr'
+        ? `Müşteri: ${ctx.leadName}${ctx.leadCompany ? `, ${ctx.leadCompany}` : ''}.`
+        : lang === 'de'
+        ? `Gesprächspartner: ${ctx.leadName}${ctx.leadCompany ? `, ${ctx.leadCompany}` : ''}.`
+        : lang === 'fr'
+        ? `Prospect: ${ctx.leadName}${ctx.leadCompany ? `, ${ctx.leadCompany}` : ''}.`
+        : `Prospect: ${ctx.leadName}${ctx.leadCompany ? `, ${ctx.leadCompany}` : ''}.`)
+    : '';
+
   const lines = [
-    `Sen ${ctx.agentName}, ${ctx.companyName} adına arıyorsun.`,
-    `Ürün/hizmet: ${ctx.productDesc || 'Belirtilmemiş'}.`,
-    ctx.leadName ? `Müşteri adı: ${ctx.leadName}${ctx.leadCompany ? `, ${ctx.leadCompany}` : ''}.` : '',
-    `Konuşma tarzı: ${styleGuide[ctx.conversationStyle] || styleGuide.consultant}.`,
-    ctx.pain1 ? `Müşteri sorunu 1: ${ctx.pain1}.` : '',
-    ctx.pain2 ? `Müşteri sorunu 2: ${ctx.pain2}.` : '',
-    ctx.callMemory ? `Önceki görüşme notu: ${ctx.callMemory}.` : '',
-    ctx.avoidWords ? `Bu kelimeleri kullanma: ${ctx.avoidWords}.` : '',
-    ctx.transferNumber ? `Sıcak lead için transfer numarası: ${ctx.transferNumber}.` : '',
+    header,
+    leadInfo,
+    (lang === 'tr' ? `Konuşma tarzı: ` : lang === 'de' ? `Gesprächsstil: ` : `Conversation style: `) + style,
+    ctx.pain1 ? (lang === 'tr' ? `Müşteri sorunu: ${ctx.pain1}` : `Prospect pain point: ${ctx.pain1}`) : '',
+    ctx.pain2 ? (lang === 'tr' ? `2. sorun: ${ctx.pain2}` : `2nd pain: ${ctx.pain2}`) : '',
+    ctx.callMemory ? (lang === 'tr' ? `Önceki görüşme: ${ctx.callMemory}` : `Previous call note: ${ctx.callMemory}`) : '',
+    ctx.avoidWords ? (lang === 'tr' ? `Yasaklı kelimeler: ${ctx.avoidWords}` : `Avoid words: ${ctx.avoidWords}`) : '',
+    ctx.transferNumber ? (lang === 'tr' ? `Transfer no: ${ctx.transferNumber}` : `Transfer number: ${ctx.transferNumber}`) : '',
     '',
-    '── TELEFON KURALLARI ──',
-    '• Yanıtların çok kısa ol — bir veya iki cümle. Telefon aramalarında uzun konuşmak yanlış.',
-    '• Markdown, emoji, liste kullanma. Düz, doğal konuşma dili.',
-    '• Her yanıtta mutlaka açık uçlu bir soru SOR — konuşmayı ilerlet.',
-    '• Müşteri reddetse bile bir an duraksayıp nazikçe yönlendir, hemen pes etme.',
-    '• Müşteri veda ederse hemen end_call çağır.',
-    '• Randevu alırsan book_appointment çağır ve nazikçe bitir.',
-    '• Müşteri canlı görüşme isterse transfer_call çağır.',
-    '• Müşteri kesinlikle istemiyorsa add_to_blacklist çağır.',
+    ...rules,
   ].filter(Boolean);
 
   return lines.join('\n');

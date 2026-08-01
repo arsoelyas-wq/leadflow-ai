@@ -913,20 +913,25 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
     setBusy(false)
   }
 
+  // Twilio doğrulama: kullanıcı Twilio aramasında kodu telefon tuşuyla girdi
+  // Biz sadece Twilio API'sinden doğrulamayı kontrol ederiz
   const confirmCode = async () => {
-    if (!verifyCode || verifyCode.length < 4) return onMsg('error', 'Doğrulama kodunu girin')
     setBusy(true)
     try {
       const r = await fetch(`${API}/api/voice/caller-ids/verify`, {
         method: 'POST', headers: authH(),
-        body: JSON.stringify({ phoneNumber: pendingPhone, code: verifyCode }),
+        body: JSON.stringify({ phoneNumber: pendingPhone }),
       })
       const d = await r.json()
       if (d.ok) {
         onMsg('success', d.message || 'Numara doğrulandı!')
         setStep('list'); setVerifyCode(''); setAddPhone(''); setAddName('')
         await load()
-      } else { onMsg('error', d.error || 'Yanlış kod'); setVerifyCode('') }
+      } else if (d.retry) {
+        onMsg('error', 'Twilio henüz onaylamadı. Birkaç saniye bekleyip tekrar deneyin.')
+      } else {
+        onMsg('error', d.error || 'Doğrulama başarısız')
+      }
     } catch { onMsg('error', 'Doğrulama başarısız') }
     setBusy(false)
   }
@@ -991,22 +996,23 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
           <div className="space-y-3 pt-2">
             <div className="p-3 rounded-xl" style={{ background: '#fef3c7', border: '1px solid #fcd34d' }}>
               <p className="text-xs font-semibold" style={{ color: '#92400e' }}>📞 Twilio şu an <strong>{pendingPhone}</strong> numaranızı arıyor</p>
-              <p className="text-xs mt-1" style={{ color: '#b45309' }}>Telefonda size 6 haneli bir kod söylenecek. Aşağıya girin:</p>
+              <p className="text-xs mt-1.5" style={{ color: '#b45309' }}>
+                <strong>1.</strong> Telefonu açın — Twilio size 6 haneli bir doğrulama kodu söyleyecek<br/>
+                <strong>2.</strong> Kodu telefon tuşlarınızla girin (Twilio araması sırasında, bizim sisteme değil)<br/>
+                <strong>3.</strong> Doğrulama tamamlandıktan sonra aşağıdaki butona basın
+              </p>
             </div>
-            <input value={verifyCode} onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000" maxLength={6}
-              className="w-full px-4 py-3 rounded-xl text-center text-xl font-mono font-bold tracking-[0.4em] focus:outline-none"
-              style={{ background: '#fff', border: '1.5px solid #bae6fd', color: '#0f172a' }}/>
             <div className="flex gap-2">
-              <button onClick={confirmCode} disabled={busy || verifyCode.length < 4}
+              <button onClick={confirmCode} disabled={busy}
                 className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
                 style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
-                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : <span className="flex items-center justify-center gap-1.5"><ShieldCheck className="w-4 h-4"/> Onayla</span>}
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : <span className="flex items-center justify-center gap-1.5"><ShieldCheck className="w-4 h-4"/> Kodu Girdim, Doğrula</span>}
               </button>
               <button onClick={() => { setStep('list'); setVerifyCode('') }} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
                 İptal
               </button>
             </div>
+            <p className="text-[10px]" style={{ color: '#94a3b8' }}>Twilio araması gelmediyse birkaç dakika bekleyin veya numarayı tekrar ekleyin.</p>
           </div>
         )}
 

@@ -26,12 +26,14 @@ export interface DeepgramBridgeOptions {
 }
 
 export class DeepgramBridge {
-  private ws:          any;
-  private ready:       boolean = false;
-  private audioQueue:  Buffer[] = [];
-  private closed:      boolean = false;
-  private keepAliveId: NodeJS.Timeout | null = null;
-  private opts:        DeepgramBridgeOptions;
+  private ws:           any;
+  private ready:        boolean = false;
+  private audioQueue:   Buffer[] = [];
+  private closed:       boolean = false;
+  private keepAliveId:  NodeJS.Timeout | null = null;
+  private reconnectId:  NodeJS.Timeout | null = null;
+  private reconnects:   number = 0;
+  private opts:         DeepgramBridgeOptions;
 
   constructor(opts: DeepgramBridgeOptions) {
     this.opts = opts;
@@ -102,8 +104,22 @@ export class DeepgramBridge {
     this.ws.on('close', (code: number) => {
       this._cleanup();
       if (!this.closed) {
-        console.warn(`[Deepgram] Connection closed unexpectedly (code=${code})`);
-        this.opts.onClose();
+        console.warn(`[Deepgram] Connection closed unexpectedly (code=${code}) reconnects=${this.reconnects}`);
+        if (this.reconnects < 3) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, this.reconnects) * 1000;
+          this.reconnects++;
+          this.reconnectId = setTimeout(() => {
+            if (!this.closed) {
+              console.log(`[Deepgram] Reconnecting attempt ${this.reconnects}…`);
+              this.ready = false;
+              this._connect();
+            }
+          }, delay);
+        } else {
+          console.error('[Deepgram] Max reconnects reached, giving up');
+          this.opts.onClose();
+        }
       }
     });
   }
@@ -137,6 +153,7 @@ export class DeepgramBridge {
 
   private _cleanup(): void {
     if (this.keepAliveId) { clearInterval(this.keepAliveId); this.keepAliveId = null; }
+    if (this.reconnectId) { clearTimeout(this.reconnectId); this.reconnectId = null; }
     this.audioQueue = [];
   }
 }
