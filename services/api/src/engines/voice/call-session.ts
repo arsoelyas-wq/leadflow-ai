@@ -33,6 +33,7 @@ export interface SessionParams {
   pain2?:           string;
   callMemory?:      string;
   maxDurationSec:   number;
+  callerId?:        string;   // Müşterinin doğrulanan numarası (Twilio Verified Caller ID)
 }
 
 export interface SessionEvent {
@@ -195,7 +196,7 @@ export class CallSession extends EventEmitter {
 
     // Cümle callback → TTS kuyruğuna ekle
     const onSentence = (sent: string) => {
-      if (this.state === 'ended') return;
+      if ((this.state as string) === 'ended') return;
       this._enqueueTts(sent);
     };
 
@@ -208,7 +209,7 @@ export class CallSession extends EventEmitter {
         onSentence,
       );
 
-      if (this.state === 'ended') return;
+      if ((this.state as string) === 'ended') return;
 
       // Konuşma geçmişine ekle
       this.history.push({ role: 'user',      content: text });
@@ -242,7 +243,7 @@ export class CallSession extends EventEmitter {
     if (this.ttsProcessing || this.state === 'ended') return;
     if (this.ttsQueue.length === 0) {
       // Tüm cümleler bitti → dinlemeye dön
-      if (this.state !== 'ended' && this.state !== 'ending') {
+      if ((this.state as string) !== 'ended' && this.state !== 'ending') {
         this._setState('listening');
         this.isSpeaking = false;
         this._resetSilenceTimer();
@@ -276,7 +277,7 @@ export class CallSession extends EventEmitter {
 
     this.ttsProcessing = false;
 
-    if (!this.ttsAbort?.signal.aborted && this.state !== 'ended') {
+    if (!this.ttsAbort?.signal.aborted && (this.state as string) !== 'ended') {
       await this._drainTtsQueue();
     }
   }
@@ -322,7 +323,7 @@ export class CallSession extends EventEmitter {
     });
 
     this.isSpeaking = false;
-    if (this.state !== 'ended') {
+    if ((this.state as string) !== 'ended') {
       this._setState('listening');
       this._resetSilenceTimer();
     }

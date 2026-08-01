@@ -904,7 +904,7 @@ router.post('/call/single', async (req: any, res: any) => {
       console.log(`[A/B Test] totalCalls=${totalCalls} → style=${finalStyle}`);
     }
 
-    const [{ data: latestVideo }, callMemory] = await Promise.all([
+    const [{ data: latestVideo }, callMemory, { data: callerIdRow }] = await Promise.all([
       supabase.from('video_outreach')
         .select('research_data')
         .eq('lead_id', leadId)
@@ -913,7 +913,14 @@ router.post('/call/single', async (req: any, res: any) => {
         .limit(1)
         .maybeSingle(),
       getCallMemory(userId, leadId),  // PolyAI tarzı: önceki aramaları AI'ya ver
+      supabase.from('user_caller_ids')
+        .select('phone_number')
+        .eq('user_id', userId)
+        .eq('is_verified', true)
+        .eq('is_default', true)
+        .maybeSingle(),
     ]);
+    const userCallerId: string | undefined = callerIdRow?.phone_number || undefined;
 
     // Research data fallback — video_outreach yoksa sektör bazlı varsayılan
     const researchData = latestVideo?.research_data || {
@@ -981,6 +988,7 @@ router.post('/call/single', async (req: any, res: any) => {
             pain2:             researchData?.pains?.[1] || '',
             callMemory:        callMemory || '',
             maxDurationSec:    finalStyle === 'direct' ? 180 : finalStyle === 'challenger' ? 300 : 420,
+            callerId:          userCallerId,   // Müşterinin doğrulanan numarası (aranan kişi bunu görür)
           },
         });
 

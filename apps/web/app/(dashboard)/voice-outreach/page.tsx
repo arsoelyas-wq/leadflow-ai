@@ -5,7 +5,8 @@ import { api } from '@/lib/api'
 import {
   Phone, PhoneCall, Mic, Upload, Play, Square, ArrowRight, ArrowLeft,
   CheckCircle, AlertTriangle, RefreshCw, Zap, Volume2, Users,
-  Globe2, Search, Settings, Sparkles, Trash2, User, StopCircle, ChevronRight, X
+  Globe2, Search, Settings, Sparkles, Trash2, User, StopCircle, ChevronRight, X,
+  Plus, Star, ShieldCheck
 } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
@@ -869,6 +870,217 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
   )
 }
 
+// ─── CALLER ID PANEL ─────────────────────────────────────────────────────────
+// Müşteri kendi numarasını ekler → Twilio onu arar → kod onaylanır → aramalar o numaradan görünür
+function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) => void; onVerified: (v: boolean) => void }) {
+  const [callerIds, setCallerIds]     = useState<any[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [addPhone, setAddPhone]       = useState('')
+  const [addName, setAddName]         = useState('')
+  const [step, setStep]               = useState<'list' | 'add' | 'verify'>('list')
+  const [pendingPhone, setPendingPhone] = useState('')
+  const [verifyCode, setVerifyCode]   = useState('')
+  const [busy, setBusy]               = useState(false)
+
+  const load = async () => {
+    try {
+      const r = await fetch(`${API}/api/voice/caller-ids`, { headers: authH() })
+      const d = await r.json()
+      setCallerIds(d.callerIds || [])
+      const hasVerified = (d.callerIds || []).some((c: any) => c.is_verified && c.is_default)
+      onVerified(hasVerified)
+    } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  const startAdd = async () => {
+    if (!addPhone || addPhone.length < 9) return onMsg('error', 'Geçerli telefon numarası girin')
+    setBusy(true)
+    try {
+      const r = await fetch(`${API}/api/voice/caller-ids/add`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ phoneNumber: addPhone, friendlyName: addName || addPhone }),
+      })
+      const d = await r.json()
+      if (d.ok) {
+        setPendingPhone(d.phoneNumber)
+        setStep('verify')
+        onMsg('success', d.message || 'Twilio sizi arayacak, telefonda söylenecek kodu girin')
+      } else onMsg('error', d.error || 'Eklenemedi')
+    } catch { onMsg('error', 'Bağlantı hatası') }
+    setBusy(false)
+  }
+
+  const confirmCode = async () => {
+    if (!verifyCode || verifyCode.length < 4) return onMsg('error', 'Doğrulama kodunu girin')
+    setBusy(true)
+    try {
+      const r = await fetch(`${API}/api/voice/caller-ids/verify`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ phoneNumber: pendingPhone, code: verifyCode }),
+      })
+      const d = await r.json()
+      if (d.ok) {
+        onMsg('success', d.message || 'Numara doğrulandı!')
+        setStep('list'); setVerifyCode(''); setAddPhone(''); setAddName('')
+        await load()
+      } else { onMsg('error', d.error || 'Yanlış kod'); setVerifyCode('') }
+    } catch { onMsg('error', 'Doğrulama başarısız') }
+    setBusy(false)
+  }
+
+  const setDefault = async (id: string) => {
+    await fetch(`${API}/api/voice/caller-ids/${id}/set-default`, { method: 'POST', headers: authH() })
+    await load()
+  }
+
+  const remove = async (id: string) => {
+    await fetch(`${API}/api/voice/caller-ids/${id}`, { method: 'DELETE', headers: authH() })
+    await load()
+  }
+
+  const verified = callerIds.filter(c => c.is_verified)
+  const pending  = callerIds.filter(c => !c.is_verified)
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #bae6fd', background: '#f0f9ff' }}>
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+        <label className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#0369a1' }}>
+          <Phone className="w-3.5 h-3.5"/> Arama Numaralarım
+        </label>
+        {step === 'list' && (
+          <button onClick={() => setStep('add')}
+            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold transition"
+            style={{ background: '#dbeafe', color: '#1d4ed8' }}>
+            <Plus className="w-3 h-3"/> Numara Ekle
+          </button>
+        )}
+      </div>
+
+      <div className="px-4 pb-4">
+        {step === 'add' && (
+          <div className="space-y-3 pt-2">
+            <p className="text-xs" style={{ color: '#0369a1' }}>
+              Kendi telefon numaranızı ekleyin. Twilio o numarayı arayarak 6 haneli bir doğrulama kodu söyleyecek.
+              Kodu onayladıktan sonra müşterileriniz aramaları <strong>sizin numaranızdan</strong> görür.
+            </p>
+            <input value={addPhone} onChange={e => setAddPhone(e.target.value)}
+              placeholder="+90 5XX XXX XX XX"
+              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+              style={{ background: '#fff', border: '1.5px solid #bae6fd', color: '#0f172a' }}/>
+            <input value={addName} onChange={e => setAddName(e.target.value)}
+              placeholder="İsim (isteğe bağlı) — ör. Satış Hattı"
+              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
+              style={{ background: '#fff', border: '1px solid #e2e8f0', color: '#0f172a' }}/>
+            <div className="flex gap-2">
+              <button onClick={startAdd} disabled={busy}
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
+                style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'Doğrulama Çağrısı Başlat'}
+              </button>
+              <button onClick={() => setStep('list')} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                İptal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'verify' && (
+          <div className="space-y-3 pt-2">
+            <div className="p-3 rounded-xl" style={{ background: '#fef3c7', border: '1px solid #fcd34d' }}>
+              <p className="text-xs font-semibold" style={{ color: '#92400e' }}>📞 Twilio şu an <strong>{pendingPhone}</strong> numaranızı arıyor</p>
+              <p className="text-xs mt-1" style={{ color: '#b45309' }}>Telefonda size 6 haneli bir kod söylenecek. Aşağıya girin:</p>
+            </div>
+            <input value={verifyCode} onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000" maxLength={6}
+              className="w-full px-4 py-3 rounded-xl text-center text-xl font-mono font-bold tracking-[0.4em] focus:outline-none"
+              style={{ background: '#fff', border: '1.5px solid #bae6fd', color: '#0f172a' }}/>
+            <div className="flex gap-2">
+              <button onClick={confirmCode} disabled={busy || verifyCode.length < 4}
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
+                style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : <span className="flex items-center justify-center gap-1.5"><ShieldCheck className="w-4 h-4"/> Onayla</span>}
+              </button>
+              <button onClick={() => { setStep('list'); setVerifyCode('') }} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
+                İptal
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'list' && (
+          <div className="space-y-2 mt-2">
+            {loading && <p className="text-xs text-center py-3" style={{ color: '#94a3b8' }}>Yükleniyor…</p>}
+
+            {!loading && verified.length === 0 && (
+              <div className="text-center py-4">
+                <Phone className="w-8 h-8 mx-auto mb-2" style={{ color: '#bae6fd' }}/>
+                <p className="text-xs" style={{ color: '#64748b' }}>Henüz doğrulanmış numara yok.</p>
+                <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>Numara ekleyene kadar aramalar LeadFlow sisteminden görünür.</p>
+              </div>
+            )}
+
+            {verified.map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between p-3 rounded-xl transition"
+                style={{ background: c.is_default ? '#dcfce7' : '#fff', border: `1px solid ${c.is_default ? '#86efac' : '#e2e8f0'}` }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: c.is_default ? '#bbf7d0' : '#f1f5f9' }}>
+                    {c.is_default ? <Star className="w-4 h-4" style={{ color: '#059669' }}/> : <Phone className="w-4 h-4" style={{ color: '#94a3b8' }}/>}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: '#0f172a' }}>{c.phone_number}</p>
+                    <p className="text-[10px]" style={{ color: c.is_default ? '#059669' : '#94a3b8' }}>
+                      {c.friendly_name && c.friendly_name !== c.phone_number ? c.friendly_name + ' · ' : ''}
+                      {c.is_default ? '✓ Varsayılan — aramalar bu numaradan görünür' : 'Doğrulanmış'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {!c.is_default && (
+                    <button onClick={() => setDefault(c.id)} className="text-[10px] px-2.5 py-1 rounded-lg font-medium transition"
+                      style={{ background: '#eff6ff', color: '#2563eb' }}>
+                      Varsayılan Yap
+                    </button>
+                  )}
+                  <button onClick={() => remove(c.id)} className="p-1.5 rounded-lg transition" style={{ color: '#ef4444' }}>
+                    <Trash2 className="w-3.5 h-3.5"/>
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {pending.length > 0 && (
+              <div className="mt-2">
+                <p className="text-[10px] mb-1.5 font-semibold uppercase tracking-wider" style={{ color: '#94a3b8' }}>Bekleyen Doğrulama</p>
+                {pending.map((c: any) => (
+                  <div key={c.id} className="flex items-center justify-between p-2.5 rounded-xl"
+                    style={{ background: '#fffbeb', border: '1px solid #fcd34d' }}>
+                    <div>
+                      <p className="text-xs font-medium" style={{ color: '#0f172a' }}>{c.phone_number}</p>
+                      <p className="text-[10px]" style={{ color: '#b45309' }}>Doğrulama bekliyor</p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => { setPendingPhone(c.phone_number); setStep('verify') }}
+                        className="text-[10px] px-2.5 py-1 rounded-lg font-medium" style={{ background: '#fef3c7', color: '#92400e' }}>
+                        Kodu Gir
+                      </button>
+                      <button onClick={() => remove(c.id)} className="p-1.5" style={{ color: '#ef4444' }}>
+                        <Trash2 className="w-3 h-3"/>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── STEP 3: HAZIRLA ─────────────────────────────────────────────────────────
 function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinutes, setDelayMinutes, settings, setSettings, onMsg, setHasVerifiedPhone }: any) {
   return (
@@ -943,105 +1155,8 @@ function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinu
         </div>
       </div>
 
-      {/* Arama numarası doğrulama */}
-      {(() => {
-        const [verifyPhone, setVerifyPhone] = useState('')
-        const [verifyCode, setVerifyCode] = useState('')
-        const [verifyStep, setVerifyStep] = useState<'idle' | 'sent' | 'verified'>('idle')
-        const [verifyLoading, setVerifyLoading] = useState(false)
-        const [verifiedPhone, setVerifiedPhone] = useState('')
-
-        useEffect(() => {
-          fetch(`${API}/api/voice/my-number`, { headers: authH() })
-            .then(r => r.json()).then(d => { if (d.phone) { setVerifiedPhone(d.phone); setVerifyStep('verified') } })
-            .catch(() => {})
-        }, [])
-
-        const sendCode = async () => {
-          if (!verifyPhone || verifyPhone.length < 10) return onMsg('error', 'Geçerli telefon numarası girin')
-          setVerifyLoading(true)
-          try {
-            const num = verifyPhone.startsWith('+') ? verifyPhone : `+90${verifyPhone.replace(/^0/, '')}`
-            const r = await fetch(`${API}/api/voice/verify-number`, { method: 'POST', headers: authH(), body: JSON.stringify({ phoneNumber: num }) })
-            const d = await r.json()
-            if (d.ok) { setVerifyStep('sent'); onMsg('success', 'Doğrulama kodu gönderildi!') }
-            else onMsg('error', d.error)
-          } catch { onMsg('error', 'Gönderilemedi') }
-          setVerifyLoading(false)
-        }
-
-        const confirmCode = async () => {
-          if (!verifyCode || verifyCode.length !== 6) return onMsg('error', '6 haneli kodu girin')
-          setVerifyLoading(true)
-          try {
-            const r = await fetch(`${API}/api/voice/confirm-number`, { method: 'POST', headers: authH(), body: JSON.stringify({ code: verifyCode }) })
-            const d = await r.json()
-            if (d.ok) { setVerifiedPhone(d.phone); setVerifyStep('verified'); setHasVerifiedPhone(true); onMsg('success', 'Numara doğrulandı!') }
-            else { onMsg('error', d.error || 'Yanlış kod'); setVerifyCode('') }
-          } catch { onMsg('error', 'Doğrulama başarısız') }
-          setVerifyLoading(false)
-        }
-
-        return (
-          <div className="p-4 rounded-2xl" style={{ background: verifyStep === 'verified' ? '#f0fdf4' : '#f0f9ff', border: `1px solid ${verifyStep === 'verified' ? '#bbf7d0' : '#bae6fd'}` }}>
-            <label className="text-xs mb-3 block font-bold uppercase tracking-widest" style={{ color: verifyStep === 'verified' ? '#059669' : '#0369a1' }}>
-              <Phone className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5"/>
-              {verifyStep === 'verified' ? 'Doğrulanmış Numara' : 'Arama Numarası Ekle'}
-            </label>
-
-            {verifyStep === 'verified' ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#dcfce7' }}>
-                    <CheckCircle className="w-5 h-5" style={{ color: '#059669' }}/>
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{verifiedPhone}</p>
-                    <p className="text-xs" style={{ color: '#059669' }}>Doğrulanmış — aramalar bu numaradan yapılacak</p>
-                  </div>
-                </div>
-                <button onClick={() => { setVerifyStep('idle'); setVerifyPhone(''); setVerifyCode('') }}
-                  className="text-xs px-3 py-1.5 rounded-lg transition" style={{ color: '#64748b', background: '#f1f5f9' }}>
-                  Değiştir
-                </button>
-              </div>
-            ) : verifyStep === 'sent' ? (
-              <div className="space-y-3">
-                <p className="text-xs" style={{ color: '#64748b' }}>SMS ile gönderilen 6 haneli kodu girin</p>
-                <div className="flex gap-2">
-                  <input value={verifyCode} onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="000000" maxLength={6}
-                    className="flex-1 px-4 py-3 rounded-xl text-center text-lg font-mono font-bold tracking-[0.5em] focus:outline-none"
-                    style={{ background: '#ffffff', border: '1.5px solid #bae6fd', color: '#0f172a', letterSpacing: '0.3em' }}/>
-                  <button onClick={confirmCode} disabled={verifyLoading || verifyCode.length !== 6}
-                    className="px-6 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
-                    style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
-                    {verifyLoading ? <RefreshCw className="w-4 h-4 animate-spin"/> : 'Doğrula'}
-                  </button>
-                </div>
-                <button onClick={() => setVerifyStep('idle')} className="text-xs transition" style={{ color: '#94a3b8' }}>
-                  ← Numarayı değiştir
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs" style={{ color: '#64748b' }}>Aramalarınız bu numaradan yapılacak. Doğrulama kodu SMS ile gönderilecek.</p>
-                <div className="flex gap-2">
-                  <input value={verifyPhone} onChange={e => setVerifyPhone(e.target.value)}
-                    placeholder="+90 5XX XXX XX XX"
-                    className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none"
-                    style={{ background: '#ffffff', border: '1.5px solid #bae6fd', color: '#0f172a' }}/>
-                  <button onClick={sendCode} disabled={verifyLoading}
-                    className="px-6 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
-                    style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
-                    {verifyLoading ? <RefreshCw className="w-4 h-4 animate-spin"/> : 'Kod Gönder'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      {/* Arama Numarası — Caller ID Paneli */}
+      <CallerIdPanel onMsg={onMsg} onVerified={setHasVerifiedPhone} />
     </div>
   )
 }

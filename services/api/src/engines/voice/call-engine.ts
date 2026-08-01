@@ -84,7 +84,9 @@ export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> 
   const twimlUrl = `${API_BASE}/api/engine/twiml/${p.params.sessionId}`;
   const statusCb = `${API_BASE}/api/engine/status/${p.params.sessionId}`;
 
-  const call = await client.calls.create({
+  // Müşterinin doğrulanan numarası varsa callerId olarak kullan
+  // (Aranan kişi müşterinin kendi numarasını görür, LeadFlow'un Twilio numarasını değil)
+  const callOptions: any = {
     to:                    p.to,
     from:                  fromNumber,
     url:                   twimlUrl,
@@ -93,10 +95,17 @@ export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> 
     statusCallbackMethod:  'POST',
     record:                true,
     recordingStatusCallback: `${API_BASE}/api/engine/recording/${p.params.sessionId}`,
-    timeout:               30,         // 30s cevap yoksa
-    machineDetection:      'Enable',   // Sesli mesaj algılama
+    timeout:               30,
+    machineDetection:      'Enable',
     machineDetectionTimeout: 5,
-  });
+  };
+
+  if (p.params.callerId) {
+    callOptions.callerId = p.params.callerId;
+    console.log(`[Engine] Using verified callerId=${p.params.callerId}`);
+  }
+
+  const call = await client.calls.create(callOptions);
 
   console.log(`[Engine] Call created: SID=${call.sid} to=${p.to} from=${fromNumber}`);
 
