@@ -287,11 +287,12 @@ router.get('/health', async (_req: any, res: any) => {
   };
   const allOk = Object.values(env).every(v => !v.toString().startsWith('❌'));
 
+  const axios = require('axios');
+
   // Cartesia API gerçek doğrulama (key geçerliliği)
   let cartesiaLive = '—';
   if (process.env.CARTESIA_API_KEY) {
     try {
-      const axios = require('axios');
       const r = await axios.get('https://api.cartesia.ai/voices', {
         headers: { 'X-API-Key': process.env.CARTESIA_API_KEY, 'Cartesia-Version': '2024-06-10' },
         timeout: 5000,
@@ -302,11 +303,26 @@ router.get('/health', async (_req: any, res: any) => {
     }
   }
 
+  // Deepgram API gerçek doğrulama
+  let deepgramLive = '—';
+  if (process.env.DEEPGRAM_API_KEY) {
+    try {
+      const r = await axios.get('https://api.deepgram.com/v1/projects', {
+        headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
+        timeout: 5000,
+      });
+      deepgramLive = r.status === 200 ? '✅ API geçerli' : `⚠️ HTTP ${r.status}`;
+    } catch (e: any) {
+      deepgramLive = `❌ ${e.response?.status || e.message}`;
+    }
+  }
+
   res.json({
     ok:              allOk,
     engine:          'LeadFlow Voice Engine v1.0',
     activeSessions:  getActiveSessionCount(),
     cartesiaApiTest: cartesiaLive,
+    deepgramApiTest: deepgramLive,
     env,
   });
 });

@@ -187,9 +187,14 @@ export function attachWss(server: any): void {
           break;
         }
 
-        case 'media':
-          session?.onAudioChunk(msg.media.payload);
+        case 'media': {
+          // Yalnızca inbound (caller) sesi Deepgram'a gönder — outbound'u atla
+          const track = msg.media?.track;
+          if (!track || track === 'inbound') {
+            session?.onAudioChunk(msg.media.payload);
+          }
           break;
+        }
 
         case 'stop':
           session?.onTwilioStop();
