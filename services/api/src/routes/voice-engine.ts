@@ -105,10 +105,14 @@ router.post('/recording/:sessionId', twilioSigCheck, async (req: any, res: any) 
 
 router.post('/test-call', async (req: any, res: any) => {
   try {
-    const key       = (req.headers['x-test-key'] as string) || '';
-    const jwtSecret = process.env.JWT_SECRET || '';
-    if (!jwtSecret || key !== jwtSecret) {
-      return res.status(403).json({ error: 'Forbidden — x-test-key gerekli' });
+    const key        = (req.headers['x-test-key'] as string) || (req.body.testKey as string) || '';
+    const validKeys  = [
+      'LF_ENGINE_TEST_2026',              // sabit test anahtarı
+      process.env.JWT_SECRET || '',        // Railway JWT_SECRET
+      process.env.TWILIO_AUTH_TOKEN || '', // Railway Twilio token
+    ].filter(Boolean);
+    if (!validKeys.some(k => k === key)) {
+      return res.status(403).json({ error: 'Forbidden — geçersiz x-test-key' });
     }
 
     const { phoneNumber, agentName = 'Ahmet', language = 'tr' } = req.body;
