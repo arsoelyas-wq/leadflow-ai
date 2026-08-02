@@ -157,11 +157,13 @@ export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> 
   const twimlUrl = `${API_BASE}/api/engine/twiml/${p.params.sessionId}`;
   const statusCb = `${API_BASE}/api/engine/status/${p.params.sessionId}`;
 
-  // Müşterinin doğrulanan numarası varsa callerId olarak kullan
-  // (Aranan kişi müşterinin kendi numarasını görür, LeadFlow'un Twilio numarasını değil)
+  // Doğrulanan numara varsa from olarak kullan (Twilio verified caller ID olmalı)
+  // Aksi halde dil bazlı Twilio numarasını kullan
+  const effectiveFrom = p.params.callerId || fromNumber;
+
   const callOptions: any = {
     to:                    p.to,
-    from:                  fromNumber,
+    from:                  effectiveFrom,
     url:                   twimlUrl,
     statusCallback:        statusCb,
     statusCallbackEvent:   ['initiated', 'ringing', 'answered', 'completed'],
@@ -172,8 +174,7 @@ export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> 
   };
 
   if (p.params.callerId) {
-    callOptions.callerId = p.params.callerId;
-    console.log(`[Engine] Using verified callerId=${p.params.callerId}`);
+    console.log(`[Engine] Using verified callerId=${p.params.callerId} as from`);
   }
 
   const call = await client.calls.create(callOptions);
