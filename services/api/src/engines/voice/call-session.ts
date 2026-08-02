@@ -253,8 +253,8 @@ export class CallSession extends EventEmitter {
         return;
       }
 
-      // Sona erme ifadesi — sadece echo guard dışında ve listening'de işle
-      if (!this._echoGuard && this.state === 'listening') {
+      // Sona erme ifadesi — echo guard dışında, listening'de, echo değilse işle
+      if (!this._echoGuard && this.state === 'listening' && !this._isEchoLikely(fullText)) {
         const isEndPhrase = this.langCfg.endCallPhrases.some(p => normalized.includes(p));
         if (isEndPhrase) {
           this._endCall('end_phrase', 'unknown');

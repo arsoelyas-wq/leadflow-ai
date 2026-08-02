@@ -155,7 +155,7 @@ router.post('/test-call', async (req: any, res: any) => {
             leadCompany:       '',
             firstMessage:      `Merhaba! Nasılsınız? Ben ${agentName}.`,
             voiceId:           resolvedVoiceId,
-            maxDurationSec:    180,
+            maxDurationSec:    300,   // 5 dakika test süresi
             gender:            gender,
             engine:            engine as 'claude' | 'gemini',
           },
