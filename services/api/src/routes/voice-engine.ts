@@ -164,9 +164,23 @@ router.get('/test-models', async (_req: any, res: any) => {
   const apiKey = process.env.CARTESIA_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'CARTESIA_API_KEY yok' });
 
+  // Önce mevcut modelleri listele
+  let listedModels: string[] = [];
+  try {
+    const modelsResp = await axios.get('https://api.cartesia.ai/models', {
+      headers: { 'X-API-Key': apiKey, 'Cartesia-Version': '2024-06-10' },
+      timeout: 8000,
+    });
+    if (Array.isArray(modelsResp.data)) listedModels = modelsResp.data.map((m: any) => m.id || m.name || JSON.stringify(m));
+    else if (modelsResp.data?.models) listedModels = modelsResp.data.models.map((m: any) => m.id || m.name || JSON.stringify(m));
+    else listedModels = [JSON.stringify(modelsResp.data).slice(0, 500)];
+  } catch (e: any) { listedModels = [`err: ${e.response?.status} ${Buffer.from(e.response?.data||'').toString().slice(0,100)}`]; }
+
   const candidates = [
+    ...listedModels.filter(m => !m.startsWith('err') && !m.startsWith('{')),
     'sonic-2024-12-12', 'sonic-2025-01-09', 'sonic-preview-2024-11-13',
     'sonic-multilingual', 'sonic-english', 'sonic', 'sonic-2',
+    'sonic-3', 'sonic-turbo', 'sonic-2025-03-07', 'atlas', 'ariel',
   ];
 
   const results: any[] = [];
@@ -190,7 +204,7 @@ router.get('/test-models', async (_req: any, res: any) => {
     }
   }
 
-  res.json({ results, working: results.filter(r => r.ok).map(r => r.model) });
+  res.json({ listedModels, results, working: results.filter(r => r.ok).map(r => r.model) });
 });
 
 // ─── Direct TTS test — model/voice/language doğrulama (telefon aramadan) ──────
