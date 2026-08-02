@@ -128,8 +128,9 @@ export class CallSession extends EventEmitter {
       this._echoGuard = false;
       this._echoTimer = null;
       console.log(`[Session ${this.sessionId}] Echo guard cleared — listening for user input`);
-      // Echo guard bitti: kullanıcıya tam 10s konuşma süresi ver (guard öncesinden saymaz)
-      if (this.state === 'listening') this._resetSilenceTimer();
+      // NOT: _resetSilenceTimer() burada çağrılmaz.
+      // Silence prompt'un callback'i 12s final-chance timer'ı bu callback ile ezilmesin.
+      // Silence timer'ı _speak() ve _drainTtsQueue() zaten doğru noktada başlatıyor.
       // İlk guard bitti → artık kullanıcı girişi işlenebilir (greeting echo'su geçti)
       if (!this._readyForInput) this._readyForInput = true;
       this._onTtsDone();
@@ -469,17 +470,27 @@ export class CallSession extends EventEmitter {
     const abort    = new AbortController();
     this.ttsAbort  = abort;
 
+    let chunksSent = 0;
+    const doSynth = () => synthesizeStreaming({
+      voiceId,
+      model:    this.langCfg.cartesiaModel,
+      language: this.params.language,
+      text,
+      signal:   abort.signal,
+      onChunk:  (m) => { chunksSent++; this._sendAudio(m); },
+      onDone:   () => {},
+      onError:  (e) => console.error(`[Session ${this.sessionId}] TTS error:`, e.message),
+    });
+
     try {
-      await synthesizeStreaming({
-        voiceId,
-        model:    this.langCfg.cartesiaModel,
-        language: this.params.language,
-        text,
-        signal:   abort.signal,
-        onChunk:  (m) => this._sendAudio(m),
-        onDone:   () => {},
-        onError:  (e) => console.error(`[Session ${this.sessionId}] TTS error:`, e.message),
-      });
+      await doSynth();
+      // Cartesia 0 chunk döndürdüyse (geçici hata) bir kez daha dene
+      if (chunksSent === 0 && !abort.signal.aborted && (this.state as string) !== 'ended') {
+        console.warn(`[Session ${this.sessionId}] TTS 0 chunks — retrying "${text.slice(0, 40)}"`);
+        await new Promise(r => setTimeout(r, 500));
+        chunksSent = 0;
+        await doSynth();
+      }
     } finally {
       this.isSpeaking = false;
     }
