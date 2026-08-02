@@ -123,6 +123,11 @@ export class CallSession extends EventEmitter {
   /** AI konuşmayı bitirince echo settling süresi başlat (transcript seviyesinde) */
   private _startEchoGuard(ms = 600): void {
     this._echoGuard = true;
+    // Guard başlayınca echo filtresi süresini güncelle — yavaş Cartesia synthesis'te
+    // _lastAiTextExpiry erken dolabilir; guard + 2s tampon ekle
+    if (this._lastAiText) {
+      this._lastAiTextExpiry = Math.max(this._lastAiTextExpiry, Date.now() + ms + 2000);
+    }
     if (this._echoTimer) clearTimeout(this._echoTimer);
     this._echoTimer = setTimeout(() => {
       this._echoGuard = false;
@@ -262,6 +267,7 @@ export class CallSession extends EventEmitter {
     if (this._processingLock) return;
     this._processingLock = true;
     this._setState('processing');
+    this._clearSilenceTimer();  // AI yanıt üretirken timer çalışmasın; _drainTtsQueue TTS bitince reset eder
     this.turnsCount++;
 
     // Bu AI yanıt turu için tracking'leri sıfırla
@@ -451,7 +457,7 @@ export class CallSession extends EventEmitter {
     this._lastAiTextExpiry = Date.now() + 3000;
 
     if (isFirst) {
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 50));  // Twilio stream hazırlanması için minimal bekleme
     }
 
     const voiceId  = this.params.voiceId || getCartesiaVoiceId(this.langCfg, this.params.gender as any);
