@@ -98,44 +98,37 @@ router.post('/recording/:sessionId', twilioSigCheck, async (req: any, res: any) 
   res.sendStatus(200);
 });
 
-// ─── Test call — auth gerektiren, lead ID olmadan direkt numara ile test ───────
-// POST /api/engine/test-call  (authenticated)
+// ─── Test call — JWT_SECRET ile basit doğrulama, DB gerektirmez ───────────────
+// POST /api/engine/test-call
+// Header: x-test-key: <JWT_SECRET değeri>
 // Body: { phoneNumber, agentName?, language? }
 
-const { authMiddleware } = require('../middleware/auth');
-const { createClient: _createSupabaseClient } = require('@supabase/supabase-js');
-
-router.post('/test-call', authMiddleware, async (req: any, res: any) => {
+router.post('/test-call', async (req: any, res: any) => {
   try {
-    const { phoneNumber, agentName = 'Test Agent', language = 'tr' } = req.body;
+    const key       = (req.headers['x-test-key'] as string) || '';
+    const jwtSecret = process.env.JWT_SECRET || '';
+    if (!jwtSecret || key !== jwtSecret) {
+      return res.status(403).json({ error: 'Forbidden — x-test-key gerekli' });
+    }
+
+    const { phoneNumber, agentName = 'Ahmet', language = 'tr' } = req.body;
     if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber zorunlu' });
 
-    const supabaseTest = _createSupabaseClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const crypto = require('crypto');
+    const testId = crypto.randomUUID();
 
-    // Geçici voice_calls kaydı oluştur
-    const { data: callRecord, error: insertErr } = await supabaseTest.from('voice_calls').insert([{
-      user_id:        req.userId,
-      lead_id:        null,
-      callee_number:  phoneNumber,
-      caller_number:  '',
-      status:         'initiating',
-      language,
-      notes:          'test_call:engine_test',
-    }]).select().single();
+    res.json({ ok: true, callId: testId, message: `${phoneNumber} aranıyor (test)...` });
 
-    if (!callRecord) throw new Error(insertErr?.message || 'voice_calls insert başarısız');
-
-    res.json({ ok: true, callId: callRecord.id, message: `${phoneNumber} numarası test için aranıyor...` });
-
+    // Arka planda Twilio araması başlat (DB kaydı olmadan)
     (async () => {
       try {
         const { makeCall: engineMakeCall } = require('../engines/voice/call-engine');
         await engineMakeCall({
           to:            phoneNumber,
-          voiceCallDbId: callRecord.id,
+          voiceCallDbId: testId,   // DB'de bu ID yok — silent fail, call çalışır
           params: {
             callSid:           '',
-            sessionId:         callRecord.id,
+            sessionId:         testId,
             language,
             conversationStyle: 'consultant',
             agentName,
@@ -143,15 +136,13 @@ router.post('/test-call', authMiddleware, async (req: any, res: any) => {
             productDesc:       'LeadFlow AI — satış otomasyonu ve yapay zeka destekli arama sistemi',
             leadName:          'Test Kullanıcı',
             leadCompany:       '',
-            openingLine:       `Merhaba, ben ${agentName}. LeadFlow Voice Engine test aramasıdır — sistem düzgün çalışıyor mu kontrol ediyoruz.`,
+            openingLine:       `Merhaba, ben ${agentName}. Bu LeadFlow Voice Engine test aramasıdır — konuşarak sistemi test edebilirsiniz.`,
             voiceId:           '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
           },
         });
+        console.log(`[Engine] Test call dispatched: ${phoneNumber} testId=${testId}`);
       } catch (e: any) {
-        console.error('[Engine] test-call error:', e.message);
-        await supabaseTest.from('voice_calls')
-          .update({ status: 'failed', end_reason: e.message })
-          .eq('id', callRecord.id);
+        console.error('[Engine] test-call fire error:', e.message);
       }
     })();
   } catch (e: any) {
