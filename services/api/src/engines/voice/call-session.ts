@@ -131,8 +131,6 @@ export class CallSession extends EventEmitter {
       // NOT: _resetSilenceTimer() burada çağrılmaz.
       // Silence prompt'un callback'i 12s final-chance timer'ı bu callback ile ezilmesin.
       // Silence timer'ı _speak() ve _drainTtsQueue() zaten doğru noktada başlatıyor.
-      // İlk guard bitti → artık kullanıcı girişi işlenebilir (greeting echo'su geçti)
-      if (!this._readyForInput) this._readyForInput = true;
       this._onTtsDone();
     }, ms);
   }
@@ -184,7 +182,6 @@ export class CallSession extends EventEmitter {
   private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
   private _lastAiText            = '';  // echo filtresi: AI'nın son söylediği metin
   private _lastAiTextExpiry      = 0;  // _lastAiText geçerlilik süresi (unix ms)
-  private _readyForInput         = false; // greeting echo guard bitmeden input işleme
 
   private _onTranscript(text: string, isFinal: boolean, confidence: number, isInterim: boolean): void {
     if (this.state === 'ended') return;
@@ -203,10 +200,7 @@ export class CallSession extends EventEmitter {
         } else {
           console.log(`[Session ${this.sessionId}] Barge-in: "${text}" conf=${confidence.toFixed(2)}`);
           this._interrupt();
-          // Greeting bitmeden pending text kaydetme — echo riski yüksek
-          if (this._readyForInput) {
-            this._pendingUserText = text;
-          }
+          this._pendingUserText = text;
         }
       }
     }
@@ -218,13 +212,7 @@ export class CallSession extends EventEmitter {
       const fullText   = text.trim();
       const normalized = fullText.toLowerCase();
 
-      console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state} echo=${this._echoGuard} ready=${this._readyForInput}`);
-
-      // Greeting echo guard henüz bitmemişse her şeyi yoksay
-      if (!this._readyForInput) {
-        console.log(`[Session ${this.sessionId}] Transcript dropped (not ready — greeting echo): "${fullText}"`);
-        return;
-      }
+      console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state} echo=${this._echoGuard}`);
 
       // AI'nın kendi sesinin echo'su — yoksay
       if (this._isEchoLikely(fullText)) {
