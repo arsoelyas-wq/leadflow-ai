@@ -164,6 +164,7 @@ export class CallSession extends EventEmitter {
   }
 
   private _pendingUserText      = '';  // barge-in sırasında biriken metin
+  private _echoGuardBuffer     = '';   // echo guard sırasında yüksek güvenli transcript
   private _processingLock       = false; // aynı anda birden fazla Claude çağrısını önle
   private _claudeAbort:         AbortController | null = null; // aktif LLM isteği abort controller
   private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
@@ -206,15 +207,19 @@ export class CallSession extends EventEmitter {
       }
 
       // ── GUARD: sadece 'listening' state'inde ve echo penceresi dışında işle ──
-      // Echo guard süresince gelen transcript'lar AI'ın kendi echo'su olabilir — hepsini at.
-      // Dinamik echo guard, gerçek audio oynatma süresini kapsıyor (kayıp minimal).
       if (this.state === 'listening' && !this._processingLock && !this._echoGuard) {
         this._clearSilenceTimer();
         this._pendingUserText = '';
+        this._echoGuardBuffer = '';  // işlenirken buffer'ı temizle
         this.transcript.push(`Lead: ${fullText}`);
         this._processUserInput(fullText);
+      } else if (this.state === 'listening' && this._echoGuard && confidence >= 0.75) {
+        // Echo guard sırasında yüksek güvenli kullanıcı sesi — buffer'la, guard bitince işle.
+        // AI echo'su genelde 0.3-0.5 güven skoru alır; 0.75+ gerçek kullanıcı seçisidir.
+        this._echoGuardBuffer = fullText;
+        console.log(`[Session ${this.sessionId}] Echo guard buffered: "${fullText}" conf=${confidence.toFixed(2)}`);
       } else {
-        console.log(`[Session ${this.sessionId}] Transcript dropped (state=${this.state} echoGuard=${this._echoGuard}): "${fullText}"`);
+        console.log(`[Session ${this.sessionId}] Transcript dropped (state=${this.state} echoGuard=${this._echoGuard} conf=${confidence.toFixed(2)}): "${fullText}"`);
       }
     }
 
@@ -242,8 +247,9 @@ export class CallSession extends EventEmitter {
     this._setState('processing');
     this.turnsCount++;
 
-    // Bu AI yanıt turu için audio byte takibini sıfırla (filler + LLM cümleleri dahil)
+    // Bu AI yanıt turu için tracking'leri sıfırla
     this._expectedPlaybackEndMs = 0;
+    this._echoGuardBuffer = '';
 
     // Filler: LLM yanıt üretirken boşluğu doldur — sadece ≥2 kelimelik yanıtlarda doğal
     const wordCount = text.trim().split(/\s+/).length;
@@ -385,6 +391,19 @@ export class CallSession extends EventEmitter {
     if (this.state === 'ended' || this.state === 'ending') return;
     // Lock varsa bekle — _processUserInput'un finally bloğu işleyecek
     if (this._processingLock) return;
+
+    // Öncelik 1: echo guard sırasında buffer'lanan yüksek güvenli kullanıcı sesi
+    const buffered = this._echoGuardBuffer.trim();
+    if (buffered) {
+      this._echoGuardBuffer = '';
+      this._pendingUserText = '';
+      console.log(`[Session ${this.sessionId}] Processing echo-guard buffered: "${buffered}"`);
+      this.transcript.push(`Lead: ${buffered}`);
+      this._processUserInput(buffered);
+      return;
+    }
+
+    // Öncelik 2: barge-in sırasında yakalanan metin
     const pending = this._pendingUserText.trim();
     this._pendingUserText = '';
     if (pending.length > 0) {
@@ -557,8 +576,9 @@ export class CallSession extends EventEmitter {
   // Gönderilen audio byte'larından Twilio'nun ne zaman biteceğini hesapla
   private _calcEchoGuardMs(): number {
     const remaining = Math.max(0, this._expectedPlaybackEndMs - Date.now());
-    // Playback bittikten 400ms sonra da guard devam et (network jitter)
-    return Math.max(600, remaining + 400);
+    // Twilio AEC (Acoustic Echo Cancellation) AI sesini büyük ölçüde iptal eder.
+    // Uzun guard kullanıcıyı 5-6s sağır bırakıyor — 1000ms tavan yeterli.
+    return Math.max(400, Math.min(remaining + 400, 1000));
   }
 
   private _clearAudio(): void {
