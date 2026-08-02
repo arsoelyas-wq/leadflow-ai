@@ -115,8 +115,16 @@ router.post('/test-call', async (req: any, res: any) => {
       return res.status(403).json({ error: 'Forbidden — geçersiz x-test-key' });
     }
 
-    const { phoneNumber, agentName = 'Ahmet', language = 'tr', engine = 'claude' } = req.body;
+    const { phoneNumber, language = 'tr', engine = 'claude' } = req.body;
+    const gender: 'male' | 'female' = req.body.gender === 'female' ? 'female' : 'male';
+    const defaultName = gender === 'female' ? 'Zeynep' : 'Ahmet';
+    const agentName: string = req.body.agentName || defaultName;
     if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber zorunlu' });
+
+    // Cinsiyet ile eşleşen ses ID'sini seç
+    const { getLangConfig, getCartesiaVoiceId } = require('../engines/voice/voice-catalog');
+    const langCfg = getLangConfig(language);
+    const resolvedVoiceId: string = req.body.voiceId || getCartesiaVoiceId(langCfg, gender);
 
     const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (engine === 'gemini' && !geminiKey) {
@@ -126,7 +134,7 @@ router.post('/test-call', async (req: any, res: any) => {
     const crypto = require('crypto');
     const testId = crypto.randomUUID();
 
-    res.json({ ok: true, callId: testId, engine, message: `${phoneNumber} aranıyor (${engine} test)...` });
+    res.json({ ok: true, callId: testId, engine, voiceId: resolvedVoiceId, agentName, gender, message: `${phoneNumber} aranıyor (${engine} test ${gender})...` });
 
     // Arka planda Twilio araması başlat (DB kaydı olmadan)
     (async () => {
@@ -146,9 +154,9 @@ router.post('/test-call', async (req: any, res: any) => {
             leadName:          'Test Kullanıcı',
             leadCompany:       '',
             firstMessage:      `Merhaba! Nasılsınız? Ben ${agentName}.`,
-            voiceId:           '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
-            maxDurationSec:    180,   // 3 dakika test süresi
-            gender:            'male' as const,
+            voiceId:           resolvedVoiceId,
+            maxDurationSec:    180,
+            gender:            gender,
             engine:            engine as 'claude' | 'gemini',
           },
         });

@@ -32,6 +32,7 @@ export interface LangConfig {
 const VOICES = {
   // Türkçe
   TR_MALE:   '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
+  TR_FEMALE: 'fa7bfcdc-603c-4bf1-a600-a371400d2f8c',  // Leyla - Story Companion (samimi, akıcı)
 
   // İngilizce
   EN_MALE:   '79a125e8-cd45-4c13-8a67-188112f4dd22',  // Chris — professional
@@ -52,7 +53,8 @@ const VOICES = {
 
 export const VOICE_CATALOG: Record<string, LangConfig> = {
   tr: {
-    cartesiaVoiceId:  VOICES.TR_MALE,
+    cartesiaVoiceId:        VOICES.TR_MALE,
+    cartesiaVoiceIdFemale:  VOICES.TR_FEMALE,
     cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-2',
     deepgramLanguage: 'tr',
