@@ -56,9 +56,9 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     deepgramModel:    'nova-2',
     deepgramLanguage: 'tr',
     deepgramEndpointingMs: 150,        // Türkçe daha hızlı biter
-    silenceConfidenceThreshold: 0.65,
-    minWordsToBarge: 2,
-    fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee', 'şey', 'yani', 'tamam', 'evet']),
+    silenceConfidenceThreshold: 0.40,
+    minWordsToBarge: 1,
+    fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee']),
     endCallPhrases:  ['görüşürüz', 'hoşça kalın', 'iyi günler', 'güle güle', 'görüşmek üzere', 'kapatıyorum'],
     callEndMessage:  'Teşekkürler, görüşmek üzere!',
     silencePrompt:   'Merhaba, beni duyabiliyor musunuz?',

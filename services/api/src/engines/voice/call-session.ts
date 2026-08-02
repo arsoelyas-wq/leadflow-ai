@@ -131,42 +131,59 @@ export class CallSession extends EventEmitter {
     });
   }
 
+  private _pendingUserText = '';   // barge-in sırasında biriken metin
+  private _processingLock = false; // aynı anda birden fazla Claude çağrısını önle
+
   private _onTranscript(text: string, isFinal: boolean, confidence: number, isInterim: boolean): void {
     if (this.state === 'ended') return;
 
     const isFiller = this.langCfg.fillerWords.has(text.toLowerCase().trim());
 
-    // ── Barge-in: AI konuşurken lead söz kesti ──
-    if (isInterim && this.isSpeaking && !isFiller && confidence >= this.langCfg.silenceConfidenceThreshold) {
-      const wordCount = text.trim().split(/\s+/).length;
-      if (wordCount >= this.langCfg.minWordsToBarge) {
-        console.log(`[Session ${this.sessionId}] Barge-in detected: "${text}"`);
+    // ── Barge-in: AI konuşurken kullanıcı söz kesti ──
+    // Eşik düşürüldü (0.65→0.40) — telefon kalitesinde confidence düşük olur
+    if (this.isSpeaking && !isFiller) {
+      const wordCount  = text.trim().split(/\s+/).length;
+      const confOk     = confidence >= 0.40;
+      const wordsOk    = wordCount  >= this.langCfg.minWordsToBarge;
+      if (confOk && wordsOk) {
+        console.log(`[Session ${this.sessionId}] Barge-in: "${text}" conf=${confidence.toFixed(2)}`);
         this._interrupt();
-        this.interimBuffer = text;
+        this._pendingUserText = text;
       }
     }
 
     if (isFinal && text.trim().length > 0) {
       this.lastFinalAt   = Date.now();
       this.interimBuffer = '';
-      this._clearSilenceTimer();
 
-      const fullText = text.trim();
-      this.transcript.push(`Lead: ${fullText}`);
+      const fullText   = text.trim();
+      const normalized = fullText.toLowerCase();
+
+      console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state}`);
 
       // Sona erme ifadesi kontrolü
-      const normalized = fullText.toLowerCase();
-      const isEndPhrase = this.langCfg.endCallPhrases.some(phrase => normalized.includes(phrase));
+      const isEndPhrase = this.langCfg.endCallPhrases.some(p => normalized.includes(p));
       if (isEndPhrase && this.state !== 'ending') {
         this._endCall('end_phrase', 'unknown');
         return;
       }
 
-      this._processUserInput(fullText);
+      // ── GUARD: sadece 'listening' state'inde kullanıcı girdisini işle ──
+      // 'speaking'/'processing'/'greeting' sırasında gelen transcript'ları biriktir,
+      // AI konuşmayı bitirince en son metni işle
+      if (this.state === 'listening' && !this._processingLock) {
+        this._clearSilenceTimer();
+        this.transcript.push(`Lead: ${fullText}`);
+        this._processUserInput(fullText);
+      } else if (this.state === 'speaking' || this.state === 'greeting') {
+        // AI konuşurken gelen metni kaydet — barge-in yapılmadıysa sonra kullan
+        this._pendingUserText = fullText;
+        console.log(`[Session ${this.sessionId}] Transcript buffered (state=${this.state}): "${fullText}"`);
+      }
     }
 
-    // Konuşma sonu sessizlik timer'ı
-    if (isFinal || (isInterim && !this.isSpeaking)) {
+    // Konuşma sonu sessizlik timer'ı — sadece listening modunda
+    if (this.state === 'listening' && (isFinal || isInterim)) {
       this._resetSilenceTimer();
     }
   }
@@ -175,6 +192,8 @@ export class CallSession extends EventEmitter {
 
   private async _processUserInput(text: string): Promise<void> {
     if (this.state === 'ended') return;
+    if (this._processingLock) return;
+    this._processingLock = true;
     this._setState('processing');
     this.turnsCount++;
 
@@ -229,6 +248,8 @@ export class CallSession extends EventEmitter {
       if (err.name !== 'AbortError') {
         console.error(`[Session ${this.sessionId}] Claude error:`, err.message);
       }
+    } finally {
+      this._processingLock = false;
     }
   }
 
@@ -245,9 +266,10 @@ export class CallSession extends EventEmitter {
     if (this.ttsQueue.length === 0) {
       // Tüm cümleler bitti → dinlemeye dön
       if ((this.state as string) !== 'ended' && this.state !== 'ending') {
-        this._setState('listening');
         this.isSpeaking = false;
+        this._setState('listening');
         this._resetSilenceTimer();
+        this._onTtsDone();   // pending kullanıcı metni varsa işle
       }
       return;
     }
@@ -280,6 +302,18 @@ export class CallSession extends EventEmitter {
 
     if (!this.ttsAbort?.signal.aborted && (this.state as string) !== 'ended') {
       await this._drainTtsQueue();
+    }
+  }
+
+  // TTS bittikten sonra çağrılır — listening'e geçince pending metni işle
+  private _onTtsDone(): void {
+    if (this.state === 'ended' || this.state === 'ending') return;
+    const pending = this._pendingUserText.trim();
+    this._pendingUserText = '';
+    if (pending.length > 0 && !this._processingLock) {
+      console.log(`[Session ${this.sessionId}] Processing buffered text: "${pending}"`);
+      this.transcript.push(`Lead: ${pending}`);
+      this._processUserInput(pending);
     }
   }
 
@@ -327,6 +361,7 @@ export class CallSession extends EventEmitter {
     if ((this.state as string) !== 'ended') {
       this._setState('listening');
       this._resetSilenceTimer();
+      this._onTtsDone();   // pending kullanıcı metni varsa işle
     }
   }
 
