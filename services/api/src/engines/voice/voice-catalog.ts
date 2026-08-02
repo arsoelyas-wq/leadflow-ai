@@ -52,7 +52,7 @@ const VOICES = {
 export const VOICE_CATALOG: Record<string, LangConfig> = {
   tr: {
     cartesiaVoiceId:  VOICES.TR_MALE,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'tr',
     deepgramEndpointingMs: 150,        // Türkçe daha hızlı biter
@@ -81,7 +81,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   de: {
     cartesiaVoiceId:  VOICES.DE_MALE,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'de',
     deepgramEndpointingMs: 220,        // Almanca daha uzun cümleler
@@ -95,7 +95,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   fr: {
     cartesiaVoiceId:  VOICES.FR_MALE,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'fr',
     deepgramEndpointingMs: 200,
@@ -109,7 +109,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   ar: {
     cartesiaVoiceId:  VOICES.AR_MALE,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'ar',
     deepgramEndpointingMs: 220,
@@ -123,7 +123,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   es: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'es',
     deepgramEndpointingMs: 180,
@@ -137,7 +137,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   it: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'it',
     deepgramEndpointingMs: 180,
@@ -151,7 +151,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   pt: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'pt-BR',
     deepgramEndpointingMs: 180,
@@ -165,7 +165,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   ru: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'ru',
     deepgramEndpointingMs: 220,
@@ -179,7 +179,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   nl: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'nl',
     deepgramEndpointingMs: 200,
@@ -193,7 +193,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   pl: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'pl',
     deepgramEndpointingMs: 220,
@@ -207,7 +207,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
 
   ja: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
-    cartesiaModel:    'sonic-2',
+    cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'ja',
     deepgramEndpointingMs: 150,        // 日本語は短い発話が多い

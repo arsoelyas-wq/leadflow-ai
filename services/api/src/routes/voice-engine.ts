@@ -216,7 +216,7 @@ router.get('/test-tts', async (_req: any, res: any) => {
 
   const testText   = 'Merhaba, LeadFlow ses motoru test ediliyor.';
   const voiceId    = '5a31e4fb-f823-4359-aa91-82c0ae9a991c';
-  const model      = 'sonic-2';
+  const model      = 'sonic-3';
   const language   = 'tr';
   const sampleRate = 8000;
 
