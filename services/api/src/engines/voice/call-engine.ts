@@ -50,6 +50,39 @@ async function _presynthGreeting(params: SessionParams): Promise<Buffer[]> {
   return chunks;
 }
 
+// ─── Cartesia keep-alive — cold start kesinlikle önleme ──────────────────────
+// Sunucu başladığında ve her 20s'de bir kısa bir TTS isteği at.
+// Böylece Cartesia'nın ses modeli sürekli bellekte kalır; aramalarda 0ms cold start.
+// keepAliveMsecs=30s olduğu için 20s aralık TCP soketini de sıcak tutar.
+async function _cartesiaPing(): Promise<void> {
+  try {
+    const langCfg = getLangConfig('tr');
+    const voiceId = getCartesiaVoiceId(langCfg, 'female');
+    const chunks: Buffer[] = [];
+    await synthesizeStreaming({
+      voiceId,
+      model:    langCfg.cartesiaModel,
+      language: 'tr',
+      text:     'Merhaba.',
+      signal:   new AbortController().signal,
+      onChunk:  (ch) => chunks.push(ch),
+      onDone:   () => {},
+      onError:  (e) => console.warn(`[Engine] Cartesia ping err: ${e.message}`),
+    });
+    if (chunks.length > 0) {
+      console.log(`[Engine] Cartesia keep-alive OK (${chunks.length} chunks)`);
+    } else {
+      console.warn(`[Engine] Cartesia keep-alive returned 0 chunks`);
+    }
+  } catch (e: any) {
+    console.warn(`[Engine] Cartesia keep-alive fail: ${e.message}`);
+  }
+}
+
+// Sunucu başlayınca 1s sonra ilk ping; sonrası 20s'de bir sürekli tekrar et
+setTimeout(() => _cartesiaPing().catch(() => {}), 1_000);
+setInterval(() => _cartesiaPing().catch(() => {}), 20_000);
+
 let wssInstance: any = null;
 let supabase: any    = null;
 
