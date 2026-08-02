@@ -34,6 +34,7 @@ export class DeepgramBridge {
   private reconnectId:  NodeJS.Timeout | null = null;
   private reconnects:   number = 0;
   private opts:         DeepgramBridgeOptions;
+  private _chunksSent:  number = 0;
 
   constructor(opts: DeepgramBridgeOptions) {
     this.opts = opts;
@@ -51,7 +52,6 @@ export class DeepgramBridge {
       model:           this.opts.model,
       language:        this.opts.language,
       interim_results: 'true',
-      smart_format:    'true',
       punctuate:       'true',
       endpointing:     String(this.opts.endpointingMs),
       utterance_end_ms:'1000',
@@ -66,6 +66,7 @@ export class DeepgramBridge {
     this.ws.on('open', () => {
       this.ready = true;
       // Flush queued audio accumulated before WS was ready
+      console.log(`[Deepgram] Connected lang=${this.opts.language} model=${this.opts.model} queued=${this.audioQueue.length}`);
       for (const buf of this.audioQueue) this._sendRaw(buf);
       this.audioQueue = [];
 
@@ -75,14 +76,17 @@ export class DeepgramBridge {
           this.ws.send(JSON.stringify({ type: 'KeepAlive' }));
         }
       }, 8000);
-
-      console.log(`[Deepgram] Connected lang=${this.opts.language}`);
     });
 
     this.ws.on('message', (data: Buffer) => {
       try {
         const msg = JSON.parse(data.toString());
-        if (msg.type !== 'Results') return;
+
+        // Log non-Results frames for diagnostics
+        if (msg.type !== 'Results') {
+          console.log(`[Deepgram] Frame type=${msg.type || '?'} msg=${JSON.stringify(msg).slice(0, 200)}`);
+          return;
+        }
 
         const alt        = msg.channel?.alternatives?.[0];
         const text       = alt?.transcript?.trim() ?? '';
@@ -92,6 +96,7 @@ export class DeepgramBridge {
 
         if (text.length === 0) return;
 
+        console.log(`[Deepgram] Transcript: "${text}" isFinal=${isFinal} conf=${confidence.toFixed(2)}`);
         this.opts.onTranscript({ text, confidence, isFinal, isInterim });
       } catch { /* ignore malformed frames */ }
     });
@@ -137,6 +142,10 @@ export class DeepgramBridge {
   private _sendRaw(buf: Buffer): void {
     if (this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(buf, { binary: true });
+      this._chunksSent++;
+      if (this._chunksSent === 1 || this._chunksSent % 100 === 0) {
+        console.log(`[Deepgram] Audio sent: chunks=${this._chunksSent} bytes=${buf.length}`);
+      }
     }
   }
 
