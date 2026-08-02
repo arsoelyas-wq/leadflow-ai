@@ -164,9 +164,9 @@ export class CallSession extends EventEmitter {
     return terms.filter(t => t.trim().length > 2).slice(0, 10);
   }
 
-  private _pendingUserText   = '';  // barge-in sırasında biriken metin
-  private _echoGuardBuffer   = '';  // echo guard sırasında gelen son final transcript
-  private _processingLock    = false; // aynı anda birden fazla Claude çağrısını önle
+  private _pendingUserText      = '';  // barge-in sırasında biriken metin
+  private _processingLock       = false; // aynı anda birden fazla Claude çağrısını önle
+  private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
 
   private _onTranscript(text: string, isFinal: boolean, confidence: number, isInterim: boolean): void {
     if (this.state === 'ended') return;
@@ -195,8 +195,9 @@ export class CallSession extends EventEmitter {
 
       console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state} echo=${this._echoGuard}`);
 
-      // Sona erme ifadesi kontrolü — echo guard dışında (echo'dan "güle güle" algılamasın)
-      if (!this._echoGuard) {
+      // Sona erme ifadesi — sadece echo guard dışında ve listening'de işle
+      // Echo'dan "iyi günler" algılanıp arama kesilmesin
+      if (!this._echoGuard && this.state === 'listening') {
         const isEndPhrase = this.langCfg.endCallPhrases.some(p => normalized.includes(p));
         if (isEndPhrase && this.state !== 'ending') {
           this._endCall('end_phrase', 'unknown');
@@ -204,19 +205,12 @@ export class CallSession extends EventEmitter {
         }
       }
 
-      // Echo guard sırasında gelen transcript: kayıp önlemek için buffer'a al.
-      // _onTtsDone() echo guard bittikten sonra işleyecek.
-      if (this._echoGuard && this.state === 'listening' && !this._processingLock) {
-        this._echoGuardBuffer = fullText;
-        console.log(`[Session ${this.sessionId}] Transcript buffered during echo guard: "${fullText}"`);
-        return;
-      }
-
       // ── GUARD: sadece 'listening' state'inde ve echo penceresi dışında işle ──
+      // Echo guard süresince gelen transcript'lar AI'ın kendi echo'su olabilir — hepsini at.
+      // Dinamik echo guard, gerçek audio oynatma süresini kapsıyor (kayıp minimal).
       if (this.state === 'listening' && !this._processingLock && !this._echoGuard) {
         this._clearSilenceTimer();
         this._pendingUserText = '';
-        this._echoGuardBuffer = '';
         this.transcript.push(`Lead: ${fullText}`);
         this._processUserInput(fullText);
       } else {
@@ -248,8 +242,10 @@ export class CallSession extends EventEmitter {
     this._setState('processing');
     this.turnsCount++;
 
+    // Bu AI yanıt turu için audio byte takibini sıfırla (filler + LLM cümleleri dahil)
+    this._expectedPlaybackEndMs = 0;
+
     // Filler: LLM yanıt üretirken boşluğu doldur — sadece ≥2 kelimelik yanıtlarda doğal
-    // Tek kelime ("evet", "tamam") için filler sahte ve sinir bozucu gelir
     const wordCount = text.trim().split(/\s+/).length;
     const filler = wordCount >= 2 ? this._getRandomFiller() : null;
     if (filler && !this.isSpeaking) {
@@ -333,7 +329,10 @@ export class CallSession extends EventEmitter {
       // Tüm cümleler bitti → dinlemeye dön
       if ((this.state as string) !== 'ended' && this.state !== 'ending') {
         this.isSpeaking = false;
-        this._startEchoGuard(600);   // 600ms echo settling — _onTtsDone() otomatik çağrılacak
+        // Dinamik echo guard: tüm AI audio Twilio'da bitene kadar bekle
+        const guardMs = this._calcEchoGuardMs();
+        console.log(`[Session ${this.sessionId}] TTS done — echo guard: ${guardMs}ms`);
+        this._startEchoGuard(guardMs);
         this._setState('listening');
         this._resetSilenceTimer();
       }
@@ -371,15 +370,13 @@ export class CallSession extends EventEmitter {
     }
   }
 
-  // TTS bittikten sonra çağrılır — listening'e geçince pending/buffered metni işle
+  // TTS bittikten sonra çağrılır — listening'e geçince barge-in metnini işle
   private _onTtsDone(): void {
     if (this.state === 'ended' || this.state === 'ending') return;
-    // Barge-in metni öncelikli; yoksa echo guard sırasında biriken metin
-    const pending = (this._pendingUserText || this._echoGuardBuffer).trim();
-    this._pendingUserText  = '';
-    this._echoGuardBuffer  = '';
+    const pending = this._pendingUserText.trim();
+    this._pendingUserText = '';
     if (pending.length > 0 && !this._processingLock) {
-      console.log(`[Session ${this.sessionId}] Processing buffered text: "${pending}"`);
+      console.log(`[Session ${this.sessionId}] Processing barge-in text: "${pending}"`);
       this.transcript.push(`Lead: ${pending}`);
       this._processUserInput(pending);
     }
@@ -405,6 +402,7 @@ export class CallSession extends EventEmitter {
     if (this.state === 'ended') return;
     this._setState('speaking');
     this.isSpeaking = true;
+    this._expectedPlaybackEndMs = 0;  // bu konuşma için byte takibini sıfırla
 
     if (isFirst) {
       await new Promise(r => setTimeout(r, 800));
@@ -430,7 +428,10 @@ export class CallSession extends EventEmitter {
     }
 
     if ((this.state as string) !== 'ended') {
-      const guardMs = abort.signal.aborted ? 150 : 600;
+      // Dinamik echo guard: Twilio'nun audio buffer'ı ne zaman bitecek?
+      // Barge-in ile kesildi → kısa guard (kullanıcı zaten konuşuyor)
+      const guardMs = abort.signal.aborted ? 150 : this._calcEchoGuardMs();
+      console.log(`[Session ${this.sessionId}] Echo guard: ${guardMs}ms (playbackEnd=${this._expectedPlaybackEndMs} now=${Date.now()})`);
       this._startEchoGuard(guardMs);
       this._setState('listening');
       if (resetTimer) this._resetSilenceTimer();
@@ -527,9 +528,21 @@ export class CallSession extends EventEmitter {
       if (this._audioChunksSent === 1 || this._audioChunksSent % 50 === 0) {
         console.log(`[Session ${this.sessionId}] Audio sent: chunk#${this._audioChunksSent} bytes=${mulawBuffer.length} streamSid=${this.streamSid.slice(0,12)}`);
       }
+      // Twilio'nun audio buffer'ını takip et — echo guard süresini doğru hesaplamak için
+      // μ-law 8kHz = 8000 byte/sn → her chunk için tahmini oynatma bitiş zamanı güncellenir
+      const durationMs = mulawBuffer.length / 8;
+      const now = Date.now();
+      this._expectedPlaybackEndMs = Math.max(this._expectedPlaybackEndMs, now) + durationMs;
     } catch (e: any) {
       console.error(`[Session ${this.sessionId}] _sendAudio ws.send error:`, e.message);
     }
+  }
+
+  // Gönderilen audio byte'larından Twilio'nun ne zaman biteceğini hesapla
+  private _calcEchoGuardMs(): number {
+    const remaining = Math.max(0, this._expectedPlaybackEndMs - Date.now());
+    // Playback bittikten 400ms sonra da guard devam et (network jitter)
+    return Math.max(600, remaining + 400);
   }
 
   private _clearAudio(): void {
