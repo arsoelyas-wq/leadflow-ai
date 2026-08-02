@@ -62,6 +62,9 @@ function getTwilioFromNumber(language: string): string {
     const val = process.env[key];
     if (val) return val;
   }
+  // Son çare: genel TWILIO_PHONE veya eski ElevenLabs numarası
+  const generic = process.env.TWILIO_PHONE || process.env.ELEVENLABS_CALLER_NUMBER;
+  if (generic) return generic;
   throw new Error('[Engine] Hiçbir TWILIO_PHONE_* env değişkeni tanımlı değil');
 }
 
