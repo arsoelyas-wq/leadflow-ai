@@ -105,11 +105,27 @@ export class CallSession extends EventEmitter {
     await this._speak(this.params.firstMessage, true);
   }
 
+  // Echo-cancellation: AI konuşurken ve bitiminden sonra kısa süre audio'yu durdur
+  private _echoGuard = false;
+  private _echoTimer: NodeJS.Timeout | null = null;
+
   /** Twilio'dan gelen μ-law audio chunk */
   onAudioChunk(mulawBase64: string): void {
     if (this.state === 'ended' || this.state === 'idle') return;
+    // AI konuşurken kendi sesinin echo'sunu Deepgram'a gönderme
+    if (this.isSpeaking || this._echoGuard) return;
     const buf = Buffer.from(mulawBase64, 'base64');
     this.deepgram?.sendAudio(buf);
+  }
+
+  /** AI konuşmayı bitirince echo settling süresi başlat */
+  private _startEchoGuard(ms = 600): void {
+    this._echoGuard = true;
+    if (this._echoTimer) clearTimeout(this._echoTimer);
+    this._echoTimer = setTimeout(() => {
+      this._echoGuard = false;
+      this._echoTimer = null;
+    }, ms);
   }
 
   /** Twilio "stop" eventi */
@@ -168,17 +184,14 @@ export class CallSession extends EventEmitter {
         return;
       }
 
-      // ── GUARD: sadece 'listening' state'inde kullanıcı girdisini işle ──
-      // 'speaking'/'processing'/'greeting' sırasında gelen transcript'ları biriktir,
-      // AI konuşmayı bitirince en son metni işle
-      if (this.state === 'listening' && !this._processingLock) {
+      // ── GUARD: sadece 'listening' state'inde ve echo penceresi dışında işle ──
+      if (this.state === 'listening' && !this._processingLock && !this._echoGuard) {
         this._clearSilenceTimer();
         this.transcript.push(`Lead: ${fullText}`);
         this._processUserInput(fullText);
-      } else if (this.state === 'speaking' || this.state === 'greeting') {
-        // AI konuşurken gelen metni kaydet — barge-in yapılmadıysa sonra kullan
-        this._pendingUserText = fullText;
-        console.log(`[Session ${this.sessionId}] Transcript buffered (state=${this.state}): "${fullText}"`);
+      } else {
+        // AI konuşurken veya echo settling'de gelen transcript'ı at (echo olabilir)
+        console.log(`[Session ${this.sessionId}] Transcript dropped (state=${this.state} echoGuard=${this._echoGuard}): "${fullText}"`);
       }
     }
 
@@ -267,9 +280,10 @@ export class CallSession extends EventEmitter {
       // Tüm cümleler bitti → dinlemeye dön
       if ((this.state as string) !== 'ended' && this.state !== 'ending') {
         this.isSpeaking = false;
+        this._startEchoGuard(600);   // 600ms echo settling
+        this._pendingUserText = '';  // echo sırasında biriken metni sil
         this._setState('listening');
         this._resetSilenceTimer();
-        this._onTtsDone();   // pending kullanıcı metni varsa işle
       }
       return;
     }
@@ -359,9 +373,10 @@ export class CallSession extends EventEmitter {
 
     this.isSpeaking = false;
     if ((this.state as string) !== 'ended') {
+      this._startEchoGuard(600);   // 600ms echo settling
+      this._pendingUserText = '';  // echo sırasında biriken metni sil
       this._setState('listening');
       this._resetSilenceTimer();
-      this._onTtsDone();   // pending kullanıcı metni varsa işle
     }
   }
 
@@ -501,6 +516,7 @@ export class CallSession extends EventEmitter {
   private _clearTimers(): void {
     this._clearSilenceTimer();
     if (this.maxDurTimer) { clearTimeout(this.maxDurTimer); this.maxDurTimer = null; }
+    if (this._echoTimer)  { clearTimeout(this._echoTimer);  this._echoTimer = null; }
   }
 
   private _onWsClose(): void {
