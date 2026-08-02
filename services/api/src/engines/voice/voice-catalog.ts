@@ -53,8 +53,8 @@ const VOICES = {
 export const VOICE_CATALOG: Record<string, LangConfig> = {
   tr: {
     cartesiaVoiceId:  VOICES.TR_MALE,
-    cartesiaModel:    'sonic-3',        // sonic-3.5 model ID doğrulandıktan sonra güncellenecek
-    deepgramModel:    'nova-3',        // Ekim 2025: Türkçe özel model — WER ve prozodi iyileşti
+    cartesiaModel:    'sonic-3',
+    deepgramModel:    'nova-2',        // nova-3 Turkish desteği doğrulanana kadar nova-2 güvenli
     deepgramLanguage: 'tr',
     deepgramEndpointingMs: 250,        // 150ms çok agresifti — Türkçe ekleme dili, kelime bitişleri uzun
     silenceConfidenceThreshold: 0.40,
