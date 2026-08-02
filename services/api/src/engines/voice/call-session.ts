@@ -114,10 +114,8 @@ export class CallSession extends EventEmitter {
   /** Twilio'dan gelen μ-law audio chunk */
   onAudioChunk(mulawBase64: string): void {
     if (this.state === 'ended' || this.state === 'idle') return;
-    // AI konuşurken barge-in echo'sunu engelle, ama biter bitmez ses akışını başlat.
-    // echoGuard süresi (600ms) transcript seviyesinde filtreleme yapar — audio değil.
-    // Bu sayede kullanıcı AI bitince hemen konuşmaya başlayabilir.
-    if (this.isSpeaking) return;
+    // Audio her zaman Deepgram'a gider — isSpeaking'e bakılmaz.
+    // Barge-in ve echo filtresi transcript seviyesinde yapılır.
     const buf = Buffer.from(mulawBase64, 'base64');
     this.deepgram?.sendAudio(buf);
   }
@@ -130,7 +128,8 @@ export class CallSession extends EventEmitter {
       this._echoGuard = false;
       this._echoTimer = null;
       console.log(`[Session ${this.sessionId}] Echo guard cleared — listening for user input`);
-      // Echo bitti — barge-in sırasında biriken metni işle
+      // Echo guard bitti: kullanıcıya tam 10s konuşma süresi ver (guard öncesinden saymaz)
+      if (this.state === 'listening') this._resetSilenceTimer();
       this._onTtsDone();
     }, ms);
   }
@@ -166,6 +165,7 @@ export class CallSession extends EventEmitter {
 
   private _pendingUserText      = '';  // barge-in sırasında biriken metin
   private _processingLock       = false; // aynı anda birden fazla Claude çağrısını önle
+  private _claudeAbort:         AbortController | null = null; // aktif LLM isteği abort controller
   private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
 
   private _onTranscript(text: string, isFinal: boolean, confidence: number, isInterim: boolean): void {
@@ -199,7 +199,7 @@ export class CallSession extends EventEmitter {
       // Echo'dan "iyi günler" algılanıp arama kesilmesin
       if (!this._echoGuard && this.state === 'listening') {
         const isEndPhrase = this.langCfg.endCallPhrases.some(p => normalized.includes(p));
-        if (isEndPhrase && this.state !== 'ending') {
+        if (isEndPhrase) {
           this._endCall('end_phrase', 'unknown');
           return;
         }
@@ -268,7 +268,7 @@ export class CallSession extends EventEmitter {
       businessContext:    this.params.businessContext,
     };
 
-    const claudeAbort = new AbortController();
+    this._claudeAbort = new AbortController();
 
     // Cümle callback → TTS kuyruğuna ekle
     const onSentence = (sent: string) => {
@@ -281,7 +281,7 @@ export class CallSession extends EventEmitter {
         this.history,
         text,
         ctx,
-        claudeAbort.signal,
+        this._claudeAbort.signal,
         onSentence,
       );
 
@@ -306,6 +306,14 @@ export class CallSession extends EventEmitter {
       }
     } finally {
       this._processingLock = false;
+      this._claudeAbort = null;
+      // Barge-in sırasında yakalanan metin varsa ve şimdi işlenebiliyorsa işle
+      const pending = this._pendingUserText.trim();
+      if (pending && this.state === 'listening' && !this._echoGuard) {
+        this._pendingUserText = '';
+        this.transcript.push(`Lead: ${pending}`);
+        this._processUserInput(pending);
+      }
     }
   }
 
@@ -313,6 +321,8 @@ export class CallSession extends EventEmitter {
 
   private _enqueueTts(sentence: string): void {
     if (!sentence.trim() || this.state === 'ended') return;
+    // LLM barge-in ile iptal edildiyse yeni cümleleri kuyruğa ekleme
+    if (this._claudeAbort?.signal.aborted) return;
     this.ttsQueue.push(sentence.trim());
     if (!this.ttsProcessing) this._drainTtsQueue();
   }
@@ -373,9 +383,11 @@ export class CallSession extends EventEmitter {
   // TTS bittikten sonra çağrılır — listening'e geçince barge-in metnini işle
   private _onTtsDone(): void {
     if (this.state === 'ended' || this.state === 'ending') return;
+    // Lock varsa bekle — _processUserInput'un finally bloğu işleyecek
+    if (this._processingLock) return;
     const pending = this._pendingUserText.trim();
     this._pendingUserText = '';
-    if (pending.length > 0 && !this._processingLock) {
+    if (pending.length > 0) {
       console.log(`[Session ${this.sessionId}] Processing barge-in text: "${pending}"`);
       this.transcript.push(`Lead: ${pending}`);
       this._processUserInput(pending);
@@ -387,11 +399,15 @@ export class CallSession extends EventEmitter {
   private _interrupt(): void {
     if (!this.isSpeaking) return;
     this.ttsAbort?.abort();
+    this._claudeAbort?.abort();   // LLM'i de durdur — yeni cümle üretimini kes
     this.ttsQueue     = [];
     this.ttsProcessing = false;
     this.isSpeaking   = false;
     this._clearAudio();
     if (this.state !== 'ended') this._setState('listening');
+    this._clearSilenceTimer();    // eski timer'ı temizle
+    this._startEchoGuard(400);   // kısa echo guard → _onTtsDone → pending işle
+    this._resetSilenceTimer();    // taze 10s timer
     console.log(`[Session ${this.sessionId}] Interrupted`);
   }
 
@@ -405,7 +421,7 @@ export class CallSession extends EventEmitter {
     this._expectedPlaybackEndMs = 0;  // bu konuşma için byte takibini sıfırla
 
     if (isFirst) {
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 200));
     }
 
     const voiceId  = this.params.voiceId || getCartesiaVoiceId(this.langCfg, this.params.gender as any);
@@ -573,7 +589,7 @@ export class CallSession extends EventEmitter {
       await this._speak(this.langCfg.silencePrompt, false, false);
 
       // Son şans: 12s daha bekliyorsa aramayı kapat
-      if ((this.state as string) !== 'ended' && this.state !== 'ending') {
+      if ((this.state as string) !== 'ended' && (this.state as string) !== 'ending') {
         this.silenceTimer = setTimeout(() => {
           if (this.state !== 'listening') return;
           console.log(`[Session ${this.sessionId}] 22s total silence — ending`);

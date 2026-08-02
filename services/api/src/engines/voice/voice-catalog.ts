@@ -71,7 +71,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     ],
     endCallPhrases:  ['görüşürüz', 'hoşça kalın', 'iyi günler', 'güle güle', 'görüşmek üzere', 'kapatıyorum', 'bay bay', 'eyvallah'],
     callEndMessage:  'Teşekkürler, görüşmek üzere, iyi günler!',
-    silencePrompt:   'Merhaba, orada mısınız?',
+    silencePrompt:   'Buyurun, devam edin.',
   },
 
   en: {

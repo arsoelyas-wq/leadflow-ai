@@ -100,8 +100,6 @@ export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> 
     record:                true,
     recordingStatusCallback: `${API_BASE}/api/engine/recording/${p.params.sessionId}`,
     timeout:               30,
-    machineDetection:      'Enable',
-    machineDetectionTimeout: 5,
   };
 
   if (p.params.callerId) {
