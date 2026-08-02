@@ -144,14 +144,29 @@ export class CallSession extends EventEmitter {
   // ── Deepgram ───────────────────────────────────────────────────────────────
 
   private _startDeepgram(): void {
+    // Keyterm prompting: agent adı, şirket adı ve ürün adları STT'ye öğretilir
+    // Bu sayede özel isimler yanlış tanınmaz (örn: "LeadFlow" → "lead flow" değil)
+    const keyterms = this._buildKeyterms();
+
     this.deepgram = new DeepgramBridge({
       language:      this.langCfg.deepgramLanguage,
       model:         this.langCfg.deepgramModel,
       endpointingMs: this.langCfg.deepgramEndpointingMs,
+      keyterms,
       onTranscript:  (r) => this._onTranscript(r.text, r.isFinal, r.confidence, r.isInterim),
       onError:       (e) => console.error(`[Session ${this.sessionId}] Deepgram error:`, e.message),
       onClose:       () => console.warn(`[Session ${this.sessionId}] Deepgram closed`),
     });
+  }
+
+  private _buildKeyterms(): string[] {
+    const terms: string[] = [];
+    if (this.params.agentName)   terms.push(this.params.agentName);
+    if (this.params.companyName) terms.push(this.params.companyName);
+    if (this.params.leadName)    terms.push(this.params.leadName);
+    if (this.params.leadCompany) terms.push(this.params.leadCompany);
+    // 2-3 kelimelik şirket isimlerini de ayrı ayrı ekle
+    return terms.filter(t => t.trim().length > 2).slice(0, 10);
   }
 
   private _pendingUserText = '';   // barge-in sırasında biriken metin
@@ -211,12 +226,28 @@ export class CallSession extends EventEmitter {
 
   // ── LLM & TTS pipeline ────────────────────────────────────────────────────
 
+  // Filler: LLM düşünürken kısa doğal ses — gecikmeyi gizler
+  private _getRandomFiller(): string | null {
+    const fillers = this.langCfg.fillerResponses;
+    if (!fillers || fillers.length === 0) return null;
+    // Aynı filleri arka arkaya tekrarlamamak için basit rotasyon
+    const idx = this.turnsCount % fillers.length;
+    return fillers[idx];
+  }
+
   private async _processUserInput(text: string): Promise<void> {
     if (this.state === 'ended') return;
     if (this._processingLock) return;
     this._processingLock = true;
     this._setState('processing');
     this.turnsCount++;
+
+    // Filler: LLM yanıt üretirken (~250ms) boşluğu doldur
+    // Kullanıcı "gecikme" hissetmez — AI hemen "Evet..." diye başlar
+    const filler = this._getRandomFiller();
+    if (filler && !this.isSpeaking) {
+      this._enqueueTts(filler);
+    }
 
     const ctx: CallContext = {
       agentName:          this.params.agentName,
@@ -286,6 +317,12 @@ export class CallSession extends EventEmitter {
   private async _drainTtsQueue(): Promise<void> {
     if (this.ttsProcessing || this.state === 'ended') return;
     if (this.ttsQueue.length === 0) {
+      // LLM hâlâ yanıt üretiyorsa bekle — önce filler çalındı, asıl yanıt geliyor
+      if (this._processingLock) {
+        this.isSpeaking = false;
+        this._setState('processing');  // LLM bekleniyor, listening'e geçme
+        return;
+      }
       // Tüm cümleler bitti → dinlemeye dön
       if ((this.state as string) !== 'ended' && this.state !== 'ending') {
         this.isSpeaking = false;
@@ -507,17 +544,16 @@ export class CallSession extends EventEmitter {
 
     this.silenceTimer = setTimeout(() => {
       if (this.state !== 'listening') return;
-      console.log(`[Session ${this.sessionId}] 8s silence — prompting`);
-      // Sessizlik hatırlatması — kuyruğa ekle
+      console.log(`[Session ${this.sessionId}] 6s silence — prompting`);
       this._enqueueTts(this.langCfg.silencePrompt);
 
       // İkinci sessizlikte kapat
       this.silenceTimer = setTimeout(() => {
         if (this.state !== 'listening') return;
-        console.log(`[Session ${this.sessionId}] 18s total silence — ending`);
+        console.log(`[Session ${this.sessionId}] 14s total silence — ending`);
         this._endCall('silence_timeout', 'no_answer');
-      }, 10000);
-    }, 8000);
+      }, 8000);
+    }, 6000);
   }
 
   private _clearSilenceTimer(): void {

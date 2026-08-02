@@ -20,11 +20,12 @@ export interface LangConfig {
   silenceConfidenceThreshold: number;  // barge-in için minimum güven skoru
   minWordsToBarge: number;             // interrupt için minimum kelime sayısı
   fillerWords: Set<string>;            // barge-in tetiklemeyen dolgu kelimeleri
+  fillerResponses: string[];           // LLM düşünürken çalınan kısa ses cümleleri
 
   // Call endings
   endCallPhrases: string[];            // bu cümleler arama bitişini tetikler
   callEndMessage: string;              // AI'ın söyleyeceği veda cümlesi
-  silencePrompt: string;               // 5sn sessizlik sonrası hatırlatma
+  silencePrompt: string;               // sessizlik sonrası hatırlatma
 }
 
 // Cartesia Sonic-2 resmi ses ID'leri (production-verified)
@@ -52,16 +53,25 @@ const VOICES = {
 export const VOICE_CATALOG: Record<string, LangConfig> = {
   tr: {
     cartesiaVoiceId:  VOICES.TR_MALE,
-    cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    cartesiaModel:    'sonic-3-5',     // Mayıs 2026 Speech Arena #1 — Türkçe prozodi çok daha iyi
+    deepgramModel:    'nova-3',        // Ekim 2025: Türkçe özel model — WER ve prozodi iyileşti
     deepgramLanguage: 'tr',
-    deepgramEndpointingMs: 150,        // Türkçe daha hızlı biter
+    deepgramEndpointingMs: 250,        // 150ms çok agresifti — Türkçe ekleme dili, kelime bitişleri uzun
     silenceConfidenceThreshold: 0.40,
     minWordsToBarge: 1,
-    fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee']),
-    endCallPhrases:  ['görüşürüz', 'hoşça kalın', 'iyi günler', 'güle güle', 'görüşmek üzere', 'kapatıyorum'],
-    callEndMessage:  'Teşekkürler, görüşmek üzere!',
-    silencePrompt:   'Merhaba, beni duyabiliyor musunuz?',
+    // Barge-in'i tetiklemeyen dolgu kelimeleri (kısa onaylar ve sesler)
+    fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee', 'evet', 'tamam', 'he', 'ya', 'vay', 'ooo', 'yani', 'şey', 'tabi']),
+    // LLM düşünürken çalınan doğal Türkçe geçiş cümleleri (~0.5-1 saniye)
+    fillerResponses: [
+      'Evet...',
+      'Tabii...',
+      'Anlıyorum...',
+      'Evet, şöyle...',
+      'Hmm...',
+    ],
+    endCallPhrases:  ['görüşürüz', 'hoşça kalın', 'iyi günler', 'güle güle', 'görüşmek üzere', 'kapatıyorum', 'bay bay', 'eyvallah'],
+    callEndMessage:  'Teşekkürler, görüşmek üzere, iyi günler!',
+    silencePrompt:   'Merhaba, orada mısınız?',
   },
 
   en: {
@@ -74,6 +84,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.70,
     minWordsToBarge: 2,
     fillerWords: new Set(['um', 'uh', 'hmm', 'ah', 'oh', 'yeah', 'ok', 'right', 'sure']),
+    fillerResponses: ['Sure...', 'Let me see...', 'Right...', 'Of course...', 'Absolutely...'],
     endCallPhrases:  ['goodbye', 'bye', 'have a good day', 'talk later', 'take care', 'thanks bye'],
     callEndMessage:  'Thank you, have a great day!',
     silencePrompt:   'Hello, are you still there?',
@@ -84,10 +95,11 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'de',
-    deepgramEndpointingMs: 220,        // Almanca daha uzun cümleler
+    deepgramEndpointingMs: 220,
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['äh', 'öhm', 'hmm', 'ja', 'ok', 'genau', 'ach so']),
+    fillerResponses: ['Natürlich...', 'Verstehe...', 'Einen Moment...', 'Gut...'],
     endCallPhrases:  ['tschüss', 'auf wiedersehen', 'bis bald', 'vielen dank', 'tschau'],
     callEndMessage:  'Vielen Dank, auf Wiedersehen!',
     silencePrompt:   'Hallo, sind Sie noch da?',
@@ -102,6 +114,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['euh', 'hmm', 'ah', 'ouais', 'ok', 'voilà', 'ben']),
+    fillerResponses: ['Bien sûr...', 'Je vois...', 'Un instant...', 'Tout à fait...'],
     endCallPhrases:  ['au revoir', 'bonne journée', 'à bientôt', 'merci au revoir'],
     callEndMessage:  'Merci beaucoup, au revoir!',
     silencePrompt:   'Allô, vous êtes toujours là?',
@@ -116,6 +129,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.60,
     minWordsToBarge: 2,
     fillerWords: new Set(['آه', 'اممم', 'حسناً', 'نعم', 'ماشي']),
+    fillerResponses: ['بالطبع...', 'أفهم...', 'لحظة...', 'نعم...'],
     endCallPhrases:  ['مع السلامة', 'وداعاً', 'شكراً جزيلاً', 'إلى اللقاء'],
     callEndMessage:  'شكراً جزيلاً، مع السلامة!',
     silencePrompt:   'مرحباً، هل لا تزال موجوداً؟',
@@ -130,6 +144,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['eh', 'mm', 'hmm', 'sí', 'ok', 'bueno', 'pues']),
+    fillerResponses: ['Claro...', 'Entiendo...', 'Un momento...', 'Por supuesto...'],
     endCallPhrases:  ['adiós', 'hasta luego', 'buen día', 'muchas gracias adiós'],
     callEndMessage:  'Muchas gracias, ¡hasta luego!',
     silencePrompt:   'Hola, ¿sigue ahí?',
@@ -144,6 +159,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['eh', 'mm', 'hmm', 'sì', 'ok', 'bene', 'allora']),
+    fillerResponses: ['Certo...', 'Capisco...', 'Un attimo...', 'Naturalmente...'],
     endCallPhrases:  ['arrivederci', 'buona giornata', 'grazie arrivederci', 'ciao'],
     callEndMessage:  'Grazie mille, arrivederci!',
     silencePrompt:   'Pronto, mi sente ancora?',
@@ -158,6 +174,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['é', 'mm', 'hmm', 'sim', 'ok', 'então', 'né']),
+    fillerResponses: ['Claro...', 'Entendo...', 'Um momento...', 'Com certeza...'],
     endCallPhrases:  ['tchau', 'até logo', 'obrigado tchau', 'boa tarde'],
     callEndMessage:  'Muito obrigado, até logo!',
     silencePrompt:   'Alô, ainda está na linha?',
@@ -172,6 +189,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['э', 'мм', 'хм', 'да', 'ну', 'вот', 'значит']),
+    fillerResponses: ['Конечно...', 'Понятно...', 'Одну секунду...', 'Да, слушаю...'],
     endCallPhrases:  ['до свидания', 'пока', 'всего доброго', 'спасибо до свидания'],
     callEndMessage:  'Спасибо большое, до свидания!',
     silencePrompt:   'Алло, вы ещё на линии?',
@@ -186,6 +204,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['eh', 'mm', 'hmm', 'ja', 'ok', 'goed', 'nou']),
+    fillerResponses: ['Natuurlijk...', 'Ik begrijp het...', 'Een moment...', 'Zeker...'],
     endCallPhrases:  ['dag', 'tot ziens', 'bedankt dag', 'doei'],
     callEndMessage:  'Dank u wel, tot ziens!',
     silencePrompt:   'Hallo, bent u er nog?',
@@ -200,6 +219,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     silenceConfidenceThreshold: 0.65,
     minWordsToBarge: 2,
     fillerWords: new Set(['ee', 'mm', 'hmm', 'tak', 'ok', 'no', 'właśnie']),
+    fillerResponses: ['Oczywiście...', 'Rozumiem...', 'Chwileczkę...', 'Jasne...'],
     endCallPhrases:  ['do widzenia', 'pa', 'dziękuję do widzenia', 'na razie'],
     callEndMessage:  'Dziękuję bardzo, do widzenia!',
     silencePrompt:   'Halo, czy jest Pan/Pani jeszcze na linii?',
@@ -210,10 +230,11 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'ja',
-    deepgramEndpointingMs: 150,        // 日本語は短い発話が多い
+    deepgramEndpointingMs: 150,
     silenceConfidenceThreshold: 0.60,
     minWordsToBarge: 1,
     fillerWords: new Set(['えー', 'あの', 'その', 'まあ', 'ちょっと', 'はい']),
+    fillerResponses: ['はい...', 'なるほど...', '少々お待ちを...', 'もちろん...'],
     endCallPhrases:  ['さようなら', 'ありがとうございました', 'またご連絡します', 'お疲れ様でした'],
     callEndMessage:  'ありがとうございました、失礼いたします。',
     silencePrompt:   'もしもし、聞こえますか？',
