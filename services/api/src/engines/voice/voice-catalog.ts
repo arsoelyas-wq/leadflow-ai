@@ -54,11 +54,11 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   tr: {
     cartesiaVoiceId:  VOICES.TR_MALE,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',        // nova-3 Turkish desteği doğrulanana kadar nova-2 güvenli
+    deepgramModel:    'nova-2',
     deepgramLanguage: 'tr',
-    deepgramEndpointingMs: 250,        // 150ms çok agresifti — Türkçe ekleme dili, kelime bitişleri uzun
-    silenceConfidenceThreshold: 0.40,
-    minWordsToBarge: 1,
+    deepgramEndpointingMs: 400,        // 250ms cümle ortasını kesiyordu — Türkçe için 400ms gerekli
+    silenceConfidenceThreshold: 0.55,  // 0.40 çok hassastı, "evet" gibi tek kelimeler barge-in tetikliyordu
+    minWordsToBarge: 2,                // En az 2 kelime olmadan barge-in tetiklenmesin
     // Barge-in'i tetiklemeyen dolgu kelimeleri (kısa onaylar ve sesler)
     fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee', 'evet', 'tamam', 'he', 'ya', 'vay', 'ooo', 'yani', 'şey', 'tabi']),
     // LLM düşünürken çalınan doğal Türkçe geçiş cümleleri (~0.5-1 saniye)

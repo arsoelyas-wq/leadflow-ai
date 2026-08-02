@@ -164,8 +164,9 @@ export class CallSession extends EventEmitter {
     return terms.filter(t => t.trim().length > 2).slice(0, 10);
   }
 
-  private _pendingUserText = '';   // barge-in sırasında biriken metin
-  private _processingLock = false; // aynı anda birden fazla Claude çağrısını önle
+  private _pendingUserText   = '';  // barge-in sırasında biriken metin
+  private _echoGuardBuffer   = '';  // echo guard sırasında gelen son final transcript
+  private _processingLock    = false; // aynı anda birden fazla Claude çağrısını önle
 
   private _onTranscript(text: string, isFinal: boolean, confidence: number, isInterim: boolean): void {
     if (this.state === 'ended') return;
@@ -176,7 +177,7 @@ export class CallSession extends EventEmitter {
     // Eşik düşürüldü (0.65→0.40) — telefon kalitesinde confidence düşük olur
     if (this.isSpeaking && !isFiller) {
       const wordCount  = text.trim().split(/\s+/).length;
-      const confOk     = confidence >= 0.40;
+      const confOk     = confidence >= this.langCfg.silenceConfidenceThreshold;
       const wordsOk    = wordCount  >= this.langCfg.minWordsToBarge;
       if (confOk && wordsOk) {
         console.log(`[Session ${this.sessionId}] Barge-in: "${text}" conf=${confidence.toFixed(2)}`);
@@ -192,23 +193,33 @@ export class CallSession extends EventEmitter {
       const fullText   = text.trim();
       const normalized = fullText.toLowerCase();
 
-      console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state}`);
+      console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state} echo=${this._echoGuard}`);
 
-      // Sona erme ifadesi kontrolü
-      const isEndPhrase = this.langCfg.endCallPhrases.some(p => normalized.includes(p));
-      if (isEndPhrase && this.state !== 'ending') {
-        this._endCall('end_phrase', 'unknown');
+      // Sona erme ifadesi kontrolü — echo guard dışında (echo'dan "güle güle" algılamasın)
+      if (!this._echoGuard) {
+        const isEndPhrase = this.langCfg.endCallPhrases.some(p => normalized.includes(p));
+        if (isEndPhrase && this.state !== 'ending') {
+          this._endCall('end_phrase', 'unknown');
+          return;
+        }
+      }
+
+      // Echo guard sırasında gelen transcript: kayıp önlemek için buffer'a al.
+      // _onTtsDone() echo guard bittikten sonra işleyecek.
+      if (this._echoGuard && this.state === 'listening' && !this._processingLock) {
+        this._echoGuardBuffer = fullText;
+        console.log(`[Session ${this.sessionId}] Transcript buffered during echo guard: "${fullText}"`);
         return;
       }
 
       // ── GUARD: sadece 'listening' state'inde ve echo penceresi dışında işle ──
       if (this.state === 'listening' && !this._processingLock && !this._echoGuard) {
         this._clearSilenceTimer();
-        this._pendingUserText = '';  // double-process önle: final geldi, pending artık gerek yok
+        this._pendingUserText = '';
+        this._echoGuardBuffer = '';
         this.transcript.push(`Lead: ${fullText}`);
         this._processUserInput(fullText);
       } else {
-        // AI konuşurken veya echo settling'de gelen transcript'ı at (echo olabilir)
         console.log(`[Session ${this.sessionId}] Transcript dropped (state=${this.state} echoGuard=${this._echoGuard}): "${fullText}"`);
       }
     }
@@ -237,9 +248,10 @@ export class CallSession extends EventEmitter {
     this._setState('processing');
     this.turnsCount++;
 
-    // Filler: LLM yanıt üretirken (~250ms) boşluğu doldur
-    // Kullanıcı "gecikme" hissetmez — AI hemen "Evet..." diye başlar
-    const filler = this._getRandomFiller();
+    // Filler: LLM yanıt üretirken boşluğu doldur — sadece ≥2 kelimelik yanıtlarda doğal
+    // Tek kelime ("evet", "tamam") için filler sahte ve sinir bozucu gelir
+    const wordCount = text.trim().split(/\s+/).length;
+    const filler = wordCount >= 2 ? this._getRandomFiller() : null;
     if (filler && !this.isSpeaking) {
       this._enqueueTts(filler);
     }
@@ -359,11 +371,13 @@ export class CallSession extends EventEmitter {
     }
   }
 
-  // TTS bittikten sonra çağrılır — listening'e geçince pending metni işle
+  // TTS bittikten sonra çağrılır — listening'e geçince pending/buffered metni işle
   private _onTtsDone(): void {
     if (this.state === 'ended' || this.state === 'ending') return;
-    const pending = this._pendingUserText.trim();
-    this._pendingUserText = '';
+    // Barge-in metni öncelikli; yoksa echo guard sırasında biriken metin
+    const pending = (this._pendingUserText || this._echoGuardBuffer).trim();
+    this._pendingUserText  = '';
+    this._echoGuardBuffer  = '';
     if (pending.length > 0 && !this._processingLock) {
       console.log(`[Session ${this.sessionId}] Processing buffered text: "${pending}"`);
       this.transcript.push(`Lead: ${pending}`);
@@ -386,7 +400,8 @@ export class CallSession extends EventEmitter {
 
   // ── Speak (direkt, non-queued — greeting vb.) ─────────────────────────────
 
-  private async _speak(text: string, isFirst = false): Promise<void> {
+  // resetTimer=false: silence prompt gibi durumlarda timer'ı yeniden başlatma
+  private async _speak(text: string, isFirst = false, resetTimer = true): Promise<void> {
     if (this.state === 'ended') return;
     this._setState('speaking');
     this.isSpeaking = true;
@@ -408,10 +423,9 @@ export class CallSession extends EventEmitter {
         signal:   abort.signal,
         onChunk:  (m) => this._sendAudio(m),
         onDone:   () => {},
-        onError:  (e) => console.error(`[Session ${this.sessionId}] Greeting TTS error:`, e.message),
+        onError:  (e) => console.error(`[Session ${this.sessionId}] TTS error:`, e.message),
       });
     } finally {
-      // TTS hata verse bile isSpeaking'i serbest bırak — stuck state önle
       this.isSpeaking = false;
     }
 
@@ -419,7 +433,7 @@ export class CallSession extends EventEmitter {
       const guardMs = abort.signal.aborted ? 150 : 600;
       this._startEchoGuard(guardMs);
       this._setState('listening');
-      this._resetSilenceTimer();
+      if (resetTimer) this._resetSilenceTimer();
     }
   }
 
@@ -537,18 +551,23 @@ export class CallSession extends EventEmitter {
     this._clearSilenceTimer();
     if (this.state === 'ended' || this.state === 'speaking') return;
 
-    this.silenceTimer = setTimeout(() => {
+    // 10s sessizlik → bir kez soru sor, sonra 12s daha bekliyorsa kapat
+    // resetTimer=false → _speak() bu timer'ı yeniden başlatmaz (double-fire önleme)
+    this.silenceTimer = setTimeout(async () => {
       if (this.state !== 'listening') return;
-      console.log(`[Session ${this.sessionId}] 6s silence — prompting`);
-      this._enqueueTts(this.langCfg.silencePrompt);
+      console.log(`[Session ${this.sessionId}] 10s silence — prompting once`);
 
-      // İkinci sessizlikte kapat
-      this.silenceTimer = setTimeout(() => {
-        if (this.state !== 'listening') return;
-        console.log(`[Session ${this.sessionId}] 14s total silence — ending`);
-        this._endCall('silence_timeout', 'no_answer');
-      }, 8000);
-    }, 6000);
+      await this._speak(this.langCfg.silencePrompt, false, false);
+
+      // Son şans: 12s daha bekliyorsa aramayı kapat
+      if ((this.state as string) !== 'ended' && this.state !== 'ending') {
+        this.silenceTimer = setTimeout(() => {
+          if (this.state !== 'listening') return;
+          console.log(`[Session ${this.sessionId}] 22s total silence — ending`);
+          this._endCall('silence_timeout', 'no_answer');
+        }, 12000);
+      }
+    }, 10000);
   }
 
   private _clearSilenceTimer(): void {
