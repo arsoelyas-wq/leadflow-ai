@@ -130,8 +130,22 @@ export class CallSession extends EventEmitter {
       console.log(`[Session ${this.sessionId}] Echo guard cleared — listening for user input`);
       // Echo guard bitti: kullanıcıya tam 10s konuşma süresi ver (guard öncesinden saymaz)
       if (this.state === 'listening') this._resetSilenceTimer();
+      // İlk guard bitti → artık kullanıcı girişi işlenebilir (greeting echo'su geçti)
+      if (!this._readyForInput) this._readyForInput = true;
       this._onTtsDone();
     }, ms);
+  }
+
+  /** Transcript'in AI'nın son söylediği metnin echo'su olup olmadığını tahmin et */
+  private _isEchoLikely(transcript: string): boolean {
+    if (!this._lastAiText || Date.now() > this._lastAiTextExpiry) return false;
+    const norm = (s: string) => s.toLowerCase().replace(/[.,!?'"]/g, '').trim();
+    const tWords = norm(transcript).split(/\s+/).filter(w => w.length > 1);
+    const aWords = new Set(norm(this._lastAiText).split(/\s+/).filter(w => w.length > 1));
+    if (tWords.length === 0) return false;
+    const matchCount = tWords.filter(w => aWords.has(w)).length;
+    // 2+ kelime eşleşmesi VE transcript'in %50'si AI metninde ise echo sayılır
+    return matchCount >= 2 && matchCount / tWords.length >= 0.5;
   }
 
   /** Twilio "stop" eventi */
@@ -163,11 +177,13 @@ export class CallSession extends EventEmitter {
     return terms.filter(t => t.trim().length > 2).slice(0, 10);
   }
 
-  private _pendingUserText      = '';  // barge-in sırasında biriken metin
-  private _echoGuardBuffer     = '';   // echo guard sırasında yüksek güvenli transcript
-  private _processingLock       = false; // aynı anda birden fazla Claude çağrısını önle
-  private _claudeAbort:         AbortController | null = null; // aktif LLM isteği abort controller
+  private _pendingUserText       = '';  // barge-in sırasında biriken metin
+  private _processingLock        = false; // aynı anda birden fazla Claude çağrısını önle
+  private _claudeAbort:          AbortController | null = null; // aktif LLM isteği abort controller
   private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
+  private _lastAiText            = '';  // echo filtresi: AI'nın son söylediği metin
+  private _lastAiTextExpiry      = 0;  // _lastAiText geçerlilik süresi (unix ms)
+  private _readyForInput         = false; // greeting echo guard bitmeden input işleme
 
   private _onTranscript(text: string, isFinal: boolean, confidence: number, isInterim: boolean): void {
     if (this.state === 'ended') return;
@@ -175,15 +191,22 @@ export class CallSession extends EventEmitter {
     const isFiller = this.langCfg.fillerWords.has(text.toLowerCase().trim());
 
     // ── Barge-in: AI konuşurken kullanıcı söz kesti ──
-    // Eşik düşürüldü (0.65→0.40) — telefon kalitesinde confidence düşük olur
     if (this.isSpeaking && !isFiller) {
       const wordCount  = text.trim().split(/\s+/).length;
       const confOk     = confidence >= this.langCfg.silenceConfidenceThreshold;
       const wordsOk    = wordCount  >= this.langCfg.minWordsToBarge;
       if (confOk && wordsOk) {
-        console.log(`[Session ${this.sessionId}] Barge-in: "${text}" conf=${confidence.toFixed(2)}`);
-        this._interrupt();
-        this._pendingUserText = text;
+        if (this._isEchoLikely(text)) {
+          // AI'nın kendi sesinin echo'su — barge-in tetikleme, yoksay
+          console.log(`[Session ${this.sessionId}] Barge-in echo filtered: "${text}" conf=${confidence.toFixed(2)}`);
+        } else {
+          console.log(`[Session ${this.sessionId}] Barge-in: "${text}" conf=${confidence.toFixed(2)}`);
+          this._interrupt();
+          // Greeting bitmeden pending text kaydetme — echo riski yüksek
+          if (this._readyForInput) {
+            this._pendingUserText = text;
+          }
+        }
       }
     }
 
@@ -194,10 +217,21 @@ export class CallSession extends EventEmitter {
       const fullText   = text.trim();
       const normalized = fullText.toLowerCase();
 
-      console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state} echo=${this._echoGuard}`);
+      console.log(`[Session ${this.sessionId}] Final transcript: "${fullText}" state=${this.state} echo=${this._echoGuard} ready=${this._readyForInput}`);
+
+      // Greeting echo guard henüz bitmemişse her şeyi yoksay
+      if (!this._readyForInput) {
+        console.log(`[Session ${this.sessionId}] Transcript dropped (not ready — greeting echo): "${fullText}"`);
+        return;
+      }
+
+      // AI'nın kendi sesinin echo'su — yoksay
+      if (this._isEchoLikely(fullText)) {
+        console.log(`[Session ${this.sessionId}] Echo filtered: "${fullText}"`);
+        return;
+      }
 
       // Sona erme ifadesi — sadece echo guard dışında ve listening'de işle
-      // Echo'dan "iyi günler" algılanıp arama kesilmesin
       if (!this._echoGuard && this.state === 'listening') {
         const isEndPhrase = this.langCfg.endCallPhrases.some(p => normalized.includes(p));
         if (isEndPhrase) {
@@ -210,14 +244,8 @@ export class CallSession extends EventEmitter {
       if (this.state === 'listening' && !this._processingLock && !this._echoGuard) {
         this._clearSilenceTimer();
         this._pendingUserText = '';
-        this._echoGuardBuffer = '';  // işlenirken buffer'ı temizle
         this.transcript.push(`Lead: ${fullText}`);
         this._processUserInput(fullText);
-      } else if (this.state === 'listening' && this._echoGuard && confidence >= 0.75) {
-        // Echo guard sırasında yüksek güvenli kullanıcı sesi — buffer'la, guard bitince işle.
-        // AI echo'su genelde 0.3-0.5 güven skoru alır; 0.75+ gerçek kullanıcı seçisidir.
-        this._echoGuardBuffer = fullText;
-        console.log(`[Session ${this.sessionId}] Echo guard buffered: "${fullText}" conf=${confidence.toFixed(2)}`);
       } else {
         console.log(`[Session ${this.sessionId}] Transcript dropped (state=${this.state} echoGuard=${this._echoGuard} conf=${confidence.toFixed(2)}): "${fullText}"`);
       }
@@ -249,7 +277,6 @@ export class CallSession extends EventEmitter {
 
     // Bu AI yanıt turu için tracking'leri sıfırla
     this._expectedPlaybackEndMs = 0;
-    this._echoGuardBuffer = '';
 
     // Filler: LLM yanıt üretirken boşluğu doldur — sadece ≥2 kelimelik yanıtlarda doğal
     const wordCount = text.trim().split(/\s+/).length;
@@ -329,6 +356,9 @@ export class CallSession extends EventEmitter {
     if (!sentence.trim() || this.state === 'ended') return;
     // LLM barge-in ile iptal edildiyse yeni cümleleri kuyruğa ekleme
     if (this._claudeAbort?.signal.aborted) return;
+    // Echo filtresi için AI metnini takip et (son ~200 karakter yeterli)
+    this._lastAiText = (this._lastAiText + ' ' + sentence.trim()).trim().slice(-200);
+    this._lastAiTextExpiry = Date.now() + 3000;
     this.ttsQueue.push(sentence.trim());
     if (!this.ttsProcessing) this._drainTtsQueue();
   }
@@ -392,18 +422,7 @@ export class CallSession extends EventEmitter {
     // Lock varsa bekle — _processUserInput'un finally bloğu işleyecek
     if (this._processingLock) return;
 
-    // Öncelik 1: echo guard sırasında buffer'lanan yüksek güvenli kullanıcı sesi
-    const buffered = this._echoGuardBuffer.trim();
-    if (buffered) {
-      this._echoGuardBuffer = '';
-      this._pendingUserText = '';
-      console.log(`[Session ${this.sessionId}] Processing echo-guard buffered: "${buffered}"`);
-      this.transcript.push(`Lead: ${buffered}`);
-      this._processUserInput(buffered);
-      return;
-    }
-
-    // Öncelik 2: barge-in sırasında yakalanan metin
+    // Barge-in sırasında yakalanan metin varsa işle
     const pending = this._pendingUserText.trim();
     this._pendingUserText = '';
     if (pending.length > 0) {
@@ -438,6 +457,9 @@ export class CallSession extends EventEmitter {
     this._setState('speaking');
     this.isSpeaking = true;
     this._expectedPlaybackEndMs = 0;  // bu konuşma için byte takibini sıfırla
+    // Echo filtresi için AI metnini takip et
+    this._lastAiText = text;
+    this._lastAiTextExpiry = Date.now() + 3000;
 
     if (isFirst) {
       await new Promise(r => setTimeout(r, 200));
