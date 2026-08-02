@@ -403,12 +403,26 @@ export class CallSession extends EventEmitter {
 
   // ── Twilio audio helpers ──────────────────────────────────────────────────
 
+  private _audioChunksSent = 0;
   private _sendAudio(mulawBuffer: Buffer): void {
-    if (!this.streamSid || this.ws.readyState !== 1 /* OPEN */) return;
+    if (!this.streamSid) {
+      console.warn(`[Session ${this.sessionId}] _sendAudio: no streamSid, dropping ${mulawBuffer.length}B`);
+      return;
+    }
+    if (this.ws.readyState !== 1) {
+      console.warn(`[Session ${this.sessionId}] _sendAudio: ws.readyState=${this.ws.readyState} (not OPEN), dropping ${mulawBuffer.length}B`);
+      return;
+    }
     const payload = mulawBuffer.toString('base64');
     try {
       this.ws.send(makeTwilioMediaEvent(this.streamSid, payload));
-    } catch { /* ignore closed WS */ }
+      this._audioChunksSent++;
+      if (this._audioChunksSent === 1 || this._audioChunksSent % 50 === 0) {
+        console.log(`[Session ${this.sessionId}] Audio sent: chunk#${this._audioChunksSent} bytes=${mulawBuffer.length} streamSid=${this.streamSid.slice(0,12)}`);
+      }
+    } catch (e: any) {
+      console.error(`[Session ${this.sessionId}] _sendAudio ws.send error:`, e.message);
+    }
   }
 
   private _clearAudio(): void {

@@ -157,6 +157,70 @@ router.post('/test-call', async (req: any, res: any) => {
   }
 });
 
+// ─── Direct TTS test — model/voice/language doğrulama (telefon aramadan) ──────
+// GET /api/engine/test-tts
+router.get('/test-tts', async (_req: any, res: any) => {
+  const axios = require('axios');
+  const apiKey = process.env.CARTESIA_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'CARTESIA_API_KEY yok' });
+
+  const testText   = 'Merhaba, LeadFlow ses motoru test ediliyor.';
+  const voiceId    = '5a31e4fb-f823-4359-aa91-82c0ae9a991c';
+  const model      = 'sonic-2';
+  const language   = 'tr';
+  const sampleRate = 8000;
+
+  const body = {
+    model_id:      model,
+    voice:         { mode: 'id', id: voiceId },
+    transcript:    testText,
+    output_format: { container: 'raw', encoding: 'pcm_s16le', sample_rate: sampleRate },
+    language,
+  };
+
+  try {
+    const response = await axios.post('https://api.cartesia.ai/tts/bytes', body, {
+      headers: {
+        'X-API-Key':        apiKey,
+        'Cartesia-Version': '2024-06-10',
+        'Content-Type':     'application/json',
+        'Accept':           'audio/pcm',
+      },
+      responseType: 'arraybuffer',
+      timeout:      15000,
+    });
+
+    const bytes  = response.data.byteLength;
+    const durationMs = Math.round(bytes / 2 / sampleRate * 1000);  // PCM s16le = 2 bytes/sample
+
+    res.json({
+      ok:           true,
+      cartesiaStatus: response.status,
+      model,
+      voiceId,
+      language,
+      sampleRate,
+      bytesReceived: bytes,
+      estimatedDurationMs: durationMs,
+      firstBytesHex: Buffer.from(response.data).slice(0, 16).toString('hex'),
+    });
+  } catch (err: any) {
+    let detail = err.message;
+    if (err.response) {
+      const buf = Buffer.from(err.response.data || '');
+      detail = buf.toString('utf-8').slice(0, 500) || `HTTP ${err.response.status}`;
+    }
+    res.status(502).json({
+      ok:     false,
+      status: err.response?.status,
+      error:  detail,
+      model,
+      voiceId,
+      language,
+    });
+  }
+});
+
 // ─── Health / diagnostics ─────────────────────────────────────────────────────
 // GET /api/engine/health  (public — monitoring için)
 
