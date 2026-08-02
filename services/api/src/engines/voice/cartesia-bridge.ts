@@ -11,6 +11,10 @@ const CARTESIA_VERSION = '2024-06-10';
 const SAMPLE_RATE      = 8000;
 const CHUNK_ALIGN      = 2;   // PCM s16le = 2 bayt/örnek — hizalama tamponu
 
+const https = require('https');
+// Persistent HTTPS agent — TCP+TLS bağlantısını yeniden kullan, her istekte handshake yok
+const _httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 20, keepAliveMsecs: 30000 });
+
 export interface CartesiaSynthOptions {
   voiceId:   string;
   model:     string;
@@ -56,6 +60,7 @@ export async function synthesizeStreaming(opts: CartesiaSynthOptions): Promise<v
       responseType: 'stream',
       timeout:      12000,
       signal:       opts.signal,
+      httpsAgent:   _httpsAgent,
     });
     console.log(`[Cartesia] TTS stream opened: status=${response.status}`);
   } catch (err: any) {

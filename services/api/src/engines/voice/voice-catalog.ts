@@ -56,18 +56,16 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-2',
     deepgramLanguage: 'tr',
-    deepgramEndpointingMs: 400,        // 250ms cümle ortasını kesiyordu — Türkçe için 400ms gerekli
-    silenceConfidenceThreshold: 0.55,  // 0.40 çok hassastı, "evet" gibi tek kelimeler barge-in tetikliyordu
-    minWordsToBarge: 2,                // En az 2 kelime olmadan barge-in tetiklenmesin
-    // Barge-in'i tetiklemeyen dolgu kelimeleri (kısa onaylar ve sesler)
+    deepgramEndpointingMs: 300,        // 400ms gecikme kısaltıldı — barge-in daha hızlı
+    silenceConfidenceThreshold: 0.55,
+    minWordsToBarge: 2,
     fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee', 'evet', 'tamam', 'he', 'ya', 'vay', 'ooo', 'yani', 'şey', 'tabi']),
-    // LLM düşünürken çalınan doğal Türkçe geçiş cümleleri (~0.5-1 saniye)
     fillerResponses: [
-      'Evet...',
-      'Tabii...',
-      'Anlıyorum...',
-      'Evet, şöyle...',
-      'Hmm...',
+      'Anlıyorum.',
+      'Tabii efendim.',
+      'Evet, haklısınız.',
+      'Şöyle...',
+      'Bir saniye.',
     ],
     endCallPhrases:  ['görüşürüz', 'hoşça kalın', 'iyi günler', 'güle güle', 'görüşmek üzere', 'kapatıyorum', 'bay bay', 'eyvallah'],
     callEndMessage:  'Teşekkürler, görüşmek üzere, iyi günler!',

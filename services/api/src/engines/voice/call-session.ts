@@ -103,8 +103,34 @@ export class CallSession extends EventEmitter {
       this._endCall('timeout', 'unknown');
     }, maxMs);
 
+    // Filler'ları arka planda önceden sentezle — kullanıcı konuşunca Cartesia gecikmesi olmadan çalar
+    this._warmFillers().catch(() => {});
+
     // İlk mesajı söyle
     await this._speak(this.params.firstMessage, true);
+  }
+
+  /** Filler seslerini Cartesia'da önceden sentezle ve cache'e yaz */
+  private async _warmFillers(): Promise<void> {
+    const voiceId = this.params.voiceId || getCartesiaVoiceId(this.langCfg, this.params.gender as any);
+    for (const filler of this.langCfg.fillerResponses) {
+      if (this.state === 'ended') break;
+      const chunks: Buffer[] = [];
+      await synthesizeStreaming({
+        voiceId,
+        model:    this.langCfg.cartesiaModel,
+        language: this.params.language,
+        text:     filler,
+        signal:   new AbortController().signal,
+        onChunk:  (ch) => chunks.push(ch),
+        onDone:   () => {},
+        onError:  () => {},
+      });
+      if (chunks.length > 0) {
+        this._fillerCache.set(filler, chunks);
+        console.log(`[Session ${this.sessionId}] Filler cached: "${filler}" (${chunks.length} chunks)`);
+      }
+    }
   }
 
   // Echo-cancellation: AI konuşurken ve bitiminden sonra kısa süre audio'yu durdur
@@ -187,6 +213,7 @@ export class CallSession extends EventEmitter {
   private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
   private _lastAiText            = '';  // echo filtresi: AI'nın son söylediği metin
   private _lastAiTextExpiry      = 0;  // _lastAiText geçerlilik süresi (unix ms)
+  private _fillerCache           = new Map<string, Buffer[]>(); // önceden sentezlenmiş filler ses dosyaları
 
   private _onTranscript(text: string, isFinal: boolean, confidence: number, isInterim: boolean): void {
     if (this.state === 'ended') return;
@@ -277,7 +304,16 @@ export class CallSession extends EventEmitter {
     const wordCount = text.trim().split(/\s+/).length;
     const filler = wordCount >= 2 ? this._getRandomFiller() : null;
     if (filler && !this.isSpeaking) {
-      this._enqueueTts(filler);
+      const cached = this._fillerCache.get(filler);
+      if (cached && cached.length > 0) {
+        // Cache'ten anında çal — Cartesia gecikmesi yok
+        this._lastAiText = (this._lastAiText + ' ' + filler).trim().slice(-200);
+        this._lastAiTextExpiry = Date.now() + 3000;
+        for (const chunk of cached) this._sendAudio(chunk);
+        console.log(`[Session ${this.sessionId}] Filler instant: "${filler}"`);
+      } else {
+        this._enqueueTts(filler);
+      }
     }
 
     const ctx: CallContext = {
