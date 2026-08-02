@@ -130,6 +130,8 @@ export class CallSession extends EventEmitter {
       this._echoGuard = false;
       this._echoTimer = null;
       console.log(`[Session ${this.sessionId}] Echo guard cleared — listening for user input`);
+      // Echo bitti — barge-in sırasında biriken metni işle
+      this._onTtsDone();
     }, ms);
   }
 
@@ -192,6 +194,7 @@ export class CallSession extends EventEmitter {
       // ── GUARD: sadece 'listening' state'inde ve echo penceresi dışında işle ──
       if (this.state === 'listening' && !this._processingLock && !this._echoGuard) {
         this._clearSilenceTimer();
+        this._pendingUserText = '';  // double-process önle: final geldi, pending artık gerek yok
         this.transcript.push(`Lead: ${fullText}`);
         this._processUserInput(fullText);
       } else {
@@ -286,8 +289,7 @@ export class CallSession extends EventEmitter {
       // Tüm cümleler bitti → dinlemeye dön
       if ((this.state as string) !== 'ended' && this.state !== 'ending') {
         this.isSpeaking = false;
-        this._startEchoGuard(600);   // 600ms echo settling
-        this._pendingUserText = '';  // echo sırasında biriken metni sil
+        this._startEchoGuard(600);   // 600ms echo settling — _onTtsDone() otomatik çağrılacak
         this._setState('listening');
         this._resetSilenceTimer();
       }
@@ -379,8 +381,11 @@ export class CallSession extends EventEmitter {
 
     this.isSpeaking = false;
     if ((this.state as string) !== 'ended') {
-      this._startEchoGuard(600);   // 600ms echo settling
-      this._pendingUserText = '';  // echo sırasında biriken metni sil
+      // Barge-in ile kesildi: kısa echo guard (echo yok, kullanıcı konuşuyordu)
+      // Normal bitiş: tam 600ms echo guard (AI sesi yankılanabilir)
+      const guardMs = abort.signal.aborted ? 150 : 600;
+      this._startEchoGuard(guardMs);
+      // NOT: _pendingUserText burada silinmiyor — echo guard bittikten sonra _onTtsDone() işleyecek
       this._setState('listening');
       this._resetSilenceTimer();
     }

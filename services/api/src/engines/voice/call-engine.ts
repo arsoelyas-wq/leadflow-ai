@@ -181,10 +181,12 @@ export function attachWss(server: any): void {
           pendingCalls.delete(sessionId);
 
           // Engine seçimi: Gemini Live veya varsayılan Claude+Cartesia pipeline
-          if (params.engine === 'gemini' && process.env.GEMINI_API_KEY) {
+          const hasGeminiKey = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY);
+          if (params.engine === 'gemini' && hasGeminiKey) {
             session = new GeminiLiveSession(ws, params) as any;
             console.log(`[Engine] GeminiLiveSession başlatılıyor: sessionId=${sessionId}`);
           } else {
+            if (params.engine === 'gemini') console.warn(`[Engine] Gemini key eksik, Claude'a düşüldü`);
             session = new CallSession(ws, params);
           }
           activeSessions.set(streamSid, session);
