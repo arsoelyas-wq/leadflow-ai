@@ -112,19 +112,22 @@ export class CallSession extends EventEmitter {
   /** Twilio'dan gelen μ-law audio chunk */
   onAudioChunk(mulawBase64: string): void {
     if (this.state === 'ended' || this.state === 'idle') return;
-    // AI konuşurken kendi sesinin echo'sunu Deepgram'a gönderme
-    if (this.isSpeaking || this._echoGuard) return;
+    // AI konuşurken barge-in echo'sunu engelle, ama biter bitmez ses akışını başlat.
+    // echoGuard süresi (600ms) transcript seviyesinde filtreleme yapar — audio değil.
+    // Bu sayede kullanıcı AI bitince hemen konuşmaya başlayabilir.
+    if (this.isSpeaking) return;
     const buf = Buffer.from(mulawBase64, 'base64');
     this.deepgram?.sendAudio(buf);
   }
 
-  /** AI konuşmayı bitirince echo settling süresi başlat */
+  /** AI konuşmayı bitirince echo settling süresi başlat (transcript seviyesinde) */
   private _startEchoGuard(ms = 600): void {
     this._echoGuard = true;
     if (this._echoTimer) clearTimeout(this._echoTimer);
     this._echoTimer = setTimeout(() => {
       this._echoGuard = false;
       this._echoTimer = null;
+      console.log(`[Session ${this.sessionId}] Echo guard cleared — listening for user input`);
     }, ms);
   }
 
@@ -496,17 +499,17 @@ export class CallSession extends EventEmitter {
 
     this.silenceTimer = setTimeout(() => {
       if (this.state !== 'listening') return;
-      console.log(`[Session ${this.sessionId}] 5s silence — prompting`);
+      console.log(`[Session ${this.sessionId}] 8s silence — prompting`);
       // Sessizlik hatırlatması — kuyruğa ekle
       this._enqueueTts(this.langCfg.silencePrompt);
 
       // İkinci sessizlikte kapat
       this.silenceTimer = setTimeout(() => {
         if (this.state !== 'listening') return;
-        console.log(`[Session ${this.sessionId}] 15s total silence — ending`);
+        console.log(`[Session ${this.sessionId}] 18s total silence — ending`);
         this._endCall('silence_timeout', 'no_answer');
       }, 10000);
-    }, 5000);
+    }, 8000);
   }
 
   private _clearSilenceTimer(): void {
