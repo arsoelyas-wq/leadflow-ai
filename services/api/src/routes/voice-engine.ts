@@ -157,6 +157,42 @@ router.post('/test-call', async (req: any, res: any) => {
   }
 });
 
+// ─── Model discovery — hangi Cartesia modelleri çalışıyor ──────────────────────
+// GET /api/engine/test-models
+router.get('/test-models', async (_req: any, res: any) => {
+  const axios = require('axios');
+  const apiKey = process.env.CARTESIA_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'CARTESIA_API_KEY yok' });
+
+  const candidates = [
+    'sonic-2024-12-12', 'sonic-2025-01-09', 'sonic-preview-2024-11-13',
+    'sonic-multilingual', 'sonic-english', 'sonic', 'sonic-2',
+  ];
+
+  const results: any[] = [];
+  for (const model of candidates) {
+    try {
+      const r = await axios.post('https://api.cartesia.ai/tts/bytes', {
+        model_id: model,
+        voice: { mode: 'id', id: '5a31e4fb-f823-4359-aa91-82c0ae9a991c' },
+        transcript: 'test',
+        output_format: { container: 'raw', encoding: 'pcm_s16le', sample_rate: 8000 },
+        language: 'tr',
+      }, {
+        headers: { 'X-API-Key': apiKey, 'Cartesia-Version': '2024-06-10', 'Content-Type': 'application/json', 'Accept': 'audio/pcm' },
+        responseType: 'arraybuffer',
+        timeout: 8000,
+      });
+      results.push({ model, ok: true, bytes: r.data.byteLength, status: r.status });
+    } catch (e: any) {
+      const msg = e.response ? Buffer.from(e.response.data || '').toString().slice(0, 120) : e.message;
+      results.push({ model, ok: false, status: e.response?.status, error: msg });
+    }
+  }
+
+  res.json({ results, working: results.filter(r => r.ok).map(r => r.model) });
+});
+
 // ─── Direct TTS test — model/voice/language doğrulama (telefon aramadan) ──────
 // GET /api/engine/test-tts
 router.get('/test-tts', async (_req: any, res: any) => {
