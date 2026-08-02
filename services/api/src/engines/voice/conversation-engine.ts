@@ -20,6 +20,7 @@ export interface CallContext {
   pain1?:          string;
   pain2?:          string;
   callMemory?:     string;
+  businessContext?: string;  // Tam iş profili: SSS, itirazlar, avantajlar
 }
 
 export interface ToolCall {
@@ -200,6 +201,7 @@ function buildSystemPrompt(ctx: CallContext): string {
     ctx.callMemory ? (lang === 'tr' ? `Önceki görüşme: ${ctx.callMemory}` : `Previous call note: ${ctx.callMemory}`) : '',
     ctx.avoidWords ? (lang === 'tr' ? `Yasaklı kelimeler: ${ctx.avoidWords}` : `Avoid words: ${ctx.avoidWords}`) : '',
     ctx.transferNumber ? (lang === 'tr' ? `Transfer no: ${ctx.transferNumber}` : `Transfer number: ${ctx.transferNumber}`) : '',
+    ctx.businessContext ? `\n── ÜRÜN/HİZMET BİLGİLERİ ──\n${ctx.businessContext}` : '',
     '',
     ...rules,
   ].filter(Boolean);

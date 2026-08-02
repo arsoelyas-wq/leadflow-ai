@@ -229,6 +229,47 @@ async function getStyleRecommendation(userId: string, sector: string): Promise<{
   } catch { return { style: 'consultant', reason: 'Varsayılan tarz', confidence: 0 }; }
 }
 
+// ─── İŞ PROFİLİ CONTEXT — SSS, itirazlar, avantajlar ────────────────────────
+// business_profiles tablosundan gelen zengin veriyi AI promptuna hazırla
+
+function buildBusinessContext(profile: any): string {
+  if (!profile) return '';
+  const { product, target, faq, objections } = profile;
+  const parts: string[] = [];
+
+  if (product?.advantages?.filter(Boolean).length) {
+    parts.push(`ÜRÜN AVANTAJLARI: ${product.advantages.filter(Boolean).join(' | ')}`);
+  }
+  if (product?.target_result) {
+    parts.push(`MÜŞTERİ KAZANCI: ${product.target_result}`);
+  }
+  if (product?.price_range) {
+    parts.push(`FİYAT: ${product.price_range}`);
+  }
+  if (target?.pain_points?.filter(Boolean).length) {
+    parts.push(`MÜŞTERİ SORUNLARI: ${target.pain_points.filter(Boolean).join(' | ')}`);
+  }
+  if (target?.decision_maker) {
+    parts.push(`KARAR VERİCİ: ${target.decision_maker}`);
+  }
+  if ((faq || []).filter((f: any) => f.q && f.a).length) {
+    const faqLines = (faq as any[]).filter((f: any) => f.q && f.a)
+      .slice(0, 5)  // İlk 5 SSS — token limiti için
+      .map((f: any) => `S: ${f.q}\nC: ${f.a}`)
+      .join('\n');
+    parts.push(`SSS:\n${faqLines}`);
+  }
+  if ((objections || []).filter((o: any) => o.a).length) {
+    const objLines = (objections as any[]).filter((o: any) => o.a)
+      .slice(0, 5)  // İlk 5 itiraz
+      .map((o: any) => `"${o.q || 'İtiraz'}" derse: ${o.a}`)
+      .join('\n');
+    parts.push(`İTİRAZ KARŞILAMA:\n${objLines}`);
+  }
+
+  return parts.join('\n\n');
+}
+
 // ─── VAPI SİSTEM PROMPT — 5 KONUŞMA TARZI ────────────────────────────────────
 
 function buildVapiSystemPrompt(params: {
@@ -987,6 +1028,7 @@ router.post('/call/single', async (req: any, res: any) => {
             pain1:             researchData?.pains?.[0] || '',
             pain2:             researchData?.pains?.[1] || '',
             callMemory:        callMemory || '',
+            businessContext:   buildBusinessContext(profile),
             maxDurationSec:    finalStyle === 'direct' ? 180 : finalStyle === 'challenger' ? 300 : 420,
             callerId:          userCallerId,   // Müşterinin doğrulanan numarası (aranan kişi bunu görür)
           },
@@ -1062,14 +1104,14 @@ router.post('/call/campaign', async (req: any, res: any) => {
     res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead kuyruğa eklendi — aramalar ${delayMinutes} dakika arayla başlayacak` });
 
     // Arka planda ilk 5 aramanın işlenmesi (scheduler ayrıca /process-queue ile sürekli tetiklenir)
-    void processCampaignQueue(userId, campaign.id, { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent: 3 });
+    void processCampaignQueue(userId, campaign.id, { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent: 3, businessContext: buildBusinessContext(profile) });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // ─── KAMPANYA KUYRUK İŞLEYİCİ ─────────────────────────────────────────────────
 // Hem kampanya başlangıcında hem /process-queue endpoint ile tekrar tetiklenir
 async function processCampaignQueue(userId: string, campaignId: string, opts: any) {
-  const { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent = 3 } = opts;
+  const { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent = 3, businessContext = '' } = opts;
   const batchSize = maxConcurrent;
   let processed = 0;
 
@@ -1145,6 +1187,7 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
             pain1:             researchData?.pains?.[0] || '',
             pain2:             researchData?.pains?.[1] || '',
             callMemory:        callMemory || '',
+            businessContext:   businessContext || '',
             maxDurationSec:    conversationStyle === 'direct' ? 180 : conversationStyle === 'challenger' ? 300 : 420,
             callerId:          callerIdRow?.phone_number || undefined,
           },

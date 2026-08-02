@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 
 import { CallSession, SessionParams } from './call-session';
+import { GeminiLiveSession }          from './gemini-live-session';
 
 // ─── LeadFlow Call Engine — Twilio tabanlı AI ses arama motoru ───────────────
 // 1. makeCall()      → Twilio REST API ile outbound arama başlat
@@ -179,7 +180,13 @@ export function attachWss(server: any): void {
           params.callSid   = callSid;
           pendingCalls.delete(sessionId);
 
-          session = new CallSession(ws, params);
+          // Engine seçimi: Gemini Live veya varsayılan Claude+Cartesia pipeline
+          if (params.engine === 'gemini' && process.env.GEMINI_API_KEY) {
+            session = new GeminiLiveSession(ws, params) as any;
+            console.log(`[Engine] GeminiLiveSession başlatılıyor: sessionId=${sessionId}`);
+          } else {
+            session = new CallSession(ws, params);
+          }
           activeSessions.set(streamSid, session);
 
           _bindSessionEvents(session);

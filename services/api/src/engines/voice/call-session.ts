@@ -32,8 +32,10 @@ export interface SessionParams {
   pain1?:           string;
   pain2?:           string;
   callMemory?:      string;
+  businessContext?: string;
   maxDurationSec:   number;
   callerId?:        string;   // Müşterinin doğrulanan numarası (Twilio Verified Caller ID)
+  engine?:          'claude' | 'gemini';  // AI motoru seçimi (varsayılan: claude)
 }
 
 export interface SessionEvent {
@@ -226,6 +228,7 @@ export class CallSession extends EventEmitter {
       pain1:              this.params.pain1,
       pain2:              this.params.pain2,
       callMemory:         this.params.callMemory,
+      businessContext:    this.params.businessContext,
     };
 
     const claudeAbort = new AbortController();

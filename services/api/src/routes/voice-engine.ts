@@ -115,13 +115,17 @@ router.post('/test-call', async (req: any, res: any) => {
       return res.status(403).json({ error: 'Forbidden — geçersiz x-test-key' });
     }
 
-    const { phoneNumber, agentName = 'Ahmet', language = 'tr' } = req.body;
+    const { phoneNumber, agentName = 'Ahmet', language = 'tr', engine = 'claude' } = req.body;
     if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber zorunlu' });
+
+    if (engine === 'gemini' && !process.env.GEMINI_API_KEY) {
+      return res.status(400).json({ error: 'GEMINI_API_KEY env değişkeni tanımlı değil' });
+    }
 
     const crypto = require('crypto');
     const testId = crypto.randomUUID();
 
-    res.json({ ok: true, callId: testId, message: `${phoneNumber} aranıyor (test)...` });
+    res.json({ ok: true, callId: testId, engine, message: `${phoneNumber} aranıyor (${engine} test)...` });
 
     // Arka planda Twilio araması başlat (DB kaydı olmadan)
     (async () => {
@@ -144,6 +148,7 @@ router.post('/test-call', async (req: any, res: any) => {
             voiceId:           '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
             maxDurationSec:    180,   // 3 dakika test süresi
             gender:            'male' as const,
+            engine:            engine as 'claude' | 'gemini',
           },
         });
         console.log(`[Engine] Test call dispatched: ${phoneNumber} testId=${testId}`);
