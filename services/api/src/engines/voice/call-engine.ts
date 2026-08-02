@@ -19,15 +19,16 @@ const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.
 const activeSessions = new Map<string, CallSession>();
 // Pending: sessionId → params (session henüz WebSocket bağlantısı kurmamış)
 const pendingCalls   = new Map<string, SessionParams>();
-// Önceden sentezlenmiş greeting sesi (cold start gecikmesini önler)
-const _greetingCache = new Map<string, Buffer[]>();
+// Greeting promise'leri — WebSocket açılınca session'a geçilir; promise tamamlanmamışsa session await eder
+const _greetingPromises = new Map<string, Promise<Buffer[]>>();
 
-/** makeCall'dan hemen sonra greeting'i Cartesia'da sentezle — WebSocket açılana kadar hazır olsun */
-async function _presynthGreeting(params: SessionParams): Promise<void> {
+/** makeCall'dan hemen sonra greeting'i Cartesia'da sentezle.
+ *  30s timeout ile cold start'ı absorbe eder; Promise döner — session await eder. */
+async function _presynthGreeting(params: SessionParams): Promise<Buffer[]> {
+  const chunks: Buffer[] = [];
   try {
     const langCfg = getLangConfig(params.language);
     const voiceId = params.voiceId || getCartesiaVoiceId(langCfg, params.gender as any);
-    const chunks: Buffer[] = [];
     await synthesizeStreaming({
       voiceId,
       model:    langCfg.cartesiaModel,
@@ -36,15 +37,17 @@ async function _presynthGreeting(params: SessionParams): Promise<void> {
       signal:   new AbortController().signal,
       onChunk:  (ch) => chunks.push(ch),
       onDone:   () => {},
-      onError:  () => {},
+      onError:  (e) => console.warn(`[Engine] Greeting synth error: ${e.message}`),
     });
     if (chunks.length > 0) {
-      _greetingCache.set(params.sessionId, chunks);
       console.log(`[Engine] Greeting pre-synthesized sessionId=${params.sessionId} chunks=${chunks.length}`);
+    } else {
+      console.warn(`[Engine] Greeting pre-synth returned 0 chunks for sessionId=${params.sessionId}`);
     }
   } catch (e: any) {
     console.warn(`[Engine] Greeting pre-synth failed: ${e.message}`);
   }
+  return chunks;
 }
 
 let wssInstance: any = null;
@@ -113,9 +116,9 @@ export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> 
   // sessionId'yi pendingCalls'a ekle — WebSocket bağlandığında eşleştirilecek
   pendingCalls.set(p.params.sessionId, { ...p.params, voiceCallDbId: p.voiceCallDbId });
 
-  // Greeting'i arka planda önceden sentezle — Cartesia cold start gecikmesini önler.
-  // Twilio çalarken (kullanıcı telefona basmadan önce) synthesis tamamlanır.
-  _presynthGreeting(p.params).catch(() => {});
+  // Greeting'i arka planda sentezle. Promise'i kaydet — WebSocket açılınca session await eder.
+  // 30s timeout sayesinde cold start (18-20s) artık timeout'a takılmaz.
+  _greetingPromises.set(p.params.sessionId, _presynthGreeting(p.params));
 
   // TwiML webhook URL'i — sessionId parametresiyle geliyor
   const twimlUrl = `${API_BASE}/api/engine/twiml/${p.params.sessionId}`;
@@ -219,12 +222,13 @@ export function attachWss(server: any): void {
           } else {
             if (params.engine === 'gemini') console.warn(`[Engine] Gemini key eksik, Claude'a düşüldü`);
             session = new CallSession(ws, params);
-          // Pre-synthesized greeting varsa session'a geç — anında çalınacak
-          const preloaded = _greetingCache.get(sessionId);
-          if (preloaded && preloaded.length > 0) {
-            session.loadGreeting(preloaded);
-            _greetingCache.delete(sessionId);
-          }
+            // Greeting promise'ini session'a geç — tamamlandıysa anında oynar, devam ediyorsa session await eder.
+            // Bu sayede WebSocket açıldığında duplicate Cartesia request yapılmaz.
+            const greetingP = _greetingPromises.get(sessionId);
+            if (greetingP) {
+              session.loadGreetingPromise(greetingP);
+              _greetingPromises.delete(sessionId);
+            }
           }
           activeSessions.set(streamSid, session);
 

@@ -58,7 +58,7 @@ export async function synthesizeStreaming(opts: CartesiaSynthOptions): Promise<v
         'Accept':            'audio/pcm',
       },
       responseType: 'stream',
-      timeout:      12000,
+      timeout:      30000,
       signal:       opts.signal,
       httpsAgent:   _httpsAgent,
     });

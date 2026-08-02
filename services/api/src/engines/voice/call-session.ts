@@ -88,10 +88,16 @@ export class CallSession extends EventEmitter {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  /** Önceden sentezlenmiş greeting chunk'larını yükle (cold start önleme) */
+  /** Önceden sentezlenmiş greeting chunk'larını yükle (zaten tamamlanmış cache) */
   loadGreeting(chunks: Buffer[]): void {
     this._preloadedGreeting = chunks;
-    console.log(`[Session ${this.sessionId}] Pre-loaded greeting: ${chunks.length} chunks`);
+    console.log(`[Session ${this.sessionId}] Pre-loaded greeting (sync): ${chunks.length} chunks`);
+  }
+
+  /** Hâlâ devam eden pre-synth promise'ini yükle — onTwilioStart await eder */
+  loadGreetingPromise(p: Promise<Buffer[]>): void {
+    this._greetingPromise = p;
+    console.log(`[Session ${this.sessionId}] Greeting promise attached — will await on start`);
   }
 
   /** Twilio'dan "start" eventi geldiğinde çağrılır */
@@ -109,10 +115,24 @@ export class CallSession extends EventEmitter {
       this._endCall('timeout', 'unknown');
     }, maxMs);
 
-    // İlk mesajı söyle — önceden sentezlendiyse anında çal, yoksa Cartesia'dan al
+    // İlk mesajı söyle — üç yol:
+    // 1. Sync cache: anında çal
+    // 2. Async promise: tamamlanmasını bekle (cold start burada absorbe edilir, duplicate request yok)
+    // 3. Fallback: Cartesia'dan direkt al
     if (this._preloadedGreeting && this._preloadedGreeting.length > 0) {
       await this._playPreloaded(this._preloadedGreeting);
       this._preloadedGreeting = null;
+    } else if (this._greetingPromise) {
+      console.log(`[Session ${this.sessionId}] Awaiting greeting pre-synth (cold start absorbed here)...`);
+      const chunks = await this._greetingPromise.catch(() => [] as Buffer[]);
+      this._greetingPromise = null;
+      if (chunks.length > 0) {
+        console.log(`[Session ${this.sessionId}] Pre-synth resolved: ${chunks.length} chunks`);
+        await this._playPreloaded(chunks);
+      } else {
+        console.warn(`[Session ${this.sessionId}] Pre-synth empty — falling back to direct Cartesia`);
+        await this._speak(this.params.firstMessage, true);
+      }
     } else {
       await this._speak(this.params.firstMessage, true);
     }
@@ -218,8 +238,9 @@ export class CallSession extends EventEmitter {
     return terms.filter(t => t.trim().length > 2).slice(0, 10);
   }
 
-  private _preloadedGreeting:    Buffer[] | null = null; // makeCall'da önceden sentezlenen greeting
-  private _pendingUserText       = '';  // barge-in sırasında biriken metin
+  private _preloadedGreeting:    Buffer[] | null = null; // makeCall'da önceden sentezlenen greeting (sync cache)
+  private _greetingPromise:      Promise<Buffer[]> | null = null; // async pre-synth promise (cold start absorblanır)
+  private _pendingUserText       = '';  // barge-in veya echo-guard sırasında biriken metin
   private _processingLock        = false; // aynı anda birden fazla Claude çağrısını önle
   private _claudeAbort:          AbortController | null = null; // aktif LLM isteği abort controller
   private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
@@ -279,6 +300,11 @@ export class CallSession extends EventEmitter {
         this._pendingUserText = '';
         this.transcript.push(`Lead: ${fullText}`);
         this._processUserInput(fullText);
+      } else if (this.state === 'listening' && this._echoGuard && !this._isEchoLikely(fullText) && !this._processingLock) {
+        // AI bitti ama echo guard hâlâ aktif — kullanıcı hemen cevap verdi.
+        // Echo değil → pending'e kaydet; _startEchoGuard callback'i (_onTtsDone) işleyecek.
+        this._pendingUserText = fullText;
+        console.log(`[Session ${this.sessionId}] Post-AI response buffered during echo guard: "${fullText}"`);
       } else {
         console.log(`[Session ${this.sessionId}] Transcript dropped (state=${this.state} echoGuard=${this._echoGuard} conf=${confidence.toFixed(2)}): "${fullText}"`);
       }
@@ -506,7 +532,7 @@ export class CallSession extends EventEmitter {
     await new Promise(r => setTimeout(r, 50));  // Twilio stream hazırlanması
 
     for (const chunk of chunks) {
-      if (this.state === 'ended') break;
+      if ((this.state as string) === 'ended') break;
       this._sendAudio(chunk);
     }
 
