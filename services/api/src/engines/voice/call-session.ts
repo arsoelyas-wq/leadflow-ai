@@ -664,23 +664,22 @@ export class CallSession extends EventEmitter {
     this._clearSilenceTimer();
     if (this.state === 'ended' || this.state === 'speaking') return;
 
-    // 18s sessizlik → bir kez soru sor, sonra 12s daha bekliyorsa kapat
-    // 18s: AI yanıt üretme + TTS süresi (8-10s) + kullanıcı düşünme süresi
+    // 20s sessizlik → bir kez soru sor, sonra 12s daha bekliyorsa kapat
     this.silenceTimer = setTimeout(async () => {
       if (this.state !== 'listening') return;
-      console.log(`[Session ${this.sessionId}] 18s silence — prompting once`);
+      console.log(`[Session ${this.sessionId}] 20s silence — prompting once`);
 
       await this._speak(this.langCfg.silencePrompt, false, false);
 
-      // Son şans: 12s daha bekliyorsa aramayı kapat
+      // Son şans: 15s daha bekliyorsa aramayı kapat
       if ((this.state as string) !== 'ended' && (this.state as string) !== 'ending') {
         this.silenceTimer = setTimeout(() => {
           if (this.state !== 'listening') return;
-          console.log(`[Session ${this.sessionId}] 30s total silence — ending`);
+          console.log(`[Session ${this.sessionId}] 35s total silence — ending`);
           this._endCall('silence_timeout', 'no_answer');
-        }, 12000);
+        }, 15000);
       }
-    }, 10000);
+    }, 20000);
   }
 
   private _clearSilenceTimer(): void {
