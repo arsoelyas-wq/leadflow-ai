@@ -145,7 +145,7 @@ router.post('/test-call', async (req: any, res: any) => {
             productDesc:       'LeadFlow AI — satış otomasyonu ve yapay zeka destekli arama sistemi',
             leadName:          'Test Kullanıcı',
             leadCompany:       '',
-            firstMessage:      `Merhaba, ben ${agentName}.`,
+            firstMessage:      `Merhaba! Nasılsınız? Ben ${agentName}.`,
             voiceId:           '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
             maxDurationSec:    180,   // 3 dakika test süresi
             gender:            'male' as const,

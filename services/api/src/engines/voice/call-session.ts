@@ -103,11 +103,12 @@ export class CallSession extends EventEmitter {
       this._endCall('timeout', 'unknown');
     }, maxMs);
 
-    // Filler'ları arka planda önceden sentezle — kullanıcı konuşunca Cartesia gecikmesi olmadan çalar
-    this._warmFillers().catch(() => {});
-
-    // İlk mesajı söyle
+    // İlk mesajı söyle — önce greeting, SONRA filler warm-up
+    // (greeting Cartesia bağlantısını kurar; ardından filler'lar warm bağlantıyla hızlı sentezlenir)
     await this._speak(this.params.firstMessage, true);
+
+    // Greeting bitti → artık Cartesia bağlantısı warm → filler'ları arka planda sentezle
+    this._warmFillers().catch(() => {});
   }
 
   /** Filler seslerini Cartesia'da önceden sentezle ve cache'e yaz */
@@ -663,11 +664,11 @@ export class CallSession extends EventEmitter {
     this._clearSilenceTimer();
     if (this.state === 'ended' || this.state === 'speaking') return;
 
-    // 10s sessizlik → bir kez soru sor, sonra 12s daha bekliyorsa kapat
-    // resetTimer=false → _speak() bu timer'ı yeniden başlatmaz (double-fire önleme)
+    // 18s sessizlik → bir kez soru sor, sonra 12s daha bekliyorsa kapat
+    // 18s: AI yanıt üretme + TTS süresi (8-10s) + kullanıcı düşünme süresi
     this.silenceTimer = setTimeout(async () => {
       if (this.state !== 'listening') return;
-      console.log(`[Session ${this.sessionId}] 10s silence — prompting once`);
+      console.log(`[Session ${this.sessionId}] 18s silence — prompting once`);
 
       await this._speak(this.langCfg.silencePrompt, false, false);
 
@@ -675,7 +676,7 @@ export class CallSession extends EventEmitter {
       if ((this.state as string) !== 'ended' && (this.state as string) !== 'ending') {
         this.silenceTimer = setTimeout(() => {
           if (this.state !== 'listening') return;
-          console.log(`[Session ${this.sessionId}] 22s total silence — ending`);
+          console.log(`[Session ${this.sessionId}] 30s total silence — ending`);
           this._endCall('silence_timeout', 'no_answer');
         }, 12000);
       }
