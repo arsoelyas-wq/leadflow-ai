@@ -129,7 +129,7 @@ router.post('/test-call', async (req: any, res: any) => {
         const { makeCall: engineMakeCall } = require('../engines/voice/call-engine');
         await engineMakeCall({
           to:            phoneNumber,
-          voiceCallDbId: testId,   // DB'de bu ID yok — silent fail, call çalışır
+          voiceCallDbId: testId,
           params: {
             callSid:           '',
             sessionId:         testId,
@@ -140,8 +140,10 @@ router.post('/test-call', async (req: any, res: any) => {
             productDesc:       'LeadFlow AI — satış otomasyonu ve yapay zeka destekli arama sistemi',
             leadName:          'Test Kullanıcı',
             leadCompany:       '',
-            openingLine:       `Merhaba, ben ${agentName}. Bu LeadFlow Voice Engine test aramasıdır — konuşarak sistemi test edebilirsiniz.`,
+            firstMessage:      `Merhaba, ben ${agentName}. LeadFlow ses motoru test aramasıdır — benimle konuşabilirsiniz.`,
             voiceId:           '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
+            maxDurationSec:    180,   // 3 dakika test süresi
+            gender:            'male' as const,
           },
         });
         console.log(`[Engine] Test call dispatched: ${phoneNumber} testId=${testId}`);

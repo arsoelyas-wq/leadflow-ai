@@ -94,11 +94,12 @@ export class CallSession extends EventEmitter {
     this._setState('greeting');
     this._startDeepgram();
 
-    // Max duration timer
+    // Max duration timer — NaN/undefined koruması (minimum 60s)
+    const maxMs = Math.max((this.params.maxDurationSec || 300) * 1000, 60_000);
     this.maxDurTimer = setTimeout(() => {
       console.log(`[Session ${this.sessionId}] Max duration reached`);
       this._endCall('timeout', 'unknown');
-    }, this.params.maxDurationSec * 1000);
+    }, maxMs);
 
     // İlk mesajı söyle
     await this._speak(this.params.firstMessage, true);
