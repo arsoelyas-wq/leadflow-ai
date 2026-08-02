@@ -88,6 +88,12 @@ export class CallSession extends EventEmitter {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
+  /** Önceden sentezlenmiş greeting chunk'larını yükle (cold start önleme) */
+  loadGreeting(chunks: Buffer[]): void {
+    this._preloadedGreeting = chunks;
+    console.log(`[Session ${this.sessionId}] Pre-loaded greeting: ${chunks.length} chunks`);
+  }
+
   /** Twilio'dan "start" eventi geldiğinde çağrılır */
   async onTwilioStart(streamSid: string): Promise<void> {
     this.streamSid = streamSid;
@@ -103,11 +109,15 @@ export class CallSession extends EventEmitter {
       this._endCall('timeout', 'unknown');
     }, maxMs);
 
-    // İlk mesajı söyle — önce greeting, SONRA filler warm-up
-    // (greeting Cartesia bağlantısını kurar; ardından filler'lar warm bağlantıyla hızlı sentezlenir)
-    await this._speak(this.params.firstMessage, true);
+    // İlk mesajı söyle — önceden sentezlendiyse anında çal, yoksa Cartesia'dan al
+    if (this._preloadedGreeting && this._preloadedGreeting.length > 0) {
+      await this._playPreloaded(this._preloadedGreeting);
+      this._preloadedGreeting = null;
+    } else {
+      await this._speak(this.params.firstMessage, true);
+    }
 
-    // Greeting bitti → artık Cartesia bağlantısı warm → filler'ları arka planda sentezle
+    // Greeting bitti → filler'ları arka planda sentezle (bağlantı artık warm)
     this._warmFillers().catch(() => {});
   }
 
@@ -208,6 +218,7 @@ export class CallSession extends EventEmitter {
     return terms.filter(t => t.trim().length > 2).slice(0, 10);
   }
 
+  private _preloadedGreeting:    Buffer[] | null = null; // makeCall'da önceden sentezlenen greeting
   private _pendingUserText       = '';  // barge-in sırasında biriken metin
   private _processingLock        = false; // aynı anda birden fazla Claude çağrısını önle
   private _claudeAbort:          AbortController | null = null; // aktif LLM isteği abort controller
@@ -482,6 +493,33 @@ export class CallSession extends EventEmitter {
   }
 
   // ── Speak (direkt, non-queued — greeting vb.) ─────────────────────────────
+
+  /** Pre-sentezlenmiş ses chunk'larını Twilio'ya gönder (Cartesia gecikmesi yok) */
+  private async _playPreloaded(chunks: Buffer[]): Promise<void> {
+    if (this.state === 'ended') return;
+    this._setState('speaking');
+    this.isSpeaking = true;
+    this._expectedPlaybackEndMs = 0;
+    this._lastAiText = this.params.firstMessage;
+    this._lastAiTextExpiry = Date.now() + 5000;
+
+    await new Promise(r => setTimeout(r, 50));  // Twilio stream hazırlanması
+
+    for (const chunk of chunks) {
+      if (this.state === 'ended') break;
+      this._sendAudio(chunk);
+    }
+
+    this.isSpeaking = false;
+
+    if ((this.state as string) !== 'ended') {
+      const guardMs = this._calcEchoGuardMs();
+      console.log(`[Session ${this.sessionId}] Preloaded greeting done — echo guard: ${guardMs}ms`);
+      this._startEchoGuard(guardMs);
+      this._setState('listening');
+      this._resetSilenceTimer();
+    }
+  }
 
   // resetTimer=false: silence prompt gibi durumlarda timer'ı yeniden başlatma
   private async _speak(text: string, isFirst = false, resetTimer = true): Promise<void> {
