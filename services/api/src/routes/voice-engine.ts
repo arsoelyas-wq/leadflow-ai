@@ -118,8 +118,9 @@ router.post('/test-call', async (req: any, res: any) => {
     const { phoneNumber, agentName = 'Ahmet', language = 'tr', engine = 'claude' } = req.body;
     if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber zorunlu' });
 
-    if (engine === 'gemini' && !process.env.GEMINI_API_KEY) {
-      return res.status(400).json({ error: 'GEMINI_API_KEY env değişkeni tanımlı değil' });
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+    if (engine === 'gemini' && !geminiKey) {
+      return res.status(400).json({ error: 'GEMINI_API_KEY veya GOOGLE_AI_API_KEY env değişkeni tanımlı değil' });
     }
 
     const crypto = require('crypto');

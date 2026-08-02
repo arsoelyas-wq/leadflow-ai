@@ -124,9 +124,9 @@ export class GeminiLiveSession extends EventEmitter {
     this.streamSid = streamSid;
     console.log(`[Gemini ${this.sessionId}] Twilio stream başladı, Gemini Live'a bağlanıyor...`);
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) {
-      console.error(`[Gemini ${this.sessionId}] GEMINI_API_KEY eksik!`);
+      console.error(`[Gemini ${this.sessionId}] GEMINI_API_KEY veya GOOGLE_AI_API_KEY eksik!`);
       this._endCall('config_error');
       return;
     }
