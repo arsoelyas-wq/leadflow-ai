@@ -7,7 +7,7 @@ import { pcmToMulaw } from './audio-utils';
 // AbortController ile anında iptal (barge-in)
 
 const CARTESIA_URL     = 'https://api.cartesia.ai/tts/bytes';
-const CARTESIA_VERSION = '2024-06-10';
+const CARTESIA_VERSION = '2025-04-16';   // latest stable
 const SAMPLE_RATE      = 8000;
 const CHUNK_ALIGN      = 2;   // PCM s16le = 2 bayt/örnek — hizalama tamponu
 
@@ -42,6 +42,8 @@ export async function synthesizeStreaming(opts: CartesiaSynthOptions): Promise<v
     ...(opts.language ? { language: opts.language } : {}),
   };
 
+  console.log(`[Cartesia] TTS start: voice=${opts.voiceId} model=${opts.model} lang=${opts.language} text="${opts.text?.slice(0, 60)}"`);
+
   let response: any;
   try {
     response = await axios.post(CARTESIA_URL, body, {
@@ -55,17 +57,22 @@ export async function synthesizeStreaming(opts: CartesiaSynthOptions): Promise<v
       timeout:      12000,
       signal:       opts.signal,
     });
+    console.log(`[Cartesia] TTS stream opened: status=${response.status}`);
   } catch (err: any) {
     if (err.name === 'CanceledError' || err.name === 'AbortError' || opts.signal.aborted) return;
-    opts.onError(new Error(`[Cartesia] HTTP ${err.response?.status}: ${err.message}`));
+    const detail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+    console.error(`[Cartesia] TTS HTTP error ${err.response?.status}: ${detail}`);
+    opts.onError(new Error(`[Cartesia] HTTP ${err.response?.status}: ${detail}`));
     return;
   }
 
   // Partial-chunk hizalama tamponu (PCM s16le = 2 bayt/örnek)
   let leftover = Buffer.alloc(0);
 
+  let chunkCount = 0;
   response.data.on('data', (chunk: Buffer) => {
     if (opts.signal.aborted) { response.data.destroy(); return; }
+    chunkCount++;
 
     // Kalan parça ile birleştir
     const combined  = Buffer.concat([leftover, chunk]);
@@ -80,9 +87,14 @@ export async function synthesizeStreaming(opts: CartesiaSynthOptions): Promise<v
   });
 
   await new Promise<void>((resolve) => {
-    response.data.on('end',   () => { if (!opts.signal.aborted) opts.onDone(); resolve(); });
+    response.data.on('end',   () => {
+      console.log(`[Cartesia] TTS done: chunks=${chunkCount} bytes=${chunkCount * 160}`);
+      if (!opts.signal.aborted) opts.onDone();
+      resolve();
+    });
     response.data.on('error', (err: Error) => {
       if (opts.signal.aborted) { resolve(); return; }
+      console.error(`[Cartesia] Stream error: ${err.message}`);
       opts.onError(new Error(`[Cartesia] Stream error: ${err.message}`));
       resolve();
     });

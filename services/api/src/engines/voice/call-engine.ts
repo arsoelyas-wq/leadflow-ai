@@ -150,7 +150,7 @@ export function attachWss(server: any): void {
     // sessionId URL'den al: /api/engine/ws/:sessionId
     const parts    = (req.url || '').split('/');
     const sessionId = parts[parts.length - 1];
-    console.log(`[Engine] WS connected sessionId=${sessionId}`);
+    console.log(`[Engine] WS connected sessionId=${sessionId} pendingKeys=[${[...pendingCalls.keys()].join(',')}]`);
 
     let session: CallSession | null = null;
     let streamSid = '';
@@ -167,13 +167,15 @@ export function attachWss(server: any): void {
         case 'start': {
           streamSid        = msg.start.streamSid;
           const callSid    = msg.start.callSid;
+          console.log(`[Engine] WS start event: sessionId=${sessionId} callSid=${callSid} streamSid=${streamSid}`);
           // Params'ı bul — sessionId veya callSid üzerinden
           const params     = pendingCalls.get(sessionId) || _findBySid(callSid);
           if (!params) {
-            console.error(`[Engine] No params for sessionId=${sessionId} callSid=${callSid}`);
+            console.error(`[Engine] No params for sessionId=${sessionId} callSid=${callSid} — pendingCalls=[${[...pendingCalls.keys()].join(',')}]`);
             ws.close();
             return;
           }
+          console.log(`[Engine] Params found for session=${sessionId}, starting CallSession`);
           params.callSid   = callSid;
           pendingCalls.delete(sessionId);
 
