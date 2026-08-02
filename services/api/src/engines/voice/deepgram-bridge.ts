@@ -47,23 +47,15 @@ export class DeepgramBridge {
     if (!apiKey) throw new Error('[Deepgram] DEEPGRAM_API_KEY eksik');
 
     const params = new URLSearchParams({
-      encoding:         'mulaw',
-      sample_rate:      '8000',
-      channels:         '1',
-      model:            this.opts.model,
-      language:         this.opts.language,
-      interim_results:  'true',
-      punctuate:        'true',
-      endpointing:      String(this.opts.endpointingMs),
-      utterance_end_ms: '700',   // 1000ms çok yavaştı — kullanıcının son kelimesini daha hızlı yakala
+      encoding:        'mulaw',
+      sample_rate:     '8000',
+      channels:        '1',
+      model:           this.opts.model,
+      language:        this.opts.language,
+      interim_results: 'true',
+      punctuate:       'true',
+      endpointing:     String(this.opts.endpointingMs),
     });
-
-    // Keyterm prompting — sektöre özgü kelimeleri STT modeline öğret
-    if (this.opts.keyterms && this.opts.keyterms.length > 0) {
-      for (const term of this.opts.keyterms) {
-        params.append('keyterm', term);
-      }
-    }
 
     const url = `${DEEPGRAM_WS_URL}?${params.toString()}`;
 

@@ -144,15 +144,10 @@ export class CallSession extends EventEmitter {
   // ── Deepgram ───────────────────────────────────────────────────────────────
 
   private _startDeepgram(): void {
-    // Keyterm prompting: agent adı, şirket adı ve ürün adları STT'ye öğretilir
-    // Bu sayede özel isimler yanlış tanınmaz (örn: "LeadFlow" → "lead flow" değil)
-    const keyterms = this._buildKeyterms();
-
     this.deepgram = new DeepgramBridge({
       language:      this.langCfg.deepgramLanguage,
       model:         this.langCfg.deepgramModel,
       endpointingMs: this.langCfg.deepgramEndpointingMs,
-      keyterms,
       onTranscript:  (r) => this._onTranscript(r.text, r.isFinal, r.confidence, r.isInterim),
       onError:       (e) => console.error(`[Session ${this.sessionId}] Deepgram error:`, e.message),
       onClose:       () => console.warn(`[Session ${this.sessionId}] Deepgram closed`),
@@ -342,22 +337,22 @@ export class CallSession extends EventEmitter {
 
     const voiceId = this.params.voiceId || getCartesiaVoiceId(this.langCfg, this.params.gender as any);
 
-    await synthesizeStreaming({
-      voiceId,
-      model:    this.langCfg.cartesiaModel,
-      language: this.params.language,
-      text:     sentence,
-      signal:   this.ttsAbort.signal,
-      onChunk:  (mulaw) => this._sendAudio(mulaw),
-      onDone:   () => {
-        // Bir cümle bitti, sıradakine geç
-      },
-      onError: (err) => {
-        console.error(`[Session ${this.sessionId}] TTS error:`, err.message);
-      },
-    });
-
-    this.ttsProcessing = false;
+    try {
+      await synthesizeStreaming({
+        voiceId,
+        model:    this.langCfg.cartesiaModel,
+        language: this.params.language,
+        text:     sentence,
+        signal:   this.ttsAbort.signal,
+        onChunk:  (mulaw) => this._sendAudio(mulaw),
+        onDone:   () => {},
+        onError:  (err) => {
+          console.error(`[Session ${this.sessionId}] TTS error:`, err.message);
+        },
+      });
+    } finally {
+      this.ttsProcessing = false;
+    }
 
     if (!this.ttsAbort?.signal.aborted && (this.state as string) !== 'ended') {
       await this._drainTtsQueue();
@@ -397,7 +392,6 @@ export class CallSession extends EventEmitter {
     this.isSpeaking = true;
 
     if (isFirst) {
-      // İlk mesaj için kısa bir gecikme — hat bağlandıktan sonra konuş
       await new Promise(r => setTimeout(r, 800));
     }
 
@@ -405,24 +399,25 @@ export class CallSession extends EventEmitter {
     const abort    = new AbortController();
     this.ttsAbort  = abort;
 
-    await synthesizeStreaming({
-      voiceId,
-      model:    this.langCfg.cartesiaModel,
-      language: this.params.language,
-      text,
-      signal:   abort.signal,
-      onChunk:  (m) => this._sendAudio(m),
-      onDone:   () => {},
-      onError:  (e) => console.error(`[Session ${this.sessionId}] Greeting TTS error:`, e.message),
-    });
+    try {
+      await synthesizeStreaming({
+        voiceId,
+        model:    this.langCfg.cartesiaModel,
+        language: this.params.language,
+        text,
+        signal:   abort.signal,
+        onChunk:  (m) => this._sendAudio(m),
+        onDone:   () => {},
+        onError:  (e) => console.error(`[Session ${this.sessionId}] Greeting TTS error:`, e.message),
+      });
+    } finally {
+      // TTS hata verse bile isSpeaking'i serbest bırak — stuck state önle
+      this.isSpeaking = false;
+    }
 
-    this.isSpeaking = false;
     if ((this.state as string) !== 'ended') {
-      // Barge-in ile kesildi: kısa echo guard (echo yok, kullanıcı konuşuyordu)
-      // Normal bitiş: tam 600ms echo guard (AI sesi yankılanabilir)
       const guardMs = abort.signal.aborted ? 150 : 600;
       this._startEchoGuard(guardMs);
-      // NOT: _pendingUserText burada silinmiyor — echo guard bittikten sonra _onTtsDone() işleyecek
       this._setState('listening');
       this._resetSilenceTimer();
     }
