@@ -7,7 +7,7 @@ import { pcmToMulaw } from './audio-utils';
 // AbortController ile anında iptal (barge-in)
 
 const CARTESIA_URL     = 'https://api.cartesia.ai/tts/bytes';
-const CARTESIA_VERSION = '2025-04-16';   // latest stable
+const CARTESIA_VERSION = '2024-06-10';
 const SAMPLE_RATE      = 8000;
 const CHUNK_ALIGN      = 2;   // PCM s16le = 2 bayt/örnek — hizalama tamponu
 

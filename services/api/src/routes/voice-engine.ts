@@ -160,7 +160,7 @@ router.post('/test-call', async (req: any, res: any) => {
 // ─── Health / diagnostics ─────────────────────────────────────────────────────
 // GET /api/engine/health  (public — monitoring için)
 
-router.get('/health', (_req: any, res: any) => {
+router.get('/health', async (_req: any, res: any) => {
   const env = {
     TWILIO_ACCOUNT_SID:  process.env.TWILIO_ACCOUNT_SID ? '✅' : '❌ EKSİK',
     TWILIO_AUTH_TOKEN:   process.env.TWILIO_AUTH_TOKEN  ? '✅' : '❌ EKSİK',
@@ -172,10 +172,27 @@ router.get('/health', (_req: any, res: any) => {
     SUPABASE_URL:        process.env.SUPABASE_URL        ? '✅' : '❌ EKSİK',
   };
   const allOk = Object.values(env).every(v => !v.toString().startsWith('❌'));
+
+  // Cartesia API gerçek doğrulama (key geçerliliği)
+  let cartesiaLive = '—';
+  if (process.env.CARTESIA_API_KEY) {
+    try {
+      const axios = require('axios');
+      const r = await axios.get('https://api.cartesia.ai/voices', {
+        headers: { 'X-API-Key': process.env.CARTESIA_API_KEY, 'Cartesia-Version': '2024-06-10' },
+        timeout: 5000,
+      });
+      cartesiaLive = r.status === 200 ? '✅ API geçerli' : `⚠️ HTTP ${r.status}`;
+    } catch (e: any) {
+      cartesiaLive = `❌ ${e.response?.status || e.message}`;
+    }
+  }
+
   res.json({
     ok:              allOk,
     engine:          'LeadFlow Voice Engine v1.0',
     activeSessions:  getActiveSessionCount(),
+    cartesiaApiTest: cartesiaLive,
     env,
   });
 });
