@@ -85,25 +85,42 @@ router.post('/add', async (req: any, res: any) => {
     _otpStore.set(_otpKey(req.userId, normalized), { code: otp, expiresAt: Date.now() + 600_000 });
     console.log(`[CallerID] OTP generated for ${normalized}: ${otp}`);
 
-    // OTP'yi SMS ile gönder
-    const client = getTwilioClient();
-    let smsError = '';
+    // Kullanıcının e-posta adresini al
+    const { data: userProfile } = await supabase.auth.admin.getUserById(req.userId);
+    const userEmail = userProfile?.user?.email || '';
+    if (!userEmail) {
+      return res.status(400).json({ error: 'Kullanıcı e-posta adresi bulunamadı.' });
+    }
+
+    // OTP'yi e-posta ile gönder (Resend)
+    const resendKey = process.env.RESEND_API_KEY;
+    const resendFrom = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    if (!resendKey) {
+      return res.status(500).json({ error: 'E-posta servisi yapılandırılmamış (RESEND_API_KEY eksik)' });
+    }
+
+    const { Resend } = require('resend');
+    const resend = new Resend(resendKey);
     try {
-      const fromSms = process.env.TWILIO_PHONE_NUMBER
-        || process.env.TWILIO_PHONE_TR
-        || process.env.TWILIO_PHONE_EN
-        || '';
-      if (!fromSms) throw new Error('SMS gönderim numarası bulunamadı (TWILIO_PHONE_NUMBER eksik)');
-      console.log(`[CallerID] SMS from=${fromSms}`);
-      await client.messages.create({
-        body: `LeadFlow dogrulama kodunuz: ${otp}. 10 dakika gecerlidir.`,
-        from: fromSms,
-        to:   normalized,
+      await resend.emails.send({
+        from:    resendFrom,
+        to:      userEmail,
+        subject: 'LeadFlow – Telefon Doğrulama Kodu',
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+            <h2 style="color:#1a1a1a;margin-bottom:8px">Telefon Doğrulama</h2>
+            <p style="color:#555;margin-bottom:24px">${normalized} numarasını doğrulamak için aşağıdaki kodu kullanın:</p>
+            <div style="background:#f5f5f5;border-radius:8px;padding:24px;text-align:center;margin-bottom:24px">
+              <span style="font-size:36px;font-weight:700;letter-spacing:8px;color:#111">${otp}</span>
+            </div>
+            <p style="color:#999;font-size:13px">Bu kod 10 dakika geçerlidir. Eğer bu işlemi siz yapmadıysanız bu e-postayı görmezden gelin.</p>
+          </div>
+        `,
       });
-      console.log(`[CallerID] SMS sent to ${normalized}`);
-    } catch (sErr: any) {
-      smsError = sErr.message;
-      console.warn('[CallerID] SMS error:', sErr.message);
+      console.log(`[CallerID] OTP email sent to ${userEmail} for number ${normalized}`);
+    } catch (emailErr: any) {
+      console.error('[CallerID] Email error:', emailErr.message);
+      return res.status(500).json({ error: `Doğrulama e-postası gönderilemedi: ${emailErr.message}` });
     }
 
     // DB'ye kaydet (veya güncelle)
@@ -123,15 +140,12 @@ router.post('/add', async (req: any, res: any) => {
       }]);
     }
 
-    if (smsError) {
-      return res.status(500).json({ error: `SMS gönderilemedi: ${smsError}` });
-    }
-
     res.json({
-      ok:             true,
-      phoneNumber:    normalized,
+      ok:              true,
+      phoneNumber:     normalized,
       smsVerification: true,
-      message:        `${normalized} numarasına 6 haneli doğrulama kodu SMS ile gönderildi.`,
+      sentTo:          userEmail,
+      message:         `Doğrulama kodu ${userEmail} adresine e-posta ile gönderildi.`,
     });
   } catch (e: any) {
     console.error('[CallerID] /add error:', e.message);

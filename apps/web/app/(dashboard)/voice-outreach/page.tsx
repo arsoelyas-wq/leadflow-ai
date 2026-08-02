@@ -879,6 +879,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
   const [addName, setAddName]         = useState('')
   const [step, setStep]               = useState<'list' | 'add' | 'verify'>('list')
   const [pendingPhone, setPendingPhone] = useState('')
+  const [sentToEmail, setSentToEmail]  = useState('')
   const [verifyCode, setVerifyCode]   = useState('')
   const [busy, setBusy]               = useState(false)
 
@@ -906,8 +907,9 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
       const d = await r.json()
       if (d.ok) {
         setPendingPhone(d.phoneNumber)
+        setSentToEmail(d.sentTo || '')
         setStep('verify')
-        onMsg('success', 'SMS ile 6 haneli doğrulama kodu gönderildi.')
+        onMsg('success', `Doğrulama kodu ${d.sentTo || 'e-posta adresinize'} gönderildi.`)
       } else onMsg('error', d.error || 'Eklenemedi')
     } catch { onMsg('error', 'Bağlantı hatası') }
     setBusy(false)
@@ -966,7 +968,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
         {step === 'add' && (
           <div className="space-y-3 pt-2">
             <p className="text-xs" style={{ color: '#0369a1' }}>
-              Kendi telefon numaranızı ekleyin. SMS ile 6 haneli doğrulama kodu gönderilecek.
+              Kendi telefon numaranızı ekleyin. 6 haneli doğrulama kodu <strong>e-posta adresinize</strong> gönderilecek.
               Kodu onayladıktan sonra müşterileriniz aramaları <strong>sizin numaranızdan</strong> görür.
             </p>
             <input value={addPhone} onChange={e => setAddPhone(e.target.value)}
@@ -981,7 +983,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
               <button onClick={startAdd} disabled={busy}
                 className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
                 style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
-                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'SMS Kodu Gönder'}
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'Doğrulama Kodu Gönder'}
               </button>
               <button onClick={() => setStep('list')} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
                 İptal
@@ -993,9 +995,9 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
         {step === 'verify' && (
           <div className="space-y-3 pt-2">
             <div className="p-3 rounded-xl" style={{ background: '#dcfce7', border: '1px solid #86efac' }}>
-              <p className="text-xs font-semibold" style={{ color: '#166534' }}>💬 <strong>{pendingPhone}</strong> numarasına SMS gönderildi</p>
+              <p className="text-xs font-semibold" style={{ color: '#166534' }}>📧 Doğrulama kodu e-posta ile gönderildi</p>
               <p className="text-xs mt-1" style={{ color: '#15803d' }}>
-                Telefonunuza gelen 6 haneli kodu aşağıya girin.
+                {sentToEmail ? <><strong>{sentToEmail}</strong> adresine gelen 6 haneli kodu aşağıya girin.</> : '6 haneli kodu e-postanızdan alıp aşağıya girin.'}
               </p>
             </div>
             <input
