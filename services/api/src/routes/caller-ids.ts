@@ -89,11 +89,12 @@ router.post('/add', async (req: any, res: any) => {
     const client = getTwilioClient();
     let smsError = '';
     try {
-      const fromSms = process.env.TWILIO_PHONE_TR || process.env.TWILIO_PHONE_EN
-        || [...Object.keys(process.env)].find(k => k.startsWith('TWILIO_PHONE_'))
-          && process.env[[...Object.keys(process.env)].find(k => k.startsWith('TWILIO_PHONE_'))!]
+      const fromSms = process.env.TWILIO_PHONE_NUMBER
+        || process.env.TWILIO_PHONE_TR
+        || process.env.TWILIO_PHONE_EN
         || '';
-      if (!fromSms) throw new Error('SMS gönderim numarası bulunamadı');
+      if (!fromSms) throw new Error('SMS gönderim numarası bulunamadı (TWILIO_PHONE_NUMBER eksik)');
+      console.log(`[CallerID] SMS from=${fromSms}`);
       await client.messages.create({
         body: `LeadFlow dogrulama kodunuz: ${otp}. 10 dakika gecerlidir.`,
         from: fromSms,
