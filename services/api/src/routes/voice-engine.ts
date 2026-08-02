@@ -303,15 +303,24 @@ router.get('/health', async (_req: any, res: any) => {
     }
   }
 
-  // Deepgram API gerçek doğrulama
+  // Deepgram API gerçek doğrulama — STT pre-recorded endpoint'i kullan
   let deepgramLive = '—';
   if (process.env.DEEPGRAM_API_KEY) {
     try {
-      const r = await axios.get('https://api.deepgram.com/v1/projects', {
-        headers: { Authorization: `Token ${process.env.DEEPGRAM_API_KEY}` },
-        timeout: 5000,
-      });
-      deepgramLive = r.status === 200 ? '✅ API geçerli' : `⚠️ HTTP ${r.status}`;
+      // 80 byte μ-law silence (valid audio, should return empty transcript)
+      const silence = Buffer.alloc(80, 0x7f);
+      const r = await axios.post(
+        'https://api.deepgram.com/v1/listen?model=nova-2&language=tr&encoding=mulaw&sample_rate=8000',
+        silence,
+        {
+          headers: {
+            Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
+            'Content-Type': 'audio/mulaw',
+          },
+          timeout: 8000,
+        }
+      );
+      deepgramLive = r.status === 200 ? '✅ API geçerli (nova-2/tr)' : `⚠️ HTTP ${r.status}`;
     } catch (e: any) {
       deepgramLive = `❌ ${e.response?.status || e.message}`;
     }
