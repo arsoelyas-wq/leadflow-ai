@@ -202,6 +202,9 @@ router.get('/preview', async (req: any, res: any) => {
       audioBuffer = await generateAzurePreview(vid, lang as string);
     } else if (provider === 'cartesia') {
       audioBuffer = await synthesizeCartesia({ text: sampleText, language: lang as string, voiceId: vid });
+      res.setHeader('Content-Type', 'audio/wav');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.send(audioBuffer);
     } else {
       return res.status(400).json({ error: 'Geçersiz provider (elevenlabs | azure | cartesia)' });
     }

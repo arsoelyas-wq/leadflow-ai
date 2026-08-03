@@ -159,6 +159,7 @@ export default function CartesiaLibraryPage() {
   const [filterGender, setFilterGender] = useState('all')
   const [playingId, setPlayingId]   = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState<string | null>(null)
+  const [previewError, setPreviewError]     = useState('')
   const [collapsed, setCollapsed]   = useState<Record<string, boolean>>({})
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -188,6 +189,7 @@ export default function CartesiaLibraryPage() {
       return
     }
     setPreviewLoading(voice.id)
+    setPreviewError('')
     try {
       const lang = voice.language || voice.supported_languages?.[0] || 'en'
       const text = PREVIEW_TEXTS[lang] || PREVIEW_TEXTS['en']
@@ -195,7 +197,10 @@ export default function CartesiaLibraryPage() {
         `${API}/api/voice-library/preview?voiceId=${voice.id}&provider=cartesia&lang=${lang}&text=${encodeURIComponent(text)}`,
         { headers: authH() }
       )
-      if (!r.ok) throw new Error('Önizleme alınamadı')
+      if (!r.ok) {
+        const errJson = await r.json().catch(() => ({ error: `HTTP ${r.status}` }))
+        throw new Error(errJson.error || 'Önizleme alınamadı')
+      }
       const blob = await r.blob()
       const url  = URL.createObjectURL(blob)
       if (audioRef.current) {
@@ -208,7 +213,7 @@ export default function CartesiaLibraryPage() {
       setPlayingId(voice.id)
       audio.onended = () => setPlayingId(null)
     } catch (e: any) {
-      alert(e.message)
+      setPreviewError(e.message)
     } finally {
       setPreviewLoading(null)
     }
@@ -358,6 +363,17 @@ export default function CartesiaLibraryPage() {
       {!loading && !error && (
         <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
           {filtered.length} ses gösteriliyor {filtered.length !== voices.length ? `(toplam ${voices.length} içinden)` : ''}
+        </div>
+      )}
+
+      {previewError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#dc2626',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span>Önizleme hatası: {previewError}</span>
+          <button onClick={() => setPreviewError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontWeight: 700 }}>✕</button>
         </div>
       )}
 

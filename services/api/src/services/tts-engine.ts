@@ -207,42 +207,45 @@ export async function synthesizeCartesia(opts: TTSOptions): Promise<Buffer> {
   const lang    = opts.language || 'tr';
   const voiceId = opts.voiceId || CARTESIA_VOICES[lang] || CARTESIA_VOICES.default;
 
-  // Dile göre model seç — Türkçe sonic-3, diğerleri sonic-2
-  const model = (lang === 'tr' || lang === 'de' || lang === 'fr' || lang === 'ar') ? 'sonic-3' : 'sonic-2';
+  // sonic-2 önce dene (en geniş ses uyumluluğu), başarısız olursa sonic-3
+  const models = ['sonic-2', 'sonic-3'];
+  let lastErr = '';
 
-  let r: any;
-  try {
-    r = await axios.post(
-      'https://api.cartesia.ai/tts/bytes',
-      {
-        model_id:   model,
-        transcript: opts.text,
-        voice:      { mode: 'id', id: voiceId },
-        language:   lang,
-        output_format: {
-          container:   'mp3',
-          bit_rate:    128000,
-          sample_rate: 44100,
+  for (const model of models) {
+    try {
+      const r = await axios.post(
+        'https://api.cartesia.ai/tts/bytes',
+        {
+          model_id:   model,
+          transcript: opts.text,
+          voice:      { mode: 'id', id: voiceId },
+          language:   lang,
+          output_format: {
+            container:   'wav',
+            encoding:    'pcm_s16le',
+            sample_rate: 44100,
+          },
         },
-      },
-      {
-        headers: {
-          'X-API-Key':        CARTESIA_KEY,
-          'Cartesia-Version': CARTESIA_VERSION,
-          'Content-Type':     'application/json',
-        },
-        responseType: 'arraybuffer',
-        timeout: 30000,
-      }
-    );
-  } catch (err: any) {
-    const detail = err.response?.data
-      ? Buffer.from(err.response.data).toString('utf8').slice(0, 200)
-      : err.message;
-    throw new Error(`Cartesia TTS hatası: ${detail}`);
+        {
+          headers: {
+            'X-API-Key':        CARTESIA_KEY,
+            'Cartesia-Version': CARTESIA_VERSION,
+            'Content-Type':     'application/json',
+          },
+          responseType: 'arraybuffer',
+          timeout: 30000,
+        }
+      );
+      return Buffer.from(r.data);
+    } catch (err: any) {
+      lastErr = err.response?.data
+        ? Buffer.from(err.response.data).toString('utf8').slice(0, 300)
+        : err.message;
+      console.warn(`[TTS] Cartesia ${model} failed: ${lastErr.slice(0, 100)}`);
+    }
   }
 
-  return Buffer.from(r.data);
+  throw new Error(`Cartesia TTS hatası: ${lastErr}`);
 }
 
 // ─── GOOGLE TRANSLATE TTS (free fallback) ────────────────────────────────────
