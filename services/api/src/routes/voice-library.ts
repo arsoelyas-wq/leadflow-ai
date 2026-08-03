@@ -9,6 +9,7 @@ export {};
 
 const express = require('express');
 const router  = express.Router();
+const { createClient } = require('@supabase/supabase-js');
 
 const {
   getAzureVoiceCatalog,
@@ -18,6 +19,49 @@ const {
   synthesizeCartesia,
   synthesizeElevenLabs,
 } = require('../services/tts-engine');
+
+// ─── SUPABASE STORAGE CLIENT ─────────────────────────────────────────────────
+// voice-previews: kalıcı ses önbelleği, Railway restart'larına karşı dayanıklı
+
+let _supabase: any = null;
+function getSupabase() {
+  if (!_supabase) {
+    _supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+  }
+  return _supabase;
+}
+
+const STORAGE_BUCKET = 'video-assets';
+const STORAGE_PREFIX = 'voice-previews';
+
+function storageKey(voiceId: string, lang: string): string {
+  // voiceId UUID içerebilir (tire), lang 2-3 karakter
+  return `${STORAGE_PREFIX}/${voiceId}__${lang}.wav`;
+}
+
+async function getStorageCached(voiceId: string, lang: string): Promise<Buffer | null> {
+  try {
+    const { data, error } = await getSupabase()
+      .storage.from(STORAGE_BUCKET)
+      .download(storageKey(voiceId, lang));
+    if (error || !data) return null;
+    const ab = await data.arrayBuffer();
+    return Buffer.from(ab);
+  } catch {
+    return null;
+  }
+}
+
+async function setStorageCache(voiceId: string, lang: string, buf: Buffer): Promise<void> {
+  try {
+    await getSupabase()
+      .storage.from(STORAGE_BUCKET)
+      .upload(storageKey(voiceId, lang), buf, { contentType: 'audio/wav', upsert: true });
+    console.log(`[Preview Cache] Storage'a kaydedildi: ${voiceId}__${lang}`);
+  } catch (e: any) {
+    console.warn('[Preview Cache] Storage upload başarısız:', e.message?.slice(0, 80));
+  }
+}
 
 // ─── LANGUAGE METADATA ────────────────────────────────────────────────────────
 
@@ -184,25 +228,26 @@ router.get('/voices/:lang', async (req: any, res: any) => {
   }
 });
 
-// ─── Cartesia preview in-memory cache ─────────────────────────────────────────
-// Her ses için TTS yalnızca 1 kez üretilir; sonraki istekler önbellekten gelir.
-// Kredi harcaması: ilk istek başına 1 kez.
-const _cartesiaCache = new Map<string, { buf: Buffer; at: number }>();
-const CACHE_TTL_MS   = 12 * 60 * 60 * 1000; // 12 saat
+// ─── Cartesia preview cache (L1: bellek, L2: Supabase Storage) ──────────────
+// L1 — sunucu yeniden başlayana kadar anında erişim (0ms)
+// L2 — kalıcı depolama, Railway restart'larından etkilenmez (kredi 1 kez harcanır)
 
-function getCached(key: string): Buffer | null {
-  const entry = _cartesiaCache.get(key);
+const _memCache = new Map<string, { buf: Buffer; at: number }>();
+const MEM_TTL_MS = 12 * 60 * 60 * 1000; // 12 saat
+
+function getMemCached(voiceId: string, lang: string): Buffer | null {
+  const key   = `${voiceId}::${lang}`;
+  const entry = _memCache.get(key);
   if (!entry) return null;
-  if (Date.now() - entry.at > CACHE_TTL_MS) { _cartesiaCache.delete(key); return null; }
+  if (Date.now() - entry.at > MEM_TTL_MS) { _memCache.delete(key); return null; }
   return entry.buf;
 }
-function setCache(key: string, buf: Buffer) {
-  // Önbellek 200 sesten büyük olmasın — en eski girişi sil
-  if (_cartesiaCache.size >= 200) {
-    const oldest = [..._cartesiaCache.entries()].sort((a, b) => a[1].at - b[1].at)[0];
-    if (oldest) _cartesiaCache.delete(oldest[0]);
+function setMemCache(voiceId: string, lang: string, buf: Buffer) {
+  if (_memCache.size >= 200) {
+    const oldest = [..._memCache.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+    if (oldest) _memCache.delete(oldest[0]);
   }
-  _cartesiaCache.set(key, { buf, at: Date.now() });
+  _memCache.set(`${voiceId}::${lang}`, { buf, at: Date.now() });
 }
 
 // ─── GET /preview ─────────────────────────────────────────────────────────────
@@ -221,18 +266,34 @@ router.get('/preview', async (req: any, res: any) => {
     } else if (provider === 'azure') {
       audioBuffer = await generateAzurePreview(vid, lang as string);
     } else if (provider === 'cartesia') {
-      const cacheKey = `${vid}::${lang}`;
-      const cached   = getCached(cacheKey);
-      if (cached) {
-        console.log(`[Preview] Önbellekten: ${vid}`);
+      // L1: bellek önbelleği (0ms, restart'ta sıfırlanır)
+      const memHit = getMemCached(vid, lang as string);
+      if (memHit) {
         res.setHeader('Content-Type', 'audio/wav');
         res.setHeader('Cache-Control', 'public, max-age=43200');
-        res.setHeader('X-Cache', 'HIT');
-        return res.send(cached);
+        res.setHeader('X-Cache', 'MEM-HIT');
+        return res.send(memHit);
       }
-      console.log(`[Preview] TTS üretiliyor: ${vid}`);
+
+      // L2: Supabase Storage (kalıcı, restart'a dayanıklı)
+      const storageHit = await getStorageCached(vid, lang as string);
+      if (storageHit) {
+        console.log(`[Preview] Storage önbellekten: ${vid}`);
+        setMemCache(vid, lang as string, storageHit); // L1'e yükle
+        res.setHeader('Content-Type', 'audio/wav');
+        res.setHeader('Cache-Control', 'public, max-age=43200');
+        res.setHeader('X-Cache', 'STORAGE-HIT');
+        return res.send(storageHit);
+      }
+
+      // Önbellekte yok — Cartesia TTS üret (1 kez kredi harcanır)
+      console.log(`[Preview] TTS üretiliyor (kredi harcanıyor): ${vid}`);
       audioBuffer = await synthesizeCartesia({ text: sampleText, language: lang as string, voiceId: vid });
-      setCache(cacheKey, audioBuffer);
+
+      // Her iki katmana da kaydet (paralel, yanıtı bekletme)
+      setMemCache(vid, lang as string, audioBuffer);
+      setStorageCache(vid, lang as string, audioBuffer).catch(() => {});
+
       res.setHeader('Content-Type', 'audio/wav');
       res.setHeader('Cache-Control', 'public, max-age=43200');
       res.setHeader('X-Cache', 'MISS');
