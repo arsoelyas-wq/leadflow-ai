@@ -397,7 +397,17 @@ initMonitoring(app).catch(console.error);
 // ── LeadFlow Voice Engine — HTTP server + WebSocket upgrade ───────────────────
 // Express app'i HTTP server'a sar, Media Streams WebSocket'i aynı porta bağla
 const http = require('http');
-const { attachWss } = require('./engines/voice/call-engine');
+const { attachWss, setShutdownMode, drainActiveSessions } = require('./engines/voice/call-engine');
 const server = http.createServer(app);
 attachWss(server);   // WebSocket upgrade handler'ı ekle
 server.listen(PORT, () => console.log(`LeadFlow API:${PORT} (Voice Engine etkin)`));
+
+// Railway / Docker SIGTERM — aktif aramaları 30s drain ederek graceful kapat
+process.on('SIGTERM', async () => {
+  console.log('[Server] SIGTERM alındı — graceful shutdown başlıyor');
+  setShutdownMode(true);
+  server.close(() => console.log('[Server] HTTP server kapatıldı'));
+  await drainActiveSessions(30_000);
+  console.log('[Server] Graceful shutdown tamamlandı');
+  process.exit(0);
+});

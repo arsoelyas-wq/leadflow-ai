@@ -85,8 +85,26 @@ async function _cartesiaPing(): Promise<void> {
 // TCP bağlantısı cartesia-bridge.ts'deki _httpsAgent (keepAlive: true, 30s) tarafından
 // zaten sıcak tutulmaktadır. Cartesia cold start < 300ms olduğundan aramayı etkilemez.
 
-let wssInstance: any = null;
-let supabase: any    = null;
+let wssInstance: any    = null;
+let supabase: any       = null;
+let _shutdownMode       = false;
+
+export function setShutdownMode(val: boolean): void {
+  _shutdownMode = val;
+  console.log(`[Engine] Shutdown mode: ${val}`);
+}
+
+export async function drainActiveSessions(timeoutMs: number): Promise<void> {
+  const startedAt = Date.now();
+  while (activeSessions.size > 0 && Date.now() - startedAt < timeoutMs) {
+    console.log(`[Engine] Draining: ${activeSessions.size} sessions remaining`);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  for (const [, session] of activeSessions) {
+    try { session.forceEnd('server_shutdown'); } catch { /* ignore */ }
+  }
+  console.log('[Engine] All sessions drained');
+}
 
 function getSupabase() {
   if (!supabase) {
@@ -145,6 +163,7 @@ export interface MakeCallParams {
 }
 
 export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> {
+  if (_shutdownMode) throw new Error('[Engine] Server kapatılıyor — yeni arama kabul edilmiyor');
   const client     = getTwilioClient();
   const fromNumber = getTwilioFromNumber(p.params.language);
 

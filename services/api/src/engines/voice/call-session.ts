@@ -119,6 +119,15 @@ export class CallSession extends EventEmitter {
       this._endCall('timeout', 'unknown');
     }, maxMs);
 
+    // KVKK/yasal bildirim — 1 cümle, greeting'den önce oynat
+    if (this.langCfg.kvkkDisclosure) {
+      try {
+        await this._speak(this.langCfg.kvkkDisclosure, true, false);
+      } catch (e) {
+        console.warn(`[Session ${this.sessionId}] KVKK disclosure failed, devam ediliyor:`, (e as Error).message);
+      }
+    }
+
     // İlk mesajı söyle — üç yol:
     // 1. Sync cache: anında çal
     // 2. Async promise: tamamlanmasını bekle (cold start burada absorbe edilir, duplicate request yok)
