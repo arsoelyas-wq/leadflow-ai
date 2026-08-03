@@ -44,8 +44,10 @@ export interface SessionEvent {
 }
 
 export class CallSession extends EventEmitter {
-  readonly sessionId: string;
-  readonly callSid:   string;
+  readonly sessionId:          string;
+  readonly callSid:            string;
+  readonly language:           string;
+  readonly conversationStyle:  string;
 
   private ws:          any;        // Twilio WebSocket connection
   private streamSid:   string = '';
@@ -76,11 +78,13 @@ export class CallSession extends EventEmitter {
 
   constructor(ws: any, params: SessionParams) {
     super();
-    this.ws       = ws;
-    this.params   = params;
-    this.sessionId = params.sessionId;
-    this.callSid   = params.callSid;
-    this.langCfg   = getLangConfig(params.language);
+    this.ws                = ws;
+    this.params            = params;
+    this.sessionId         = params.sessionId;
+    this.callSid           = params.callSid;
+    this.language          = params.language;
+    this.conversationStyle = params.conversationStyle;
+    this.langCfg           = getLangConfig(params.language);
 
     ws.on('close', () => this._onWsClose());
     ws.on('error', (e: Error) => console.error(`[Session ${this.sessionId}] WS error:`, e.message));

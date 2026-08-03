@@ -343,6 +343,27 @@ function _bindSessionEvents(session: CallSession): void {
         })
         .eq('id', session.sessionId);
     } catch (e: any) { console.warn('[Engine] ended update warn:', e.message); }
+
+    // Post-call analysis — fire and forget, never blocks
+    try {
+      const { data: callRow } = await getSupabase()
+        .from('voice_calls')
+        .select('user_id, lead_id')
+        .eq('id', session.sessionId)
+        .single();
+      if (callRow?.user_id) {
+        const { runPostCallAnalysis } = require('../../services/post-call-analysis');
+        runPostCallAnalysis({
+          callId:            session.sessionId,
+          userId:            callRow.user_id,
+          leadId:            callRow.lead_id || null,
+          transcript,
+          durationSec,
+          language:          session.language,
+          conversationStyle: session.conversationStyle,
+        }).catch((e: any) => console.error('[PostCall]', e.message?.slice(0, 100)));
+      }
+    } catch { /* non-fatal */ }
   });
 }
 
