@@ -293,6 +293,9 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const [libSearch, setLibSearch] = useState('')
   const [libLang, setLibLang] = useState('tr')
   const [libPreviewLoading, setLibPreviewLoading] = useState<string | null>(null)
+  const [libLangOpen, setLibLangOpen] = useState(false)
+  const [libLangSearch, setLibLangSearch] = useState('')
+  const libLangRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -303,6 +306,16 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   useEffect(() => { loadVoices() }, [])
   useEffect(() => { if (voiceSubTab === 'library' && allLibVoices.length === 0) loadLib() }, [voiceSubTab])
   useEffect(() => () => stopRec(true), [])
+  useEffect(() => {
+    if (!libLangOpen) return
+    const handler = (e: MouseEvent) => {
+      if (libLangRef.current && !libLangRef.current.contains(e.target as Node)) {
+        setLibLangOpen(false); setLibLangSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [libLangOpen])
 
   async function loadVoices() {
     setLoading(true)
@@ -733,61 +746,111 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
         /* ── CARTESIA KÜTÜPHANESİ — Lüks Tasarım ─────────────────────────── */
         <div className="space-y-4">
 
-          {/* Dil filtreleri — tümü görünür, wrap layout */}
-          <div className="p-3 rounded-2xl" style={{ background:'#f8fafc', border:'1px solid #f1f5f9' }}>
-            <div className="flex flex-wrap gap-1.5">
-              {libLoading && availableLangs.length === 0
-                ? [1,2,3,4,5,6,7,8].map(i => (
-                    <div key={i} className="h-7 w-24 rounded-lg animate-pulse" style={{ background:'#e2e8f0' }}/>
-                  ))
-                : availableLangs.map(l => {
-                    const active = libLang === l.code
-                    return (
-                      <button key={l.code} onClick={() => setLibLang(l.code)}
-                        className="flex items-center gap-1 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap"
-                        style={active ? {
-                          padding:'5px 10px',
-                          background:'linear-gradient(135deg,#0d9488,#0e7490)',
-                          color:'#ffffff',
-                          boxShadow:'0 2px 8px rgba(13,148,136,0.25)',
-                        } : {
-                          padding:'5px 10px',
-                          background:'#ffffff',
-                          border:'1px solid #e2e8f0',
-                          color:'#475569',
-                        }}>
-                        <span style={{ fontSize:13 }}>{l.flag}</span>
-                        <span>{l.name}</span>
-                        <span style={{
-                          fontSize:10,
-                          fontWeight:700,
-                          marginLeft:2,
-                          color: active ? 'rgba(255,255,255,0.75)' : '#94a3b8',
-                        }}>{l.count}</span>
-                      </button>
-                    )
-                  })
-              }
-            </div>
-          </div>
+          {/* Filtre toolbar — dil dropdown + arama */}
+          <div className="flex items-center gap-2">
 
-          {/* Arama + Ses sayısı */}
-          <div className="flex items-center gap-3">
+            {/* Dil dropdown */}
+            <div ref={libLangRef} style={{ position:'relative', flexShrink:0 }}>
+              {(() => {
+                const sel = availableLangs.find(l => l.code === libLang)
+                return (
+                  <button
+                    onClick={() => { setLibLangOpen(o => !o); setLibLangSearch('') }}
+                    className="flex items-center gap-2 rounded-xl text-sm font-semibold transition-all"
+                    style={{
+                      padding:'10px 14px',
+                      background: libLangOpen ? '#f0fdfa' : '#ffffff',
+                      border: libLangOpen ? '1.5px solid #5eead4' : '1.5px solid #e2e8f0',
+                      color:'#0f172a',
+                      boxShadow:'0 1px 4px rgba(0,0,0,0.05)',
+                      minWidth:160,
+                    }}>
+                    {libLoading && availableLangs.length === 0
+                      ? <span className="h-4 w-28 rounded animate-pulse inline-block" style={{ background:'#e2e8f0' }}/>
+                      : <>
+                          <span style={{ fontSize:16 }}>{sel?.flag || '🌐'}</span>
+                          <span className="flex-1 text-left">{sel?.name || 'Dil Seç'}</span>
+                          {sel && <span className="text-xs font-bold px-1.5 py-0.5 rounded-md" style={{ background:'#f0fdfa', color:'#0d9488' }}>{sel.count}</span>}
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft:2, opacity:0.4, transform: libLangOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }}>
+                            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </>
+                    }
+                  </button>
+                )
+              })()}
+
+              {libLangOpen && (
+                <div style={{
+                  position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:50,
+                  width:240, background:'#ffffff', borderRadius:16,
+                  border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(0,0,0,0.12)',
+                  overflow:'hidden',
+                }}>
+                  {/* Dil arama */}
+                  <div style={{ padding:'10px 10px 6px', borderBottom:'1px solid #f1f5f9' }}>
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color:'#94a3b8' }}/>
+                      <input
+                        autoFocus
+                        value={libLangSearch}
+                        onChange={e => setLibLangSearch(e.target.value)}
+                        placeholder="Dil ara..."
+                        className="w-full pl-8 pr-3 py-2 rounded-lg text-xs focus:outline-none"
+                        style={{ background:'#f8fafc', border:'1px solid #e2e8f0', color:'#0f172a' }}/>
+                    </div>
+                  </div>
+
+                  {/* Dil listesi */}
+                  <div style={{ maxHeight:240, overflowY:'auto' }}>
+                    {availableLangs
+                      .filter(l => !libLangSearch || l.name.toLowerCase().includes(libLangSearch.toLowerCase()) || l.code.includes(libLangSearch.toLowerCase()))
+                      .map(l => {
+                        const active = libLang === l.code
+                        return (
+                          <button key={l.code}
+                            onClick={() => { setLibLang(l.code); setLibLangOpen(false); setLibLangSearch('') }}
+                            className="w-full flex items-center gap-2.5 text-left transition-colors"
+                            style={{
+                              padding:'9px 14px',
+                              background: active ? '#f0fdfa' : 'transparent',
+                              color: active ? '#0d9488' : '#374151',
+                              fontWeight: active ? 600 : 400,
+                              fontSize:13,
+                            }}
+                            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                            onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                            <span style={{ fontSize:15, flexShrink:0 }}>{l.flag}</span>
+                            <span className="flex-1">{l.name}</span>
+                            <span style={{ fontSize:11, color: active ? '#0d9488' : '#94a3b8', fontWeight:600 }}>{l.count}</span>
+                            {active && <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3 3 6-6" stroke="#0d9488" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </button>
+                        )
+                      })
+                    }
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Ses arama */}
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color:'#94a3b8' }}/>
               <input value={libSearch} onChange={e => setLibSearch(e.target.value)}
-                placeholder={`${availableLangs.find(l => l.code === libLang)?.name || libLang.toUpperCase()} seslerinde ara...`}
-                className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm focus:outline-none transition-all"
-                style={{ background:'#ffffff', border:'1.5px solid #e2e8f0', color:'#0f172a', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}
+                placeholder="Ses ara..."
+                className="w-full pl-10 pr-4 rounded-xl text-sm focus:outline-none transition-all"
+                style={{ padding:'10px 16px 10px 40px', background:'#ffffff', border:'1.5px solid #e2e8f0', color:'#0f172a', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}
                 onFocus={e => (e.target.style.borderColor='#5eead4')}
                 onBlur={e => (e.target.style.borderColor='#e2e8f0')}/>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl flex-shrink-0"
+
+            {/* Ses sayısı */}
+            <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl flex-shrink-0"
               style={{ background:'#f0fdfa', border:'1px solid #99f6e4' }}>
-              <span style={{ fontSize:13 }}>{availableLangs.find(l => l.code === libLang)?.flag || '🌐'}</span>
-              <span className="text-xs font-bold" style={{ color:'#0d9488' }}>{filteredLib.length}</span>
+              <span className="text-sm font-bold" style={{ color:'#0d9488' }}>{filteredLib.length}</span>
               <span className="text-xs" style={{ color:'#64748b' }}>ses</span>
             </div>
+
           </div>
 
           {/* Ses Listesi */}
