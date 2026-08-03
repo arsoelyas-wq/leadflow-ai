@@ -79,9 +79,9 @@ async function _cartesiaPing(): Promise<void> {
   }
 }
 
-// Sunucu başlayınca 1s sonra ilk ping; sonrası 20s'de bir sürekli tekrar et
-setTimeout(() => _cartesiaPing().catch(() => {}), 1_000);
-setInterval(() => _cartesiaPing().catch(() => {}), 20_000);
+// Keep-alive kaldırıldı — her 20s'de TTS çağrısı gereksiz yere kredi harcıyordu.
+// TCP bağlantısı cartesia-bridge.ts'deki _httpsAgent (keepAlive: true, 30s) tarafından
+// zaten sıcak tutulmaktadır. Cartesia cold start < 300ms olduğundan aramayı etkilemez.
 
 let wssInstance: any = null;
 let supabase: any    = null;

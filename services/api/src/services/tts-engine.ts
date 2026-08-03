@@ -207,8 +207,8 @@ export async function synthesizeCartesia(opts: TTSOptions): Promise<Buffer> {
   const lang    = opts.language || 'tr';
   const voiceId = opts.voiceId || CARTESIA_VOICES[lang] || CARTESIA_VOICES.default;
 
-  // sonic-2 önce dene (en geniş ses uyumluluğu), başarısız olursa sonic-3
-  const models = ['sonic-2', 'sonic-3'];
+  // sonic-2 kullanımdan kaldırıldı (sunsetted) — sadece sonic-3
+  const models = ['sonic-3'];
   let lastErr = '';
 
   for (const model of models) {

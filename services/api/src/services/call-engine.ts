@@ -70,7 +70,7 @@ async function triggerOutboundCall(params: TriggerCallParams): Promise<void> {
         voice: {
           provider: 'cartesia',
           voiceId:  CALL_VOICES[lang] || CALL_VOICES.default,
-          model:    'sonic-2',
+          model:    'sonic-3',
           language: lang === 'tr' ? 'tr' : undefined,
         },
         firstMessage:      params.openingLine,

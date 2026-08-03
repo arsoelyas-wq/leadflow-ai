@@ -628,7 +628,7 @@ async function dispatchCall(params: {
         voiceConfig = {
           provider: 'cartesia',
           voiceId: CALL_VOICES['tr'],
-          model: 'sonic-2',
+          model: 'sonic-3',
         };
       }
 
