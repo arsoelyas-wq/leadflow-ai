@@ -818,20 +818,17 @@ router.delete('/my-voices/:id', async (req: any, res: any) => {
 router.post('/set-voice', async (req: any, res: any) => {
   try {
     const { voiceId, voiceName, voiceType = 'library', gender } = req.body;
-    // voiceType: 'cloned' | 'library'
-    // gender: 'male' | 'female' | 'neutral' — EL library'den seçildiğinde gönderilir
+    // voiceType: 'cloned' | 'library' | 'cartesia'
     const row: any = {
       user_id:             req.userId,
-      elevenlabs_voice_id: voiceId,
+      elevenlabs_voice_id: voiceId,   // Cartesia ID de bu kolona saklanır
       voice_name:          voiceName,
       voice_provider:      voiceType,
     };
-    // voice_gender kolonu varsa ekle (yoksa hata oluşmaz, upsert partial update yapar)
     if (gender) row.voice_gender = gender;
 
     const { error } = await supabase.from('voice_settings').upsert([row]);
     if (error && error.message?.includes('voice_gender')) {
-      // Kolon henüz yoksa gender olmadan kaydet
       delete row.voice_gender;
       await supabase.from('voice_settings').upsert([row]);
     }
@@ -920,6 +917,8 @@ router.post('/call/single', async (req: any, res: any) => {
     const voiceType       = (settings?.voice_provider === 'cloned' ? 'cloned' : 'library') as 'cloned' | 'library';
     const clonedVoiceId   = voiceType === 'cloned' ? settings?.elevenlabs_voice_id : undefined;
     const libraryVoiceId  = voiceType === 'library' ? settings?.elevenlabs_voice_id : undefined;
+    // Cartesia kütüphanesinden seçilen ses ID'si — engine'e doğrudan geçirilir
+    const cartesiaVoiceOverride = settings?.voice_provider === 'cartesia' ? (settings?.elevenlabs_voice_id || undefined) : undefined;
 
     // Kara liste kontrolü — "bir daha aramayın" demiş mi?
     const normalizedPhone = normalizePhoneE164(lead.phone, lead.country_code);
@@ -1022,6 +1021,7 @@ router.post('/call/single', async (req: any, res: any) => {
             language:          callLang,
             conversationStyle: finalStyle,
             firstMessage:      openingLine,
+            voiceId:           cartesiaVoiceOverride,   // Kütüphaneden seçilmişse kullan
             gender:            settings?.voice_gender || undefined,
             transferNumber:    settings?.transfer_number || '',
             avoidWords:        avoidWords || '',
@@ -1181,6 +1181,7 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
             language:          callLang,
             conversationStyle,
             firstMessage:      openingLine,
+            voiceId:           settings?.voice_provider === 'cartesia' ? (settings?.elevenlabs_voice_id || undefined) : undefined,
             gender:            settings?.voice_gender || undefined,
             transferNumber:    settings?.transfer_number || '',
             avoidWords:        avoidWords || '',

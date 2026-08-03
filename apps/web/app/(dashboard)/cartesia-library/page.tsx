@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Search, Play, Square, RefreshCw, Mic, Globe2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, Play, Square, RefreshCw, Mic, Globe2, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
@@ -55,12 +55,15 @@ interface GroupedVoices {
 
 // ─── VOICE CARD ──────────────────────────────────────────────────────────────
 
-function VoiceCard({ voice, onPreview, playingId }: {
+function VoiceCard({ voice, onPreview, onSelect, playingId, selectedId }: {
   voice: Voice
   onPreview: (v: Voice) => void
+  onSelect:  (v: Voice) => void
   playingId: string | null
+  selectedId: string | null
 }) {
-  const isPlaying = playingId === voice.id
+  const isPlaying  = playingId === voice.id
+  const isSelected = selectedId === voice.id
   const lang = voice.language || (voice.supported_languages?.[0] ?? 'en')
   const flag = LANG_FLAGS[lang] || '🌐'
   const langName = LANG_NAMES[lang] || lang.toUpperCase()
@@ -69,8 +72,8 @@ function VoiceCard({ voice, onPreview, playingId }: {
 
   return (
     <div style={{
-      background: '#fff',
-      border: '1px solid #e2e8f0',
+      background: isSelected ? '#f0fdf4' : '#fff',
+      border: `1.5px solid ${isSelected ? '#22c55e' : '#e2e8f0'}`,
       borderRadius: 14,
       padding: '14px 16px',
       display: 'flex',
@@ -80,12 +83,16 @@ function VoiceCard({ voice, onPreview, playingId }: {
       cursor: 'default',
     }}
       onMouseEnter={e => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(59,130,246,0.10)'
-        ;(e.currentTarget as HTMLDivElement).style.borderColor = '#bfdbfe'
+        if (!isSelected) {
+          (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 16px rgba(59,130,246,0.10)'
+          ;(e.currentTarget as HTMLDivElement).style.borderColor = '#bfdbfe'
+        }
       }}
       onMouseLeave={e => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'
-        ;(e.currentTarget as HTMLDivElement).style.borderColor = '#e2e8f0'
+        if (!isSelected) {
+          (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'
+          ;(e.currentTarget as HTMLDivElement).style.borderColor = '#e2e8f0'
+        }
       }}
     >
       {/* Avatar */}
@@ -127,23 +134,37 @@ function VoiceCard({ voice, onPreview, playingId }: {
         {voice.id.slice(0, 8)}…
       </div>
 
-      {/* Preview button */}
-      <button
-        onClick={() => onPreview(voice)}
-        style={{
-          flexShrink: 0, width: 36, height: 36, borderRadius: '50%',
-          background: isPlaying ? '#fee2e2' : (voice as any).preview_url ? '#f0fdf4' : '#eff6ff',
-          border: `1.5px solid ${isPlaying ? '#fca5a5' : (voice as any).preview_url ? '#86efac' : '#bfdbfe'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', transition: 'all .15s',
-        }}
-        title={(voice as any).preview_url ? 'Önizle (ücretsiz)' : 'Önizle (kredi harcar)'}
-      >
-        {isPlaying
-          ? <Square size={14} color="#ef4444" />
-          : <Play size={14} color="#3b82f6" />
-        }
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+        {/* Preview button */}
+        <button
+          onClick={() => onPreview(voice)}
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: isPlaying ? '#fee2e2' : (voice as any).preview_url ? '#f0fdf4' : '#eff6ff',
+            border: `1.5px solid ${isPlaying ? '#fca5a5' : (voice as any).preview_url ? '#86efac' : '#bfdbfe'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all .15s',
+          }}
+          title={(voice as any).preview_url ? 'Önizle (ücretsiz)' : 'Önizle'}
+        >
+          {isPlaying ? <Square size={14} color="#ef4444" /> : <Play size={14} color="#3b82f6" />}
+        </button>
+
+        {/* Select button */}
+        <button
+          onClick={() => onSelect(voice)}
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: isSelected ? '#dcfce7' : '#f8fafc',
+            border: `1.5px solid ${isSelected ? '#22c55e' : '#e2e8f0'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', transition: 'all .15s',
+          }}
+          title={isSelected ? 'Seçili ses' : 'Bu sesi seç'}
+        >
+          <CheckCircle size={14} color={isSelected ? '#22c55e' : '#94a3b8'} />
+        </button>
+      </div>
     </div>
   )
 }
@@ -160,12 +181,49 @@ export default function CartesiaLibraryPage() {
   const [playingId, setPlayingId]   = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState<string | null>(null)
   const [previewError, setPreviewError]     = useState('')
+  const [selectedId, setSelectedId]         = useState<string | null>(null)
+  const [selectedName, setSelectedName]     = useState('')
+  const [saveMsg, setSaveMsg]               = useState('')
   const [collapsed, setCollapsed]   = useState<Record<string, boolean>>({})
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     load()
+    loadSelected()
   }, [])
+
+  const loadSelected = async () => {
+    try {
+      const r = await fetch(`${API}/api/voice/settings`, { headers: authH() })
+      const d = await r.json()
+      if (d?.voice_provider === 'cartesia' && d?.elevenlabs_voice_id) {
+        setSelectedId(d.elevenlabs_voice_id)
+        setSelectedName(d.voice_name || '')
+      }
+    } catch {}
+  }
+
+  const handleSelect = async (voice: Voice) => {
+    setSelectedId(voice.id)
+    setSelectedName(voice.name)
+    setSaveMsg('')
+    try {
+      const lang = voice.language || voice.supported_languages?.[0] || 'tr'
+      await fetch(`${API}/api/voice/set-voice`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({
+          voiceId:   voice.id,
+          voiceName: voice.name,
+          voiceType: 'cartesia',
+          gender:    voice.gender || 'neutral',
+        }),
+      })
+      setSaveMsg(`✓ "${voice.name}" seçildi — aramalar bu sesle yapılacak`)
+      setTimeout(() => setSaveMsg(''), 4000)
+    } catch (e: any) {
+      setSaveMsg(`Hata: ${e.message}`)
+    }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -282,9 +340,32 @@ export default function CartesiaLibraryPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: 0 }}>Cartesia Ses Kütüphanesi</h1>
         </div>
         <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
-          Cartesia hesabınızdaki tüm sesler — genel ve özel. Her sesi önizleyebilirsiniz.
+          Cartesia hesabınızdaki tüm sesler. ✓ işaretine tıklayarak aramalar için ses seçin.
         </p>
       </div>
+
+      {/* Selected voice banner */}
+      {selectedId && (
+        <div style={{
+          background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12,
+          padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <CheckCircle size={18} color="#22c55e" />
+          <div>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#166534' }}>Aktif ses: {selectedName || selectedId.slice(0, 12) + '…'}</span>
+            <span style={{ fontSize: 12, color: '#15803d', marginLeft: 8 }}>Tüm aramalar bu sesle yapılacak</span>
+          </div>
+        </div>
+      )}
+
+      {saveMsg && (
+        <div style={{
+          background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10,
+          padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#166534', fontWeight: 600,
+        }}>
+          {saveMsg}
+        </div>
+      )}
 
       {/* Stats bar */}
       {!loading && !error && (
@@ -446,7 +527,9 @@ export default function CartesiaLibraryPage() {
                     key={v.id}
                     voice={v}
                     onPreview={handlePreview}
+                    onSelect={handleSelect}
                     playingId={previewLoading === v.id ? v.id : playingId}
+                    selectedId={selectedId}
                   />
                 ))}
               </div>
