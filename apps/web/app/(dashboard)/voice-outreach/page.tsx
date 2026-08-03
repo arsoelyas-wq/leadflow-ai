@@ -283,7 +283,6 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const [libVoices, setLibVoices] = useState<any[]>([])
   const [libLoading, setLibLoading] = useState(false)
   const [libSearch, setLibSearch] = useState('')
-  const [libGender, setLibGender] = useState('')
   const [libLang, setLibLang] = useState('tr')
   const fileRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -303,7 +302,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   }
   async function loadLib(l: string) {
     setLibLoading(true); setLibVoices([])
-    try { const r = await fetch(`${API}/api/voice/library-voices?language=${l}&limit=80`, { headers: authH() }); const d = await r.json(); setLibVoices(d.voices || []) }
+    try { const r = await fetch(`${API}/api/engine/cartesia-voices?lang=${l}`, { headers: authH() }); const d = await r.json(); setLibVoices(d.voices || []) }
     catch {} setLibLoading(false)
   }
   async function startRec() {
@@ -353,19 +352,22 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   }
 
   async function playLib(voice: any) {
+    const url = voice.preview_url || voice.previewUrl
     if (playing === voice.id) { globalAudio?.pause(); globalAudio = null; setPlaying(null); return }
     globalAudio?.pause(); globalAudio = null
-    if (!voice.previewUrl) return
+    if (!url) return
     setPlaying(voice.id)
-    const a = new Audio(voice.previewUrl); globalAudio = a
+    const a = new Audio(url); globalAudio = a
     a.onended = () => { setPlaying(null); globalAudio = null }
     a.onerror = () => { setPlaying(null); globalAudio = null }
     a.play().catch(() => setPlaying(null))
   }
 
   const filteredLib = libVoices.filter(v => {
-    if (libSearch && !v.name?.toLowerCase().includes(libSearch.toLowerCase())) return false
-    if (libGender && v.gender !== libGender) return false
+    if (libSearch) {
+      const q = libSearch.toLowerCase()
+      if (!v.name?.toLowerCase().includes(q) && !v.description?.toLowerCase().includes(q)) return false
+    }
     return true
   })
 
@@ -656,16 +658,6 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
                 style={{ background:'#ffffff', border:'1px solid #e2e8f0', color:'#0f172a' }}/>
             </div>
-            <div className="relative">
-              <select value={libGender} onChange={e => setLibGender(e.target.value)}
-                className="px-3 pr-8 py-2.5 rounded-xl text-sm focus:outline-none"
-                style={{ background: '#ffffff', border: '1px solid #e2e8f0', color:'#0f172a', appearance: 'none', WebkitAppearance: 'none' }}>
-                <option value="">Tümü</option>
-                <option value="male">Erkek</option>
-                <option value="female">Kadın</option>
-              </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs" style={{ color:'#94a3b8' }}>▾</div>
-            </div>
           </div>
           <p className="text-xs" style={{ color:'#94a3b8' }}>{LANG_MAP[libLang]?.flag} {LANG_MAP[libLang]?.name} — {filteredLib.length} ses</p>
           {libLoading ? (
@@ -675,9 +667,10 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
           ) : (
             <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1 custom-scroll">
               {filteredLib.map((v: any) => {
-                const active = selectedId === v.id && selectedType === 'library'
+                const active = selectedId === v.id && (selectedType === 'cartesia' || selectedType === 'library')
+                const previewUrl = v.preview_url || v.previewUrl
                 return (
-                  <div key={v.id} onClick={() => onSelect(v.id, v.name, 'library')}
+                  <div key={v.id} onClick={() => onSelect(v.id, v.name, 'cartesia')}
                     className="group flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all duration-200 voice-card"
                     style={{ background: active ? '#f0fdfa' : '#ffffff', border: active ? '1px solid #5eead4' : '1px solid #e2e8f0', boxShadow: active ? '0 0 0 3px rgba(13,148,136,0.08)' : '0 1px 3px rgba(0,0,0,0.04)' }}>
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: active ? '#ccfbf1' : '#f8fafc' }}>
@@ -688,9 +681,9 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                         <span className="text-sm font-medium truncate" style={{ color:'#0f172a' }}>{v.name}</span>
                         {active && <CheckCircle className="w-3.5 h-3.5 shrink-0" style={{ color:'#0d9488' }}/>}
                       </div>
-                      <span className="text-xs" style={{ color:'#94a3b8' }}>{v.gender==='female'?'Kadın':'Erkek'}{v.accent?` · ${v.accent}`:''}</span>
+                      <span className="text-xs truncate" style={{ color:'#94a3b8' }}>{v.description ? v.description.slice(0, 60) : 'Cartesia'}</span>
                     </div>
-                    {v.previewUrl && (
+                    {previewUrl && (
                       <button onClick={e => { e.stopPropagation(); playLib(v) }}
                         className="w-8 h-8 rounded-xl flex items-center justify-center transition opacity-0 group-hover:opacity-100 hover:scale-110"
                         style={{ background: playing===v.id ? '#ef4444' : '#f1f5f9' }}>
@@ -1304,7 +1297,7 @@ export default function VoicePage() {
   const [settings, setSettings] = useState<any>({})
   const [selectedVoiceId, setSelectedVoiceId] = useState('')
   const [selectedVoiceName, setSelectedVoiceName] = useState('')
-  const [selectedVoiceType, setSelectedVoiceType] = useState<'cloned' | 'library'>('library')
+  const [selectedVoiceType, setSelectedVoiceType] = useState<'cloned' | 'library' | 'cartesia'>('cartesia')
   const [conversationStyle, setConversationStyle] = useState('consultant')
   const [styleRec, setStyleRec] = useState<{ style: string; reason: string; confidence: number } | null>(null)
   const [calling, setCalling] = useState(false)
@@ -1455,7 +1448,7 @@ export default function VoicePage() {
     try { if (ab.status === 'fulfilled') { const d = await (ab.value as any).json(); setAbResults(d) } } catch {}
   }
 
-  async function selectVoice(voiceId: string, voiceName: string, voiceType: 'cloned' | 'library') {
+  async function selectVoice(voiceId: string, voiceName: string, voiceType: 'cloned' | 'library' | 'cartesia') {
     setSelectedVoiceId(voiceId); setSelectedVoiceName(voiceName); setSelectedVoiceType(voiceType)
     if (voiceId) {
       await fetch(`${API}/api/voice/set-voice`, { method: 'POST', headers: authH(), body: JSON.stringify({ voiceId, voiceName, voiceType }) })
