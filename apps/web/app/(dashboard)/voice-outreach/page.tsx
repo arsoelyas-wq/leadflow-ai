@@ -362,65 +362,42 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
     }
     globalAudio?.pause(); globalAudio = null; setPlaying(null)
 
-    const previewUrl = voice.preview_url || voice.previewUrl
+    const previewUrl: string | null = voice.preview_url || voice.previewUrl || null
 
-    // preview_url yoksa → backend TTS ile üret
+    // preview_url yoksa → ücretsiz önizleme yok, TTS çağrılmaz (kredi harcar)
     if (!previewUrl) {
-      setLibPreviewLoading(voice.id)
-      try {
-        const r = await fetch(
-          `${API}/api/voice-library/preview?voiceId=${encodeURIComponent(voice.id)}&provider=cartesia&lang=${libLang}`,
-          { headers: authH() }
-        )
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}))
-          setLibPreviewLoading(null)
-          onMsg('error', err.error?.slice(0, 120) || 'Önizleme yüklenemedi')
-          return
-        }
-        const blob = await r.blob()
-        const blobUrl = URL.createObjectURL(blob)
-        setLibPreviewLoading(null)
-        setPlaying(voice.id)
-        const a = new Audio(blobUrl); globalAudio = a
-        a.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(blobUrl) }
-        a.onerror = () => { setPlaying(null); globalAudio = null; onMsg('error', 'Ses çalınamadı') }
-        await a.play().catch((e: any) => { setPlaying(null); onMsg('error', 'Ses çalınamadı: ' + e.message) })
-      } catch (e: any) {
-        setLibPreviewLoading(null)
-        onMsg('error', 'Önizleme hatası: ' + e.message)
-      }
+      onMsg('error', `"${voice.name}" için hazır önizleme yok. Sesi seçip Ara adımında test edebilirsiniz.`)
       return
     }
 
-    // preview_url varsa → doğrudan çal (ücretsiz CDN)
-    setPlaying(voice.id)
+    // preview_url varsa → ücretsiz Cartesia CDN'den çal
+    // TTS hiç çağrılmaz — kredi harcanmaz
+    setLibPreviewLoading(voice.id)
+    let didStart = false
+    const a = new Audio()
+    globalAudio = a
+
+    a.oncanplay = () => {
+      if (didStart) return
+      didStart = true
+      setLibPreviewLoading(null)
+      setPlaying(voice.id)
+    }
+    a.onended = () => { setPlaying(null); globalAudio = null }
+    a.onerror = () => {
+      if (globalAudio !== a) return   // zaten değişti, sessiz geç
+      setLibPreviewLoading(null); setPlaying(null); globalAudio = null
+      onMsg('error', `"${voice.name}" ses dosyası yüklenemedi`)
+    }
+
+    a.src = previewUrl
+    a.load()
+
     try {
-      const a = new Audio(previewUrl)
-      globalAudio = a
-      a.onended = () => { setPlaying(null); globalAudio = null }
-      a.onerror = () => {
-        setPlaying(null); globalAudio = null
-        // CDN başarısız → backend TTS dene
-        setLibPreviewLoading(voice.id)
-        fetch(`${API}/api/voice-library/preview?voiceId=${encodeURIComponent(voice.id)}&provider=cartesia&lang=${libLang}`, { headers: authH() })
-          .then(r => r.ok ? r.blob() : r.json().then(e => Promise.reject(e)))
-          .then(blob => {
-            const blobUrl = URL.createObjectURL(blob as Blob)
-            const a2 = new Audio(blobUrl); globalAudio = a2
-            setLibPreviewLoading(null); setPlaying(voice.id)
-            a2.onended = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(blobUrl) }
-            a2.play().catch(() => setPlaying(null))
-          })
-          .catch((e: any) => {
-            setLibPreviewLoading(null)
-            onMsg('error', typeof e === 'object' && e.error ? e.error.slice(0, 100) : 'Ses yüklenemedi')
-          })
-      }
       await a.play()
-    } catch (e: any) {
-      setPlaying(null); globalAudio = null
-      onMsg('error', 'Ses çalınamadı')
+    } catch {
+      // Bazı tarayıcılarda play() promise oncanplay öncesi reject edebilir,
+      // onerror zaten durumu yönetir — burada tekrar mesaj gösterme
     }
   }
 
@@ -829,27 +806,24 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                       </p>
                     </div>
 
-                    {/* Önizle butonu */}
+                    {/* Önizle butonu — sadece preview_url CDN (ücretsiz), TTS yok */}
                     <button
                       onClick={e => { e.stopPropagation(); playLib(v) }}
                       className="flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95"
-                      title={isPlaying ? 'Durdur' : hasPreview ? 'Önizle' : 'Önizle (üretiliyor)'}
+                      title={isPlaying ? 'Durdur' : hasPreview ? 'Ücretsiz önizle' : 'Hazır önizleme yok — seçip test et'}
                       style={{
                         width:38, height:38,
+                        opacity: hasPreview || isPlaying ? 1 : 0.45,
                         background: isPlaying
                           ? 'linear-gradient(135deg,#ef4444,#dc2626)'
                           : isLoading
                           ? 'linear-gradient(135deg,#f59e0b,#d97706)'
-                          : hasPreview
-                          ? 'linear-gradient(135deg,#0d9488,#0e7490)'
-                          : 'linear-gradient(135deg,#6366f1,#4f46e5)',
+                          : 'linear-gradient(135deg,#0d9488,#0e7490)',
                         boxShadow: isPlaying
                           ? '0 4px 12px rgba(239,68,68,0.4)'
                           : isLoading
                           ? '0 4px 12px rgba(245,158,11,0.4)'
-                          : hasPreview
-                          ? '0 4px 12px rgba(13,148,136,0.35)'
-                          : '0 4px 12px rgba(99,102,241,0.3)',
+                          : '0 4px 12px rgba(13,148,136,0.35)',
                       }}>
                       {isLoading
                         ? <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin"/>
