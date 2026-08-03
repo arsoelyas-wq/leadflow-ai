@@ -78,7 +78,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     cartesiaVoiceId:       VOICES.EN_MALE,
     cartesiaVoiceIdFemale: VOICES.EN_FEMALE,
     cartesiaModel:         'sonic-3',
-    deepgramModel:         'nova-2',
+    deepgramModel:         'nova-3',
     deepgramLanguage:      'en-US',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,

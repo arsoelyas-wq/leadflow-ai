@@ -945,7 +945,7 @@ router.post('/call/single', async (req: any, res: any) => {
       const styleIndex = (userCallCount || 0) % 3
       const styles = ['consultant', 'direct', 'challenger']
       finalStyle = styles[styleIndex]
-      console.log(`[A/B Test] userCallCount=${totalCalls} → style=${finalStyle}`);
+      console.log(`[A/B Test] userCallCount=${userCallCount ?? 0} → style=${finalStyle}`);
     }
 
     const [{ data: latestVideo }, callMemory, { data: callerIdRow }] = await Promise.all([
