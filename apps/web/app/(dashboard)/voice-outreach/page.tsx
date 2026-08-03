@@ -21,7 +21,12 @@ const LANG_MAP: Record<string, { name: string; flag: string }> = {
   zh:{name:'Çince',     flag:'🇨🇳'}, ja:{name:'Japonca',    flag:'🇯🇵'}, ko:{name:'Korece',     flag:'🇰🇷'},
   hi:{name:'Hintçe',    flag:'🇮🇳'}, nl:{name:'Hollandaca', flag:'🇳🇱'}, pl:{name:'Lehçe',      flag:'🇵🇱'},
   sv:{name:'İsveççe',   flag:'🇸🇪'}, uk:{name:'Ukraynaca',  flag:'🇺🇦'}, cs:{name:'Çekçe',      flag:'🇨🇿'},
-  ro:{name:'Rumence',   flag:'🇷🇴'}, da:{name:'Danca',       flag:'🇩🇰'},
+  ro:{name:'Rumence',   flag:'🇷🇴'}, da:{name:'Danca',      flag:'🇩🇰'}, he:{name:'İbranice',   flag:'🇮🇱'},
+  fi:{name:'Fince',     flag:'🇫🇮'}, el:{name:'Yunanca',    flag:'🇬🇷'}, hu:{name:'Macarca',    flag:'🇭🇺'},
+  id:{name:'Endonezce', flag:'🇮🇩'}, ms:{name:'Malayca',    flag:'🇲🇾'}, th:{name:'Tayca',      flag:'🇹🇭'},
+  vi:{name:'Vietnamca', flag:'🇻🇳'}, no:{name:'Norveççe',   flag:'🇳🇴'}, ca:{name:'Katalanca',  flag:'🏴'},
+  bg:{name:'Bulgarca',  flag:'🇧🇬'}, hr:{name:'Hırvatça',   flag:'🇭🇷'}, sk:{name:'Slovakça',   flag:'🇸🇰'},
+  lt:{name:'Litvanca',  flag:'🇱🇹'}, lv:{name:'Letonca',    flag:'🇱🇻'}, et:{name:'Estonca',    flag:'🇪🇪'},
 }
 const VOICE_LANGS = Object.entries(LANG_MAP).map(([code, v]) => ({ code, ...v }))
 
@@ -438,7 +443,11 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
       counts[lang] = (counts[lang] || 0) + 1
     }
     return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => {
+        if (a[0] === 'tr') return -1
+        if (b[0] === 'tr') return 1
+        return b[1] - a[1]
+      })
       .map(([code, count]) => {
         const known = LANG_MAP[code]
         return { code, name: known?.name || code.toUpperCase(), flag: known?.flag || '🌐', count }
@@ -724,33 +733,37 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
         /* ── CARTESIA KÜTÜPHANESİ — Lüks Tasarım ─────────────────────────── */
         <div className="space-y-4">
 
-          {/* Dil filtreleri — dinamik, Cartesia kataloğundan */}
-          <div style={{ overflowX:'auto', scrollbarWidth:'none' }} className="pb-1">
-            <div className="flex gap-1.5" style={{ minWidth:'max-content' }}>
+          {/* Dil filtreleri — tümü görünür, wrap layout */}
+          <div className="p-3 rounded-2xl" style={{ background:'#f8fafc', border:'1px solid #f1f5f9' }}>
+            <div className="flex flex-wrap gap-1.5">
               {libLoading && availableLangs.length === 0
-                ? [1,2,3,4,5].map(i => (
-                    <div key={i} className="h-8 w-20 rounded-xl animate-pulse" style={{ background:'#f1f5f9' }}/>
+                ? [1,2,3,4,5,6,7,8].map(i => (
+                    <div key={i} className="h-7 w-24 rounded-lg animate-pulse" style={{ background:'#e2e8f0' }}/>
                   ))
                 : availableLangs.map(l => {
                     const active = libLang === l.code
                     return (
                       <button key={l.code} onClick={() => setLibLang(l.code)}
-                        className="flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all duration-200 whitespace-nowrap"
+                        className="flex items-center gap-1 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap"
                         style={active ? {
-                          padding:'6px 14px',
+                          padding:'5px 10px',
                           background:'linear-gradient(135deg,#0d9488,#0e7490)',
                           color:'#ffffff',
-                          boxShadow:'0 4px 14px rgba(13,148,136,0.3)',
-                          transform:'scale(1.04)',
+                          boxShadow:'0 2px 8px rgba(13,148,136,0.25)',
                         } : {
-                          padding:'6px 12px',
-                          background:'#f8fafc',
-                          border:'1px solid #e8f0fe',
-                          color:'#64748b',
+                          padding:'5px 10px',
+                          background:'#ffffff',
+                          border:'1px solid #e2e8f0',
+                          color:'#475569',
                         }}>
-                        <span style={{ fontSize:14 }}>{l.flag}</span>
+                        <span style={{ fontSize:13 }}>{l.flag}</span>
                         <span>{l.name}</span>
-                        <span style={{ fontSize:10, opacity:0.7 }}>({l.count})</span>
+                        <span style={{
+                          fontSize:10,
+                          fontWeight:700,
+                          marginLeft:2,
+                          color: active ? 'rgba(255,255,255,0.75)' : '#94a3b8',
+                        }}>{l.count}</span>
                       </button>
                     )
                   })
