@@ -296,6 +296,9 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const [libLangOpen, setLibLangOpen] = useState(false)
   const [libLangSearch, setLibLangSearch] = useState('')
   const libLangRef = useRef<HTMLDivElement>(null)
+  const [libGender, setLibGender] = useState('')
+  const [libGenderOpen, setLibGenderOpen] = useState(false)
+  const libGenderRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -316,6 +319,14 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [libLangOpen])
+  useEffect(() => {
+    if (!libGenderOpen) return
+    const handler = (e: MouseEvent) => {
+      if (libGenderRef.current && !libGenderRef.current.contains(e.target as Node)) setLibGenderOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [libGenderOpen])
 
   async function loadVoices() {
     setLoading(true)
@@ -470,6 +481,12 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const filteredLib = allLibVoices.filter(v => {
     const lang = (v.language || '').toLowerCase()
     if (lang !== libLang) return false
+    if (libGender) {
+      const g = (v.gender || '').toLowerCase()
+      if (libGender === 'masculine' && !['masculine','male','man'].includes(g)) return false
+      if (libGender === 'feminine' && !['feminine','female','woman'].includes(g)) return false
+      if (libGender === 'neutral' && !['neutral','gender-neutral','nonbinary'].includes(g)) return false
+    }
     if (libSearch) {
       const q = libSearch.toLowerCase()
       if (!v.name?.toLowerCase().includes(q) && !v.description?.toLowerCase().includes(q)) return false
@@ -746,8 +763,71 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
         /* ── CARTESIA KÜTÜPHANESİ — Lüks Tasarım ─────────────────────────── */
         <div className="space-y-4">
 
-          {/* Filtre toolbar — dil dropdown + arama */}
+          {/* Filtre toolbar — cinsiyet + dil dropdown + arama */}
           <div className="flex items-center gap-2">
+
+            {/* Cinsiyet dropdown */}
+            {(() => {
+              const GENDERS = [
+                { value:'', label:'Herhangi cinsiyet', icon: null },
+                { value:'masculine', label:'Erkek', icon: '♂' },
+                { value:'feminine',  label:'Kadın',  icon: '♀' },
+                { value:'neutral',   label:'Nötr',   icon: '⚥' },
+              ]
+              const sel = GENDERS.find(g => g.value === libGender) || GENDERS[0]
+              return (
+                <div ref={libGenderRef} style={{ position:'relative', flexShrink:0 }}>
+                  <button
+                    onClick={() => setLibGenderOpen(o => !o)}
+                    className="flex items-center gap-2 rounded-xl text-sm font-semibold transition-all"
+                    style={{
+                      padding:'10px 14px',
+                      background: libGenderOpen ? '#f0fdfa' : '#ffffff',
+                      border: libGenderOpen ? '1.5px solid #5eead4' : '1.5px solid #e2e8f0',
+                      color: libGender ? '#0d9488' : '#374151',
+                      boxShadow:'0 1px 4px rgba(0,0,0,0.05)',
+                      minWidth:148,
+                    }}>
+                    <span style={{ fontSize:14 }}>{sel.icon || '◉'}</span>
+                    <span className="flex-1 text-left text-xs">{sel.label}</span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity:0.4, transform: libGenderOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.15s' }}>
+                      <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+
+                  {libGenderOpen && (
+                    <div style={{
+                      position:'absolute', top:'calc(100% + 6px)', left:0, zIndex:50,
+                      width:200, background:'#ffffff', borderRadius:16,
+                      border:'1px solid #e2e8f0', boxShadow:'0 8px 32px rgba(0,0,0,0.12)',
+                      overflow:'hidden', padding:'6px',
+                    }}>
+                      {GENDERS.map(g => {
+                        const active = libGender === g.value
+                        return (
+                          <button key={g.value}
+                            onClick={() => { setLibGender(g.value); setLibGenderOpen(false) }}
+                            className="w-full flex items-center gap-2.5 rounded-lg transition-colors"
+                            style={{
+                              padding:'8px 10px',
+                              background: active ? '#f0fdfa' : 'transparent',
+                              color: active ? '#0d9488' : '#374151',
+                              fontWeight: active ? 600 : 400,
+                              fontSize:13, textAlign:'left',
+                            }}
+                            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                            onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                            <span style={{ fontSize:14, width:18, textAlign:'center' }}>{g.icon || '◉'}</span>
+                            <span className="flex-1">{g.label}</span>
+                            {active && <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 6.5l3 3 6-6" stroke="#0d9488" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Dil dropdown */}
             <div ref={libLangRef} style={{ position:'relative', flexShrink:0 }}>
