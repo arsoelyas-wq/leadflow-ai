@@ -255,7 +255,7 @@ export async function streamResponse(
 
   const stream = await anthropic.messages.stream({
     model:       'claude-haiku-4-5-20251001',
-    max_tokens:  220,   // 160 bazen yetersiz kalıyordu — doğal cümle bitişlerine izin ver
+    max_tokens:  350,   // 160 bazen yetersiz kalıyordu — doğal cümle bitişlerine izin ver
     system:      buildSystemPrompt(ctx),
     messages,
     tools:       TOOLS,

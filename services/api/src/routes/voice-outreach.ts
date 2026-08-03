@@ -935,13 +935,17 @@ router.post('/call/single', async (req: any, res: any) => {
 
     // A/B Test: Yeterli veri yoksa otomatik A/B round-robin (her 2 aramada bir stil dene)
     let finalStyle = conversationStyle;
-    const { count: abCount } = await supabase.from('voice_calls')
-      .select('*', { count: 'exact', head: true }).eq('user_id', userId);
-    const totalCalls = abCount ?? 0;
+    const { count: userCallCount } = await supabase
+      .from('voice_calls')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    const totalCalls = userCallCount ?? 0;
     if (totalCalls < 40 && conversationStyle === 'consultant') {
-      // İlk 40 aramada otomatik A/B — consultant vs direct dönüşümlü
-      finalStyle = totalCalls % 4 === 0 ? 'direct' : totalCalls % 4 === 2 ? 'challenger' : 'consultant';
-      console.log(`[A/B Test] totalCalls=${totalCalls} → style=${finalStyle}`);
+      // İlk 40 aramada otomatik A/B — per-user round-robin (3 tarz)
+      const styleIndex = (userCallCount || 0) % 3
+      const styles = ['consultant', 'direct', 'challenger']
+      finalStyle = styles[styleIndex]
+      console.log(`[A/B Test] userCallCount=${totalCalls} → style=${finalStyle}`);
     }
 
     const [{ data: latestVideo }, callMemory, { data: callerIdRow }] = await Promise.all([
@@ -1197,7 +1201,8 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
         await supabase.from('voice_calls').update({ twilio_call_sid: callSid, status: 'calling', notes: `Engine: twilio | Style: ${conversationStyle}` }).eq('id', callRecord?.id);
         await supabase.from('leads').update({ status: 'contacted', last_contacted_at: new Date() }).eq('id', lead.id);
         await supabase.from('campaign_queue').update({ status: 'done', finished_at: new Date(), call_id: callRecord?.id }).eq('id', job.id);
-        try { await supabase.from('voice_campaigns').update({ calls_made: supabase.rpc('increment_calls_made', { campaign_id: campaignId }) }).eq('id', campaignId); } catch {}
+        // Fix the counter with a dedicated RPC call (not nested in update)
+        await supabase.rpc('increment_campaign_calls_made', { p_campaign_id: campaignId }).catch(console.error)
         processed++;
       } catch (err: any) {
         const attempts = (job.attempt_count || 0) + 1;

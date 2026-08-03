@@ -56,7 +56,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     cartesiaVoiceId:        VOICES.TR_MALE,
     cartesiaVoiceIdFemale:  VOICES.TR_FEMALE,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'tr',
     deepgramEndpointingMs: 300,        // 400ms gecikme kısaltıldı — barge-in daha hızlı
     silenceConfidenceThreshold: 0.55,
@@ -93,7 +93,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   de: {
     cartesiaVoiceId:  VOICES.DE_MALE,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'de',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -108,7 +108,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   fr: {
     cartesiaVoiceId:  VOICES.FR_MALE,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'fr',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -123,7 +123,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   ar: {
     cartesiaVoiceId:  VOICES.AR_MALE,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'ar',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -138,7 +138,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   es: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'es',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -153,7 +153,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   it: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'it',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -168,7 +168,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   pt: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'pt-BR',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -183,7 +183,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   ru: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'ru',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -198,7 +198,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   nl: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'nl',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -213,7 +213,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   pl: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'pl',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
@@ -228,7 +228,7 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
   ja: {
     cartesiaVoiceId:  VOICES.MULTILINGUAL,
     cartesiaModel:    'sonic-3',
-    deepgramModel:    'nova-2',
+    deepgramModel:    'nova-3',
     deepgramLanguage: 'ja',
     deepgramEndpointingMs: 300,
     silenceConfidenceThreshold: 0.55,
