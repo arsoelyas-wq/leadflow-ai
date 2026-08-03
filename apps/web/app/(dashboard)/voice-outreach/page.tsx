@@ -13,12 +13,15 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.u
 function getToken() { return typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '' }
 function authH() { return { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' } }
 
+// Cartesia Sonic-2 desteklediği diller (az kaldırıldı, sv/uk/cs/ro/da eklendi)
 const LANG_MAP: Record<string, { name: string; flag: string }> = {
-  tr:{name:'Türkçe',flag:'🇹🇷'},en:{name:'İngilizce',flag:'🇬🇧'},de:{name:'Almanca',flag:'🇩🇪'},
-  fr:{name:'Fransızca',flag:'🇫🇷'},ar:{name:'Arapça',flag:'🇸🇦'},ru:{name:'Rusça',flag:'🇷🇺'},
-  az:{name:'Azerbaycanca',flag:'🇦🇿'},it:{name:'İtalyanca',flag:'🇮🇹'},es:{name:'İspanyolca',flag:'🇪🇸'},
-  nl:{name:'Hollandaca',flag:'🇳🇱'},zh:{name:'Çince',flag:'🇨🇳'},ja:{name:'Japonca',flag:'🇯🇵'},
-  ko:{name:'Korece',flag:'🇰🇷'},hi:{name:'Hintçe',flag:'🇮🇳'},pt:{name:'Portekizce',flag:'🇵🇹'},pl:{name:'Lehçe',flag:'🇵🇱'},
+  tr:{name:'Türkçe',    flag:'🇹🇷'}, en:{name:'İngilizce',  flag:'🇬🇧'}, de:{name:'Almanca',    flag:'🇩🇪'},
+  fr:{name:'Fransızca', flag:'🇫🇷'}, es:{name:'İspanyolca', flag:'🇪🇸'}, it:{name:'İtalyanca',  flag:'🇮🇹'},
+  pt:{name:'Portekizce',flag:'🇧🇷'}, ru:{name:'Rusça',      flag:'🇷🇺'}, ar:{name:'Arapça',     flag:'🇸🇦'},
+  zh:{name:'Çince',     flag:'🇨🇳'}, ja:{name:'Japonca',    flag:'🇯🇵'}, ko:{name:'Korece',     flag:'🇰🇷'},
+  hi:{name:'Hintçe',    flag:'🇮🇳'}, nl:{name:'Hollandaca', flag:'🇳🇱'}, pl:{name:'Lehçe',      flag:'🇵🇱'},
+  sv:{name:'İsveççe',   flag:'🇸🇪'}, uk:{name:'Ukraynaca',  flag:'🇺🇦'}, cs:{name:'Çekçe',      flag:'🇨🇿'},
+  ro:{name:'Rumence',   flag:'🇷🇴'}, da:{name:'Danca',       flag:'🇩🇰'},
 }
 const VOICE_LANGS = Object.entries(LANG_MAP).map(([code, v]) => ({ code, ...v }))
 
@@ -284,6 +287,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const [libLoading, setLibLoading] = useState(false)
   const [libSearch, setLibSearch] = useState('')
   const [libLang, setLibLang] = useState('tr')
+  const [libPreviewLoading, setLibPreviewLoading] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -352,12 +356,26 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   }
 
   async function playLib(voice: any) {
-    const url = voice.preview_url || voice.previewUrl
     if (playing === voice.id) { globalAudio?.pause(); globalAudio = null; setPlaying(null); return }
-    globalAudio?.pause(); globalAudio = null
-    if (!url) return
+    globalAudio?.pause(); globalAudio = null; setPlaying(null)
+    const previewUrl = voice.preview_url || voice.previewUrl
+    if (!previewUrl) {
+      // Fallback: backend TTS önizleme
+      setLibPreviewLoading(voice.id)
+      try {
+        const r = await fetch(`${API}/api/voice-library/preview?voiceId=${voice.id}&provider=cartesia&lang=${libLang}`, { headers: authH() })
+        if (!r.ok) { setLibPreviewLoading(null); return }
+        const blob = await r.blob()
+        const url = URL.createObjectURL(blob)
+        setLibPreviewLoading(null); setPlaying(voice.id)
+        const a = new Audio(url); globalAudio = a
+        a.onended = () => { setPlaying(null); globalAudio = null }
+        a.play().catch(() => setPlaying(null))
+      } catch { setLibPreviewLoading(null) }
+      return
+    }
     setPlaying(voice.id)
-    const a = new Audio(url); globalAudio = a
+    const a = new Audio(previewUrl); globalAudio = a
     a.onended = () => { setPlaying(null); globalAudio = null }
     a.onerror = () => { setPlaying(null); globalAudio = null }
     a.play().catch(() => setPlaying(null))
@@ -637,59 +655,162 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
           </div>
         </div>
       ) : (
-        /* Library */
+        /* ── CARTESIA KÜTÜPHANESİ — Lüks Tasarım ─────────────────────────── */
         <div className="space-y-4">
-          <div className="flex gap-1.5 flex-wrap">
-            {VOICE_LANGS.map(l => {
-              const active = libLang === l.code
-              return (
-                <button key={l.code} onClick={() => setLibLang(l.code)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                  style={active ? { background: 'linear-gradient(135deg, #0d9488, #0e7490)', color:'#ffffff', boxShadow:'0 4px 12px rgba(13,148,136,0.25)' } : { background:'#f8fafc', border:'1px solid #f1f5f9', color:'#64748b' }}>
-                  <span>{l.flag}</span><span>{l.name}</span>
-                </button>
-              )
-            })}
-          </div>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color:'#94a3b8' }}/>
-              <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Ses ara..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
-                style={{ background:'#ffffff', border:'1px solid #e2e8f0', color:'#0f172a' }}/>
+
+          {/* Dil filtreleri — yatay kaydırma */}
+          <div style={{ overflowX:'auto', scrollbarWidth:'none' }} className="pb-1">
+            <div className="flex gap-1.5" style={{ minWidth:'max-content' }}>
+              {VOICE_LANGS.map(l => {
+                const active = libLang === l.code
+                return (
+                  <button key={l.code} onClick={() => setLibLang(l.code)}
+                    className="flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all duration-200 whitespace-nowrap"
+                    style={active ? {
+                      padding:'6px 14px',
+                      background:'linear-gradient(135deg,#0d9488,#0e7490)',
+                      color:'#ffffff',
+                      boxShadow:'0 4px 14px rgba(13,148,136,0.3)',
+                      transform:'scale(1.04)',
+                    } : {
+                      padding:'6px 12px',
+                      background:'#f8fafc',
+                      border:'1px solid #e8f0fe',
+                      color:'#64748b',
+                    }}>
+                    <span style={{ fontSize:14 }}>{l.flag}</span>
+                    <span>{l.name}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
-          <p className="text-xs" style={{ color:'#94a3b8' }}>{LANG_MAP[libLang]?.flag} {LANG_MAP[libLang]?.name} — {filteredLib.length} ses</p>
+
+          {/* Arama + Ses sayısı */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color:'#94a3b8' }}/>
+              <input value={libSearch} onChange={e => setLibSearch(e.target.value)}
+                placeholder={`${LANG_MAP[libLang]?.name || ''} seslerinde ara...`}
+                className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm focus:outline-none transition-all"
+                style={{ background:'#ffffff', border:'1.5px solid #e2e8f0', color:'#0f172a', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}
+                onFocus={e => (e.target.style.borderColor='#5eead4')}
+                onBlur={e => (e.target.style.borderColor='#e2e8f0')}/>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl flex-shrink-0"
+              style={{ background:'#f0fdfa', border:'1px solid #99f6e4' }}>
+              <span style={{ fontSize:13 }}>{LANG_MAP[libLang]?.flag}</span>
+              <span className="text-xs font-bold" style={{ color:'#0d9488' }}>{filteredLib.length}</span>
+              <span className="text-xs" style={{ color:'#64748b' }}>ses</span>
+            </div>
+          </div>
+
+          {/* Ses Listesi */}
           {libLoading ? (
-            <div className="flex items-center justify-center py-12 gap-3" style={{ color:'#94a3b8' }}>
-              <div className="w-5 h-5 rounded-full border-2 border-teal-500 border-t-transparent animate-spin"/>Yükleniyor...
+            <div className="space-y-2">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="flex items-center gap-3 p-4 rounded-2xl animate-pulse"
+                  style={{ background:'#f8fafc', border:'1px solid #f1f5f9' }}>
+                  <div className="w-12 h-12 rounded-2xl flex-shrink-0" style={{ background:'#e2e8f0' }}/>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3.5 rounded-full w-2/5" style={{ background:'#e2e8f0' }}/>
+                    <div className="h-2.5 rounded-full w-4/5" style={{ background:'#f1f5f9' }}/>
+                  </div>
+                  <div className="w-9 h-9 rounded-full flex-shrink-0" style={{ background:'#e2e8f0' }}/>
+                </div>
+              ))}
+            </div>
+          ) : filteredLib.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-14 gap-3"
+              style={{ background:'#f8fafc', border:'1px dashed #e2e8f0', borderRadius:20 }}>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background:'#f1f5f9' }}>
+                <Volume2 className="w-6 h-6" style={{ color:'#cbd5e1' }}/>
+              </div>
+              <p className="text-sm font-medium" style={{ color:'#94a3b8' }}>Bu dilde ses bulunamadı</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1 custom-scroll">
+            <div className="space-y-2 max-h-[440px] overflow-y-auto pr-0.5 custom-scroll">
               {filteredLib.map((v: any) => {
-                const active = selectedId === v.id && (selectedType === 'cartesia' || selectedType === 'library')
-                const previewUrl = v.preview_url || v.previewUrl
+                const isActive   = selectedId === v.id && (selectedType === 'cartesia' || selectedType === 'library')
+                const isPlaying  = playing === v.id
+                const isLoading  = libPreviewLoading === v.id
+                const hasPreview = !!(v.preview_url || v.previewUrl)
+                const initials   = v.name.split(/[\s-]/)[0].slice(0, 2).toUpperCase()
+                const hue        = (v.id?.charCodeAt(0) || 0) % 360
+
                 return (
-                  <div key={v.id} onClick={() => onSelect(v.id, v.name, 'cartesia')}
-                    className="group flex items-center gap-3 p-3.5 rounded-2xl cursor-pointer transition-all duration-200 voice-card"
-                    style={{ background: active ? '#f0fdfa' : '#ffffff', border: active ? '1px solid #5eead4' : '1px solid #e2e8f0', boxShadow: active ? '0 0 0 3px rgba(13,148,136,0.08)' : '0 1px 3px rgba(0,0,0,0.04)' }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: active ? '#ccfbf1' : '#f8fafc' }}>
-                      <User className="w-4 h-4" style={{ color: active ? '#0d9488' : '#94a3b8' }}/>
+                  <div key={v.id}
+                    className="group flex items-center gap-3.5 cursor-pointer transition-all duration-200"
+                    style={{
+                      padding:'14px 16px',
+                      borderRadius:18,
+                      background: isActive
+                        ? 'linear-gradient(135deg, #f0fdfacc, #ecfdf5cc)'
+                        : '#ffffff',
+                      border: isActive ? '1.5px solid #5eead4' : '1.5px solid #f1f5f9',
+                      boxShadow: isActive
+                        ? '0 0 0 3px rgba(20,184,166,0.1), 0 2px 8px rgba(13,148,136,0.1)'
+                        : '0 1px 3px rgba(0,0,0,0.04)',
+                    }}
+                    onClick={() => onSelect(v.id, v.name, 'cartesia')}>
+
+                    {/* Avatar dairesi */}
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold text-sm select-none"
+                      style={{
+                        background: isActive
+                          ? 'linear-gradient(135deg,#0d9488,#0e7490)'
+                          : `hsl(${hue},55%,92%)`,
+                        color: isActive ? '#ffffff' : `hsl(${hue},55%,35%)`,
+                        boxShadow: isActive ? '0 4px 12px rgba(13,148,136,0.3)' : 'none',
+                        fontSize:13,
+                      }}>
+                      {initials}
                     </div>
+
+                    {/* İsim + Açıklama */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium truncate" style={{ color:'#0f172a' }}>{v.name}</span>
-                        {active && <CheckCircle className="w-3.5 h-3.5 shrink-0" style={{ color:'#0d9488' }}/>}
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-sm font-semibold truncate"
+                          style={{ color: isActive ? '#0f172a' : '#1e293b' }}>
+                          {v.name}
+                        </span>
+                        {isActive && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0"
+                            style={{ background:'#ccfbf1', color:'#0d9488' }}>
+                            <CheckCircle className="w-3 h-3"/> Seçili
+                          </span>
+                        )}
                       </div>
-                      <span className="text-xs truncate" style={{ color:'#94a3b8' }}>{v.description ? v.description.slice(0, 60) : 'Cartesia'}</span>
+                      <p className="text-xs leading-snug truncate" style={{ color:'#94a3b8', maxWidth:'95%' }}>
+                        {v.description ? v.description.slice(0, 72) : 'Cartesia AI ses'}
+                      </p>
                     </div>
-                    {previewUrl && (
-                      <button onClick={e => { e.stopPropagation(); playLib(v) }}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center transition opacity-0 group-hover:opacity-100 hover:scale-110"
-                        style={{ background: playing===v.id ? '#ef4444' : '#f1f5f9' }}>
-                        {playing===v.id ? <Square className="w-3 h-3 text-white"/> : <Play className="w-3 h-3" style={{ color:'#64748b' }}/>}
-                      </button>
-                    )}
+
+                    {/* Önizle butonu */}
+                    <button
+                      onClick={e => { e.stopPropagation(); playLib(v) }}
+                      className="flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110"
+                      title={hasPreview ? 'Önizle' : 'Önizleme yükleniyor...'}
+                      style={{
+                        width:38, height:38,
+                        background: isPlaying
+                          ? 'linear-gradient(135deg,#ef4444,#dc2626)'
+                          : isLoading
+                          ? 'linear-gradient(135deg,#f59e0b,#d97706)'
+                          : 'linear-gradient(135deg,#0d9488,#0e7490)',
+                        boxShadow: isPlaying
+                          ? '0 4px 12px rgba(239,68,68,0.4)'
+                          : isLoading
+                          ? '0 4px 12px rgba(245,158,11,0.4)'
+                          : '0 4px 12px rgba(13,148,136,0.35)',
+                      }}>
+                      {isLoading
+                        ? <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin"/>
+                        : isPlaying
+                        ? <Square className="w-3.5 h-3.5 text-white"/>
+                        : <Play  className="w-3.5 h-3.5 text-white" style={{ marginLeft:2 }}/>
+                      }
+                    </button>
                   </div>
                 )
               })}
