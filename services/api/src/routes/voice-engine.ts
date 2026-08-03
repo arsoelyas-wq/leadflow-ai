@@ -366,12 +366,12 @@ router.get('/cartesia-voices', async (req: any, res: any) => {
     });
     const all = Array.isArray(r.data) ? r.data : (r.data?.voices || []);
     const filtered = langFilter
-      ? all.filter((v: any) =>
-          (v.language || '').toLowerCase().includes(langFilter) ||
-          (v.name     || '').toLowerCase().includes(langFilter) ||
-          (v.description || '').toLowerCase().includes(langFilter) ||
-          JSON.stringify(v.supported_languages || []).toLowerCase().includes(langFilter)
-        )
+      ? all.filter((v: any) => {
+          const lang = (v.language || '').toLowerCase();
+          if (lang === langFilter) return true;
+          const supported: string[] = Array.isArray(v.supported_languages) ? v.supported_languages : [];
+          return supported.some((l: string) => l.toLowerCase() === langFilter);
+        })
       : all;
     res.json({ total: all.length, filtered: filtered.length, voices: filtered });
   } catch (e: any) {
