@@ -21,6 +21,8 @@ const activeSessions = new Map<string, CallSession>();
 const pendingCalls   = new Map<string, SessionParams>();
 // Greeting promise'leri — WebSocket açılınca session'a geçilir; promise tamamlanmamışsa session await eder
 const _greetingPromises = new Map<string, Promise<Buffer[]>>();
+// Race condition guard: status callback voicemail tespitini WS bağlanmadan önce yakaladıysa callSid burada tutulur
+const _voicemailPending = new Set<string>();
 
 /** makeCall'dan hemen sonra greeting'i Cartesia'da sentezle.
  *  30s timeout ile cold start'ı absorbe eder; Promise döner — session await eder. */
@@ -265,8 +267,16 @@ export function attachWss(server: any): void {
             }
           }
           activeSessions.set(streamSid, session);
-
           _bindSessionEvents(session);
+
+          // Race condition: status callback voicemail'i WS bağlanmadan önce tespit ettiyse
+          if (params.callSid && _voicemailPending.has(params.callSid)) {
+            _voicemailPending.delete(params.callSid);
+            console.log(`[Engine] Voicemail pending callSid=${params.callSid} — skipping greeting, dropping message`);
+            await session.onVoicemailDetected(streamSid);
+            break;
+          }
+
           await session.onTwilioStart(streamSid);
           break;
         }
@@ -371,16 +381,24 @@ export async function onTwilioStatus(sessionId: string, status: string, body: Re
   if (status === 'answered') {
     await _updateCallStatus(sessionId, 'in_progress');
   } else if (['no-answer', 'busy', 'failed'].includes(status)) {
+    _voicemailPending.delete(body.CallSid || '');  // WS hiç bağlanmadıysa temizle
     await getSupabase()
       .from('voice_calls')
       .update({ status: 'failed', end_reason: status, ended_at: new Date().toISOString() })
       .eq('id', sessionId);
   }
 
-  // Sesli mesaj algılandıysa kapat
+  // Sesli mesaj kutusuna düştü — mesaj bırak ve kapat
   if (body.AnsweredBy === 'machine_start' || body.AnsweredBy === 'fax') {
     const session = [...activeSessions.values()].find(s => s.callSid === body.CallSid);
-    session?.forceEnd('voicemail_detected');
+    if (session) {
+      // Session zaten çalışıyor — voicemail mesajını çal ve kapat
+      session.dropVoicemail().catch((e: any) => console.error('[Engine] dropVoicemail err:', e.message));
+    } else {
+      // WS henüz bağlanmadı — WS bağlandığında flag'i görecek
+      _voicemailPending.add(body.CallSid || '');
+      console.log(`[Engine] Voicemail flagged (WS not yet connected): callSid=${body.CallSid}`);
+    }
   }
 }
 

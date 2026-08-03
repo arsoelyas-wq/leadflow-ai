@@ -763,6 +763,57 @@ export class CallSession extends EventEmitter {
     }
   }
 
+  /** Sesli mesaj kutusuna düşme (WS bağlandı ama greeting başlamadan voicemail tespiti) */
+  async onVoicemailDetected(streamSid: string): Promise<void> {
+    this.streamSid = streamSid;
+    console.log(`[Session ${this.sessionId}] Voicemail before greeting — playing message`);
+    await new Promise(r => setTimeout(r, 200));
+    this._setState('speaking');
+    this.isSpeaking = true;
+    const voiceId = this.params.voiceId || getCartesiaVoiceId(this.langCfg, this.params.gender as any);
+    try {
+      await synthesizeStreaming({
+        voiceId,
+        model:    this.langCfg.cartesiaModel,
+        language: this.params.language,
+        text:     this.langCfg.voicemailMessage,
+        signal:   new AbortController().signal,
+        onChunk:  (m) => this._sendAudio(m),
+        onDone:   () => {},
+        onError:  (e) => console.error(`[Session ${this.sessionId}] Voicemail TTS err:`, e.message),
+      });
+    } catch { /* ignore */ } finally {
+      this.isSpeaking = false;
+    }
+    await this._endCall('voicemail_detected', 'voicemail');
+  }
+
+  /** Session çalışırken voicemail tespiti — mevcut konuşmayı kes, mesaj bırak, kapat */
+  async dropVoicemail(): Promise<void> {
+    if (this.state === 'ended') return;
+    console.log(`[Session ${this.sessionId}] Voicemail mid-session — dropping message`);
+    this._interrupt();
+    this._clearTimers();
+    const voiceId = this.params.voiceId || getCartesiaVoiceId(this.langCfg, this.params.gender as any);
+    try {
+      this._setState('speaking');
+      this.isSpeaking = true;
+      await synthesizeStreaming({
+        voiceId,
+        model:    this.langCfg.cartesiaModel,
+        language: this.params.language,
+        text:     this.langCfg.voicemailMessage,
+        signal:   new AbortController().signal,
+        onChunk:  (m) => this._sendAudio(m),
+        onDone:   () => {},
+        onError:  (e) => console.error(`[Session ${this.sessionId}] Voicemail TTS err:`, e.message),
+      });
+    } catch { /* ignore */ } finally {
+      this.isSpeaking = false;
+    }
+    await this._endCall('voicemail_detected', 'voicemail');
+  }
+
   /** Public: erken dış iptal (Twilio webhook: call-ended) */
   forceEnd(reason: string): void {
     if (this.state !== 'ended') this._endCall(reason, 'unknown');

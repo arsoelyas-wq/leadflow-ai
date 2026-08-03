@@ -26,6 +26,8 @@ export interface LangConfig {
   endCallPhrases: string[];            // bu cümleler arama bitişini tetikler
   callEndMessage: string;              // AI'ın söyleyeceği veda cümlesi
   silencePrompt: string;               // sessizlik sonrası hatırlatma
+  voicemailMessage: string;            // sesli mesaj kutusuna bırakılacak mesaj
+  kvkkDisclosure: string;              // yasal kayıt bildirimi (KVKK/GDPR)
 }
 
 // Cartesia Sonic-2 resmi ses ID'leri (production-verified)
@@ -72,6 +74,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['görüşürüz', 'hoşça kalın', 'iyi günler', 'güle güle', 'görüşmek üzere', 'kapatıyorum', 'bay bay', 'eyvallah'],
     callEndMessage:  'Teşekkürler, görüşmek üzere, iyi günler!',
     silencePrompt:   'Merhaba, sizi duyamadım, orada mısınız?',
+    voicemailMessage: 'Merhaba, aramanızı yanıtlayamıyoruz. Size en kısa sürede geri dönmeye çalışacağız. İyi günler!',
+    kvkkDisclosure:   'Bu görüşme kalite ve eğitim amaçlı kayıt altına alınabilir.',
   },
 
   en: {
@@ -88,6 +92,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['goodbye', 'bye', 'have a good day', 'talk later', 'take care', 'thanks bye'],
     callEndMessage:  'Thank you, have a great day!',
     silencePrompt:   'Hello, are you still there?',
+    voicemailMessage: "Hello, we tried to reach you but couldn't connect. We'll try again soon. Have a great day!",
+    kvkkDisclosure:   'This call may be recorded for quality and training purposes.',
   },
 
   de: {
@@ -103,6 +109,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['tschüss', 'auf wiedersehen', 'bis bald', 'vielen dank', 'tschau'],
     callEndMessage:  'Vielen Dank, auf Wiedersehen!',
     silencePrompt:   'Hallo, sind Sie noch da?',
+    voicemailMessage: 'Hallo, wir haben versucht Sie zu erreichen. Wir werden es bald wieder versuchen. Auf Wiedersehen!',
+    kvkkDisclosure:   'Dieses Gespräch kann zu Qualitätszwecken aufgezeichnet werden.',
   },
 
   fr: {
@@ -118,6 +126,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['au revoir', 'bonne journée', 'à bientôt', 'merci au revoir'],
     callEndMessage:  'Merci beaucoup, au revoir!',
     silencePrompt:   'Allô, vous êtes toujours là?',
+    voicemailMessage: 'Bonjour, nous avons essayé de vous joindre. Nous réessayerons bientôt. Bonne journée!',
+    kvkkDisclosure:   'Cet appel peut être enregistré à des fins de qualité.',
   },
 
   ar: {
@@ -133,6 +143,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['مع السلامة', 'وداعاً', 'شكراً جزيلاً', 'إلى اللقاء'],
     callEndMessage:  'شكراً جزيلاً، مع السلامة!',
     silencePrompt:   'مرحباً، هل لا تزال موجوداً؟',
+    voicemailMessage: 'مرحباً، حاولنا الوصول إليك ولم نتمكن. سنحاول مرة أخرى قريباً. مع السلامة!',
+    kvkkDisclosure:   'قد يتم تسجيل هذه المكالمة لأغراض الجودة والتدريب.',
   },
 
   es: {
@@ -148,6 +160,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['adiós', 'hasta luego', 'buen día', 'muchas gracias adiós'],
     callEndMessage:  'Muchas gracias, ¡hasta luego!',
     silencePrompt:   'Hola, ¿sigue ahí?',
+    voicemailMessage: 'Hola, intentamos contactarle pero no pudimos. Lo intentaremos de nuevo pronto. ¡Hasta pronto!',
+    kvkkDisclosure:   'Esta llamada puede ser grabada con fines de calidad.',
   },
 
   it: {
@@ -163,6 +177,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['arrivederci', 'buona giornata', 'grazie arrivederci', 'ciao'],
     callEndMessage:  'Grazie mille, arrivederci!',
     silencePrompt:   'Pronto, mi sente ancora?',
+    voicemailMessage: 'Ciao, abbiamo provato a contattarla ma non è stato possibile. Riproveremo presto. Arrivederci!',
+    kvkkDisclosure:   'Questa chiamata potrebbe essere registrata per finalità di qualità.',
   },
 
   pt: {
@@ -178,6 +194,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['tchau', 'até logo', 'obrigado tchau', 'boa tarde'],
     callEndMessage:  'Muito obrigado, até logo!',
     silencePrompt:   'Alô, ainda está na linha?',
+    voicemailMessage: 'Olá, tentamos entrar em contato mas não conseguimos. Tentaremos novamente em breve. Até logo!',
+    kvkkDisclosure:   'Esta chamada pode ser gravada para fins de qualidade.',
   },
 
   ru: {
@@ -193,6 +211,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['до свидания', 'пока', 'всего доброго', 'спасибо до свидания'],
     callEndMessage:  'Спасибо большое, до свидания!',
     silencePrompt:   'Алло, вы ещё на линии?',
+    voicemailMessage: 'Здравствуйте, мы пытались до вас дозвониться. Скоро попробуем снова. До свидания!',
+    kvkkDisclosure:   'Этот звонок может быть записан в целях качества обслуживания.',
   },
 
   nl: {
@@ -208,6 +228,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['dag', 'tot ziens', 'bedankt dag', 'doei'],
     callEndMessage:  'Dank u wel, tot ziens!',
     silencePrompt:   'Hallo, bent u er nog?',
+    voicemailMessage: 'Hallo, we hebben geprobeerd u te bereiken. We proberen het binnenkort opnieuw. Tot ziens!',
+    kvkkDisclosure:   'Dit gesprek kan worden opgenomen voor kwaliteitsdoeleinden.',
   },
 
   pl: {
@@ -223,6 +245,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['do widzenia', 'pa', 'dziękuję do widzenia', 'na razie'],
     callEndMessage:  'Dziękuję bardzo, do widzenia!',
     silencePrompt:   'Halo, czy jest Pan/Pani jeszcze na linii?',
+    voicemailMessage: 'Cześć, próbowaliśmy się z Tobą skontaktować. Wkrótce spróbujemy ponownie. Do widzenia!',
+    kvkkDisclosure:   'Ta rozmowa może być nagrywana w celach jakościowych.',
   },
 
   ja: {
@@ -238,6 +262,8 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     endCallPhrases:  ['さようなら', 'ありがとうございました', 'またご連絡します', 'お疲れ様でした'],
     callEndMessage:  'ありがとうございました、失礼いたします。',
     silencePrompt:   'もしもし、聞こえますか？',
+    voicemailMessage: 'こんにちは、お電話しましたがつながりませんでした。またご連絡いたします。失礼します。',
+    kvkkDisclosure:   '本通話は品質向上のために録音される場合があります。',
   },
 };
 
