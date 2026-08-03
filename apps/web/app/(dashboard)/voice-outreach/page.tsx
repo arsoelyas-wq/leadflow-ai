@@ -364,11 +364,8 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
 
     const previewUrl: string | null = voice.preview_url || voice.previewUrl || null
 
-    // preview_url yoksa → ücretsiz önizleme yok, TTS çağrılmaz (kredi harcar)
-    if (!previewUrl) {
-      onMsg('error', `"${voice.name}" için hazır önizleme yok. Sesi seçip Ara adımında test edebilirsiniz.`)
-      return
-    }
+    // preview_url yoksa → sessizce çık, buton zaten soluk görünüyor
+    if (!previewUrl) return
 
     // preview_url varsa → ücretsiz Cartesia CDN'den çal
     // TTS hiç çağrılmaz — kredi harcanmaz
@@ -385,9 +382,9 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
     }
     a.onended = () => { setPlaying(null); globalAudio = null }
     a.onerror = () => {
-      if (globalAudio !== a) return   // zaten değişti, sessiz geç
+      if (globalAudio !== a) return
       setLibPreviewLoading(null); setPlaying(null); globalAudio = null
-      onMsg('error', `"${voice.name}" ses dosyası yüklenemedi`)
+      // CDN yüklenemedi — sessiz geç, buton tekrar normal görünüme döner
     }
 
     a.src = previewUrl
@@ -808,12 +805,13 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
 
                     {/* Önizle butonu — sadece preview_url CDN (ücretsiz), TTS yok */}
                     <button
-                      onClick={e => { e.stopPropagation(); playLib(v) }}
-                      className="flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95"
-                      title={isPlaying ? 'Durdur' : hasPreview ? 'Ücretsiz önizle' : 'Hazır önizleme yok — seçip test et'}
+                      onClick={e => { e.stopPropagation(); if (hasPreview || isPlaying) playLib(v) }}
+                      className="flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-200"
+                      title={isPlaying ? 'Durdur' : hasPreview ? 'Ücretsiz önizle' : 'Bu ses için hazır önizleme yok'}
                       style={{
                         width:38, height:38,
-                        opacity: hasPreview || isPlaying ? 1 : 0.45,
+                        cursor: hasPreview || isPlaying ? 'pointer' : 'not-allowed',
+                        opacity: hasPreview || isPlaying ? 1 : 0.35,
                         background: isPlaying
                           ? 'linear-gradient(135deg,#ef4444,#dc2626)'
                           : isLoading
