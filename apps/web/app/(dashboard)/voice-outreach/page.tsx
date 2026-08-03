@@ -2,6 +2,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
+import { supabase as supabaseClient } from '@/lib/supabase'
 import {
   Phone, PhoneCall, Mic, Upload, Play, Square, ArrowRight, ArrowLeft,
   CheckCircle, AlertTriangle, RefreshCw, Zap, Volume2, Users,
@@ -39,16 +40,20 @@ const WIZARD_STEPS = [
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; color: string; bg: string; pulse?: boolean }> = {
-    completed:  { label:'Tamamlandı',   color:'#059669', bg:'#ecfdf5' },
-    calling:    { label:'Arıyor',       color:'#2563eb', bg:'#eff6ff', pulse: true },
-    initiating: { label:'Başlatılıyor', color:'#b45309', bg:'#fffbeb' },
-    'no-answer':{ label:'Cevap Yok',    color:'#64748b', bg:'#f1f5f9' },
-    failed:     { label:'Başarısız',    color:'#dc2626', bg:'#fef2f2' },
+    completed:   { label:'Tamamlandı',   color:'#059669', bg:'#ecfdf5' },
+    calling:     { label:'Arıyor',       color:'#2563eb', bg:'#eff6ff', pulse: true },
+    in_progress: { label:'Konuşuyor',    color:'#059669', bg:'#ecfdf5', pulse: true },
+    initiating:  { label:'Başlatılıyor', color:'#b45309', bg:'#fffbeb' },
+    'no-answer': { label:'Cevap Yok',    color:'#64748b', bg:'#f1f5f9' },
+    failed:      { label:'Başarısız',    color:'#dc2626', bg:'#fef2f2' },
   }
   const s = map[status] || { label: status, color:'#64748b', bg:'#f1f5f9' }
   return (
-    <span className={s.pulse ? 'animate-pulse' : ''} style={{ display:'inline-block', fontSize:12, fontWeight:600, padding:'4px 10px', borderRadius:999, color:s.color, background:s.bg, border:`1px solid ${s.color}26` }}>
-      {s.label}
+    <span className="inline-flex items-center gap-1.5">
+      {s.pulse && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>}
+      <span className={s.pulse ? 'animate-pulse' : ''} style={{ display:'inline-block', fontSize:12, fontWeight:600, padding:'4px 10px', borderRadius:999, color:s.color, background:s.bg, border:`1px solid ${s.color}26` }}>
+        {s.label}
+      </span>
     </span>
   )
 }
@@ -1682,6 +1687,27 @@ export default function VoicePage() {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 6000)
   }
   useEffect(() => { loadAll() }, [])
+
+  // Supabase Realtime — voice_calls değiştiğinde anında UI güncelle (polling fallback)
+  useEffect(() => {
+    const channel = supabaseClient
+      .channel('voice-calls-realtime')
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'voice_calls' },
+        (payload: any) => {
+          if (payload.eventType === 'UPDATE') {
+            setCalls((prev: any[]) => prev.map((c: any) => c.id === payload.new.id ? { ...c, ...payload.new } : c))
+          } else if (payload.eventType === 'INSERT') {
+            setCalls((prev: any[]) => [payload.new, ...prev])
+          } else if (payload.eventType === 'DELETE') {
+            setCalls((prev: any[]) => prev.filter((c: any) => c.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+    return () => { supabaseClient.removeChannel(channel) }
+  }, [])
 
   // Web Audio ringtone — Türk telefon zil sesi (beep-beep ... pause döngüsü)
   function startRingtone() {
