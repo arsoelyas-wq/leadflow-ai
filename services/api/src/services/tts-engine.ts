@@ -207,29 +207,40 @@ export async function synthesizeCartesia(opts: TTSOptions): Promise<Buffer> {
   const lang    = opts.language || 'tr';
   const voiceId = opts.voiceId || CARTESIA_VOICES[lang] || CARTESIA_VOICES.default;
 
-  const r = await axios.post(
-    'https://api.cartesia.ai/tts/bytes',
-    {
-      model_id:  'sonic-multilingual',
-      transcript: opts.text,
-      voice:     { mode: 'id', id: voiceId },
-      language:  lang,
-      output_format: {
-        container:   'mp3',
-        encoding:    'mp3',
-        sample_rate: 44100,
+  // Dile göre model seç — Türkçe sonic-3, diğerleri sonic-2
+  const model = (lang === 'tr' || lang === 'de' || lang === 'fr' || lang === 'ar') ? 'sonic-3' : 'sonic-2';
+
+  let r: any;
+  try {
+    r = await axios.post(
+      'https://api.cartesia.ai/tts/bytes',
+      {
+        model_id:   model,
+        transcript: opts.text,
+        voice:      { mode: 'id', id: voiceId },
+        language:   lang,
+        output_format: {
+          container:   'mp3',
+          bit_rate:    128000,
+          sample_rate: 44100,
+        },
       },
-    },
-    {
-      headers: {
-        'X-API-Key':        CARTESIA_KEY,
-        'Cartesia-Version': CARTESIA_VERSION,
-        'Content-Type':     'application/json',
-      },
-      responseType: 'arraybuffer',
-      timeout: 20000,
-    }
-  );
+      {
+        headers: {
+          'X-API-Key':        CARTESIA_KEY,
+          'Cartesia-Version': CARTESIA_VERSION,
+          'Content-Type':     'application/json',
+        },
+        responseType: 'arraybuffer',
+        timeout: 30000,
+      }
+    );
+  } catch (err: any) {
+    const detail = err.response?.data
+      ? Buffer.from(err.response.data).toString('utf8').slice(0, 200)
+      : err.message;
+    throw new Error(`Cartesia TTS hatası: ${detail}`);
+  }
 
   return Buffer.from(r.data);
 }
