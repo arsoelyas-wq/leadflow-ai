@@ -242,6 +242,7 @@ export class CallSession extends EventEmitter {
   private _greetingPromise:      Promise<Buffer[]> | null = null; // async pre-synth promise (cold start absorblanır)
   private _pendingUserText       = '';  // barge-in veya echo-guard sırasında biriken metin
   private _processingLock        = false; // aynı anda birden fazla Claude çağrısını önle
+  private _ttsEmptyCount         = 0;  // arka arkaya 0-chunk dönen TTS cümleleri sayacı
   private _claudeAbort:          AbortController | null = null; // aktif LLM isteği abort controller
   private _expectedPlaybackEndMs = 0;   // son gönderilen audio byte'ın Twilio'da biteceği tahmini zaman
   private _lastAiText            = '';  // echo filtresi: AI'nın son söylediği metin
@@ -462,6 +463,7 @@ export class CallSession extends EventEmitter {
     this.ttsAbort  = new AbortController();
 
     const voiceId = this.params.voiceId || getCartesiaVoiceId(this.langCfg, this.params.gender as any);
+    let chunksSent = 0;
 
     try {
       await synthesizeStreaming({
@@ -470,7 +472,7 @@ export class CallSession extends EventEmitter {
         language: this.params.language,
         text:     sentence,
         signal:   this.ttsAbort.signal,
-        onChunk:  (mulaw) => this._sendAudio(mulaw),
+        onChunk:  (mulaw) => { chunksSent++; this._sendAudio(mulaw); },
         onDone:   () => {},
         onError:  (err) => {
           console.error(`[Session ${this.sessionId}] TTS error:`, err.message);
@@ -481,6 +483,18 @@ export class CallSession extends EventEmitter {
     }
 
     if (!this.ttsAbort?.signal.aborted && (this.state as string) !== 'ended') {
+      // Empty-chunk guard: Cartesia API bozuksa kuyruğu temizle
+      if (chunksSent === 0) {
+        this._ttsEmptyCount++;
+        console.warn(`[Session ${this.sessionId}] TTS 0 chunks (${this._ttsEmptyCount}/3): "${sentence.slice(0, 40)}"`);
+        if (this._ttsEmptyCount >= 3) {
+          console.warn(`[Session ${this.sessionId}] TTS empty 3x — flushing queue`);
+          this._ttsEmptyCount = 0;
+          this.ttsQueue = [];
+        }
+      } else {
+        this._ttsEmptyCount = 0;
+      }
       await this._drainTtsQueue();
     }
   }
@@ -488,16 +502,18 @@ export class CallSession extends EventEmitter {
   // TTS bittikten sonra çağrılır — listening'e geçince barge-in metnini işle
   private _onTtsDone(): void {
     if (this.state === 'ended' || this.state === 'ending') return;
-    // Lock varsa bekle — _processUserInput'un finally bloğu işleyecek
     if (this._processingLock) return;
+    if (this.state !== 'listening') return;  // yalnızca listening'de pending'i tüket
 
-    // Barge-in sırasında yakalanan metin varsa işle
-    const pending = this._pendingUserText.trim();
-    this._pendingUserText = '';
-    if (pending.length > 0) {
-      console.log(`[Session ${this.sessionId}] Processing barge-in text: "${pending}"`);
-      this.transcript.push(`Lead: ${pending}`);
-      this._processUserInput(pending);
+    // Safety: TTS/echo guard sırasında biriken metni işle
+    if (this._pendingUserText && !this._processingLock && this.state === 'listening') {
+      const text = this._pendingUserText.trim();
+      this._pendingUserText = '';
+      if (text.length > 0) {
+        console.log(`[Session ${this.sessionId}] Processing barge-in text: "${text}"`);
+        this.transcript.push(`Lead: ${text}`);
+        this._processUserInput(text);
+      }
     }
   }
 
