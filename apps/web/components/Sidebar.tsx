@@ -110,9 +110,8 @@ const GROUPS: NavGroup[] = [
 ]
 
 const AI_CLONE_ITEMS = [
-  { href: '/voice-outreach',   label: 'nav.voice',            icon: Phone },
-  { href: '/video-outreach',   label: 'nav.video',            icon: Video },
-  { href: '/cartesia-library', label: 'nav.cartesia_library', icon: Mic   },
+  { href: '/voice-outreach', label: 'nav.voice', icon: Phone },
+  { href: '/video-outreach', label: 'nav.video', icon: Video },
 ]
 
 const SPECIAL_TOOLS = [
