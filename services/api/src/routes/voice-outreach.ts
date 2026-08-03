@@ -98,6 +98,85 @@ function getLanguageByCountry(code: string): string {
   return m[code?.toUpperCase()] || 'en';
 }
 
+// ─── TIMEZONE-AWARE CALLING (09:00–18:00 yerel saat) ────────────────────────
+const PHONE_PREFIX_TZ: Record<string, string> = {
+  '+90': 'Europe/Istanbul',
+  '+1':  'America/New_York',
+  '+44': 'Europe/London',
+  '+49': 'Europe/Berlin',
+  '+33': 'Europe/Paris',
+  '+7':  'Europe/Moscow',
+  '+971':'Asia/Dubai',
+  '+966':'Asia/Riyadh',
+  '+81': 'Asia/Tokyo',
+  '+82': 'Asia/Seoul',
+  '+86': 'Asia/Shanghai',
+  '+91': 'Asia/Kolkata',
+  '+55': 'America/Sao_Paulo',
+  '+31': 'Europe/Amsterdam',
+  '+48': 'Europe/Warsaw',
+  '+39': 'Europe/Rome',
+  '+34': 'Europe/Madrid',
+  '+32': 'Europe/Brussels',
+  '+41': 'Europe/Zurich',
+  '+43': 'Europe/Vienna',
+  '+46': 'Europe/Stockholm',
+  '+47': 'Europe/Oslo',
+  '+45': 'Europe/Copenhagen',
+  '+358':'Europe/Helsinki',
+  '+380':'Europe/Kiev',
+  '+30': 'Europe/Athens',
+  '+351':'Europe/Lisbon',
+  '+36': 'Europe/Budapest',
+  '+420':'Europe/Prague',
+  '+40': 'Europe/Bucharest',
+  '+972':'Asia/Jerusalem',
+  '+60': 'Asia/Kuala_Lumpur',
+  '+62': 'Asia/Jakarta',
+  '+66': 'Asia/Bangkok',
+  '+84': 'Asia/Ho_Chi_Minh',
+  '+52': 'America/Mexico_City',
+  '+54': 'America/Argentina/Buenos_Aires',
+  '+56': 'America/Santiago',
+  '+57': 'America/Bogota',
+  '+51': 'America/Lima',
+  '+20': 'Africa/Cairo',
+  '+212':'Africa/Casablanca',
+  '+213':'Africa/Algiers',
+  '+27': 'Africa/Johannesburg',
+  '+234':'Africa/Lagos',
+};
+
+function getTimezoneForPhone(phone: string): string {
+  const normalized = phone.startsWith('+') ? phone : '+' + phone;
+  const sorted = Object.keys(PHONE_PREFIX_TZ).sort((a, b) => b.length - a.length);
+  for (const prefix of sorted) {
+    if (normalized.startsWith(prefix)) return PHONE_PREFIX_TZ[prefix];
+  }
+  return 'UTC';
+}
+
+function isWithinCallingHours(phone: string): { allowed: boolean; localHour: number; timezone: string } {
+  const tz = getTimezoneForPhone(phone);
+  try {
+    const hourStr = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).format(new Date());
+    const localHour = parseInt(hourStr, 10);
+    return { allowed: localHour >= 9 && localHour < 18, localHour, timezone: tz };
+  } catch {
+    return { allowed: true, localHour: 12, timezone: 'UTC' };
+  }
+}
+
+function minutesUntilNextCallingWindow(phone: string): number {
+  const tz = getTimezoneForPhone(phone);
+  try {
+    const localHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).format(new Date()), 10);
+    if (localHour < 9)   return (9 - localHour) * 60;
+    if (localHour >= 18) return (24 - localHour + 9) * 60;
+    return 0;
+  } catch { return 0; }
+}
+
 // ─── XTTS-v2 SENTEZİ ──────────────────────────────────────────────────────────
 // synthesizeXtts/warmUpXtts now live in ../services/xtts-engine (shared with video-outreach.ts)
 setTimeout(() => {
@@ -933,6 +1012,16 @@ router.post('/call/single', async (req: any, res: any) => {
       .gte('created_at', since60s).maybeSingle();
     if (recentCall) return res.status(429).json({ error: 'Bu numaraya son 60 saniyede arama yapıldı. Lütfen bekleyin.' });
 
+    // Timezone kontrolü — 09:00–18:00 yerel saat dışında arama yapma
+    const tzCheck = isWithinCallingHours(normalizedPhone);
+    if (!tzCheck.allowed) {
+      return res.status(400).json({
+        error: `Bu numara için uygun arama saati 09:00–18:00 yerel saattir (şu an ${tzCheck.localHour}:00 — ${tzCheck.timezone}). Lütfen uygun saatte tekrar deneyin.`,
+        localHour: tzCheck.localHour,
+        timezone:  tzCheck.timezone,
+      });
+    }
+
     // A/B Test: Yeterli veri yoksa otomatik A/B round-robin (her 2 aramada bir stil dene)
     let finalStyle = conversationStyle;
     const { count: userCallCount } = await supabase
@@ -1144,6 +1233,18 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
       const { data: bl } = await supabase.from('call_blacklist').select('id').eq('user_id', userId).eq('phone', normPhone).maybeSingle();
       if (bl) {
         await supabase.from('campaign_queue').update({ status: 'skipped', last_error: 'Blacklisted' }).eq('id', job.id);
+        return;
+      }
+
+      // Timezone kontrolü — yerel saat 09:00–18:00 dışındaysa yeniden zamanla
+      const tzCk = isWithinCallingHours(normPhone);
+      if (!tzCk.allowed) {
+        const waitMinutes = minutesUntilNextCallingWindow(normPhone);
+        console.log(`[Campaign] Skipping ${normPhone} — outside calling hours (${tzCk.timezone}, hour=${tzCk.localHour}). Rescheduling in ${waitMinutes}min`);
+        await supabase.from('campaign_queue').update({
+          scheduled_at: new Date(Date.now() + waitMinutes * 60 * 1000).toISOString(),
+          status: 'pending',
+        }).eq('id', job.id);
         return;
       }
 
