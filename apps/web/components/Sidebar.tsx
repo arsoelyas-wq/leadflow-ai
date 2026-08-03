@@ -110,8 +110,9 @@ const GROUPS: NavGroup[] = [
 ]
 
 const AI_CLONE_ITEMS = [
-  { href: '/voice-outreach', label: 'nav.voice', icon: Phone },
-  { href: '/video-outreach', label: 'nav.video', icon: Video },
+  { href: '/voice-outreach',   label: 'nav.voice',            icon: Phone },
+  { href: '/video-outreach',   label: 'nav.video',            icon: Video },
+  { href: '/cartesia-library', label: 'nav.cartesia_library', icon: Mic   },
 ]
 
 const SPECIAL_TOOLS = [
@@ -139,8 +140,9 @@ const HREF_FLAG: Record<string, string> = {
   '/agent':           'agent',
   '/tenders':         'tenders',
   '/export':          'export',
-  '/voice-outreach':  'voice_outreach',
-  '/video-outreach':  'video_outreach',
+  '/voice-outreach':     'voice_outreach',
+  '/video-outreach':     'video_outreach',
+  '/cartesia-library':   'voice_outreach',
   '/sms-campaigns':   'sms_campaigns',
   '/email-campaigns': 'email_campaigns',
   '/wa-numbers':      'wa_numbers',
