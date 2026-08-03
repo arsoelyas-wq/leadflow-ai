@@ -132,12 +132,12 @@ function VoiceCard({ voice, onPreview, playingId }: {
         onClick={() => onPreview(voice)}
         style={{
           flexShrink: 0, width: 36, height: 36, borderRadius: '50%',
-          background: isPlaying ? '#fee2e2' : '#eff6ff',
-          border: `1.5px solid ${isPlaying ? '#fca5a5' : '#bfdbfe'}`,
+          background: isPlaying ? '#fee2e2' : (voice as any).preview_url ? '#f0fdf4' : '#eff6ff',
+          border: `1.5px solid ${isPlaying ? '#fca5a5' : (voice as any).preview_url ? '#86efac' : '#bfdbfe'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', transition: 'all .15s',
         }}
-        title="Önizle"
+        title={(voice as any).preview_url ? 'Önizle (ücretsiz)' : 'Önizle (kredi harcar)'}
       >
         {isPlaying
           ? <Square size={14} color="#ef4444" />
@@ -191,21 +191,32 @@ export default function CartesiaLibraryPage() {
     setPreviewLoading(voice.id)
     setPreviewError('')
     try {
-      const lang = voice.language || voice.supported_languages?.[0] || 'en'
-      const text = PREVIEW_TEXTS[lang] || PREVIEW_TEXTS['en']
-      const r = await fetch(
-        `${API}/api/voice-library/preview?voiceId=${voice.id}&provider=cartesia&lang=${lang}&text=${encodeURIComponent(text)}`,
-        { headers: authH() }
-      )
-      if (!r.ok) {
-        const errJson = await r.json().catch(() => ({ error: `HTTP ${r.status}` }))
-        throw new Error(errJson.error || 'Önizleme alınamadı')
+      // Cartesia'nın hazır preview URL'i varsa kredi harcamadan kullan
+      const previewUrl = (voice as any).preview_url as string | undefined
+
+      let url: string
+      if (previewUrl) {
+        // Doğrudan Cartesia CDN'den çek — TTS kredisi harcanmaz
+        url = previewUrl
+      } else {
+        // Hazır URL yoksa TTS üret (kredi harcar)
+        const lang = voice.language || voice.supported_languages?.[0] || 'en'
+        const text = PREVIEW_TEXTS[lang] || PREVIEW_TEXTS['en']
+        const r = await fetch(
+          `${API}/api/voice-library/preview?voiceId=${voice.id}&provider=cartesia&lang=${lang}&text=${encodeURIComponent(text)}`,
+          { headers: authH() }
+        )
+        if (!r.ok) {
+          const errJson = await r.json().catch(() => ({ error: `HTTP ${r.status}` }))
+          throw new Error(errJson.error || 'Önizleme alınamadı')
+        }
+        const blob = await r.blob()
+        url = URL.createObjectURL(blob)
       }
-      const blob = await r.blob()
-      const url  = URL.createObjectURL(blob)
+
       if (audioRef.current) {
         audioRef.current.pause()
-        URL.revokeObjectURL(audioRef.current.src)
+        if (audioRef.current.src.startsWith('blob:')) URL.revokeObjectURL(audioRef.current.src)
       }
       const audio = new Audio(url)
       audioRef.current = audio
