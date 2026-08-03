@@ -350,21 +350,33 @@ router.get('/health', async (_req: any, res: any) => {
   });
 });
 
-// ─── Cartesia voices listesi — dil/cinsiyet filtreli ─────────────────────────
-// GET /api/engine/cartesia-voices?lang=tr
-router.get('/cartesia-voices', async (req: any, res: any) => {
+// ─── Cartesia voices listesi — tam katalog, 30 dk önbellekli ────────────────
+// GET /api/engine/cartesia-voices          → tüm sesler
+// GET /api/engine/cartesia-voices?lang=tr  → dil filtreli (geriye dönük uyum)
+
+let _vcCache: { data: any[]; at: number } | null = null;
+const VC_TTL = 30 * 60 * 1000; // 30 dakika
+
+async function fetchAllCartesiaVoices(apiKey: string): Promise<any[]> {
+  if (_vcCache && Date.now() - _vcCache.at < VC_TTL) return _vcCache.data;
   const axios = require('axios');
+  const r = await axios.get('https://api.cartesia.ai/voices', {
+    headers: { 'X-API-Key': apiKey, 'Cartesia-Version': '2024-06-10' },
+    timeout: 12000,
+  });
+  const data = Array.isArray(r.data) ? r.data : (r.data?.voices || []);
+  _vcCache = { data, at: Date.now() };
+  return data;
+}
+
+router.get('/cartesia-voices', async (req: any, res: any) => {
   const apiKey = process.env.CARTESIA_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'CARTESIA_API_KEY yok' });
 
   const langFilter = ((req.query.lang as string) || '').toLowerCase();
 
   try {
-    const r = await axios.get('https://api.cartesia.ai/voices', {
-      headers: { 'X-API-Key': apiKey, 'Cartesia-Version': '2024-06-10' },
-      timeout: 8000,
-    });
-    const all = Array.isArray(r.data) ? r.data : (r.data?.voices || []);
+    const all = await fetchAllCartesiaVoices(apiKey);
     const filtered = langFilter
       ? all.filter((v: any) => {
           const lang = (v.language || '').toLowerCase();

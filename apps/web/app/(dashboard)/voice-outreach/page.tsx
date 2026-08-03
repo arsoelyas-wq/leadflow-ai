@@ -283,7 +283,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
   const [fileName, setFileName] = useState('')
-  const [libVoices, setLibVoices] = useState<any[]>([])
+  const [allLibVoices, setAllLibVoices] = useState<any[]>([])
   const [libLoading, setLibLoading] = useState(false)
   const [libSearch, setLibSearch] = useState('')
   const [libLang, setLibLang] = useState('tr')
@@ -296,7 +296,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
   const audioCtxRef = useRef<AudioContext | null>(null)
 
   useEffect(() => { loadVoices() }, [])
-  useEffect(() => { if (voiceSubTab === 'library') loadLib(libLang) }, [voiceSubTab, libLang])
+  useEffect(() => { if (voiceSubTab === 'library' && allLibVoices.length === 0) loadLib() }, [voiceSubTab])
   useEffect(() => () => stopRec(true), [])
 
   async function loadVoices() {
@@ -304,10 +304,18 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
     try { const r = await fetch(`${API}/api/voice/my-voices`, { headers: authH() }); const d = await r.json(); setVoices(d.voices || []) }
     catch {} setLoading(false)
   }
-  async function loadLib(l: string) {
-    setLibLoading(true); setLibVoices([])
-    try { const r = await fetch(`${API}/api/engine/cartesia-voices?lang=${l}`, { headers: authH() }); const d = await r.json(); setLibVoices(d.voices || []) }
-    catch {} setLibLoading(false)
+  async function loadLib() {
+    setLibLoading(true)
+    try {
+      const r = await fetch(`${API}/api/engine/cartesia-voices`, { headers: authH() })
+      const d = await r.json()
+      const voices = d.voices || []
+      setAllLibVoices(voices)
+      if (voices.length > 0) {
+        const langs = [...new Set(voices.map((v: any) => (v.language || '').toLowerCase()).filter(Boolean))]
+        if (!langs.includes('tr') && langs.length > 0) setLibLang(langs[0] as string)
+      }
+    } catch {} setLibLoading(false)
   }
   async function startRec() {
     try {
@@ -423,7 +431,23 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
     }
   }
 
-  const filteredLib = libVoices.filter(v => {
+  const availableLangs = (() => {
+    const counts: Record<string, number> = {}
+    for (const v of allLibVoices) {
+      const lang = (v.language || 'other').toLowerCase()
+      counts[lang] = (counts[lang] || 0) + 1
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([code, count]) => {
+        const known = LANG_MAP[code]
+        return { code, name: known?.name || code.toUpperCase(), flag: known?.flag || '🌐', count }
+      })
+  })()
+
+  const filteredLib = allLibVoices.filter(v => {
+    const lang = (v.language || '').toLowerCase()
+    if (lang !== libLang) return false
     if (libSearch) {
       const q = libSearch.toLowerCase()
       if (!v.name?.toLowerCase().includes(q) && !v.description?.toLowerCase().includes(q)) return false
@@ -700,31 +724,37 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
         /* ── CARTESIA KÜTÜPHANESİ — Lüks Tasarım ─────────────────────────── */
         <div className="space-y-4">
 
-          {/* Dil filtreleri — yatay kaydırma */}
+          {/* Dil filtreleri — dinamik, Cartesia kataloğundan */}
           <div style={{ overflowX:'auto', scrollbarWidth:'none' }} className="pb-1">
             <div className="flex gap-1.5" style={{ minWidth:'max-content' }}>
-              {VOICE_LANGS.map(l => {
-                const active = libLang === l.code
-                return (
-                  <button key={l.code} onClick={() => setLibLang(l.code)}
-                    className="flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all duration-200 whitespace-nowrap"
-                    style={active ? {
-                      padding:'6px 14px',
-                      background:'linear-gradient(135deg,#0d9488,#0e7490)',
-                      color:'#ffffff',
-                      boxShadow:'0 4px 14px rgba(13,148,136,0.3)',
-                      transform:'scale(1.04)',
-                    } : {
-                      padding:'6px 12px',
-                      background:'#f8fafc',
-                      border:'1px solid #e8f0fe',
-                      color:'#64748b',
-                    }}>
-                    <span style={{ fontSize:14 }}>{l.flag}</span>
-                    <span>{l.name}</span>
-                  </button>
-                )
-              })}
+              {libLoading && availableLangs.length === 0
+                ? [1,2,3,4,5].map(i => (
+                    <div key={i} className="h-8 w-20 rounded-xl animate-pulse" style={{ background:'#f1f5f9' }}/>
+                  ))
+                : availableLangs.map(l => {
+                    const active = libLang === l.code
+                    return (
+                      <button key={l.code} onClick={() => setLibLang(l.code)}
+                        className="flex items-center gap-1.5 rounded-xl text-xs font-semibold transition-all duration-200 whitespace-nowrap"
+                        style={active ? {
+                          padding:'6px 14px',
+                          background:'linear-gradient(135deg,#0d9488,#0e7490)',
+                          color:'#ffffff',
+                          boxShadow:'0 4px 14px rgba(13,148,136,0.3)',
+                          transform:'scale(1.04)',
+                        } : {
+                          padding:'6px 12px',
+                          background:'#f8fafc',
+                          border:'1px solid #e8f0fe',
+                          color:'#64748b',
+                        }}>
+                        <span style={{ fontSize:14 }}>{l.flag}</span>
+                        <span>{l.name}</span>
+                        <span style={{ fontSize:10, opacity:0.7 }}>({l.count})</span>
+                      </button>
+                    )
+                  })
+              }
             </div>
           </div>
 
@@ -733,7 +763,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
             <div className="relative flex-1">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color:'#94a3b8' }}/>
               <input value={libSearch} onChange={e => setLibSearch(e.target.value)}
-                placeholder={`${LANG_MAP[libLang]?.name || ''} seslerinde ara...`}
+                placeholder={`${availableLangs.find(l => l.code === libLang)?.name || libLang.toUpperCase()} seslerinde ara...`}
                 className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm focus:outline-none transition-all"
                 style={{ background:'#ffffff', border:'1.5px solid #e2e8f0', color:'#0f172a', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}
                 onFocus={e => (e.target.style.borderColor='#5eead4')}
@@ -741,7 +771,7 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
             </div>
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl flex-shrink-0"
               style={{ background:'#f0fdfa', border:'1px solid #99f6e4' }}>
-              <span style={{ fontSize:13 }}>{LANG_MAP[libLang]?.flag}</span>
+              <span style={{ fontSize:13 }}>{availableLangs.find(l => l.code === libLang)?.flag || '🌐'}</span>
               <span className="text-xs font-bold" style={{ color:'#0d9488' }}>{filteredLib.length}</span>
               <span className="text-xs" style={{ color:'#64748b' }}>ses</span>
             </div>
