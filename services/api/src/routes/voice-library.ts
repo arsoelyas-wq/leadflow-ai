@@ -184,6 +184,27 @@ router.get('/voices/:lang', async (req: any, res: any) => {
   }
 });
 
+// ─── Cartesia preview in-memory cache ─────────────────────────────────────────
+// Her ses için TTS yalnızca 1 kez üretilir; sonraki istekler önbellekten gelir.
+// Kredi harcaması: ilk istek başına 1 kez.
+const _cartesiaCache = new Map<string, { buf: Buffer; at: number }>();
+const CACHE_TTL_MS   = 12 * 60 * 60 * 1000; // 12 saat
+
+function getCached(key: string): Buffer | null {
+  const entry = _cartesiaCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.at > CACHE_TTL_MS) { _cartesiaCache.delete(key); return null; }
+  return entry.buf;
+}
+function setCache(key: string, buf: Buffer) {
+  // Önbellek 200 sesten büyük olmasın — en eski girişi sil
+  if (_cartesiaCache.size >= 200) {
+    const oldest = [..._cartesiaCache.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+    if (oldest) _cartesiaCache.delete(oldest[0]);
+  }
+  _cartesiaCache.set(key, { buf, at: Date.now() });
+}
+
 // ─── GET /preview ─────────────────────────────────────────────────────────────
 
 router.get('/preview', async (req: any, res: any) => {
@@ -196,14 +217,25 @@ router.get('/preview', async (req: any, res: any) => {
     let audioBuffer: Buffer;
 
     if (provider === 'elevenlabs') {
-      // ElevenLabs TTS ile preview üret
       audioBuffer = await synthesizeElevenLabs({ text: sampleText, language: lang as string, voiceId: vid });
     } else if (provider === 'azure') {
       audioBuffer = await generateAzurePreview(vid, lang as string);
     } else if (provider === 'cartesia') {
+      const cacheKey = `${vid}::${lang}`;
+      const cached   = getCached(cacheKey);
+      if (cached) {
+        console.log(`[Preview] Önbellekten: ${vid}`);
+        res.setHeader('Content-Type', 'audio/wav');
+        res.setHeader('Cache-Control', 'public, max-age=43200');
+        res.setHeader('X-Cache', 'HIT');
+        return res.send(cached);
+      }
+      console.log(`[Preview] TTS üretiliyor: ${vid}`);
       audioBuffer = await synthesizeCartesia({ text: sampleText, language: lang as string, voiceId: vid });
+      setCache(cacheKey, audioBuffer);
       res.setHeader('Content-Type', 'audio/wav');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'public, max-age=43200');
+      res.setHeader('X-Cache', 'MISS');
       return res.send(audioBuffer);
     } else {
       return res.status(400).json({ error: 'Geçersiz provider (elevenlabs | azure | cartesia)' });

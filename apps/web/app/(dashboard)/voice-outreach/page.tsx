@@ -364,8 +364,33 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
 
     const previewUrl: string | null = voice.preview_url || voice.previewUrl || null
 
-    // preview_url yoksa → sessizce çık, buton zaten soluk görünüyor
-    if (!previewUrl) return
+    // preview_url yoksa → backend TTS (önbellekli: ilk istek kredi harcar, sonrası ücretsiz)
+    if (!previewUrl) {
+      setLibPreviewLoading(voice.id)
+      try {
+        const r = await fetch(
+          `${API}/api/voice-library/preview?voiceId=${encodeURIComponent(voice.id)}&provider=cartesia&lang=${libLang}`,
+          { headers: authH() }
+        )
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}))
+          setLibPreviewLoading(null)
+          onMsg('error', (err.error || 'Önizleme yüklenemedi').slice(0, 120))
+          return
+        }
+        const blob    = await r.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        setLibPreviewLoading(null); setPlaying(voice.id)
+        const a2 = new Audio(blobUrl); globalAudio = a2
+        a2.onended  = () => { setPlaying(null); globalAudio = null; URL.revokeObjectURL(blobUrl) }
+        a2.onerror  = () => { setPlaying(null); globalAudio = null }
+        a2.play().catch(() => { setPlaying(null); onMsg('error', 'Ses çalınamadı') })
+      } catch (e: any) {
+        setLibPreviewLoading(null)
+        onMsg('error', 'Önizleme hatası: ' + (e.message || '').slice(0, 80))
+      }
+      return
+    }
 
     // preview_url varsa → ücretsiz Cartesia CDN'den çal
     // TTS hiç çağrılmaz — kredi harcanmaz
@@ -803,15 +828,15 @@ function StepVoice({ selectedId, selectedType, onSelect, onMsg, settings, setSet
                       </p>
                     </div>
 
-                    {/* Önizle butonu — sadece preview_url CDN (ücretsiz), TTS yok */}
+                    {/* Önizle butonu */}
                     <button
-                      onClick={e => { e.stopPropagation(); if (hasPreview || isPlaying) playLib(v) }}
-                      className="flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-200"
-                      title={isPlaying ? 'Durdur' : hasPreview ? 'Ücretsiz önizle' : 'Bu ses için hazır önizleme yok'}
+                      onClick={e => { e.stopPropagation(); playLib(v) }}
+                      className="flex-shrink-0 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 active:scale-95"
+                      title={isPlaying ? 'Durdur' : hasPreview ? 'Ücretsiz önizle' : 'Önizle'}
                       style={{
                         width:38, height:38,
-                        cursor: hasPreview || isPlaying ? 'pointer' : 'not-allowed',
-                        opacity: hasPreview || isPlaying ? 1 : 0.35,
+                        cursor: 'pointer',
+                        opacity: 1,
                         background: isPlaying
                           ? 'linear-gradient(135deg,#ef4444,#dc2626)'
                           : isLoading
