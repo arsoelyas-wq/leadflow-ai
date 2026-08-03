@@ -14,15 +14,8 @@ const { createClient } = require('@supabase/supabase-js');
 const router   = express.Router();
 const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// Bellekte geçici OTP deposu (10dk TTL). Railway restart olmadıkça güvenilir.
-const _otpStore = new Map<string, { code: string; expiresAt: number }>();
-
 function _generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-function _otpKey(userId: string, phone: string): string {
-  return `${userId}:${phone}`;
 }
 
 function getTwilioClient() {
@@ -80,9 +73,16 @@ router.post('/add', async (req: any, res: any) => {
       return res.status(409).json({ error: 'Bu numara zaten doğrulanmış' });
     }
 
-    // 6 haneli OTP üret — bellekte sakla (10 dakika geçerli)
+    // 6 haneli OTP üret — Supabase DB'ye kaydet (15 dakika geçerli)
     const otp = _generateOtp();
-    _otpStore.set(_otpKey(req.userId, normalized), { code: otp, expiresAt: Date.now() + 600_000 });
+    // Önceki OTP'leri sil, yenisini ekle
+    await supabase.from('caller_id_otps').delete()
+      .eq('user_id', req.userId).eq('phone_number', normalized);
+    await supabase.from('caller_id_otps').insert({
+      user_id: req.userId,
+      phone_number: normalized,
+      otp_code: otp,
+    });
     console.log(`[CallerID] OTP generated for ${normalized}: ${otp}`);
 
     // Kullanıcının e-posta adresini al
@@ -161,22 +161,27 @@ router.post('/sms-verify', async (req: any, res: any) => {
     if (!phoneNumber || !code) return res.status(400).json({ error: 'phoneNumber ve code zorunlu' });
 
     const normalized = normalizeE164(phoneNumber);
-    const key        = _otpKey(req.userId, normalized);
-    const entry      = _otpStore.get(key);
 
-    if (!entry) {
-      return res.status(400).json({ error: 'Kod bulunamadı veya süresi dolmuş. Yeni kod isteyin.' });
-    }
-    if (Date.now() > entry.expiresAt) {
-      _otpStore.delete(key);
-      return res.status(400).json({ error: 'Kodun süresi dolmuş. Yeni kod isteyin.' });
-    }
-    if (entry.code !== String(code).trim()) {
-      return res.status(400).json({ error: 'Yanlış kod. Tekrar deneyin.' });
+    // Süresi dolmuş OTP'leri temizle
+    await supabase.rpc('cleanup_expired_otps').catch(() => {});
+    // Geçerli OTP'yi DB'den al
+    const { data: otpRow } = await supabase
+      .from('caller_id_otps')
+      .select('otp_code')
+      .eq('user_id', req.userId)
+      .eq('phone_number', normalized)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!otpRow || otpRow.otp_code !== String(code).trim()) {
+      return res.status(400).json({ error: 'Kod hatalı veya süresi dolmuş' });
     }
 
-    // Kod doğru — OTP'yi temizle, DB'yi güncelle
-    _otpStore.delete(key);
+    // Kod doğru — kullanılmış OTP'yi sil, DB'yi güncelle
+    await supabase.from('caller_id_otps').delete()
+      .eq('user_id', req.userId).eq('phone_number', normalized);
 
     const { data: record } = await supabase
       .from('user_caller_ids')
