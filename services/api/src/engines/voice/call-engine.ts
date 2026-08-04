@@ -430,9 +430,15 @@ export async function onTwilioStatus(sessionId: string, status: string, body: Re
     await _updateCallStatus(sessionId, 'in_progress');
   } else if (['no-answer', 'busy', 'failed'].includes(status)) {
     _voicemailPending.delete(body.CallSid || '');  // WS hiç bağlanmadıysa temizle
+    const errorCode = body.ErrorCode || body.SipResponseCode || '';
+    const errorMsg  = body.ErrorMessage || '';
+    const failNote  = errorCode
+      ? `Twilio ${status} — Kod: ${errorCode}${errorMsg ? ` | ${errorMsg}` : ''}`
+      : status;
+    console.error(`[Engine] Call ${status}: sessionId=${sessionId} ErrorCode=${errorCode} ErrorMsg=${errorMsg}`);
     await getSupabase()
       .from('voice_calls')
-      .update({ status: 'failed', end_reason: status, ended_at: new Date().toISOString() })
+      .update({ status: 'failed', end_reason: status, notes: failNote, ended_at: new Date().toISOString() })
       .eq('id', sessionId);
   }
 
