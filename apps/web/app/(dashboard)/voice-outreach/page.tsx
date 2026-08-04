@@ -42,9 +42,11 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; color: string; bg: string; pulse?: boolean }> = {
     completed:   { label:'Tamamlandı',   color:'#059669', bg:'#ecfdf5' },
     calling:     { label:'Arıyor',       color:'#2563eb', bg:'#eff6ff', pulse: true },
+    ringing:     { label:'Çalıyor',      color:'#2563eb', bg:'#eff6ff', pulse: true },
     in_progress: { label:'Konuşuyor',    color:'#059669', bg:'#ecfdf5', pulse: true },
     initiating:  { label:'Başlatılıyor', color:'#b45309', bg:'#fffbeb' },
     'no-answer': { label:'Cevap Yok',    color:'#64748b', bg:'#f1f5f9' },
+    busy:        { label:'Meşgul',       color:'#b45309', bg:'#fffbeb' },
     failed:      { label:'Başarısız',    color:'#dc2626', bg:'#fef2f2' },
   }
   const s = map[status] || { label: status, color:'#64748b', bg:'#f1f5f9' }
@@ -1838,7 +1840,8 @@ export default function VoicePage() {
     setCalling(true)
     setCallErrorDetail(null)
     try {
-      const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage, conversationStyle }) })
+      // bypassTimezone:true — manuel arama kullanıcı bilerek başlatıyor; kampanya otomatiği için timezone koruması devam eder
+      const r = await fetch(`${API}/api/voice/call/single`, { method:'POST', headers:authH(), body:JSON.stringify({ leadId:selectedLead, language:selectedLanguage, conversationStyle, bypassTimezone: true }) })
       const d = await r.json()
       if (d.ok) {
         setCalling(false)

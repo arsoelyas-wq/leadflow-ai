@@ -330,8 +330,16 @@ function _findBySid(callSid: string): SessionParams | undefined {
 // ─── Session event binding → Supabase ────────────────────────────────────────
 
 function _bindSessionEvents(session: CallSession): void {
+  // Session internal states (greeting/speaking/listening/processing) are NOT valid DB statuses.
+  // Only map 'ending'→'in_progress' for a live indicator, 'ended' is handled by the 'ended' event below.
   session.on('state_change', ({ state }: any) => {
-    _updateCallStatus(session.sessionId, state === 'ended' ? 'completed' : state);
+    if (state === 'greeting' || state === 'speaking' || state === 'listening' || state === 'processing') {
+      // These are fine-grained internal states; DB already shows 'in_progress' from Twilio answered callback.
+      // No DB write — avoids CHECK constraint violation.
+    } else if (state === 'ending') {
+      _updateCallStatus(session.sessionId, 'in_progress');  // still live until 'ended' event fires
+    }
+    // 'ended' state is handled by the 'ended' event below (with duration/transcript).
   });
 
   session.on('tool_call', async ({ name, args }: any) => {

@@ -1013,12 +1013,15 @@ router.post('/call/single', async (req: any, res: any) => {
     if (recentCall) return res.status(429).json({ error: 'Bu numaraya son 60 saniyede arama yapıldı. Lütfen bekleyin.' });
 
     // Timezone kontrolü — 09:00–18:00 yerel saat dışında arama yapma
+    // bypassTimezone=true: test ortamında çalışma saati kısıtlamasını devre dışı bırakır
+    const bypassTimezone = req.body?.bypassTimezone === true || req.query?.bypassTimezone === 'true';
     const tzCheck = isWithinCallingHours(normalizedPhone);
-    if (!tzCheck.allowed) {
+    if (!tzCheck.allowed && !bypassTimezone) {
       return res.status(400).json({
         error: `Bu numara için uygun arama saati 09:00–18:00 yerel saattir (şu an ${tzCheck.localHour}:00 — ${tzCheck.timezone}). Lütfen uygun saatte tekrar deneyin.`,
         localHour: tzCheck.localHour,
         timezone:  tzCheck.timezone,
+        hint:      'Test için bypassTimezone:true gönderin.',
       });
     }
 
