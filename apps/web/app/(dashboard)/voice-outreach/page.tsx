@@ -1224,12 +1224,16 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
 // ─── CALLER ID PANEL ─────────────────────────────────────────────────────────
 // Müşteri kendi numarasını ekler → Twilio onu arar → kod onaylanır → aramalar o numaradan görünür
 function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) => void; onVerified: (v: boolean) => void }) {
-  const [callerIds, setCallerIds]     = useState<any[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [addPhone, setAddPhone]       = useState('')
-  const [addName, setAddName]         = useState('')
-  const [step, setStep]               = useState<'list' | 'add'>('list')
-  const [busy, setBusy]               = useState(false)
+  const [callerIds, setCallerIds]       = useState<any[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [addPhone, setAddPhone]         = useState('')
+  const [addName, setAddName]           = useState('')
+  const [step, setStep]                 = useState<'list' | 'add' | 'verify'>('list')
+  const [busy, setBusy]                 = useState(false)
+  const [checkBusy, setCheckBusy]       = useState(false)
+  const [pendingId, setPendingId]       = useState<string | null>(null)
+  const [validationCode, setValidCode]  = useState<string>('')
+  const [pendingPhone, setPendingPhone] = useState<string>('')
 
   const load = async () => {
     try {
@@ -1257,12 +1261,31 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
       })
       const d = await r.json()
       if (d.ok) {
-        onMsg('success', d.message || 'Numara eklendi!')
-        setStep('list'); setAddPhone(''); setAddName('')
-        await load()
+        setPendingId(d.id)
+        setValidCode(d.validationCode || '')
+        setPendingPhone(d.phoneNumber || addPhone)
+        setStep('verify')
+        setAddPhone(''); setAddName('')
       } else onMsg('error', d.error || 'Eklenemedi')
     } catch { onMsg('error', 'Bağlantı hatası') }
     setBusy(false)
+  }
+
+  const checkVerification = async () => {
+    if (!pendingId) return
+    setCheckBusy(true)
+    try {
+      const r = await fetch(`${API}/api/voice/caller-ids/check-status/${pendingId}`, { method: 'POST', headers: authH() })
+      const d = await r.json()
+      if (d.verified) {
+        onMsg('success', `✅ ${pendingPhone} doğrulandı! Aramalar artık bu numaradan görünecek.`)
+        setStep('list'); setPendingId(null); setValidCode('')
+        await load()
+      } else {
+        onMsg('error', d.message || 'Henüz doğrulanmadı — Twilio aramasını yanıtlayın ve * + kodu girin')
+      }
+    } catch { onMsg('error', 'Bağlantı hatası') }
+    setCheckBusy(false)
   }
 
   const setDefault = async (id: string) => {
@@ -1296,7 +1319,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
         {step === 'add' && (
           <div className="space-y-3 pt-2">
             <p className="text-xs" style={{ color: '#0369a1' }}>
-              Kendi telefon numaranızı ekleyin. Müşterileriniz aramaları <strong>sizin numaranızdan</strong> görecek.
+              Kendi telefon numaranızı ekleyin. Twilio numaranızı arayacak ve doğrulama kodunu sesli okuyacak. Kodu telefonunuzdan tuşlayın.
             </p>
             <input value={addPhone} onChange={e => setAddPhone(e.target.value)}
               placeholder="+90 5XX XXX XX XX"
@@ -1310,12 +1333,40 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
               <button onClick={startAdd} disabled={busy}
                 className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
                 style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
-                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'Ekle ve Aktifleştir'}
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'Doğrulamayı Başlat'}
               </button>
               <button onClick={() => setStep('list')} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
                 İptal
               </button>
             </div>
+          </div>
+        )}
+
+        {step === 'verify' && (
+          <div className="space-y-4 pt-2">
+            <div className="p-4 rounded-xl" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
+              <p className="text-xs font-bold mb-1" style={{ color: '#92400e' }}>📞 Twilio Sizi Arıyor</p>
+              <p className="text-xs" style={{ color: '#78350f' }}>
+                <strong>{pendingPhone}</strong> numaranız aranıyor. Aramayı <strong>yanıtlayın</strong>, ardından telefonunuzda:
+              </p>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <span className="text-2xl font-mono font-black tracking-widest px-4 py-2 rounded-xl" style={{ background: '#fff', border: '2px solid #fbbf24', color: '#92400e', letterSpacing: '0.3em' }}>
+                  * {validationCode}
+                </span>
+              </div>
+              <p className="text-[10px] mt-2 text-center" style={{ color: '#a16207' }}>
+                Yıldız (*) tuşuna basın, ardından <strong>{validationCode}</strong> kodunu girin
+              </p>
+            </div>
+            <button onClick={checkVerification} disabled={checkBusy}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+              {checkBusy ? <RefreshCw className="w-4 h-4 animate-spin"/> : <><CheckCircle className="w-4 h-4"/> Doğrulamayı Kontrol Et</>}
+            </button>
+            <button onClick={() => { setStep('list'); setPendingId(null); setValidCode('') }}
+              className="w-full py-2 rounded-xl text-xs" style={{ color: '#64748b' }}>
+              İptal — daha sonra dene
+            </button>
           </div>
         )}
 
@@ -1327,7 +1378,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
               <div className="text-center py-4">
                 <Phone className="w-8 h-8 mx-auto mb-2" style={{ color: '#bae6fd' }}/>
                 <p className="text-xs" style={{ color: '#64748b' }}>Henüz doğrulanmış numara yok.</p>
-                <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>Numara ekleyene kadar aramalar LeadFlow sisteminden görünür.</p>
+                <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>Numaranızı ekleyin — Twilio telefon doğrulamasıyla aktifleştirilir.</p>
               </div>
             )}
 
@@ -1342,7 +1393,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
                     <p className="text-sm font-semibold" style={{ color: '#0f172a' }}>{c.phone_number}</p>
                     <p className="text-[10px]" style={{ color: c.is_default ? '#059669' : '#94a3b8' }}>
                       {c.friendly_name && c.friendly_name !== c.phone_number ? c.friendly_name + ' · ' : ''}
-                      {c.is_default ? '✓ Varsayılan — aramalar bu numaradan görünür' : 'Doğrulanmış'}
+                      {c.is_default ? '✓ Varsayılan — aramalar bu numaradan görünür' : 'Twilio Doğrulanmış'}
                     </p>
                   </div>
                 </div>
