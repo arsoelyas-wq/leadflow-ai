@@ -164,8 +164,16 @@ export interface MakeCallParams {
 
 export async function makeCall(p: MakeCallParams): Promise<{ callSid: string }> {
   if (_shutdownMode) throw new Error('[Engine] Server kapatılıyor — yeni arama kabul edilmiyor');
-  const client     = getTwilioClient();
-  const fromNumber = getTwilioFromNumber(p.params.language);
+  const client = getTwilioClient();
+
+  // callerId varsa fromNumber'a gerek yok — sadece fallback için çağır
+  let fromNumber: string;
+  if (p.params.callerId) {
+    // Doğrulanmış caller ID öncelikli — TWILIO_PHONE_* env var gerekmez
+    try { fromNumber = getTwilioFromNumber(p.params.language); } catch { fromNumber = p.params.callerId; }
+  } else {
+    fromNumber = getTwilioFromNumber(p.params.language);
+  }
 
   // sessionId'yi pendingCalls'a ekle — WebSocket bağlandığında eşleştirilecek
   pendingCalls.set(p.params.sessionId, { ...p.params, voiceCallDbId: p.voiceCallDbId });
