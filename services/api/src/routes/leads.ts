@@ -41,19 +41,20 @@ function upsertToBusinessCache(leads: any[]) {
     .upsert(toCache, { onConflict: 'external_id', ignoreDuplicates: false })
     .then(({ error }: any) => {
       if (error) console.error('[BusinessCache] Upsert error:', error.message?.slice(0, 100));
-    })
-    .catch(() => {});
+    });
 }
 
 // Audit log helper — her alan değişikliğini kaydeder
 async function logFieldChange(leadId: string, userId: string, field: string, oldVal: any, newVal: any, action = 'update') {
-  await supabase.from('lead_field_history').insert([{
-    lead_id: leadId, user_id: userId,
-    field_name: field,
-    old_value: oldVal != null ? String(oldVal) : null,
-    new_value: newVal != null ? String(newVal) : null,
-    action,
-  }]).catch(() => {}); // Tablo yoksa sessiz geç
+  try {
+    await supabase.from('lead_field_history').insert([{
+      lead_id: leadId, user_id: userId,
+      field_name: field,
+      old_value: oldVal != null ? String(oldVal) : null,
+      new_value: newVal != null ? String(newVal) : null,
+      action,
+    }]);
+  } catch {} // Tablo yoksa sessiz geç
 }
 
 // GET /api/leads — Liste (filtre + sayfalama + soft delete)
@@ -347,6 +348,7 @@ router.post('/', authMiddleware, async (req: any, res: any) => {
     } = req.body;
 
     if (!company_name) return res.status(400).json({ error: 'company_name zorunlu' });
+    if (!phone) return res.status(400).json({ error: 'Telefon numarası zorunlu' });
 
     // Duplicate Detection — telefon veya firma adı ile kontrol et
     if (!force) {
@@ -627,8 +629,10 @@ NEDEN: [1 cümle neden]`
     const neden = text.match(/NEDEN:\s*(.+)/)?.[1]?.trim() || '';
 
     // Veritabanına kaydet
-    await supabase.from('leads').update({ next_action: eylem, next_action_at: new Date().toISOString() })
-      .eq('id', req.params.id).catch(() => {});
+    try {
+      await supabase.from('leads').update({ next_action: eylem, next_action_at: new Date().toISOString() })
+        .eq('id', req.params.id);
+    } catch {}
 
     res.json({ action: eylem, timing: zaman, reason: neden, raw: text });
   } catch { res.json({ action: 'Müşteriyi ara veya WhatsApp mesajı gönder', timing: 'Bugün', reason: 'AI analizi geçici olarak kullanılamıyor' }); }

@@ -386,6 +386,7 @@ function AddLeadDrawer({
 
   const save=async(force=false)=>{
     if(!form.company_name.trim()){setError('Firma adı zorunlu'); return}
+    if(!form.phone.trim()){setError('Telefon numarası zorunlu'); return}
     setSaving(true); setError(''); setDupWarning(null)
     try {
       const res=await api.post('/api/leads',{...form,company_name:form.company_name.trim(),force})
@@ -480,7 +481,7 @@ function AddLeadDrawer({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={label}>Telefon</label>
+                  <label className={label}>Telefon <span className="text-red-400 normal-case tracking-normal font-normal">*</span></label>
                   <input value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="+90 5XX XXX XX XX" className={inp} type="tel"/>
                 </div>
                 <div>
@@ -567,9 +568,9 @@ function AddLeadDrawer({
             <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors">
               İptal
             </button>
-            <button onClick={()=>save(false)} disabled={saving||!form.company_name.trim()}
+            <button onClick={()=>save(false)} disabled={saving||!form.company_name.trim()||!form.phone.trim()}
               className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{background:form.company_name.trim()?'linear-gradient(135deg,#4F46E5,#7C3AED)':'#e2e8f0'}}>
+              style={{background:(form.company_name.trim()&&form.phone.trim())?'linear-gradient(135deg,#4F46E5,#7C3AED)':'#e2e8f0'}}>
               {saving?<><RefreshCw size={14} className="animate-spin"/>Kaydediliyor...</>:<><Plus size={14}/>Müşteri Ekle</>}
             </button>
           </div>
