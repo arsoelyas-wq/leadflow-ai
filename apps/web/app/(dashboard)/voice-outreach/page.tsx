@@ -1228,10 +1228,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
   const [loading, setLoading]         = useState(true)
   const [addPhone, setAddPhone]       = useState('')
   const [addName, setAddName]         = useState('')
-  const [step, setStep]               = useState<'list' | 'add' | 'verify'>('list')
-  const [pendingPhone, setPendingPhone] = useState('')
-  const [sentToEmail, setSentToEmail]  = useState('')
-  const [verifyCode, setVerifyCode]   = useState('')
+  const [step, setStep]               = useState<'list' | 'add'>('list')
   const [busy, setBusy]               = useState(false)
 
   const load = async () => {
@@ -1257,33 +1254,11 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
       })
       const d = await r.json()
       if (d.ok) {
-        setPendingPhone(d.phoneNumber)
-        setSentToEmail(d.sentTo || '')
-        setStep('verify')
-        onMsg('success', `Doğrulama kodu ${d.sentTo || 'e-posta adresinize'} gönderildi.`)
+        onMsg('success', d.message || 'Numara eklendi!')
+        setStep('list'); setAddPhone(''); setAddName('')
+        await load()
       } else onMsg('error', d.error || 'Eklenemedi')
     } catch { onMsg('error', 'Bağlantı hatası') }
-    setBusy(false)
-  }
-
-  // SMS OTP doğrulama: kullanıcı SMS ile gelen 6 haneli kodu girer
-  const confirmCode = async () => {
-    if (!verifyCode || verifyCode.length !== 6) return onMsg('error', '6 haneli kodu eksiksiz girin')
-    setBusy(true)
-    try {
-      const r = await fetch(`${API}/api/voice/caller-ids/sms-verify`, {
-        method: 'POST', headers: authH(),
-        body: JSON.stringify({ phoneNumber: pendingPhone, code: verifyCode }),
-      })
-      const d = await r.json()
-      if (d.ok) {
-        onMsg('success', d.message || 'Numara doğrulandı!')
-        setStep('list'); setVerifyCode(''); setAddPhone(''); setAddName('')
-        await load()
-      } else {
-        onMsg('error', d.error || 'Doğrulama başarısız')
-      }
-    } catch { onMsg('error', 'Doğrulama başarısız') }
     setBusy(false)
   }
 
@@ -1297,8 +1272,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
     await load()
   }
 
-  const verified = callerIds.filter(c => c.is_verified)
-  const pending  = callerIds.filter(c => !c.is_verified)
+  const verified = callerIds.filter((c: any) => c.is_verified)
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #bae6fd', background: '#f0f9ff' }}>
@@ -1319,8 +1293,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
         {step === 'add' && (
           <div className="space-y-3 pt-2">
             <p className="text-xs" style={{ color: '#0369a1' }}>
-              Kendi telefon numaranızı ekleyin. 6 haneli doğrulama kodu <strong>e-posta adresinize</strong> gönderilecek.
-              Kodu onayladıktan sonra müşterileriniz aramaları <strong>sizin numaranızdan</strong> görür.
+              Kendi telefon numaranızı ekleyin. Müşterileriniz aramaları <strong>sizin numaranızdan</strong> görecek.
             </p>
             <input value={addPhone} onChange={e => setAddPhone(e.target.value)}
               placeholder="+90 5XX XXX XX XX"
@@ -1334,43 +1307,12 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
               <button onClick={startAdd} disabled={busy}
                 className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
                 style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
-                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'Doğrulama Kodu Gönder'}
+                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'Ekle ve Aktifleştir'}
               </button>
               <button onClick={() => setStep('list')} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
                 İptal
               </button>
             </div>
-          </div>
-        )}
-
-        {step === 'verify' && (
-          <div className="space-y-3 pt-2">
-            <div className="p-3 rounded-xl" style={{ background: '#dcfce7', border: '1px solid #86efac' }}>
-              <p className="text-xs font-semibold" style={{ color: '#166534' }}>📧 Doğrulama kodu e-posta ile gönderildi</p>
-              <p className="text-xs mt-1" style={{ color: '#15803d' }}>
-                {sentToEmail ? <><strong>{sentToEmail}</strong> adresine gelen 6 haneli kodu aşağıya girin.</> : '6 haneli kodu e-postanızdan alıp aşağıya girin.'}
-              </p>
-            </div>
-            <input
-              value={verifyCode}
-              onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="6 haneli kod"
-              inputMode="numeric"
-              maxLength={6}
-              className="w-full px-4 py-3 rounded-xl text-sm text-center font-bold tracking-[0.4em] focus:outline-none"
-              style={{ background: '#fff', border: '1.5px solid #86efac', color: '#0f172a', fontSize: '1.2rem' }}
-            />
-            <div className="flex gap-2">
-              <button onClick={confirmCode} disabled={busy || verifyCode.length !== 6}
-                className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
-                style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
-                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : <span className="flex items-center justify-center gap-1.5"><ShieldCheck className="w-4 h-4"/> Doğrula</span>}
-              </button>
-              <button onClick={() => { setStep('list'); setVerifyCode('') }} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
-                İptal
-              </button>
-            </div>
-            <p className="text-[10px]" style={{ color: '#94a3b8' }}>SMS gelmedi mi? Numarayı tekrar ekleyerek yeni kod isteyin.</p>
           </div>
         )}
 
@@ -1415,29 +1357,6 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
               </div>
             ))}
 
-            {pending.length > 0 && (
-              <div className="mt-2">
-                <p className="text-[10px] mb-1.5 font-semibold uppercase tracking-wider" style={{ color: '#94a3b8' }}>Bekleyen Doğrulama</p>
-                {pending.map((c: any) => (
-                  <div key={c.id} className="flex items-center justify-between p-2.5 rounded-xl"
-                    style={{ background: '#fffbeb', border: '1px solid #fcd34d' }}>
-                    <div>
-                      <p className="text-xs font-medium" style={{ color: '#0f172a' }}>{c.phone_number}</p>
-                      <p className="text-[10px]" style={{ color: '#b45309' }}>Doğrulama bekliyor</p>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button onClick={() => { setPendingPhone(c.phone_number); setStep('verify') }}
-                        className="text-[10px] px-2.5 py-1 rounded-lg font-medium" style={{ background: '#fef3c7', color: '#92400e' }}>
-                        Kodu Gir
-                      </button>
-                      <button onClick={() => remove(c.id)} className="p-1.5" style={{ color: '#ef4444' }}>
-                        <Trash2 className="w-3 h-3"/>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>
