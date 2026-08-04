@@ -78,6 +78,7 @@ router.post('/add', async (req: any, res: any) => {
     const client = getTwilioClient();
     let validationCode: string;
     let callSid: string | null = null;
+    let alreadyVerified = false;
 
     try {
       const validation = await client.validationRequests.create({
@@ -87,10 +88,55 @@ router.post('/add', async (req: any, res: any) => {
       validationCode = validation.validationCode;
       callSid        = validation.callSid || null;
     } catch (twilioErr: any) {
-      console.error('[CallerID] Twilio validation error:', twilioErr.message);
-      return res.status(502).json({
-        error: `Twilio doğrulama başlatılamadı: ${twilioErr.message}. Numara formatını kontrol edin (+90 ile başlamalı).`,
-      });
+      const msg = (twilioErr.message || '').toLowerCase();
+      // Twilio "already verified" durumu → doğrudan aktifleştir
+      if (msg.includes('already verified') || msg.includes('already been verified') || twilioErr.code === 21617) {
+        alreadyVerified = true;
+        validationCode  = '';
+      } else {
+        console.error('[CallerID] Twilio validation error:', twilioErr.message);
+        return res.status(502).json({
+          error: `Twilio doğrulama başlatılamadı: ${twilioErr.message}`,
+        });
+      }
+    }
+
+    // Numara zaten Twilio'da doğrulanmışsa direkt aktifleştir
+    if (alreadyVerified) {
+      const { count: verifiedCount } = await supabase
+        .from('user_caller_ids')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', req.userId)
+        .eq('is_verified', true);
+
+      const isFirst = (verifiedCount ?? 0) === 0;
+      const now     = new Date().toISOString();
+
+      if (existing) {
+        await supabase.from('user_caller_ids').update({
+          friendly_name: friendlyName || normalized,
+          is_verified:   true,
+          verified_at:   now,
+          is_default:    isFirst,
+          updated_at:    now,
+        }).eq('id', existing.id);
+        return res.json({ ok: true, id: existing.id, phoneNumber: normalized, alreadyVerified: true,
+          message: `${normalized} Twilio'da zaten doğrulanmış — numara aktifleştirildi!` });
+      } else {
+        const { data: newRow } = await supabase.from('user_caller_ids').insert([{
+          user_id:      req.userId,
+          phone_number: normalized,
+          friendly_name: friendlyName || normalized,
+          country_code: normalized.startsWith('+90') ? 'TR' : '',
+          is_verified:  true,
+          verified_at:  now,
+          is_default:   isFirst,
+          created_at:   now,
+          updated_at:   now,
+        }]).select('id').single();
+        return res.json({ ok: true, id: newRow?.id, phoneNumber: normalized, alreadyVerified: true,
+          message: `${normalized} Twilio'da zaten doğrulanmış — numara aktifleştirildi!` });
+      }
     }
 
     const now = new Date().toISOString();

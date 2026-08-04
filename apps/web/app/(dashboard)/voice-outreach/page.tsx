@@ -1261,11 +1261,17 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
       })
       const d = await r.json()
       if (d.ok) {
-        setPendingId(d.id)
-        setValidCode(d.validationCode || '')
-        setPendingPhone(d.phoneNumber || addPhone)
-        setStep('verify')
-        setAddPhone(''); setAddName('')
+        if (d.alreadyVerified) {
+          onMsg('success', d.message || 'Numara aktifleştirildi!')
+          setStep('list'); setAddPhone(''); setAddName('')
+          await load()
+        } else {
+          setPendingId(d.id)
+          setValidCode(d.validationCode || '')
+          setPendingPhone(d.phoneNumber || addPhone)
+          setStep('verify')
+          setAddPhone(''); setAddName('')
+        }
       } else onMsg('error', d.error || 'Eklenemedi')
     } catch { onMsg('error', 'Bağlantı hatası') }
     setBusy(false)
