@@ -1235,10 +1235,13 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
     try {
       const r = await fetch(`${API}/api/voice/caller-ids`, { headers: authH() })
       const d = await r.json()
+      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`)
       setCallerIds(d.callerIds || [])
       const hasVerified = (d.callerIds || []).some((c: any) => c.is_verified && c.is_default)
       onVerified(hasVerified)
-    } catch {}
+    } catch (e: any) {
+      onMsg('error', `Numara listesi yüklenemedi: ${e.message}`)
+    }
     setLoading(false)
   }
 

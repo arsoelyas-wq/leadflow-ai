@@ -30,7 +30,10 @@ router.get('/', async (req: any, res: any) => {
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false });
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      console.error('[CallerID] list error:', error);
+      throw new Error(error.message);
+    }
     res.json({ callerIds: data || [] });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -66,29 +69,45 @@ router.post('/add', async (req: any, res: any) => {
       .eq('is_verified', true);
 
     const isFirst = (verifiedCount ?? 0) === 0;
+    const now = new Date().toISOString();
 
     if (existing) {
-      // Bekleyen kaydı güncelle → doğrulanmış yap
-      await supabase
+      const { error: updateErr } = await supabase
         .from('user_caller_ids')
         .update({
           friendly_name: friendlyName || normalized,
           is_verified:   true,
-          verified_at:   new Date().toISOString(),
+          verified_at:   now,
           is_default:    isFirst,
         })
         .eq('id', existing.id);
+      if (updateErr) {
+        console.error('[CallerID] update error:', updateErr);
+        return res.status(500).json({ error: `Güncelleme hatası: ${updateErr.message}` });
+      }
     } else {
-      // Yeni kayıt — direkt doğrulanmış
-      await supabase.from('user_caller_ids').insert([{
+      const { error: insertErr } = await supabase.from('user_caller_ids').insert([{
         user_id:       req.userId,
         phone_number:  normalized,
         friendly_name: friendlyName || normalized,
         country_code:  countryCode || '',
         is_verified:   true,
-        verified_at:   new Date().toISOString(),
+        verified_at:   now,
         is_default:    isFirst,
       }]);
+      if (insertErr) {
+        console.error('[CallerID] insert error:', insertErr);
+        return res.status(500).json({ error: `Kayıt hatası: ${insertErr.message}` });
+      }
+    }
+
+    // Eğer bu ilk numaraysa diğerleri varsa default'ları kaldır (güvenli)
+    if (isFirst) {
+      await supabase.from('user_caller_ids')
+        .update({ is_default: false })
+        .eq('user_id', req.userId)
+        .eq('is_default', true)
+        .neq('phone_number', normalized);
     }
 
     console.log(`[CallerID] Added & verified: ${normalized} userId=${req.userId}`);
