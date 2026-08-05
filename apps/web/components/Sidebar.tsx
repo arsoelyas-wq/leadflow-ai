@@ -97,7 +97,8 @@ const GROUPS: NavGroup[] = [
   {
     id: 'system', label: 'nav.system',
     items: [
-      { href: '/wa-numbers',  label: 'nav.wa_numbers',  icon: Phone },
+      { href: '/wa-numbers',      label: 'nav.wa_numbers',      icon: Phone },
+      { href: '/phone-numbers',   label: 'nav.phone_numbers',   icon: Mic },
       { href: '/webhooks',    label: 'nav.webhooks',    icon: Webhook },
       { href: '/developer',   label: 'nav.developer',   icon: Code },
       { href: '/whitelabel', label: 'nav.whitelabel', icon: Crown,      badge: 'ENT' },
@@ -145,6 +146,7 @@ const HREF_FLAG: Record<string, string> = {
   '/sms-campaigns':   'sms_campaigns',
   '/email-campaigns': 'email_campaigns',
   '/wa-numbers':      'wa_numbers',
+  '/phone-numbers':   'phone_numbers',
   '/ads':             'ads',
   '/google-ads':      'google_ads',
   '/competitor':      'competitor',

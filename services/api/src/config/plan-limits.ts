@@ -20,6 +20,7 @@ export interface PlanLimits {
   white_label: boolean;
   voice_clones: number;
   avatars: number;
+  included_phone_numbers: number; // -1 = unlimited, 0 = none
 }
 
 export interface PlanConfig {
@@ -61,6 +62,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
       webhooks: 0, microsites: 1, proposals_per_month: 3,
       invoices_per_month: 3, ai_voice: true, ai_video: true,
       api_access: false, white_label: false, voice_clones: 1, avatars: 1,
+      included_phone_numbers: 0,
     },
   },
 
@@ -90,6 +92,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
       webhooks: 2, microsites: 3, proposals_per_month: 20,
       invoices_per_month: 20, ai_voice: true, ai_video: true,
       api_access: false, white_label: false, voice_clones: 1, avatars: 1,
+      included_phone_numbers: 1,
     },
   },
 
@@ -120,6 +123,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
       webhooks: 10, microsites: 20, proposals_per_month: -1,
       invoices_per_month: -1, ai_voice: true, ai_video: true,
       api_access: false, white_label: false, voice_clones: 3, avatars: 2,
+      included_phone_numbers: 2,
     },
   },
 
@@ -150,6 +154,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
       webhooks: -1, microsites: -1, proposals_per_month: -1,
       invoices_per_month: -1, ai_voice: true, ai_video: true,
       api_access: true, white_label: false, voice_clones: 10, avatars: 5,
+      included_phone_numbers: 5,
     },
   },
 
@@ -179,6 +184,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
       webhooks: -1, microsites: -1, proposals_per_month: -1,
       invoices_per_month: -1, ai_voice: true, ai_video: true,
       api_access: true, white_label: true, voice_clones: -1, avatars: -1,
+      included_phone_numbers: -1,
     },
   },
 };

@@ -202,6 +202,7 @@ app.post('/api/green-api/connected', (req: any, res: any, next: any) => { req.ur
 app.use('/api/green-api', authMiddleware, greenApiRouter);
 app.use('/api/abtests',              authMiddleware, require('./routes/ab-testing'));
 app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-numbers'));
+app.use('/api/phone-numbers',        authMiddleware, require('./routes/phone-numbers'));
 app.use('/api/shadow',               authMiddleware, require('./routes/shadow'));
 app.use('/api/visual-trends',        authMiddleware, require('./routes/visual-trends'));
 const videoOutreachRouter = require('./routes/video-outreach');

@@ -331,6 +331,35 @@ router.delete('/:id', async (req: any, res: any) => {
   }
 });
 
+// ─── GET /api/voice/caller-ids/from-purchased ────────────────────────────────
+// Kullanıcının satın aldığı, ses kapasiteli numaraları döner.
+// Bu numaralar zaten Twilio hesabımızda — doğrulama adımı gerekmez.
+router.get('/from-purchased', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_phone_numbers')
+      .select('id, phone_number, friendly_name, country_code, country_name')
+      .eq('user_id', req.userId)
+      .eq('status', 'active')
+      .eq('capabilities_voice', true)
+      .order('purchased_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    res.json({
+      numbers: (data || []).map((n: any) => ({
+        id:           n.id,
+        phoneNumber:  n.phone_number,
+        friendlyName: n.friendly_name || n.phone_number,
+        countryCode:  n.country_code,
+        countryName:  n.country_name,
+        source:       'purchased',
+      })),
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── GET /api/voice/caller-ids/default ───────────────────────────────────────
 router.get('/default', async (req: any, res: any) => {
   try {
