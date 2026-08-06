@@ -94,6 +94,34 @@ export default function WANumbersPage() {
   const disconnectNumber = async (id: string) => {
     await api.post(`/api/wa-numbers/${id}/disconnect`, {}); showMsg('success', 'Bağlantı kesildi'); load()
   }
+
+  const [reconnectingId, setReconnectingId] = useState<string | null>(null)
+
+  const reconnectNumber = async (id: string) => {
+    setReconnectingId(id); setQrCode(null)
+    try {
+      const data = await api.post(`/api/wa-numbers/${id}/reconnect`, {})
+      if (data.qr) {
+        setQrCode(data.qr)
+        qrPollRef.current = setInterval(async () => {
+          try {
+            const status = await api.get('/api/wa-numbers/qr-status')
+            if (status.connected) {
+              clearInterval(qrPollRef.current)
+              setQrCode(null)
+              showMsg('success', 'WhatsApp yeniden bağlandı!'); load()
+            } else if (status.qr && status.qr !== qrCode) {
+              setQrCode(status.qr)
+            }
+          } catch {}
+        }, 5000)
+        setTimeout(() => { if (qrPollRef.current) { clearInterval(qrPollRef.current); setQrCode(null); showMsg('error', 'QR süresi doldu') } }, 120000)
+      } else {
+        showMsg('error', 'QR oluşturulamadı')
+      }
+    } catch (e: any) { showMsg('error', e.message) }
+    setReconnectingId(null)
+  }
   const setPrimary = async (id: string) => {
     await api.patch(`/api/wa-numbers/${id}`, { isPrimary: true }); showMsg('success', 'Birincil numara ayarlandı'); load()
   }
@@ -155,6 +183,22 @@ export default function WANumbersPage() {
           </div>
         ))}
       </div>
+
+      {/* ── RECONNECT QR ─────────────────────────────────────── */}
+      {qrCode && !showAdd && (
+        <div style={{ ...card, padding: 20, marginBottom: 18, background: '#f0fdf4', border: '1px solid #a7f3d0' }}>
+          <h3 style={{ color: tx1, fontSize: 14, fontWeight: 700, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <QrCode size={16} style={{ color: accentGreen }} /> WhatsApp Yeniden Bağlantı
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <img src={qrCode} alt="QR" style={{ width: 220, height: 220, borderRadius: 14, border: '4px solid #a7f3d0' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <RefreshCw size={12} style={{ color: accentGreen, animation: 'waSpin 2s linear infinite' }} />
+              <p style={{ color: accentGreen, fontSize: 12, fontWeight: 600, margin: 0 }}>Bağlantı bekleniyor... (her 5sn otomatik kontrol)</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── ADD FORM ──────────────────────────────────────────── */}
       {showAdd && (
@@ -241,7 +285,14 @@ export default function WANumbersPage() {
                     {num.status === 'connected' ? (
                       <button onClick={() => disconnectNumber(num.id)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><WifiOff size={12} /></button>
                     ) : (
-                      <button onClick={() => deleteNumber(num.id)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                      <>
+                        <button onClick={() => reconnectNumber(num.id)} disabled={reconnectingId === num.id} title="Yeniden Bağlan"
+                          style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid #a7f3d0', background: '#ecfdf5', color: '#059669', cursor: 'pointer', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {reconnectingId === num.id ? <RefreshCw size={11} style={{ animation: 'waSpin 1s linear infinite' }} /> : <Wifi size={11} />}
+                          Bağla
+                        </button>
+                        <button onClick={() => deleteNumber(num.id)} style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}><Trash2 size={12} /></button>
+                      </>
                     )}
                   </div>
                 </div>

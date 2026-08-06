@@ -32,11 +32,12 @@ router.post('/connect', async (req: any, res: any) => {
     const userId = req.userId;
     const { displayName, dailyLimit } = req.body;
 
-    // Kaç numara var kontrol et (plan bazlı limit)
+    // Kaç aktif numara var kontrol et (disconnected sayılmaz)
     const { count } = await supabase
       .from('wa_numbers')
       .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .in('status', ['connected', 'connecting']);
 
     const { data: user } = await supabase
       .from('users')
@@ -100,6 +101,35 @@ router.post('/:id/disconnect', async (req: any, res: any) => {
       .eq('id', req.params.id)
       .eq('user_id', userId);
     res.json({ message: 'Numara bağlantısı kesildi' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/wa-numbers/:id/reconnect — Bağlantısı kesik numarayı yeniden bağla
+router.post('/:id/reconnect', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { data: num } = await supabase.from('wa_numbers')
+      .select('id, status').eq('id', req.params.id).eq('user_id', userId).single();
+    if (!num) return res.status(404).json({ error: 'Numara bulunamadı' });
+
+    // Durumu 'connecting' yap ki onConnected handler doğru bulabilsin
+    await supabase.from('wa_numbers').update({ status: 'connecting' }).eq('id', req.params.id);
+
+    // Yeni instance oluştur
+    const instanceId = `${userId.slice(0, 8)}-${Date.now()}`;
+    await supabase.from('wa_instances').insert([{
+      user_id: userId, instance_id: instanceId, status: 'creating',
+    }]);
+
+    const { startNewInstance } = require('../lib/waGateway');
+    const qr = await startNewInstance(instanceId, userId);
+    if (qr) {
+      return res.json({ qr, status: 'qr_pending', instanceId });
+    }
+
+    res.json({ status: 'pending' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
