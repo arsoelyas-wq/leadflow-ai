@@ -150,8 +150,15 @@ router.get('/countries', (_req: any, res: any) => {
 
 // ─── GET /api/phone-numbers/test-all ──────────────────────────────────────────
 // Tüm ülkeleri Twilio'ya karşı test eder. Sonuçları döner.
-// Her ülke için defaultType denenir, boş dönerse diğer tipler sırayla denenir.
+// authMiddleware JWT veya SUPABASE_SERVICE_KEY header ile çalışır.
 router.get('/test-all', async (req: any, res: any) => {
+  // Service key ile de çağrılabilir (admin test)
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace('Bearer ', '');
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY || '';
+  if (token !== serviceKey && !req.userId) {
+    return res.status(401).json({ error: 'Yetkisiz' });
+  }
   try {
     const client = getTwilioClient();
     const p = {
