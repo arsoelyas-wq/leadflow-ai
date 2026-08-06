@@ -114,25 +114,37 @@ messageQueue.process(async (job: any) => {
       throw new Error('Günlük WhatsApp limiti (150) aşıldı');
     }
 
-    // Mesaj saati kontrolü 09:00-20:00
-    const hour = new Date().getHours();
-    if (hour < 9 || hour >= 20) {
+    // Mesaj saati kontrolü 09:00-20:00 Turkey (UTC+3)
+    const turkeyHour = (new Date().getUTCHours() + 3) % 24;
+    if (turkeyHour < 9 || turkeyHour >= 20) {
       throw new Error('Güvenli gönderim saati dışında (09:00-20:00)');
     }
   }
 
-  // Mesajı kişiselleştir
+  // Mesajı kişiselleştir — hem {{firma}} hem [FIRMA_ADI] formatlarını destekle
+  const firma  = lead.company_name || lead.contact_name || 'Sayın Yetkili';
+  const isim   = lead.contact_name || lead.company_name || 'Yetkili';
+  const sehir  = lead.city    || '';
+  const sektor = lead.sector  || '';
+  const tel    = lead.phone   || '';
   const personalizedMsg = message
-    .replace(/\[FIRMA_ADI\]/g, lead.company_name || '')
-    .replace(/\[SEHIR\]/g, lead.city || '')
-    .replace(/\[AD\]/g, lead.contact_name || lead.company_name || '');
+    .replace(/\{\{firma\}\}/gi,   firma)
+    .replace(/\{\{isim\}\}/gi,    isim)
+    .replace(/\{\{sehir\}\}/gi,   sehir)
+    .replace(/\{\{sektor\}\}/gi,  sektor)
+    .replace(/\{\{telefon\}\}/gi, tel)
+    .replace(/\[FIRMA_ADI\]/g, firma)
+    .replace(/\[SEHIR\]/g,     sehir)
+    .replace(/\[SEKTOR\]/g,    sektor)
+    .replace(/\[AD\]/g,        isim)
+    .replace(/\[TELEFON\]/g,   tel);
 
   try {
     if (channel === 'whatsapp') {
-      const { sendWhatsAppMessage } = require('./settings');
+      const { sendWhatsAppMessage } = require('./routes/settings');
       await sendWhatsAppMessage(userId, lead.phone, personalizedMsg);
     } else if (channel === 'email') {
-      const { sendEmail } = require('./settings');
+      const { sendEmail } = require('./routes/settings');
       await sendEmail(userId, lead.email, 'LeadFlow AI', `<p>${personalizedMsg}</p>`);
     }
 
@@ -158,16 +170,19 @@ messageQueue.process(async (job: any) => {
   } catch (err: any) {
     console.error(`✗ Mesaj hatası: ${lead.company_name}: ${err.message}`);
 
-    // Mesajı failed olarak kaydet
-    await supabase.from('messages').insert([{
-      lead_id: leadId,
-      user_id: userId,
-      channel,
-      direction: 'out',
-      content: personalizedMsg,
-      status: 'failed',
-      sent_at: new Date().toISOString(),
-    }]);
+    // Sadece son denemede kaydet — her retry'da duplicate oluşmasın
+    const isLastAttempt = job.attemptsMade >= 2; // attempts:3 → 0,1,2 (son=2)
+    if (isLastAttempt) {
+      await supabase.from('messages').insert([{
+        lead_id: leadId,
+        user_id: userId,
+        channel,
+        direction: 'out',
+        content: personalizedMsg,
+        status: 'failed',
+        sent_at: new Date().toISOString(),
+      }]);
+    }
 
     throw err; // Bull retry için
   }
