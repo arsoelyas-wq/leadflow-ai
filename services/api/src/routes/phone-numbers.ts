@@ -54,60 +54,52 @@ const SUPPORTED_COUNTRIES = [
   { code: 'FR', name: 'Fransa',                            flag: '🇫🇷', defaultType: 'local' },
   { code: 'AU', name: 'Avustralya',                        flag: '🇦🇺', defaultType: 'local' },
   { code: 'CA', name: 'Kanada',                            flag: '🇨🇦', defaultType: 'local' },
-  { code: 'AE', name: 'BAE (Dubai)',                       flag: '🇦🇪', defaultType: 'local' },
   // ── Avrupa ─────────────────────────────────────────────────────────────────
   { code: 'AT', name: 'Avusturya',                         flag: '🇦🇹', defaultType: 'local' },
-  { code: 'BE', name: 'Belçika',                           flag: '🇧🇪', defaultType: 'local' },
-  { code: 'BG', name: 'Bulgaristan',                       flag: '🇧🇬', defaultType: 'local' },
+  { code: 'BE', name: 'Belçika',                           flag: '🇧🇪', defaultType: 'mobile' },
   { code: 'CH', name: 'İsviçre',                           flag: '🇨🇭', defaultType: 'local' },
-  { code: 'CY', name: 'Kıbrıs',                            flag: '🇨🇾', defaultType: 'local' },
   { code: 'CZ', name: 'Çek Cumhuriyeti',                   flag: '🇨🇿', defaultType: 'local' },
-  { code: 'DK', name: 'Danimarka',                         flag: '🇩🇰', defaultType: 'local' },
+  { code: 'DK', name: 'Danimarka',                         flag: '🇩🇰', defaultType: 'mobile' },
   { code: 'EE', name: 'Estonya',                           flag: '🇪🇪', defaultType: 'local' },
-  { code: 'ES', name: 'İspanya',                           flag: '🇪🇸', defaultType: 'local' },
-  { code: 'FI', name: 'Finlandiya',                        flag: '🇫🇮', defaultType: 'local' },
-  { code: 'GR', name: 'Yunanistan',                        flag: '🇬🇷', defaultType: 'local' },
-  { code: 'HR', name: 'Hırvatistan',                       flag: '🇭🇷', defaultType: 'local' },
-  { code: 'HU', name: 'Macaristan',                        flag: '🇭🇺', defaultType: 'local' },
+  { code: 'ES', name: 'İspanya',                           flag: '🇪🇸', defaultType: 'local',  pendingBundle: true },
+  { code: 'FI', name: 'Finlandiya',                        flag: '🇫🇮', defaultType: 'mobile' },
+  { code: 'GR', name: 'Yunanistan',                        flag: '🇬🇷', defaultType: 'local',  pendingBundle: true },
+  { code: 'HR', name: 'Hırvatistan',                       flag: '🇭🇷', defaultType: 'toll_free' },
+  { code: 'HU', name: 'Macaristan',                        flag: '🇭🇺', defaultType: 'mobile' },
   { code: 'IE', name: 'İrlanda',                           flag: '🇮🇪', defaultType: 'local' },
   { code: 'IL', name: 'İsrail',                            flag: '🇮🇱', defaultType: 'local' },
-  { code: 'IT', name: 'İtalya',                            flag: '🇮🇹', defaultType: 'local' },
-  { code: 'LT', name: 'Litvanya',                          flag: '🇱🇹', defaultType: 'local' },
+  { code: 'IT', name: 'İtalya',                            flag: '🇮🇹', defaultType: 'mobile' },
+  { code: 'LT', name: 'Litvanya',                          flag: '🇱🇹', defaultType: 'mobile' },
   { code: 'LU', name: 'Lüksemburg',                        flag: '🇱🇺', defaultType: 'local' },
-  { code: 'LV', name: 'Letonya',                           flag: '🇱🇻', defaultType: 'local' },
-  { code: 'MT', name: 'Malta',                             flag: '🇲🇹', defaultType: 'local' },
-  { code: 'NL', name: 'Hollanda',                          flag: '🇳🇱', defaultType: 'local' },
-  { code: 'NO', name: 'Norveç',                            flag: '🇳🇴', defaultType: 'local' },
-  { code: 'PL', name: 'Polonya',                           flag: '🇵🇱', defaultType: 'local' },
-  { code: 'PT', name: 'Portekiz',                          flag: '🇵🇹', defaultType: 'local' },
+  { code: 'NL', name: 'Hollanda',                          flag: '🇳🇱', defaultType: 'mobile' },
+  { code: 'NO', name: 'Norveç',                            flag: '🇳🇴', defaultType: 'local',  pendingBundle: true },
+  { code: 'PL', name: 'Polonya',                           flag: '🇵🇱', defaultType: 'local',  pendingBundle: true },
+  { code: 'PT', name: 'Portekiz',                          flag: '🇵🇹', defaultType: 'local',  pendingBundle: true },
   { code: 'RO', name: 'Romanya',                           flag: '🇷🇴', defaultType: 'local' },
-  { code: 'RS', name: 'Sırbistan',                         flag: '🇷🇸', defaultType: 'local' },
-  { code: 'SE', name: 'İsveç',                             flag: '🇸🇪', defaultType: 'local' },
-  { code: 'SI', name: 'Slovenya',                          flag: '🇸🇮', defaultType: 'local' },
-  { code: 'SK', name: 'Slovakya',                          flag: '🇸🇰', defaultType: 'local' },
+  { code: 'SE', name: 'İsveç',                             flag: '🇸🇪', defaultType: 'mobile' },
   // ── Amerika ────────────────────────────────────────────────────────────────
   { code: 'AR', name: 'Arjantin',                          flag: '🇦🇷', defaultType: 'local' },
   { code: 'BR', name: 'Brezilya',                          flag: '🇧🇷', defaultType: 'local' },
   { code: 'CL', name: 'Şili',                              flag: '🇨🇱', defaultType: 'local' },
   { code: 'CO', name: 'Kolombiya',                         flag: '🇨🇴', defaultType: 'local' },
   { code: 'MX', name: 'Meksika',                           flag: '🇲🇽', defaultType: 'local' },
-  { code: 'PE', name: 'Peru',                              flag: '🇵🇪', defaultType: 'local' },
+  { code: 'PE', name: 'Peru',                              flag: '🇵🇪', defaultType: 'toll_free' },
   // ── Asya-Pasifik ───────────────────────────────────────────────────────────
-  { code: 'HK', name: 'Hong Kong',                         flag: '🇭🇰', defaultType: 'local' },
-  { code: 'ID', name: 'Endonezya',                         flag: '🇮🇩', defaultType: 'mobile' },
-  { code: 'IN', name: 'Hindistan',                         flag: '🇮🇳', defaultType: 'local' },
+  { code: 'HK', name: 'Hong Kong',                         flag: '🇭🇰', defaultType: 'mobile' },
+  { code: 'ID', name: 'Endonezya',                         flag: '🇮🇩', defaultType: 'toll_free' },
+  { code: 'IN', name: 'Hindistan',                         flag: '🇮🇳', defaultType: 'local',  pendingBundle: true },
   { code: 'JP', name: 'Japonya',                           flag: '🇯🇵', defaultType: 'local' },
-  { code: 'KR', name: 'Güney Kore',                        flag: '🇰🇷', defaultType: 'local' },
+  { code: 'KR', name: 'Güney Kore',                        flag: '🇰🇷', defaultType: 'local',  pendingBundle: true },
   { code: 'MY', name: 'Malezya',                           flag: '🇲🇾', defaultType: 'local' },
   { code: 'NZ', name: 'Yeni Zelanda',                      flag: '🇳🇿', defaultType: 'local' },
   { code: 'PH', name: 'Filipinler',                        flag: '🇵🇭', defaultType: 'local' },
-  { code: 'SG', name: 'Singapur',                          flag: '🇸🇬', defaultType: 'local' },
+  { code: 'SG', name: 'Singapur',                          flag: '🇸🇬', defaultType: 'local',  pendingBundle: true },
   { code: 'TH', name: 'Tayland',                           flag: '🇹🇭', defaultType: 'local' },
-  { code: 'TW', name: 'Tayvan',                            flag: '🇹🇼', defaultType: 'local' },
-  { code: 'VN', name: 'Vietnam',                           flag: '🇻🇳', defaultType: 'local' },
+  { code: 'TW', name: 'Tayvan',                            flag: '🇹🇼', defaultType: 'local',  pendingBundle: true },
+  { code: 'VN', name: 'Vietnam',                           flag: '🇻🇳', defaultType: 'local',  pendingBundle: true },
   // ── Orta Doğu & Afrika ─────────────────────────────────────────────────────
-  { code: 'AE', name: 'BAE (Dubai)',                       flag: '🇦🇪', defaultType: 'local' },
-  { code: 'BH', name: 'Bahreyn',                           flag: '🇧🇭', defaultType: 'local' },
+  { code: 'AE', name: 'BAE (Dubai)',                       flag: '🇦🇪', defaultType: 'local',  pendingBundle: true },
+  { code: 'BH', name: 'Bahreyn',                           flag: '🇧🇭', defaultType: 'local',  pendingBundle: true },
   { code: 'EG', name: 'Mısır',                             flag: '🇪🇬', defaultType: 'local',  pendingBundle: true },
   { code: 'KW', name: 'Kuveyt',                            flag: '🇰🇼', defaultType: 'local',  pendingBundle: true },
   { code: 'NG', name: 'Nijerya',                           flag: '🇳🇬', defaultType: 'local',  pendingBundle: true },
@@ -211,8 +203,12 @@ router.get('/test-all', async (req: any, res: any) => {
         }
       }
 
-      if (!found && !row.error) row.status = 'no_numbers';
-      else if (!found && row.error) row.status = 'error';
+      if (!found) {
+        // "was not found" = Twilio bu ülkede o tip endpoint'i desteklemiyor — gerçek hata değil
+        const isEndpointMissing = row.error && row.error.includes('was not found');
+        row.status = (!row.error || isEndpointMissing) ? 'no_numbers' : 'error';
+        if (isEndpointMissing) row.error = null;
+      }
 
       results.push(row);
     }
