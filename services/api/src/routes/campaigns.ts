@@ -334,8 +334,14 @@ router.post('/:id/start', async (req: any, res: any) => {
       return res.status(400).json({ error: 'Email ayarları yapılmamış.' });
     }
 
-    if (campaign.channel === 'whatsapp' && userSettings?.whatsapp_status !== 'connected') {
-      return res.status(400).json({ error: 'WhatsApp bağlı değil.' });
+    if (campaign.channel === 'whatsapp') {
+      const oldConnected = userSettings?.whatsapp_status === 'connected';
+      const { count: waNumConnected } = await supabase
+        .from('wa_numbers').select('*', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('status', 'connected');
+      if (!oldConnected && !waNumConnected) {
+        return res.status(400).json({ error: 'WhatsApp bağlı değil. Ayarlar > WhatsApp veya WhatsApp Hatlarım sayfasından bağlayın.' });
+      }
     }
 
     if (campaign.channel === 'whatsapp' && !isSafeHour()) {

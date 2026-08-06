@@ -269,11 +269,14 @@ export default function AutomationsPage() {
   }
 
   const sendBroadcast = async () => {
-    if (!bcName || !bcMessage || !selectedLeads.length) return showMsg('error', 'Isim, mesaj ve lead secimi zorunlu')
+    if (!bcName || !bcMessage || !selectedLeads.length) return showMsg('error', 'Kampanya adı, mesaj ve en az 1 lead seçimi zorunlu')
     setBcSending(true)
     try {
-      await api.post('/api/campaigns', { name: bcName, channel: bcChannel, message_template: bcMessage, lead_ids: selectedLeads, status: 'active' })
-      showMsg('success', `${selectedLeads.length} lead'e ${bcChannel} kampanyasi baslatildi!`)
+      // 1. Kampanya oluştur
+      const created = await api.post('/api/campaigns', { name: bcName, channel: bcChannel, messageTemplate: bcMessage, leadIds: selectedLeads })
+      // 2. Hemen başlat
+      const started = await api.post(`/api/campaigns/${created.campaign.id}/start`, {})
+      showMsg('success', started.message || `${selectedLeads.length} lead'e gönderim başlatıldı!`)
       setBcName(''); setBcMessage(''); setSelectedLeads([]); loadAll()
     } catch (e: any) { showMsg('error', e.message) }
     setBcSending(false)
