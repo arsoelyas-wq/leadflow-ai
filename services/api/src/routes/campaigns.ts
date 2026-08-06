@@ -16,8 +16,10 @@ function randomDelay(min: number, max: number): Promise<void> {
 }
 
 function isSafeHour(): boolean {
-  const hour = new Date().getHours();
-  return hour >= 9 && hour < 20;
+  // Turkey is UTC+3 year-round (no DST since 2016)
+  const utcHour = new Date().getUTCHours();
+  const turkeyHour = (utcHour + 3) % 24;
+  return turkeyHour >= 9 && turkeyHour < 20;
 }
 
 async function getDailyCount(userId: string, channel: string): Promise<number> {

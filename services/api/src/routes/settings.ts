@@ -444,9 +444,9 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
   const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
     : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
 
-  // Safe hours check (09:00-20:00)
-  const hour = new Date().getHours();
-  if (hour < 9 || hour >= 20) {
+  // Safe hours check (09:00-20:00 Turkey time = UTC+3)
+  const turkeyHour = (new Date().getUTCHours() + 3) % 24;
+  if (turkeyHour < 9 || turkeyHour >= 20) {
     console.log('[WA] Safe hours disinda — mesaj ertelendi');
     throw new Error('WhatsApp mesajlari sadece 09:00-20:00 arasi gonderilir');
   }
@@ -472,21 +472,27 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
           const { data: instance } = await supabase.from('wa_instances')
             .select('instance_id').eq('phone', chosen.phone_number).eq('status', 'connected').maybeSingle();
           if (instance?.instance_id) {
+            console.log(`[WA] Green API ile gönderiliyor — instance: ${instance.instance_id}, hedef: ${formattedPhone}`);
             await require('axios').post(`${WA_GATEWAY}/send`, {
               instanceId: instance.instance_id,
               phone: formattedPhone,
               message,
             }, { timeout: 15000 });
             sent = true;
+            console.log(`[WA] Green API başarılı — ${formattedPhone}`);
+          } else {
+            console.log(`[WA] wa_instances bulunamadı — chosen.phone_number: ${chosen.phone_number}, Baileys'e düşülüyor`);
           }
-        } catch {}
+        } catch (gaErr: any) {
+          console.error(`[WA] Green API hatası — ${gaErr.message}`);
+        }
 
-        // Increment sent_today
-        await supabase.from('wa_numbers').update({
-          sent_today: (chosen.sent_today || 0) + 1,
-        }).eq('id', chosen.id);
-
-        if (sent) return;
+        if (sent) {
+          await supabase.from('wa_numbers').update({
+            sent_today: (chosen.sent_today || 0) + 1,
+          }).eq('id', chosen.id);
+          return;
+        }
       }
     }
   } catch {}

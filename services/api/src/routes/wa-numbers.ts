@@ -249,6 +249,127 @@ router.get('/stats', async (req: any, res: any) => {
   }
 });
 
+// GET /api/wa-numbers/diagnose — Tam zinciri teşhis et
+router.get('/diagnose', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const WA_GATEWAY = process.env.WA_GATEWAY_URL || 'http://207.154.248.119:3003';
+    const axios = require('axios');
+    const report: any = { userId, gateway: WA_GATEWAY, numbers: [], instances: [], gatewayHealth: null };
+
+    // wa_numbers
+    const { data: numbers } = await supabase.from('wa_numbers')
+      .select('id, phone_number, display_name, status, daily_limit, sent_today, is_primary, created_at')
+      .eq('user_id', userId);
+    report.numbers = numbers || [];
+
+    // wa_instances
+    const { data: instances } = await supabase.from('wa_instances')
+      .select('instance_id, status, phone, connected_at, created_at')
+      .eq('user_id', userId);
+    report.instances = instances || [];
+
+    // phone match check
+    report.phoneMatchCheck = (numbers || []).map((n: any) => {
+      const match = (instances || []).find((i: any) => i.phone === n.phone_number && i.status === 'connected');
+      return {
+        wa_number_id: n.id,
+        wa_number_phone: n.phone_number,
+        wa_number_status: n.status,
+        matching_instance: match ? match.instance_id : null,
+        match_ok: !!match,
+      };
+    });
+
+    // Gateway health check
+    try {
+      const health = await axios.get(`${WA_GATEWAY}/health`, { timeout: 5000 });
+      report.gatewayHealth = { ok: true, status: health.status, data: health.data };
+    } catch (e: any) {
+      report.gatewayHealth = { ok: false, error: e.message };
+    }
+
+    // For each connected instance, check gateway instance status
+    report.gatewayInstanceStatus = [];
+    for (const inst of (instances || []).filter((i: any) => i.status === 'connected')) {
+      try {
+        const statusRes = await axios.get(`${WA_GATEWAY}/instance/${inst.instance_id}/status`, { timeout: 5000 });
+        report.gatewayInstanceStatus.push({ instance_id: inst.instance_id, data: statusRes.data });
+      } catch (e: any) {
+        report.gatewayInstanceStatus.push({ instance_id: inst.instance_id, error: e.message });
+      }
+    }
+
+    res.json(report);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/wa-numbers/test-send — Test mesajı gönder
+router.post('/test-send', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { phone, message = 'Test mesajı — LeadFlow AI' } = req.body;
+    if (!phone) return res.status(400).json({ error: 'phone zorunlu' });
+
+    const WA_GATEWAY = process.env.WA_GATEWAY_URL || 'http://207.154.248.119:3003';
+    const axios = require('axios');
+    const log: string[] = [];
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
+      : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
+    log.push(`Hedef numara: ${formattedPhone}`);
+
+    // wa_numbers bul
+    const { data: numbers } = await supabase.from('wa_numbers')
+      .select('id, phone_number, daily_limit, sent_today, status, is_primary')
+      .eq('user_id', userId).eq('status', 'connected');
+    log.push(`Bağlı numara sayısı: ${numbers?.length || 0}`);
+
+    if (!numbers?.length) {
+      return res.json({ success: false, log, error: 'Bağlı WhatsApp numarası yok' });
+    }
+
+    const available = numbers.filter((n: any) => (n.sent_today || 0) < (n.daily_limit || 100));
+    if (!available.length) {
+      return res.json({ success: false, log, error: 'Tüm numaralar günlük limitte' });
+    }
+
+    const chosen = available[0];
+    log.push(`Seçilen numara: ${chosen.phone_number}`);
+
+    // wa_instances bul
+    const { data: instance } = await supabase.from('wa_instances')
+      .select('instance_id, status, phone').eq('phone', chosen.phone_number).eq('status', 'connected').maybeSingle();
+    log.push(`wa_instances kaydı: ${instance ? `bulundu (${instance.instance_id})` : 'YOK — phone eşleşmesi yok'}`);
+
+    if (!instance) {
+      const { data: allInst } = await supabase.from('wa_instances').select('instance_id, status, phone').eq('user_id', userId);
+      log.push(`Tüm wa_instances: ${JSON.stringify(allInst?.map((i: any) => ({ id: i.instance_id, status: i.status, phone: i.phone })))}`);
+      return res.json({ success: false, log, error: 'wa_instances kaydı bulunamadı — phone format uyuşmazlığı olabilir' });
+    }
+
+    // Gateway'e gönder
+    try {
+      log.push(`Gateway'e gönderiliyor: ${WA_GATEWAY}/send`);
+      const sendRes = await axios.post(`${WA_GATEWAY}/send`, {
+        instanceId: instance.instance_id,
+        phone: formattedPhone,
+        message,
+      }, { timeout: 15000 });
+      log.push(`Gateway yanıtı: ${JSON.stringify(sendRes.data)}`);
+      res.json({ success: true, log, gatewayResponse: sendRes.data });
+    } catch (e: any) {
+      log.push(`Gateway hatası: ${e.message}`);
+      res.json({ success: false, log, error: `Gateway hatası: ${e.message}` });
+    }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/wa-numbers/reset-daily — Günlük sayaçları sıfırla (cron)
 router.post('/reset-daily', async (req: any, res: any) => {
   try {
