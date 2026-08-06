@@ -35,7 +35,7 @@ interface MyNumber {
   status: string
   purchased_at: string
 }
-interface Country { code: string; name: string; flag: string; defaultType?: string }
+interface Country { code: string; name: string; flag: string; defaultType?: string; pendingBundle?: boolean }
 interface PlanLimit { limit: number; used: number; planType: string }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -196,6 +196,14 @@ export default function PhoneNumbersPage() {
         </div>
       )}
 
+      {/* Türkiye / pending bundle uyarısı */}
+      {countryMeta?.pendingBundle && tab === 'store' && (
+        <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl text-sm text-amber-700 dark:text-amber-300">
+          ⏳ <strong>{countryMeta.name}</strong> numaraları için Twilio Regulatory Bundle onayı bekleniyor.
+          Onay tamamlandığında bu ülkeden numara satın alabilirsiniz. Diğer ülkeleri seçebilirsiniz.
+        </div>
+      )}
+
       {/* ── STORE TAB ────────────────────────────────────────────────────────── */}
       {tab === 'store' && (
         <div>
@@ -273,16 +281,24 @@ export default function PhoneNumbersPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 px-2 py-1 rounded-full">
-                      Planınıza dahil
-                    </span>
-                    <button
-                      onClick={() => purchaseNumber(num)}
-                      disabled={buying === num.phoneNumber || !canBuyMore}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                      {buying === num.phoneNumber ? 'Ekleniyor…' : 'Ekle'}
-                    </button>
+                    {countryMeta?.pendingBundle ? (
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 px-2 py-1 rounded-full">
+                        ⏳ Bundle onayı bekleniyor
+                      </span>
+                    ) : (
+                      <>
+                        <span className="text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950 px-2 py-1 rounded-full">
+                          Planınıza dahil
+                        </span>
+                        <button
+                          onClick={() => purchaseNumber(num)}
+                          disabled={buying === num.phoneNumber || !canBuyMore}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          {buying === num.phoneNumber ? 'Ekleniyor…' : 'Ekle'}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

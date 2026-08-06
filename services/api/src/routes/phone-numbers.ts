@@ -44,10 +44,10 @@ function getPlanPhoneLimit(planType: string): number {
   return plan.limits.included_phone_numbers ?? 0;
 }
 
-// Twilio'nun numara sağladığı ülkeler — bazı ülkeler 'national' tipini kullanır (örn. TR)
+// pendingBundle: true → Twilio Regulatory Bundle onayı bekleniyor, katalogda gösterilir ama satın alınamaz
 const SUPPORTED_COUNTRIES = [
   // ── Popüler ────────────────────────────────────────────────────────────────
-  { code: 'TR', name: 'Türkiye',                           flag: '🇹🇷', defaultType: 'local' },
+  { code: 'TR', name: 'Türkiye',                           flag: '🇹🇷', defaultType: 'local',  pendingBundle: true },
   { code: 'US', name: 'Amerika Birleşik Devletleri',       flag: '🇺🇸', defaultType: 'local' },
   { code: 'GB', name: 'Birleşik Krallık',                  flag: '🇬🇧', defaultType: 'local' },
   { code: 'DE', name: 'Almanya',                           flag: '🇩🇪', defaultType: 'local' },
@@ -106,12 +106,13 @@ const SUPPORTED_COUNTRIES = [
   { code: 'TW', name: 'Tayvan',                            flag: '🇹🇼', defaultType: 'local' },
   { code: 'VN', name: 'Vietnam',                           flag: '🇻🇳', defaultType: 'local' },
   // ── Orta Doğu & Afrika ─────────────────────────────────────────────────────
+  { code: 'AE', name: 'BAE (Dubai)',                       flag: '🇦🇪', defaultType: 'local' },
   { code: 'BH', name: 'Bahreyn',                           flag: '🇧🇭', defaultType: 'local' },
-  { code: 'EG', name: 'Mısır',                             flag: '🇪🇬', defaultType: 'local' },
-  { code: 'KW', name: 'Kuveyt',                            flag: '🇰🇼', defaultType: 'local' },
-  { code: 'NG', name: 'Nijerya',                           flag: '🇳🇬', defaultType: 'local' },
-  { code: 'QA', name: 'Katar',                             flag: '🇶🇦', defaultType: 'local' },
-  { code: 'SA', name: 'Suudi Arabistan',                   flag: '🇸🇦', defaultType: 'local' },
+  { code: 'EG', name: 'Mısır',                             flag: '🇪🇬', defaultType: 'local',  pendingBundle: true },
+  { code: 'KW', name: 'Kuveyt',                            flag: '🇰🇼', defaultType: 'local',  pendingBundle: true },
+  { code: 'NG', name: 'Nijerya',                           flag: '🇳🇬', defaultType: 'local',  pendingBundle: true },
+  { code: 'QA', name: 'Katar',                             flag: '🇶🇦', defaultType: 'local',  pendingBundle: true },
+  { code: 'SA', name: 'Suudi Arabistan',                   flag: '🇸🇦', defaultType: 'local',  pendingBundle: true },
   { code: 'ZA', name: 'Güney Afrika',                      flag: '🇿🇦', defaultType: 'local' },
 ];
 
@@ -145,6 +146,82 @@ function countryFromE164(e164: string): string {
 // ─── GET /api/phone-numbers/countries ─────────────────────────────────────────
 router.get('/countries', (_req: any, res: any) => {
   res.json({ countries: SUPPORTED_COUNTRIES });
+});
+
+// ─── GET /api/phone-numbers/test-all ──────────────────────────────────────────
+// Tüm ülkeleri Twilio'ya karşı test eder. Sonuçları döner.
+// Her ülke için defaultType denenir, boş dönerse diğer tipler sırayla denenir.
+router.get('/test-all', async (req: any, res: any) => {
+  try {
+    const client = getTwilioClient();
+    const p = {
+      limit: 1,
+      excludeAllAddressRequired:     false,
+      excludeLocalAddressRequired:   false,
+      excludeForeignAddressRequired: false,
+    };
+
+    const results: any[] = [];
+
+    for (const country of SUPPORTED_COUNTRIES) {
+      const row: any = {
+        code:          country.code,
+        name:          country.name,
+        flag:          country.flag,
+        pendingBundle: !!country.pendingBundle,
+        defaultType:   country.defaultType,
+        status:        'unknown',
+        foundType:     null,
+        sampleNumber:  null,
+        error:         null,
+      };
+
+      if (country.pendingBundle) {
+        row.status = 'pending_bundle';
+        results.push(row);
+        continue;
+      }
+
+      // Önce defaultType'ı dene, sonra diğerlerini
+      const typesToTry = [
+        country.defaultType,
+        ...['local', 'national', 'mobile', 'toll_free'].filter(t => t !== country.defaultType),
+      ];
+
+      let found = false;
+      for (const type of typesToTry) {
+        try {
+          const nums = await fetchTwilioNumbers(client, country.code, type, p);
+          if (nums.length > 0) {
+            row.status       = 'available';
+            row.foundType    = type;
+            row.sampleNumber = nums[0].phoneNumber;
+            found = true;
+            break;
+          }
+        } catch (e: any) {
+          row.error = e.message;
+        }
+      }
+
+      if (!found && !row.error) row.status = 'no_numbers';
+      else if (!found && row.error) row.status = 'error';
+
+      results.push(row);
+    }
+
+    const summary = {
+      total:         results.length,
+      available:     results.filter(r => r.status === 'available').length,
+      no_numbers:    results.filter(r => r.status === 'no_numbers').length,
+      pending_bundle:results.filter(r => r.status === 'pending_bundle').length,
+      error:         results.filter(r => r.status === 'error').length,
+    };
+
+    res.json({ summary, results });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── GET /api/phone-numbers/debug/:country ────────────────────────────────────
@@ -298,6 +375,16 @@ router.post('/purchase', async (req: any, res: any) => {
   try {
     const { phoneNumber, friendlyName } = req.body;
     if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber zorunlu' });
+
+    // Regulatory bundle kontrolü
+    const countryCode2 = countryFromE164(phoneNumber);
+    const countryMetaCheck = SUPPORTED_COUNTRIES.find(c => c.code === countryCode2);
+    if (countryMetaCheck?.pendingBundle) {
+      return res.status(403).json({
+        error: `${countryMetaCheck.name} için Twilio Regulatory Bundle onayı bekleniyor. Bu süreçte bu ülkeden numara satın alınamaz.`,
+        pendingBundle: true,
+      });
+    }
 
     // Plan limit kontrolü
     const planType = await getUserPlan(req.userId);
