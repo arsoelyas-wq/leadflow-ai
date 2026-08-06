@@ -147,6 +147,33 @@ router.get('/countries', (_req: any, res: any) => {
   res.json({ countries: SUPPORTED_COUNTRIES });
 });
 
+// ─── GET /api/phone-numbers/debug/:country ────────────────────────────────────
+// Twilio'dan ülke için gerçekte ne döndüğünü gösterir (admin debug)
+router.get('/debug/:country', async (req: any, res: any) => {
+  try {
+    const country = req.params.country.toUpperCase();
+    const client  = getTwilioClient();
+    const p = { limit: 3, excludeAllAddressRequired: false, excludeLocalAddressRequired: false, excludeForeignAddressRequired: false };
+    const results: Record<string, any> = {};
+
+    for (const type of ['local', 'national', 'mobile', 'tollFree']) {
+      try {
+        let nums: any[];
+        if (type === 'tollFree') nums = await client.availablePhoneNumbers(country).tollFree.list(p);
+        else if (type === 'national') nums = await client.availablePhoneNumbers(country).national.list(p);
+        else if (type === 'mobile')   nums = await client.availablePhoneNumbers(country).mobile.list(p);
+        else                          nums = await client.availablePhoneNumbers(country).local.list(p);
+        results[type] = { count: nums.length, sample: nums[0]?.phoneNumber || null };
+      } catch (e: any) {
+        results[type] = { error: e.message, code: e.code };
+      }
+    }
+    res.json({ country, results });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── GET /api/phone-numbers/limit ─────────────────────────────────────────────
 router.get('/limit', async (req: any, res: any) => {
   try {
