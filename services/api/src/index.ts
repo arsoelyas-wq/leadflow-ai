@@ -395,6 +395,16 @@ require('node-cron').schedule('0 3 * * *', () => { require('./lib/security').cle
 
 initMonitoring(app).catch(console.error);
 
+// WA Gateway — bağlı instance'ları startup'ta geri yükle
+setTimeout(async () => {
+  try {
+    const { restoreConnectedInstances } = require('./lib/waGateway');
+    await restoreConnectedInstances();
+  } catch (e: any) {
+    console.error('[WA-GW] Startup restore error:', e.message);
+  }
+}, 5000);
+
 // ── LeadFlow Voice Engine — HTTP server + WebSocket upgrade ───────────────────
 // Express app'i HTTP server'a sar, Media Streams WebSocket'i aynı porta bağla
 const http = require('http');

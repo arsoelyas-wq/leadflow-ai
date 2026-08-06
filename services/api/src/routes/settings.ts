@@ -466,25 +466,21 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
         available.sort((a: any, b: any) => (a.sent_today || 0) / (a.daily_limit || 100) - (b.sent_today || 0) / (b.daily_limit || 100));
         const chosen = available[0];
 
-        // Try Green API gateway first
-        const WA_GATEWAY = process.env.WA_GATEWAY_URL || 'http://207.154.248.119:3003';
+        // Embedded WA Gateway ile gönder
         try {
           const { data: instance } = await supabase.from('wa_instances')
             .select('instance_id').eq('phone', chosen.phone_number).eq('status', 'connected').maybeSingle();
           if (instance?.instance_id) {
-            console.log(`[WA] Green API ile gönderiliyor — instance: ${instance.instance_id}, hedef: ${formattedPhone}`);
-            await require('axios').post(`${WA_GATEWAY}/send`, {
-              instanceId: instance.instance_id,
-              phone: formattedPhone,
-              message,
-            }, { timeout: 15000 });
+            console.log(`[WA] Embedded gateway ile gönderiliyor — instance: ${instance.instance_id}, hedef: ${formattedPhone}`);
+            const { sendMessage: gatewaySend } = require('../lib/waGateway');
+            await gatewaySend(instance.instance_id, formattedPhone, message);
             sent = true;
-            console.log(`[WA] Green API başarılı — ${formattedPhone}`);
+            console.log(`[WA] Embedded gateway başarılı — ${formattedPhone}`);
           } else {
             console.log(`[WA] wa_instances bulunamadı — chosen.phone_number: ${chosen.phone_number}, Baileys'e düşülüyor`);
           }
         } catch (gaErr: any) {
-          console.error(`[WA] Green API hatası — ${gaErr.message}`);
+          console.error(`[WA] Embedded gateway hatası — ${gaErr.message}`);
         }
 
         if (sent) {

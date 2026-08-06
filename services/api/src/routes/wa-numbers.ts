@@ -69,55 +69,20 @@ router.post('/connect', async (req: any, res: any) => {
 
     if (error) throw error;
 
-    // WhatsApp baglantisi — Green API gateway oncelikli, Baileys fallback
-    const WA_GATEWAY = process.env.WA_GATEWAY_URL || 'http://207.154.248.119:3003';
-    const axios = require('axios');
+    // Embedded WA Gateway ile instance oluştur (Railway API içinde Baileys)
+    const instanceId = `${userId.slice(0, 8)}-${Date.now()}`;
+    await supabase.from('wa_instances').insert([{
+      user_id: userId, instance_id: instanceId, status: 'creating',
+    }]);
 
-    // 1. Green API gateway ile instance olustur
     try {
-      const instanceId = `${userId.slice(0, 8)}-${Date.now()}`;
-      const createRes = await axios.post(`${WA_GATEWAY}/instance/create`, {
-        instanceId, userId, webhookUrl: `${process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app'}/api/green-api/connected`,
-      }, { timeout: 10000 });
-
-      if (createRes.data?.instanceId || createRes.data?.ok) {
-        const iid = createRes.data.instanceId || instanceId;
-        await supabase.from('wa_instances').insert([{
-          user_id: userId, instance_id: iid, status: 'creating',
-        }]);
-
-        // QR al
-        const qrRes = await axios.get(`${WA_GATEWAY}/instance/${iid}/qr`, { timeout: 15000 });
-        const qr = qrRes.data?.qr || qrRes.data?.qrCode || null;
-        if (qr) {
-          return res.json({ number: newNumber, qr, status: 'qr_pending', instanceId: iid });
-        }
-      }
-    } catch (e: any) {
-      console.log('[WA Numbers] Green API failed, trying Baileys:', e.message?.slice(0, 60));
-    }
-
-    // 2. Baileys fallback
-    try {
-      const { initWhatsApp, waState } = require('./settings');
-      await initWhatsApp(userId);
-
-      let qr = null;
-      for (let i = 0; i < 20; i++) {
-        await new Promise(r => setTimeout(r, 500));
-        if (waState[userId]?.qr) { qr = waState[userId].qr; break; }
-        if (waState[userId]?.status === 'connected') break;
-      }
-
-      if (waState[userId]?.status === 'connected') {
-        await supabase.from('wa_numbers').update({ status: 'connected' }).eq('id', newNumber.id);
-        return res.json({ number: newNumber, status: 'connected' });
-      }
+      const { startNewInstance } = require('../lib/waGateway');
+      const qr = await startNewInstance(instanceId, userId);
       if (qr) {
-        return res.json({ number: newNumber, qr, status: 'qr_pending' });
+        return res.json({ number: newNumber, qr, status: 'qr_pending', instanceId });
       }
     } catch (e: any) {
-      console.error('[WA Numbers] Baileys error:', e.message?.slice(0, 80));
+      console.error('[WA Numbers] Embedded gateway error:', e.message?.slice(0, 80));
     }
 
     res.json({ number: newNumber, status: 'pending' });
@@ -197,21 +162,19 @@ router.get('/qr-status', async (req: any, res: any) => {
       return res.json({ status: 'connected', connected: true, qr: null });
     }
 
-    // 3. Check Green API gateway for QR
-    const WA_GATEWAY = process.env.WA_GATEWAY_URL || 'http://207.154.248.119:3003';
+    // 3. Embedded gateway'den QR al
     const { data: creating } = await supabase.from('wa_instances')
       .select('instance_id').eq('user_id', req.userId).eq('status', 'creating')
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (creating?.instance_id) {
-      try {
-        const axios = require('axios');
-        const qrRes = await axios.get(`${WA_GATEWAY}/instance/${creating.instance_id}/qr`, { timeout: 8000 });
-        const qr = qrRes.data?.qr || qrRes.data?.qrCode || null;
-        if (qr) return res.json({ status: 'qr_ready', connected: false, qr });
-      } catch {}
+      const { getQR, getStatus } = require('../lib/waGateway');
+      const qr = getQR(creating.instance_id);
+      const status = getStatus(creating.instance_id);
+      if (status === 'connected') return res.json({ status: 'connected', connected: true, qr: null });
+      if (qr) return res.json({ status: 'qr_ready', connected: false, qr });
     }
 
-    // 4. Baileys fallback
+    // 4. Baileys fallback (eski bağlantılar için)
     const { waState } = require('./settings');
     const state = waState[req.userId];
     res.json({
