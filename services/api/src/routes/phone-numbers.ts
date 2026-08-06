@@ -47,7 +47,7 @@ function getPlanPhoneLimit(planType: string): number {
 // Twilio'nun numara sağladığı ülkeler — bazı ülkeler 'national' tipini kullanır (örn. TR)
 const SUPPORTED_COUNTRIES = [
   // ── Popüler ────────────────────────────────────────────────────────────────
-  { code: 'TR', name: 'Türkiye',                           flag: '🇹🇷', defaultType: 'national' },
+  { code: 'TR', name: 'Türkiye',                           flag: '🇹🇷', defaultType: 'local' },
   { code: 'US', name: 'Amerika Birleşik Devletleri',       flag: '🇺🇸', defaultType: 'local' },
   { code: 'GB', name: 'Birleşik Krallık',                  flag: '🇬🇧', defaultType: 'local' },
   { code: 'DE', name: 'Almanya',                           flag: '🇩🇪', defaultType: 'local' },
@@ -166,10 +166,19 @@ router.get('/limit', async (req: any, res: any) => {
 });
 
 async function fetchTwilioNumbers(client: any, country: string, type: string, params: any): Promise<any[]> {
-  if (type === 'toll_free') return client.availablePhoneNumbers(country).tollFree.list(params);
-  if (type === 'mobile')    return client.availablePhoneNumbers(country).mobile.list(params);
-  if (type === 'national')  return client.availablePhoneNumbers(country).national.list(params);
-  return client.availablePhoneNumbers(country).local.list(params);
+  // excludeAllAddressRequired=false → adres gerektiren numaraları da göster (TR, DE vs.)
+  // excludeLocalAddressRequired=false → yerel adres gerektirenleri dahil et
+  // excludeForeignAddressRequired=false → yabancı adres gerektirenleri dahil et
+  const p = {
+    ...params,
+    excludeAllAddressRequired:     false,
+    excludeLocalAddressRequired:   false,
+    excludeForeignAddressRequired: false,
+  };
+  if (type === 'toll_free') return client.availablePhoneNumbers(country).tollFree.list(p);
+  if (type === 'mobile')    return client.availablePhoneNumbers(country).mobile.list(p);
+  if (type === 'national')  return client.availablePhoneNumbers(country).national.list(p);
+  return client.availablePhoneNumbers(country).local.list(p);
 }
 
 // ─── GET /api/phone-numbers/catalog ───────────────────────────────────────────
@@ -309,7 +318,14 @@ router.post('/purchase', async (req: any, res: any) => {
         smsUrl:   process.env.TWILIO_SMS_WEBHOOK_URL   || '',
       });
     } catch (e: any) {
-      console.error('[PhoneNumbers] Twilio provision error:', e.message);
+      console.error('[PhoneNumbers] Twilio provision error:', e.message, 'code:', e.code);
+      const msg = (e.message || '').toLowerCase();
+      if (msg.includes('address') || e.code === 21609 || e.code === 21614 || e.code === 21636) {
+        return res.status(402).json({
+          error: 'Bu numara için Twilio hesabınızda adres doğrulaması gerekiyor. Twilio konsolundan "Regulatory Compliance" bölümünden adresinizi doğrulayın, ardından tekrar deneyin.',
+          requiresAddress: true,
+        });
+      }
       return res.status(502).json({ error: `Numara alınamadı: ${e.message}` });
     }
 

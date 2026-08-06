@@ -45,7 +45,7 @@ export default function PhoneNumbersPage() {
   const [countries, setCountries]         = useState<Country[]>([])
   const [countrySearch, setCountrySearch] = useState('')
   const [selectedCountry, setSelectedCountry] = useState('TR')
-  const [numberType, setNumberType]       = useState<'local' | 'national' | 'toll_free' | 'mobile'>('national')
+  const [numberType, setNumberType]       = useState<'local' | 'national' | 'toll_free' | 'mobile'>('local')
   const [catalogNumbers, setCatalogNumbers] = useState<CatalogNumber[]>([])
   const [myNumbers, setMyNumbers]         = useState<MyNumber[]>([])
   const [planLimit, setPlanLimit]         = useState<PlanLimit | null>(null)
@@ -239,7 +239,7 @@ export default function PhoneNumbersPage() {
                 <option value="mobile">Mobil</option>
               </select>
               <p className="text-xs text-gray-400 px-1 max-w-[180px]">
-                {selectedCountry === 'TR' ? 'Türkiye için Ulusal seçin' : 'Çoğu ülke için Yerel'}
+                Çoğu ülke için Yerel seçin
               </p>
             </div>
           </div>
