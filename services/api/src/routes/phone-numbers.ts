@@ -44,35 +44,100 @@ function getPlanPhoneLimit(planType: string): number {
   return plan.limits.included_phone_numbers ?? 0;
 }
 
+// Twilio'nun numara sağladığı ülkeler — bazı ülkeler 'national' tipini kullanır (örn. TR)
 const SUPPORTED_COUNTRIES = [
-  { code: 'TR', name: 'Türkiye',                        flag: '🇹🇷' },
-  { code: 'US', name: 'Amerika Birleşik Devletleri',    flag: '🇺🇸' },
-  { code: 'GB', name: 'Birleşik Krallık',               flag: '🇬🇧' },
-  { code: 'DE', name: 'Almanya',                        flag: '🇩🇪' },
-  { code: 'FR', name: 'Fransa',                         flag: '🇫🇷' },
-  { code: 'NL', name: 'Hollanda',                       flag: '🇳🇱' },
-  { code: 'SE', name: 'İsveç',                          flag: '🇸🇪' },
-  { code: 'NO', name: 'Norveç',                         flag: '🇳🇴' },
-  { code: 'AU', name: 'Avustralya',                     flag: '🇦🇺' },
-  { code: 'CA', name: 'Kanada',                         flag: '🇨🇦' },
-  { code: 'BR', name: 'Brezilya',                       flag: '🇧🇷' },
-  { code: 'IN', name: 'Hindistan',                      flag: '🇮🇳' },
-  { code: 'SG', name: 'Singapur',                       flag: '🇸🇬' },
-  { code: 'AE', name: 'BAE (Dubai)',                    flag: '🇦🇪' },
-  { code: 'SA', name: 'Suudi Arabistan',                flag: '🇸🇦' },
+  // ── Popüler ────────────────────────────────────────────────────────────────
+  { code: 'TR', name: 'Türkiye',                           flag: '🇹🇷', defaultType: 'national' },
+  { code: 'US', name: 'Amerika Birleşik Devletleri',       flag: '🇺🇸', defaultType: 'local' },
+  { code: 'GB', name: 'Birleşik Krallık',                  flag: '🇬🇧', defaultType: 'local' },
+  { code: 'DE', name: 'Almanya',                           flag: '🇩🇪', defaultType: 'local' },
+  { code: 'FR', name: 'Fransa',                            flag: '🇫🇷', defaultType: 'local' },
+  { code: 'AU', name: 'Avustralya',                        flag: '🇦🇺', defaultType: 'local' },
+  { code: 'CA', name: 'Kanada',                            flag: '🇨🇦', defaultType: 'local' },
+  { code: 'AE', name: 'BAE (Dubai)',                       flag: '🇦🇪', defaultType: 'local' },
+  // ── Avrupa ─────────────────────────────────────────────────────────────────
+  { code: 'AT', name: 'Avusturya',                         flag: '🇦🇹', defaultType: 'local' },
+  { code: 'BE', name: 'Belçika',                           flag: '🇧🇪', defaultType: 'local' },
+  { code: 'BG', name: 'Bulgaristan',                       flag: '🇧🇬', defaultType: 'local' },
+  { code: 'CH', name: 'İsviçre',                           flag: '🇨🇭', defaultType: 'local' },
+  { code: 'CY', name: 'Kıbrıs',                            flag: '🇨🇾', defaultType: 'local' },
+  { code: 'CZ', name: 'Çek Cumhuriyeti',                   flag: '🇨🇿', defaultType: 'local' },
+  { code: 'DK', name: 'Danimarka',                         flag: '🇩🇰', defaultType: 'local' },
+  { code: 'EE', name: 'Estonya',                           flag: '🇪🇪', defaultType: 'local' },
+  { code: 'ES', name: 'İspanya',                           flag: '🇪🇸', defaultType: 'local' },
+  { code: 'FI', name: 'Finlandiya',                        flag: '🇫🇮', defaultType: 'local' },
+  { code: 'GR', name: 'Yunanistan',                        flag: '🇬🇷', defaultType: 'local' },
+  { code: 'HR', name: 'Hırvatistan',                       flag: '🇭🇷', defaultType: 'local' },
+  { code: 'HU', name: 'Macaristan',                        flag: '🇭🇺', defaultType: 'local' },
+  { code: 'IE', name: 'İrlanda',                           flag: '🇮🇪', defaultType: 'local' },
+  { code: 'IL', name: 'İsrail',                            flag: '🇮🇱', defaultType: 'local' },
+  { code: 'IT', name: 'İtalya',                            flag: '🇮🇹', defaultType: 'local' },
+  { code: 'LT', name: 'Litvanya',                          flag: '🇱🇹', defaultType: 'local' },
+  { code: 'LU', name: 'Lüksemburg',                        flag: '🇱🇺', defaultType: 'local' },
+  { code: 'LV', name: 'Letonya',                           flag: '🇱🇻', defaultType: 'local' },
+  { code: 'MT', name: 'Malta',                             flag: '🇲🇹', defaultType: 'local' },
+  { code: 'NL', name: 'Hollanda',                          flag: '🇳🇱', defaultType: 'local' },
+  { code: 'NO', name: 'Norveç',                            flag: '🇳🇴', defaultType: 'local' },
+  { code: 'PL', name: 'Polonya',                           flag: '🇵🇱', defaultType: 'local' },
+  { code: 'PT', name: 'Portekiz',                          flag: '🇵🇹', defaultType: 'local' },
+  { code: 'RO', name: 'Romanya',                           flag: '🇷🇴', defaultType: 'local' },
+  { code: 'RS', name: 'Sırbistan',                         flag: '🇷🇸', defaultType: 'local' },
+  { code: 'SE', name: 'İsveç',                             flag: '🇸🇪', defaultType: 'local' },
+  { code: 'SI', name: 'Slovenya',                          flag: '🇸🇮', defaultType: 'local' },
+  { code: 'SK', name: 'Slovakya',                          flag: '🇸🇰', defaultType: 'local' },
+  // ── Amerika ────────────────────────────────────────────────────────────────
+  { code: 'AR', name: 'Arjantin',                          flag: '🇦🇷', defaultType: 'local' },
+  { code: 'BR', name: 'Brezilya',                          flag: '🇧🇷', defaultType: 'local' },
+  { code: 'CL', name: 'Şili',                              flag: '🇨🇱', defaultType: 'local' },
+  { code: 'CO', name: 'Kolombiya',                         flag: '🇨🇴', defaultType: 'local' },
+  { code: 'MX', name: 'Meksika',                           flag: '🇲🇽', defaultType: 'local' },
+  { code: 'PE', name: 'Peru',                              flag: '🇵🇪', defaultType: 'local' },
+  // ── Asya-Pasifik ───────────────────────────────────────────────────────────
+  { code: 'HK', name: 'Hong Kong',                         flag: '🇭🇰', defaultType: 'local' },
+  { code: 'ID', name: 'Endonezya',                         flag: '🇮🇩', defaultType: 'mobile' },
+  { code: 'IN', name: 'Hindistan',                         flag: '🇮🇳', defaultType: 'local' },
+  { code: 'JP', name: 'Japonya',                           flag: '🇯🇵', defaultType: 'local' },
+  { code: 'KR', name: 'Güney Kore',                        flag: '🇰🇷', defaultType: 'local' },
+  { code: 'MY', name: 'Malezya',                           flag: '🇲🇾', defaultType: 'local' },
+  { code: 'NZ', name: 'Yeni Zelanda',                      flag: '🇳🇿', defaultType: 'local' },
+  { code: 'PH', name: 'Filipinler',                        flag: '🇵🇭', defaultType: 'local' },
+  { code: 'SG', name: 'Singapur',                          flag: '🇸🇬', defaultType: 'local' },
+  { code: 'TH', name: 'Tayland',                           flag: '🇹🇭', defaultType: 'local' },
+  { code: 'TW', name: 'Tayvan',                            flag: '🇹🇼', defaultType: 'local' },
+  { code: 'VN', name: 'Vietnam',                           flag: '🇻🇳', defaultType: 'local' },
+  // ── Orta Doğu & Afrika ─────────────────────────────────────────────────────
+  { code: 'BH', name: 'Bahreyn',                           flag: '🇧🇭', defaultType: 'local' },
+  { code: 'EG', name: 'Mısır',                             flag: '🇪🇬', defaultType: 'local' },
+  { code: 'KW', name: 'Kuveyt',                            flag: '🇰🇼', defaultType: 'local' },
+  { code: 'NG', name: 'Nijerya',                           flag: '🇳🇬', defaultType: 'local' },
+  { code: 'QA', name: 'Katar',                             flag: '🇶🇦', defaultType: 'local' },
+  { code: 'SA', name: 'Suudi Arabistan',                   flag: '🇸🇦', defaultType: 'local' },
+  { code: 'ZA', name: 'Güney Afrika',                      flag: '🇿🇦', defaultType: 'local' },
 ];
 
-// E.164 prefix → ISO-2
+// E.164 prefix → ISO-2 (uzun prefix'ler önce — '+1' US/CA çakışmasını engeller)
 const PREFIX_TO_COUNTRY: Record<string, string> = {
-  '+971': 'AE', '+966': 'SA', '+65': 'SG', '+91': 'IN',
-  '+55': 'BR',  '+61': 'AU',  '+47': 'NO', '+46': 'SE',
-  '+31': 'NL',  '+33': 'FR',  '+49': 'DE', '+44': 'GB',
-  '+90': 'TR',  '+1':  'US',
+  '+971': 'AE', '+966': 'SA', '+973': 'BH', '+974': 'QA', '+965': 'KW',
+  '+972': 'IL', '+234': 'NG', '+27':  'ZA', '+20':  'EG',
+  '+65':  'SG', '+91':  'IN', '+62':  'ID', '+81':  'JP', '+82':  'KR',
+  '+60':  'MY', '+63':  'PH', '+66':  'TH', '+886': 'TW', '+84':  'VN',
+  '+852': 'HK', '+64':  'NZ', '+61':  'AU',
+  '+55':  'BR', '+54':  'AR', '+56':  'CL', '+57':  'CO', '+51':  'PE', '+52':  'MX',
+  '+47':  'NO', '+46':  'SE', '+45':  'DK', '+358': 'FI', '+353': 'IE',
+  '+31':  'NL', '+33':  'FR', '+49':  'DE', '+44':  'GB', '+43':  'AT',
+  '+32':  'BE', '+41':  'CH', '+34':  'ES', '+351': 'PT', '+39':  'IT',
+  '+30':  'GR', '+48':  'PL', '+420': 'CZ', '+421': 'SK', '+36':  'HU',
+  '+40':  'RO', '+359': 'BG', '+381': 'RS', '+386': 'SI', '+370': 'LT',
+  '+371': 'LV', '+372': 'EE', '+352': 'LU', '+356': 'MT', '+357': 'CY',
+  '+385': 'HR', '+90':  'TR',
+  '+1':   'US',
 };
 
 function countryFromE164(e164: string): string {
-  for (const [prefix, code] of Object.entries(PREFIX_TO_COUNTRY)) {
-    if (e164.startsWith(prefix)) return code;
+  // Uzun prefix'lerden kısa olanlara doğru tara
+  const sorted = Object.keys(PREFIX_TO_COUNTRY).sort((a, b) => b.length - a.length);
+  for (const prefix of sorted) {
+    if (e164.startsWith(prefix)) return PREFIX_TO_COUNTRY[prefix];
   }
   return 'US';
 }
@@ -100,15 +165,27 @@ router.get('/limit', async (req: any, res: any) => {
   }
 });
 
+async function fetchTwilioNumbers(client: any, country: string, type: string, params: any): Promise<any[]> {
+  if (type === 'toll_free') return client.availablePhoneNumbers(country).tollFree.list(params);
+  if (type === 'mobile')    return client.availablePhoneNumbers(country).mobile.list(params);
+  if (type === 'national')  return client.availablePhoneNumbers(country).national.list(params);
+  return client.availablePhoneNumbers(country).local.list(params);
+}
+
 // ─── GET /api/phone-numbers/catalog ───────────────────────────────────────────
-// Query: country=TR, type=local|toll_free|mobile, capabilities=voice,sms
+// Query: country=TR, type=local|national|toll_free|mobile, capabilities=voice,sms
+// Eğer istenen tip boş dönerse ülkenin defaultType'ı otomatik denenir.
 router.get('/catalog', async (req: any, res: any) => {
   try {
     const country    = ((req.query.country as string) || 'US').toUpperCase();
-    const type       = (req.query.type as string) || 'local';
     const capsParam  = (req.query.capabilities as string) || '';
     const wantsVoice = capsParam.includes('voice');
     const wantsSms   = capsParam.includes('sms');
+
+    // Ülkenin Twilio'daki varsayılan tipini bul
+    const countryMeta = SUPPORTED_COUNTRIES.find(c => c.code === country);
+    const defaultType = countryMeta?.defaultType || 'local';
+    const requestedType = (req.query.type as string) || defaultType;
 
     const client = getTwilioClient();
     const searchParams: any = { limit: 20 };
@@ -116,17 +193,32 @@ router.get('/catalog', async (req: any, res: any) => {
     if (wantsSms)   searchParams.smsEnabled   = true;
 
     let twNumbers: any[] = [];
+
+    // Önce istenen tipi dene
     try {
-      if (type === 'toll_free') {
-        twNumbers = await client.availablePhoneNumbers(country).tollFree.list(searchParams);
-      } else if (type === 'mobile') {
-        twNumbers = await client.availablePhoneNumbers(country).mobile.list(searchParams);
-      } else {
-        twNumbers = await client.availablePhoneNumbers(country).local.list(searchParams);
-      }
+      twNumbers = await fetchTwilioNumbers(client, country, requestedType, searchParams);
     } catch (e: any) {
-      console.warn(`[PhoneNumbers] catalog ${country}/${type} not available:`, e.message);
-      return res.json({ numbers: [] });
+      console.warn(`[PhoneNumbers] ${country}/${requestedType} failed:`, e.message);
+    }
+
+    // Boş döndüyse ülkenin default tipini dene (farklıysa)
+    if (twNumbers.length === 0 && requestedType !== defaultType) {
+      try {
+        twNumbers = await fetchTwilioNumbers(client, country, defaultType, searchParams);
+      } catch (e: any) {
+        console.warn(`[PhoneNumbers] ${country}/${defaultType} fallback failed:`, e.message);
+      }
+    }
+
+    // Hâlâ boşsa diğer tipleri sırayla dene
+    if (twNumbers.length === 0) {
+      for (const fallbackType of ['local', 'national', 'mobile', 'toll_free']) {
+        if (fallbackType === requestedType || fallbackType === defaultType) continue;
+        try {
+          twNumbers = await fetchTwilioNumbers(client, country, fallbackType, searchParams);
+          if (twNumbers.length > 0) break;
+        } catch (_e) {}
+      }
     }
 
     const numbers = twNumbers.map((n: any) => ({
@@ -141,7 +233,7 @@ router.get('/catalog', async (req: any, res: any) => {
       },
     }));
 
-    res.json({ numbers });
+    res.json({ numbers, countryDefaultType: defaultType });
   } catch (e: any) {
     console.error('[PhoneNumbers] /catalog error:', e.message);
     res.status(500).json({ error: e.message });

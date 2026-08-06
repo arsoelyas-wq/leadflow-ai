@@ -35,7 +35,7 @@ interface MyNumber {
   status: string
   purchased_at: string
 }
-interface Country { code: string; name: string; flag: string }
+interface Country { code: string; name: string; flag: string; defaultType?: string }
 interface PlanLimit { limit: number; used: number; planType: string }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -43,8 +43,9 @@ export default function PhoneNumbersPage() {
   const { t } = useI18n()
   const [tab, setTab]                     = useState<'store' | 'my'>('store')
   const [countries, setCountries]         = useState<Country[]>([])
-  const [selectedCountry, setSelectedCountry] = useState('US')
-  const [numberType, setNumberType]       = useState<'local' | 'toll_free' | 'mobile'>('local')
+  const [countrySearch, setCountrySearch] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState('TR')
+  const [numberType, setNumberType]       = useState<'local' | 'national' | 'toll_free' | 'mobile'>('national')
   const [catalogNumbers, setCatalogNumbers] = useState<CatalogNumber[]>([])
   const [myNumbers, setMyNumbers]         = useState<MyNumber[]>([])
   const [planLimit, setPlanLimit]         = useState<PlanLimit | null>(null)
@@ -58,7 +59,9 @@ export default function PhoneNumbersPage() {
   const [success, setSuccess]             = useState('')
 
   useEffect(() => {
-    apiFetch('/api/phone-numbers/countries').then(d => setCountries(d.countries)).catch(() => {})
+    apiFetch('/api/phone-numbers/countries').then(d => {
+      setCountries(d.countries)
+    }).catch(() => {})
     loadMyNumbers()
     loadPlanLimit()
   }, [])
@@ -126,7 +129,13 @@ export default function PhoneNumbersPage() {
     } catch (e: any) { setError(e.message) }
   }
 
-  const countryMeta = countries.find(c => c.code === selectedCountry)
+  const countryMeta     = countries.find(c => c.code === selectedCountry)
+  const filteredCountries = countrySearch.trim()
+    ? countries.filter(c =>
+        c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+        c.code.toLowerCase().includes(countrySearch.toLowerCase())
+      )
+    : countries
   const canBuyMore  = planLimit ? (planLimit.limit === -1 || planLimit.used < planLimit.limit) : false
   const limitLabel  = planLimit
     ? (planLimit.limit === -1 ? '∞' : `${planLimit.used}/${planLimit.limit}`)
@@ -192,25 +201,47 @@ export default function PhoneNumbersPage() {
         <div>
           {/* Filtreler */}
           <div className="flex flex-wrap gap-3 mb-6">
-            <select
-              value={selectedCountry}
-              onChange={e => setSelectedCountry(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
-            >
-              {countries.map(c => (
-                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
-              ))}
-            </select>
+            {/* Ülke arama + seçim */}
+            <div className="flex flex-col gap-1">
+              <input
+                type="text"
+                placeholder="Ülke ara…"
+                value={countrySearch}
+                onChange={e => setCountrySearch(e.target.value)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white w-52"
+              />
+              <select
+                value={selectedCountry}
+                onChange={e => {
+                  setSelectedCountry(e.target.value)
+                  const meta = countries.find(c => c.code === e.target.value)
+                  if (meta?.defaultType) setNumberType(meta.defaultType as any)
+                }}
+                size={6}
+                className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white w-52 overflow-y-auto"
+              >
+                {filteredCountries.map(c => (
+                  <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+                ))}
+              </select>
+            </div>
 
-            <select
-              value={numberType}
-              onChange={e => setNumberType(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
-            >
-              <option value="local">Yerel Numara</option>
-              <option value="toll_free">Ücretsiz Hat (Toll-Free)</option>
-              <option value="mobile">Mobil</option>
-            </select>
+            <div className="flex flex-col gap-1 justify-start">
+              <label className="text-xs text-gray-500 font-medium px-1">Numara Tipi</label>
+              <select
+                value={numberType}
+                onChange={e => setNumberType(e.target.value as any)}
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white"
+              >
+                <option value="local">Yerel (Local)</option>
+                <option value="national">Ulusal (National)</option>
+                <option value="toll_free">Ücretsiz Hat (Toll-Free)</option>
+                <option value="mobile">Mobil</option>
+              </select>
+              <p className="text-xs text-gray-400 px-1 max-w-[180px]">
+                {selectedCountry === 'TR' ? 'Türkiye için Ulusal seçin' : 'Çoğu ülke için Yerel'}
+              </p>
+            </div>
           </div>
 
           {/* Numara listesi */}
