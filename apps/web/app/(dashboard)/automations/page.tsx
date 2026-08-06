@@ -117,7 +117,7 @@ export default function AutomationsPage() {
         totalReplied: camps.reduce((s: number, c: any) => s + (c.total_replied || c.totalReplied || 0), 0),
       })
     } catch {} finally { setLoading(false) }
-    api.get('/api/settings/whatsapp/status').then((d: any) => setWaConnected(d.status === 'connected')).catch(() => setWaConnected(false))
+    api.get('/api/wa-numbers/qr-status').then((d: any) => setWaConnected(d.connected === true || d.status === 'connected')).catch(() => setWaConnected(false))
     api.get('/api/leads/lists').then((d: any) => setLists(d.lists || [])).catch(() => {})
     // Load templates + analytics in parallel
     Promise.allSettled([
@@ -475,7 +475,7 @@ export default function AutomationsPage() {
                           <MessageCircle size={14} style={{ color: '#d97706', flexShrink: 0 }} />
                           <p style={{ color: '#92400e', fontSize: 11, margin: 0 }}>WhatsApp bağlı değil — kampanya gönderilemez</p>
                         </div>
-                        <a href="/settings" style={{ padding: '5px 12px', borderRadius: 7, background: '#f59e0b', color: '#fff', fontSize: 11, fontWeight: 700, textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        <a href="/wa-numbers?returnTo=/automations" style={{ padding: '5px 12px', borderRadius: 7, background: '#f59e0b', color: '#fff', fontSize: 11, fontWeight: 700, textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}>
                           WA Bağla →
                         </a>
                       </div>

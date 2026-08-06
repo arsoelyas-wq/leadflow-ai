@@ -1,6 +1,7 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { Plus, Trash2, RefreshCw, Star, QrCode, Wifi, WifiOff, Settings2, ShieldCheck, Phone, MessageCircle, AlertTriangle, CheckCircle } from 'lucide-react'
 
@@ -25,6 +26,9 @@ function getBanRisk(sentToday: number, limit: number) {
 
 export default function WANumbersPage() {
   const { t } = useI18n()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const returnTo = searchParams.get('returnTo')
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
@@ -58,8 +62,13 @@ export default function WANumbersPage() {
             if (status.connected) {
               clearInterval(qrPollRef.current)
               setQrCode(null); setShowAdd(false)
-              showMsg('success', 'WhatsApp bağlandı!')
-              load()
+              if (returnTo) {
+                showMsg('success', 'WhatsApp bağlandı! Yönlendiriliyor...')
+                setTimeout(() => router.push(returnTo), 1500)
+              } else {
+                showMsg('success', 'WhatsApp bağlandı!')
+                load()
+              }
             } else if (status.qr && status.qr !== qrCode) {
               setQrCode(status.qr)
             }
@@ -68,7 +77,13 @@ export default function WANumbersPage() {
         // Stop polling after 2 minutes
         setTimeout(() => { if (qrPollRef.current) { clearInterval(qrPollRef.current); setQrCode(null); showMsg('error', 'QR süresi doldu — tekrar deneyin') } }, 120000)
       } else if (data.status === 'connected') {
-        showMsg('success', 'Bağlandı!'); setShowAdd(false); load()
+        setShowAdd(false)
+        if (returnTo) {
+          showMsg('success', 'WhatsApp bağlandı! Yönlendiriliyor...')
+          setTimeout(() => router.push(returnTo), 1500)
+        } else {
+          showMsg('success', 'Bağlandı!'); load()
+        }
       } else {
         showMsg('error', 'QR oluşturulamadı — Ayarlar > WhatsApp bağlantısını kontrol edin')
       }
@@ -114,6 +129,11 @@ export default function WANumbersPage() {
         </button>
       </div>
 
+      {returnTo && (
+        <div style={{ marginBottom: 14, padding: '10px 16px', borderRadius: 11, fontSize: 12, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MessageCircle size={13} /> WhatsApp numaranızı bağladıktan sonra otomatik olarak önceki sayfaya yönlendirileceksiniz.
+        </div>
+      )}
       {msg && <div style={{ marginBottom: 14, padding: '10px 16px', borderRadius: 11, fontSize: 12, background: msg.type === 'success' ? '#ecfdf5' : '#fef2f2', border: `1px solid ${msg.type === 'success' ? '#a7f3d0' : '#fecaca'}`, color: msg.type === 'success' ? '#059669' : '#dc2626' }}>{msg.text}</div>}
 
       {/* ── STATS ─────────────────────────────────────────────── */}
