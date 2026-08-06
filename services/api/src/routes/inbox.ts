@@ -100,10 +100,25 @@ router.post('/send', async (req: any, res: any) => {
       .eq('id', leadId).eq('user_id', req.userId).single();
     if (!lead) return res.status(404).json({ error: 'Lead bulunamadı' });
 
+    // Template değişkenlerini lead verileriyle doldur
+    const firma  = lead.company_name || lead.contact_name || 'Sayın Yetkili';
+    const isim   = lead.contact_name || lead.company_name || 'Yetkili';
+    const sehir  = lead.city   || '';
+    const sektor = lead.sector || '';
+    const personalizedContent = content
+      .replace(/\{\{firma\}\}/gi,   firma)
+      .replace(/\{\{isim\}\}/gi,    isim)
+      .replace(/\{\{sehir\}\}/gi,   sehir)
+      .replace(/\{\{sektor\}\}/gi,  sektor)
+      .replace(/\[FIRMA_ADI\]/g, firma)
+      .replace(/\[SEHIR\]/g,     sehir)
+      .replace(/\[SEKTOR\]/g,    sektor)
+      .replace(/\[AD\]/g,        isim);
+
     if (channel === 'whatsapp') {
       if (!lead.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
       const { sendWhatsAppMessage } = require('./settings');
-      await sendWhatsAppMessage(req.userId, lead.phone, content);
+      await sendWhatsAppMessage(req.userId, lead.phone, personalizedContent);
     } else if (channel === 'email') {
       if (!lead.email) return res.status(400).json({ error: 'Email adresi yok' });
       const { data: smtp } = await supabase.from('smtp_settings').select('*').eq('user_id', req.userId).single();
@@ -118,14 +133,14 @@ router.post('/send', async (req: any, res: any) => {
         from: `${smtp.from_name} <${smtp.from_email}>`,
         to: lead.email,
         subject: `${lead.company_name} için mesaj`,
-        text: content,
+        text: personalizedContent,
       });
     }
 
     const now = new Date().toISOString();
     const { data: msg } = await supabase.from('messages').insert([{
       user_id: req.userId, lead_id: leadId,
-      direction: 'out', content: content.trim(), channel,
+      direction: 'out', content: personalizedContent.trim(), channel,
       sent_at: now, read: true,
       reply_to_id: replyToId || null,
     }]).select().single();
