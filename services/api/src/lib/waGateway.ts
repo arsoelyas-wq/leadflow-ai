@@ -116,41 +116,67 @@ async function createBaileysInstance(
       if (type !== 'notify') return; // Geçmiş mesajları atla
 
       for (const msg of incomingMsgs) {
-        if (msg.key.fromMe) continue; // Kendi gönderdiğimizi atla
+        if (msg.key?.fromMe === true) continue; // Kendi gönderdiğimizi atla
 
-        const remoteJid = msg.key.remoteJid || '';
-        if (!remoteJid.endsWith('@s.whatsapp.net')) continue; // Grup mesajlarını atla
+        const remoteJid = msg.key?.remoteJid || '';
+        if (!remoteJid.endsWith('@s.whatsapp.net')) continue; // Grup/broadcast atla
 
         const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
-        const last10 = senderPhone.slice(-10); // Son 10 hane ile eşleştir
+        const senderDigits = senderPhone.replace(/\D/g, '');
+        if (!senderDigits || senderDigits.length < 7) continue;
 
-        const content = msg.message?.conversation
-          || msg.message?.extendedTextMessage?.text
-          || msg.message?.imageMessage?.caption
-          || msg.message?.videoMessage?.caption
+        const senderLast10 = senderDigits.slice(-10);
+
+        // Tüm mesaj tiplerinden içerik çıkar
+        const msgBody = msg.message;
+        const content = msgBody?.conversation
+          || msgBody?.extendedTextMessage?.text
+          || msgBody?.imageMessage?.caption
+          || msgBody?.videoMessage?.caption
+          || msgBody?.documentMessage?.caption
+          || msgBody?.buttonsResponseMessage?.selectedDisplayText
+          || msgBody?.listResponseMessage?.title
+          || msgBody?.templateMessage?.hydratedTemplate?.hydratedContentText
           || '';
 
         const sentAt = msg.messageTimestamp
           ? new Date(Number(msg.messageTimestamp) * 1000).toISOString()
           : new Date().toISOString();
 
+        console.log(`[WA-GW] Incoming from ${senderPhone}`);
+
         try {
-          // Lead'i telefon numarasının son 10 hanesiyle bul
-          const { data: leads } = await supabase
+          // Tüm leadleri al — uygulama katmanında eşleştir (tüm formatları kapsar:
+          // "05524901688", "0552 490 16 88", "905524901688", "+905524901688")
+          const { data: allLeads } = await supabase
             .from('leads')
             .select('id, phone, status')
             .eq('user_id', userId)
-            .ilike('phone', `%${last10}`)
-            .limit(1);
+            .not('phone', 'is', null);
 
-          if (!leads?.length) {
-            console.log(`[WA-GW] No lead for incoming from ${senderPhone}`);
-            continue;
+          let lead: any = (allLeads || []).find((l: any) => {
+            const digits = (l.phone || '').replace(/\D/g, '');
+            return digits.length >= 7 && digits.slice(-10) === senderLast10;
+          });
+
+          if (!lead) {
+            // Tanınmayan kişi → yeni lead oluştur
+            const displayPhone = `+${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}`;
+            const { data: newLead } = await supabase.from('leads').insert([{
+              user_id: userId,
+              phone: senderDigits,
+              company_name: displayPhone,
+              source: 'WhatsApp Gelen',
+              status: 'new',
+              score: 50,
+            }]).select().single();
+            lead = newLead;
+            console.log(`[WA-GW] New lead from unknown WA sender: ${displayPhone}`);
           }
 
-          const lead = leads[0];
+          if (!lead) continue;
 
-          await supabase.from('messages').insert([{
+          const { error: msgErr } = await supabase.from('messages').insert([{
             lead_id: lead.id,
             user_id: userId,
             channel: 'whatsapp',
@@ -160,18 +186,19 @@ async function createBaileysInstance(
             sent_at: sentAt,
             read: false,
           }]);
+          if (msgErr) console.error(`[WA-GW] Message insert error:`, msgErr.message);
 
-          // Lead durumunu 'replied' yap (won/lost değilse)
+          // Lead durumunu güncelle
           if (!['won', 'lost'].includes(lead.status || '')) {
             await supabase.from('leads').update({
-              status: 'replied',
-              updated_at: new Date().toISOString(),
+              status: lead.status === 'new' ? 'replied' : lead.status,
+              last_contacted_at: new Date().toISOString(),
             }).eq('id', lead.id);
           }
 
-          console.log(`[WA-GW] ✓ Incoming: ${senderPhone} → lead ${lead.id}`);
+          console.log(`[WA-GW] ✓ Saved incoming: ${senderPhone} → ${lead.id} "${content.slice(0, 40)}"`);
         } catch (e: any) {
-          console.error(`[WA-GW] Incoming message error:`, e.message);
+          console.error(`[WA-GW] Incoming handler error:`, e.message);
         }
       }
     });
