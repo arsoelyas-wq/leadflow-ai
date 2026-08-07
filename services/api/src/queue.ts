@@ -151,7 +151,7 @@ messageQueue.process(async (job: any) => {
       await sendEmail(userId, lead.email, 'LeadFlow AI', `<p>${personalizedMsg}</p>`);
     }
 
-    // Mesajı kaydet
+    // Mesajı kaydet — hata varsa throw et (Bull retry mekanizması devreye girsin)
     const { error: insertErr } = await supabase.from('messages').insert([{
       lead_id: leadId,
       user_id: userId,
@@ -162,7 +162,7 @@ messageQueue.process(async (job: any) => {
       sent_at: new Date().toISOString(),
       read: true,
     }]);
-    if (insertErr) console.error(`✗ DB insert hatası: ${insertErr.message}`);
+    if (insertErr) throw new Error(`DB insert hatası: ${insertErr.message}`);
 
     // Lead durumunu güncelle
     await supabase.from('leads').update({ status: 'contacted' }).eq('id', leadId).eq('status', 'new');

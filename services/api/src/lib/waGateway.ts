@@ -111,7 +111,7 @@ async function createBaileysInstance(
       await backupSession(instanceId);
     });
 
-    // ── Gelen mesajları kaydet ──────────────────────────────
+    // ── Gelen mesajları kaydet + keyword detection + auto-reply ────────────────
     sock.ev.on('messages.upsert', async ({ messages: incomingMsgs, type }: any) => {
       if (type !== 'notify') return; // Geçmiş mesajları atla
 
@@ -126,6 +126,7 @@ async function createBaileysInstance(
         if (!senderDigits || senderDigits.length < 7) continue;
 
         const senderLast10 = senderDigits.slice(-10);
+        const waJid = `${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}@s.whatsapp.net`;
 
         // Tüm mesaj tiplerinden içerik çıkar
         const msgBody = msg.message;
@@ -145,12 +146,15 @@ async function createBaileysInstance(
 
         console.log(`[WA-GW] Incoming from ${senderPhone}`);
 
+        let savedLead: any = null;
+        let finalStatus = '';
+
         try {
-          // Tüm leadleri al — uygulama katmanında eşleştir (tüm formatları kapsar:
-          // "05524901688", "0552 490 16 88", "905524901688", "+905524901688")
+          // Tüm leadleri al — uygulama katmanında eşleştir
+          // (boşluklu/+90/05xx formatları dahil her türlü saklama biçimini kapsar)
           const { data: allLeads } = await supabase
             .from('leads')
-            .select('id, phone, status')
+            .select('id, phone, status, notes')
             .eq('user_id', userId)
             .not('phone', 'is', null);
 
@@ -160,7 +164,6 @@ async function createBaileysInstance(
           });
 
           if (!lead) {
-            // Tanınmayan kişi → yeni lead oluştur
             const displayPhone = `+${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}`;
             const { data: newLead } = await supabase.from('leads').insert([{
               user_id: userId,
@@ -175,7 +178,9 @@ async function createBaileysInstance(
           }
 
           if (!lead) continue;
+          savedLead = lead;
 
+          // Mesajı kaydet
           const { error: msgErr } = await supabase.from('messages').insert([{
             lead_id: lead.id,
             user_id: userId,
@@ -188,15 +193,122 @@ async function createBaileysInstance(
           }]);
           if (msgErr) console.error(`[WA-GW] Message insert error:`, msgErr.message);
 
-          // Lead durumunu güncelle
-          if (!['won', 'lost'].includes(lead.status || '')) {
+          // ── Keyword detection + durum güncellemesi ────────────────────────
+          let newStatus = lead.status;
+          if (/^stop$/i.test(content.trim())) {
+            // STOP komutu → blacklist
+            newStatus = 'lost';
             await supabase.from('leads').update({
-              status: lead.status === 'new' ? 'replied' : lead.status,
+              status: 'lost',
+              last_contacted_at: new Date().toISOString(),
+              notes: 'STOP komutu — iletişim listesinden çıkarıldı',
+            }).eq('id', lead.id);
+            console.log(`[WA-GW] STOP received from ${senderPhone} — lead marked lost`);
+          } else if (!['won', 'lost'].includes(lead.status || '')) {
+            if (/fiyat|ücret|kaç para|maliyet|teklif/i.test(content)) {
+              newStatus = 'contacted';
+            } else if (/evet|tamam|ilgileniyorum|sipariş/i.test(content)) {
+              newStatus = 'qualified';
+            } else if (/hayır|istemiyorum|iptal/i.test(content)) {
+              newStatus = 'lost';
+            } else {
+              newStatus = lead.status === 'new' ? 'replied' : lead.status;
+            }
+            await supabase.from('leads').update({
+              status: newStatus,
               last_contacted_at: new Date().toISOString(),
             }).eq('id', lead.id);
           }
 
-          console.log(`[WA-GW] ✓ Saved incoming: ${senderPhone} → ${lead.id} "${content.slice(0, 40)}"`);
+          finalStatus = newStatus;
+          console.log(`[WA-GW] ✓ Saved incoming: ${senderPhone} → lead ${lead.id} status=${newStatus} "${content.slice(0, 40)}"`);
+
+          // ── Auto-reply — won/lost/STOP durumunda gönderme ────────────────
+          if (['won', 'lost'].includes(newStatus)) continue;
+
+          try {
+            const { data: userSettings } = await supabase
+              .from('user_settings')
+              .select('auto_reply_enabled, company_name')
+              .eq('user_id', userId)
+              .maybeSingle();
+
+            if (!userSettings?.auto_reply_enabled) continue; // kullanıcı devre dışı bırakmış
+
+            // Spam önleme — son 5 dk içinde bu lead'e yanıt verdik mi?
+            const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            const { data: recentOut } = await supabase
+              .from('messages')
+              .select('id')
+              .eq('lead_id', lead.id)
+              .eq('direction', 'out')
+              .gte('sent_at', fiveMinAgo)
+              .limit(1);
+
+            if (recentOut?.length) continue; // çok yakın zamanda zaten cevap verdik
+
+            // Son 20 mesajı çek — konuşma bağlamı için
+            const { data: history } = await supabase
+              .from('messages')
+              .select('direction, content, sent_at')
+              .eq('lead_id', lead.id)
+              .eq('channel', 'whatsapp')
+              .order('sent_at', { ascending: false })
+              .limit(20);
+
+            const conversationMessages = (history || []).reverse().map((m: any) => ({
+              role: m.direction === 'out' ? 'assistant' : 'user',
+              content: m.content,
+            }));
+
+            // Konuşma user mesajıyla bitmeli
+            if (!conversationMessages.length ||
+                conversationMessages[conversationMessages.length - 1].role !== 'user') {
+              conversationMessages.push({ role: 'user', content: content || '[Medya]' });
+            }
+
+            const Anthropic = require('@anthropic-ai/sdk');
+            const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+            const aiResponse = await anthropic.messages.create({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 200,
+              system: `Sen ${userSettings.company_name || 'şirketin'} müşteri temsilcisisin.
+WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt ver.
+- Kendini AI olarak tanıtma; normal bir temsilci gibi davran
+- Maksimum 3-4 cümle, doğal konuş
+- Fiyat sorarsa: "size özel fiyat için sizi arayacağız" de
+- Sipariş için: "detaylar için en kısa sürede sizinle iletişime geçeceğiz" de
+- ASLA uydurma fiyat veya ürün bilgisi verme
+- Konuşma geçmişini dikkate al, aynı şeyi tekrar sorma`,
+              messages: conversationMessages,
+            });
+
+            const replyText = (aiResponse.content[0] as any)?.text || '';
+            if (!replyText) continue;
+
+            // Gönderim için her zaman güncel (live) instance soketini kullan
+            const liveEntry = instances.get(instanceId);
+            if (!liveEntry || liveEntry.status !== 'connected') continue;
+
+            await liveEntry.sock.sendMessage(waJid, { text: replyText });
+
+            await supabase.from('messages').insert([{
+              lead_id: lead.id,
+              user_id: userId,
+              channel: 'whatsapp',
+              direction: 'out',
+              content: replyText,
+              status: 'sent',
+              sent_at: new Date().toISOString(),
+              read: true,
+            }]);
+
+            console.log(`[WA-GW] Auto-reply → ${senderPhone}: "${replyText.slice(0, 60)}"`);
+          } catch (autoErr: any) {
+            console.error(`[WA-GW] Auto-reply error:`, autoErr.message);
+          }
+
         } catch (e: any) {
           console.error(`[WA-GW] Incoming handler error:`, e.message);
         }
@@ -286,12 +398,17 @@ export async function restoreConnectedInstances(): Promise<void> {
     const seen = new Set<string>();
     const toRestore: any[] = [];
     for (const inst of connected) {
-      const key = inst.phone || inst.instance_id;
-      if (!seen.has(key)) {
-        seen.add(key);
+      if (!inst.phone) {
+        // Telefon numarası bilinmeyen instance — dedup yapılamaz, disconnected yap
+        console.log(`[WA-GW] Instance ${inst.instance_id} has no phone — marking disconnected`);
+        await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
+        continue;
+      }
+      if (!seen.has(inst.phone)) {
+        seen.add(inst.phone);
         toRestore.push(inst);
       } else {
-        // Duplicate — DB'de disconnected yap
+        // Aynı telefona bağlı duplicate instance — DB'de disconnected yap
         console.log(`[WA-GW] Duplicate instance for phone ${inst.phone} — skipping ${inst.instance_id}`);
         await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
       }

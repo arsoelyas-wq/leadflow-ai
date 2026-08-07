@@ -502,6 +502,7 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
           content: personalizedMsg,
           status: 'sent',
           sent_at: new Date().toISOString(),
+          read: true,
         }]);
         if (sent % 5 === 0) {
           await supabase.from('users').update({ credits_used: currentCreditsUsed }).eq('id', userId);
@@ -528,6 +529,7 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
         content: personalizeMessage(campaign.message_template || '', lead),
         status: 'failed',
         sent_at: new Date().toISOString(),
+        read: true,
         metadata: { error: e.message },
       }]).catch(() => {});
       await randomDelay(5000, 10000); // Başarısızlıkta daha kısa bekleme

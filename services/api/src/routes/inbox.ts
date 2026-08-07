@@ -38,7 +38,7 @@ router.get('/messages', async (req: any, res: any) => {
 // ─── GET /api/inbox/conversations — Lead bazlı konuşmalar (N+1 DÜZELTİLDİ) ──
 router.get('/conversations', async (req: any, res: any) => {
   try {
-    const { limit = 50 } = req.query;
+    const { limit = 200 } = req.query;
     const userId = req.userId;
 
     // 1. Tüm leadleri al

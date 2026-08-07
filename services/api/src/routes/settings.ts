@@ -460,9 +460,23 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
       .order('is_primary', { ascending: false });
 
     if (numbers?.length) {
-      // Sort by usage ratio (lowest first = most capacity)
-      const available = numbers.filter((n: any) => (n.sent_today || 0) < (n.daily_limit || 100));
+      // Gerçek günlük sayım — sent_today hiç sıfırlanmadığından DB'den al
+      const todayUTC = new Date();
+      todayUTC.setUTCHours(0, 0, 0, 0);
+      const { count: todaySentCount } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('channel', 'whatsapp')
+        .eq('direction', 'out')
+        .gte('sent_at', todayUTC.toISOString());
+
+      // Toplam günlük kapasiteye (tüm numaraların limiti toplamı) göre filtrele
+      const totalDailyCapacity = numbers.reduce((sum: number, n: any) => sum + (n.daily_limit || 100), 0);
+      const available = (todaySentCount || 0) < totalDailyCapacity ? numbers : [];
+
       if (available.length) {
+        // Yük dengeleme: bugün en az kullanan numara önce
         available.sort((a: any, b: any) => (a.sent_today || 0) / (a.daily_limit || 100) - (b.sent_today || 0) / (b.daily_limit || 100));
         const chosen = available[0];
 
