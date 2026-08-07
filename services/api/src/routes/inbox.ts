@@ -71,13 +71,15 @@ router.get('/conversations', async (req: any, res: any) => {
       }
     }
 
-    const conversations = leads.map((lead: any) => ({
-      lead,
-      lastMessage:  lastMsgMap[lead.id]  || null,
-      unreadCount:  unreadMap[lead.id]   || 0,
-    }));
+    const conversations = leads
+      .map((lead: any) => ({
+        lead,
+        lastMessage:  lastMsgMap[lead.id]  || null,
+        unreadCount:  unreadMap[lead.id]   || 0,
+      }))
+      .filter((c: any) => c.lastMessage !== null); // Sadece mesajı olan leadler
 
-    // 4. Önce okunmamış olanlar, sonra son mesaj tarihine göre (mesajı olmayanlar sona)
+    // 4. Önce okunmamış olanlar, sonra son mesaj tarihine göre
     conversations.sort((a: any, b: any) => {
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
