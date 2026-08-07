@@ -468,8 +468,11 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
 
         // Embedded WA Gateway ile gönder
         try {
-          const { data: instance } = await supabase.from('wa_instances')
-            .select('instance_id').eq('phone', chosen.phone_number).eq('status', 'connected').maybeSingle();
+          // Aynı telefona bağlı birden fazla instance olabilir — en son bağlananı al
+          const { data: instances } = await supabase.from('wa_instances')
+            .select('instance_id').eq('phone', chosen.phone_number).eq('status', 'connected')
+            .order('connected_at', { ascending: false }).limit(1);
+          const instance = instances?.[0] || null;
           if (instance?.instance_id) {
             console.log(`[WA] Embedded gateway ile gönderiliyor — instance: ${instance.instance_id}, hedef: ${formattedPhone}`);
             const { sendMessage: gatewaySend } = require('../lib/waGateway');

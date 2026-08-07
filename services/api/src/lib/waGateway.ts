@@ -131,7 +131,11 @@ async function createBaileysInstance(
         entry.qr = null;
         console.log(`[WA-GW] Connected: ${instanceId} → ${phone}`);
 
-        // Update DB
+        // Update DB — önce eski duplicate instance'ları temizle
+        await supabase.from('wa_instances')
+          .update({ status: 'disconnected' })
+          .eq('phone', phone)
+          .neq('instance_id', instanceId);
         await supabase.from('wa_instances').update({
           status: 'connected',
           phone,
