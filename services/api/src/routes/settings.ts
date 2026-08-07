@@ -460,7 +460,7 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
       .order('is_primary', { ascending: false });
 
     if (numbers?.length) {
-      // Gerçek günlük sayım — sent_today hiç sıfırlanmadığından DB'den al
+      // Gerçek günlük sayım — failed mesajlar limiti tüketmemeli
       const todayUTC = new Date();
       todayUTC.setUTCHours(0, 0, 0, 0);
       const { count: todaySentCount } = await supabase
@@ -469,6 +469,7 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
         .eq('user_id', userId)
         .eq('channel', 'whatsapp')
         .eq('direction', 'out')
+        .neq('status', 'failed')
         .gte('sent_at', todayUTC.toISOString());
 
       // Toplam günlük kapasiteye (tüm numaraların limiti toplamı) göre filtrele
@@ -483,10 +484,10 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
         // Embedded WA Gateway ile gönder
         try {
           // Aynı telefona bağlı birden fazla instance olabilir — en son bağlananı al
-          const { data: instances } = await supabase.from('wa_instances')
+          const { data: instRows } = await supabase.from('wa_instances')
             .select('instance_id').eq('phone', chosen.phone_number).eq('status', 'connected')
             .order('connected_at', { ascending: false }).limit(1);
-          const instance = instances?.[0] || null;
+          const instance = instRows?.[0] || null;
           if (instance?.instance_id) {
             console.log(`[WA] Embedded gateway ile gönderiliyor — instance: ${instance.instance_id}, hedef: ${formattedPhone}`);
             const { sendMessage: gatewaySend } = require('../lib/waGateway');
@@ -508,11 +509,30 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
         }
       }
     }
+
+    // wa_numbers boşsa wa_instances'dan doğrudan gönder (wa_numbers sync gecikmesi)
+    if (!sent) {
+      const { data: instRows } = await supabase.from('wa_instances')
+        .select('instance_id').eq('user_id', userId).eq('status', 'connected')
+        .order('connected_at', { ascending: false }).limit(1);
+      const directInst = instRows?.[0];
+      if (directInst?.instance_id) {
+        const { sendMessage: gatewaySend } = require('../lib/waGateway');
+        await gatewaySend(directInst.instance_id, formattedPhone, message);
+        sent = true;
+        console.log(`[WA] Direct instance fallback başarılı — ${formattedPhone}`);
+      }
+    }
   } catch {}
+
+  // Eğer gateway üzerinden gönderdiyse burada zaten döndü
+  if (sent) return;
 
   // Fallback: direct Baileys socket (single connection)
   const state = waState[userId];
-  if (!state || state.status !== 'connected') throw new Error('WhatsApp bagli degil — Ayarlar > WhatsApp\'tan baglanti kurun');
+  if (!state || state.status !== 'connected') {
+    throw new Error('WhatsApp bağlı değil — Ayarlar > WhatsApp Hatlarım\'dan QR kodu tarayarak yeniden bağlanın');
+  }
   await state.sock.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: message });
 };
 

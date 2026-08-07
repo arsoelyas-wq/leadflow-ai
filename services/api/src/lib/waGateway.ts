@@ -371,20 +371,25 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
           connected_at: new Date().toISOString(),
         }).eq('instance_id', instanceId);
 
-        // Sync wa_numbers
-        const { data: waNum } = await supabase.from('wa_numbers')
-          .select('id').eq('user_id', userId).eq('status', 'connecting')
-          .order('created_at', { ascending: false }).limit(1).maybeSingle();
-        if (waNum) {
-          await supabase.from('wa_numbers').update({
-            status: 'connected', phone_number: phone,
-          }).eq('id', waNum.id);
+        // Sync wa_numbers — önce telefon numarasına göre eşleştir (session restore sonrası
+        // 'disconnected' olabilir), bulunamazsa 'connecting' veya 'disconnected' any'i seç
+        const { data: numByPhone } = await supabase.from('wa_numbers')
+          .select('id').eq('user_id', userId).eq('phone_number', phone).maybeSingle();
+
+        if (numByPhone) {
+          await supabase.from('wa_numbers').update({ status: 'connected' }).eq('id', numByPhone.id);
         } else {
-          // Update already connected number if phone changed
-          await supabase.from('wa_numbers').update({
-            phone_number: phone,
-          }).eq('user_id', userId).eq('status', 'connected');
+          const { data: anyNum } = await supabase.from('wa_numbers')
+            .select('id').eq('user_id', userId)
+            .in('status', ['connecting', 'disconnected'])
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
+          if (anyNum) {
+            await supabase.from('wa_numbers').update({
+              status: 'connected', phone_number: phone,
+            }).eq('id', anyNum.id);
+          }
         }
+        console.log(`[WA-GW] wa_numbers synced for ${phone}`);
 
         if (onConnected) onConnected(phone);
       }

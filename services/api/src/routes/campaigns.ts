@@ -30,6 +30,7 @@ async function getDailyCount(userId: string, channel: string): Promise<number> {
     .select('*', { count: 'exact', head: true })
     .eq('channel', channel)
     .eq('direction', 'out')
+    .neq('status', 'failed') // Failed mesajlar limiti tüketmemeli
     .gte('sent_at', today.toISOString())
     .eq('user_id', userId);
   return count || 0;
@@ -337,12 +338,28 @@ router.post('/:id/start', async (req: any, res: any) => {
     }
 
     if (campaign.channel === 'whatsapp') {
-      const oldConnected = userSettings?.whatsapp_status === 'connected';
+      // wa_numbers bağlı mı?
       const { count: waNumConnected } = await supabase
         .from('wa_numbers').select('*', { count: 'exact', head: true })
         .eq('user_id', userId).eq('status', 'connected');
-      if (!oldConnected && !waNumConnected) {
-        return res.status(400).json({ error: 'WhatsApp bağlı değil. Ayarlar > WhatsApp veya WhatsApp Hatlarım sayfasından bağlayın.' });
+
+      // wa_instances (embedded gateway) bağlı mı?
+      const { count: waInstConnected } = await supabase
+        .from('wa_instances').select('*', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('status', 'connected');
+
+      // Eski Baileys socket bağlı mı? (process içi kontrol)
+      let baileysConnected = false;
+      try {
+        const { waState } = require('./settings');
+        baileysConnected = !!(waState[userId]?.status === 'connected');
+      } catch {}
+
+      if (!waNumConnected && !waInstConnected && !baileysConnected) {
+        return res.status(400).json({
+          error: 'WhatsApp bağlı değil. Ayarlar > WhatsApp Hatlarım sayfasından QR kodu tarayarak yeniden bağlanın.',
+          code: 'WA_DISCONNECTED',
+        });
       }
     }
 

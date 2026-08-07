@@ -175,9 +175,8 @@ messageQueue.process(async (job: any) => {
   } catch (err: any) {
     console.error(`✗ Mesaj hatası: ${lead.company_name}: ${err.message}`);
 
-    // Sadece son denemede kaydet — her retry'da duplicate oluşmasın
-    const isLastAttempt = job.attemptsMade >= 2; // attempts:3 → 0,1,2 (son=2)
-    if (isLastAttempt) {
+    // İLK denemede inbox'a kaydet — kullanıcı hemen görsün, retry'da duplicate yaratma
+    if (job.attemptsMade === 0) {
       await supabase.from('messages').insert([{
         lead_id: leadId,
         user_id: userId,
@@ -187,7 +186,8 @@ messageQueue.process(async (job: any) => {
         status: 'failed',
         sent_at: new Date().toISOString(),
         read: true,
-      }]);
+        metadata: { error: err.message },
+      }]).catch((e: any) => console.error('Failed msg insert error:', e.message));
     }
 
     throw err; // Bull retry için
