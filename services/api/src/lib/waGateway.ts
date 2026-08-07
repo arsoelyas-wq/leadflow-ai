@@ -111,6 +111,71 @@ async function createBaileysInstance(
       await backupSession(instanceId);
     });
 
+    // ── Gelen mesajları kaydet ──────────────────────────────
+    sock.ev.on('messages.upsert', async ({ messages: incomingMsgs, type }: any) => {
+      if (type !== 'notify') return; // Geçmiş mesajları atla
+
+      for (const msg of incomingMsgs) {
+        if (msg.key.fromMe) continue; // Kendi gönderdiğimizi atla
+
+        const remoteJid = msg.key.remoteJid || '';
+        if (!remoteJid.endsWith('@s.whatsapp.net')) continue; // Grup mesajlarını atla
+
+        const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
+        const last10 = senderPhone.slice(-10); // Son 10 hane ile eşleştir
+
+        const content = msg.message?.conversation
+          || msg.message?.extendedTextMessage?.text
+          || msg.message?.imageMessage?.caption
+          || msg.message?.videoMessage?.caption
+          || '';
+
+        const sentAt = msg.messageTimestamp
+          ? new Date(Number(msg.messageTimestamp) * 1000).toISOString()
+          : new Date().toISOString();
+
+        try {
+          // Lead'i telefon numarasının son 10 hanesiyle bul
+          const { data: leads } = await supabase
+            .from('leads')
+            .select('id, phone, status')
+            .eq('user_id', userId)
+            .ilike('phone', `%${last10}`)
+            .limit(1);
+
+          if (!leads?.length) {
+            console.log(`[WA-GW] No lead for incoming from ${senderPhone}`);
+            continue;
+          }
+
+          const lead = leads[0];
+
+          await supabase.from('messages').insert([{
+            lead_id: lead.id,
+            user_id: userId,
+            channel: 'whatsapp',
+            direction: 'in',
+            content: content || '[Medya]',
+            status: 'received',
+            sent_at: sentAt,
+            read: false,
+          }]);
+
+          // Lead durumunu 'replied' yap (won/lost değilse)
+          if (!['won', 'lost'].includes(lead.status || '')) {
+            await supabase.from('leads').update({
+              status: 'replied',
+              updated_at: new Date().toISOString(),
+            }).eq('id', lead.id);
+          }
+
+          console.log(`[WA-GW] ✓ Incoming: ${senderPhone} → lead ${lead.id}`);
+        } catch (e: any) {
+          console.error(`[WA-GW] Incoming message error:`, e.message);
+        }
+      }
+    });
+
     sock.ev.on('connection.update', async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
