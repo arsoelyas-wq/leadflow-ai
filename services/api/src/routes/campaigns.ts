@@ -519,7 +519,18 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
     } catch (e: any) {
       console.error('Send error:', e.message);
       failed++;
-      await randomDelay(15000, 30000);
+      // Başarısız mesajı DB'ye kaydet — kullanıcı inbox'tan görebilsin
+      await supabase.from('messages').insert([{
+        lead_id: lead.id,
+        user_id: userId,
+        channel: campaign.channel,
+        direction: 'out',
+        content: personalizeMessage(campaign.message_template || '', lead),
+        status: 'failed',
+        sent_at: new Date().toISOString(),
+        metadata: { error: e.message },
+      }]).catch(() => {});
+      await randomDelay(5000, 10000); // Başarısızlıkta daha kısa bekleme
     }
   }
 

@@ -1,8 +1,11 @@
 export {};
+
+// Redis yoksa queue'yu tamamen devre dışı bırak → campaigns.ts fallback'e düşer
+const REDIS_URL = process.env.REDIS_URL;
+if (!REDIS_URL) throw new Error('REDIS_URL not configured — queue disabled, using direct send');
+
 const Bull = require('bull');
 const { createClient } = require('@supabase/supabase-js');
-
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
