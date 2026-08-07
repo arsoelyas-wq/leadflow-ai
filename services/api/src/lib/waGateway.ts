@@ -277,10 +277,28 @@ async function createBaileysInstance(
 export async function restoreConnectedInstances(): Promise<void> {
   try {
     const { data: connected } = await supabase.from('wa_instances')
-      .select('instance_id, user_id').eq('status', 'connected');
+      .select('instance_id, user_id, phone, connected_at')
+      .eq('status', 'connected')
+      .order('connected_at', { ascending: false }); // En son bağlananı önce al
     if (!connected?.length) return;
-    console.log(`[WA-GW] Restoring ${connected.length} connected instance(s)...`);
+
+    // Aynı telefona birden fazla instance varsa sadece en son bağlananı restore et
+    const seen = new Set<string>();
+    const toRestore: any[] = [];
     for (const inst of connected) {
+      const key = inst.phone || inst.instance_id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        toRestore.push(inst);
+      } else {
+        // Duplicate — DB'de disconnected yap
+        console.log(`[WA-GW] Duplicate instance for phone ${inst.phone} — skipping ${inst.instance_id}`);
+        await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
+      }
+    }
+
+    console.log(`[WA-GW] Restoring ${toRestore.length} unique instance(s) (${connected.length} total in DB)...`);
+    for (const inst of toRestore) {
       const restored = await restoreSession(inst.instance_id);
       if (restored) {
         await createBaileysInstance(inst.instance_id, inst.user_id);
