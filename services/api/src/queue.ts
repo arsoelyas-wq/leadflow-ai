@@ -152,7 +152,7 @@ messageQueue.process(async (job: any) => {
     }
 
     // Mesajı kaydet
-    await supabase.from('messages').insert([{
+    const { error: insertErr } = await supabase.from('messages').insert([{
       lead_id: leadId,
       user_id: userId,
       channel,
@@ -160,7 +160,9 @@ messageQueue.process(async (job: any) => {
       content: personalizedMsg,
       status: 'sent',
       sent_at: new Date().toISOString(),
+      read: true,
     }]);
+    if (insertErr) console.error(`✗ DB insert hatası: ${insertErr.message}`);
 
     // Lead durumunu güncelle
     await supabase.from('leads').update({ status: 'contacted' }).eq('id', leadId).eq('status', 'new');
@@ -184,6 +186,7 @@ messageQueue.process(async (job: any) => {
         content: personalizedMsg,
         status: 'failed',
         sent_at: new Date().toISOString(),
+        read: true,
       }]);
     }
 
