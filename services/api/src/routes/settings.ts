@@ -383,8 +383,31 @@ router.post('/whatsapp/connect', async (req: any, res: any) => {
 
 router.get('/whatsapp/status', async (req: any, res: any) => {
   const userId = req.userId;
-  const state = waState[userId];
-  res.json({ status: state?.status || 'disconnected', qr: state?.qr || null });
+
+  // 1. Eski Baileys in-memory state
+  const oldState = waState[userId];
+  if (oldState?.status === 'connected') {
+    return res.json({ status: 'connected', qr: null, source: 'legacy' });
+  }
+
+  // 2. Embedded gateway (waGateway) — wa_instances tablosu
+  const { count: instConnected } = await supabase
+    .from('wa_instances').select('*', { count: 'exact', head: true })
+    .eq('user_id', userId).eq('status', 'connected');
+  if (instConnected && instConnected > 0) {
+    return res.json({ status: 'connected', qr: null, source: 'gateway' });
+  }
+
+  // 3. wa_numbers tablosu
+  const { count: numConnected } = await supabase
+    .from('wa_numbers').select('*', { count: 'exact', head: true })
+    .eq('user_id', userId).eq('status', 'connected');
+  if (numConnected && numConnected > 0) {
+    return res.json({ status: 'connected', qr: null, source: 'wa_numbers' });
+  }
+
+  // Bağlı değil — QR varsa döndür
+  res.json({ status: oldState?.status || 'disconnected', qr: oldState?.qr || null });
 });
 
 router.post('/whatsapp/disconnect', async (req: any, res: any) => {

@@ -140,11 +140,15 @@ export default function NewCampaignPage() {
   const handleCreate = async () => {
     setSaving(true); setError('')
     try {
-      await api.post('/api/campaigns', {
+      const created = await api.post('/api/campaigns', {
         name, channel, messageTemplate: customMessage, leadIds: selectedLeads,
         ...(isScheduled && scheduleAt ? { scheduledAt: new Date(scheduleAt).toISOString() } : {}),
       })
-      router.push('/campaigns')
+      // Zamanlanmış değilse hemen başlat
+      if (!isScheduled) {
+        await api.post(`/api/campaigns/${created.campaign.id}/start`, {})
+      }
+      router.push(`/campaigns/${created.campaign.id}`)
     } catch (e: any) { setError(e.message) }
     finally { setSaving(false) }
   }
@@ -556,7 +560,7 @@ export default function NewCampaignPage() {
         ) : (
           <button onClick={handleCreate} disabled={saving}
             className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition shadow-lg shadow-emerald-600/20">
-            {saving ? <><span className="animate-spin">⟳</span> Oluşturuluyor...</> : <><CheckCircle2 size={16} /> Kampanya Oluştur</>}
+            {saving ? <><span className="animate-spin">⟳</span> Başlatılıyor...</> : <><CheckCircle2 size={16} /> {isScheduled ? 'Zamanla' : 'Oluştur & Başlat'}</>}
           </button>
         )}
       </div>
