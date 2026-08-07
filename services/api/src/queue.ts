@@ -161,6 +161,7 @@ messageQueue.process(async (job: any) => {
       status: 'sent',
       sent_at: new Date().toISOString(),
       read: true,
+      campaign_id: campaignId,
     }]);
     if (insertErr) throw new Error(`DB insert hatası: ${insertErr.message}`);
 
@@ -186,6 +187,7 @@ messageQueue.process(async (job: any) => {
         status: 'failed',
         sent_at: new Date().toISOString(),
         read: true,
+        campaign_id: campaignId,
         metadata: { error: err.message },
       }]).catch((e: any) => console.error('Failed msg insert error:', e.message));
     }

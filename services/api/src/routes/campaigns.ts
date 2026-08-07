@@ -562,6 +562,70 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
   console.log(`Campaign ${campaign.id} done: ${sent} sent, ${failed} failed`);
 }
 
+// GET /api/campaigns/:id/leads-status — Lead bazlı durum + mesajlar
+router.get('/:id/leads-status', async (req: any, res: any) => {
+  try {
+    const { data: campaign } = await supabase.from('campaigns').select('*')
+      .eq('id', req.params.id).eq('user_id', req.userId).single();
+    if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
+
+    const leadIds: string[] = campaign.lead_ids || [];
+
+    // Lead bilgileri
+    const { data: leads } = leadIds.length
+      ? await supabase.from('leads')
+          .select('id, company_name, contact_name, phone, city, sector')
+          .in('id', leadIds)
+      : { data: [] };
+
+    // Kampanyaya ait mesajlar (campaign_id veya lead_ids + created_at fallback)
+    const { data: msgsByCampaign } = await supabase.from('messages')
+      .select('id, lead_id, direction, content, status, sent_at, channel')
+      .eq('user_id', req.userId)
+      .eq('campaign_id', req.params.id)
+      .order('sent_at', { ascending: false });
+
+    // campaign_id boşsa lead_ids + created_at ile fallback
+    const { data: msgsByLeads } = (!msgsByCampaign?.length && leadIds.length)
+      ? await supabase.from('messages')
+          .select('id, lead_id, direction, content, status, sent_at, channel')
+          .eq('user_id', req.userId)
+          .in('lead_id', leadIds)
+          .gte('sent_at', campaign.created_at)
+          .order('sent_at', { ascending: false })
+          .limit(200)
+      : { data: [] };
+
+    const messages = msgsByCampaign?.length ? msgsByCampaign : (msgsByLeads || []);
+
+    // Lead başına durum hesapla
+    const leadStatus = (leads || []).map((lead: any) => {
+      const lMsgs = messages.filter((m: any) => m.lead_id === lead.id);
+      const outMsgs = lMsgs.filter((m: any) => m.direction === 'out');
+      const inMsgs  = lMsgs.filter((m: any) => m.direction === 'in');
+      const failMsgs = lMsgs.filter((m: any) => m.status === 'failed');
+      const status = failMsgs.length > 0 ? 'failed'
+                   : inMsgs.length  > 0 ? 'replied'
+                   : outMsgs.length > 0 ? 'sent'
+                   : 'pending';
+      return {
+        id: lead.id,
+        company_name: lead.company_name || lead.contact_name || 'İsimsiz',
+        phone: lead.phone,
+        city: lead.city,
+        sector: lead.sector,
+        sent: outMsgs.length,
+        replied: inMsgs.length,
+        failed: failMsgs.length,
+        status,
+        lastMessage: lMsgs[0] || null,
+      };
+    });
+
+    res.json({ leadStatus, messages: messages.slice(0, 30) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/campaigns/:id/funnel — Kampanya funnel analizi
 router.get('/:id/funnel', async (req: any, res: any) => {
   try {
