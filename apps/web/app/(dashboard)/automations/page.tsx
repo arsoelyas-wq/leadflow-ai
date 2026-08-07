@@ -1,7 +1,7 @@
 'use client'
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { api } from '@/lib/api'
 import {
@@ -41,6 +41,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string; label: string }
 export default function AutomationsPage() {
   const { t } = useI18n()
   const isMobile = useIsMobile()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [mode, setMode] = useState<Mode | null>(null)
   const [loading, setLoading] = useState(true)
@@ -277,7 +278,8 @@ export default function AutomationsPage() {
       // 2. Hemen başlat
       const started = await api.post(`/api/campaigns/${created.campaign.id}/start`, {})
       showMsg('success', started.message || `${selectedLeads.length} lead'e gönderim başlatıldı!`)
-      setBcName(''); setBcMessage(''); setSelectedLeads([]); loadAll()
+      // 3. Kampanya yönetim sayfasına yönlendir
+      setTimeout(() => router.push(`/campaigns/${created.campaign.id}`), 1200)
     } catch (e: any) { showMsg('error', e.message) }
     setBcSending(false)
   }

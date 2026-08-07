@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import { SparkIcon } from '@/components/SovloLogo'
 import { useI18n } from '@/lib/i18n'
 import {
-  LayoutDashboard, Users, Megaphone,
+  LayoutDashboard, Users, Megaphone, Send,
   Settings, LogOut, Zap, Wallet, Package,
   FileText, Globe2, Workflow, ScrollText,
   Inbox, Kanban,
@@ -49,6 +49,7 @@ const CORE_ITEMS: NavItem[] = [
   { href: '/leads',        label: 'nav.leads',        icon: Users },
   { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
   { href: '/automations', label: 'nav.automations', icon: Megaphone },
+  { href: '/campaigns',  label: 'nav.campaigns',  icon: Send },
   { href: '/inbox',     label: 'nav.inbox',     icon: Inbox },
 ]
 
@@ -129,6 +130,7 @@ const HREF_FLAG: Record<string, string> = {
   '/leads':           'leads',
   '/pipeline':        'pipeline',
   '/automations':     'automations',
+  '/campaigns':       'campaigns',
   '/inbox':           'inbox',
   '/lead-hunter':     'lead_hunter',
   '/decision-maker':  'decision_maker',
