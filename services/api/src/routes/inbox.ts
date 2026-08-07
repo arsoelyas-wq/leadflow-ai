@@ -118,7 +118,7 @@ router.post('/send', async (req: any, res: any) => {
     if (channel === 'whatsapp') {
       if (!lead.phone) return res.status(400).json({ error: 'Telefon numarası yok' });
       const { sendWhatsAppMessage } = require('./settings');
-      await sendWhatsAppMessage(req.userId, lead.phone, personalizedContent);
+      await sendWhatsAppMessage(req.userId, lead.phone, personalizedContent, true); // true = inbox manuel gönderim, saat sınırı yok
     } else if (channel === 'email') {
       if (!lead.email) return res.status(400).json({ error: 'Email adresi yok' });
       const { data: smtp } = await supabase.from('smtp_settings').select('*').eq('user_id', req.userId).single();
@@ -191,7 +191,7 @@ router.post('/send-media', upload.single('file'), async (req: any, res: any) => 
       try {
         const { sendWhatsAppMessage } = require('./settings');
         const captionText = caption ? `${caption}\n${publicUrl}` : publicUrl;
-        await sendWhatsAppMessage(req.userId, lead.phone, captionText);
+        await sendWhatsAppMessage(req.userId, lead.phone, captionText, true); // inbox manuel, saat sınırı yok
       } catch { /* Medya linki gönder yeterli */ }
     }
 

@@ -439,16 +439,19 @@ router.post('/email/test', async (req: any, res: any) => {
   }
 });
 
-const sendWhatsAppMessage = async (userId: string, phone: string, message: string) => {
+const sendWhatsAppMessage = async (userId: string, phone: string, message: string, skipSafeHours = false) => {
   const cleanPhone = phone.replace(/\D/g, '');
   const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
     : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
 
-  // Safe hours check (09:00-20:00 Turkey time = UTC+3)
-  const turkeyHour = (new Date().getUTCHours() + 3) % 24;
-  if (turkeyHour < 9 || turkeyHour >= 20) {
-    console.log('[WA] Safe hours disinda — mesaj ertelendi');
-    throw new Error('WhatsApp mesajlari sadece 09:00-20:00 arasi gonderilir');
+  // Safe hours check — sadece kampanya/kuyruğu için (skipSafeHours=false)
+  // Inbox'tan manuel gönderimler (skipSafeHours=true) için bypass
+  if (!skipSafeHours) {
+    const turkeyHour = (new Date().getUTCHours() + 3) % 24;
+    if (turkeyHour < 9 || turkeyHour >= 20) {
+      console.log('[WA] Safe hours disinda — mesaj ertelendi');
+      throw new Error('WhatsApp mesajlari sadece 09:00-20:00 arasi gonderilir');
+    }
   }
 
   // Multi-number routing: pick number with lowest usage + available capacity
