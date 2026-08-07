@@ -275,4 +275,4 @@ router.get('/stats', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-module.exports = router;
+module.exports = { router, sendSMSViaProvider, getSmsSettings };

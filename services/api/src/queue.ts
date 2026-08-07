@@ -69,6 +69,7 @@ campaignQueue.process(async (job: any) => {
     await messageQueue.add(
       {
         campaignId,
+        campaignName: campaign.name,
         userId,
         leadId: leads[i].id,
         channel: campaign.channel,
@@ -87,7 +88,7 @@ campaignQueue.process(async (job: any) => {
 
 // ── MESSAGE QUEUE PROCESSOR ───────────────────────────────
 messageQueue.process(async (job: any) => {
-  const { campaignId, userId, leadId, channel, message, lead } = job.data;
+  const { campaignId, campaignName, userId, leadId, channel, message, lead } = job.data;
 
   // Kampanya hala active mi?
   const { data: campaign } = await supabase
@@ -154,13 +155,35 @@ messageQueue.process(async (job: any) => {
     } else if (channel === 'email') {
       if (!lead.email) throw new Error('Email adresi yok');
       const { sendEmail } = require('./routes/settings');
-      await sendEmail(userId, lead.email, 'LeadFlow AI', `<p>${personalizedMsg.replace(/\n/g, '<br>')}</p>`);
+      const emailSubject = campaignName || 'LeadFlow AI';
+      await sendEmail(userId, lead.email, emailSubject, `<p>${personalizedMsg.replace(/\n/g, '<br>')}</p>`);
     } else if (channel === 'sms') {
       if (!lead.phone) throw new Error('SMS için telefon numarası yok');
-      // SMS gateway entegrasyonu — şimdilik hata fırlat
-      throw new Error('SMS gateway henüz yapılandırılmamış. Ayarlar bölümünden SMS API key ekleyin.');
+      const { getSmsSettings, sendSMSViaProvider } = require('./routes/sms');
+      const smsSettings = await getSmsSettings(userId);
+      if (!smsSettings) throw new Error('SMS gateway yapılandırılmamış — Ayarlar > SMS bölümünden sağlayıcı ekleyin');
+      await sendSMSViaProvider(smsSettings.provider, smsSettings, lead.phone, personalizedMsg);
+    } else if (channel === 'multi') {
+      // Çoklu kanal: telefon varsa WhatsApp, email varsa Email — en az biri başarılı olmalı
+      let multiSent = false;
+      if (lead.phone) {
+        try {
+          const { sendWhatsAppMessage } = require('./routes/settings');
+          await sendWhatsAppMessage(userId, lead.phone, personalizedMsg);
+          multiSent = true;
+        } catch (waErr: any) {
+          console.warn(`[Multi] WA failed for ${lead.phone}: ${waErr.message}`);
+        }
+      }
+      if (!multiSent && lead.email) {
+        const { sendEmail: _sendEmail } = require('./routes/settings');
+        const emailSubject = campaignName || 'LeadFlow AI';
+        await _sendEmail(userId, lead.email, emailSubject, `<p>${personalizedMsg.replace(/\n/g, '<br>')}</p>`);
+        multiSent = true;
+      }
+      if (!multiSent) throw new Error('Multi: Lead için telefon veya email adresi yok');
     } else {
-      throw new Error(`Desteklenmeyen kanal: ${channel}. Desteklenen: whatsapp, email`);
+      throw new Error(`Desteklenmeyen kanal: ${channel}`);
     }
 
     // Mesajı kaydet — hata varsa throw et (Bull retry mekanizması devreye girsin)

@@ -336,11 +336,22 @@ router.post('/:id/start', async (req: any, res: any) => {
       });
     }
 
-    if (campaign.channel === 'email' && !userSettings?.email_user) {
-      return res.status(400).json({ error: 'Email ayarları yapılmamış.' });
+    if ((campaign.channel === 'email' || campaign.channel === 'multi') && !userSettings?.email_user) {
+      if (campaign.channel === 'email') {
+        return res.status(400).json({ error: 'Email ayarları yapılmamış. Ayarlar > SMTP bölümünden yapılandırın.' });
+      }
+      // multi için email olmasa da WA yeterli, ileride kontrol edilecek
     }
 
-    if (campaign.channel === 'whatsapp') {
+    if (campaign.channel === 'sms') {
+      const { getSmsSettings } = require('./sms');
+      const smsSettings = await getSmsSettings(userId);
+      if (!smsSettings) {
+        return res.status(400).json({ error: 'SMS gateway yapılandırılmamış. Ayarlar > SMS bölümünden sağlayıcı ekleyin.' });
+      }
+    }
+
+    if (campaign.channel === 'whatsapp' || campaign.channel === 'multi') {
       // wa_numbers bağlı mı?
       const { count: waNumConnected } = await supabase
         .from('wa_numbers').select('*', { count: 'exact', head: true })
@@ -358,10 +369,20 @@ router.post('/:id/start', async (req: any, res: any) => {
         baileysConnected = !!(waState[userId]?.status === 'connected');
       } catch {}
 
-      if (!waNumConnected && !waInstConnected && !baileysConnected) {
+      const waConnected = !!(waNumConnected || waInstConnected || baileysConnected);
+
+      if (!waConnected && campaign.channel === 'whatsapp') {
         return res.status(400).json({
           error: 'WhatsApp bağlı değil. Ayarlar > WhatsApp Hatlarım sayfasından QR kodu tarayarak yeniden bağlanın.',
           code: 'WA_DISCONNECTED',
+        });
+      }
+
+      // Multi: WA bağlı değilse Email yeterliyse devam et, ikisi de yoksa durdur
+      if (!waConnected && campaign.channel === 'multi' && !userSettings?.email_user) {
+        return res.status(400).json({
+          error: 'Çoklu Kanal için WhatsApp ve/veya Email yapılandırılmalı. En az biri gereklidir.',
+          code: 'MULTI_NO_CHANNEL',
         });
       }
     }
@@ -532,6 +553,31 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
           </div>`,
         });
         success = true;
+      } else if (campaign.channel === 'sms' && lead.phone) {
+        const { getSmsSettings, sendSMSViaProvider } = require('./sms');
+        const smsSettings = await getSmsSettings(userId);
+        if (!smsSettings) throw new Error('SMS gateway yapılandırılmamış');
+        await sendSMSViaProvider(smsSettings.provider, smsSettings, lead.phone, personalizedMsg);
+        success = true;
+      } else if (campaign.channel === 'multi') {
+        // WhatsApp önce, yoksa Email
+        let multiOk = false;
+        if (lead.phone) {
+          try {
+            const { sendWhatsAppMessage } = require('./settings');
+            await sendWhatsAppMessage(userId, lead.phone, personalizedMsg);
+            multiOk = true;
+          } catch {}
+        }
+        if (!multiOk && lead.email && transporter) {
+          await transporter.sendMail({
+            from: userSettings.email_from || userSettings.email_user,
+            to: lead.email, subject: campaign.name,
+            html: `<div style="font-family:Arial,sans-serif;max-width:600px;padding:20px">${personalizedMsg.replace(/\n/g, '<br>')}</div>`,
+          });
+          multiOk = true;
+        }
+        success = multiOk;
       }
 
       if (success) {
