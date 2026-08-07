@@ -51,10 +51,12 @@ export default function AutomationsPage() {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([])
 
   const [campaigns, setCampaigns] = useState<any[]>([])
-  const [bcChannel, setBcChannel] = useState<'whatsapp' | 'email'>('whatsapp')
+  const [bcChannel, setBcChannel] = useState<'whatsapp' | 'email' | 'sms' | 'multi'>('whatsapp')
   const [bcMessage, setBcMessage] = useState('')
   const [bcName, setBcName] = useState('')
   const [bcSending, setBcSending] = useState(false)
+  const [bcScheduled, setBcScheduled] = useState(false)
+  const [bcScheduleAt, setBcScheduleAt] = useState('')
 
   const [sequences, setSequences] = useState<any[]>([])
   const [seqStats, setSeqStats] = useState<any>(null)
@@ -271,14 +273,18 @@ export default function AutomationsPage() {
 
   const sendBroadcast = async () => {
     if (!bcName || !bcMessage || !selectedLeads.length) return showMsg('error', 'Kampanya adı, mesaj ve en az 1 lead seçimi zorunlu')
+    if (bcScheduled && !bcScheduleAt) return showMsg('error', 'Gönderim zamanı seçin')
     setBcSending(true)
     try {
-      // 1. Kampanya oluştur
-      const created = await api.post('/api/campaigns', { name: bcName, channel: bcChannel, messageTemplate: bcMessage, leadIds: selectedLeads })
-      // 2. Hemen başlat
-      const started = await api.post(`/api/campaigns/${created.campaign.id}/start`, {})
-      showMsg('success', started.message || `${selectedLeads.length} lead'e gönderim başlatıldı!`)
-      // 3. Kampanya yönetim sayfasına yönlendir
+      const payload: any = { name: bcName, channel: bcChannel, messageTemplate: bcMessage, leadIds: selectedLeads }
+      if (bcScheduled && bcScheduleAt) payload.scheduledAt = new Date(bcScheduleAt).toISOString()
+      const created = await api.post('/api/campaigns', payload)
+      if (!bcScheduled) {
+        const started = await api.post(`/api/campaigns/${created.campaign.id}/start`, {})
+        showMsg('success', started.message || `${selectedLeads.length} lead'e gönderim başlatıldı!`)
+      } else {
+        showMsg('success', `Kampanya zamanlandı! ${new Date(bcScheduleAt).toLocaleString('tr-TR')} tarihinde gönderilecek.`)
+      }
       setTimeout(() => router.push(`/campaigns/${created.campaign.id}`), 1200)
     } catch (e: any) { showMsg('error', e.message) }
     setBcSending(false)
@@ -419,12 +425,26 @@ export default function AutomationsPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <input value={bcName} onChange={e => setBcName(e.target.value)} placeholder="Kampanya adı *" style={inputStyle} />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                      {(['whatsapp', 'email'] as const).map(ch => (
-                        <button key={ch} onClick={() => setBcChannel(ch)} style={{ padding: '9px', borderRadius: 9, border: `2px solid ${bcChannel === ch ? accentBlue : '#e2e8f0'}`, background: bcChannel === ch ? '#eff6ff' : '#fff', color: bcChannel === ch ? accentBlue : tx2, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: 0 }}>
-                          {ch === 'whatsapp' ? <MessageCircle size={12} /> : <Mail size={12} />} {ch === 'whatsapp' ? 'WhatsApp' : 'Email'}
-                        </button>
-                      ))}
+                    {/* Kanal Seçimi — 4 kart */}
+                    <div>
+                      <p style={{ color: tx2, fontSize: 11, fontWeight: 600, margin: '0 0 7px' }}>Kanal</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+                        {([
+                          { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, color: '#059669', bg: '#ecfdf5', border: '#6ee7b7', selBg: '#d1fae5', selBorder: '#059669' },
+                          { id: 'email',    label: 'Email',    icon: Mail,          color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', selBg: '#dbeafe', selBorder: '#2563eb' },
+                          { id: 'sms',      label: 'SMS',      icon: MessageSquare, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', selBg: '#ede9fe', selBorder: '#7c3aed' },
+                          { id: 'multi',    label: 'Çoklu Kanal', icon: Globe2,     color: '#d97706', bg: '#fffbeb', border: '#fde68a', selBg: '#fef3c7', selBorder: '#d97706' },
+                        ] as const).map(ch => {
+                          const sel = bcChannel === ch.id
+                          return (
+                            <button key={ch.id} onClick={() => setBcChannel(ch.id)}
+                              style={{ padding: '10px 8px', borderRadius: 10, border: `2px solid ${sel ? ch.selBorder : ch.border}`, background: sel ? ch.selBg : ch.bg, color: sel ? ch.color : tx2, fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
+                              <ch.icon size={18} style={{ color: ch.color }} />
+                              {ch.label}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
 
                     {/* AI Mesaj Oluşturma */}
@@ -486,6 +506,25 @@ export default function AutomationsPage() {
                       </div>
                     )}
 
+                    {/* Gönderim Zamanı */}
+                    <div>
+                      <p style={{ color: tx2, fontSize: 11, fontWeight: 600, margin: '0 0 7px', display: 'flex', alignItems: 'center', gap: 5 }}><Clock size={12} /> Gönderim Zamanı</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: bcScheduled ? 8 : 0 }}>
+                        {[{ val: false, label: 'Hemen Gönder', icon: Send }, { val: true, label: 'Zamanla', icon: Clock }].map(opt => (
+                          <button key={String(opt.val)} onClick={() => setBcScheduled(opt.val)}
+                            style={{ padding: '10px 8px', borderRadius: 10, border: `2px solid ${bcScheduled === opt.val ? accentBlue : '#e2e8f0'}`, background: bcScheduled === opt.val ? '#dbeafe' : '#f8fafc', color: bcScheduled === opt.val ? accentBlue : tx2, fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
+                            <opt.icon size={16} style={{ color: bcScheduled === opt.val ? accentBlue : tx3 }} />
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      {bcScheduled && (
+                        <input type="datetime-local" value={bcScheduleAt} onChange={e => setBcScheduleAt(e.target.value)}
+                          min={new Date(Date.now() + 5 * 60000).toISOString().slice(0, 16)}
+                          style={{ ...inputStyle, fontSize: 12 }} />
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 6 }}>
                       <button onClick={optimizeMessage} disabled={optimizing || !bcMessage}
                         style={{ padding: '10px', borderRadius: 9, border: `1px solid ${accentViolet}40`, background: '#faf5ff', color: accentViolet, fontSize: 11, fontWeight: 600, cursor: optimizing || !bcMessage ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, minWidth: 0 }}>
@@ -494,8 +533,8 @@ export default function AutomationsPage() {
                       </button>
                       <button onClick={sendBroadcast} disabled={bcSending || !bcName || !bcMessage || !selectedLeads.length}
                         style={{ padding: '10px', borderRadius: 9, border: 'none', cursor: bcSending || !bcName || !bcMessage || !selectedLeads.length ? 'not-allowed' : 'pointer', background: selectedLeads.length && bcName && bcMessage ? 'linear-gradient(135deg,#1d4ed8,#2563eb)' : surf, color: selectedLeads.length && bcName && bcMessage ? '#fff' : tx3, fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, minWidth: 0 }}>
-                        {bcSending ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : <Send size={11} />}
-                        {bcSending ? 'Gönderiliyor...' : `${selectedLeads.length} Lead'e Gönder`}
+                        {bcSending ? <RefreshCw size={11} style={{ animation: 'autoSpin 1s linear infinite' }} /> : bcScheduled ? <Clock size={11} /> : <Send size={11} />}
+                        {bcSending ? 'İşleniyor...' : bcScheduled ? 'Zamanla' : `${selectedLeads.length} Lead'e Gönder`}
                       </button>
                     </div>
                   </div>
