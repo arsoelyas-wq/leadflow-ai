@@ -41,6 +41,7 @@ const STATUS_CFG: Record<string, { label: string; Icon: any; cls: string; dotCls
   active:    { label: 'Aktif',         Icon: Zap,            cls: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',    dotCls: 'bg-emerald-400' },
   paused:    { label: 'Duraklatıldı',  Icon: Pause,          cls: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',         dotCls: 'bg-amber-400'   },
   completed: { label: 'Tamamlandı',    Icon: CheckCircle2,   cls: 'bg-blue-500/15 text-blue-300 border border-blue-500/30',            dotCls: 'bg-blue-400'    },
+  scheduled: { label: 'Zamanlandı',   Icon: Clock,          cls: 'bg-violet-500/15 text-violet-300 border border-violet-500/30',      dotCls: 'bg-violet-400'  },
   failed:    { label: 'Hatalı',        Icon: AlertTriangle,  cls: 'bg-red-500/15 text-red-300 border border-red-500/30',               dotCls: 'bg-red-400'     },
 }
 
@@ -80,8 +81,11 @@ export default function CampaignsPage() {
   useEffect(() => { load() }, [])
 
   const toggleCampaign = async (id: string, currentStatus: string) => {
-    const endpoint = currentStatus === 'active' ? `/api/campaigns/${id}/pause` : `/api/campaigns/${id}/start`
-    try { await api.post(endpoint, {}); toast('success', currentStatus === 'active' ? 'Duraklatıldı' : 'Başlatıldı'); load() }
+    let endpoint: string, successMsg: string
+    if (currentStatus === 'active') { endpoint = `/api/campaigns/${id}/pause`; successMsg = 'Duraklatıldı' }
+    else if (currentStatus === 'paused') { endpoint = `/api/campaigns/${id}/resume`; successMsg = 'Devam ettirildi' }
+    else { endpoint = `/api/campaigns/${id}/start`; successMsg = 'Başlatıldı' }
+    try { await api.post(endpoint, {}); toast('success', successMsg); load() }
     catch (e: any) { toast('error', e.message) }
   }
 

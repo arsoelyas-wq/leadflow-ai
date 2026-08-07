@@ -20,13 +20,24 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 //   ai_prompt: string (AI yanıt için prompt)
 // }
 
-// Mesajı kişiselleştir
+// Mesajı kişiselleştir — hem {{firma}} hem [FIRMA_ADI] formatlarını destekle
 function personalizeMessage(template: string, lead: any): string {
+  const firma  = lead.company_name || lead.contact_name || 'Sayın Yetkili';
+  const isim   = lead.contact_name || lead.company_name || 'Sayın Yetkili';
+  const sehir  = lead.city    || '';
+  const sektor = lead.sector  || '';
+  const tel    = lead.phone   || '';
   return template
-    .replace(/\[FIRMA_ADI\]/g, lead.company_name || 'Sayın Yetkili')
-    .replace(/\[AD\]/g, lead.contact_name || lead.company_name || 'Sayın Yetkili')
-    .replace(/\[SEHIR\]/g, lead.city || '')
-    .replace(/\[SEKTOR\]/g, lead.sector || '');
+    .replace(/\{\{firma\}\}/gi,   firma)
+    .replace(/\{\{isim\}\}/gi,    isim)
+    .replace(/\{\{sehir\}\}/gi,   sehir)
+    .replace(/\{\{sektor\}\}/gi,  sektor)
+    .replace(/\{\{telefon\}\}/gi, tel)
+    .replace(/\[FIRMA_ADI\]/g, firma)
+    .replace(/\[AD\]/g,        isim)
+    .replace(/\[SEHIR\]/g,     sehir)
+    .replace(/\[SEKTOR\]/g,    sektor)
+    .replace(/\[TELEFON\]/g,   tel);
 }
 
 // Adım çalıştır
@@ -146,7 +157,7 @@ async function processSequences() {
       .from('sequence_enrollments')
       .select('*, sequences(*), leads(*)')
       .eq('status', 'active')
-      .lt('last_action_at', new Date(now.getTime() - 60 * 60 * 1000).toISOString()) // 1 saat önce
+      .lt('last_action_at', new Date(now.getTime() - 5 * 60 * 1000).toISOString()) // 5 dakika önce (eski: 1 saat — ilk adım gecikmesi düzeltildi)
       .not('sequences', 'is', null); // Sequence silinmişse atla
     // NOT: sequences.status === 'paused' olan kayıtları da filtrelemeliyiz
     // Ama Supabase join filtresi için enrollments döndükten sonra filtrele:
@@ -178,9 +189,9 @@ async function processSequences() {
 
         if (now.getTime() < stepReadyTime) continue; // Henüz zamanı gelmedi
 
-        // Saat kontrolü (09:00-20:00)
-        const hour = now.getHours();
-        if (step.channel === 'whatsapp' && (hour < 9 || hour >= 20)) continue;
+        // Saat kontrolü (09:00-20:00 Türkiye UTC+3 — DST yok, yıl boyu +3)
+        const turkeyHour = (now.getUTCHours() + 3) % 24;
+        if (step.channel === 'whatsapp' && (turkeyHour < 9 || turkeyHour >= 20)) continue;
 
         // Koşul kontrolü — on_condition_fail undefined ise 'skip' varsayılır (BUG FIX)
         const conditionMet = await checkCondition(enrollment, step, lead);
@@ -369,6 +380,25 @@ router.post('/:id/pause', async (req: any, res: any) => {
     await supabase.from('sequences').update({ status: 'paused' }).eq('id', req.params.id).eq('user_id', userId);
     await supabase.from('sequence_enrollments').update({ status: 'paused' }).eq('sequence_id', req.params.id).eq('user_id', userId);
     res.json({ message: 'Sequence duraklatıldı' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/sequences/:id/resume — Sequence devam ettir
+router.post('/:id/resume', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { data: seq } = await supabase.from('sequences').select('id').eq('id', req.params.id).eq('user_id', userId).single();
+    if (!seq) return res.status(404).json({ error: 'Sequence bulunamadı' });
+    await supabase.from('sequences').update({ status: 'active' }).eq('id', req.params.id).eq('user_id', userId);
+    const { count } = await supabase.from('sequence_enrollments')
+      .update({ status: 'active' })
+      .eq('sequence_id', req.params.id)
+      .eq('user_id', userId)
+      .eq('status', 'paused')
+      .select('id', { count: 'exact', head: true });
+    res.json({ message: 'Sequence devam ettirildi', resumed: count || 0 });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

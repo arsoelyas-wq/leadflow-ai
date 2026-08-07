@@ -35,10 +35,11 @@ const channelCfg: Record<string, { label: string; icon: any; color: string; bg: 
 }
 
 const statusCfg: Record<string, { label: string; color: string; dotCls: string; cardCls: string }> = {
-  draft:     { label: 'Taslak',       color: 'text-slate-400',   dotCls: 'bg-slate-400',   cardCls: 'bg-slate-700/60 text-slate-300 border-slate-600'           },
+  draft:     { label: 'Taslak',       color: 'text-slate-400',   dotCls: 'bg-slate-400',   cardCls: 'bg-slate-700/60 text-slate-300 border-slate-600'              },
   active:    { label: 'Aktif',        color: 'text-emerald-400', dotCls: 'bg-emerald-400 animate-pulse', cardCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  paused:    { label: 'Duraklatıldı', color: 'text-amber-400',   dotCls: 'bg-amber-400',   cardCls: 'bg-amber-500/15 text-amber-300 border-amber-500/30'         },
-  completed: { label: 'Tamamlandı',   color: 'text-blue-400',    dotCls: 'bg-blue-400',    cardCls: 'bg-blue-500/15 text-blue-300 border-blue-500/30'            },
+  paused:    { label: 'Duraklatıldı', color: 'text-amber-400',   dotCls: 'bg-amber-400',   cardCls: 'bg-amber-500/15 text-amber-300 border-amber-500/30'            },
+  completed: { label: 'Tamamlandı',   color: 'text-blue-400',    dotCls: 'bg-blue-400',    cardCls: 'bg-blue-500/15 text-blue-300 border-blue-500/30'              },
+  scheduled: { label: 'Zamanlandı',   color: 'text-violet-400',  dotCls: 'bg-violet-400 animate-pulse', cardCls: 'bg-violet-500/15 text-violet-300 border-violet-500/30' },
 }
 
 const leadStatusCfg: Record<string, { label: string; Icon: any; color: string; bg: string }> = {
@@ -98,9 +99,12 @@ export default function CampaignDetailPage() {
     if (!campaign) return
     setActing(true)
     try {
-      const ep = campaign.status === 'active' ? `/api/campaigns/${id}/pause` : `/api/campaigns/${id}/start`
+      let ep: string
+      if (campaign.status === 'active') ep = `/api/campaigns/${id}/pause`
+      else if (campaign.status === 'paused') ep = `/api/campaigns/${id}/resume`
+      else ep = `/api/campaigns/${id}/start`
       const res = await api.post(ep, {})
-      showToast('success', res.message || (campaign.status === 'active' ? 'Duraklatıldı' : 'Başlatıldı'))
+      showToast('success', res.message || 'İşlem tamamlandı')
       await load()
     } catch (e: any) { showToast('error', e.message) }
     setActing(false)
@@ -170,7 +174,7 @@ export default function CampaignDetailPage() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {campaign.status !== 'completed' && (
+          {!['completed', 'scheduled'].includes(campaign.status) && (
             <button onClick={toggleStatus} disabled={acting}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50 border ${
                 campaign.status === 'active'
@@ -179,7 +183,7 @@ export default function CampaignDetailPage() {
               }`}>
               {acting ? <RefreshCw size={14} className="animate-spin" /> :
                 campaign.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
-              {campaign.status === 'active' ? 'Duraklat' : 'Başlat'}
+              {campaign.status === 'active' ? 'Duraklat' : campaign.status === 'paused' ? 'Devam Et' : 'Başlat'}
             </button>
           )}
           <button onClick={() => load()}

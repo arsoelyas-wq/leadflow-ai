@@ -92,30 +92,33 @@ router.get('/', async (req: any, res: any) => {
 router.post('/', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { name, channel, messageTemplate, leadIds, sequence } = req.body;
+    const { name, channel, messageTemplate, leadIds, sequence, scheduledAt } = req.body;
 
     if (!name || !channel || !messageTemplate) {
       return res.status(400).json({ error: 'name, channel ve messageTemplate zorunlu' });
     }
 
+    const insertData: any = {
+      user_id: userId,
+      name,
+      channel,
+      message_template: messageTemplate,
+      lead_ids: leadIds || [],
+      sequence: sequence || [],
+      status: scheduledAt ? 'scheduled' : 'draft',
+      total_sent: 0,
+      total_replied: 0,
+    };
+    if (scheduledAt) insertData.scheduled_at = scheduledAt;
+
     const { data, error } = await supabase
       .from('campaigns')
-      .insert([{
-        user_id: userId,
-        name,
-        channel,
-        message_template: messageTemplate,
-        lead_ids: leadIds || [],
-        sequence: sequence || [],
-        status: 'draft',
-        total_sent: 0,
-        total_replied: 0,
-      }])
+      .insert([insertData])
       .select()
       .single();
 
     if (error) throw error;
-    res.json({ campaign: data, message: 'Kampanya oluşturuldu!' });
+    res.json({ campaign: data, message: scheduledAt ? 'Kampanya zamanlandı!' : 'Kampanya oluşturuldu!' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -435,13 +438,36 @@ router.post('/:id/pause', async (req: any, res: any) => {
       .eq('id', req.params.id)
       .eq('user_id', userId);
 
-    // Queue'dan da duraklat
     try {
       const { pauseCampaign } = require('../queue');
       await pauseCampaign(req.params.id);
     } catch {}
 
     res.json({ message: 'Kampanya duraklatıldı' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Kampanyayı devam ettir
+router.post('/:id/resume', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { data: campaign } = await supabase.from('campaigns')
+      .select('*').eq('id', req.params.id).eq('user_id', userId).single();
+    if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
+    if (campaign.status !== 'paused') {
+      return res.status(400).json({ error: `Kampanya durumu '${campaign.status}' — sadece duraklatılmış kampanyalar devam ettirilebilir.` });
+    }
+
+    try {
+      const { startCampaign } = require('../queue');
+      await startCampaign(req.params.id, userId);
+      res.json({ message: 'Kampanya devam ettirildi (queue)', mode: 'queue' });
+    } catch {
+      await supabase.from('campaigns').update({ status: 'active' }).eq('id', req.params.id);
+      res.json({ message: 'Kampanya devam ettirildi', mode: 'direct' });
+    }
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -520,6 +546,7 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
           status: 'sent',
           sent_at: new Date().toISOString(),
           read: true,
+          campaign_id: campaign.id,
         }]);
         if (sent % 5 === 0) {
           await supabase.from('users').update({ credits_used: currentCreditsUsed }).eq('id', userId);
@@ -547,6 +574,7 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
         status: 'failed',
         sent_at: new Date().toISOString(),
         read: true,
+        campaign_id: campaign.id,
         metadata: { error: e.message },
       }]).catch(() => {});
       await randomDelay(5000, 10000); // Başarısızlıkta daha kısa bekleme
@@ -678,5 +706,43 @@ router.get('/:id/funnel', async (req: any, res: any) => {
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
+
+// ── ZAMANLANMIŞ KAMPANYA İŞLEYİCİ — her 60 saniyede bir kontrol ──────────────
+async function processScheduledCampaigns() {
+  try {
+    const now = new Date().toISOString();
+    const { data: due } = await supabase
+      .from('campaigns')
+      .select('id, user_id, lead_ids, message_template, channel')
+      .eq('status', 'scheduled')
+      .lte('scheduled_at', now);
+
+    if (!due?.length) return;
+    console.log(`[Scheduler] ${due.length} zamanlanmış kampanya tetikleniyor`);
+
+    for (const c of due) {
+      try {
+        const { startCampaign } = require('../queue');
+        await startCampaign(c.id, c.user_id);
+        console.log(`[Scheduler] Campaign ${c.id} başlatıldı (queue)`);
+      } catch {
+        // Queue yoksa direkt başlat
+        const { data: full } = await supabase.from('campaigns').select('*').eq('id', c.id).single();
+        const { data: leads } = await supabase.from('leads').select('*').in('id', c.lead_ids || []);
+        const { data: settings } = await supabase.from('user_settings').select('*').eq('user_id', c.user_id).single();
+        if (full && leads?.length) {
+          await supabase.from('campaigns').update({ status: 'active' }).eq('id', c.id);
+          sendCampaignMessages(full, leads, settings, c.user_id).catch(console.error);
+          console.log(`[Scheduler] Campaign ${c.id} başlatıldı (direct fallback)`);
+        }
+      }
+    }
+  } catch (e: any) {
+    console.error('[Scheduler] Hata:', e.message);
+  }
+}
+
+setInterval(processScheduledCampaigns, 60 * 1000);
+console.log('[Scheduler] Zamanlanmış kampanya işleyici başlatıldı (60s aralık)');
 
 module.exports = router;
