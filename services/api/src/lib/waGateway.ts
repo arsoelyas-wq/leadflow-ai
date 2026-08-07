@@ -21,6 +21,28 @@ interface GatewayInstance {
 
 const instances: Map<string, GatewayInstance> = new Map();
 
+// wa-sessions bucket'ının varlığını garantile (Railway deploy'larında sıfırdan yaratılır)
+let sessionBucketReady = false;
+async function ensureSessionBucket(): Promise<void> {
+  if (sessionBucketReady) return;
+  try {
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    if (error) throw error;
+    const exists = (buckets || []).some((b: any) => b.name === 'wa-sessions');
+    if (!exists) {
+      const { error: createErr } = await supabase.storage.createBucket('wa-sessions', {
+        public: false,
+        fileSizeLimit: 5 * 1024 * 1024, // 5MB — session dosyaları küçük
+      });
+      if (createErr && !createErr.message.includes('already exists')) throw createErr;
+      console.log('[WA-GW] wa-sessions storage bucket oluşturuldu');
+    }
+    sessionBucketReady = true;
+  } catch (e: any) {
+    console.error('[WA-GW] ensureSessionBucket error:', e.message);
+  }
+}
+
 function authDir(instanceId: string): string {
   const base = process.env.WA_AUTH_DIR || '/tmp';
   const dir = path.join(base, 'gw_auth', instanceId);
@@ -31,6 +53,7 @@ function authDir(instanceId: string): string {
 // Supabase Storage'a oturum yedekle
 async function backupSession(instanceId: string): Promise<void> {
   try {
+    await ensureSessionBucket();
     const dir = authDir(instanceId);
     const files = fs.readdirSync(dir);
     const sessionData: Record<string, any> = {};
@@ -45,14 +68,16 @@ async function backupSession(instanceId: string): Promise<void> {
     const jsonStr = JSON.stringify(sessionData);
     const buf = Buffer.from(jsonStr, 'utf8');
 
-    await supabase.storage
+    const { error } = await supabase.storage
       .from('wa-sessions')
       .upload(`${instanceId}.json`, buf, {
         contentType: 'application/json',
         upsert: true,
       });
+    if (error) throw error;
+    console.log(`[WA-GW] Session backed up: ${instanceId}`);
   } catch (e: any) {
-    console.log(`[WA-GW] Backup failed for ${instanceId}:`, e.message);
+    console.error(`[WA-GW] Backup failed for ${instanceId}:`, e.message);
   }
 }
 
@@ -388,6 +413,8 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
 // API başlarken bağlı instance'ları yeniden başlat
 export async function restoreConnectedInstances(): Promise<void> {
   try {
+    await ensureSessionBucket(); // Storage bucket'ını garantile
+
     const { data: connected } = await supabase.from('wa_instances')
       .select('instance_id, user_id, phone, connected_at')
       .eq('status', 'connected')

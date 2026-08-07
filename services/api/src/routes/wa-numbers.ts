@@ -170,6 +170,51 @@ router.delete('/:id', async (req: any, res: any) => {
   }
 });
 
+// GET /api/wa-numbers/gateway-status — WA gateway bellek + session durumu (diagnostic)
+router.get('/gateway-status', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { listInstances } = require('../lib/waGateway');
+
+    // DB'deki instance'lar
+    const { data: dbInstances } = await supabase.from('wa_instances')
+      .select('instance_id, status, phone, connected_at')
+      .eq('user_id', userId)
+      .order('connected_at', { ascending: false })
+      .limit(5);
+
+    // Bellekteki instance'lar (process yeniden başladıysa bunlar boş olur)
+    const memInstances = listInstances().filter((i: any) =>
+      (dbInstances || []).some((d: any) => d.instance_id === i.instanceId)
+    );
+
+    // Session backup var mı kontrol et
+    const sessionChecks: Record<string, boolean> = {};
+    for (const inst of (dbInstances || [])) {
+      try {
+        const { data } = await supabase.storage.from('wa-sessions').list('', {
+          search: inst.instance_id,
+        });
+        sessionChecks[inst.instance_id] = (data || []).some((f: any) => f.name === `${inst.instance_id}.json`);
+      } catch { sessionChecks[inst.instance_id] = false; }
+    }
+
+    const isFullyActive = memInstances.some((i: any) => i.status === 'connected');
+
+    res.json({
+      status: isFullyActive ? 'active' : 'inactive',
+      message: isFullyActive
+        ? 'WA gateway çalışıyor — gelen mesajlar alınıyor'
+        : 'WA gateway bellekte değil — yeniden bağlanmanız gerekebilir',
+      memoryInstances: memInstances,
+      dbInstances: dbInstances || [],
+      sessionBackups: sessionChecks,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/wa-numbers/qr-status — QR polling (Green API + Baileys)
 router.get('/qr-status', async (req: any, res: any) => {
   try {
