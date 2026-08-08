@@ -132,11 +132,25 @@ async function createBaileysInstance(
     const { state, saveCreds } = await useMultiFileAuthState(dir);
     const { version } = await fetchLatestBaileysVersion();
 
+    // Signal Protocol anahtarları her değiştiğinde anında Supabase'e yedekle.
+    // useMultiFileAuthState sadece dosyaya yazar; Railway restart'ta eski backup dönebilir.
+    // Bunu intercept edip her key write'tan sonra debounce'lu backup yapıyoruz.
+    let _backupDebounce: ReturnType<typeof setTimeout> | null = null;
+    const scheduleBackup = () => {
+      if (_backupDebounce) clearTimeout(_backupDebounce);
+      _backupDebounce = setTimeout(() => backupSession(instanceId).catch(() => {}), 800);
+    };
+    const origKeysSet = state.keys.set.bind(state.keys);
+    state.keys.set = async (...args: any[]) => {
+      await origKeysSet(...args);
+      scheduleBackup();
+    };
+
     const sock = makeWASocket({
       version,
       auth: state,
       printQRInTerminal: false,
-      logger: pino({ level: 'silent' }),
+      logger: pino({ level: 'warn' }),
       browser: ['LeadFlow AI', 'Chrome', '1.0.0'],
     });
 
@@ -713,8 +727,11 @@ export async function sendMessage(instanceId: string, phone: string, message: st
   await entry.sock.sendMessage(jid, { text: message });
 
   // Presence subscribe: WhatsApp'a "bu kişiyi izliyorum, mesajlarını bana real-time ilet" sinyali
-  // Bu olmadan WhatsApp, cevapları bu linked device'a (Railway) göndermeyebilir
   try { await entry.sock.presenceSubscribe(jid); } catch {}
+
+  // Mesaj gönderince Signal Protocol anahtarları güncellenir — hemen yedekle
+  // Railway restart olursa en güncel anahtarlarla restore edilsin, yoksa şifre çözülemez
+  backupSession(instanceId).catch(() => {});
 }
 
 // QR al
