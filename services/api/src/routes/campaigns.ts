@@ -657,25 +657,32 @@ router.get('/:id/leads-status', async (req: any, res: any) => {
           .in('id', leadIds)
       : { data: [] };
 
-    // Kampanyaya ait mesajlar (campaign_id veya lead_ids + created_at fallback)
-    const { data: msgsByCampaign } = await supabase.from('messages')
-      .select('id, lead_id, direction, content, status, sent_at, channel')
-      .eq('user_id', req.userId)
-      .eq('campaign_id', req.params.id)
-      .order('sent_at', { ascending: false });
+    // Kampanya mesajları: campaign_id ile eşleşen VEYA lead_ids içinde + kampanya sonrası gelen
+    // Gelen cevaplar (direction='in') campaign_id taşımaz, bu yüzden her zaman lead bazlı da çekiyoruz
+    const [{ data: msgsByCampaignId }, { data: msgsByLeads }] = await Promise.all([
+      supabase.from('messages')
+        .select('id, lead_id, direction, content, status, sent_at, channel')
+        .eq('user_id', req.userId)
+        .eq('campaign_id', req.params.id)
+        .order('sent_at', { ascending: false }),
+      leadIds.length
+        ? supabase.from('messages')
+            .select('id, lead_id, direction, content, status, sent_at, channel')
+            .eq('user_id', req.userId)
+            .in('lead_id', leadIds)
+            .gte('sent_at', campaign.created_at)
+            .order('sent_at', { ascending: false })
+            .limit(500)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-    // campaign_id boşsa lead_ids + created_at ile fallback
-    const { data: msgsByLeads } = (!msgsByCampaign?.length && leadIds.length)
-      ? await supabase.from('messages')
-          .select('id, lead_id, direction, content, status, sent_at, channel')
-          .eq('user_id', req.userId)
-          .in('lead_id', leadIds)
-          .gte('sent_at', campaign.created_at)
-          .order('sent_at', { ascending: false })
-          .limit(200)
-      : { data: [] };
-
-    const messages = msgsByCampaign?.length ? msgsByCampaign : (msgsByLeads || []);
+    // Her iki kaynağı birleştir, tekrarları id'ye göre filtrele
+    const seenIds = new Set<string>();
+    const messages = [...(msgsByCampaignId || []), ...(msgsByLeads || [])].filter((m: any) => {
+      if (seenIds.has(m.id)) return false;
+      seenIds.add(m.id);
+      return true;
+    }).sort((a: any, b: any) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime());
 
     // Lead başına durum hesapla
     const leadStatus = (leads || []).map((lead: any) => {

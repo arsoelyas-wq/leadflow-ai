@@ -123,12 +123,12 @@ export default function CampaignDetailPage() {
   )
   if (!campaign) return null
 
-  const totalLeads = campaign.leadIds?.length || leadStatus.length || 0
-  const replyRate = campaign.totalSent > 0 ? Math.round((campaign.totalReplied / campaign.totalSent) * 100) : 0
-  const failedCount = leadStatus.filter(l => l.status === 'failed').length
-  const sentCount   = leadStatus.filter(l => l.status === 'sent').length
+  const totalLeads   = campaign.leadIds?.length || leadStatus.length || 0
+  const failedCount  = leadStatus.filter(l => l.status === 'failed').length
+  const sentCount    = leadStatus.filter(l => l.status === 'sent').length
   const repliedCount = leadStatus.filter(l => l.status === 'replied').length
   const pendingCount = leadStatus.filter(l => l.status === 'pending').length
+  const replyRate    = campaign.totalSent > 0 ? Math.round((repliedCount / campaign.totalSent) * 100) : 0
 
   const ch = channelCfg[campaign.channel] || channelCfg.whatsapp
   const st = statusCfg[campaign.status] || statusCfg.draft
@@ -202,7 +202,7 @@ export default function CampaignDetailPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Gönderilen', value: campaign.totalSent, sub: `${totalLeads} hedef`, icon: Send, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-          { label: 'Cevaplayan', value: campaign.totalReplied, sub: `%${replyRate} oran`, icon: MessageSquare, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+          { label: 'Cevaplayan', value: repliedCount, sub: `%${replyRate} oran`, icon: MessageSquare, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
           { label: 'Başarısız', value: failedCount, sub: `${sentCount} başarılı`, icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10' },
           { label: 'Lead Sayısı', value: totalLeads, sub: `${pendingCount} bekliyor`, icon: Users, color: 'text-amber-400', bg: 'bg-amber-500/10' },
         ].map((s, i) => {
@@ -234,7 +234,7 @@ export default function CampaignDetailPage() {
         <div className="space-y-3">
           {[
             { label: 'Gönderildi', value: campaign.totalSent, max: Math.max(totalLeads, 1), color: 'from-blue-600 to-blue-400' },
-            { label: 'Cevap Aldı', value: campaign.totalReplied, max: Math.max(totalLeads, 1), color: 'from-emerald-600 to-emerald-400' },
+            { label: 'Cevap Aldı', value: repliedCount, max: Math.max(totalLeads, 1), color: 'from-emerald-600 to-emerald-400' },
             { label: 'Başarısız', value: failedCount, max: Math.max(totalLeads, 1), color: 'from-red-600 to-red-400' },
           ].map((bar, i) => (
             <div key={i}>

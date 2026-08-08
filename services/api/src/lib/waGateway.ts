@@ -231,6 +231,35 @@ async function createBaileysInstance(
             console.error(`[WA-GW] Message insert error: ${msgErr.message} (lead=${lead.id}, from=${senderPhone})`);
           } else {
             console.log(`[WA-GW] ✓ Mesaj DB'ye kaydedildi: ${senderPhone} → lead ${lead.id}`);
+
+            // Kampanya total_replied sayacını güncelle — bu lead'in ilk cevabıysa
+            try {
+              const { count: prevInCount } = await supabase
+                .from('messages')
+                .select('id', { count: 'exact', head: true })
+                .eq('lead_id', lead.id)
+                .eq('user_id', userId)
+                .eq('direction', 'in');
+
+              // count == 1 → az önce eklediğimiz mesaj, ilk cevap
+              if ((prevInCount || 0) <= 1) {
+                const { data: campaigns } = await supabase
+                  .from('campaigns')
+                  .select('id, total_replied')
+                  .eq('user_id', userId)
+                  .contains('lead_ids', [lead.id]);
+
+                for (const camp of (campaigns || [])) {
+                  await supabase
+                    .from('campaigns')
+                    .update({ total_replied: (camp.total_replied || 0) + 1 })
+                    .eq('id', camp.id);
+                  console.log(`[WA-GW] ✓ Campaign ${camp.id} total_replied artırıldı`);
+                }
+              }
+            } catch (campErr: any) {
+              console.error('[WA-GW] Campaign reply count update error:', campErr.message);
+            }
           }
 
           // ── Keyword detection + durum güncellemesi ────────────────────────
