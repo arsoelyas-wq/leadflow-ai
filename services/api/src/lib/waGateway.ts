@@ -17,6 +17,7 @@ interface GatewayInstance {
   qr: string | null;
   phone: string | null;
   userId: string;
+  backupTimer?: ReturnType<typeof setInterval>;
 }
 
 const instances: Map<string, GatewayInstance> = new Map();
@@ -384,6 +385,111 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
       }
     });
 
+    // ── Telefonda okunan/gelen mesajları yakala — messaging-history.set ─────────
+    // WhatsApp, telefonda alınan mesajları Baileys'e bu event ile iletir (messages.upsert değil!)
+    // Bu olmadan kampanya cevapları sisteme hiç düşmez.
+    sock.ev.on('messaging-history.set', async ({ messages: histMsgs }: any) => {
+      if (!histMsgs?.length) return;
+      const cutoff = Date.now() - 48 * 60 * 60 * 1000; // Son 48 saat
+
+      for (const msg of histMsgs) {
+        try {
+          if (msg.key?.fromMe === true) continue;
+          if (msg.messageTimestamp && Number(msg.messageTimestamp) * 1000 < cutoff) continue;
+
+          const remoteJid = msg.key?.remoteJid || '';
+          if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
+
+          const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
+          const senderDigits = senderPhone.replace(/\D/g, '');
+          if (!senderDigits || senderDigits.length < 7) continue;
+
+          const waMessageId = msg.key?.id || null;
+
+          // Deduplikasyon: aynı WA mesaj ID'si zaten varsa atla
+          if (waMessageId) {
+            const { data: existing } = await supabase
+              .from('messages')
+              .select('id')
+              .eq('user_id', userId)
+              .filter('metadata->>wa_message_id', 'eq', waMessageId)
+              .limit(1);
+            if (existing?.length) continue;
+          }
+
+          const senderLast10 = senderDigits.slice(-10);
+          const msgBody = msg.message;
+          const content = msgBody?.conversation
+            || msgBody?.extendedTextMessage?.text
+            || msgBody?.imageMessage?.caption
+            || msgBody?.videoMessage?.caption
+            || msgBody?.documentMessage?.caption
+            || '';
+
+          const sentAt = msg.messageTimestamp
+            ? new Date(Number(msg.messageTimestamp) * 1000).toISOString()
+            : new Date().toISOString();
+
+          const { data: allLeads } = await supabase
+            .from('leads').select('id, phone, status')
+            .eq('user_id', userId).not('phone', 'is', null);
+
+          let lead: any = (allLeads || []).find((l: any) => {
+            const digits = (l.phone || '').replace(/\D/g, '');
+            return digits.length >= 7 && digits.slice(-10) === senderLast10;
+          });
+
+          if (!lead) {
+            const displayPhone = `+${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}`;
+            const { data: newLead } = await supabase.from('leads').insert([{
+              user_id: userId, phone: senderDigits,
+              company_name: displayPhone, source: 'WhatsApp Gelen', status: 'new', score: 50,
+            }]).select().single();
+            lead = newLead;
+          }
+
+          if (!lead) continue;
+
+          const { error: msgErr } = await supabase.from('messages').insert([{
+            lead_id: lead.id, user_id: userId, channel: 'whatsapp',
+            direction: 'in', content: content || '[Medya]',
+            status: 'received', sent_at: sentAt, read: false,
+            metadata: waMessageId ? { wa_message_id: waMessageId } : null,
+          }]);
+
+          if (msgErr) {
+            console.error(`[WA-GW][history] Insert error: ${msgErr.message} (${senderPhone})`);
+          } else {
+            console.log(`[WA-GW][history] ✓ Kaydedildi: ${senderPhone} → lead ${lead.id} "${(content || '').slice(0, 40)}"`);
+
+            // Lead durumunu güncelle
+            if (!['won', 'lost', 'replied'].includes(lead.status || '')) {
+              await supabase.from('leads').update({
+                status: 'replied', last_contacted_at: sentAt,
+              }).eq('id', lead.id);
+            }
+
+            // Kampanya sayacı — ilk cevap ise artır
+            const { count: prevIn } = await supabase
+              .from('messages').select('id', { count: 'exact', head: true })
+              .eq('lead_id', lead.id).eq('user_id', userId).eq('direction', 'in');
+            if ((prevIn || 0) <= 1) {
+              const { data: camps } = await supabase.from('campaigns')
+                .select('id, total_replied').eq('user_id', userId)
+                .contains('lead_ids', [lead.id]);
+              for (const camp of (camps || [])) {
+                await supabase.from('campaigns')
+                  .update({ total_replied: (camp.total_replied || 0) + 1 })
+                  .eq('id', camp.id);
+              }
+            }
+          }
+        } catch (e: any) {
+          console.error('[WA-GW][history] Error:', e.message);
+        }
+      }
+    });
+
     sock.ev.on('connection.update', async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
@@ -405,6 +511,9 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
         console.log(`[WA-GW] Connected: ${instanceId} → ${phone}`);
         // Bağlantı açılınca session'ı hemen yedekle (creds.update'e ek güvence)
         setTimeout(() => backupSession(instanceId), 2000);
+        // 15 dakikada bir session yedekle — signal protocol key rotasyonlarını kaybetme
+        const backupTimer = setInterval(() => backupSession(instanceId), 15 * 60 * 1000);
+        entry.backupTimer = backupTimer;
 
         // Update DB — önce eski duplicate instance'ları temizle
         await supabase.from('wa_instances')
@@ -444,6 +553,7 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
         const code = (lastDisconnect?.error as any)?.output?.statusCode;
         const shouldReconnect = code !== DisconnectReason.loggedOut;
         entry.status = 'disconnected';
+        if (entry.backupTimer) { clearInterval(entry.backupTimer); entry.backupTimer = undefined; }
         console.log(`[WA-GW] Disconnected: ${instanceId}, code=${code}, reconnect=${shouldReconnect}`);
 
         if (shouldReconnect) {
