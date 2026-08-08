@@ -240,12 +240,12 @@ export default function UnifiedInboxPage() {
 
   // ─── Polling ─────────────────────────────────────────────────────────────────
   useEffect(() => { load() }, [load])
-  // Conversation listesi: 8 saniyede bir yenile
+  // Conversation listesi: 12 saniyede bir yenile
   useEffect(() => {
-    const t = setInterval(fetchConversations, 8000)
+    const t = setInterval(fetchConversations, 12000)
     return () => clearInterval(t)
   }, [fetchConversations])
-  // Aktif konuşma mesajları: 4 saniyede bir yenile
+  // Aktif konuşma mesajları: 8 saniyede bir yenile
   useEffect(() => {
     if (!selectedLead) return
     const t = setInterval(async () => {
@@ -271,7 +271,7 @@ export default function UnifiedInboxPage() {
           return newMsgs
         })
       } catch {}
-    }, 4000)
+    }, 8000)
     return () => clearInterval(t)
   }, [selectedLead, fetchConversations, fetchAiSuggestions])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])

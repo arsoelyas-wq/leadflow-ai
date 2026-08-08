@@ -35,7 +35,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-lang'],
 }));
 
-const generalLimiter  = rateLimit({ windowMs: 15*60*1000, max: 150, standardHeaders: true, legacyHeaders: false, message: { error: 'Çok fazla istek. Lütfen bekleyin.' } });
+const generalLimiter  = rateLimit({ windowMs: 15*60*1000, max: 1500, standardHeaders: true, legacyHeaders: false, message: { error: 'Çok fazla istek. Lütfen bekleyin.' } });
 const authLimiter     = rateLimit({ windowMs: 15*60*1000, max: 10,  message: { error: 'Çok fazla giriş denemesi.' } });
 const scrapeLimiter   = rateLimit({ windowMs: 60*60*1000, max: 40,  message: { error: 'Scrape limiti aşıldı. Bir saat sonra tekrar deneyin.' } });
 const campaignLimiter = rateLimit({ windowMs: 60*60*1000, max: 40,  message: { error: 'Kampanya limiti aşıldı.' } });
