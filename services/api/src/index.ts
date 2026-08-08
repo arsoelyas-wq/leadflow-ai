@@ -345,6 +345,30 @@ app.get('/api/wa-status', async (_req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// WA Debug — gelen mesaj event istatistikleri + son DB incoming mesajlar
+app.get('/api/wa-debug', async (_req: any, res: any) => {
+  try {
+    const { getIncomingStats } = require('./lib/waGateway');
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const stats = getIncomingStats();
+    const { data: recentIn } = await sb.from('messages')
+      .select('id, lead_id, content, sent_at, metadata')
+      .eq('direction', 'in').eq('channel', 'whatsapp')
+      .order('sent_at', { ascending: false }).limit(10);
+    const { data: recentOut } = await sb.from('messages')
+      .select('id, lead_id, content, sent_at')
+      .eq('direction', 'out').eq('channel', 'whatsapp')
+      .order('sent_at', { ascending: false }).limit(5);
+    res.json({
+      time: new Date().toISOString(),
+      eventStats: stats,
+      lastIncomingMessages: recentIn || [],
+      lastOutgoingMessages: recentOut || [],
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // PUBLIC voice diagnostic — no auth, shows Vapi/Supabase config status
 app.get('/api/voice-diag', async (_req: any, res: any) => {
   const { createClient } = require('@supabase/supabase-js');

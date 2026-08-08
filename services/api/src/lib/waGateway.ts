@@ -22,6 +22,17 @@ interface GatewayInstance {
 
 const instances: Map<string, GatewayInstance> = new Map();
 
+// Gelen mesaj istatistikleri — /api/wa-debug endpoint'i için
+const incomingStats = {
+  lastEventAt: null as string | null,
+  totalEvents: 0,
+  totalMessages: 0,
+  filtered: { fromMe: 0, notWhatsapp: 0, shortPhone: 0 },
+  saved: 0,
+  errors: 0,
+};
+export function getIncomingStats() { return { ...incomingStats }; }
+
 // wa-sessions bucket'ının varlığını garantile (Railway deploy'larında sıfırdan yaratılır)
 let sessionBucketReady = false;
 async function ensureSessionBucket(): Promise<void> {
@@ -139,12 +150,16 @@ async function createBaileysInstance(
 
     // ── Gelen mesajları kaydet + keyword detection + auto-reply ────────────────
     sock.ev.on('messages.upsert', async ({ messages: incomingMsgs, type }: any) => {
-      // 'notify' = gerçek zamanlı, 'append' = offline dönemde gelen (Railway restart sonrası)
+      incomingStats.totalEvents++;
+      incomingStats.lastEventAt = new Date().toISOString();
+      console.log(`[WA-GW] messages.upsert event: type=${type}, count=${incomingMsgs?.length}`);
+
       // Her iki tip için de işle — ama 'append'de sadece son 24 saatteki mesajları al
       if (type !== 'notify' && type !== 'append') return;
 
       for (const msg of incomingMsgs) {
-        if (msg.key?.fromMe === true) continue;
+        incomingStats.totalMessages++;
+        if (msg.key?.fromMe === true) { incomingStats.filtered.fromMe++; continue; }
 
         // 'append' tipinde 24 saatten eski mesajları atla
         if (type === 'append' && msg.messageTimestamp) {
@@ -153,11 +168,11 @@ async function createBaileysInstance(
         }
 
         const remoteJid = msg.key?.remoteJid || '';
-        if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
+        if (!remoteJid.endsWith('@s.whatsapp.net')) { incomingStats.filtered.notWhatsapp++; console.log(`[WA-GW] Filtered non-WA jid: ${remoteJid}`); continue; }
 
         const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
         const senderDigits = senderPhone.replace(/\D/g, '');
-        if (!senderDigits || senderDigits.length < 7) continue;
+        if (!senderDigits || senderDigits.length < 7) { incomingStats.filtered.shortPhone++; continue; }
 
         const senderLast10 = senderDigits.slice(-10);
         const waJid = `${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}@s.whatsapp.net`;
@@ -229,8 +244,10 @@ async function createBaileysInstance(
             metadata: waMessageId ? { wa_message_id: waMessageId } : null,
           }]);
           if (msgErr) {
+            incomingStats.errors++;
             console.error(`[WA-GW] Message insert error: ${msgErr.message} (lead=${lead.id}, from=${senderPhone})`);
           } else {
+            incomingStats.saved++;
             console.log(`[WA-GW] ✓ Mesaj DB'ye kaydedildi: ${senderPhone} → lead ${lead.id}`);
 
             // Kampanya total_replied sayacını güncelle — bu lead'in ilk cevabıysa
