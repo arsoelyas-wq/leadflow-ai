@@ -515,6 +515,36 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
         const backupTimer = setInterval(() => backupSession(instanceId), 15 * 60 * 1000);
         entry.backupTimer = backupTimer;
 
+        // Her 2 dakikada bir "available" presence gönder — WhatsApp bu cihazı aktif sayar,
+        // gelen mesajları real-time olarak bu session'a iletmeye devam eder
+        setInterval(async () => {
+          try { await sock.sendPresenceUpdate('available'); } catch {}
+        }, 2 * 60 * 1000);
+
+        // Bağlantı açılınca son 48 saatte mesaj gönderilen leadlere presence subscribe et
+        // Böylece daha önce gönderilen kampanya mesajlarına gelecek cevaplar real-time gelir
+        setTimeout(async () => {
+          try {
+            const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+            const { data: recentMsgs } = await supabase
+              .from('messages').select('lead_id')
+              .eq('user_id', userId).eq('direction', 'out').eq('channel', 'whatsapp')
+              .gte('sent_at', since).limit(100);
+            const leadIds = [...new Set((recentMsgs || []).map((m: any) => m.lead_id))];
+            if (!leadIds.length) return;
+            const { data: leads } = await supabase.from('leads')
+              .select('phone').in('id', leadIds).not('phone', 'is', null);
+            let subCount = 0;
+            for (const lead of (leads || [])) {
+              const digits = (lead.phone || '').replace(/\D/g, '');
+              if (digits.length < 7) continue;
+              const fmt = digits.startsWith('90') ? digits : '90' + digits.slice(-10);
+              try { await sock.presenceSubscribe(`${fmt}@s.whatsapp.net`); subCount++; } catch {}
+            }
+            console.log(`[WA-GW] Presence subscribe: ${subCount} lead için tamamlandı`);
+          } catch {}
+        }, 5000);
+
         // Update DB — önce eski duplicate instance'ları temizle
         await supabase.from('wa_instances')
           .update({ status: 'disconnected' })
@@ -653,7 +683,7 @@ export async function startNewInstance(instanceId: string, userId: string): Prom
   });
 }
 
-// Mesaj gönder
+// Mesaj gönder + bu kişiden gelen cevapları gerçek zamanlı almak için presence subscribe et
 export async function sendMessage(instanceId: string, phone: string, message: string): Promise<void> {
   const entry = instances.get(instanceId);
   if (!entry || entry.status !== 'connected') {
@@ -662,7 +692,12 @@ export async function sendMessage(instanceId: string, phone: string, message: st
   const cleanPhone = phone.replace(/\D/g, '');
   const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
     : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
-  await entry.sock.sendMessage(`${formattedPhone}@s.whatsapp.net`, { text: message });
+  const jid = `${formattedPhone}@s.whatsapp.net`;
+  await entry.sock.sendMessage(jid, { text: message });
+
+  // Presence subscribe: WhatsApp'a "bu kişiyi izliyorum, mesajlarını bana real-time ilet" sinyali
+  // Bu olmadan WhatsApp, cevapları bu linked device'a (Railway) göndermeyebilir
+  try { await entry.sock.presenceSubscribe(jid); } catch {}
 }
 
 // QR al
