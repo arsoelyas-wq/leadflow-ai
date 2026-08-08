@@ -241,7 +241,7 @@ export default function UnifiedInboxPage() {
   // ─── Polling ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     load()
-    // Sayfa açılınca aynı telefon numarasına sahip yinelenen sohbetleri arka planda birleştir
+    // Sayfa açılınca yinelenen sohbetleri birleştir
     fetch(`${API}/api/wa-dedup`, { method: 'POST', headers: authH() })
       .then(r => r.json())
       .then(d => { if (d.success && d.deleted > 0) { fetchConversations() } })
@@ -250,6 +250,17 @@ export default function UnifiedInboxPage() {
   // Conversation listesi: 12 saniyede bir yenile
   useEffect(() => {
     const t = setInterval(fetchConversations, 12000)
+    return () => clearInterval(t)
+  }, [fetchConversations])
+  // Periyodik dedup: 60 saniyede bir yinelenen sohbetleri arka planda birleştir
+  useEffect(() => {
+    const runDedup = () => {
+      fetch(`${API}/api/wa-dedup`, { method: 'POST', headers: authH() })
+        .then(r => r.json())
+        .then(d => { if (d.success && d.deleted > 0) fetchConversations() })
+        .catch(() => {})
+    }
+    const t = setInterval(runDedup, 60000)
     return () => clearInterval(t)
   }, [fetchConversations])
   // Aktif konuşma mesajları: 8 saniyede bir yenile

@@ -286,30 +286,32 @@ async function createBaileysInstance(
         let finalStatus = '';
 
         try {
-          // Lead eşleştirme: en eski lead önce gelsin (kampanyadan eklenen orijinal lead seçilsin)
-          const { data: allLeads } = await supabase
+          // Lead eşleştirme: order() olmadan — order clause bazen silent fail eder
+          const { data: allLeads, error: allLeadsErr } = await supabase
             .from('leads')
             .select('id, phone, status, notes')
             .eq('user_id', userId)
-            .not('phone', 'is', null)
-            .order('created_at', { ascending: true }); // eski → orijinal lead önce gelir
+            .not('phone', 'is', null);
+
+          if (allLeadsErr) console.error(`[WA-GW] allLeads query error: ${allLeadsErr.message}`);
 
           let lead: any = (allLeads || []).find((l: any) => {
             const digits = (l.phone || '').replace(/\D/g, '');
             return digits.length >= 7 && digits.slice(-10) === senderLast10;
           });
 
-          console.log(`[WA-GW] Lead match: userId=${userId} senderLast10=${senderLast10} allLeadsCount=${allLeads?.length ?? 0} matched=${lead?.id ?? 'none'}`);
+          console.log(`[WA-GW] Lead match: userId=${userId} senderLast10=${senderLast10} allLeadsCount=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
 
-          // Doğrudan DB: +90/0/raw varyantlarını yakalar
+          // Doğrudan DB fallback: +90/0/raw varyantlarını yakalar (allLeads null ise)
           if (!lead) {
             const phoneVariants = [senderDigits, `+${senderDigits}`, `0${senderLast10}`, senderLast10];
-            const { data: directMatch } = await supabase
+            const { data: directMatch, error: directErr } = await supabase
               .from('leads')
               .select('id, phone, status, notes')
               .eq('user_id', userId)
               .in('phone', phoneVariants)
               .limit(1);
+            if (directErr) console.error(`[WA-GW] directMatch error: ${directErr.message}`);
             if (directMatch?.length) {
               lead = directMatch[0];
               console.log(`[WA-GW] Lead match via direct query: ${lead.id}`);
@@ -318,19 +320,20 @@ async function createBaileysInstance(
 
           // SQL LIKE fallback: telefon sonundaki 10 rakamla eşleştir (boşluklu/formatlı kayıtlar)
           if (!lead) {
-            const { data: likeMatch } = await supabase
+            const { data: likeMatch, error: likeErr } = await supabase
               .from('leads')
               .select('id, phone, status, notes')
               .eq('user_id', userId)
               .like('phone', `%${senderLast10}`)
-              .order('created_at', { ascending: true })
-              .limit(1);
+              .limit(5);
+            if (likeErr) console.error(`[WA-GW] likeMatch error: ${likeErr.message}`);
             if (likeMatch?.length) {
               lead = likeMatch[0];
               console.log(`[WA-GW] Lead match via LIKE: ${lead.id} phone=${lead.phone}`);
             }
           }
 
+          let isNewLead = false;
           if (!lead) {
             // Eş zamanlı aynı telefon için lead oluşturmayı önle (race condition fix)
             const lockKey = `${userId}:${senderLast10}`;
@@ -357,6 +360,7 @@ async function createBaileysInstance(
                   score: 50,
                 }]).select().single();
                 lead = newLead;
+                isNewLead = true;
                 console.log(`[WA-GW] New lead from unknown WA sender: ${displayPhone}`);
               } finally {
                 leadCreationInProgress.delete(lockKey);
@@ -366,6 +370,12 @@ async function createBaileysInstance(
 
           if (!lead) continue;
           savedLead = lead;
+
+          // Yeni lead oluşturulduysa hemen dedup çalıştır (async — mesaj kaydını engelleme)
+          // Bu, aynı telefona ait mevcut leadle birleştirir
+          if (isNewLead) {
+            setTimeout(() => deduplicatePhoneLeads(userId, supabase).catch(() => {}), 300);
+          }
 
           // Mesajı kaydet
           const { error: msgErr } = await supabase.from('messages').insert([{
