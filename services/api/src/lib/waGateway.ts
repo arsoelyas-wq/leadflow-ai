@@ -133,7 +133,7 @@ async function createBaileysInstance(
 
     sock.ev.on('creds.update', async () => {
       await saveCreds();
-      await backupSession(instanceId);
+      await backupSession(instanceId); // Creds değişince hemen yedekle
     });
 
     // ── Gelen mesajları kaydet + keyword detection + auto-reply ────────────────
@@ -213,21 +213,7 @@ async function createBaileysInstance(
           if (!lead) continue;
           savedLead = lead;
 
-          // Duplicate kontrolü — aynı WA mesaj ID'si zaten kaydedilmiş mi?
-          const waMessageId = msg.key?.id;
-          if (waMessageId) {
-            const { data: existing } = await supabase
-              .from('messages')
-              .select('id')
-              .eq('lead_id', lead.id)
-              .eq('user_id', userId)
-              .contains('metadata', { wa_message_id: waMessageId })
-              .limit(1);
-            if (existing?.length) {
-              console.log(`[WA-GW] Duplicate mesaj atlandı: ${waMessageId}`);
-              continue;
-            }
-          }
+          const waMessageId = msg.key?.id || null;
 
           // Mesajı kaydet
           const { error: msgErr } = await supabase.from('messages').insert([{
@@ -241,7 +227,11 @@ async function createBaileysInstance(
             read: false,
             metadata: waMessageId ? { wa_message_id: waMessageId } : null,
           }]);
-          if (msgErr) console.error(`[WA-GW] Message insert error:`, msgErr.message);
+          if (msgErr) {
+            console.error(`[WA-GW] Message insert error: ${msgErr.message} (lead=${lead.id}, from=${senderPhone})`);
+          } else {
+            console.log(`[WA-GW] ✓ Mesaj DB'ye kaydedildi: ${senderPhone} → lead ${lead.id}`);
+          }
 
           // ── Keyword detection + durum güncellemesi ────────────────────────
           let newStatus = lead.status;
@@ -384,6 +374,8 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
         entry.phone = phone;
         entry.qr = null;
         console.log(`[WA-GW] Connected: ${instanceId} → ${phone}`);
+        // Bağlantı açılınca session'ı hemen yedekle (creds.update'e ek güvence)
+        setTimeout(() => backupSession(instanceId), 2000);
 
         // Update DB — önce eski duplicate instance'ları temizle
         await supabase.from('wa_instances')
@@ -475,11 +467,22 @@ export async function restoreConnectedInstances(): Promise<void> {
     for (const inst of toRestore) {
       const restored = await restoreSession(inst.instance_id);
       if (restored) {
+        console.log(`[WA-GW] Session dosyası bulundu — Baileys başlatılıyor: ${inst.instance_id}`);
         await createBaileysInstance(inst.instance_id, inst.user_id);
       } else {
-        console.log(`[WA-GW] No session backup for ${inst.instance_id} — marking disconnected`);
-        await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
-        await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('user_id', inst.user_id).eq('status', 'connected');
+        // Session Storage'da yok — ama auth dizini mevcut olabilir (aynı container restart)
+        // Her durumda instance'ı başlat: ya local dosyadan login olur ya QR çıkar
+        const dir = authDir(inst.instance_id);
+        const hasLocalFiles = fs.existsSync(dir) && fs.readdirSync(dir).length > 0;
+        if (hasLocalFiles) {
+          console.log(`[WA-GW] Storage yok ama local auth dosyası var — yeniden başlatılıyor: ${inst.instance_id}`);
+          await createBaileysInstance(inst.instance_id, inst.user_id);
+        } else {
+          // Tamamen kayıp — bağlantı kesildi, kullanıcı yeniden QR tarayacak
+          console.log(`[WA-GW] Session bulunamadı: ${inst.instance_id} — disconnected`);
+          await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
+          await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('user_id', inst.user_id).eq('status', 'connected');
+        }
       }
     }
   } catch (e: any) {
@@ -538,4 +541,30 @@ export function listInstances(): Array<{ instanceId: string; status: string; pho
   return Array.from(instances.entries()).map(([id, e]) => ({
     instanceId: id, status: e.status, phone: e.phone,
   }));
+}
+
+// ── Heartbeat: DB'de 'connected' ama bellekte olmayan instance'ları kurtarır ──
+// Her 90 saniyede bir çalışır (index.ts'den çağrılır)
+export async function heartbeatReconnect(): Promise<void> {
+  try {
+    const { data: dbInstances } = await supabase
+      .from('wa_instances')
+      .select('instance_id, user_id, phone')
+      .eq('status', 'connected');
+
+    if (!dbInstances?.length) return;
+
+    for (const inst of dbInstances) {
+      const inMem = instances.get(inst.instance_id);
+      if (!inMem || inMem.status === 'disconnected') {
+        console.log(`[WA-GW] Heartbeat: ${inst.instance_id} bellekte yok — yeniden bağlanılıyor`);
+        const restored = await restoreSession(inst.instance_id);
+        if (restored || (fs.existsSync(authDir(inst.instance_id)) && fs.readdirSync(authDir(inst.instance_id)).length > 0)) {
+          await createBaileysInstance(inst.instance_id, inst.user_id);
+        }
+      }
+    }
+  } catch (e: any) {
+    console.error('[WA-GW] Heartbeat error:', e.message);
+  }
 }

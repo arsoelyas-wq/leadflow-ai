@@ -328,6 +328,23 @@ app.use('/api/support', authMiddleware, supportRouter);
 // Health check — minimal info, no internal details
 app.get('/health', (_req: any, res: any) => res.json({ ok: true }));
 
+// WA Diagnostic — in-memory WA instance durumunu gösterir (prod'da sadece status, no secrets)
+app.get('/api/wa-status', async (_req: any, res: any) => {
+  try {
+    const { listInstances } = require('./lib/waGateway');
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const memInstances = listInstances();
+    const { data: dbInstances } = await sb.from('wa_instances')
+      .select('instance_id, user_id, phone, status, connected_at').order('connected_at', { ascending: false }).limit(20);
+    res.json({
+      memory: memInstances,
+      database: dbInstances || [],
+      time: new Date().toISOString(),
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // PUBLIC voice diagnostic — no auth, shows Vapi/Supabase config status
 app.get('/api/voice-diag', async (_req: any, res: any) => {
   const { createClient } = require('@supabase/supabase-js');
@@ -398,8 +415,10 @@ initMonitoring(app).catch(console.error);
 // WA Gateway — bağlı instance'ları startup'ta geri yükle
 setTimeout(async () => {
   try {
-    const { restoreConnectedInstances } = require('./lib/waGateway');
+    const { restoreConnectedInstances, heartbeatReconnect } = require('./lib/waGateway');
     await restoreConnectedInstances();
+    // Her 90 saniyede heartbeat: DB'de connected ama bellekte olmayan socket'ları kurtarır
+    setInterval(heartbeatReconnect, 90_000);
   } catch (e: any) {
     console.error('[WA-GW] Startup restore error:', e.message);
   }
