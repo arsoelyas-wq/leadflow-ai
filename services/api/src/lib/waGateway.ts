@@ -33,6 +33,50 @@ const incomingStats = {
 };
 export function getIncomingStats() { return { ...incomingStats }; }
 
+// Eş zamanlı aynı telefon numarasından lead oluşturmayı önler
+const leadCreationInProgress = new Set<string>();
+
+// Aynı telefon numarasına sahip duplicate leadleri birleştirir
+export async function deduplicatePhoneLeads(userId: string, sb?: any): Promise<{ merged: number; deleted: number }> {
+  const client = sb || supabase;
+  const { data: leads } = await client.from('leads')
+    .select('id, phone, company_name, contact_name, created_at')
+    .eq('user_id', userId)
+    .not('phone', 'is', null)
+    .order('created_at', { ascending: true }); // oldest first
+
+  if (!leads?.length) return { merged: 0, deleted: 0 };
+
+  const phoneGroups = new Map<string, any[]>();
+  for (const lead of leads) {
+    const digits = (lead.phone || '').replace(/\D/g, '');
+    if (digits.length < 7) continue;
+    const key = digits.slice(-10);
+    if (!phoneGroups.has(key)) phoneGroups.set(key, []);
+    phoneGroups.get(key)!.push(lead);
+  }
+
+  let merged = 0, deleted = 0;
+  for (const [, groupLeads] of phoneGroups) {
+    if (groupLeads.length < 2) continue;
+    // Auto-generated names start with '+', prefer named leads
+    const named = groupLeads.find(l => {
+      const n = l.company_name || l.contact_name || '';
+      return n && !n.startsWith('+') && !/^\d+$/.test(n);
+    });
+    const target = named || groupLeads[0]; // oldest is default primary
+    const sources = groupLeads.filter(l => l.id !== target.id);
+    for (const src of sources) {
+      await client.from('messages').update({ lead_id: target.id }).eq('lead_id', src.id).eq('user_id', userId);
+      await client.from('leads').delete().eq('id', src.id).eq('user_id', userId);
+      deleted++;
+    }
+    merged++;
+    console.log(`[WA-GW] Dedup: merged ${sources.length} duplicates → lead ${target.id} (${target.company_name || target.contact_name})`);
+  }
+  return { merged, deleted };
+}
+
 // wa-sessions bucket'ının varlığını garantile (Railway deploy'larında sıfırdan yaratılır)
 let sessionBucketReady = false;
 async function ensureSessionBucket(): Promise<void> {
@@ -190,6 +234,20 @@ async function createBaileysInstance(
 
         const senderLast10 = senderDigits.slice(-10);
         const waJid = `${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}@s.whatsapp.net`;
+        const waMessageId = msg.key?.id || null;
+
+        // Erken deduplikasyon: aynı WA mesaj ID'si zaten kaydedilmişse atla
+        if (waMessageId) {
+          const { count: dupCount } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .filter('metadata->>wa_message_id', 'eq', waMessageId);
+          if ((dupCount || 0) > 0) {
+            console.log(`[WA-GW] Dup skip: ${waMessageId}`);
+            continue;
+          }
+        }
 
         // Tüm mesaj tiplerinden içerik çıkar
         const msgBody = msg.message;
@@ -207,14 +265,13 @@ async function createBaileysInstance(
           ? new Date(Number(msg.messageTimestamp) * 1000).toISOString()
           : new Date().toISOString();
 
-        console.log(`[WA-GW] Incoming from ${senderPhone}`);
+        console.log(`[WA-GW] Incoming from ${senderPhone} msgId=${waMessageId}`);
 
         let savedLead: any = null;
         let finalStatus = '';
 
         try {
-          // Tüm leadleri al — uygulama katmanında eşleştir
-          // (boşluklu/+90/05xx formatları dahil her türlü saklama biçimini kapsar)
+          // Lead eşleştirme: önce tüm leadleri çek, last-10-digit karşılaştır
           const { data: allLeads } = await supabase
             .from('leads')
             .select('id, phone, status, notes')
@@ -226,24 +283,53 @@ async function createBaileysInstance(
             return digits.length >= 7 && digits.slice(-10) === senderLast10;
           });
 
+          // Doğrudan DB sorgusu — +90/0 gibi farklı kayıt formatlarını da yakalar
           if (!lead) {
-            const displayPhone = `+${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}`;
-            const { data: newLead } = await supabase.from('leads').insert([{
-              user_id: userId,
-              phone: senderDigits,
-              company_name: displayPhone,
-              source: 'WhatsApp Gelen',
-              status: 'new',
-              score: 50,
-            }]).select().single();
-            lead = newLead;
-            console.log(`[WA-GW] New lead from unknown WA sender: ${displayPhone}`);
+            const phoneVariants = [senderDigits, `+${senderDigits}`, `0${senderLast10}`, senderLast10];
+            const { data: directMatch } = await supabase
+              .from('leads')
+              .select('id, phone, status, notes')
+              .eq('user_id', userId)
+              .in('phone', phoneVariants)
+              .limit(1);
+            if (directMatch?.length) lead = directMatch[0];
+          }
+
+          if (!lead) {
+            // Eş zamanlı aynı telefon için lead oluşturmayı önle (race condition fix)
+            const lockKey = `${userId}:${senderLast10}`;
+            if (leadCreationInProgress.has(lockKey)) {
+              // Başka bir eş zamanlı handler bu numara için lead oluşturuyor, bekle
+              await new Promise(r => setTimeout(r, 400));
+              const { data: fresh } = await supabase.from('leads')
+                .select('id, phone, status, notes')
+                .eq('user_id', userId).not('phone', 'is', null);
+              lead = (fresh || []).find((l: any) => {
+                const digits = (l.phone || '').replace(/\D/g, '');
+                return digits.length >= 7 && digits.slice(-10) === senderLast10;
+              });
+            } else {
+              leadCreationInProgress.add(lockKey);
+              try {
+                const displayPhone = `+${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}`;
+                const { data: newLead } = await supabase.from('leads').insert([{
+                  user_id: userId,
+                  phone: senderDigits,
+                  company_name: displayPhone,
+                  source: 'WhatsApp Gelen',
+                  status: 'new',
+                  score: 50,
+                }]).select().single();
+                lead = newLead;
+                console.log(`[WA-GW] New lead from unknown WA sender: ${displayPhone}`);
+              } finally {
+                leadCreationInProgress.delete(lockKey);
+              }
+            }
           }
 
           if (!lead) continue;
           savedLead = lead;
-
-          const waMessageId = msg.key?.id || null;
 
           // Mesajı kaydet
           const { error: msgErr } = await supabase.from('messages').insert([{
@@ -416,111 +502,6 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
       }
     });
 
-    // ── Telefonda okunan/gelen mesajları yakala — messaging-history.set ─────────
-    // WhatsApp, telefonda alınan mesajları Baileys'e bu event ile iletir (messages.upsert değil!)
-    // Bu olmadan kampanya cevapları sisteme hiç düşmez.
-    sock.ev.on('messaging-history.set', async ({ messages: histMsgs }: any) => {
-      if (!histMsgs?.length) return;
-      const cutoff = Date.now() - 48 * 60 * 60 * 1000; // Son 48 saat
-
-      for (const msg of histMsgs) {
-        try {
-          if (msg.key?.fromMe === true) continue;
-          if (msg.messageTimestamp && Number(msg.messageTimestamp) * 1000 < cutoff) continue;
-
-          const remoteJid = msg.key?.remoteJid || '';
-          if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
-
-          const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
-          const senderDigits = senderPhone.replace(/\D/g, '');
-          if (!senderDigits || senderDigits.length < 7) continue;
-
-          const waMessageId = msg.key?.id || null;
-
-          // Deduplikasyon: aynı WA mesaj ID'si zaten varsa atla
-          if (waMessageId) {
-            const { data: existing } = await supabase
-              .from('messages')
-              .select('id')
-              .eq('user_id', userId)
-              .filter('metadata->>wa_message_id', 'eq', waMessageId)
-              .limit(1);
-            if (existing?.length) continue;
-          }
-
-          const senderLast10 = senderDigits.slice(-10);
-          const msgBody = msg.message;
-          const content = msgBody?.conversation
-            || msgBody?.extendedTextMessage?.text
-            || msgBody?.imageMessage?.caption
-            || msgBody?.videoMessage?.caption
-            || msgBody?.documentMessage?.caption
-            || '';
-
-          const sentAt = msg.messageTimestamp
-            ? new Date(Number(msg.messageTimestamp) * 1000).toISOString()
-            : new Date().toISOString();
-
-          const { data: allLeads } = await supabase
-            .from('leads').select('id, phone, status')
-            .eq('user_id', userId).not('phone', 'is', null);
-
-          let lead: any = (allLeads || []).find((l: any) => {
-            const digits = (l.phone || '').replace(/\D/g, '');
-            return digits.length >= 7 && digits.slice(-10) === senderLast10;
-          });
-
-          if (!lead) {
-            const displayPhone = `+${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}`;
-            const { data: newLead } = await supabase.from('leads').insert([{
-              user_id: userId, phone: senderDigits,
-              company_name: displayPhone, source: 'WhatsApp Gelen', status: 'new', score: 50,
-            }]).select().single();
-            lead = newLead;
-          }
-
-          if (!lead) continue;
-
-          const { error: msgErr } = await supabase.from('messages').insert([{
-            lead_id: lead.id, user_id: userId, channel: 'whatsapp',
-            direction: 'in', content: content || '[Medya]',
-            status: 'received', sent_at: sentAt, read: false,
-            metadata: waMessageId ? { wa_message_id: waMessageId } : null,
-          }]);
-
-          if (msgErr) {
-            console.error(`[WA-GW][history] Insert error: ${msgErr.message} (${senderPhone})`);
-          } else {
-            console.log(`[WA-GW][history] ✓ Kaydedildi: ${senderPhone} → lead ${lead.id} "${(content || '').slice(0, 40)}"`);
-
-            // Lead durumunu güncelle
-            if (!['won', 'lost', 'replied'].includes(lead.status || '')) {
-              await supabase.from('leads').update({
-                status: 'replied', last_contacted_at: sentAt,
-              }).eq('id', lead.id);
-            }
-
-            // Kampanya sayacı — ilk cevap ise artır
-            const { count: prevIn } = await supabase
-              .from('messages').select('id', { count: 'exact', head: true })
-              .eq('lead_id', lead.id).eq('user_id', userId).eq('direction', 'in');
-            if ((prevIn || 0) <= 1) {
-              const { data: camps } = await supabase.from('campaigns')
-                .select('id, total_replied').eq('user_id', userId)
-                .contains('lead_ids', [lead.id]);
-              for (const camp of (camps || [])) {
-                await supabase.from('campaigns')
-                  .update({ total_replied: (camp.total_replied || 0) + 1 })
-                  .eq('id', camp.id);
-              }
-            }
-          }
-        } catch (e: any) {
-          console.error('[WA-GW][history] Error:', e.message);
-        }
-      }
-    });
-
     sock.ev.on('connection.update', async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
 
@@ -606,6 +587,9 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
           }
         }
         console.log(`[WA-GW] wa_numbers synced for ${phone}`);
+
+        // Aynı telefon numarasına sahip duplicate leadleri temizle
+        setTimeout(() => deduplicatePhoneLeads(userId, supabase), 8000);
 
         if (onConnected) onConnected(phone);
       }

@@ -369,6 +369,22 @@ app.get('/api/wa-debug', async (_req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// WA Dedup — aynı telefon numarasına sahip duplicate leadleri birleştirir (authenticated)
+app.post('/api/wa-dedup', async (req: any, res: any) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const { data: { user }, error: authErr } = await sb.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+    const { deduplicatePhoneLeads } = require('./lib/waGateway');
+    const result = await deduplicatePhoneLeads(user.id, sb);
+    res.json({ success: true, ...result });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // PUBLIC voice diagnostic — no auth, shows Vapi/Supabase config status
 app.get('/api/voice-diag', async (_req: any, res: any) => {
   const { createClient } = require('@supabase/supabase-js');

@@ -187,6 +187,19 @@ export default function UnifiedInboxPage() {
     setLoading(false)
   }, [fetchConversations, fetchStats, loadQuickReplies])
 
+  const mergeduplicates = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/api/wa-dedup`, { method: 'POST', headers: authH() })
+      const d = await r.json()
+      if (d.success) {
+        showToast('success', `${d.deleted} yinelenen sohbet birleştirildi`)
+        await fetchConversations()
+      } else {
+        showToast('error', d.error || 'Birleştirme başarısız')
+      }
+    } catch { showToast('error', 'Ağ hatası') }
+  }, [fetchConversations, showToast])
+
   const loadMessages = useCallback(async (lead: any) => {
     setSelectedLead(lead)
     setLeadDetail(null)
@@ -363,6 +376,14 @@ export default function UnifiedInboxPage() {
                 </span>
               )}
             </h1>
+            <button onClick={mergeduplicates} title="Aynı numaradan açılan yinelenen sohbetleri birleştir"
+              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition">
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 6H5a2 2 0 0 0-2 2v3"/><path d="M8 18H5a2 2 0 0 1-2-2v-3"/>
+                <path d="M16 6h3a2 2 0 0 1 2 2v3"/><path d="M16 18h3a2 2 0 0 0 2-2v-3"/>
+                <path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 10.93l2.83 2.83"/><path d="M16.24 10.93l-2.83 2.83"/>
+              </svg>
+            </button>
             <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
