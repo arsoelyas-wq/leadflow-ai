@@ -59,13 +59,28 @@ export async function deduplicatePhoneLeads(userId: string, sb?: any): Promise<{
   let merged = 0, deleted = 0;
   for (const [, groupLeads] of phoneGroups) {
     if (groupLeads.length < 2) continue;
-    // Auto-generated names start with '+', prefer named leads
-    const named = groupLeads.find(l => {
-      const n = l.company_name || l.contact_name || '';
-      return n && !n.startsWith('+') && !/^\d+$/.test(n);
-    });
-    const target = named || groupLeads[0]; // oldest is default primary
-    const sources = groupLeads.filter(l => l.id !== target.id);
+
+    // Hangi lead'i "asıl" seçeceğimizi belirle:
+    // 1. Outbound mesajı olan lead'i tercih et (kullanıcının mesaj gönderdiği)
+    // 2. Sonra isimli lead'i tercih et (+ veya rakamla başlamayan)
+    // 3. Son olarak en eski lead
+    const leadIds = groupLeads.map((l: any) => l.id);
+    const { data: outMsgs } = await client.from('messages')
+      .select('lead_id')
+      .eq('user_id', userId)
+      .eq('direction', 'out')
+      .in('lead_id', leadIds)
+      .limit(1);
+    const hasOutbound = outMsgs?.length ? outMsgs[0].lead_id : null;
+
+    let target = hasOutbound
+      ? groupLeads.find((l: any) => l.id === hasOutbound) || groupLeads[0]
+      : groupLeads.find((l: any) => {
+          const n = l.company_name || l.contact_name || '';
+          return n && !n.startsWith('+') && !/^\d+$/.test(n);
+        }) || groupLeads[0];
+
+    const sources = groupLeads.filter((l: any) => l.id !== target.id);
     for (const src of sources) {
       await client.from('messages').update({ lead_id: target.id }).eq('lead_id', src.id).eq('user_id', userId);
       await client.from('leads').delete().eq('id', src.id).eq('user_id', userId);

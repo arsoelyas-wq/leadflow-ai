@@ -239,7 +239,14 @@ export default function UnifiedInboxPage() {
   }, [])
 
   // ─── Polling ─────────────────────────────────────────────────────────────────
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    // Sayfa açılınca aynı telefon numarasına sahip yinelenen sohbetleri arka planda birleştir
+    fetch(`${API}/api/wa-dedup`, { method: 'POST', headers: authH() })
+      .then(r => r.json())
+      .then(d => { if (d.success && d.deleted > 0) { fetchConversations() } })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Conversation listesi: 12 saniyede bir yenile
   useEffect(() => {
     const t = setInterval(fetchConversations, 12000)
