@@ -286,19 +286,22 @@ async function createBaileysInstance(
         let finalStatus = '';
 
         try {
-          // Lead eşleştirme: önce tüm leadleri çek, last-10-digit karşılaştır
+          // Lead eşleştirme: en eski lead önce gelsin (kampanyadan eklenen orijinal lead seçilsin)
           const { data: allLeads } = await supabase
             .from('leads')
             .select('id, phone, status, notes')
             .eq('user_id', userId)
-            .not('phone', 'is', null);
+            .not('phone', 'is', null)
+            .order('created_at', { ascending: true }); // eski → orijinal lead önce gelir
 
           let lead: any = (allLeads || []).find((l: any) => {
             const digits = (l.phone || '').replace(/\D/g, '');
             return digits.length >= 7 && digits.slice(-10) === senderLast10;
           });
 
-          // Doğrudan DB sorgusu — +90/0 gibi farklı kayıt formatlarını da yakalar
+          console.log(`[WA-GW] Lead match: userId=${userId} senderLast10=${senderLast10} allLeadsCount=${allLeads?.length ?? 0} matched=${lead?.id ?? 'none'}`);
+
+          // Doğrudan DB: +90/0/raw varyantlarını yakalar
           if (!lead) {
             const phoneVariants = [senderDigits, `+${senderDigits}`, `0${senderLast10}`, senderLast10];
             const { data: directMatch } = await supabase
@@ -307,7 +310,25 @@ async function createBaileysInstance(
               .eq('user_id', userId)
               .in('phone', phoneVariants)
               .limit(1);
-            if (directMatch?.length) lead = directMatch[0];
+            if (directMatch?.length) {
+              lead = directMatch[0];
+              console.log(`[WA-GW] Lead match via direct query: ${lead.id}`);
+            }
+          }
+
+          // SQL LIKE fallback: telefon sonundaki 10 rakamla eşleştir (boşluklu/formatlı kayıtlar)
+          if (!lead) {
+            const { data: likeMatch } = await supabase
+              .from('leads')
+              .select('id, phone, status, notes')
+              .eq('user_id', userId)
+              .like('phone', `%${senderLast10}`)
+              .order('created_at', { ascending: true })
+              .limit(1);
+            if (likeMatch?.length) {
+              lead = likeMatch[0];
+              console.log(`[WA-GW] Lead match via LIKE: ${lead.id} phone=${lead.phone}`);
+            }
           }
 
           if (!lead) {
