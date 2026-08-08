@@ -583,6 +583,7 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
       if (success) {
         sent++;
         currentCreditsUsed++;
+        const now = new Date().toISOString();
         await supabase.from('messages').insert([{
           lead_id: lead.id,
           user_id: userId,
@@ -590,10 +591,14 @@ async function sendCampaignMessages(campaign: any, leads: any[], userSettings: a
           direction: 'out',
           content: personalizedMsg,
           status: 'sent',
-          sent_at: new Date().toISOString(),
+          sent_at: now,
           read: true,
           campaign_id: campaign.id,
         }]);
+        // updated_at'i güncelle — inbox sıralaması için (status='new' koşulu yok)
+        const leadUpdate: any = { last_contacted_at: now };
+        if (lead.status === 'new') leadUpdate.status = 'contacted';
+        await supabase.from('leads').update(leadUpdate).eq('id', lead.id);
         if (sent % 5 === 0) {
           await supabase.from('users').update({ credits_used: currentCreditsUsed }).eq('id', userId);
         }

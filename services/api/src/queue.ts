@@ -200,8 +200,10 @@ messageQueue.process(async (job: any) => {
     }]);
     if (insertErr) throw new Error(`DB insert hatası: ${insertErr.message}`);
 
-    // Lead durumunu güncelle
-    await supabase.from('leads').update({ status: 'contacted' }).eq('id', leadId).eq('status', 'new');
+    // Lead durumunu güncelle — updated_at her zaman güncellensin (inbox sıralaması için)
+    const updateFields: any = { last_contacted_at: new Date().toISOString() };
+    if (lead.status === 'new') updateFields.status = 'contacted';
+    await supabase.from('leads').update(updateFields).eq('id', leadId);
 
     // Kampanya sayacını güncelle (RPC varsa kullan, yoksa doğrudan güncelle)
     const { error: rpcErr } = await supabase.rpc('increment_campaign_sent', { campaign_id: campaignId });

@@ -35,57 +35,58 @@ router.get('/messages', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── GET /api/inbox/conversations — Lead bazlı konuşmalar (N+1 DÜZELTİLDİ) ──
+// ─── GET /api/inbox/conversations — Mesaj-önce sorgu (lead sayısından bağımsız) ──
 router.get('/conversations', async (req: any, res: any) => {
   try {
-    const { limit = 200 } = req.query;
     const userId = req.userId;
 
-    // 1. Tüm leadleri al
-    const { data: leads, error: leadErr } = await supabase
-      .from('leads')
-      .select('id, company_name, contact_name, phone, email, source, status, score')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(parseInt(limit as string));
-    if (leadErr) throw leadErr;
-    if (!leads?.length) return res.json({ conversations: [] });
-
-    const leadIds = leads.map((l: any) => l.id);
-
-    // 2. Tüm leadler için son mesaj — TEK sorgu (N+1 kaldırıldı)
-    const { data: lastMsgs } = await supabase
+    // 1. Mesaj olan lead_id'leri mesaj tablosundan al (lead updated_at'e bağımlılık yok)
+    const { data: allMsgs, error: msgErr } = await supabase
       .from('messages')
       .select('id, lead_id, content, direction, sent_at, channel, read')
       .eq('user_id', userId)
-      .in('lead_id', leadIds)
-      .order('sent_at', { ascending: false });
+      .order('sent_at', { ascending: false })
+      .limit(2000); // Son 2000 mesaj — yeterli kapsam
+    if (msgErr) throw msgErr;
+    if (!allMsgs?.length) return res.json({ conversations: [] });
 
-    // 3. Lead başına son mesajı ve okunmamış sayısını hesapla
-    const lastMsgMap: Record<string, any>  = {};
+    // 2. Lead başına son mesajı ve okunmamış sayısını hesapla
+    const lastMsgMap: Record<string, any>   = {};
     const unreadMap:  Record<string, number> = {};
-    for (const m of (lastMsgs || [])) {
+    for (const m of allMsgs) {
       if (!lastMsgMap[m.lead_id]) lastMsgMap[m.lead_id] = m;
       if (m.direction === 'in' && !m.read) {
         unreadMap[m.lead_id] = (unreadMap[m.lead_id] || 0) + 1;
       }
     }
 
-    const conversations = leads
-      .map((lead: any) => ({
-        lead,
-        lastMessage:  lastMsgMap[lead.id]  || null,
-        unreadCount:  unreadMap[lead.id]   || 0,
-      }))
-      .filter((c: any) => c.lastMessage !== null); // Sadece mesajı olan leadler
+    const leadIds = Object.keys(lastMsgMap);
+    if (!leadIds.length) return res.json({ conversations: [] });
 
-    // 4. Önce okunmamış olanlar, sonra son mesaj tarihine göre
-    conversations.sort((a: any, b: any) => {
+    // 3. Sadece mesajı olan leadlerin detaylarını çek
+    const { data: leads, error: leadErr } = await supabase
+      .from('leads')
+      .select('id, company_name, contact_name, phone, email, source, status, score')
+      .eq('user_id', userId)
+      .in('id', leadIds);
+    if (leadErr) throw leadErr;
+
+    const leadMap: Record<string, any> = {};
+    for (const l of (leads || [])) leadMap[l.id] = l;
+
+    const conversations = leadIds
+      .filter(lid => leadMap[lid]) // lead hâlâ mevcut
+      .map(lid => ({
+        lead:        leadMap[lid],
+        lastMessage: lastMsgMap[lid],
+        unreadCount: unreadMap[lid] || 0,
+      }));
+
+    // 4. Önce okunmamış, sonra son mesaj tarihine göre
+    conversations.sort((a, b) => {
       if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
       if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
-      const ta = a.lastMessage ? new Date(a.lastMessage.sent_at).getTime() : 0;
-      const tb = b.lastMessage ? new Date(b.lastMessage.sent_at).getTime() : 0;
-      return tb - ta;
+      return new Date(b.lastMessage.sent_at).getTime() - new Date(a.lastMessage.sent_at).getTime();
     });
 
     res.json({ conversations });
