@@ -227,10 +227,12 @@ export default function UnifiedInboxPage() {
 
   // ─── Polling ─────────────────────────────────────────────────────────────────
   useEffect(() => { load() }, [load])
+  // Conversation listesi: 8 saniyede bir yenile
   useEffect(() => {
-    const t = setInterval(fetchConversations, 30000)
+    const t = setInterval(fetchConversations, 8000)
     return () => clearInterval(t)
   }, [fetchConversations])
+  // Aktif konuşma mesajları: 4 saniyede bir yenile
   useEffect(() => {
     if (!selectedLead) return
     const t = setInterval(async () => {
@@ -241,13 +243,22 @@ export default function UnifiedInboxPage() {
         setMessages(prev => {
           if (newMsgs.length > prev.length) {
             const last = newMsgs[newMsgs.length - 1]
-            if (last.direction === 'in') fetchAiSuggestions(selectedLead.id)
+            if (last.direction === 'in') {
+              fetchAiSuggestions(selectedLead.id)
+              // Tarayıcı bildirimi (izin varsa)
+              if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification(`Yeni mesaj: ${selectedLead.company_name || selectedLead.contact_name}`, {
+                  body: last.content?.slice(0, 80),
+                  icon: '/favicon.ico',
+                })
+              }
+            }
             fetchConversations()
           }
           return newMsgs
         })
       } catch {}
-    }, 10000)
+    }, 4000)
     return () => clearInterval(t)
   }, [selectedLead, fetchConversations, fetchAiSuggestions])
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])

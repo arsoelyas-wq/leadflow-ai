@@ -138,13 +138,21 @@ async function createBaileysInstance(
 
     // ── Gelen mesajları kaydet + keyword detection + auto-reply ────────────────
     sock.ev.on('messages.upsert', async ({ messages: incomingMsgs, type }: any) => {
-      if (type !== 'notify') return; // Geçmiş mesajları atla
+      // 'notify' = gerçek zamanlı, 'append' = offline dönemde gelen (Railway restart sonrası)
+      // Her iki tip için de işle — ama 'append'de sadece son 24 saatteki mesajları al
+      if (type !== 'notify' && type !== 'append') return;
 
       for (const msg of incomingMsgs) {
-        if (msg.key?.fromMe === true) continue; // Kendi gönderdiğimizi atla
+        if (msg.key?.fromMe === true) continue;
+
+        // 'append' tipinde 24 saatten eski mesajları atla
+        if (type === 'append' && msg.messageTimestamp) {
+          const ageMs = Date.now() - Number(msg.messageTimestamp) * 1000;
+          if (ageMs > 24 * 60 * 60 * 1000) continue;
+        }
 
         const remoteJid = msg.key?.remoteJid || '';
-        if (!remoteJid.endsWith('@s.whatsapp.net')) continue; // Grup/broadcast atla
+        if (!remoteJid.endsWith('@s.whatsapp.net')) continue;
 
         const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
         const senderDigits = senderPhone.replace(/\D/g, '');
@@ -205,6 +213,22 @@ async function createBaileysInstance(
           if (!lead) continue;
           savedLead = lead;
 
+          // Duplicate kontrolü — aynı WA mesaj ID'si zaten kaydedilmiş mi?
+          const waMessageId = msg.key?.id;
+          if (waMessageId) {
+            const { data: existing } = await supabase
+              .from('messages')
+              .select('id')
+              .eq('lead_id', lead.id)
+              .eq('user_id', userId)
+              .contains('metadata', { wa_message_id: waMessageId })
+              .limit(1);
+            if (existing?.length) {
+              console.log(`[WA-GW] Duplicate mesaj atlandı: ${waMessageId}`);
+              continue;
+            }
+          }
+
           // Mesajı kaydet
           const { error: msgErr } = await supabase.from('messages').insert([{
             lead_id: lead.id,
@@ -215,6 +239,7 @@ async function createBaileysInstance(
             status: 'received',
             sent_at: sentAt,
             read: false,
+            metadata: waMessageId ? { wa_message_id: waMessageId } : null,
           }]);
           if (msgErr) console.error(`[WA-GW] Message insert error:`, msgErr.message);
 

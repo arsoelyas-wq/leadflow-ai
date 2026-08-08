@@ -82,12 +82,10 @@ router.get('/conversations', async (req: any, res: any) => {
         unreadCount: unreadMap[lid] || 0,
       }));
 
-    // 4. Önce okunmamış, sonra son mesaj tarihine göre
-    conversations.sort((a, b) => {
-      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
-      if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
-      return new Date(b.lastMessage.sent_at).getTime() - new Date(a.lastMessage.sent_at).getTime();
-    });
+    // 4. Sadece son mesaj tarihine göre sırala (okunmamış badge, sıralama değil)
+    conversations.sort((a, b) =>
+      new Date(b.lastMessage.sent_at).getTime() - new Date(a.lastMessage.sent_at).getTime()
+    );
 
     res.json({ conversations });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
