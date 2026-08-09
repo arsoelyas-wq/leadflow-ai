@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { authMiddleware } = require('../middleware/auth');
 const { fireCapiEvent } = require('../services/meta-capi');
 const { fireGoogleConversion } = require('../services/google-enhanced-conversions');
+const { normalizePhone } = require('../lib/phoneUtils');
 
 const router = express.Router();
 const supabase = createClient(
@@ -286,6 +287,8 @@ router.patch('/:id', authMiddleware, async (req: any, res: any) => {
       'deal_value','win_probability','tags','city','sector','website','next_action','next_action_at'];
     const updates: any = {};
     allowed.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+    // Telefon normalize et
+    if (updates.phone) updates.phone = normalizePhone(updates.phone) || updates.phone;
     updates.updated_at = new Date().toISOString();
     if (updates.status === 'won') updates.won_at = new Date().toISOString();
 
@@ -350,10 +353,12 @@ router.post('/', authMiddleware, async (req: any, res: any) => {
     if (!company_name) return res.status(400).json({ error: 'company_name zorunlu' });
     if (!phone) return res.status(400).json({ error: 'Telefon numarası zorunlu' });
 
-    // Duplicate Detection — telefon veya firma adı ile kontrol et
+    const normalizedPhoneVal = normalizePhone(phone) || phone;
+
+    // Duplicate Detection — normalize edilmiş telefon ile kontrol et
     if (!force) {
       const dupChecks: any[] = [];
-      if (phone) dupChecks.push(supabase.from('leads').select('id,company_name,phone').eq('user_id', req.userId).eq('phone', phone).is('deleted_at', null).maybeSingle());
+      if (normalizedPhoneVal) dupChecks.push(supabase.from('leads').select('id,company_name,phone').eq('user_id', req.userId).eq('phone', normalizedPhoneVal).is('deleted_at', null).maybeSingle());
       dupChecks.push(supabase.from('leads').select('id,company_name').eq('user_id', req.userId).ilike('company_name', company_name.trim()).is('deleted_at', null).maybeSingle());
       const results = await Promise.allSettled(dupChecks);
       const dupLead = results.map(r => r.status === 'fulfilled' ? r.value.data : null).find(Boolean);
@@ -369,7 +374,7 @@ router.post('/', authMiddleware, async (req: any, res: any) => {
     const now = new Date().toISOString();
     const { data, error } = await supabase.from('leads').insert([{
       user_id: req.userId,
-      company_name: company_name.trim(), contact_name, phone, email, website,
+      company_name: company_name.trim(), contact_name, phone: normalizedPhoneVal, email, website,
       city, sector, source: source || 'Manuel',
       status: status || 'new', score: score || 50, notes,
       deal_value, win_probability, tags: tags || [],

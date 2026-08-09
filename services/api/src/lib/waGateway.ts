@@ -5,6 +5,7 @@ export {};
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 const fs = require('fs');
+const { normalizePhone, phonesMatch } = require('./phoneUtils');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -286,74 +287,39 @@ async function createBaileysInstance(
         let finalStatus = '';
 
         try {
-          // Lead eşleştirme: order() olmadan — order clause bazen silent fail eder
+          // Normalize edilmiş telefon ile lead eşleştir
+          const normalizedSender = normalizePhone(senderDigits);
+
           const { data: allLeads, error: allLeadsErr } = await supabase
             .from('leads')
-            .select('id, phone, status, notes')
+            .select('id, phone, status, notes, auto_reply_enabled')
             .eq('user_id', userId)
             .not('phone', 'is', null);
 
           if (allLeadsErr) console.error(`[WA-GW] allLeads query error: ${allLeadsErr.message}`);
 
-          let lead: any = (allLeads || []).find((l: any) => {
-            const digits = (l.phone || '').replace(/\D/g, '');
-            return digits.length >= 7 && digits.slice(-10) === senderLast10;
-          });
+          // phonesMatch: her iki tarafı normalize edip son-10 karşılaştırır
+          let lead: any = (allLeads || []).find((l: any) => phonesMatch(l.phone, senderDigits));
 
-          console.log(`[WA-GW] Lead match: userId=${userId} senderLast10=${senderLast10} allLeadsCount=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
-
-          // Doğrudan DB fallback: +90/0/raw varyantlarını yakalar (allLeads null ise)
-          if (!lead) {
-            const phoneVariants = [senderDigits, `+${senderDigits}`, `0${senderLast10}`, senderLast10];
-            const { data: directMatch, error: directErr } = await supabase
-              .from('leads')
-              .select('id, phone, status, notes')
-              .eq('user_id', userId)
-              .in('phone', phoneVariants)
-              .limit(1);
-            if (directErr) console.error(`[WA-GW] directMatch error: ${directErr.message}`);
-            if (directMatch?.length) {
-              lead = directMatch[0];
-              console.log(`[WA-GW] Lead match via direct query: ${lead.id}`);
-            }
-          }
-
-          // SQL LIKE fallback: telefon sonundaki 10 rakamla eşleştir (boşluklu/formatlı kayıtlar)
-          if (!lead) {
-            const { data: likeMatch, error: likeErr } = await supabase
-              .from('leads')
-              .select('id, phone, status, notes')
-              .eq('user_id', userId)
-              .like('phone', `%${senderLast10}`)
-              .limit(5);
-            if (likeErr) console.error(`[WA-GW] likeMatch error: ${likeErr.message}`);
-            if (likeMatch?.length) {
-              lead = likeMatch[0];
-              console.log(`[WA-GW] Lead match via LIKE: ${lead.id} phone=${lead.phone}`);
-            }
-          }
+          console.log(`[WA-GW] Lead match: userId=${userId} sender=${normalizedSender} allLeadsCount=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
 
           let isNewLead = false;
           if (!lead) {
             // Eş zamanlı aynı telefon için lead oluşturmayı önle (race condition fix)
-            const lockKey = `${userId}:${senderLast10}`;
+            const lockKey = `${userId}:${normalizedSender}`;
             if (leadCreationInProgress.has(lockKey)) {
-              // Başka bir eş zamanlı handler bu numara için lead oluşturuyor, bekle
               await new Promise(r => setTimeout(r, 400));
               const { data: fresh } = await supabase.from('leads')
-                .select('id, phone, status, notes')
+                .select('id, phone, status, notes, auto_reply_enabled')
                 .eq('user_id', userId).not('phone', 'is', null);
-              lead = (fresh || []).find((l: any) => {
-                const digits = (l.phone || '').replace(/\D/g, '');
-                return digits.length >= 7 && digits.slice(-10) === senderLast10;
-              });
+              lead = (fresh || []).find((l: any) => phonesMatch(l.phone, senderDigits));
             } else {
               leadCreationInProgress.add(lockKey);
               try {
-                const displayPhone = `+${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}`;
+                const displayPhone = `+${normalizedSender}`;
                 const { data: newLead } = await supabase.from('leads').insert([{
                   user_id: userId,
-                  phone: senderDigits,
+                  phone: normalizedSender, // Normalize edilmiş format
                   company_name: displayPhone,
                   source: 'WhatsApp Gelen',
                   status: 'new',
@@ -371,8 +337,7 @@ async function createBaileysInstance(
           if (!lead) continue;
           savedLead = lead;
 
-          // Yeni lead oluşturulduysa hemen dedup çalıştır (async — mesaj kaydını engelleme)
-          // Bu, aynı telefona ait mevcut leadle birleştirir
+          // Yeni lead oluşturulduysa hemen dedup çalıştır
           if (isNewLead) {
             setTimeout(() => deduplicatePhoneLeads(userId, supabase).catch(() => {}), 300);
           }
@@ -395,6 +360,19 @@ async function createBaileysInstance(
           } else {
             incomingStats.saved++;
             console.log(`[WA-GW] ✓ Mesaj DB'ye kaydedildi: ${senderPhone} → lead ${lead.id}`);
+
+            // Gerçek zamanlı push — bağlı frontend SSE istemcilerine bildir
+            try {
+              const { ssePush } = require('./sseHub');
+              ssePush(userId, 'new_message', {
+                leadId: lead.id,
+                content: content || '[Medya]',
+                sentAt,
+                direction: 'in',
+                channel: 'whatsapp',
+                senderPhone: normalizedSender,
+              });
+            } catch { /* sseHub mevcut değilse sessizce devam */ }
 
             // Kampanya total_replied sayacını güncelle — bu lead'in ilk cevabıysa
             try {
@@ -455,6 +433,12 @@ async function createBaileysInstance(
 
           finalStatus = newStatus;
           console.log(`[WA-GW] ✓ Saved incoming: ${senderPhone} → lead ${lead.id} status=${newStatus} "${content.slice(0, 40)}"`);
+
+          // Lead durumu değiştiyse SSE ile bildir
+          try {
+            const { ssePush } = require('./sseHub');
+            ssePush(userId, 'lead_update', { leadId: lead.id, status: newStatus });
+          } catch { /* sseHub yüklenemezse sessizce devam */ }
 
           // ── Auto-reply — won/lost/STOP durumunda gönderme ────────────────
           if (['won', 'lost'].includes(newStatus)) continue;

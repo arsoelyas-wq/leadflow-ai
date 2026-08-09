@@ -40,13 +40,13 @@ router.get('/conversations', async (req: any, res: any) => {
   try {
     const userId = req.userId;
 
-    // 1. Mesaj olan lead_id'leri mesaj tablosundan al (lead updated_at'e bağımlılık yok)
+    // 1. Mesaj olan lead_id'leri mesaj tablosundan al
     const { data: allMsgs, error: msgErr } = await supabase
       .from('messages')
       .select('id, lead_id, content, direction, sent_at, channel, read')
       .eq('user_id', userId)
       .order('sent_at', { ascending: false })
-      .limit(2000); // Son 2000 mesaj — yeterli kapsam
+      .limit(2000);
     if (msgErr) throw msgErr;
     if (!allMsgs?.length) return res.json({ conversations: [] });
 
@@ -63,10 +63,10 @@ router.get('/conversations', async (req: any, res: any) => {
     const leadIds = Object.keys(lastMsgMap);
     if (!leadIds.length) return res.json({ conversations: [] });
 
-    // 3. Sadece mesajı olan leadlerin detaylarını çek
+    // 3. Leadleri pinned/labels/auto_reply_enabled dahil çek
     const { data: leads, error: leadErr } = await supabase
       .from('leads')
-      .select('id, company_name, contact_name, phone, email, source, status, score')
+      .select('id, company_name, contact_name, phone, email, source, status, score, pinned, labels, auto_reply_enabled')
       .eq('user_id', userId)
       .in('id', leadIds);
     if (leadErr) throw leadErr;
@@ -75,17 +75,19 @@ router.get('/conversations', async (req: any, res: any) => {
     for (const l of (leads || [])) leadMap[l.id] = l;
 
     const conversations = leadIds
-      .filter(lid => leadMap[lid]) // lead hâlâ mevcut
+      .filter(lid => leadMap[lid])
       .map(lid => ({
         lead:        leadMap[lid],
         lastMessage: lastMsgMap[lid],
         unreadCount: unreadMap[lid] || 0,
       }));
 
-    // 4. Sadece son mesaj tarihine göre sırala (okunmamış badge, sıralama değil)
-    conversations.sort((a, b) =>
-      new Date(b.lastMessage.sent_at).getTime() - new Date(a.lastMessage.sent_at).getTime()
-    );
+    // 4. Önce pinned, sonra son mesaj tarihine göre sırala
+    conversations.sort((a, b) => {
+      if (a.lead.pinned && !b.lead.pinned) return -1;
+      if (!a.lead.pinned && b.lead.pinned) return 1;
+      return new Date(b.lastMessage.sent_at).getTime() - new Date(a.lastMessage.sent_at).getTime();
+    });
 
     res.json({ conversations });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -287,6 +289,172 @@ router.get('/stats', async (req: any, res: any) => {
       unread: (unread as any).count || 0,
       today:  (today  as any).count || 0,
       total:  (total  as any).count || 0,
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── PATCH /api/inbox/read-all — Tüm mesajları okundu işaretle ───────────────
+router.patch('/read-all', async (req: any, res: any) => {
+  try {
+    await supabase.from('messages').update({ read: true })
+      .eq('user_id', req.userId).eq('direction', 'in').eq('read', false);
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── PATCH /api/inbox/pin/:leadId — Konuşmayı sabitle/kaldır ─────────────────
+router.patch('/pin/:leadId', async (req: any, res: any) => {
+  try {
+    const { pinned } = req.body;
+    const { error } = await supabase.from('leads')
+      .update({ pinned: Boolean(pinned) })
+      .eq('id', req.params.leadId)
+      .eq('user_id', req.userId);
+    if (error) throw error;
+    res.json({ success: true, pinned: Boolean(pinned) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── PATCH /api/inbox/labels/:leadId — Etiket güncelle ───────────────────────
+router.patch('/labels/:leadId', async (req: any, res: any) => {
+  try {
+    const { labels } = req.body; // string[]
+    if (!Array.isArray(labels)) return res.status(400).json({ error: 'labels bir dizi olmalı' });
+    const { error } = await supabase.from('leads')
+      .update({ labels })
+      .eq('id', req.params.leadId)
+      .eq('user_id', req.userId);
+    if (error) throw error;
+    res.json({ success: true, labels });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── PATCH /api/inbox/auto-reply/:leadId — Bu konuşma için otomatik yanıt ────
+router.patch('/auto-reply/:leadId', async (req: any, res: any) => {
+  try {
+    const { enabled } = req.body;
+    const { error } = await supabase.from('leads')
+      .update({ auto_reply_enabled: Boolean(enabled) })
+      .eq('id', req.params.leadId)
+      .eq('user_id', req.userId);
+    if (error) throw error;
+    res.json({ success: true, auto_reply_enabled: Boolean(enabled) });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── GET /api/inbox/notes/:leadId — İç notlar ────────────────────────────────
+router.get('/notes/:leadId', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('internal_notes')
+      .select('id, content, created_at, user_id')
+      .eq('lead_id', req.params.leadId)
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json({ notes: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── POST /api/inbox/notes/:leadId — İç not ekle ─────────────────────────────
+router.post('/notes/:leadId', async (req: any, res: any) => {
+  try {
+    const { content } = req.body;
+    if (!content?.trim()) return res.status(400).json({ error: 'content zorunlu' });
+    const { data, error } = await supabase.from('internal_notes').insert([{
+      lead_id: req.params.leadId,
+      user_id: req.userId,
+      content: content.trim(),
+    }]).select().single();
+    if (error) throw error;
+    res.json({ note: data, success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── DELETE /api/inbox/notes/:noteId — İç not sil ────────────────────────────
+router.delete('/notes/:noteId', async (req: any, res: any) => {
+  try {
+    const { error } = await supabase.from('internal_notes')
+      .delete()
+      .eq('id', req.params.noteId)
+      .eq('user_id', req.userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── GET /api/inbox/search — Mesaj içeriği arama ─────────────────────────────
+router.get('/search', async (req: any, res: any) => {
+  try {
+    const { q, limit = 50 } = req.query;
+    if (!q || (q as string).trim().length < 2) return res.json({ results: [] });
+
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select('id, lead_id, content, direction, sent_at, channel')
+      .eq('user_id', req.userId)
+      .ilike('content', `%${q}%`)
+      .order('sent_at', { ascending: false })
+      .limit(parseInt(limit as string));
+    if (error) throw error;
+
+    // Her mesaj için lead bilgisini ekle
+    const leadIds = [...new Set((messages || []).map((m: any) => m.lead_id))];
+    const { data: leads } = await supabase
+      .from('leads')
+      .select('id, company_name, contact_name, phone')
+      .in('id', leadIds);
+    const leadMap: Record<string, any> = {};
+    for (const l of (leads || [])) leadMap[l.id] = l;
+
+    const results = (messages || []).map((m: any) => ({
+      ...m,
+      lead: leadMap[m.lead_id] || null,
+    }));
+
+    res.json({ results });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── GET /api/inbox/response-times — Yanıt süresi analitiği ──────────────────
+router.get('/response-times', async (req: any, res: any) => {
+  try {
+    const { data: messages, error } = await supabase
+      .from('messages')
+      .select('lead_id, direction, sent_at')
+      .eq('user_id', req.userId)
+      .order('sent_at', { ascending: true })
+      .limit(5000);
+    if (error) throw error;
+
+    // Lead başına in→out arasındaki süreyi hesapla
+    const grouped: Record<string, any[]> = {};
+    for (const m of (messages || [])) {
+      if (!grouped[m.lead_id]) grouped[m.lead_id] = [];
+      grouped[m.lead_id].push(m);
+    }
+
+    const responseTimes: number[] = [];
+    for (const msgs of Object.values(grouped)) {
+      for (let i = 0; i < msgs.length - 1; i++) {
+        if (msgs[i].direction === 'in' && msgs[i + 1].direction === 'out') {
+          const diff = new Date(msgs[i + 1].sent_at).getTime() - new Date(msgs[i].sent_at).getTime();
+          if (diff > 0 && diff < 24 * 60 * 60 * 1000) responseTimes.push(diff / 1000 / 60); // dakika
+        }
+      }
+    }
+
+    const avg = responseTimes.length
+      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+      : null;
+    const median = responseTimes.length
+      ? responseTimes.sort((a, b) => a - b)[Math.floor(responseTimes.length / 2)]
+      : null;
+
+    res.json({
+      avgResponseMinutes: avg,
+      medianResponseMinutes: median ? Math.round(median) : null,
+      sampleSize: responseTimes.length,
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });

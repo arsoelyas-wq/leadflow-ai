@@ -385,6 +385,36 @@ app.post('/api/wa-dedup', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// SSE Inbox Stream — real-time message/lead push to frontend (token in query string)
+app.get('/api/inbox/stream', async (req: any, res: any) => {
+  try {
+    const token = (req.query.token as string) || '';
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const { data: { user }, error: authErr } = await sb.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+
+    // SSE başlıkları
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Nginx buffering'i devre dışı bırak
+    res.flushHeaders();
+
+    const { sseSubscribe } = require('./lib/sseHub');
+    const cleanup = sseSubscribe(user.id, res);
+
+    // İlk bağlantıda connected event gönder
+    res.write(`event: connected\ndata: ${JSON.stringify({ userId: user.id, ts: Date.now() })}\n\n`);
+
+    req.on('close', cleanup);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // PUBLIC voice diagnostic — no auth, shows Vapi/Supabase config status
 app.get('/api/voice-diag', async (_req: any, res: any) => {
   const { createClient } = require('@supabase/supabase-js');

@@ -148,6 +148,16 @@ export default function UnifiedInboxPage() {
   const [newQRTitle, setNewQRTitle] = useState('')
   const [newQRContent, setNewQRContent] = useState('')
   const [newQRCat, setNewQRCat] = useState('genel')
+  // ─── Yeni özellikler ────────────────────────────────────────────────────────
+  const [internalNotes, setInternalNotes] = useState<any[]>([])
+  const [newNote, setNewNote] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
+  const [msgSearch, setMsgSearch] = useState('')
+  const [msgSearchResults, setMsgSearchResults] = useState<any[]>([])
+  const [searchingMsg, setSearchingMsg] = useState(false)
+  const [showMsgSearch, setShowMsgSearch] = useState(false)
+  const [waStatus, setWaStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -238,60 +248,90 @@ export default function UnifiedInboxPage() {
     setLoadingAi(false)
   }, [])
 
-  // ─── Polling ─────────────────────────────────────────────────────────────────
+  // ─── SSE gerçek zamanlı stream (polling'in yerini alır) ──────────────────────
+  const selectedLeadRef = useRef<any>(null)
+  useEffect(() => { selectedLeadRef.current = selectedLead }, [selectedLead])
+
   useEffect(() => {
     load()
     // Sayfa açılınca yinelenen sohbetleri birleştir
     fetch(`${API}/api/wa-dedup`, { method: 'POST', headers: authH() })
       .then(r => r.json())
-      .then(d => { if (d.success && d.deleted > 0) { fetchConversations() } })
+      .then(d => { if (d.success && d.deleted > 0) fetchConversations() })
       .catch(() => {})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  // Conversation listesi: 12 saniyede bir yenile
-  useEffect(() => {
-    const t = setInterval(fetchConversations, 12000)
-    return () => clearInterval(t)
-  }, [fetchConversations])
-  // Periyodik dedup: 60 saniyede bir yinelenen sohbetleri arka planda birleştir
-  useEffect(() => {
-    const runDedup = () => {
-      fetch(`${API}/api/wa-dedup`, { method: 'POST', headers: authH() })
-        .then(r => r.json())
-        .then(d => { if (d.success && d.deleted > 0) fetchConversations() })
-        .catch(() => {})
+
+    const token = getToken()
+    if (!token || typeof EventSource === 'undefined') {
+      // SSE yoksa hafif fallback polling
+      const t = setInterval(fetchConversations, 15000)
+      return () => clearInterval(t)
     }
-    const t = setInterval(runDedup, 60000)
-    return () => clearInterval(t)
-  }, [fetchConversations])
-  // Aktif konuşma mesajları: 8 saniyede bir yenile
-  useEffect(() => {
-    if (!selectedLead) return
-    const t = setInterval(async () => {
-      try {
-        const r = await fetch(`${API}/api/inbox/messages?leadId=${selectedLead.id}`, { headers: authH() })
-        const d = await r.json()
-        const newMsgs: any[] = d.messages || []
-        setMessages(prev => {
-          if (newMsgs.length > prev.length) {
-            const last = newMsgs[newMsgs.length - 1]
-            if (last.direction === 'in') {
-              fetchAiSuggestions(selectedLead.id)
-              // Tarayıcı bildirimi (izin varsa)
-              if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-                new Notification(`Yeni mesaj: ${selectedLead.company_name || selectedLead.contact_name}`, {
-                  body: last.content?.slice(0, 80),
-                  icon: '/favicon.ico',
-                })
+
+    let es: EventSource | null = null
+    let retryTimeout: ReturnType<typeof setTimeout>
+    let retries = 0
+
+    function connect() {
+      es = new EventSource(`${API}/api/inbox/stream?token=${encodeURIComponent(token)}`)
+
+      es.addEventListener('new_message', (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data)
+          fetchConversations()
+          const active = selectedLeadRef.current
+          if (active && data.leadId === active.id) {
+            // Aktif sohbete gelen mesajı doğrudan ekle
+            setMessages(prev => {
+              const already = prev.some((m: any) => m.id && m.id === data.id)
+              if (already) return prev
+              const newMsg = {
+                id: data.id || `tmp-${Date.now()}`,
+                content: data.content, direction: data.direction,
+                channel: data.channel, sent_at: data.sentAt, read: false,
               }
-            }
-            fetchConversations()
+              if (data.direction === 'in') {
+                fetchAiSuggestions(active.id)
+                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                  new Notification(`Yeni mesaj: ${active.company_name || active.contact_name}`, {
+                    body: data.content?.slice(0, 80), icon: '/favicon.ico',
+                  })
+                }
+              }
+              return [...prev, newMsg]
+            })
+            fetch(`${API}/api/inbox/read/${active.id}`, { method: 'PATCH', headers: authH() }).catch(() => {})
           }
-          return newMsgs
-        })
-      } catch {}
-    }, 8000)
-    return () => clearInterval(t)
-  }, [selectedLead, fetchConversations, fetchAiSuggestions])
+        } catch {}
+      })
+
+      es.addEventListener('lead_update', () => { fetchConversations() })
+
+      es.onerror = () => {
+        es?.close()
+        // Üstel geri-çekilme: 2s, 4s, 8s, max 30s
+        retries = Math.min(retries + 1, 4)
+        const delay = Math.min(2000 * Math.pow(2, retries - 1), 30000)
+        retryTimeout = setTimeout(connect, delay)
+      }
+
+      es.addEventListener('open', () => { retries = 0 })
+    }
+
+    connect()
+
+    // SSE yokken 60s dedup
+    const dedupT = setInterval(() => {
+      fetch(`${API}/api/wa-dedup`, { method: 'POST', headers: authH() })
+        .then(r => r.json()).then(d => { if (d.success && d.deleted > 0) fetchConversations() }).catch(() => {})
+    }, 60000)
+
+    return () => {
+      es?.close()
+      clearTimeout(retryTimeout)
+      clearInterval(dedupT)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   // ─── Gönder ──────────────────────────────────────────────────────────────────
@@ -352,6 +392,128 @@ export default function UnifiedInboxPage() {
     } catch {}
   }, [newQRTitle, newQRContent, newQRCat, loadQuickReplies, showToast])
 
+  // ─── Pin / unpin ──────────────────────────────────────────────────────────
+  const togglePin = useCallback(async (leadId: string, pinned: boolean) => {
+    try {
+      await fetch(`${API}/api/inbox/pin/${leadId}`, {
+        method: 'PATCH', headers: authH(), body: JSON.stringify({ pinned }),
+      })
+      setConversations(prev => prev.map(c =>
+        c.lead.id === leadId ? { ...c, lead: { ...c.lead, pinned } } : c
+      ))
+      showToast('success', pinned ? 'Konuşma sabitlendi' : 'Sabitleme kaldırıldı')
+    } catch { showToast('error', 'İşlem başarısız') }
+  }, [showToast])
+
+  // ─── Labels ───────────────────────────────────────────────────────────────
+  const toggleLabel = useCallback(async (leadId: string, label: string, currentLabels: string[]) => {
+    const labels = currentLabels.includes(label)
+      ? currentLabels.filter(l => l !== label)
+      : [...currentLabels, label]
+    try {
+      await fetch(`${API}/api/inbox/labels/${leadId}`, {
+        method: 'PATCH', headers: authH(), body: JSON.stringify({ labels }),
+      })
+      setConversations(prev => prev.map(c =>
+        c.lead.id === leadId ? { ...c, lead: { ...c.lead, labels } } : c
+      ))
+      if (selectedLead?.id === leadId) setSelectedLead((s: any) => ({ ...s, labels }))
+    } catch { showToast('error', 'Etiket güncellenemedi') }
+  }, [selectedLead, showToast])
+
+  // ─── Auto-reply toggle ────────────────────────────────────────────────────
+  const toggleAutoReply = useCallback(async (leadId: string, enabled: boolean) => {
+    try {
+      await fetch(`${API}/api/inbox/auto-reply/${leadId}`, {
+        method: 'PATCH', headers: authH(), body: JSON.stringify({ enabled }),
+      })
+      setConversations(prev => prev.map(c =>
+        c.lead.id === leadId ? { ...c, lead: { ...c.lead, auto_reply_enabled: enabled } } : c
+      ))
+      if (selectedLead?.id === leadId) setSelectedLead((s: any) => ({ ...s, auto_reply_enabled: enabled }))
+      showToast('success', enabled ? 'Otomatik yanıt açık' : 'Otomatik yanıt kapalı')
+    } catch { showToast('error', 'Ayar değiştirilemedi') }
+  }, [selectedLead, showToast])
+
+  // ─── Internal notes ───────────────────────────────────────────────────────
+  const loadNotes = useCallback(async (leadId: string) => {
+    try {
+      const r = await fetch(`${API}/api/inbox/notes/${leadId}`, { headers: authH() })
+      const d = await r.json()
+      setInternalNotes(d.notes || [])
+    } catch {}
+  }, [])
+
+  const saveNote = useCallback(async () => {
+    if (!newNote.trim() || !selectedLead) return
+    setSavingNote(true)
+    try {
+      const r = await fetch(`${API}/api/inbox/notes/${selectedLead.id}`, {
+        method: 'POST', headers: authH(), body: JSON.stringify({ content: newNote.trim() }),
+      })
+      const d = await r.json()
+      if (d.success) {
+        setInternalNotes(prev => [...prev, d.note])
+        setNewNote('')
+        showToast('success', 'Not kaydedildi')
+      }
+    } catch { showToast('error', 'Not kaydedilemedi') }
+    setSavingNote(false)
+  }, [newNote, selectedLead, showToast])
+
+  const deleteNote = useCallback(async (noteId: string) => {
+    try {
+      await fetch(`${API}/api/inbox/notes/${noteId}`, { method: 'DELETE', headers: authH() })
+      setInternalNotes(prev => prev.filter(n => n.id !== noteId))
+    } catch { showToast('error', 'Not silinemedi') }
+  }, [showToast])
+
+  // ─── Mark all read ────────────────────────────────────────────────────────
+  const markAllRead = useCallback(async () => {
+    try {
+      await fetch(`${API}/api/inbox/read-all`, { method: 'PATCH', headers: authH() })
+      setConversations(prev => prev.map(c => ({ ...c, unreadCount: 0 })))
+      showToast('success', 'Tümü okundu işaretlendi')
+    } catch { showToast('error', 'İşlem başarısız') }
+  }, [showToast])
+
+  // ─── Message search ───────────────────────────────────────────────────────
+  const searchMessages = useCallback(async (q: string) => {
+    if (!q.trim() || q.trim().length < 2) { setMsgSearchResults([]); return }
+    setSearchingMsg(true)
+    try {
+      const r = await fetch(`${API}/api/inbox/search?q=${encodeURIComponent(q)}`, { headers: authH() })
+      const d = await r.json()
+      setMsgSearchResults(d.results || [])
+    } catch {}
+    setSearchingMsg(false)
+  }, [])
+
+  // ─── WA status check ──────────────────────────────────────────────────────
+  const checkWaStatus = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/api/wa-status`)
+      if (!r.ok) { setWaStatus('disconnected'); return }
+      const d = await r.json()
+      const hasConnected = Array.isArray(d.instances)
+        ? d.instances.some((i: any) => i.status === 'connected')
+        : d.status === 'connected'
+      setWaStatus(hasConnected ? 'connected' : 'disconnected')
+    } catch { setWaStatus('disconnected') }
+  }, [])
+
+  useEffect(() => {
+    checkWaStatus()
+    const t = setInterval(checkWaStatus, 30000)
+    return () => clearInterval(t)
+  }, [checkWaStatus])
+
+  // ─── Notes load when lead changes ─────────────────────────────────────────
+  useEffect(() => {
+    if (selectedLead) { loadNotes(selectedLead.id); setShowNotes(false) }
+    else { setInternalNotes([]) }
+  }, [selectedLead?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Mobilde lead seçilince chat görünümüne geç
   useEffect(() => {
     if (isMobile && selectedLead) setMobileView('chat')
@@ -394,26 +556,74 @@ export default function UnifiedInboxPage() {
                 </span>
               )}
             </h1>
-            <button onClick={mergeduplicates} title="Aynı numaradan açılan yinelenen sohbetleri birleştir"
-              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition">
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 6H5a2 2 0 0 0-2 2v3"/><path d="M8 18H5a2 2 0 0 1-2-2v-3"/>
-                <path d="M16 6h3a2 2 0 0 1 2 2v3"/><path d="M16 18h3a2 2 0 0 0 2-2v-3"/>
-                <path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 10.93l2.83 2.83"/><path d="M16.24 10.93l-2.83 2.83"/>
-              </svg>
-            </button>
-            <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* WA Durum göstergesi */}
+              <div title={`WhatsApp: ${waStatus === 'connected' ? 'Bağlı' : waStatus === 'disconnected' ? 'Bağlı Değil' : 'Bilinmiyor'}`}
+                className={`w-2 h-2 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500' : waStatus === 'disconnected' ? 'bg-red-400' : 'bg-slate-300'}`}/>
+              {totalUnread > 0 && (
+                <button onClick={markAllRead} title="Tümünü okundu işaretle"
+                  className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">
+                  <CheckCheck size={14}/>
+                </button>
+              )}
+              <button onClick={mergeduplicates} title="Yinelenen sohbetleri birleştir"
+                className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition">
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 6H5a2 2 0 0 0-2 2v3"/><path d="M8 18H5a2 2 0 0 1-2-2v-3"/>
+                  <path d="M16 6h3a2 2 0 0 1 2 2v3"/><path d="M16 18h3a2 2 0 0 0 2-2v-3"/>
+                  <path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 10.93l2.83 2.83"/><path d="M16.24 10.93l-2.83 2.83"/>
+                </svg>
+              </button>
+              <button onClick={load} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              </button>
+            </div>
           </div>
 
           {/* Arama */}
           <div className="relative mb-2">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Ara (isim, telefon...)"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-300 focus:bg-white transition"/>
-            {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={12}/></button>}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-20 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-300 focus:bg-white transition"/>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {search && <button onClick={() => setSearch('')} className="text-slate-400 hover:text-slate-600"><X size={12}/></button>}
+              <button onClick={() => setShowMsgSearch(v => !v)} title="Mesaj içeriği ara"
+                className={`p-0.5 rounded transition ${showMsgSearch ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                <MessageSquare size={11}/>
+              </button>
+            </div>
           </div>
+
+          {/* Mesaj içeriği arama */}
+          {showMsgSearch && (
+            <div className="mb-2">
+              <div className="relative">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                <input
+                  value={msgSearch}
+                  onChange={e => { setMsgSearch(e.target.value); searchMessages(e.target.value) }}
+                  placeholder="Mesaj metni ara..."
+                  className="w-full bg-white border border-blue-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-400 transition"/>
+              </div>
+              {searchingMsg && <p className="text-[10px] text-slate-400 mt-1 pl-1">Aranıyor...</p>}
+              {!searchingMsg && msgSearch && msgSearchResults.length === 0 && (
+                <p className="text-[10px] text-slate-400 mt-1 pl-1">Sonuç bulunamadı</p>
+              )}
+              {msgSearchResults.length > 0 && (
+                <div className="mt-1 max-h-32 overflow-y-auto space-y-0.5">
+                  {msgSearchResults.slice(0, 8).map((r: any) => (
+                    <button key={r.id} onClick={() => {
+                      const conv = conversations.find(c => c.lead.id === r.lead_id)
+                      if (conv) { loadMessages(conv.lead); setShowMsgSearch(false); setMsgSearch('') }
+                    }} className="w-full text-left px-2 py-1.5 bg-slate-50 hover:bg-blue-50 rounded-lg transition">
+                      <p className="text-[10px] font-medium text-slate-700 truncate">{r.lead?.company_name || r.lead_id}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{r.content?.slice(0, 60)}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Kanal filtresi */}
           <div className="flex gap-1 overflow-x-auto scrollbar-hide">
@@ -460,8 +670,15 @@ export default function UnifiedInboxPage() {
               const isSelected = selectedLead?.id === lead.id
               const ch = CHANNEL_CFG[lastMessage?.channel || 'whatsapp']
               return (
-                <button key={lead.id} onClick={() => loadMessages(lead)}
-                  className={`w-full flex items-start gap-3 px-4 py-3.5 text-left border-b border-slate-50 transition hover:bg-slate-50 ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}>
+                <div key={lead.id}
+                  className={`group relative w-full flex items-start gap-3 px-4 py-3.5 text-left border-b border-slate-50 transition hover:bg-slate-50 cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''} ${lead.pinned ? 'bg-amber-50/50' : ''}`}
+                  onClick={() => loadMessages(lead)}>
+
+                  {/* Pin göstergesi */}
+                  {lead.pinned && (
+                    <Pin size={9} className="absolute top-2 right-2 text-amber-400 opacity-70 rotate-45"/>
+                  )}
+
                   {/* Avatar */}
                   <div className="relative shrink-0">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
@@ -474,10 +691,10 @@ export default function UnifiedInboxPage() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className={`text-sm font-semibold truncate ${unreadCount > 0 ? 'text-slate-900' : 'text-slate-700'}`}>
+                      <span className={`text-sm font-semibold truncate pr-4 ${unreadCount > 0 ? 'text-slate-900' : 'text-slate-700'}`}>
                         {lead.company_name}
                       </span>
-                      <span className="text-[10px] text-slate-400 shrink-0 ml-1">
+                      <span className="text-[10px] text-slate-400 shrink-0">
                         {lastMessage ? timeAgo(lastMessage.sent_at) : ''}
                       </span>
                     </div>
@@ -493,13 +710,28 @@ export default function UnifiedInboxPage() {
                         </span>
                       )}
                     </div>
-                    {lead.status && STAGE_LABELS[lead.status] && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium mt-0.5 inline-block ${STAGE_LABELS[lead.status].color}`}>
-                        {STAGE_LABELS[lead.status].label}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                      {lead.status && STAGE_LABELS[lead.status] && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${STAGE_LABELS[lead.status].color}`}>
+                          {STAGE_LABELS[lead.status].label}
+                        </span>
+                      )}
+                      {(lead.labels || []).slice(0, 2).map((lbl: string) => (
+                        <span key={lbl} className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 font-medium">
+                          {lbl}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </button>
+
+                  {/* Hover aksiyon: pin */}
+                  <button
+                    onClick={e => { e.stopPropagation(); togglePin(lead.id, !lead.pinned) }}
+                    title={lead.pinned ? 'Sabitlemeyi kaldır' : 'Sabitle'}
+                    className={`absolute bottom-2 right-2 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition ${lead.pinned ? 'text-amber-500 bg-amber-50' : 'text-slate-300 hover:text-amber-500 hover:bg-amber-50'}`}>
+                    <Pin size={10} className="rotate-45"/>
+                  </button>
+                </div>
               )
             })
           )}
@@ -854,9 +1086,22 @@ export default function UnifiedInboxPage() {
             <p className="text-slate-800 font-bold text-sm text-center">{selectedLead.company_name}</p>
             {selectedLead.status && STAGE_LABELS[selectedLead.status] && (
               <div className="flex justify-center mt-1.5">
-                <span className={`text-[11px] px-2.5 py-1 rounded-full font-semibold ${STAGE_LABELS[selectedLead.status].color}`}>
-                  {STAGE_LABELS[selectedLead.status].label}
-                </span>
+                <select
+                  value={selectedLead.status}
+                  onChange={async e => {
+                    const newStatus = e.target.value
+                    await fetch(`${API}/api/leads/${selectedLead.id}`, {
+                      method: 'PATCH', headers: authH(), body: JSON.stringify({ status: newStatus }),
+                    })
+                    setSelectedLead((s: any) => ({ ...s, status: newStatus }))
+                    fetchConversations()
+                    showToast('success', 'Durum güncellendi')
+                  }}
+                  className={`text-[11px] px-2 py-1 rounded-full font-semibold border-0 focus:outline-none cursor-pointer ${STAGE_LABELS[selectedLead.status]?.color || 'bg-slate-100 text-slate-600'}`}>
+                  {Object.entries(STAGE_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>{v.label}</option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -897,11 +1142,42 @@ export default function UnifiedInboxPage() {
               </div>
             )}
 
-            <div className="pt-3 space-y-1.5">
-              <a href={`tel:${selectedLead.phone}`}
-                className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition shadow-sm">
-                <Phone size={13}/> WhatsApp Aç
-              </a>
+            {/* Otomatik yanıt toggle */}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                <ZapIcon size={11} className="text-amber-500"/>
+                Otomatik Yanıt
+              </span>
+              <button
+                onClick={() => toggleAutoReply(selectedLead.id, !selectedLead.auto_reply_enabled)}
+                className={`relative w-8 h-4 rounded-full transition-colors ${selectedLead.auto_reply_enabled !== false ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${selectedLead.auto_reply_enabled !== false ? 'translate-x-4' : 'translate-x-0.5'}`}/>
+              </button>
+            </div>
+
+            {/* Etiketler */}
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Etiketler</div>
+              <div className="flex flex-wrap gap-1">
+                {(['VIP', 'Sıcak', 'Takip', 'Teklif', 'Demo'].map(lbl => {
+                  const active = (selectedLead.labels || []).includes(lbl)
+                  return (
+                    <button key={lbl} onClick={() => toggleLabel(selectedLead.id, lbl, selectedLead.labels || [])}
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-medium transition border ${active ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-400 border-slate-200 hover:border-blue-200 hover:text-blue-500'}`}>
+                      {lbl}
+                    </button>
+                  )
+                }))}
+              </div>
+            </div>
+
+            <div className="pt-1 space-y-1.5">
+              {selectedLead.phone && (
+                <a href={`https://wa.me/${selectedLead.phone}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-xl transition shadow-sm">
+                  <Phone size={13}/> WhatsApp Aç
+                </a>
+              )}
               <Link href={`/leads/${selectedLead.id}`}
                 className="flex items-center justify-center gap-2 w-full py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition">
                 <ExternalLink size={13}/> Lead Detayı
@@ -910,6 +1186,46 @@ export default function UnifiedInboxPage() {
                 className="flex items-center justify-center gap-2 w-full py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition">
                 <TrendingUp size={13}/> Pipeline
               </Link>
+            </div>
+
+            {/* İç notlar */}
+            <div className="pt-2 border-t border-slate-200">
+              <button onClick={() => setShowNotes(v => !v)}
+                className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition mb-2">
+                <span className="flex items-center gap-1">
+                  <FileText size={10}/>
+                  İç Notlar {internalNotes.length > 0 && `(${internalNotes.length})`}
+                </span>
+                <ChevronDown size={10} className={`transition-transform ${showNotes ? 'rotate-180' : ''}`}/>
+              </button>
+              {showNotes && (
+                <div className="space-y-2">
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    {internalNotes.length === 0 ? (
+                      <p className="text-[10px] text-slate-400 italic">Henüz not yok</p>
+                    ) : internalNotes.map(note => (
+                      <div key={note.id} className="bg-amber-50 border border-amber-100 rounded-lg p-2 group relative">
+                        <p className="text-[11px] text-slate-700 leading-relaxed pr-5">{note.content}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">{timeAgo(note.created_at)}</p>
+                        <button onClick={() => deleteNote(note.id)}
+                          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition">
+                          <Trash2 size={10}/>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    <input value={newNote} onChange={e => setNewNote(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNote() } }}
+                      placeholder="Not ekle..."
+                      className="flex-1 text-[11px] border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-amber-300 bg-white"/>
+                    <button onClick={saveNote} disabled={savingNote || !newNote.trim()}
+                      className="px-2 py-1.5 bg-amber-400 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg transition">
+                      {savingNote ? <RefreshCw size={10} className="animate-spin"/> : <Plus size={10}/>}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
