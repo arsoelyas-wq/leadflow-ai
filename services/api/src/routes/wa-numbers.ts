@@ -70,14 +70,31 @@ router.post('/connect', async (req: any, res: any) => {
 
     if (error) throw error;
 
-    // Embedded WA Gateway ile instance oluştur (Railway API içinde Baileys)
+    // Zaten bağlı instance var mı? (birden fazla Chromium = OOM)
+    const { data: existingConnected } = await supabase.from('wa_instances')
+      .select('instance_id, phone').eq('user_id', userId).eq('status', 'connected').limit(1);
+    if (existingConnected?.length) {
+      // Mevcut bağlantıyı wa_numbers'a senkronize et ve bağlı döndür
+      const connPhone = existingConnected[0].phone;
+      if (connPhone) {
+        await supabase.from('wa_numbers').update({
+          status: 'connected', phone_number: connPhone,
+        }).eq('id', newNumber.id);
+      }
+      return res.json({ number: { ...newNumber, status: 'connected', phone_number: connPhone }, status: 'connected' });
+    }
+
+    // Eski qr_ready/creating instance'ları temizle — bellek için
+    const { forceReconnectUser, startNewInstance } = require('../lib/waGateway');
+    await forceReconnectUser(userId);
+
+    // Embedded WA Gateway ile instance oluştur
     const instanceId = `${userId.slice(0, 8)}-${Date.now()}`;
     await supabase.from('wa_instances').insert([{
       user_id: userId, instance_id: instanceId, status: 'creating',
     }]);
 
     try {
-      const { startNewInstance } = require('../lib/waGateway');
       const qr = await startNewInstance(instanceId, userId);
       if (qr) {
         return res.json({ number: newNumber, qr, status: 'qr_pending', instanceId });

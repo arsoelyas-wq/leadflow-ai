@@ -265,11 +265,12 @@ async function createWWebInstance(
         connected_at: new Date().toISOString(),
       }).eq('instance_id', instanceId);
 
-      // wa_numbers senkronize et
+      // wa_numbers senkronize et — yoksa otomatik oluştur
       const { data: numByPhone } = await supabase.from('wa_numbers')
         .select('id').eq('user_id', userId).eq('phone_number', phone).maybeSingle();
       if (numByPhone) {
         await supabase.from('wa_numbers').update({ status: 'connected' }).eq('id', numByPhone.id);
+        console.log(`[WA-GW] wa_numbers synced (existing) for ${phone}`);
       } else {
         const { data: anyNum } = await supabase.from('wa_numbers')
           .select('id').eq('user_id', userId)
@@ -279,9 +280,24 @@ async function createWWebInstance(
           await supabase.from('wa_numbers').update({
             status: 'connected', phone_number: phone,
           }).eq('id', anyNum.id);
+          console.log(`[WA-GW] wa_numbers synced (updated) for ${phone}`);
+        } else {
+          // Hiç kayıt yok — otomatik oluştur
+          const { error: insErr } = await supabase.from('wa_numbers').insert([{
+            user_id: userId,
+            phone_number: phone,
+            display_name: 'Numara 1',
+            status: 'connected',
+            daily_limit: 100,
+            is_primary: true,
+          }]);
+          if (insErr) {
+            console.error(`[WA-GW] wa_numbers auto-create error: ${insErr.message}`);
+          } else {
+            console.log(`[WA-GW] wa_numbers auto-created for ${phone}`);
+          }
         }
       }
-      console.log(`[WA-GW] wa_numbers synced for ${phone}`);
 
       setTimeout(() => deduplicatePhoneLeads(userId, supabase), 8000);
       if (onConnected) onConnected(phone);
