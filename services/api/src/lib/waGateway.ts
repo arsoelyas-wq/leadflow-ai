@@ -21,6 +21,7 @@ interface GatewayInstance {
   userId: string;
   backupTimer?: ReturnType<typeof setInterval>;
   lastIncomingAt?: number;
+  connectedAt?: number;
 }
 
 const instances: Map<string, GatewayInstance> = new Map();
@@ -246,6 +247,7 @@ async function createWWebInstance(
       entry.status = 'connected';
       entry.phone = phone;
       entry.qr = null;
+      entry.connectedAt = Date.now();
       reconnectAttempts.delete(instanceId);
       console.log(`[WA-GW] Connected: ${instanceId} → ${phone}`);
 
@@ -344,6 +346,26 @@ async function createWWebInstance(
     // ── RemoteAuth session kaydedildi ──
     client.on('remote_session_saved', () => {
       console.log(`[WA-GW] Remote session saved: ${instanceId}`);
+    });
+
+    // ── Auth başarısız — session geçersiz, QR yeniden taranmalı ──
+    client.on('auth_failure', async (msg: string) => {
+      console.error(`[WA-GW] Auth failure: ${instanceId} — ${msg}`);
+      entry.status = 'disconnected';
+      if (entry.backupTimer) { clearInterval(entry.backupTimer); entry.backupTimer = undefined; }
+      try { await client.destroy(); } catch {}
+      // Bozuk session'ı Supabase'den sil — sonraki bağlanmada temiz QR çıksın
+      try {
+        const store = new SupabaseRemoteStore();
+        await store.delete({ session: instanceId });
+        console.log(`[WA-GW] Auth failure: bozuk session silindi (${instanceId})`);
+      } catch {}
+      await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', instanceId);
+      await supabase.from('wa_numbers').update({ status: 'disconnected' })
+        .eq('user_id', userId).eq('status', 'connected');
+      instances.delete(instanceId);
+      reconnectAttempts.delete(instanceId);
+      if (onDisconnected) onDisconnected();
     });
 
     // ── Bağlantı kesildi ──
@@ -778,6 +800,13 @@ export async function heartbeatReconnect(): Promise<void> {
       }
 
       if (inMem.status === 'connected') {
+        // Grace period: ilk 3 dakika heartbeat kontrolü yapma (QR tarama sonrası stabilizasyon)
+        const connectedMs = inMem.connectedAt ? Date.now() - inMem.connectedAt : Infinity;
+        if (connectedMs < 3 * 60 * 1000) {
+          console.log(`[WA-GW] Heartbeat: ${inst.instance_id} grace period (${Math.round(connectedMs / 1000)}s bağlı — atlanıyor)`);
+          continue;
+        }
+
         let forceReconnect = false;
         let reconnectReason = '';
 
@@ -793,10 +822,10 @@ export async function heartbeatReconnect(): Promise<void> {
           reconnectReason = `getState failed: ${pingErr.message}`;
         }
 
-        // Zombie socket: 20+ dakikadır hiç mesaj alınmadıysa
+        // Zombie socket: 90+ dakikadır hiç mesaj alınmadıysa (gerçek kopuk socket tespiti)
         if (!forceReconnect && inMem.lastIncomingAt) {
           const silentMs = Date.now() - inMem.lastIncomingAt;
-          if (silentMs > 20 * 60 * 1000) {
+          if (silentMs > 90 * 60 * 1000) {
             forceReconnect = true;
             reconnectReason = `no incoming for ${Math.round(silentMs / 60000)}min`;
           }
