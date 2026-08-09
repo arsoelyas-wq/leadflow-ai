@@ -23,6 +23,9 @@ interface GatewayInstance {
 
 const instances: Map<string, GatewayInstance> = new Map();
 
+// Yeniden bağlanma denemesi sayacı — exponential backoff için
+const reconnectAttempts = new Map<string, number>();
+
 // Gelen mesaj istatistikleri — /api/wa-debug endpoint'i için
 const incomingStats = {
   lastEventAt: null as string | null,
@@ -156,21 +159,42 @@ async function backupSession(instanceId: string): Promise<void> {
 // Supabase Storage'dan oturum geri yükle
 async function restoreSession(instanceId: string): Promise<boolean> {
   try {
+    await ensureSessionBucket();
     const { data, error } = await supabase.storage
       .from('wa-sessions')
       .download(`${instanceId}.json`);
-    if (error || !data) return false;
+
+    if (error) {
+      // Dosya yok (ilk kez) → normal, warn değil
+      if (error.message.includes('not found') || error.message.includes('Object not found')) {
+        console.log(`[WA-GW] No session in storage for ${instanceId} (first time or wiped)`);
+      } else {
+        console.error(`[WA-GW] restoreSession storage error for ${instanceId}: ${error.message}`);
+      }
+      return false;
+    }
+    if (!data) return false;
 
     const text = await data.text();
-    const sessionData = JSON.parse(text);
-    const dir = authDir(instanceId);
+    if (!text || text.trim() === '{}' || text.trim() === '') {
+      console.warn(`[WA-GW] Session file empty for ${instanceId}`);
+      return false;
+    }
 
+    const sessionData = JSON.parse(text);
+    if (Object.keys(sessionData).length === 0) {
+      console.warn(`[WA-GW] Session data empty for ${instanceId}`);
+      return false;
+    }
+
+    const dir = authDir(instanceId);
     for (const [filename, content] of Object.entries(sessionData)) {
       fs.writeFileSync(path.join(dir, filename), JSON.stringify(content));
     }
-    console.log(`[WA-GW] Session restored for ${instanceId}`);
+    console.log(`[WA-GW] Session restored for ${instanceId} (${Object.keys(sessionData).length} files)`);
     return true;
-  } catch {
+  } catch (e: any) {
+    console.error(`[WA-GW] restoreSession error for ${instanceId}: ${e.message}`);
     return false;
   }
 }
@@ -190,11 +214,17 @@ async function createBaileysInstance(
 
     const dir = authDir(instanceId);
     const { state, saveCreds } = await useMultiFileAuthState(dir);
-    const { version } = await fetchLatestBaileysVersion();
+
+    // fetchLatestBaileysVersion ağ hatasına karşı dayanıklı
+    let version: any = [2, 3000, 1015920]; // bilinen stabil fallback
+    try {
+      const fetched = await fetchLatestBaileysVersion();
+      if (fetched?.version) version = fetched.version;
+    } catch (verErr: any) {
+      console.warn(`[WA-GW] fetchLatestBaileysVersion failed, using fallback: ${verErr.message}`);
+    }
 
     // Signal Protocol anahtarları her değiştiğinde anında Supabase'e yedekle.
-    // useMultiFileAuthState sadece dosyaya yazar; Railway restart'ta eski backup dönebilir.
-    // Bunu intercept edip her key write'tan sonra debounce'lu backup yapıyoruz.
     let _backupDebounce: ReturnType<typeof setTimeout> | null = null;
     const scheduleBackup = () => {
       if (_backupDebounce) clearTimeout(_backupDebounce);
@@ -212,6 +242,11 @@ async function createBaileysInstance(
       printQRInTerminal: false,
       logger: pino({ level: 'warn' }),
       browser: ['LeadFlow AI', 'Chrome', '1.0.0'],
+      keepAliveIntervalMs: 25_000,    // 25s built-in ping — bağlantıyı canlı tutar
+      connectTimeoutMs: 60_000,       // 60s bağlantı timeout
+      retryRequestDelayMs: 500,       // istek retry delay
+      markOnlineOnConnect: false,     // telefon "çevrimiçi" görünmesini engeller (daha stabil)
+      defaultQueryTimeoutMs: 60_000,  // sorgu timeout
     });
 
     const entry: GatewayInstance = { sock, status: 'creating', qr: null, phone: null, userId };
@@ -550,18 +585,26 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
         entry.status = 'connected';
         entry.phone = phone;
         entry.qr = null;
+        // Başarılı bağlantıda retry sayacını sıfırla
+        reconnectAttempts.delete(instanceId);
         console.log(`[WA-GW] Connected: ${instanceId} → ${phone}`);
-        // Bağlantı açılınca session'ı hemen yedekle (creds.update'e ek güvence)
+
+        // Bağlantı açılınca session'ı hemen yedekle
         setTimeout(() => backupSession(instanceId), 2000);
-        // 15 dakikada bir session yedekle — signal protocol key rotasyonlarını kaybetme
-        const backupTimer = setInterval(() => backupSession(instanceId), 15 * 60 * 1000);
+        // 10 dakikada bir session yedekle (önceki 15 → daha sık)
+        const backupTimer = setInterval(() => backupSession(instanceId), 10 * 60 * 1000);
         entry.backupTimer = backupTimer;
 
-        // Her 2 dakikada bir "available" presence gönder — WhatsApp bu cihazı aktif sayar,
-        // gelen mesajları real-time olarak bu session'a iletmeye devam eder
+        // Her 20 saniyede bir "available" presence gönder + socket canlılık doğrula
+        // keepAliveIntervalMs zaten 25s'de ping atıyor, bu ek güvence katmanı
         setInterval(async () => {
-          try { await sock.sendPresenceUpdate('available'); } catch {}
-        }, 2 * 60 * 1000);
+          try {
+            await sock.sendPresenceUpdate('available');
+          } catch (pingErr: any) {
+            // Presence başarısız → socket ölü olabilir, connection.update zaten tetiklenecek
+            console.warn(`[WA-GW] Presence ping failed for ${instanceId}: ${pingErr.message}`);
+          }
+        }, 20 * 1000);
 
         // Bağlantı açılınca son 48 saatte mesaj gönderilen leadlere presence subscribe et
         // Böylece daha önce gönderilen kampanya mesajlarına gelecek cevaplar real-time gelir
@@ -632,17 +675,41 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
         console.log(`[WA-GW] Disconnected: ${instanceId}, code=${code}, reconnect=${shouldReconnect}`);
 
         if (shouldReconnect) {
-          setTimeout(() => createBaileysInstance(instanceId, userId, onQR, onConnected, onDisconnected), 5000);
+          // Exponential backoff: 2s → 4s → 8s → 16s → max 30s + jitter
+          const attempts = (reconnectAttempts.get(instanceId) || 0) + 1;
+          reconnectAttempts.set(instanceId, attempts);
+          const base = Math.min(2000 * Math.pow(2, attempts - 1), 30_000);
+          const jitter = Math.floor(Math.random() * 1000); // 0-1s jitter (storm önleme)
+          const delay = base + jitter;
+          console.log(`[WA-GW] Reconnect attempt ${attempts} in ${Math.round(delay / 1000)}s: ${instanceId}`);
+          setTimeout(() => createBaileysInstance(instanceId, userId, onQR, onConnected, onDisconnected), delay);
         } else {
+          // loggedOut — QR yeniden taranacak
+          reconnectAttempts.delete(instanceId);
           instances.delete(instanceId);
           await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', instanceId);
           await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('user_id', userId).eq('status', 'connected');
+          console.log(`[WA-GW] Logged out: ${instanceId} — QR yeniden taranmalı`);
           if (onDisconnected) onDisconnected();
         }
       }
     });
   } catch (e: any) {
     console.error(`[WA-GW] createBaileysInstance error (${instanceId}):`, e.message);
+    // Crash'te instance'ı temizle + gecikmeli yeniden dene
+    const entry = instances.get(instanceId);
+    if (entry) entry.status = 'disconnected';
+    const attempts = (reconnectAttempts.get(instanceId) || 0) + 1;
+    reconnectAttempts.set(instanceId, attempts);
+    if (attempts <= 5) {
+      const delay = Math.min(5000 * attempts, 30_000);
+      console.log(`[WA-GW] createBaileysInstance crash — retry ${attempts} in ${delay / 1000}s`);
+      setTimeout(() => createBaileysInstance(instanceId, userId, onQR, onConnected, onDisconnected), delay);
+    } else {
+      console.error(`[WA-GW] Max retries (5) reached for ${instanceId} — giving up`);
+      reconnectAttempts.delete(instanceId);
+      instances.delete(instanceId);
+    }
   }
 }
 
@@ -679,21 +746,22 @@ export async function restoreConnectedInstances(): Promise<void> {
 
     console.log(`[WA-GW] Restoring ${toRestore.length} unique instance(s) (${connected.length} total in DB)...`);
     for (const inst of toRestore) {
-      const restored = await restoreSession(inst.instance_id);
-      if (restored) {
-        console.log(`[WA-GW] Session dosyası bulundu — Baileys başlatılıyor: ${inst.instance_id}`);
+      const dir = authDir(inst.instance_id);
+      const hasLocalFiles = fs.existsSync(dir) && fs.readdirSync(dir).length > 0;
+
+      if (hasLocalFiles) {
+        // Aynı container restart — local dosyalar zaten var, hemen başlat
+        console.log(`[WA-GW] Local session dosyası var — Baileys başlatılıyor: ${inst.instance_id}`);
         await createBaileysInstance(inst.instance_id, inst.user_id);
       } else {
-        // Session Storage'da yok — ama auth dizini mevcut olabilir (aynı container restart)
-        // Her durumda instance'ı başlat: ya local dosyadan login olur ya QR çıkar
-        const dir = authDir(inst.instance_id);
-        const hasLocalFiles = fs.existsSync(dir) && fs.readdirSync(dir).length > 0;
-        if (hasLocalFiles) {
-          console.log(`[WA-GW] Storage yok ama local auth dosyası var — yeniden başlatılıyor: ${inst.instance_id}`);
+        // Yeni container (Railway deploy/restart) — Supabase'den restore et
+        const restored = await restoreSession(inst.instance_id);
+        if (restored) {
+          console.log(`[WA-GW] Storage'dan session restore edildi — Baileys başlatılıyor: ${inst.instance_id}`);
           await createBaileysInstance(inst.instance_id, inst.user_id);
         } else {
-          // Tamamen kayıp — bağlantı kesildi, kullanıcı yeniden QR tarayacak
-          console.log(`[WA-GW] Session bulunamadı: ${inst.instance_id} — disconnected`);
+          // Session hiç yok — QR taranacak, kullanıcı bilgilendirilmeli
+          console.warn(`[WA-GW] Session bulunamadı: ${inst.instance_id} — QR yeniden taranmalı`);
           await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
           await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('user_id', inst.user_id).eq('status', 'connected');
         }
@@ -765,8 +833,8 @@ export function listInstances(): Array<{ instanceId: string; status: string; pho
   }));
 }
 
-// ── Heartbeat: DB'de 'connected' ama bellekte olmayan instance'ları kurtarır ──
-// Her 90 saniyede bir çalışır (index.ts'den çağrılır)
+// ── Heartbeat: DB'de 'connected' ama bellekte olmayan/kopuk instance'ları kurtarır ──
+// index.ts'den çağrılır
 export async function heartbeatReconnect(): Promise<void> {
   try {
     const { data: dbInstances } = await supabase
@@ -778,11 +846,41 @@ export async function heartbeatReconnect(): Promise<void> {
 
     for (const inst of dbInstances) {
       const inMem = instances.get(inst.instance_id);
+
+      // 1. Bellekte yok veya disconnected → yeniden başlat
       if (!inMem || inMem.status === 'disconnected') {
+        // Zaten aktif bir reconnect denemesi varsa atla (fırtına önleme)
+        const attempts = reconnectAttempts.get(inst.instance_id) || 0;
+        if (attempts > 0) {
+          console.log(`[WA-GW] Heartbeat: ${inst.instance_id} zaten reconnect sürecinde (attempt ${attempts}), atlanıyor`);
+          continue;
+        }
         console.log(`[WA-GW] Heartbeat: ${inst.instance_id} bellekte yok — yeniden bağlanılıyor`);
-        const restored = await restoreSession(inst.instance_id);
-        if (restored || (fs.existsSync(authDir(inst.instance_id)) && fs.readdirSync(authDir(inst.instance_id)).length > 0)) {
+        const hasLocal = fs.existsSync(authDir(inst.instance_id)) && fs.readdirSync(authDir(inst.instance_id)).length > 0;
+        const restored = hasLocal ? true : await restoreSession(inst.instance_id);
+        if (restored) {
           await createBaileysInstance(inst.instance_id, inst.user_id);
+        } else {
+          console.log(`[WA-GW] Heartbeat: session bulunamadı — ${inst.instance_id} disconnected`);
+          await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
+        }
+        continue;
+      }
+
+      // 2. Bellekte var ve connected → socket canlılık doğrula
+      if (inMem.status === 'connected') {
+        try {
+          // Boş bir presence update gönder — socket ölüyse exception fırlatır
+          await inMem.sock.sendPresenceUpdate('available');
+        } catch (pingErr: any) {
+          console.warn(`[WA-GW] Heartbeat ping failed for ${inst.instance_id}: ${pingErr.message} — force reconnect`);
+          inMem.status = 'disconnected';
+          if (inMem.backupTimer) { clearInterval(inMem.backupTimer); inMem.backupTimer = undefined; }
+          // Hemen yeniden bağlan (backoff ile)
+          const attempts = (reconnectAttempts.get(inst.instance_id) || 0) + 1;
+          reconnectAttempts.set(inst.instance_id, attempts);
+          const delay = Math.min(2000 * Math.pow(2, attempts - 1), 15_000);
+          setTimeout(() => createBaileysInstance(inst.instance_id, inst.user_id), delay);
         }
       }
     }

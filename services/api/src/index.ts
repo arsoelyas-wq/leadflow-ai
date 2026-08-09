@@ -487,8 +487,8 @@ setTimeout(async () => {
   try {
     const { restoreConnectedInstances, heartbeatReconnect } = require('./lib/waGateway');
     await restoreConnectedInstances();
-    // Her 90 saniyede heartbeat: DB'de connected ama bellekte olmayan socket'ları kurtarır
-    setInterval(heartbeatReconnect, 90_000);
+    // Her 60 saniyede heartbeat: bellekte olmayan veya ölü socket'ları tespit edip kurtarır
+    setInterval(heartbeatReconnect, 60_000);
   } catch (e: any) {
     console.error('[WA-GW] Startup restore error:', e.message);
   }
