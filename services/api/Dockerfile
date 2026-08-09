@@ -33,10 +33,6 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-# Write .gitconfig to rewrite SSH GitHub URLs to HTTPS
-# (@whiskeysockets/baileys fetches libsignal-node via ssh:// which Docker cannot resolve)
-RUN printf '[url "https://github.com/"]\n\tinsteadOf = git+ssh://git@github.com/\n\tinsteadOf = ssh://git@github.com/\n\tinsteadOf = git@github.com:\n' > /root/.gitconfig
-
 COPY package.json ./
 COPY tsconfig.json ./
 

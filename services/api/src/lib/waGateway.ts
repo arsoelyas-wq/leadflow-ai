@@ -1,6 +1,7 @@
 export {};
-// Embedded WhatsApp Gateway — Baileys + Supabase session persistence
-// Replaces external gateway at 207.154.248.119:3003
+// WhatsApp Gateway — whatsapp-web.js (gerçek tarayıcı, Baileys'ın yerini aldı)
+// Baileys ile sorun: WA zaman zaman gelen mesajları oturuma iletmeyi kesiyordu (zombie socket).
+// whatsapp-web.js gerçek Chromium çalıştırır → WA onu normal tarayıcı olarak görür → stabil.
 
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
@@ -13,21 +14,18 @@ const supabase = createClient(
 );
 
 interface GatewayInstance {
-  sock: any;
+  client: any;
   status: 'creating' | 'qr_ready' | 'connected' | 'disconnected';
   qr: string | null;
   phone: string | null;
   userId: string;
   backupTimer?: ReturnType<typeof setInterval>;
-  lastIncomingAt?: number; // WA mesaj alınan son zaman (zombie socket tespiti)
+  lastIncomingAt?: number;
 }
 
 const instances: Map<string, GatewayInstance> = new Map();
-
-// Yeniden bağlanma denemesi sayacı — exponential backoff için
 const reconnectAttempts = new Map<string, number>();
 
-// Gelen mesaj istatistikleri — /api/wa-debug endpoint'i için
 const incomingStats = {
   lastEventAt: null as string | null,
   totalEvents: 0,
@@ -38,17 +36,103 @@ const incomingStats = {
 };
 export function getIncomingStats() { return { ...incomingStats }; }
 
-// Eş zamanlı aynı telefon numarasından lead oluşturmayı önler
 const leadCreationInProgress = new Set<string>();
 
-// Aynı telefon numarasına sahip duplicate leadleri birleştirir
+// ── Session persistence: Supabase Storage RemoteAuth store ──────────────────
+
+let sessionBucketReady = false;
+async function ensureSessionBucket(): Promise<void> {
+  if (sessionBucketReady) return;
+  try {
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    if (error) throw error;
+    const exists = (buckets || []).some((b: any) => b.name === 'wa-sessions');
+    if (!exists) {
+      const { error: createErr } = await supabase.storage.createBucket('wa-sessions', {
+        public: false,
+        fileSizeLimit: 50 * 1024 * 1024,
+      });
+      if (createErr && !createErr.message.includes('already exists')) throw createErr;
+      console.log('[WA-GW] wa-sessions bucket created');
+    }
+    sessionBucketReady = true;
+  } catch (e: any) {
+    console.error('[WA-GW] ensureSessionBucket error:', e.message);
+  }
+}
+
+// whatsapp-web.js RemoteAuth store interface:
+// save({ session })       → wwjs zip'i .wwebjs_backup/{session}.zip'e yazar, biz Supabase'e yükleriz
+// extract({ session, path }) → Supabase'den zip'i indirip path'e yazarız, wwjs oradan açar
+// sessionExists({ session })  → session daha önce kaydedilmiş mi?
+// delete({ session })     → Supabase'den sil
+class SupabaseRemoteStore {
+  async sessionExists({ session }: { session: string }): Promise<boolean> {
+    try {
+      await ensureSessionBucket();
+      const { data } = await supabase.storage.from('wa-sessions').list('', { search: `${session}.zip` });
+      return (data || []).some((f: any) => f.name === `${session}.zip`);
+    } catch { return false; }
+  }
+
+  async save({ session }: { session: string }): Promise<void> {
+    try {
+      const zipPath = path.join(process.cwd(), '.wwebjs_backup', `${session}.zip`);
+      if (!fs.existsSync(zipPath)) {
+        console.warn(`[WA-GW] RemoteAuth save: zip yok → ${zipPath}`);
+        return;
+      }
+      const data = fs.readFileSync(zipPath);
+      const { error } = await supabase.storage.from('wa-sessions').upload(`${session}.zip`, data, {
+        contentType: 'application/zip',
+        upsert: true,
+      });
+      if (error) throw error;
+      console.log(`[WA-GW] Session saved: ${session} (${data.length} bytes)`);
+    } catch (e: any) {
+      console.error(`[WA-GW] RemoteAuth save error: ${e.message}`);
+    }
+  }
+
+  async extract({ session, path: destPath }: { session: string; path: string }): Promise<void> {
+    try {
+      await ensureSessionBucket();
+      const { data, error } = await supabase.storage.from('wa-sessions').download(`${session}.zip`);
+      if (error) {
+        if (error.message?.includes('not found') || error.message?.includes('Object not found')) {
+          console.log(`[WA-GW] Storage'da session yok: ${session} (ilk kez veya silindi)`);
+        } else {
+          console.error(`[WA-GW] RemoteAuth extract error: ${error.message}`);
+        }
+        return;
+      }
+      if (!data) return;
+      const buf = Buffer.from(await data.arrayBuffer());
+      const dir = path.dirname(destPath);
+      if (dir) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(destPath, buf);
+      console.log(`[WA-GW] Session extracted: ${session} → ${destPath}`);
+    } catch (e: any) {
+      console.error(`[WA-GW] RemoteAuth extract error: ${e.message}`);
+    }
+  }
+
+  async delete({ session }: { session: string }): Promise<void> {
+    try {
+      await supabase.storage.from('wa-sessions').remove([`${session}.zip`]);
+    } catch {}
+  }
+}
+
+// ── Duplicate lead birleştirme (değişmedi) ───────────────────────────────────
+
 export async function deduplicatePhoneLeads(userId: string, sb?: any): Promise<{ merged: number; deleted: number }> {
   const client = sb || supabase;
   const { data: leads } = await client.from('leads')
     .select('id, phone, company_name, contact_name, created_at')
     .eq('user_id', userId)
     .not('phone', 'is', null)
-    .order('created_at', { ascending: true }); // oldest first
+    .order('created_at', { ascending: true });
 
   if (!leads?.length) return { merged: 0, deleted: 0 };
 
@@ -65,24 +149,17 @@ export async function deduplicatePhoneLeads(userId: string, sb?: any): Promise<{
   for (const [, groupLeads] of phoneGroups) {
     if (groupLeads.length < 2) continue;
 
-    // Hangi lead'i "asıl" seçeceğimizi belirle:
-    // 1. Outbound mesajı olan lead'i tercih et (kullanıcının mesaj gönderdiği)
-    // 2. Sonra isimli lead'i tercih et (+ veya rakamla başlamayan)
-    // 3. Son olarak en eski lead
     const leadIds = groupLeads.map((l: any) => l.id);
     const { data: outMsgs } = await client.from('messages')
-      .select('lead_id')
-      .eq('user_id', userId)
-      .eq('direction', 'out')
-      .in('lead_id', leadIds)
-      .limit(1);
+      .select('lead_id').eq('user_id', userId).eq('direction', 'out')
+      .in('lead_id', leadIds).limit(1);
     const hasOutbound = outMsgs?.length ? outMsgs[0].lead_id : null;
 
     let target = hasOutbound
       ? groupLeads.find((l: any) => l.id === hasOutbound) || groupLeads[0]
       : groupLeads.find((l: any) => {
           const n = l.company_name || l.contact_name || '';
-          return n && !n.startsWith('+') && !/^\d+$/.test(n);
+          return /[a-zA-ZğüşıöçĞÜŞİÖÇâîûÂÎÛ]/i.test(n);
         }) || groupLeads[0];
 
     const sources = groupLeads.filter((l: any) => l.id !== target.id);
@@ -92,115 +169,14 @@ export async function deduplicatePhoneLeads(userId: string, sb?: any): Promise<{
       deleted++;
     }
     merged++;
-    console.log(`[WA-GW] Dedup: merged ${sources.length} duplicates → lead ${target.id} (${target.company_name || target.contact_name})`);
+    console.log(`[WA-GW] Dedup: ${sources.length} duplicate → lead ${target.id} (${target.company_name || target.contact_name})`);
   }
   return { merged, deleted };
 }
 
-// wa-sessions bucket'ının varlığını garantile (Railway deploy'larında sıfırdan yaratılır)
-let sessionBucketReady = false;
-async function ensureSessionBucket(): Promise<void> {
-  if (sessionBucketReady) return;
-  try {
-    const { data: buckets, error } = await supabase.storage.listBuckets();
-    if (error) throw error;
-    const exists = (buckets || []).some((b: any) => b.name === 'wa-sessions');
-    if (!exists) {
-      const { error: createErr } = await supabase.storage.createBucket('wa-sessions', {
-        public: false,
-        fileSizeLimit: 5 * 1024 * 1024, // 5MB — session dosyaları küçük
-      });
-      if (createErr && !createErr.message.includes('already exists')) throw createErr;
-      console.log('[WA-GW] wa-sessions storage bucket oluşturuldu');
-    }
-    sessionBucketReady = true;
-  } catch (e: any) {
-    console.error('[WA-GW] ensureSessionBucket error:', e.message);
-  }
-}
+// ── Ana instance oluşturucu ───────────────────────────────────────────────────
 
-function authDir(instanceId: string): string {
-  const base = process.env.WA_AUTH_DIR || '/tmp';
-  const dir = path.join(base, 'gw_auth', instanceId);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-// Supabase Storage'a oturum yedekle
-async function backupSession(instanceId: string): Promise<void> {
-  try {
-    await ensureSessionBucket();
-    const dir = authDir(instanceId);
-    const files = fs.readdirSync(dir);
-    const sessionData: Record<string, any> = {};
-    for (const f of files) {
-      try {
-        const content = fs.readFileSync(path.join(dir, f), 'utf8');
-        sessionData[f] = JSON.parse(content);
-      } catch {}
-    }
-    if (Object.keys(sessionData).length === 0) return;
-
-    const jsonStr = JSON.stringify(sessionData);
-    const buf = Buffer.from(jsonStr, 'utf8');
-
-    const { error } = await supabase.storage
-      .from('wa-sessions')
-      .upload(`${instanceId}.json`, buf, {
-        contentType: 'application/json',
-        upsert: true,
-      });
-    if (error) throw error;
-    console.log(`[WA-GW] Session backed up: ${instanceId}`);
-  } catch (e: any) {
-    console.error(`[WA-GW] Backup failed for ${instanceId}:`, e.message);
-  }
-}
-
-// Supabase Storage'dan oturum geri yükle
-async function restoreSession(instanceId: string): Promise<boolean> {
-  try {
-    await ensureSessionBucket();
-    const { data, error } = await supabase.storage
-      .from('wa-sessions')
-      .download(`${instanceId}.json`);
-
-    if (error) {
-      // Dosya yok (ilk kez) → normal, warn değil
-      if (error.message.includes('not found') || error.message.includes('Object not found')) {
-        console.log(`[WA-GW] No session in storage for ${instanceId} (first time or wiped)`);
-      } else {
-        console.error(`[WA-GW] restoreSession storage error for ${instanceId}: ${error.message}`);
-      }
-      return false;
-    }
-    if (!data) return false;
-
-    const text = await data.text();
-    if (!text || text.trim() === '{}' || text.trim() === '') {
-      console.warn(`[WA-GW] Session file empty for ${instanceId}`);
-      return false;
-    }
-
-    const sessionData = JSON.parse(text);
-    if (Object.keys(sessionData).length === 0) {
-      console.warn(`[WA-GW] Session data empty for ${instanceId}`);
-      return false;
-    }
-
-    const dir = authDir(instanceId);
-    for (const [filename, content] of Object.entries(sessionData)) {
-      fs.writeFileSync(path.join(dir, filename), JSON.stringify(content));
-    }
-    console.log(`[WA-GW] Session restored for ${instanceId} (${Object.keys(sessionData).length} files)`);
-    return true;
-  } catch (e: any) {
-    console.error(`[WA-GW] restoreSession error for ${instanceId}: ${e.message}`);
-    return false;
-  }
-}
-
-async function createBaileysInstance(
+async function createWWebInstance(
   instanceId: string,
   userId: string,
   onQR?: (qr: string) => void,
@@ -208,358 +184,368 @@ async function createBaileysInstance(
   onDisconnected?: () => void,
 ): Promise<void> {
   try {
-    const baileys = await import('@whiskeysockets/baileys');
-    const makeWASocket = baileys.default;
-    const { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = baileys;
-    const pino = require('pino');
+    const { Client, RemoteAuth } = require('whatsapp-web.js');
+    const qrcode = require('qrcode');
 
-    const dir = authDir(instanceId);
-    const { state, saveCreds } = await useMultiFileAuthState(dir);
+    await ensureSessionBucket();
 
-    // fetchLatestBaileysVersion ağ hatasına karşı dayanıklı
-    let version: any = [2, 3000, 1015920]; // bilinen stabil fallback
-    try {
-      const fetched = await fetchLatestBaileysVersion();
-      if (fetched?.version) version = fetched.version;
-    } catch (verErr: any) {
-      console.warn(`[WA-GW] fetchLatestBaileysVersion failed, using fallback: ${verErr.message}`);
-    }
-
-    // Signal Protocol anahtarları her değiştiğinde anında Supabase'e yedekle.
-    let _backupDebounce: ReturnType<typeof setTimeout> | null = null;
-    const scheduleBackup = () => {
-      if (_backupDebounce) clearTimeout(_backupDebounce);
-      _backupDebounce = setTimeout(() => backupSession(instanceId).catch(() => {}), 800);
-    };
-    const origKeysSet = state.keys.set.bind(state.keys);
-    state.keys.set = async (...args: any[]) => {
-      await origKeysSet(...args);
-      scheduleBackup();
-    };
-
-    const sock = makeWASocket({
-      version,
-      auth: state,
-      printQRInTerminal: false,
-      logger: pino({ level: 'warn' }),
-      browser: ['LeadFlow AI', 'Chrome', '1.0.0'],
-      keepAliveIntervalMs: 25_000,    // 25s built-in ping — bağlantıyı canlı tutar
-      connectTimeoutMs: 60_000,       // 60s bağlantı timeout
-      retryRequestDelayMs: 500,       // istek retry delay
-      markOnlineOnConnect: false,     // telefon "çevrimiçi" görünmesini engeller (daha stabil)
-      defaultQueryTimeoutMs: 60_000,  // sorgu timeout
+    const client = new Client({
+      authStrategy: new RemoteAuth({
+        clientId: instanceId,
+        dataPath: process.env.WA_AUTH_DIR || '/tmp/wweb_data',
+        store: new SupabaseRemoteStore(),
+        backupSyncIntervalMs: 10 * 60 * 1000,
+      }),
+      puppeteer: {
+        headless: true,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu',
+          '--disable-extensions',
+          '--disable-default-apps',
+          '--mute-audio',
+        ],
+      },
     });
 
-    const entry: GatewayInstance = { sock, status: 'creating', qr: null, phone: null, userId };
+    const entry: GatewayInstance = { client, status: 'creating', qr: null, phone: null, userId };
     instances.set(instanceId, entry);
 
-    sock.ev.on('creds.update', async () => {
-      await saveCreds();
-      await backupSession(instanceId); // Creds değişince hemen yedekle
+    // ── QR kodu ──
+    client.on('qr', async (qr: string) => {
+      try {
+        const qrDataUrl = await qrcode.toDataURL(qr);
+        entry.status = 'qr_ready';
+        entry.qr = qrDataUrl;
+        console.log(`[WA-GW] QR ready: ${instanceId}`);
+        if (onQR) onQR(qrDataUrl);
+      } catch (e: any) {
+        console.error(`[WA-GW] QR error: ${e.message}`);
+      }
     });
 
-    // ── Gelen mesajları kaydet + keyword detection + auto-reply ────────────────
-    sock.ev.on('messages.upsert', async ({ messages: incomingMsgs, type }: any) => {
+    // ── Bağlantı hazır ──
+    client.on('ready', async () => {
+      const phone = client.info?.wid?.user || '';
+      entry.status = 'connected';
+      entry.phone = phone;
+      entry.qr = null;
+      reconnectAttempts.delete(instanceId);
+      console.log(`[WA-GW] Connected: ${instanceId} → ${phone}`);
+
+      const backupTimer = setInterval(() => {
+        console.log(`[WA-GW] Session backup tick: ${instanceId}`);
+      }, 10 * 60 * 1000);
+      entry.backupTimer = backupTimer;
+
+      // Duplicate instance'ları DB'de kapat
+      await supabase.from('wa_instances')
+        .update({ status: 'disconnected' })
+        .eq('phone', phone)
+        .neq('instance_id', instanceId);
+      await supabase.from('wa_instances').update({
+        status: 'connected',
+        phone,
+        connected_at: new Date().toISOString(),
+      }).eq('instance_id', instanceId);
+
+      // wa_numbers senkronize et
+      const { data: numByPhone } = await supabase.from('wa_numbers')
+        .select('id').eq('user_id', userId).eq('phone_number', phone).maybeSingle();
+      if (numByPhone) {
+        await supabase.from('wa_numbers').update({ status: 'connected' }).eq('id', numByPhone.id);
+      } else {
+        const { data: anyNum } = await supabase.from('wa_numbers')
+          .select('id').eq('user_id', userId)
+          .in('status', ['connecting', 'disconnected'])
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (anyNum) {
+          await supabase.from('wa_numbers').update({
+            status: 'connected', phone_number: phone,
+          }).eq('id', anyNum.id);
+        }
+      }
+      console.log(`[WA-GW] wa_numbers synced for ${phone}`);
+
+      setTimeout(() => deduplicatePhoneLeads(userId, supabase), 8000);
+      if (onConnected) onConnected(phone);
+    });
+
+    // ── RemoteAuth session kaydedildi ──
+    client.on('remote_session_saved', () => {
+      console.log(`[WA-GW] Remote session saved: ${instanceId}`);
+    });
+
+    // ── Bağlantı kesildi ──
+    client.on('disconnected', async (reason: string) => {
+      entry.status = 'disconnected';
+      if (entry.backupTimer) { clearInterval(entry.backupTimer); entry.backupTimer = undefined; }
+      console.log(`[WA-GW] Disconnected: ${instanceId}, reason=${reason}`);
+
+      try { await client.destroy(); } catch {}
+
+      if (reason !== 'LOGOUT') {
+        const attempts = (reconnectAttempts.get(instanceId) || 0) + 1;
+        reconnectAttempts.set(instanceId, attempts);
+        const base = Math.min(2000 * Math.pow(2, attempts - 1), 30_000);
+        const jitter = Math.floor(Math.random() * 1000);
+        const delay = base + jitter;
+        console.log(`[WA-GW] Reconnect ${attempts} in ${Math.round(delay / 1000)}s: ${instanceId}`);
+        setTimeout(() => createWWebInstance(instanceId, userId, onQR, onConnected, onDisconnected), delay);
+      } else {
+        // Logout → QR yeniden taranacak
+        reconnectAttempts.delete(instanceId);
+        instances.delete(instanceId);
+        await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', instanceId);
+        await supabase.from('wa_numbers').update({ status: 'disconnected' })
+          .eq('user_id', userId).eq('status', 'connected');
+        console.log(`[WA-GW] Logged out: ${instanceId} — QR yeniden taranmalı`);
+        if (onDisconnected) onDisconnected();
+      }
+    });
+
+    // ── Gelen mesaj işleyici ─────────────────────────────────────────────────
+    client.on('message', async (msg: any) => {
       incomingStats.totalEvents++;
       incomingStats.lastEventAt = new Date().toISOString();
-      // lastIncomingAt güncelle — zombie socket tespiti için
       const inst = instances.get(instanceId);
       if (inst) inst.lastIncomingAt = Date.now();
-      console.log(`[WA-GW] messages.upsert event: type=${type}, count=${incomingMsgs?.length}`);
 
-      // Her iki tip için de işle — ama 'append'de sadece son 24 saatteki mesajları al
-      if (type !== 'notify' && type !== 'append') {
-        console.log(`[WA-GW] Unhandled message type: ${type} — skipping`);
+      if (msg.fromMe) { incomingStats.filtered.fromMe++; return; }
+
+      const from = msg.from || '';
+      // Sadece bireysel WA mesajları (@c.us) — gruplar, broadcast kanallar değil
+      if (!from.endsWith('@c.us')) {
+        incomingStats.filtered.notWhatsapp++;
+        console.log(`[WA-GW] Filtered non-individual: ${from}`);
         return;
       }
 
-      for (const msg of incomingMsgs) {
-        incomingStats.totalMessages++;
-        if (msg.key?.fromMe === true) { incomingStats.filtered.fromMe++; continue; }
+      const senderPhone = from.replace('@c.us', '');
+      const senderDigits = senderPhone.replace(/\D/g, '');
+      if (!senderDigits || senderDigits.length < 7) { incomingStats.filtered.shortPhone++; return; }
 
-        // 'append' tipinde 24 saatten eski mesajları atla
-        if (type === 'append' && msg.messageTimestamp) {
-          const ageMs = Date.now() - Number(msg.messageTimestamp) * 1000;
-          if (ageMs > 24 * 60 * 60 * 1000) continue;
-        }
+      incomingStats.totalMessages++;
+      const waMessageId = msg.id?.id || null;
 
-        const remoteJid = msg.key?.remoteJid || '';
-        if (!remoteJid.endsWith('@s.whatsapp.net')) { incomingStats.filtered.notWhatsapp++; console.log(`[WA-GW] Filtered non-WA jid: ${remoteJid}`); continue; }
+      // Erken deduplikasyon
+      if (waMessageId) {
+        const { count: dupCount } = await supabase.from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .filter('metadata->>wa_message_id', 'eq', waMessageId);
+        if ((dupCount || 0) > 0) { console.log(`[WA-GW] Dup skip: ${waMessageId}`); return; }
+      }
 
-        const senderPhone = remoteJid.replace('@s.whatsapp.net', '');
-        const senderDigits = senderPhone.replace(/\D/g, '');
-        if (!senderDigits || senderDigits.length < 7) { incomingStats.filtered.shortPhone++; continue; }
+      const content = msg.body || '';
+      const sentAt = msg.timestamp
+        ? new Date(Number(msg.timestamp) * 1000).toISOString()
+        : new Date().toISOString();
 
-        const senderLast10 = senderDigits.slice(-10);
-        const waJid = `${senderDigits.startsWith('90') ? senderDigits : '90' + senderDigits.slice(-10)}@s.whatsapp.net`;
-        const waMessageId = msg.key?.id || null;
+      console.log(`[WA-GW] Incoming from ${senderPhone} msgId=${waMessageId}`);
 
-        // Erken deduplikasyon: aynı WA mesaj ID'si zaten kaydedilmişse atla
-        if (waMessageId) {
-          const { count: dupCount } = await supabase
-            .from('messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', userId)
-            .filter('metadata->>wa_message_id', 'eq', waMessageId);
-          if ((dupCount || 0) > 0) {
-            console.log(`[WA-GW] Dup skip: ${waMessageId}`);
-            continue;
-          }
-        }
+      let savedLead: any = null;
+      let finalStatus = '';
 
-        // Tüm mesaj tiplerinden içerik çıkar
-        const msgBody = msg.message;
-        const content = msgBody?.conversation
-          || msgBody?.extendedTextMessage?.text
-          || msgBody?.imageMessage?.caption
-          || msgBody?.videoMessage?.caption
-          || msgBody?.documentMessage?.caption
-          || msgBody?.buttonsResponseMessage?.selectedDisplayText
-          || msgBody?.listResponseMessage?.title
-          || msgBody?.templateMessage?.hydratedTemplate?.hydratedContentText
-          || '';
+      try {
+        const normalizedSender = normalizePhone(senderDigits);
 
-        const sentAt = msg.messageTimestamp
-          ? new Date(Number(msg.messageTimestamp) * 1000).toISOString()
-          : new Date().toISOString();
+        const { data: allLeads, error: allLeadsErr } = await supabase
+          .from('leads')
+          .select('id, phone, company_name, contact_name, status, notes, auto_reply_enabled')
+          .eq('user_id', userId)
+          .not('phone', 'is', null);
 
-        console.log(`[WA-GW] Incoming from ${senderPhone} msgId=${waMessageId}`);
+        if (allLeadsErr) console.error(`[WA-GW] allLeads query error: ${allLeadsErr.message}`);
 
-        let savedLead: any = null;
-        let finalStatus = '';
+        const matchedLeads = (allLeads || []).filter((l: any) => phonesMatch(l.phone, senderDigits));
+        let lead: any = null;
 
-        try {
-          // Normalize edilmiş telefon ile lead eşleştir
-          const normalizedSender = normalizePhone(senderDigits);
-
-          const { data: allLeads, error: allLeadsErr } = await supabase
-            .from('leads')
-            .select('id, phone, company_name, contact_name, status, notes, auto_reply_enabled')
-            .eq('user_id', userId)
-            .not('phone', 'is', null);
-
-          if (allLeadsErr) console.error(`[WA-GW] allLeads query error: ${allLeadsErr.message}`);
-
-          // Tüm eşleşen lead'leri bul
-          const matchedLeads = (allLeads || []).filter((l: any) => phonesMatch(l.phone, senderDigits));
-          let lead: any = null;
-          if (matchedLeads.length === 1) {
-            lead = matchedLeads[0];
-          } else if (matchedLeads.length > 1) {
-            // Çok eşleşme — en iyi lead'i seç:
-            // 1. En az bir harf içeren ismi olan lead (gerçek ad, telefon numarası değil)
-            const namedLead = matchedLeads.find((l: any) => {
-              const n = (l.company_name || l.contact_name || '').trim();
-              return /[a-zA-ZğüşıöçĞÜŞİÖÇâîûÂÎÛ]/i.test(n); // harf varsa gerçek isim
-            });
-            if (namedLead) {
-              lead = namedLead;
-            } else {
-              // 2. Outbound mesajı olan lead'i bul (kullanıcının mesaj gönderdiği)
-              const { data: outboundMsg } = await supabase
-                .from('messages')
-                .select('lead_id')
-                .eq('user_id', userId)
-                .eq('direction', 'out')
-                .in('lead_id', matchedLeads.map((l: any) => l.id))
-                .order('sent_at', { ascending: false })
-                .limit(1);
-              const outLeadId = outboundMsg?.[0]?.lead_id;
-              lead = (outLeadId ? matchedLeads.find((l: any) => l.id === outLeadId) : null) || matchedLeads[0];
-            }
-            console.log(`[WA-GW] Multi-match: ${matchedLeads.length} leads for ${normalizedSender}, picked: ${lead.id} (${lead.company_name || lead.contact_name || 'no-name'})`);
-          }
-
-          console.log(`[WA-GW] Lead match: userId=${userId} sender=${normalizedSender} allLeadsCount=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
-
-          let isNewLead = false;
-          if (!lead) {
-            // Eş zamanlı aynı telefon için lead oluşturmayı önle (race condition fix)
-            const lockKey = `${userId}:${normalizedSender}`;
-            if (leadCreationInProgress.has(lockKey)) {
-              await new Promise(r => setTimeout(r, 400));
-              const { data: fresh } = await supabase.from('leads')
-                .select('id, phone, status, notes, auto_reply_enabled')
-                .eq('user_id', userId).not('phone', 'is', null);
-              lead = (fresh || []).find((l: any) => phonesMatch(l.phone, senderDigits));
-            } else {
-              leadCreationInProgress.add(lockKey);
-              try {
-                const displayPhone = `+${normalizedSender}`;
-                const { data: newLead } = await supabase.from('leads').insert([{
-                  user_id: userId,
-                  phone: normalizedSender, // Normalize edilmiş format
-                  company_name: displayPhone,
-                  source: 'WhatsApp Gelen',
-                  status: 'new',
-                  score: 50,
-                }]).select().single();
-                lead = newLead;
-                isNewLead = true;
-                console.log(`[WA-GW] New lead from unknown WA sender: ${displayPhone}`);
-              } finally {
-                leadCreationInProgress.delete(lockKey);
-              }
-            }
-          }
-
-          if (!lead) continue;
-          savedLead = lead;
-
-          // Yeni lead oluşturulduysa hemen dedup çalıştır
-          if (isNewLead) {
-            setTimeout(() => deduplicatePhoneLeads(userId, supabase).catch(() => {}), 300);
-          }
-
-          // Mesajı kaydet
-          const { error: msgErr } = await supabase.from('messages').insert([{
-            lead_id: lead.id,
-            user_id: userId,
-            channel: 'whatsapp',
-            direction: 'in',
-            content: content || '[Medya]',
-            status: 'received',
-            sent_at: sentAt,
-            read: false,
-            metadata: waMessageId ? { wa_message_id: waMessageId } : null,
-          }]);
-          if (msgErr) {
-            incomingStats.errors++;
-            console.error(`[WA-GW] Message insert error: ${msgErr.message} (lead=${lead.id}, from=${senderPhone})`);
+        if (matchedLeads.length === 1) {
+          lead = matchedLeads[0];
+        } else if (matchedLeads.length > 1) {
+          const namedLead = matchedLeads.find((l: any) => {
+            const n = (l.company_name || l.contact_name || '').trim();
+            return /[a-zA-ZğüşıöçĞÜŞİÖÇâîûÂÎÛ]/i.test(n);
+          });
+          if (namedLead) {
+            lead = namedLead;
           } else {
-            incomingStats.saved++;
-            console.log(`[WA-GW] ✓ Mesaj DB'ye kaydedildi: ${senderPhone} → lead ${lead.id}`);
+            const { data: outboundMsg } = await supabase.from('messages')
+              .select('lead_id').eq('user_id', userId).eq('direction', 'out')
+              .in('lead_id', matchedLeads.map((l: any) => l.id))
+              .order('sent_at', { ascending: false }).limit(1);
+            const outLeadId = outboundMsg?.[0]?.lead_id;
+            lead = (outLeadId ? matchedLeads.find((l: any) => l.id === outLeadId) : null) || matchedLeads[0];
+          }
+          console.log(`[WA-GW] Multi-match: ${matchedLeads.length} lead, picked: ${lead.id} (${lead.company_name || lead.contact_name || 'no-name'})`);
+        }
 
-            // Gerçek zamanlı push — bağlı frontend SSE istemcilerine bildir
+        console.log(`[WA-GW] Lead match: userId=${userId} sender=${normalizedSender} allLeads=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
+
+        let isNewLead = false;
+        if (!lead) {
+          const lockKey = `${userId}:${normalizedSender}`;
+          if (leadCreationInProgress.has(lockKey)) {
+            await new Promise(r => setTimeout(r, 400));
+            const { data: fresh } = await supabase.from('leads')
+              .select('id, phone, status, notes, auto_reply_enabled')
+              .eq('user_id', userId).not('phone', 'is', null);
+            lead = (fresh || []).find((l: any) => phonesMatch(l.phone, senderDigits));
+          } else {
+            leadCreationInProgress.add(lockKey);
             try {
-              const { ssePush } = require('./sseHub');
-              ssePush(userId, 'new_message', {
-                leadId: lead.id,
-                content: content || '[Medya]',
-                sentAt,
-                direction: 'in',
-                channel: 'whatsapp',
-                senderPhone: normalizedSender,
-              });
-            } catch { /* sseHub mevcut değilse sessizce devam */ }
-
-            // Kampanya total_replied sayacını güncelle — bu lead'in ilk cevabıysa
-            try {
-              const { count: prevInCount } = await supabase
-                .from('messages')
-                .select('id', { count: 'exact', head: true })
-                .eq('lead_id', lead.id)
-                .eq('user_id', userId)
-                .eq('direction', 'in');
-
-              // count == 1 → az önce eklediğimiz mesaj, ilk cevap
-              if ((prevInCount || 0) <= 1) {
-                const { data: campaigns } = await supabase
-                  .from('campaigns')
-                  .select('id, total_replied')
-                  .eq('user_id', userId)
-                  .contains('lead_ids', [lead.id]);
-
-                for (const camp of (campaigns || [])) {
-                  await supabase
-                    .from('campaigns')
-                    .update({ total_replied: (camp.total_replied || 0) + 1 })
-                    .eq('id', camp.id);
-                  console.log(`[WA-GW] ✓ Campaign ${camp.id} total_replied artırıldı`);
-                }
-              }
-            } catch (campErr: any) {
-              console.error('[WA-GW] Campaign reply count update error:', campErr.message);
+              const displayPhone = `+${normalizedSender}`;
+              const { data: newLead } = await supabase.from('leads').insert([{
+                user_id: userId,
+                phone: normalizedSender,
+                company_name: displayPhone,
+                source: 'WhatsApp Gelen',
+                status: 'new',
+                score: 50,
+              }]).select().single();
+              lead = newLead;
+              isNewLead = true;
+              console.log(`[WA-GW] New lead from unknown WA sender: ${displayPhone}`);
+            } finally {
+              leadCreationInProgress.delete(lockKey);
             }
           }
+        }
 
-          // ── Keyword detection + durum güncellemesi ────────────────────────
-          let newStatus = lead.status;
-          if (/^stop$/i.test(content.trim())) {
-            // STOP komutu → blacklist
-            newStatus = 'lost';
-            await supabase.from('leads').update({
-              status: 'lost',
-              last_contacted_at: new Date().toISOString(),
-              notes: 'STOP komutu — iletişim listesinden çıkarıldı',
-            }).eq('id', lead.id);
-            console.log(`[WA-GW] STOP received from ${senderPhone} — lead marked lost`);
-          } else if (!['won', 'lost'].includes(lead.status || '')) {
-            if (/fiyat|ücret|kaç para|maliyet|teklif/i.test(content)) {
-              newStatus = 'contacted';
-            } else if (/evet|tamam|ilgileniyorum|sipariş/i.test(content)) {
-              newStatus = 'qualified';
-            } else if (/hayır|istemiyorum|iptal/i.test(content)) {
-              newStatus = 'lost';
-            } else {
-              newStatus = lead.status === 'new' ? 'replied' : lead.status;
-            }
-            await supabase.from('leads').update({
-              status: newStatus,
-              last_contacted_at: new Date().toISOString(),
-            }).eq('id', lead.id);
-          }
+        if (!lead) return;
+        savedLead = lead;
 
-          finalStatus = newStatus;
-          console.log(`[WA-GW] ✓ Saved incoming: ${senderPhone} → lead ${lead.id} status=${newStatus} "${content.slice(0, 40)}"`);
+        if (isNewLead) {
+          setTimeout(() => deduplicatePhoneLeads(userId, supabase).catch(() => {}), 300);
+        }
 
-          // Lead durumu değiştiyse SSE ile bildir
+        // Mesajı kaydet
+        const { error: msgErr } = await supabase.from('messages').insert([{
+          lead_id: lead.id,
+          user_id: userId,
+          channel: 'whatsapp',
+          direction: 'in',
+          content: content || '[Medya]',
+          status: 'received',
+          sent_at: sentAt,
+          read: false,
+          metadata: waMessageId ? { wa_message_id: waMessageId } : null,
+        }]);
+
+        if (msgErr) {
+          incomingStats.errors++;
+          console.error(`[WA-GW] Message insert error: ${msgErr.message} (lead=${lead.id})`);
+        } else {
+          incomingStats.saved++;
+          console.log(`[WA-GW] ✓ Mesaj kaydedildi: ${senderPhone} → lead ${lead.id}`);
+
           try {
             const { ssePush } = require('./sseHub');
-            ssePush(userId, 'lead_update', { leadId: lead.id, status: newStatus });
-          } catch { /* sseHub yüklenemezse sessizce devam */ }
-
-          // ── Auto-reply — won/lost/STOP durumunda gönderme ────────────────
-          if (['won', 'lost'].includes(newStatus)) continue;
+            ssePush(userId, 'new_message', {
+              leadId: lead.id,
+              content: content || '[Medya]',
+              sentAt,
+              direction: 'in',
+              channel: 'whatsapp',
+              senderPhone: normalizedSender,
+            });
+          } catch { }
 
           try {
-            const { data: userSettings } = await supabase
-              .from('user_settings')
-              .select('auto_reply_enabled, company_name')
-              .eq('user_id', userId)
-              .maybeSingle();
-
-            if (!userSettings?.auto_reply_enabled) continue; // kullanıcı devre dışı bırakmış
-
-            // Spam önleme — son 5 dk içinde bu lead'e yanıt verdik mi?
-            const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-            const { data: recentOut } = await supabase
-              .from('messages')
-              .select('id')
-              .eq('lead_id', lead.id)
-              .eq('direction', 'out')
-              .gte('sent_at', fiveMinAgo)
-              .limit(1);
-
-            if (recentOut?.length) continue; // çok yakın zamanda zaten cevap verdik
-
-            // Son 20 mesajı çek — konuşma bağlamı için
-            const { data: history } = await supabase
-              .from('messages')
-              .select('direction, content, sent_at')
-              .eq('lead_id', lead.id)
-              .eq('channel', 'whatsapp')
-              .order('sent_at', { ascending: false })
-              .limit(20);
-
-            const conversationMessages = (history || []).reverse().map((m: any) => ({
-              role: m.direction === 'out' ? 'assistant' : 'user',
-              content: m.content,
-            }));
-
-            // Konuşma user mesajıyla bitmeli
-            if (!conversationMessages.length ||
-                conversationMessages[conversationMessages.length - 1].role !== 'user') {
-              conversationMessages.push({ role: 'user', content: content || '[Medya]' });
+            const { count: prevInCount } = await supabase.from('messages')
+              .select('id', { count: 'exact', head: true })
+              .eq('lead_id', lead.id).eq('user_id', userId).eq('direction', 'in');
+            if ((prevInCount || 0) <= 1) {
+              const { data: campaigns } = await supabase.from('campaigns')
+                .select('id, total_replied').eq('user_id', userId).contains('lead_ids', [lead.id]);
+              for (const camp of (campaigns || [])) {
+                await supabase.from('campaigns')
+                  .update({ total_replied: (camp.total_replied || 0) + 1 }).eq('id', camp.id);
+              }
             }
+          } catch (campErr: any) {
+            console.error('[WA-GW] Campaign reply count error:', campErr.message);
+          }
+        }
 
-            const Anthropic = require('@anthropic-ai/sdk');
-            const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        // ── Keyword detection + durum güncellemesi ────────────────────────────
+        let newStatus = lead.status;
+        if (/^stop$/i.test(content.trim())) {
+          newStatus = 'lost';
+          await supabase.from('leads').update({
+            status: 'lost',
+            last_contacted_at: new Date().toISOString(),
+            notes: 'STOP komutu — iletişim listesinden çıkarıldı',
+          }).eq('id', lead.id);
+          console.log(`[WA-GW] STOP received from ${senderPhone}`);
+        } else if (!['won', 'lost'].includes(lead.status || '')) {
+          if (/fiyat|ücret|kaç para|maliyet|teklif/i.test(content)) {
+            newStatus = 'contacted';
+          } else if (/evet|tamam|ilgileniyorum|sipariş/i.test(content)) {
+            newStatus = 'qualified';
+          } else if (/hayır|istemiyorum|iptal/i.test(content)) {
+            newStatus = 'lost';
+          } else {
+            newStatus = lead.status === 'new' ? 'replied' : lead.status;
+          }
+          await supabase.from('leads').update({
+            status: newStatus,
+            last_contacted_at: new Date().toISOString(),
+          }).eq('id', lead.id);
+        }
 
-            const aiResponse = await anthropic.messages.create({
-              model: 'claude-haiku-4-5-20251001',
-              max_tokens: 200,
-              system: `Sen ${userSettings.company_name || 'şirketin'} müşteri temsilcisisin.
+        finalStatus = newStatus;
+
+        try {
+          const { ssePush } = require('./sseHub');
+          ssePush(userId, 'lead_update', { leadId: lead.id, status: newStatus });
+        } catch { }
+
+        if (['won', 'lost'].includes(newStatus)) return;
+
+        // ── Auto-reply ────────────────────────────────────────────────────────
+        try {
+          const { data: userSettings } = await supabase.from('user_settings')
+            .select('auto_reply_enabled, company_name')
+            .eq('user_id', userId).maybeSingle();
+
+          if (!userSettings?.auto_reply_enabled) return;
+
+          const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+          const { data: recentOut } = await supabase.from('messages')
+            .select('id').eq('lead_id', lead.id).eq('direction', 'out')
+            .gte('sent_at', fiveMinAgo).limit(1);
+          if (recentOut?.length) return;
+
+          const { data: history } = await supabase.from('messages')
+            .select('direction, content, sent_at')
+            .eq('lead_id', lead.id).eq('channel', 'whatsapp')
+            .order('sent_at', { ascending: false }).limit(20);
+
+          const conversationMessages = (history || []).reverse().map((m: any) => ({
+            role: m.direction === 'out' ? 'assistant' : 'user',
+            content: m.content,
+          }));
+
+          if (!conversationMessages.length ||
+              conversationMessages[conversationMessages.length - 1].role !== 'user') {
+            conversationMessages.push({ role: 'user', content: content || '[Medya]' });
+          }
+
+          const Anthropic = require('@anthropic-ai/sdk');
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+          const aiResponse = await anthropic.messages.create({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 200,
+            system: `Sen ${userSettings.company_name || 'şirketin'} müşteri temsilcisisin.
 WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt ver.
 - Kendini AI olarak tanıtma; normal bir temsilci gibi davran
 - Maksimum 3-4 cümle, doğal konuş
@@ -567,204 +553,75 @@ WhatsApp'tan gelen müşteri mesajlarına doğal, samimi, kısa Türkçe yanıt 
 - Sipariş için: "detaylar için en kısa sürede sizinle iletişime geçeceğiz" de
 - ASLA uydurma fiyat veya ürün bilgisi verme
 - Konuşma geçmişini dikkate al, aynı şeyi tekrar sorma`,
-              messages: conversationMessages,
-            });
+            messages: conversationMessages,
+          });
 
-            const replyText = (aiResponse.content[0] as any)?.text || '';
-            if (!replyText) continue;
+          const replyText = (aiResponse.content[0] as any)?.text || '';
+          if (!replyText) return;
 
-            // Gönderim için her zaman güncel (live) instance soketini kullan
-            const liveEntry = instances.get(instanceId);
-            if (!liveEntry || liveEntry.status !== 'connected') continue;
+          const liveEntry = instances.get(instanceId);
+          if (!liveEntry || liveEntry.status !== 'connected') return;
 
-            await liveEntry.sock.sendMessage(waJid, { text: replyText });
+          // whatsapp-web.js ile gönderim
+          await liveEntry.client.sendMessage(from, replyText);
 
-            await supabase.from('messages').insert([{
-              lead_id: lead.id,
-              user_id: userId,
-              channel: 'whatsapp',
-              direction: 'out',
-              content: replyText,
-              status: 'sent',
-              sent_at: new Date().toISOString(),
-              read: true,
-            }]);
+          await supabase.from('messages').insert([{
+            lead_id: lead.id,
+            user_id: userId,
+            channel: 'whatsapp',
+            direction: 'out',
+            content: replyText,
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            read: true,
+          }]);
 
-            console.log(`[WA-GW] Auto-reply → ${senderPhone}: "${replyText.slice(0, 60)}"`);
-          } catch (autoErr: any) {
-            console.error(`[WA-GW] Auto-reply error:`, autoErr.message);
-          }
-
-        } catch (e: any) {
-          console.error(`[WA-GW] Incoming handler error:`, e.message);
+          console.log(`[WA-GW] Auto-reply → ${senderPhone}: "${replyText.slice(0, 60)}"`);
+        } catch (autoErr: any) {
+          console.error(`[WA-GW] Auto-reply error:`, autoErr.message);
         }
+
+      } catch (e: any) {
+        console.error(`[WA-GW] Incoming handler error:`, e.message);
       }
     });
 
-    sock.ev.on('connection.update', async (update: any) => {
-      const { connection, lastDisconnect, qr } = update;
+    await client.initialize();
 
-      if (qr) {
-        try {
-          const qrcode = require('qrcode');
-          const qrDataUrl = await qrcode.toDataURL(qr);
-          entry.status = 'qr_ready';
-          entry.qr = qrDataUrl;
-          if (onQR) onQR(qrDataUrl);
-        } catch {}
-      }
-
-      if (connection === 'open') {
-        const phone = sock.user?.id?.split(':')[0]?.split('@')[0] || '';
-        entry.status = 'connected';
-        entry.phone = phone;
-        entry.qr = null;
-        // Başarılı bağlantıda retry sayacını sıfırla
-        reconnectAttempts.delete(instanceId);
-        console.log(`[WA-GW] Connected: ${instanceId} → ${phone}`);
-
-        // Bağlantı açılınca session'ı hemen yedekle
-        setTimeout(() => backupSession(instanceId), 2000);
-        // 10 dakikada bir session yedekle (önceki 15 → daha sık)
-        const backupTimer = setInterval(() => backupSession(instanceId), 10 * 60 * 1000);
-        entry.backupTimer = backupTimer;
-
-        // Her 20 saniyede bir "available" presence gönder + socket canlılık doğrula
-        // keepAliveIntervalMs zaten 25s'de ping atıyor, bu ek güvence katmanı
-        setInterval(async () => {
-          try {
-            await sock.sendPresenceUpdate('available');
-          } catch (pingErr: any) {
-            // Presence başarısız → socket ölü olabilir, connection.update zaten tetiklenecek
-            console.warn(`[WA-GW] Presence ping failed for ${instanceId}: ${pingErr.message}`);
-          }
-        }, 20 * 1000);
-
-        // Bağlantı açılınca son 48 saatte mesaj gönderilen leadlere presence subscribe et
-        // Böylece daha önce gönderilen kampanya mesajlarına gelecek cevaplar real-time gelir
-        setTimeout(async () => {
-          try {
-            const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-            const { data: recentMsgs } = await supabase
-              .from('messages').select('lead_id')
-              .eq('user_id', userId).eq('direction', 'out').eq('channel', 'whatsapp')
-              .gte('sent_at', since).limit(100);
-            const leadIds = [...new Set((recentMsgs || []).map((m: any) => m.lead_id))];
-            if (!leadIds.length) return;
-            const { data: leads } = await supabase.from('leads')
-              .select('phone').in('id', leadIds).not('phone', 'is', null);
-            let subCount = 0;
-            for (const lead of (leads || [])) {
-              const digits = (lead.phone || '').replace(/\D/g, '');
-              if (digits.length < 7) continue;
-              const fmt = digits.startsWith('90') ? digits : '90' + digits.slice(-10);
-              try { await sock.presenceSubscribe(`${fmt}@s.whatsapp.net`); subCount++; } catch {}
-            }
-            console.log(`[WA-GW] Presence subscribe: ${subCount} lead için tamamlandı`);
-          } catch {}
-        }, 5000);
-
-        // Update DB — önce eski duplicate instance'ları temizle
-        await supabase.from('wa_instances')
-          .update({ status: 'disconnected' })
-          .eq('phone', phone)
-          .neq('instance_id', instanceId);
-        await supabase.from('wa_instances').update({
-          status: 'connected',
-          phone,
-          connected_at: new Date().toISOString(),
-        }).eq('instance_id', instanceId);
-
-        // Sync wa_numbers — önce telefon numarasına göre eşleştir (session restore sonrası
-        // 'disconnected' olabilir), bulunamazsa 'connecting' veya 'disconnected' any'i seç
-        const { data: numByPhone } = await supabase.from('wa_numbers')
-          .select('id').eq('user_id', userId).eq('phone_number', phone).maybeSingle();
-
-        if (numByPhone) {
-          await supabase.from('wa_numbers').update({ status: 'connected' }).eq('id', numByPhone.id);
-        } else {
-          const { data: anyNum } = await supabase.from('wa_numbers')
-            .select('id').eq('user_id', userId)
-            .in('status', ['connecting', 'disconnected'])
-            .order('created_at', { ascending: false }).limit(1).maybeSingle();
-          if (anyNum) {
-            await supabase.from('wa_numbers').update({
-              status: 'connected', phone_number: phone,
-            }).eq('id', anyNum.id);
-          }
-        }
-        console.log(`[WA-GW] wa_numbers synced for ${phone}`);
-
-        // Aynı telefon numarasına sahip duplicate leadleri temizle
-        setTimeout(() => deduplicatePhoneLeads(userId, supabase), 8000);
-
-        if (onConnected) onConnected(phone);
-      }
-
-      if (connection === 'close') {
-        const code = (lastDisconnect?.error as any)?.output?.statusCode;
-        const shouldReconnect = code !== DisconnectReason.loggedOut;
-        entry.status = 'disconnected';
-        if (entry.backupTimer) { clearInterval(entry.backupTimer); entry.backupTimer = undefined; }
-        console.log(`[WA-GW] Disconnected: ${instanceId}, code=${code}, reconnect=${shouldReconnect}`);
-
-        if (shouldReconnect) {
-          // Exponential backoff: 2s → 4s → 8s → 16s → max 30s + jitter
-          const attempts = (reconnectAttempts.get(instanceId) || 0) + 1;
-          reconnectAttempts.set(instanceId, attempts);
-          const base = Math.min(2000 * Math.pow(2, attempts - 1), 30_000);
-          const jitter = Math.floor(Math.random() * 1000); // 0-1s jitter (storm önleme)
-          const delay = base + jitter;
-          console.log(`[WA-GW] Reconnect attempt ${attempts} in ${Math.round(delay / 1000)}s: ${instanceId}`);
-          setTimeout(() => createBaileysInstance(instanceId, userId, onQR, onConnected, onDisconnected), delay);
-        } else {
-          // loggedOut — QR yeniden taranacak
-          reconnectAttempts.delete(instanceId);
-          instances.delete(instanceId);
-          await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', instanceId);
-          await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('user_id', userId).eq('status', 'connected');
-          console.log(`[WA-GW] Logged out: ${instanceId} — QR yeniden taranmalı`);
-          if (onDisconnected) onDisconnected();
-        }
-      }
-    });
   } catch (e: any) {
-    console.error(`[WA-GW] createBaileysInstance error (${instanceId}):`, e.message);
-    // Crash'te instance'ı temizle + gecikmeli yeniden dene
+    console.error(`[WA-GW] createWWebInstance error (${instanceId}):`, e.message);
     const entry = instances.get(instanceId);
     if (entry) entry.status = 'disconnected';
     const attempts = (reconnectAttempts.get(instanceId) || 0) + 1;
     reconnectAttempts.set(instanceId, attempts);
     if (attempts <= 5) {
       const delay = Math.min(5000 * attempts, 30_000);
-      console.log(`[WA-GW] createBaileysInstance crash — retry ${attempts} in ${delay / 1000}s`);
-      setTimeout(() => createBaileysInstance(instanceId, userId, onQR, onConnected, onDisconnected), delay);
+      console.log(`[WA-GW] createWWebInstance crash — retry ${attempts} in ${delay / 1000}s`);
+      setTimeout(() => createWWebInstance(instanceId, userId, onQR, onConnected, onDisconnected), delay);
     } else {
-      console.error(`[WA-GW] Max retries (5) reached for ${instanceId} — giving up`);
+      console.error(`[WA-GW] Max retries (5) reached for ${instanceId}`);
       reconnectAttempts.delete(instanceId);
       instances.delete(instanceId);
     }
   }
 }
 
-// API başlarken bağlı instance'ları yeniden başlat
+// ── Public API ───────────────────────────────────────────────────────────────
+
 export async function restoreConnectedInstances(): Promise<void> {
   try {
-    await ensureSessionBucket(); // Storage bucket'ını garantile
+    await ensureSessionBucket();
 
     const { data: connected } = await supabase.from('wa_instances')
       .select('instance_id, user_id, phone, connected_at')
       .eq('status', 'connected')
-      .order('connected_at', { ascending: false }); // En son bağlananı önce al
+      .order('connected_at', { ascending: false });
     if (!connected?.length) return;
 
-    // Aynı telefona birden fazla instance varsa sadece en son bağlananı restore et
     const seen = new Set<string>();
     const toRestore: any[] = [];
     for (const inst of connected) {
       if (!inst.phone) {
-        // Telefon numarası bilinmeyen instance — dedup yapılamaz, disconnected yap
-        console.log(`[WA-GW] Instance ${inst.instance_id} has no phone — marking disconnected`);
         await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
         continue;
       }
@@ -772,65 +629,44 @@ export async function restoreConnectedInstances(): Promise<void> {
         seen.add(inst.phone);
         toRestore.push(inst);
       } else {
-        // Aynı telefona bağlı duplicate instance — DB'de disconnected yap
-        console.log(`[WA-GW] Duplicate instance for phone ${inst.phone} — skipping ${inst.instance_id}`);
         await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
       }
     }
 
-    console.log(`[WA-GW] Restoring ${toRestore.length} unique instance(s) (${connected.length} total in DB)...`);
+    console.log(`[WA-GW] Restoring ${toRestore.length} instance(s)...`);
     for (const inst of toRestore) {
-      const dir = authDir(inst.instance_id);
-      const hasLocalFiles = fs.existsSync(dir) && fs.readdirSync(dir).length > 0;
-
-      if (hasLocalFiles) {
-        // Aynı container restart — local dosyalar zaten var, hemen başlat
-        console.log(`[WA-GW] Local session dosyası var — Baileys başlatılıyor: ${inst.instance_id}`);
-        await createBaileysInstance(inst.instance_id, inst.user_id);
-      } else {
-        // Yeni container (Railway deploy/restart) — Supabase'den restore et
-        const restored = await restoreSession(inst.instance_id);
-        if (restored) {
-          console.log(`[WA-GW] Storage'dan session restore edildi — Baileys başlatılıyor: ${inst.instance_id}`);
-          await createBaileysInstance(inst.instance_id, inst.user_id);
-        } else {
-          // Session hiç yok — QR taranacak, kullanıcı bilgilendirilmeli
-          console.warn(`[WA-GW] Session bulunamadı: ${inst.instance_id} — QR yeniden taranmalı`);
-          await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
-          await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('user_id', inst.user_id).eq('status', 'connected');
-        }
-      }
+      // RemoteAuth session restore otomatik yapar (store.extract çağırır)
+      // Session yoksa QR gösterir — biz sadece instance'ı başlatırız
+      console.log(`[WA-GW] Starting instance: ${inst.instance_id}`);
+      await createWWebInstance(inst.instance_id, inst.user_id);
     }
   } catch (e: any) {
     console.error('[WA-GW] restoreConnectedInstances error:', e.message);
   }
 }
 
-// Yeni instance oluştur + QR al (wa-numbers /connect için)
+// Yeni instance başlat + QR döndür (veya session varsa null döner, onConnected tetikler)
 export async function startNewInstance(instanceId: string, userId: string): Promise<string | null> {
   return new Promise((resolve) => {
-    let qrResolved = false;
-    const timeout = setTimeout(() => {
-      if (!qrResolved) resolve(null);
-    }, 30000);
+    let resolved = false;
+    const finish = (qr: string | null) => {
+      if (!resolved) { resolved = true; resolve(qr); }
+    };
 
-    createBaileysInstance(
+    // Chromium başlaması Baileys'tan daha uzun sürer
+    const timeout = setTimeout(() => finish(null), 60_000);
+
+    createWWebInstance(
       instanceId,
       userId,
-      (qr) => {
-        if (!qrResolved) {
-          qrResolved = true;
-          clearTimeout(timeout);
-          resolve(qr);
-        }
-      },
-      () => { clearTimeout(timeout); },
-      () => { clearTimeout(timeout); },
+      (qr) => { clearTimeout(timeout); finish(qr); },
+      () => { clearTimeout(timeout); finish(null); }, // session restore → direkt bağlandı
+      () => { clearTimeout(timeout); finish(null); },
     );
   });
 }
 
-// Mesaj gönder + bu kişiden gelen cevapları gerçek zamanlı almak için presence subscribe et
+// Mesaj gönder
 export async function sendMessage(instanceId: string, phone: string, message: string): Promise<void> {
   const entry = instances.get(instanceId);
   if (!entry || entry.status !== 'connected') {
@@ -838,89 +674,67 @@ export async function sendMessage(instanceId: string, phone: string, message: st
   }
   const cleanPhone = phone.replace(/\D/g, '');
   const formattedPhone = cleanPhone.startsWith('90') ? cleanPhone
-    : cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone;
-  const jid = `${formattedPhone}@s.whatsapp.net`;
-  await entry.sock.sendMessage(jid, { text: message });
-
-  // Presence subscribe: WhatsApp'a "bu kişiyi izliyorum, mesajlarını bana real-time ilet" sinyali
-  try { await entry.sock.presenceSubscribe(jid); } catch {}
-
-  // Mesaj gönderince Signal Protocol anahtarları güncellenir — hemen yedekle
-  // Railway restart olursa en güncel anahtarlarla restore edilsin, yoksa şifre çözülemez
-  backupSession(instanceId).catch(() => {});
+    : cleanPhone.startsWith('0') ? '9' + cleanPhone
+    : '90' + cleanPhone;
+  // whatsapp-web.js @c.us kullanır (Baileys @s.whatsapp.net kullanıyordu)
+  const chatId = `${formattedPhone}@c.us`;
+  await entry.client.sendMessage(chatId, message);
 }
 
-// QR al
 export function getQR(instanceId: string): string | null {
   return instances.get(instanceId)?.qr || null;
 }
 
-// Durum al
 export function getStatus(instanceId: string): string {
   return instances.get(instanceId)?.status || 'not_found';
 }
 
-// Aktif instance listesi (diagnose için)
 export function listInstances(): Array<{ instanceId: string; status: string; phone: string | null }> {
   return Array.from(instances.entries()).map(([id, e]) => ({
     instanceId: id, status: e.status, phone: e.phone,
   }));
 }
 
-// ── Heartbeat: DB'de 'connected' ama bellekte olmayan/kopuk instance'ları kurtarır ──
-// index.ts'den çağrılır
+// Heartbeat: DB'de 'connected' ama bellekte olmayan/kopuk instance'ları kurtarır
 export async function heartbeatReconnect(): Promise<void> {
   try {
-    const { data: dbInstances } = await supabase
-      .from('wa_instances')
-      .select('instance_id, user_id, phone')
-      .eq('status', 'connected');
-
+    const { data: dbInstances } = await supabase.from('wa_instances')
+      .select('instance_id, user_id, phone').eq('status', 'connected');
     if (!dbInstances?.length) return;
 
     for (const inst of dbInstances) {
       const inMem = instances.get(inst.instance_id);
 
-      // 1. Bellekte yok veya disconnected → yeniden başlat
       if (!inMem || inMem.status === 'disconnected') {
-        // Zaten aktif bir reconnect denemesi varsa atla (fırtına önleme)
         const attempts = reconnectAttempts.get(inst.instance_id) || 0;
-        if (attempts > 0) {
-          console.log(`[WA-GW] Heartbeat: ${inst.instance_id} zaten reconnect sürecinde (attempt ${attempts}), atlanıyor`);
-          continue;
-        }
+        if (attempts > 0) continue;
         console.log(`[WA-GW] Heartbeat: ${inst.instance_id} bellekte yok — yeniden bağlanılıyor`);
-        const hasLocal = fs.existsSync(authDir(inst.instance_id)) && fs.readdirSync(authDir(inst.instance_id)).length > 0;
-        const restored = hasLocal ? true : await restoreSession(inst.instance_id);
-        if (restored) {
-          await createBaileysInstance(inst.instance_id, inst.user_id);
-        } else {
-          console.log(`[WA-GW] Heartbeat: session bulunamadı — ${inst.instance_id} disconnected`);
-          await supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', inst.instance_id);
-        }
+        await createWWebInstance(inst.instance_id, inst.user_id);
         continue;
       }
 
-      // 2. Bellekte var ve connected → socket canlılık doğrula
       if (inMem.status === 'connected') {
         let forceReconnect = false;
         let reconnectReason = '';
 
-        // 2a. Outgoing ping testi
+        // whatsapp-web.js client state kontrolü
         try {
-          await inMem.sock.sendPresenceUpdate('available');
+          const state = await inMem.client.getState();
+          if (state !== 'CONNECTED') {
+            forceReconnect = true;
+            reconnectReason = `client state: ${state}`;
+          }
         } catch (pingErr: any) {
           forceReconnect = true;
-          reconnectReason = `ping failed: ${pingErr.message}`;
+          reconnectReason = `getState failed: ${pingErr.message}`;
         }
 
-        // 2b. Zombie receiving tespiti: 20+ dakikadır hiç mesaj alınmadıysa
-        // (yalnızca lastIncomingAt set edilmişse kontrol et — ilk bağlantıda henüz mesaj gelmemiş olabilir)
+        // Zombie socket: 20+ dakikadır hiç mesaj alınmadıysa
         if (!forceReconnect && inMem.lastIncomingAt) {
           const silentMs = Date.now() - inMem.lastIncomingAt;
-          if (silentMs > 20 * 60 * 1000) { // 20 dakika
+          if (silentMs > 20 * 60 * 1000) {
             forceReconnect = true;
-            reconnectReason = `no incoming messages for ${Math.round(silentMs / 60000)}min (zombie socket)`;
+            reconnectReason = `no incoming for ${Math.round(silentMs / 60000)}min`;
           }
         }
 
@@ -928,10 +742,11 @@ export async function heartbeatReconnect(): Promise<void> {
           console.warn(`[WA-GW] Heartbeat force reconnect ${inst.instance_id}: ${reconnectReason}`);
           inMem.status = 'disconnected';
           if (inMem.backupTimer) { clearInterval(inMem.backupTimer); inMem.backupTimer = undefined; }
+          try { await inMem.client.destroy(); } catch {}
           const attempts = (reconnectAttempts.get(inst.instance_id) || 0) + 1;
           reconnectAttempts.set(inst.instance_id, attempts);
           const delay = Math.min(2000 * Math.pow(2, attempts - 1), 15_000);
-          setTimeout(() => createBaileysInstance(inst.instance_id, inst.user_id), delay);
+          setTimeout(() => createWWebInstance(inst.instance_id, inst.user_id), delay);
         }
       }
     }
@@ -940,7 +755,7 @@ export async function heartbeatReconnect(): Promise<void> {
   }
 }
 
-// Kullanıcının tüm WA instance'larını zorla yeniden bağlar (zombie socket fix)
+// Kullanıcının tüm instance'larını zorla yeniden başlat
 export async function forceReconnectUser(userId: string): Promise<number> {
   let restarted = 0;
   for (const [instanceId, inst] of instances.entries()) {
@@ -949,9 +764,10 @@ export async function forceReconnectUser(userId: string): Promise<number> {
     inst.status = 'disconnected';
     inst.lastIncomingAt = undefined;
     if (inst.backupTimer) { clearInterval(inst.backupTimer); inst.backupTimer = undefined; }
-    try { inst.sock?.end?.(); } catch {}
+    try { await inst.client?.destroy?.(); } catch {}
+    instances.delete(instanceId);
     reconnectAttempts.delete(instanceId);
-    setTimeout(() => createBaileysInstance(instanceId, userId), 500 * restarted);
+    setTimeout(() => createWWebInstance(instanceId, userId), 500 * restarted);
     restarted++;
   }
   return restarted;
