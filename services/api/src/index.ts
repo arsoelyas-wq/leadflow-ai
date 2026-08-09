@@ -428,6 +428,46 @@ app.get('/api/inbox/stream', async (req: any, res: any) => {
   }
 });
 
+// QR sayfası — tarayıcıda aç, telefonla tara (auth yok, sadece local/test için)
+app.get('/api/wa-qr', (_req: any, res: any) => {
+  try {
+    const { listInstances, getQR } = require('./lib/waGateway');
+    const list: any[] = listInstances();
+    const qrInst = list.find((i: any) => i.status === 'qr_ready');
+    const qr = qrInst ? getQR(qrInst.instanceId) : null;
+
+    if (!qr) {
+      return res.send(`<html><body style="font-family:sans-serif;text-align:center;padding:40px">
+        <h2>QR Kodu Yok</h2>
+        <p>Instance durumu: ${list.map((i: any) => i.status).join(', ') || 'yok'}</p>
+        <p>Eğer instance bağlıysa zaten aktif. Değilse "Yeniden Bağlan" butonunu tıklayın.</p>
+        <p style="color:#888">Sayfayı 10 saniyede bir yenileyin...</p>
+        <script>setTimeout(()=>location.reload(),10000)</script>
+      </body></html>`);
+    }
+
+    res.send(`<html><head><title>WhatsApp QR</title></head>
+      <body style="font-family:sans-serif;text-align:center;padding:40px;background:#f0f4f8">
+        <h2 style="color:#128c7e">WhatsApp QR Kodu</h2>
+        <p>WhatsApp uygulamasını açın → Bağlantılı Cihazlar → Cihaz Ekle → Bu QR'ı tarayın</p>
+        <img src="${qr}" style="width:260px;height:260px;border:8px solid white;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.15)" />
+        <p style="color:#888;margin-top:16px">Bağlandıktan sonra bu sayfa otomatik yenilenir.</p>
+        <p style="color:#e74c3c;font-size:13px">QR kodu yaklaşık 60 saniye geçerlidir!</p>
+        <script>
+          setInterval(async()=>{
+            try{
+              const d=await fetch('/api/wa-diag').then(r=>r.json());
+              const inst=d.instances?.find(i=>i.status==='connected');
+              if(inst) document.body.innerHTML='<div style="padding:60px;text-align:center"><h2 style="color:green">✅ WhatsApp Bağlandı!</h2><p>Artık Sovlo inbox\'ınızı kullanabilirsiniz.</p></div>';
+            }catch{}
+          },5000);
+        </script>
+      </body></html>`);
+  } catch (e: any) {
+    res.status(500).send(e.message);
+  }
+});
+
 // WA Gateway diagnostics — no auth, incoming message stats + instance list
 app.get('/api/wa-diag', (_req: any, res: any) => {
   try {
