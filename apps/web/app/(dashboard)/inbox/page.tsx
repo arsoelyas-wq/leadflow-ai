@@ -492,12 +492,10 @@ export default function UnifiedInboxPage() {
   // ─── WA status check ──────────────────────────────────────────────────────
   const checkWaStatus = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/api/wa-status`)
+      const r = await fetch(`${API}/api/wa-numbers`, { headers: authH() })
       if (!r.ok) { setWaStatus('disconnected'); return }
       const d = await r.json()
-      const hasConnected = Array.isArray(d.instances)
-        ? d.instances.some((i: any) => i.status === 'connected')
-        : d.status === 'connected'
+      const hasConnected = Array.isArray(d.numbers) && d.numbers.some((n: any) => n.status === 'connected')
       setWaStatus(hasConnected ? 'connected' : 'disconnected')
     } catch { setWaStatus('disconnected') }
   }, [])
