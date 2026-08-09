@@ -300,6 +300,17 @@ export default function UnifiedInboxPage() {
               return [...prev, newMsg]
             })
             fetch(`${API}/api/inbox/read/${active.id}`, { method: 'PATCH', headers: authH() }).catch(() => {})
+          } else if (active && data.senderPhone) {
+            // Farklı lead ID ama aynı telefon → duplicate lead senaryosu
+            // DB'den aktif lead'in mesajlarını yeniden yükle (safety net)
+            const activeLast10 = (active.phone || '').replace(/\D/g, '').slice(-10)
+            const senderLast10 = (data.senderPhone || '').replace(/\D/g, '').slice(-10)
+            if (activeLast10 && senderLast10 && activeLast10 === senderLast10) {
+              fetch(`${API}/api/inbox/messages?leadId=${active.id}`, { headers: authH() })
+                .then(r => r.json())
+                .then(d => { if (d.messages?.length) setMessages(d.messages) })
+                .catch(() => {})
+            }
           }
         } catch {}
       })
@@ -505,6 +516,20 @@ export default function UnifiedInboxPage() {
     const t = setInterval(checkWaStatus, 30000)
     return () => clearInterval(t)
   }, [checkWaStatus])
+
+  // ─── Mesaj polling: SSE düşerse aktif lead'in mesajlarını 8s'de bir yenile ──
+  useEffect(() => {
+    if (!selectedLead) return
+    const leadId = selectedLead.id
+    const t = setInterval(async () => {
+      try {
+        const r = await fetch(`${API}/api/inbox/messages?leadId=${leadId}`, { headers: authH() })
+        const d = await r.json()
+        if (d.messages?.length) setMessages(d.messages)
+      } catch {}
+    }, 8000)
+    return () => clearInterval(t)
+  }, [selectedLead?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Notes load when lead changes ─────────────────────────────────────────
   useEffect(() => {

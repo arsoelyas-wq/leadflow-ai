@@ -329,19 +329,23 @@ async function createBaileysInstance(
             .from('leads')
             .select('id, phone, company_name, contact_name, status, notes, auto_reply_enabled')
             .eq('user_id', userId)
-            .not('phone', 'is', null)
-            .order('updated_at', { ascending: false });
+            .not('phone', 'is', null);
 
           if (allLeadsErr) console.error(`[WA-GW] allLeads query error: ${allLeadsErr.message}`);
 
-          // Tüm eşleşen lead'leri bul, isimli olanı tercih et ("+905..." gibi telefon-isimli değil)
+          // Tüm eşleşen lead'leri bul
           const matchedLeads = (allLeads || []).filter((l: any) => phonesMatch(l.phone, senderDigits));
           let lead: any = null;
           if (matchedLeads.length > 0) {
-            lead = matchedLeads.find((l: any) => {
+            // İsimli lead'i tercih et: "+905..." veya salt rakam olmayan company/contact adı olan
+            const namedLead = matchedLeads.find((l: any) => {
               const n = (l.company_name || l.contact_name || '').trim();
               return n && !n.startsWith('+') && !/^\d+$/.test(n.replace(/[\s\-()+]/g, ''));
-            }) || matchedLeads[0];
+            });
+            lead = namedLead || matchedLeads[0];
+            if (matchedLeads.length > 1) {
+              console.log(`[WA-GW] Multi-match: ${matchedLeads.length} leads for ${normalizedSender}, picked ${namedLead ? 'named' : 'first'}: ${lead.id} (${lead.company_name || lead.contact_name})`);
+            }
           }
 
           console.log(`[WA-GW] Lead match: userId=${userId} sender=${normalizedSender} allLeadsCount=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
