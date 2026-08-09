@@ -199,6 +199,8 @@ app.use('/api/team-intelligence', authMiddleware, tiRouter);
 const greenApiRouter = require('./routes/green-api');
 app.post('/api/green-api/webhook', (req: any, res: any, next: any) => { req.url = '/webhook'; greenApiRouter(req, res, next); });
 app.post('/api/green-api/connected', (req: any, res: any, next: any) => { req.url = '/connected'; greenApiRouter(req, res, next); });
+// inbound: green-api.com resmi servisi webhook — auth yok (dış servis token göndermez)
+app.post('/api/green-api/inbound', (req: any, res: any, next: any) => { req.url = '/inbound'; greenApiRouter(req, res, next); });
 app.use('/api/green-api', authMiddleware, greenApiRouter);
 app.use('/api/abtests',              authMiddleware, require('./routes/ab-testing'));
 app.use('/api/wa-numbers',           authMiddleware, require('./routes/wa-numbers'));
