@@ -285,6 +285,44 @@ async function createWWebInstance(
 
       setTimeout(() => deduplicatePhoneLeads(userId, supabase), 8000);
       if (onConnected) onConnected(phone);
+
+      // Çevrimdışıyken gelen kaçırılan mesajları getir (son 12 saat)
+      // message eventi yalnızca bağlantı sırasında gelen mesajlar için tetiklenir.
+      // Reconnect sonrası missed mesajları mevcut handler ile işliyoruz.
+      setTimeout(async () => {
+        try {
+          const sinceTs = Math.floor((Date.now() - 12 * 60 * 60 * 1000) / 1000);
+          console.log(`[WA-GW] Kaçırılan mesaj taraması: ${instanceId} (son 12 saat)`);
+
+          const chats = await client.getChats();
+          // Sadece bireysel (grup olmayan) ve unread chatleri tara
+          const targets = (chats as any[]).filter((c: any) =>
+            !c.isGroup && (c.id?._serialized || '').endsWith('@c.us') && c.unreadCount > 0
+          );
+          console.log(`[WA-GW] Taranacak ${targets.length} unread chat`);
+
+          for (const chat of targets.slice(0, 25)) {
+            try {
+              const msgs = await chat.fetchMessages({ limit: 20 });
+              const missed = (msgs as any[]).filter((m: any) =>
+                !m.fromMe && (m.timestamp || 0) >= sinceTs
+              );
+              if (missed.length) {
+                console.log(`[WA-GW] ${chat.id._serialized}: ${missed.length} kaçırılan mesaj`);
+              }
+              for (const m of missed) {
+                // Var olan message event handler'ı re-emit ile kullan (dedup dahil)
+                client.emit('message', m);
+              }
+            } catch (chatErr: any) {
+              console.error(`[WA-GW] Chat fetch hata (${chat.id?._serialized}): ${chatErr.message}`);
+            }
+          }
+          console.log(`[WA-GW] Kaçırılan mesaj taraması tamamlandı`);
+        } catch (e: any) {
+          console.error(`[WA-GW] Missed-msg scan error: ${e.message}`);
+        }
+      }, 20_000); // 20 saniye WA'nın senkronize olmasını bekle
     });
 
     // ── RemoteAuth session kaydedildi ──

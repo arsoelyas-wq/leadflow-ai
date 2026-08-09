@@ -468,14 +468,42 @@ app.get('/api/wa-qr', (_req: any, res: any) => {
   }
 });
 
-// WA Gateway diagnostics — no auth, incoming message stats + instance list
-app.get('/api/wa-diag', (_req: any, res: any) => {
+// WA Gateway diagnostics — no auth, incoming message stats + instance list + DB counts
+app.get('/api/wa-diag', async (_req: any, res: any) => {
   try {
     const { listInstances, getIncomingStats } = require('./lib/waGateway');
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+    // Son 24 saatteki gelen WA mesajları
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentMsgs } = await sb.from('messages')
+      .select('id, content, sent_at, lead_id, user_id, metadata')
+      .eq('channel', 'whatsapp')
+      .eq('direction', 'in')
+      .gte('sent_at', since24h)
+      .order('sent_at', { ascending: false })
+      .limit(10);
+
+    const { count: total24h } = await sb.from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('channel', 'whatsapp')
+      .eq('direction', 'in')
+      .gte('sent_at', since24h);
+
     res.json({
       instances: listInstances(),
       incoming: getIncomingStats(),
       uptime: Math.round(process.uptime()),
+      db: {
+        incomingWA_last24h: total24h || 0,
+        lastMessages: (recentMsgs || []).map((m: any) => ({
+          leadId: m.lead_id,
+          content: (m.content || '').slice(0, 60),
+          sentAt: m.sent_at,
+          userId: m.user_id,
+        })),
+      },
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
