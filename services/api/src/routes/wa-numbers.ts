@@ -26,7 +26,7 @@ router.get('/', async (req: any, res: any) => {
   }
 });
 
-// POST /api/wa-numbers/connect — Yeni numara ekle + QR
+// POST /api/wa-numbers/connect — Yeni numara ekle + QR (Green API)
 router.post('/connect', async (req: any, res: any) => {
   try {
     const userId = req.userId;
@@ -54,6 +54,24 @@ router.post('/connect', async (req: any, res: any) => {
       });
     }
 
+    // Zaten bağlı Green API instance var mı?
+    const { data: existingConnected } = await supabase.from('wa_instances')
+      .select('instance_id, phone').eq('user_id', userId).eq('status', 'connected').limit(1);
+    if (existingConnected?.length) {
+      const connPhone = existingConnected[0].phone;
+      // wa_numbers güncelle ve bağlı döndür
+      const isPrimarySync = (count || 0) === 0;
+      const { data: syncNum } = await supabase.from('wa_numbers').insert([{
+        user_id: userId,
+        display_name: displayName || `Numara ${(count || 0) + 1}`,
+        status: 'connected',
+        phone_number: connPhone,
+        daily_limit: dailyLimit || 100,
+        is_primary: isPrimarySync,
+      }]).select().single();
+      return res.json({ number: syncNum, status: 'connected' });
+    }
+
     // Yeni numara kaydı oluştur
     const isPrimary = (count || 0) === 0;
     const { data: newNumber, error } = await supabase
@@ -70,41 +88,46 @@ router.post('/connect', async (req: any, res: any) => {
 
     if (error) throw error;
 
-    // Zaten bağlı instance var mı? (birden fazla Chromium = OOM)
-    const { data: existingConnected } = await supabase.from('wa_instances')
-      .select('instance_id, phone').eq('user_id', userId).eq('status', 'connected').limit(1);
-    if (existingConnected?.length) {
-      // Mevcut bağlantıyı wa_numbers'a senkronize et ve bağlı döndür
-      const connPhone = existingConnected[0].phone;
-      if (connPhone) {
-        await supabase.from('wa_numbers').update({
-          status: 'connected', phone_number: connPhone,
-        }).eq('id', newNumber.id);
-      }
-      return res.json({ number: { ...newNumber, status: 'connected', phone_number: connPhone }, status: 'connected' });
-    }
+    // Green API partner hesabından yeni instance oluştur
+    const greenApi = require('../lib/greenApiService');
+    const { idInstance, apiTokenInstance, apiUrl } = await greenApi.createInstance();
+    const greenInstanceId = `green-${idInstance}`;
 
-    // Eski instance'ları yok et — yeniden başlatma (aksi hâlde çift Chromium → CONFLICT)
-    const { forceReconnectUser, startNewInstance } = require('../lib/waGateway');
-    await forceReconnectUser(userId, false);
+    // Webhook ayarla
+    await greenApi.configureWebhook(apiUrl, idInstance, apiTokenInstance);
 
-    // Embedded WA Gateway ile instance oluştur
-    const instanceId = `${userId.slice(0, 8)}-${Date.now()}`;
+    // wa_instances kaydı ekle (inbound webhook'un user_id'yi bulması için)
     await supabase.from('wa_instances').insert([{
-      user_id: userId, instance_id: instanceId, status: 'creating',
+      user_id: userId,
+      instance_id: greenInstanceId,
+      status: 'connecting',
     }]);
 
-    try {
-      const qr = await startNewInstance(instanceId, userId);
-      if (qr) {
-        return res.json({ number: newNumber, qr, status: 'qr_pending', instanceId });
-      }
-    } catch (e: any) {
-      console.error('[WA Numbers] Embedded gateway error:', e.message?.slice(0, 80));
+    // Green API kimlik bilgilerini session_data'ya kaydet
+    await supabase.from('wa_numbers').update({
+      session_data: { greenApi: { idInstance, apiToken: apiTokenInstance, apiUrl } },
+    }).eq('id', newNumber.id);
+
+    // QR kodu al (ilk çekim — bazen biraz beklemek gerekebilir)
+    await new Promise(r => setTimeout(r, 1500));
+    const qr = await greenApi.getQR(apiUrl, idInstance, apiTokenInstance);
+
+    console.log(`[WA Connect] Green API instance oluşturuldu: ${greenInstanceId} → QR: ${qr ? 'var' : 'yok'}`);
+
+    if (qr && qr !== 'authorized') {
+      return res.json({ number: newNumber, qr, status: 'qr_pending', instanceId: greenInstanceId });
+    }
+    if (qr === 'authorized') {
+      // QR taranmadan önce zaten bağlanmış (çok nadir)
+      const phone = await greenApi.getPhone(apiUrl, idInstance, apiTokenInstance);
+      await supabase.from('wa_numbers').update({ status: 'connected', phone_number: phone }).eq('id', newNumber.id);
+      await supabase.from('wa_instances').update({ status: 'connected', phone }).eq('instance_id', greenInstanceId);
+      return res.json({ number: { ...newNumber, status: 'connected', phone_number: phone }, status: 'connected' });
     }
 
-    res.json({ number: newNumber, status: 'pending' });
+    res.json({ number: newNumber, status: 'qr_pending', instanceId: greenInstanceId });
   } catch (e: any) {
+    console.error('[WA Connect] Hata:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -113,6 +136,18 @@ router.post('/connect', async (req: any, res: any) => {
 router.post('/:id/disconnect', async (req: any, res: any) => {
   try {
     const userId = req.userId;
+    const { data: num } = await supabase.from('wa_numbers')
+      .select('session_data').eq('id', req.params.id).eq('user_id', userId).maybeSingle();
+
+    // Green API instance'ı logout yap (silme — yeniden bağlanmak için instance korunur)
+    const creds = (num?.session_data as any)?.greenApi;
+    if (creds?.idInstance && creds?.apiToken && creds?.apiUrl) {
+      const greenApi = require('../lib/greenApiService');
+      greenApi.logoutInstance(creds.apiUrl, creds.idInstance, creds.apiToken).catch(() => {});
+      await supabase.from('wa_instances').update({ status: 'disconnected' })
+        .eq('instance_id', `green-${creds.idInstance}`);
+    }
+
     await supabase.from('wa_numbers')
       .update({ status: 'disconnected', session_data: null })
       .eq('id', req.params.id)
@@ -123,35 +158,53 @@ router.post('/:id/disconnect', async (req: any, res: any) => {
   }
 });
 
-// POST /api/wa-numbers/:id/reconnect — Bağlantısı kesik numarayı yeniden bağla
+// POST /api/wa-numbers/:id/reconnect — Bağlantısı kesik numarayı yeniden bağla (Green API)
 router.post('/:id/reconnect', async (req: any, res: any) => {
   try {
     const userId = req.userId;
     const { data: num } = await supabase.from('wa_numbers')
-      .select('id, status').eq('id', req.params.id).eq('user_id', userId).single();
+      .select('id, status, session_data').eq('id', req.params.id).eq('user_id', userId).single();
     if (!num) return res.status(404).json({ error: 'Numara bulunamadı' });
 
-    // Eski instance'ları yok et — yeniden başlatma (çift Chromium önleme)
-    const { forceReconnectUser } = require('../lib/waGateway');
-    await forceReconnectUser(userId, false);
-
-    // Durumu 'connecting' yap ki onConnected handler doğru bulabilsin
     await supabase.from('wa_numbers').update({ status: 'connecting' }).eq('id', req.params.id);
 
-    // Yeni instance oluştur
-    const instanceId = `${userId.slice(0, 8)}-${Date.now()}`;
-    await supabase.from('wa_instances').insert([{
-      user_id: userId, instance_id: instanceId, status: 'creating',
-    }]);
+    const greenApi = require('../lib/greenApiService');
+    const creds = (num.session_data as any)?.greenApi;
 
-    const { startNewInstance } = require('../lib/waGateway');
-    const qr = await startNewInstance(instanceId, userId);
-    if (qr) {
-      return res.json({ qr, status: 'qr_pending', instanceId });
+    if (creds?.idInstance && creds?.apiToken && creds?.apiUrl) {
+      // Mevcut instance'ı kullan — çıkış yap, QR sıfırla
+      await greenApi.logoutInstance(creds.apiUrl, creds.idInstance, creds.apiToken);
+      await new Promise(r => setTimeout(r, 2000));
+      const qr = await greenApi.getQR(creds.apiUrl, creds.idInstance, creds.apiToken);
+      const greenInstanceId = `green-${creds.idInstance}`;
+      if (qr && qr !== 'authorized') {
+        return res.json({ qr, status: 'qr_pending', instanceId: greenInstanceId });
+      }
     }
 
-    res.json({ status: 'pending' });
+    // Kimlik bilgisi yok veya QR alınamadı — yeni instance oluştur
+    const { idInstance, apiTokenInstance, apiUrl } = await greenApi.createInstance();
+    const greenInstanceId = `green-${idInstance}`;
+    await greenApi.configureWebhook(apiUrl, idInstance, apiTokenInstance);
+
+    await supabase.from('wa_instances').upsert([{
+      user_id: userId, instance_id: greenInstanceId, status: 'connecting',
+    }], { onConflict: 'instance_id' });
+
+    await supabase.from('wa_numbers').update({
+      session_data: { greenApi: { idInstance, apiToken: apiTokenInstance, apiUrl } },
+    }).eq('id', req.params.id);
+
+    await new Promise(r => setTimeout(r, 1500));
+    const qr = await greenApi.getQR(apiUrl, idInstance, apiTokenInstance);
+
+    if (qr && qr !== 'authorized') {
+      return res.json({ qr, status: 'qr_pending', instanceId: greenInstanceId });
+    }
+
+    res.json({ status: 'qr_pending', instanceId: greenInstanceId });
   } catch (e: any) {
+    console.error('[WA Reconnect] Hata:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -184,6 +237,17 @@ router.patch('/:id', async (req: any, res: any) => {
 router.delete('/:id', async (req: any, res: any) => {
   try {
     const userId = req.userId;
+    const { data: num } = await supabase.from('wa_numbers')
+      .select('session_data').eq('id', req.params.id).eq('user_id', userId).maybeSingle();
+
+    // Green API instance'ı partner hesabından sil
+    const creds = (num?.session_data as any)?.greenApi;
+    if (creds?.idInstance) {
+      const greenApi = require('../lib/greenApiService');
+      greenApi.deleteInstance(creds.idInstance).catch(() => {});
+      await supabase.from('wa_instances').delete().eq('instance_id', `green-${creds.idInstance}`);
+    }
+
     await supabase.from('wa_numbers').delete().eq('id', req.params.id).eq('user_id', userId);
     res.json({ message: 'Numara silindi' });
   } catch (e: any) {
@@ -191,100 +255,118 @@ router.delete('/:id', async (req: any, res: any) => {
   }
 });
 
-// GET /api/wa-numbers/gateway-status — WA gateway bellek + session durumu (diagnostic)
+// GET /api/wa-numbers/gateway-status — Green API instance durumu (diagnostic)
 router.get('/gateway-status', async (req: any, res: any) => {
   try {
     const userId = req.userId;
-    const { listInstances } = require('../lib/waGateway');
 
-    // DB'deki instance'lar
     const { data: dbInstances } = await supabase.from('wa_instances')
       .select('instance_id, status, phone, connected_at')
       .eq('user_id', userId)
       .order('connected_at', { ascending: false })
-      .limit(5);
+      .limit(10);
 
-    // Bellekteki instance'lar (process yeniden başladıysa bunlar boş olur)
-    const memInstances = listInstances().filter((i: any) =>
-      (dbInstances || []).some((d: any) => d.instance_id === i.instanceId)
-    );
+    const { data: waNumbers } = await supabase.from('wa_numbers')
+      .select('id, phone_number, display_name, status, session_data')
+      .eq('user_id', userId);
 
-    // Session backup var mı kontrol et
-    const sessionChecks: Record<string, boolean> = {};
-    for (const inst of (dbInstances || [])) {
+    // Her Green API instance için gerçek zamanlı durum kontrolü
+    const greenApi = require('../lib/greenApiService');
+    const liveStatuses: any[] = [];
+    for (const num of (waNumbers || [])) {
+      const creds = (num.session_data as any)?.greenApi;
+      if (!creds?.idInstance) continue;
       try {
-        const { data } = await supabase.storage.from('wa-sessions').list('', {
-          search: inst.instance_id,
-        });
-        sessionChecks[inst.instance_id] = (data || []).some((f: any) => f.name === `${inst.instance_id}.json`);
-      } catch { sessionChecks[inst.instance_id] = false; }
+        const state = await greenApi.getStatus(creds.apiUrl, creds.idInstance, creds.apiToken);
+        liveStatuses.push({ waNumberId: num.id, idInstance: creds.idInstance, liveState: state });
+      } catch {
+        liveStatuses.push({ waNumberId: num.id, idInstance: creds.idInstance, liveState: 'error' });
+      }
     }
 
-    const isFullyActive = memInstances.some((i: any) => i.status === 'connected');
+    const isActive = (dbInstances || []).some((i: any) => i.status === 'connected');
 
     res.json({
-      status: isFullyActive ? 'active' : 'inactive',
-      message: isFullyActive
-        ? 'WA gateway çalışıyor — gelen mesajlar alınıyor'
-        : 'WA gateway bellekte değil — yeniden bağlanmanız gerekebilir',
-      memoryInstances: memInstances,
+      status: isActive ? 'active' : 'inactive',
+      message: isActive
+        ? 'Green API bağlı — gelen mesajlar alınıyor'
+        : 'Bağlı numara yok — WhatsApp numarası ekleyin',
+      provider: 'green-api',
       dbInstances: dbInstances || [],
-      sessionBackups: sessionChecks,
+      liveStatuses,
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// GET /api/wa-numbers/qr-status — QR polling (Green API + Baileys)
+// GET /api/wa-numbers/qr-status — QR polling (Green API)
 router.get('/qr-status', async (req: any, res: any) => {
   try {
-    // 1. Check wa_numbers — any recently connected?
-    const { data: nums } = await supabase.from('wa_numbers')
-      .select('status, phone_number').eq('user_id', req.userId).eq('status', 'connected').limit(1);
-    if (nums?.length) return res.json({ status: 'connected', connected: true, qr: null });
+    const userId = req.userId;
 
-    // 2. Check wa_instances — any connected?
-    const { data: inst } = await supabase.from('wa_instances')
-      .select('status, phone, instance_id').eq('user_id', req.userId).eq('status', 'connected').limit(1);
-    if (inst?.length) {
-      // Sync to wa_numbers
+    // 1. Zaten bağlı wa_numbers var mı?
+    const { data: connectedNums } = await supabase.from('wa_numbers')
+      .select('status, phone_number').eq('user_id', userId).eq('status', 'connected').limit(1);
+    if (connectedNums?.length) return res.json({ status: 'connected', connected: true, qr: null });
+
+    // 2. wa_instances — Green API bağlı mı?
+    const { data: connectedInst } = await supabase.from('wa_instances')
+      .select('status, phone, instance_id').eq('user_id', userId).eq('status', 'connected').limit(1);
+    if (connectedInst?.length) {
       const { data: pending } = await supabase.from('wa_numbers')
-        .select('id').eq('user_id', req.userId).eq('status', 'connecting')
+        .select('id').eq('user_id', userId).eq('status', 'connecting')
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (pending) {
-        await supabase.from('wa_numbers').update({ status: 'connected', phone_number: inst[0].phone }).eq('id', pending.id);
+        await supabase.from('wa_numbers').update({
+          status: 'connected', phone_number: connectedInst[0].phone,
+        }).eq('id', pending.id);
       }
       return res.json({ status: 'connected', connected: true, qr: null });
     }
 
-    // 3. Embedded gateway'den QR al — creating veya qr_pending
-    const { data: pendingInst } = await supabase.from('wa_instances')
-      .select('instance_id')
-      .eq('user_id', req.userId)
-      .in('status', ['creating', 'qr_pending'])
-      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    // 3. Bağlanmakta olan en son wa_numbers kaydından Green API kimlik bilgilerini al
+    const { data: connectingNum } = await supabase.from('wa_numbers')
+      .select('id, session_data')
+      .eq('user_id', userId)
+      .eq('status', 'connecting')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    // Ayrıca bellekteki tüm instance'ları da kontrol et (DB güncellemesi gecikmeli olabilir)
-    const { getQR, getStatus, listInstances } = require('../lib/waGateway');
+    const creds = (connectingNum?.session_data as any)?.greenApi;
+    if (creds?.idInstance && creds?.apiToken && creds?.apiUrl) {
+      const greenApi = require('../lib/greenApiService');
+      const state = await greenApi.getStatus(creds.apiUrl, creds.idInstance, creds.apiToken);
 
-    let instanceId = pendingInst?.instance_id;
-    if (!instanceId) {
-      // Bellekte qr_ready olan varsa kullan
-      const memList: any[] = listInstances();
-      const memQR = memList.find((i: any) => i.status === 'qr_ready');
-      instanceId = memQR?.instanceId;
-    }
+      if (state === 'authorized') {
+        // Bağlantı sağlandı — telefon numarasını al ve DB'yi güncelle
+        const phone = await greenApi.getPhone(creds.apiUrl, creds.idInstance, creds.apiToken);
+        const greenInstanceId = `green-${creds.idInstance}`;
 
-    if (instanceId) {
-      const qr = getQR(instanceId);
-      const memStatus = getStatus(instanceId);
-      if (memStatus === 'connected') return res.json({ status: 'connected', connected: true, qr: null });
-      if (qr) return res.json({ status: 'qr_ready', connected: false, qr });
+        await Promise.all([
+          supabase.from('wa_numbers').update({ status: 'connected', phone_number: phone })
+            .eq('id', connectingNum.id),
+          supabase.from('wa_instances').update({ status: 'connected', phone, connected_at: new Date().toISOString() })
+            .eq('instance_id', greenInstanceId),
+        ]);
+
+        return res.json({ status: 'connected', connected: true, qr: null, phone });
+      }
+
+      // Henüz bağlanmadı — QR göster
+      const qr = await greenApi.getQR(creds.apiUrl, creds.idInstance, creds.apiToken);
+      if (qr && qr !== 'authorized') {
+        return res.json({ status: 'qr_ready', connected: false, qr });
+      }
+      return res.json({ status: 'qr_pending', connected: false, qr: null });
     }
 
     res.json({ status: 'disconnected', qr: null, connected: false });
-  } catch { res.json({ status: 'disconnected', qr: null, connected: false }); }
+  } catch (e: any) {
+    console.error('[qr-status] Hata:', e.message);
+    res.json({ status: 'disconnected', qr: null, connected: false });
+  }
 });
 
 // GET /api/wa-numbers/stats — Gunluk gonderim istatistikleri

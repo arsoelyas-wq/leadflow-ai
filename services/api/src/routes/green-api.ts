@@ -18,6 +18,44 @@ router.post('/inbound', async (req: any, res: any) => {
     const body = req.body;
     const typeWebhook = body?.typeWebhook;
 
+    // ── stateInstanceChanged — QR tarandığında otomatik bağlantı ──────────────
+    if (typeWebhook === 'stateInstanceChanged') {
+      const greenApiInstanceId = String(body?.instanceData?.idInstance || '');
+      const newState: string = body?.stateInstance || '';
+      if (!greenApiInstanceId || newState !== 'authorized') return;
+
+      const { data: instRow } = await supabase.from('wa_instances')
+        .select('user_id, instance_id').eq('instance_id', `green-${greenApiInstanceId}`).maybeSingle();
+      if (!instRow?.user_id) return;
+
+      // Telefon numarasını al
+      const greenApi = require('../lib/greenApiService');
+      const { data: numRow } = await supabase.from('wa_numbers')
+        .select('id, session_data').eq('user_id', instRow.user_id).eq('status', 'connecting')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const creds = (numRow?.session_data as any)?.greenApi;
+      let phone: string | null = null;
+      if (creds?.apiUrl && creds?.apiToken) {
+        phone = await greenApi.getPhone(creds.apiUrl, greenApiInstanceId, creds.apiToken);
+      }
+
+      await supabase.from('wa_instances').update({
+        status: 'connected', phone, connected_at: new Date().toISOString(),
+      }).eq('instance_id', `green-${greenApiInstanceId}`);
+
+      if (numRow) {
+        await supabase.from('wa_numbers').update({ status: 'connected', phone_number: phone })
+          .eq('id', numRow.id);
+      }
+
+      console.log(`[Green-API] ✓ QR tarandı, bağlandı: instance=${greenApiInstanceId} phone=${phone}`);
+      try {
+        const { ssePush } = require('../lib/sseHub');
+        ssePush(instRow.user_id, 'wa_connected', { phone, instanceId: `green-${greenApiInstanceId}` });
+      } catch {}
+      return;
+    }
+
     // Sadece gelen mesajları işle
     if (typeWebhook !== 'incomingMessageReceived') return;
 
