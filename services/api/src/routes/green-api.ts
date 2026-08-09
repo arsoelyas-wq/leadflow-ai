@@ -90,8 +90,31 @@ router.post('/inbound', async (req: any, res: any) => {
       .not('phone', 'is', null);
 
     const normalizedSender = normalizePhone(senderDigits);
-    let lead: any = (allLeads || []).find((l: any) => phonesMatch(l.phone, senderDigits));
+    const matchedLeads = (allLeads || []).filter((l: any) => phonesMatch(l.phone, senderDigits));
+    let lead: any = null;
     let isNewLead = false;
+
+    if (matchedLeads.length === 1) {
+      lead = matchedLeads[0];
+    } else if (matchedLeads.length > 1) {
+      // Önce isimli lead'i seç (company_name ya da contact_name'de harf var mı?)
+      const namedLead = matchedLeads.find((l: any) => {
+        const n = (l.company_name || l.contact_name || '').trim();
+        return /[a-zA-ZğüşıöçĞÜŞİÖÇâîûÂÎÛ]/i.test(n);
+      });
+      if (namedLead) {
+        lead = namedLead;
+      } else {
+        // Son giden mesaja göre eşleştir — kullanıcı hangi karttan yazdıysa o lead
+        const { data: outboundMsg } = await supabase.from('messages')
+          .select('lead_id').eq('user_id', userId).eq('direction', 'out')
+          .in('lead_id', matchedLeads.map((l: any) => l.id))
+          .order('sent_at', { ascending: false }).limit(1);
+        const outLeadId = outboundMsg?.[0]?.lead_id;
+        lead = (outLeadId ? matchedLeads.find((l: any) => l.id === outLeadId) : null) || matchedLeads[0];
+      }
+      console.log(`[Green-API] Multi-match: ${matchedLeads.length} lead, seçilen: ${lead?.id} (${lead?.company_name || lead?.contact_name || 'isimsiz'})`);
+    }
 
     if (!lead) {
       const { data: newLead } = await supabase.from('leads').insert([{
