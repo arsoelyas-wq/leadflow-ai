@@ -327,14 +327,22 @@ async function createBaileysInstance(
 
           const { data: allLeads, error: allLeadsErr } = await supabase
             .from('leads')
-            .select('id, phone, status, notes, auto_reply_enabled')
+            .select('id, phone, company_name, contact_name, status, notes, auto_reply_enabled')
             .eq('user_id', userId)
-            .not('phone', 'is', null);
+            .not('phone', 'is', null)
+            .order('updated_at', { ascending: false });
 
           if (allLeadsErr) console.error(`[WA-GW] allLeads query error: ${allLeadsErr.message}`);
 
-          // phonesMatch: her iki tarafı normalize edip son-10 karşılaştırır
-          let lead: any = (allLeads || []).find((l: any) => phonesMatch(l.phone, senderDigits));
+          // Tüm eşleşen lead'leri bul, isimli olanı tercih et ("+905..." gibi telefon-isimli değil)
+          const matchedLeads = (allLeads || []).filter((l: any) => phonesMatch(l.phone, senderDigits));
+          let lead: any = null;
+          if (matchedLeads.length > 0) {
+            lead = matchedLeads.find((l: any) => {
+              const n = (l.company_name || l.contact_name || '').trim();
+              return n && !n.startsWith('+') && !/^\d+$/.test(n.replace(/[\s\-()+]/g, ''));
+            }) || matchedLeads[0];
+          }
 
           console.log(`[WA-GW] Lead match: userId=${userId} sender=${normalizedSender} allLeadsCount=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
 
