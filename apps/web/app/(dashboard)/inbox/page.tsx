@@ -511,6 +511,14 @@ export default function UnifiedInboxPage() {
     } catch { setWaStatus('disconnected') }
   }, [])
 
+  const reconnectWa = useCallback(async () => {
+    try {
+      showToast('success', 'WhatsApp yeniden bağlanıyor...')
+      await fetch(`${API}/api/wa-reconnect`, { method: 'POST', headers: authH() })
+      setTimeout(checkWaStatus, 4000)
+    } catch { showToast('error', 'Yeniden bağlantı başarısız') }
+  }, [checkWaStatus, showToast])
+
   useEffect(() => {
     checkWaStatus()
     const t = setInterval(checkWaStatus, 30000)
@@ -580,9 +588,13 @@ export default function UnifiedInboxPage() {
               )}
             </h1>
             <div className="flex items-center gap-1">
-              {/* WA Durum göstergesi */}
-              <div title={`WhatsApp: ${waStatus === 'connected' ? 'Bağlı' : waStatus === 'disconnected' ? 'Bağlı Değil' : 'Bilinmiyor'}`}
-                className={`w-2 h-2 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500' : waStatus === 'disconnected' ? 'bg-red-400' : 'bg-slate-300'}`}/>
+              {/* WA Durum göstergesi — tıklayınca yeniden bağlan */}
+              <button
+                onClick={reconnectWa}
+                title={`WhatsApp: ${waStatus === 'connected' ? 'Bağlı (yeniden bağlamak için tıkla)' : waStatus === 'disconnected' ? 'Bağlı Değil — Tıkla' : 'Bilinmiyor'}`}
+                className="p-1 rounded-full hover:bg-slate-100 transition">
+                <span className={`block w-2 h-2 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500' : waStatus === 'disconnected' ? 'bg-red-400 animate-pulse' : 'bg-slate-300'}`}/>
+              </button>
               {totalUnread > 0 && (
                 <button onClick={markAllRead} title="Tümünü okundu işaretle"
                   className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition">

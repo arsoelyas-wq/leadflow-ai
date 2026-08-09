@@ -19,6 +19,7 @@ interface GatewayInstance {
   phone: string | null;
   userId: string;
   backupTimer?: ReturnType<typeof setInterval>;
+  lastIncomingAt?: number; // WA mesaj alınan son zaman (zombie socket tespiti)
 }
 
 const instances: Map<string, GatewayInstance> = new Map();
@@ -261,10 +262,16 @@ async function createBaileysInstance(
     sock.ev.on('messages.upsert', async ({ messages: incomingMsgs, type }: any) => {
       incomingStats.totalEvents++;
       incomingStats.lastEventAt = new Date().toISOString();
+      // lastIncomingAt güncelle — zombie socket tespiti için
+      const inst = instances.get(instanceId);
+      if (inst) inst.lastIncomingAt = Date.now();
       console.log(`[WA-GW] messages.upsert event: type=${type}, count=${incomingMsgs?.length}`);
 
       // Her iki tip için de işle — ama 'append'de sadece son 24 saatteki mesajları al
-      if (type !== 'notify' && type !== 'append') return;
+      if (type !== 'notify' && type !== 'append') {
+        console.log(`[WA-GW] Unhandled message type: ${type} — skipping`);
+        return;
+      }
 
       for (const msg of incomingMsgs) {
         incomingStats.totalMessages++;
@@ -336,16 +343,31 @@ async function createBaileysInstance(
           // Tüm eşleşen lead'leri bul
           const matchedLeads = (allLeads || []).filter((l: any) => phonesMatch(l.phone, senderDigits));
           let lead: any = null;
-          if (matchedLeads.length > 0) {
-            // İsimli lead'i tercih et: "+905..." veya salt rakam olmayan company/contact adı olan
+          if (matchedLeads.length === 1) {
+            lead = matchedLeads[0];
+          } else if (matchedLeads.length > 1) {
+            // Çok eşleşme — en iyi lead'i seç:
+            // 1. En az bir harf içeren ismi olan lead (gerçek ad, telefon numarası değil)
             const namedLead = matchedLeads.find((l: any) => {
               const n = (l.company_name || l.contact_name || '').trim();
-              return n && !n.startsWith('+') && !/^\d+$/.test(n.replace(/[\s\-()+]/g, ''));
+              return /[a-zA-ZğüşıöçĞÜŞİÖÇâîûÂÎÛ]/i.test(n); // harf varsa gerçek isim
             });
-            lead = namedLead || matchedLeads[0];
-            if (matchedLeads.length > 1) {
-              console.log(`[WA-GW] Multi-match: ${matchedLeads.length} leads for ${normalizedSender}, picked ${namedLead ? 'named' : 'first'}: ${lead.id} (${lead.company_name || lead.contact_name})`);
+            if (namedLead) {
+              lead = namedLead;
+            } else {
+              // 2. Outbound mesajı olan lead'i bul (kullanıcının mesaj gönderdiği)
+              const { data: outboundMsg } = await supabase
+                .from('messages')
+                .select('lead_id')
+                .eq('user_id', userId)
+                .eq('direction', 'out')
+                .in('lead_id', matchedLeads.map((l: any) => l.id))
+                .order('sent_at', { ascending: false })
+                .limit(1);
+              const outLeadId = outboundMsg?.[0]?.lead_id;
+              lead = (outLeadId ? matchedLeads.find((l: any) => l.id === outLeadId) : null) || matchedLeads[0];
             }
+            console.log(`[WA-GW] Multi-match: ${matchedLeads.length} leads for ${normalizedSender}, picked: ${lead.id} (${lead.company_name || lead.contact_name || 'no-name'})`);
           }
 
           console.log(`[WA-GW] Lead match: userId=${userId} sender=${normalizedSender} allLeadsCount=${allLeads?.length ?? 'null'} matched=${lead?.id ?? 'none'}`);
@@ -881,14 +903,31 @@ export async function heartbeatReconnect(): Promise<void> {
 
       // 2. Bellekte var ve connected → socket canlılık doğrula
       if (inMem.status === 'connected') {
+        let forceReconnect = false;
+        let reconnectReason = '';
+
+        // 2a. Outgoing ping testi
         try {
-          // Boş bir presence update gönder — socket ölüyse exception fırlatır
           await inMem.sock.sendPresenceUpdate('available');
         } catch (pingErr: any) {
-          console.warn(`[WA-GW] Heartbeat ping failed for ${inst.instance_id}: ${pingErr.message} — force reconnect`);
+          forceReconnect = true;
+          reconnectReason = `ping failed: ${pingErr.message}`;
+        }
+
+        // 2b. Zombie receiving tespiti: 20+ dakikadır hiç mesaj alınmadıysa
+        // (yalnızca lastIncomingAt set edilmişse kontrol et — ilk bağlantıda henüz mesaj gelmemiş olabilir)
+        if (!forceReconnect && inMem.lastIncomingAt) {
+          const silentMs = Date.now() - inMem.lastIncomingAt;
+          if (silentMs > 20 * 60 * 1000) { // 20 dakika
+            forceReconnect = true;
+            reconnectReason = `no incoming messages for ${Math.round(silentMs / 60000)}min (zombie socket)`;
+          }
+        }
+
+        if (forceReconnect) {
+          console.warn(`[WA-GW] Heartbeat force reconnect ${inst.instance_id}: ${reconnectReason}`);
           inMem.status = 'disconnected';
           if (inMem.backupTimer) { clearInterval(inMem.backupTimer); inMem.backupTimer = undefined; }
-          // Hemen yeniden bağlan (backoff ile)
           const attempts = (reconnectAttempts.get(inst.instance_id) || 0) + 1;
           reconnectAttempts.set(inst.instance_id, attempts);
           const delay = Math.min(2000 * Math.pow(2, attempts - 1), 15_000);
@@ -899,4 +938,21 @@ export async function heartbeatReconnect(): Promise<void> {
   } catch (e: any) {
     console.error('[WA-GW] Heartbeat error:', e.message);
   }
+}
+
+// Kullanıcının tüm WA instance'larını zorla yeniden bağlar (zombie socket fix)
+export async function forceReconnectUser(userId: string): Promise<number> {
+  let restarted = 0;
+  for (const [instanceId, inst] of instances.entries()) {
+    if (inst.userId !== userId) continue;
+    console.log(`[WA-GW] Force reconnect: ${instanceId}`);
+    inst.status = 'disconnected';
+    inst.lastIncomingAt = undefined;
+    if (inst.backupTimer) { clearInterval(inst.backupTimer); inst.backupTimer = undefined; }
+    try { inst.sock?.end?.(); } catch {}
+    reconnectAttempts.delete(instanceId);
+    setTimeout(() => createBaileysInstance(instanceId, userId), 500 * restarted);
+    restarted++;
+  }
+  return restarted;
 }

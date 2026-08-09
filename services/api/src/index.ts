@@ -385,6 +385,23 @@ app.post('/api/wa-dedup', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// WA Force Reconnect — kullanıcının tüm WA instance'larını yeniden bağlar (zombie socket fix)
+app.post('/api/wa-reconnect', async (req: any, res: any) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const { createClient: mkSb } = require('@supabase/supabase-js');
+    const sb = mkSb(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const { data: { user }, error: authErr } = await sb.auth.getUser(token);
+    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
+
+    const { forceReconnectUser } = require('./lib/waGateway');
+    const restarted = await forceReconnectUser(user.id);
+    res.json({ success: true, restarted });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // SSE Inbox Stream — real-time message/lead push to frontend (token in query string)
 app.get('/api/inbox/stream', async (req: any, res: any) => {
   try {
