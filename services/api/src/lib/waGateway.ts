@@ -315,20 +315,29 @@ async function createWWebInstance(
         try {
           const sinceTs = Math.floor((Date.now() - windowMs) / 1000);
           const chats = await client.getChats();
-          const targets = (chats as any[]).filter((c: any) => {
+          const dmChats = (chats as any[]).filter((c: any) => {
             const cid = c.id?._serialized || '';
-            if (c.isGroup) return false;
-            if (!cid.endsWith('@c.us') && !cid.endsWith('@s.whatsapp.net')) return false;
-            const lastTs = c.lastMessage?.timestamp || 0;
-            return lastTs >= sinceTs; // sadece son windowMs'de aktif chatler
+            return !c.isGroup && (cid.endsWith('@c.us') || cid.endsWith('@s.whatsapp.net'));
           });
-          console.log(`[WA-GW] Poll: ${targets.length} aktif chat taranıyor (${instanceId})`);
+          const targets = dmChats.filter((c: any) => {
+            const lastTs = c.lastMessage?.timestamp || 0;
+            return lastTs >= sinceTs;
+          });
+          console.log(`[WA-GW] Poll: ${dmChats.length} DM chat toplam, ${targets.length} aktif since=${new Date(sinceTs * 1000).toISOString()} (${instanceId})`);
+          // İlk 5 DM chat'i logla — tanı için
+          dmChats.slice(0, 5).forEach((c: any) => {
+            const ts = c.lastMessage?.timestamp;
+            console.log(`[WA-GW]   chat=${(c.id?._serialized || '').slice(0, 35)} lastMsg=${ts ? new Date(Number(ts) * 1000).toISOString() : 'yok'}`);
+          });
           for (const chat of targets.slice(0, 40)) {
             try {
               const msgs = await chat.fetchMessages({ limit: 20 });
               const fresh = (msgs as any[]).filter((m: any) =>
                 !m.fromMe && (m.timestamp || 0) >= sinceTs
               );
+              if (fresh.length) {
+                console.log(`[WA-GW] Poll found ${fresh.length} new msg(s) in ${chat.id?._serialized || '?'}`);
+              }
               for (const m of fresh) {
                 client.emit('message', m);
               }
@@ -347,6 +356,24 @@ async function createWWebInstance(
       // Başlangıç taraması: son 12 saatteki kaçırılan mesajları getir
       // unreadCount KULLANMA — timestamp bazlı filtre daha güvenilir
       setTimeout(() => runPoll(12 * 60 * 60 * 1000), 20_000);
+    });
+
+    // ── Auth başarıyla tamamlandı — key exchange OK ──
+    client.on('authenticated', () => {
+      console.log(`[WA-GW] Authenticated: ${instanceId} — key exchange complete`);
+    });
+
+    // ── message_create: message event'in kaçırdığı DM'ler için yedek path ──
+    // message: sadece fromMe=false için ateşlenir
+    // message_create: TÜM yeni mesajlar (gelen+giden) — farklı injection kodu
+    // wa_message_id dedup double-save'i önler; fromMe filtresi gidenleri eler
+    client.on('message_create', (msg: any) => {
+      if (msg.fromMe) return;
+      const fromStr = msg.from || '';
+      const isDirect = fromStr.endsWith('@c.us') || fromStr.endsWith('@s.whatsapp.net');
+      if (!isDirect) return; // status@broadcast vb. → atla
+      console.log(`[WA-GW] message_create DM: from=${fromStr.slice(0, 30)} msgId=${msg.id?.id || 'none'}`);
+      client.emit('message', msg);
     });
 
     // ── RemoteAuth session kaydedildi ──
@@ -861,18 +888,41 @@ export async function heartbeatReconnect(): Promise<void> {
 }
 
 // Anında tüm connected instance'ları tara — test/diagnostic için
-export async function scanNow(userId?: string): Promise<{ scanned: number; instanceIds: string[] }> {
+export async function scanNow(userId?: string): Promise<{ scanned: number; instanceIds: string[]; chatDiag: any[] }> {
   const scanned: string[] = [];
+  const chatDiag: any[] = [];
   for (const [instId, inst] of instances.entries()) {
     if (userId && inst.userId !== userId) continue;
     if (inst.status !== 'connected') continue;
+    // Chat diagnostics — polling öncesinde ne var görelim
+    try {
+      const chats = await inst.client.getChats();
+      const dmChats = (chats as any[]).filter((c: any) => {
+        const cid = c.id?._serialized || '';
+        return !c.isGroup && (cid.endsWith('@c.us') || cid.endsWith('@s.whatsapp.net'));
+      });
+      chatDiag.push({
+        instanceId: instId,
+        totalDmChats: dmChats.length,
+        recentChats: dmChats.slice(0, 15).map((c: any) => ({
+          id: c.id?._serialized || '',
+          name: c.name || '',
+          lastMsgTs: c.lastMessage?.timestamp || null,
+          lastMsgAt: c.lastMessage?.timestamp
+            ? new Date(Number(c.lastMessage.timestamp) * 1000).toISOString()
+            : null,
+        })),
+      });
+    } catch (e: any) {
+      chatDiag.push({ instanceId: instId, error: e.message });
+    }
     const runPoll = (inst as any).runPoll;
     if (runPoll) {
       await runPoll(12 * 60 * 60 * 1000).catch(() => {}); // son 12 saat
       scanned.push(instId);
     }
   }
-  return { scanned: scanned.length, instanceIds: scanned };
+  return { scanned: scanned.length, instanceIds: scanned, chatDiag };
 }
 
 // Kullanıcının tüm instance'larını zorla yok et.
