@@ -221,6 +221,10 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
           }
         } catch (gaErr: any) {
           console.error(`[WA] Gateway hatası — ${gaErr.message}`);
+          // Instance bellekte değil veya hazır değil — DB'yi güncelle ki dot doğru göstersin
+          if (gaErr.message?.includes('instance not ready') || gaErr.message?.includes('not found')) {
+            await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('id', chosen.id);
+          }
         }
 
         if (sent) {

@@ -224,6 +224,16 @@ async function createWWebInstance(
         entry.status = 'qr_ready';
         entry.qr = qrDataUrl;
         console.log(`[WA-GW] QR ready: ${instanceId}`);
+
+        // Session geçersiz/yok — DB'yi güncelle ki yeşil dot yanlış yanmasın
+        await supabase.from('wa_instances')
+          .update({ status: 'qr_pending' })
+          .eq('instance_id', instanceId);
+        await supabase.from('wa_numbers')
+          .update({ status: 'disconnected' })
+          .eq('user_id', userId)
+          .neq('status', 'disconnected');
+
         if (onQR) onQR(qrDataUrl);
       } catch (e: any) {
         console.error(`[WA-GW] QR error: ${e.message}`);

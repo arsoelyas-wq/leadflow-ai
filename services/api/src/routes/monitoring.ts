@@ -107,22 +107,17 @@ async function logPerformance(
 // ── WHATSAPP ALERT ────────────────────────────────────────
 async function sendAlert(message: string) {
   try {
-    const alertPhone = process.env.ALERT_PHONE; // Railway'e eklenecek
+    const alertPhone = process.env.ALERT_PHONE;
     if (!alertPhone) return;
 
-    const { waState } = require('./settings');
-    
-    // Herhangi bir bağlı kullanıcı var mı?
-    const connectedUser = Object.entries(waState).find(
-      ([, state]: any) => state.status === 'connected'
-    );
-    
-    if (connectedUser) {
-      const [, state]: any = connectedUser;
-      const phone = alertPhone.replace(/\D/g, '');
-      const formatted = phone.startsWith('90') ? phone : `90${phone}`;
-      await state.sock.sendMessage(`${formatted}@s.whatsapp.net`, { text: message });
-    }
+    // Herhangi bir bağlı instance var mı?
+    const { listInstances, sendMessage } = require('../lib/waGateway');
+    const connected = (listInstances() as any[]).filter((i: any) => i.status === 'connected');
+    if (!connected.length) return;
+
+    const phone = alertPhone.replace(/\D/g, '');
+    const formatted = phone.startsWith('90') ? phone : `90${phone}`;
+    await sendMessage(connected[0].instanceId, formatted, message);
   } catch {}
 }
 
