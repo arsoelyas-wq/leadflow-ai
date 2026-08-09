@@ -20,6 +20,7 @@ interface GatewayInstance {
   phone: string | null;
   userId: string;
   backupTimer?: ReturnType<typeof setInterval>;
+  pollInterval?: ReturnType<typeof setInterval>;
   lastIncomingAt?: number;
   connectedAt?: number;
 }
@@ -304,6 +305,39 @@ async function createWWebInstance(
       setTimeout(() => deduplicatePhoneLeads(userId, supabase), 8000);
       if (onConnected) onConnected(phone);
 
+      // ── Polling fallback: message event bridge koparsa yedek ────────────────
+      // sendMessage page.evaluate() kullanır → bridge olmadan çalışır.
+      // message event bridge kırılırsa gelen mesajlar kaçar. Her 90s aktif polling
+      // bu boşluğu kapatır. wa_message_id dedup tekrar kayıt engelliyor.
+      const pollInterval = setInterval(async () => {
+        const liveEntry = instances.get(instanceId);
+        if (!liveEntry || liveEntry.status !== 'connected') {
+          clearInterval(pollInterval);
+          return;
+        }
+        try {
+          const sinceTs = Math.floor((Date.now() - 5 * 60 * 1000) / 1000); // son 5 dakika
+          const chats = await client.getChats();
+          const targets = (chats as any[]).filter((c: any) =>
+            !c.isGroup && (c.id?._serialized || '').endsWith('@c.us') && c.unreadCount > 0
+          );
+          for (const chat of targets.slice(0, 30)) {
+            try {
+              const msgs = await chat.fetchMessages({ limit: 15 });
+              const fresh = (msgs as any[]).filter((m: any) =>
+                !m.fromMe && (m.timestamp || 0) >= sinceTs
+              );
+              for (const m of fresh) {
+                client.emit('message', m);
+              }
+            } catch {}
+          }
+        } catch (e: any) {
+          console.error(`[WA-GW] Poll error (${instanceId}): ${e.message}`);
+        }
+      }, 90_000);
+      entry.pollInterval = pollInterval;
+
       // Çevrimdışıyken gelen kaçırılan mesajları getir (son 12 saat)
       // message eventi yalnızca bağlantı sırasında gelen mesajlar için tetiklenir.
       // Reconnect sonrası missed mesajları mevcut handler ile işliyoruz.
@@ -353,6 +387,7 @@ async function createWWebInstance(
       console.error(`[WA-GW] Auth failure: ${instanceId} — ${msg}`);
       entry.status = 'disconnected';
       if (entry.backupTimer) { clearInterval(entry.backupTimer); entry.backupTimer = undefined; }
+      if (entry.pollInterval) { clearInterval(entry.pollInterval); entry.pollInterval = undefined; }
       try { await client.destroy(); } catch {}
       // Bozuk session'ı Supabase'den sil — sonraki bağlanmada temiz QR çıksın
       try {
@@ -372,6 +407,7 @@ async function createWWebInstance(
     client.on('disconnected', async (reason: string) => {
       entry.status = 'disconnected';
       if (entry.backupTimer) { clearInterval(entry.backupTimer); entry.backupTimer = undefined; }
+      if (entry.pollInterval) { clearInterval(entry.pollInterval); entry.pollInterval = undefined; }
       console.log(`[WA-GW] Disconnected: ${instanceId}, reason=${reason}`);
 
       try { await client.destroy(); } catch {}
@@ -860,6 +896,7 @@ export async function forceReconnectUser(userId: string, restart = true): Promis
     inst.lastIncomingAt = undefined;
     inst.connectedAt = undefined;
     if (inst.backupTimer) { clearInterval(inst.backupTimer); inst.backupTimer = undefined; }
+    if (inst.pollInterval) { clearInterval(inst.pollInterval); inst.pollInterval = undefined; }
     try { await inst.client?.destroy?.(); } catch {}
     instances.delete(instanceId);
     reconnectAttempts.delete(instanceId);
