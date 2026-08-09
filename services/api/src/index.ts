@@ -370,34 +370,36 @@ app.get('/api/wa-debug', async (_req: any, res: any) => {
 });
 
 // WA Dedup — aynı telefon numarasına sahip duplicate leadleri birleştirir (authenticated)
+// JWT doğrulaması — SSE/wa-dedup/wa-reconnect için ortak yardımcı
+function verifyJwtUserId(token: string): string | null {
+  try {
+    const jwt = require('jsonwebtoken');
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.userId || null;
+  } catch { return null; }
+}
+
 app.post('/api/wa-dedup', async (req: any, res: any) => {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    const userId = verifyJwtUserId(token);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const { createClient } = require('@supabase/supabase-js');
     const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-    const { data: { user }, error: authErr } = await sb.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
     const { deduplicatePhoneLeads } = require('./lib/waGateway');
-    const result = await deduplicatePhoneLeads(user.id, sb);
+    const result = await deduplicatePhoneLeads(userId, sb);
     res.json({ success: true, ...result });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// WA Force Reconnect — kullanıcının tüm WA instance'larını yeniden bağlar (zombie socket fix)
+// WA Force Reconnect — kullanıcının tüm WA instance'larını yeniden bağlar
 app.post('/api/wa-reconnect', async (req: any, res: any) => {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
-    const { createClient: mkSb } = require('@supabase/supabase-js');
-    const sb = mkSb(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-    const { data: { user }, error: authErr } = await sb.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    const userId = verifyJwtUserId(token);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const { forceReconnectUser } = require('./lib/waGateway');
-    const restarted = await forceReconnectUser(user.id);
+    const restarted = await forceReconnectUser(userId);
     res.json({ success: true, restarted });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -406,30 +408,36 @@ app.post('/api/wa-reconnect', async (req: any, res: any) => {
 app.get('/api/inbox/stream', async (req: any, res: any) => {
   try {
     const token = (req.query.token as string) || '';
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const userId = verifyJwtUserId(token);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { createClient } = require('@supabase/supabase-js');
-    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-    const { data: { user }, error: authErr } = await sb.auth.getUser(token);
-    if (authErr || !user) return res.status(401).json({ error: 'Invalid token' });
-
-    // SSE başlıkları
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no'); // Nginx buffering'i devre dışı bırak
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
     const { sseSubscribe } = require('./lib/sseHub');
-    const cleanup = sseSubscribe(user.id, res);
+    const cleanup = sseSubscribe(userId, res);
 
-    // İlk bağlantıda connected event gönder
-    res.write(`event: connected\ndata: ${JSON.stringify({ userId: user.id, ts: Date.now() })}\n\n`);
+    res.write(`event: connected\ndata: ${JSON.stringify({ userId, ts: Date.now() })}\n\n`);
 
     req.on('close', cleanup);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// WA Gateway diagnostics — no auth, incoming message stats + instance list
+app.get('/api/wa-diag', (_req: any, res: any) => {
+  try {
+    const { listInstances, getIncomingStats } = require('./lib/waGateway');
+    res.json({
+      instances: listInstances(),
+      incoming: getIncomingStats(),
+      uptime: Math.round(process.uptime()),
+    });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
 // PUBLIC voice diagnostic — no auth, shows Vapi/Supabase config status
