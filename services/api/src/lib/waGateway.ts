@@ -33,6 +33,7 @@ const incomingStats = {
   totalEvents: 0,
   totalMessages: 0,
   filtered: { fromMe: 0, notWhatsapp: 0, shortPhone: 0 },
+  filteredFromSample: [] as string[],
   saved: 0,
   errors: 0,
 };
@@ -318,9 +319,10 @@ async function createWWebInstance(
         try {
           const sinceTs = Math.floor((Date.now() - 5 * 60 * 1000) / 1000); // son 5 dakika
           const chats = await client.getChats();
-          const targets = (chats as any[]).filter((c: any) =>
-            !c.isGroup && (c.id?._serialized || '').endsWith('@c.us') && c.unreadCount > 0
-          );
+          const targets = (chats as any[]).filter((c: any) => {
+            const cid = c.id?._serialized || '';
+            return !c.isGroup && (cid.endsWith('@c.us') || cid.endsWith('@s.whatsapp.net')) && c.unreadCount > 0;
+          });
           for (const chat of targets.slice(0, 30)) {
             try {
               const msgs = await chat.fetchMessages({ limit: 15 });
@@ -348,9 +350,10 @@ async function createWWebInstance(
 
           const chats = await client.getChats();
           // Sadece bireysel (grup olmayan) ve unread chatleri tara
-          const targets = (chats as any[]).filter((c: any) =>
-            !c.isGroup && (c.id?._serialized || '').endsWith('@c.us') && c.unreadCount > 0
-          );
+          const targets = (chats as any[]).filter((c: any) => {
+            const cid = c.id?._serialized || '';
+            return !c.isGroup && (cid.endsWith('@c.us') || cid.endsWith('@s.whatsapp.net')) && c.unreadCount > 0;
+          });
           console.log(`[WA-GW] Taranacak ${targets.length} unread chat`);
 
           for (const chat of targets.slice(0, 25)) {
@@ -442,14 +445,18 @@ async function createWWebInstance(
       if (msg.fromMe) { incomingStats.filtered.fromMe++; return; }
 
       const from = msg.from || '';
-      // Sadece bireysel WA mesajları (@c.us) — gruplar, broadcast kanallar değil
-      if (!from.endsWith('@c.us')) {
+      // Bireysel mesaj: @c.us (eski tek-cihaz) veya @s.whatsapp.net (multi-device)
+      // Reddedilen: gruplar (@g.us), status broadcast, newsletter, boş
+      const isDirectMsg = from.endsWith('@c.us') || from.endsWith('@s.whatsapp.net');
+      if (!isDirectMsg) {
         incomingStats.filtered.notWhatsapp++;
-        console.log(`[WA-GW] Filtered non-individual: ${from}`);
+        if (incomingStats.filteredFromSample.length < 10) {
+          incomingStats.filteredFromSample.push(from.slice(0, 60));
+        }
         return;
       }
 
-      const senderPhone = from.replace('@c.us', '');
+      const senderPhone = from.replace('@c.us', '').replace('@s.whatsapp.net', '');
       const senderDigits = senderPhone.replace(/\D/g, '');
       if (!senderDigits || senderDigits.length < 7) { incomingStats.filtered.shortPhone++; return; }
 
