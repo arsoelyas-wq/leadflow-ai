@@ -848,19 +848,26 @@ export async function heartbeatReconnect(): Promise<void> {
   }
 }
 
-// Kullanıcının tüm instance'larını zorla yeniden başlat
-export async function forceReconnectUser(userId: string): Promise<number> {
+// Kullanıcının tüm instance'larını zorla yok et.
+// restart=true → yeniden başlat (wa-reconnect endpoint, ya da sistem kurtarma)
+// restart=false → sadece yok et, yeniden başlatma (wa-numbers connect/reconnect — çağıran yeni instance başlatır)
+export async function forceReconnectUser(userId: string, restart = true): Promise<number> {
   let restarted = 0;
   for (const [instanceId, inst] of instances.entries()) {
     if (inst.userId !== userId) continue;
-    console.log(`[WA-GW] Force reconnect: ${instanceId}`);
+    console.log(`[WA-GW] Force ${restart ? 'reconnect' : 'destroy'}: ${instanceId}`);
     inst.status = 'disconnected';
     inst.lastIncomingAt = undefined;
+    inst.connectedAt = undefined;
     if (inst.backupTimer) { clearInterval(inst.backupTimer); inst.backupTimer = undefined; }
     try { await inst.client?.destroy?.(); } catch {}
     instances.delete(instanceId);
     reconnectAttempts.delete(instanceId);
-    setTimeout(() => createWWebInstance(instanceId, userId), 500 * restarted);
+    // DB'yi güncelle — heartbeat bu eski instance'ı tekrar başlatmasın
+    supabase.from('wa_instances').update({ status: 'disconnected' }).eq('instance_id', instanceId).catch(() => {});
+    if (restart) {
+      setTimeout(() => createWWebInstance(instanceId, userId), 500 * restarted);
+    }
     restarted++;
   }
   return restarted;

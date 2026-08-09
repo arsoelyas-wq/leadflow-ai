@@ -84,9 +84,9 @@ router.post('/connect', async (req: any, res: any) => {
       return res.json({ number: { ...newNumber, status: 'connected', phone_number: connPhone }, status: 'connected' });
     }
 
-    // Eski qr_ready/creating instance'ları temizle — bellek için
+    // Eski instance'ları yok et — yeniden başlatma (aksi hâlde çift Chromium → CONFLICT)
     const { forceReconnectUser, startNewInstance } = require('../lib/waGateway');
-    await forceReconnectUser(userId);
+    await forceReconnectUser(userId, false);
 
     // Embedded WA Gateway ile instance oluştur
     const instanceId = `${userId.slice(0, 8)}-${Date.now()}`;
@@ -131,9 +131,9 @@ router.post('/:id/reconnect', async (req: any, res: any) => {
       .select('id, status').eq('id', req.params.id).eq('user_id', userId).single();
     if (!num) return res.status(404).json({ error: 'Numara bulunamadı' });
 
-    // Eski qr_ready/creating instance'ları temizle — bellek için
+    // Eski instance'ları yok et — yeniden başlatma (çift Chromium önleme)
     const { forceReconnectUser } = require('../lib/waGateway');
-    await forceReconnectUser(userId);
+    await forceReconnectUser(userId, false);
 
     // Durumu 'connecting' yap ki onConnected handler doğru bulabilsin
     await supabase.from('wa_numbers').update({ status: 'connecting' }).eq('id', req.params.id);
