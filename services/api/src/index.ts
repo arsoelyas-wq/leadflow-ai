@@ -547,6 +547,16 @@ app.get('/api/voice-diag', async (_req: any, res: any) => {
   res.json(result);
 });
 
+// WA Scan Now — anında tüm chatleri tara, kaçırılan mesajları işle
+app.post('/api/wa-scan-now', async (req: any, res: any) => {
+  try {
+    const { scanNow, listInstances } = require('./lib/waGateway');
+    const instances = listInstances();
+    const result = await scanNow();
+    res.json({ ok: true, instances, ...result, time: new Date().toISOString() });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // Global error handler — never expose stack traces to client
 app.use((err: any, _req: any, res: any, _next: any) => {
   const status = err.status || err.statusCode || 500;

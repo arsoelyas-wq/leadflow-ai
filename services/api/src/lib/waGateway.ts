@@ -306,26 +306,26 @@ async function createWWebInstance(
       setTimeout(() => deduplicatePhoneLeads(userId, supabase), 8000);
       if (onConnected) onConnected(phone);
 
-      // ── Polling fallback: message event bridge koparsa yedek ────────────────
-      // sendMessage page.evaluate() kullanır → bridge olmadan çalışır.
-      // message event bridge kırılırsa gelen mesajlar kaçar. Her 90s aktif polling
-      // bu boşluğu kapatır. wa_message_id dedup tekrar kayıt engelliyor.
-      const pollInterval = setInterval(async () => {
+      // ── Polling fallback: her 45s aktif tarama ──────────────────────────────
+      // unreadCount KULLANMA — WhatsApp okundu işaretleyince 0 olur, mesaj kaçar.
+      // lastMessage.timestamp ile son 6 dakikada aktif olan chatleri tara.
+      const runPoll = async (windowMs = 6 * 60 * 1000) => {
         const liveEntry = instances.get(instanceId);
-        if (!liveEntry || liveEntry.status !== 'connected') {
-          clearInterval(pollInterval);
-          return;
-        }
+        if (!liveEntry || liveEntry.status !== 'connected') return;
         try {
-          const sinceTs = Math.floor((Date.now() - 5 * 60 * 1000) / 1000); // son 5 dakika
+          const sinceTs = Math.floor((Date.now() - windowMs) / 1000);
           const chats = await client.getChats();
           const targets = (chats as any[]).filter((c: any) => {
             const cid = c.id?._serialized || '';
-            return !c.isGroup && (cid.endsWith('@c.us') || cid.endsWith('@s.whatsapp.net')) && c.unreadCount > 0;
+            if (c.isGroup) return false;
+            if (!cid.endsWith('@c.us') && !cid.endsWith('@s.whatsapp.net')) return false;
+            const lastTs = c.lastMessage?.timestamp || 0;
+            return lastTs >= sinceTs; // sadece son windowMs'de aktif chatler
           });
-          for (const chat of targets.slice(0, 30)) {
+          console.log(`[WA-GW] Poll: ${targets.length} aktif chat taranıyor (${instanceId})`);
+          for (const chat of targets.slice(0, 40)) {
             try {
-              const msgs = await chat.fetchMessages({ limit: 15 });
+              const msgs = await chat.fetchMessages({ limit: 20 });
               const fresh = (msgs as any[]).filter((m: any) =>
                 !m.fromMe && (m.timestamp || 0) >= sinceTs
               );
@@ -337,47 +337,16 @@ async function createWWebInstance(
         } catch (e: any) {
           console.error(`[WA-GW] Poll error (${instanceId}): ${e.message}`);
         }
-      }, 90_000);
+      };
+
+      const pollInterval = setInterval(() => runPoll(6 * 60 * 1000), 45_000);
       entry.pollInterval = pollInterval;
+      // Public scan trigger — /api/wa-scan-now endpoint'i çağırır
+      (entry as any).runPoll = runPoll;
 
-      // Çevrimdışıyken gelen kaçırılan mesajları getir (son 12 saat)
-      // message eventi yalnızca bağlantı sırasında gelen mesajlar için tetiklenir.
-      // Reconnect sonrası missed mesajları mevcut handler ile işliyoruz.
-      setTimeout(async () => {
-        try {
-          const sinceTs = Math.floor((Date.now() - 12 * 60 * 60 * 1000) / 1000);
-          console.log(`[WA-GW] Kaçırılan mesaj taraması: ${instanceId} (son 12 saat)`);
-
-          const chats = await client.getChats();
-          // Sadece bireysel (grup olmayan) ve unread chatleri tara
-          const targets = (chats as any[]).filter((c: any) => {
-            const cid = c.id?._serialized || '';
-            return !c.isGroup && (cid.endsWith('@c.us') || cid.endsWith('@s.whatsapp.net')) && c.unreadCount > 0;
-          });
-          console.log(`[WA-GW] Taranacak ${targets.length} unread chat`);
-
-          for (const chat of targets.slice(0, 25)) {
-            try {
-              const msgs = await chat.fetchMessages({ limit: 20 });
-              const missed = (msgs as any[]).filter((m: any) =>
-                !m.fromMe && (m.timestamp || 0) >= sinceTs
-              );
-              if (missed.length) {
-                console.log(`[WA-GW] ${chat.id._serialized}: ${missed.length} kaçırılan mesaj`);
-              }
-              for (const m of missed) {
-                // Var olan message event handler'ı re-emit ile kullan (dedup dahil)
-                client.emit('message', m);
-              }
-            } catch (chatErr: any) {
-              console.error(`[WA-GW] Chat fetch hata (${chat.id?._serialized}): ${chatErr.message}`);
-            }
-          }
-          console.log(`[WA-GW] Kaçırılan mesaj taraması tamamlandı`);
-        } catch (e: any) {
-          console.error(`[WA-GW] Missed-msg scan error: ${e.message}`);
-        }
-      }, 20_000); // 20 saniye WA'nın senkronize olmasını bekle
+      // Başlangıç taraması: son 12 saatteki kaçırılan mesajları getir
+      // unreadCount KULLANMA — timestamp bazlı filtre daha güvenilir
+      setTimeout(() => runPoll(12 * 60 * 60 * 1000), 20_000);
     });
 
     // ── RemoteAuth session kaydedildi ──
@@ -889,6 +858,21 @@ export async function heartbeatReconnect(): Promise<void> {
   } catch (e: any) {
     console.error('[WA-GW] Heartbeat error:', e.message);
   }
+}
+
+// Anında tüm connected instance'ları tara — test/diagnostic için
+export async function scanNow(userId?: string): Promise<{ scanned: number; instanceIds: string[] }> {
+  const scanned: string[] = [];
+  for (const [instId, inst] of instances.entries()) {
+    if (userId && inst.userId !== userId) continue;
+    if (inst.status !== 'connected') continue;
+    const runPoll = (inst as any).runPoll;
+    if (runPoll) {
+      await runPoll(12 * 60 * 60 * 1000).catch(() => {}); // son 12 saat
+      scanned.push(instId);
+    }
+  }
+  return { scanned: scanned.length, instanceIds: scanned };
 }
 
 // Kullanıcının tüm instance'larını zorla yok et.
