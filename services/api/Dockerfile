@@ -3,6 +3,9 @@ FROM node:20-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   git \
+  python3 \
+  make \
+  g++ \
   chromium \
   libglib2.0-0 \
   libnss3 \
