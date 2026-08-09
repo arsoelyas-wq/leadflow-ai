@@ -114,6 +114,10 @@ router.post('/:id/reconnect', async (req: any, res: any) => {
       .select('id, status').eq('id', req.params.id).eq('user_id', userId).single();
     if (!num) return res.status(404).json({ error: 'Numara bulunamadı' });
 
+    // Eski qr_ready/creating instance'ları temizle — bellek için
+    const { forceReconnectUser } = require('../lib/waGateway');
+    await forceReconnectUser(userId);
+
     // Durumu 'connecting' yap ki onConnected handler doğru bulabilsin
     await supabase.from('wa_numbers').update({ status: 'connecting' }).eq('id', req.params.id);
 
@@ -237,26 +241,32 @@ router.get('/qr-status', async (req: any, res: any) => {
       return res.json({ status: 'connected', connected: true, qr: null });
     }
 
-    // 3. Embedded gateway'den QR al
-    const { data: creating } = await supabase.from('wa_instances')
-      .select('instance_id').eq('user_id', req.userId).eq('status', 'creating')
+    // 3. Embedded gateway'den QR al — creating veya qr_pending
+    const { data: pendingInst } = await supabase.from('wa_instances')
+      .select('instance_id')
+      .eq('user_id', req.userId)
+      .in('status', ['creating', 'qr_pending'])
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
-    if (creating?.instance_id) {
-      const { getQR, getStatus } = require('../lib/waGateway');
-      const qr = getQR(creating.instance_id);
-      const status = getStatus(creating.instance_id);
-      if (status === 'connected') return res.json({ status: 'connected', connected: true, qr: null });
+
+    // Ayrıca bellekteki tüm instance'ları da kontrol et (DB güncellemesi gecikmeli olabilir)
+    const { getQR, getStatus, listInstances } = require('../lib/waGateway');
+
+    let instanceId = pendingInst?.instance_id;
+    if (!instanceId) {
+      // Bellekte qr_ready olan varsa kullan
+      const memList: any[] = listInstances();
+      const memQR = memList.find((i: any) => i.status === 'qr_ready');
+      instanceId = memQR?.instanceId;
+    }
+
+    if (instanceId) {
+      const qr = getQR(instanceId);
+      const memStatus = getStatus(instanceId);
+      if (memStatus === 'connected') return res.json({ status: 'connected', connected: true, qr: null });
       if (qr) return res.json({ status: 'qr_ready', connected: false, qr });
     }
 
-    // 4. Baileys fallback (eski bağlantılar için)
-    const { waState } = require('./settings');
-    const state = waState[req.userId];
-    res.json({
-      status: state?.status || 'disconnected',
-      qr: state?.qr || null,
-      connected: state?.status === 'connected',
-    });
+    res.json({ status: 'disconnected', qr: null, connected: false });
   } catch { res.json({ status: 'disconnected', qr: null, connected: false }); }
 });
 
