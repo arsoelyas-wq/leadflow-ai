@@ -760,6 +760,10 @@ export async function restoreConnectedInstances(): Promise<void> {
 
     console.log(`[WA-GW] Restoring ${toRestore.length} instance(s)...`);
     for (const inst of toRestore) {
+      if (inst.instance_id.startsWith('green-')) {
+        console.log(`[WA-GW] Skip green-api instance restore: ${inst.instance_id}`);
+        continue;
+      }
       // RemoteAuth session restore otomatik yapar (store.extract çağırır)
       // Session yoksa QR gösterir — biz sadece instance'ı başlatırız
       console.log(`[WA-GW] Starting instance: ${inst.instance_id}`);
@@ -828,6 +832,9 @@ export async function heartbeatReconnect(): Promise<void> {
     if (!dbInstances?.length) return;
 
     for (const inst of dbInstances) {
+      // Green API instance'lar WWebJS değil — heartbeat atla
+      if (inst.instance_id.startsWith('green-')) continue;
+
       const inMem = instances.get(inst.instance_id);
 
       if (!inMem || inMem.status === 'disconnected') {

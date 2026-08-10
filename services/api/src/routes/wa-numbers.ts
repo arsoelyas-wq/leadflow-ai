@@ -248,11 +248,23 @@ router.post('/:id/reconnect', async (req: any, res: any) => {
     const creds = (num.session_data as any)?.greenApi;
 
     if (creds?.idInstance && creds?.apiToken && creds?.apiUrl) {
-      // Mevcut instance'ı kullan — çıkış yap, QR sıfırla
+      const greenInstanceId = `green-${creds.idInstance}`;
+
+      // Önce mevcut durumu kontrol et — zaten authorized ise logout etme
+      const state = await greenApi.getStatus(creds.apiUrl, creds.idInstance, creds.apiToken);
+      if (state === 'authorized') {
+        const phone = await greenApi.getPhone(creds.apiUrl, creds.idInstance, creds.apiToken);
+        await Promise.all([
+          supabase.from('wa_numbers').update({ status: 'connected', phone_number: phone }).eq('id', req.params.id),
+          supabase.from('wa_instances').upsert([{ user_id: userId, instance_id: greenInstanceId, status: 'connected', phone, connected_at: new Date().toISOString() }], { onConflict: 'instance_id' }),
+        ]);
+        return res.json({ status: 'connected', phone, instanceId: greenInstanceId });
+      }
+
+      // Authorized değil — QR sıfırla (logout + yeni QR)
       await greenApi.logoutInstance(creds.apiUrl, creds.idInstance, creds.apiToken);
       await new Promise(r => setTimeout(r, 2000));
       const qr = await greenApi.getQR(creds.apiUrl, creds.idInstance, creds.apiToken);
-      const greenInstanceId = `green-${creds.idInstance}`;
       if (qr && qr !== 'authorized') {
         return res.json({ qr, status: 'qr_pending', instanceId: greenInstanceId });
       }
