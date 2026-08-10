@@ -185,6 +185,18 @@ export default function AdsPage() {
   const [healthLoading, setHealthLoading] = useState(false)
   const [sendingReport, setSendingReport] = useState(false)
 
+  // Hot leads (polled every 30s)
+  const [hotLeads, setHotLeads] = useState<any[]>([])
+
+  // Campaign metrics — real spend/CTR/CPL/ROAS from /api/meta/attribution
+  const [campaignMetrics, setCampaignMetrics] = useState<any[]>([])
+
+  // A/B tests
+  const [abTests, setAbTests] = useState<any[]>([])
+  const [abTestsLoading, setAbTestsLoading] = useState(false)
+  const [launchingAbTest, setLaunchingAbTest] = useState<string | null>(null)
+  const [abCampaignId, setAbCampaignId] = useState('')
+
   function showMsg(type: 'success' | 'error', text: string) {
     setMsg({ type, text }); setTimeout(() => setMsg(null), 4000)
   }
@@ -197,6 +209,47 @@ export default function AdsPage() {
     if (metaCode) exchangeToken(metaCode)
     else if (code && params.get('state') === 'meta') exchangeToken(code)
     else loadAll()
+  }, [])
+
+  // Hot lead polling — every 30s
+  useEffect(() => {
+    async function fetchHotLeads() {
+      try {
+        const r = await fetch(`${API}/api/meta/hot-leads`, { headers: authH() })
+        const d = await r.json()
+        setHotLeads(Array.isArray(d) ? d : (d.leads || []))
+      } catch {}
+    }
+    fetchHotLeads()
+    const id = setInterval(fetchHotLeads, 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Real campaign metrics (spend / CTR / CPL / ROAS)
+  useEffect(() => {
+    async function fetchCampaignMetrics() {
+      try {
+        const r = await fetch(`${API}/api/meta/attribution`, { headers: authH() })
+        const d = await r.json()
+        const rows = d.campaigns || d.rows || (Array.isArray(d) ? d : [])
+        setCampaignMetrics(rows)
+      } catch {}
+    }
+    fetchCampaignMetrics()
+  }, [])
+
+  // A/B tests
+  useEffect(() => {
+    async function fetchAbTests() {
+      setAbTestsLoading(true)
+      try {
+        const r = await fetch(`${API}/api/meta/ab-tests`, { headers: authH() })
+        const d = await r.json()
+        setAbTests(Array.isArray(d) ? d : (d.tests || []))
+      } catch {}
+      setAbTestsLoading(false)
+    }
+    fetchAbTests()
   }, [])
 
   async function exchangeToken(code: string) {
@@ -256,6 +309,23 @@ export default function AdsPage() {
       if (ob.status === 'fulfilled') setOnboardingData(ob.value)
       if (roas.status === 'fulfilled') setRoasPrediction(roas.value?.prediction)
     })
+  }
+
+  async function launchAbTest(campaignId: string) {
+    setLaunchingAbTest(campaignId)
+    try {
+      const r = await fetch(`${API}/api/meta/ab-tests/${campaignId}/launch`, { method: 'POST', headers: authH() })
+      const d = await r.json()
+      if (d.ok || d.test) {
+        showMsg('success', 'A/B test başlatıldı!')
+        const r2 = await fetch(`${API}/api/meta/ab-tests`, { headers: authH() })
+        const d2 = await r2.json()
+        setAbTests(Array.isArray(d2) ? d2 : (d2.tests || []))
+      } else {
+        showMsg('error', d.error || 'A/B test başlatılamadı')
+      }
+    } catch { showMsg('error', 'Bağlantı hatası') }
+    setLaunchingAbTest(null)
   }
 
   function openWizard() {
@@ -348,6 +418,30 @@ export default function AdsPage() {
       )}
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+
+        {/* ── HOT LEAD BANNER ── */}
+        {hotLeads.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-2xl p-4 flex flex-wrap items-center gap-4 shadow-sm">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-2xl">🔥</span>
+              <span className="text-amber-800 font-extrabold text-sm">Sıcak Lead!</span>
+            </div>
+            <div className="flex flex-wrap gap-3 flex-1">
+              {hotLeads.map((lead: any) => (
+                <div key={lead.id} className="flex items-center gap-2 bg-white border border-amber-200 rounded-xl px-3 py-2 shadow-sm">
+                  <span className="text-sm font-semibold text-slate-900">{lead.contact_name}</span>
+                  <a
+                    href={`/leads/${lead.id}`}
+                    className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-bold transition"
+                  >
+                    Şimdi Ara
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Hero */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -840,6 +934,129 @@ export default function AdsPage() {
             )}
           </div>
         )}
+
+        {/* ── REAL CAMPAIGN METRICS (spend / CTR / CPL / ROAS) ── */}
+        {campaignMetrics.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <DollarSign className="w-4 h-4 text-slate-500" />
+              <span className="text-sm font-medium text-slate-900">Kampanya Metrikleri</span>
+              <span className="ml-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs">{campaignMetrics.length}</span>
+            </div>
+            <div className="space-y-2">
+              {campaignMetrics.map((camp: any, i: number) => (
+                <div key={i} className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3 bg-slate-50 rounded-xl items-center">
+                  <div className="col-span-2 sm:col-span-1">
+                    <p className="text-xs font-semibold text-slate-900 truncate">{camp.campaign_name || camp.campaign || '—'}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Kampanya</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-slate-900">₺{Number(camp.spend || 0).toFixed(0)}</p>
+                    <p className="text-[10px] text-slate-500">Harcama</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-blue-600">{camp.ctr != null ? `%${Number(camp.ctr).toFixed(2)}` : '—'}</p>
+                    <p className="text-[10px] text-slate-500">CTR</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-violet-600">{camp.cpl != null ? `₺${Number(camp.cpl).toFixed(0)}` : '—'}</p>
+                    <p className="text-[10px] text-slate-500">CPL</p>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-sm font-bold ${Number(camp.roas) >= 1 ? 'text-emerald-600' : camp.roas != null ? 'text-red-500' : 'text-slate-400'}`}>
+                      {camp.roas != null ? `${Number(camp.roas).toFixed(2)}x` : '—'}
+                    </p>
+                    <p className="text-[10px] text-slate-500">ROAS</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── A/B TEST PANEL ── */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-slate-500" />
+              <span className="text-sm font-medium text-slate-900">A/B Test Paneli</span>
+              {abTests.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-xs">{abTests.length}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={abCampaignId}
+                onChange={e => setAbCampaignId(e.target.value)}
+                placeholder="Kampanya ID"
+                className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-blue-400"
+              />
+              <button
+                onClick={() => {
+                  const id = abCampaignId.trim() || (campaigns[0]?.id ? String(campaigns[0].id) : '')
+                  if (id) launchAbTest(id)
+                  else showMsg('error', 'Kampanya ID girin veya bir kampanya yükleyin')
+                }}
+                disabled={!!launchingAbTest}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold disabled:opacity-50 transition"
+              >
+                {launchingAbTest ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                Yeni Test Başlat
+              </button>
+            </div>
+          </div>
+
+          {abTestsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />
+            </div>
+          ) : abTests.length === 0 ? (
+            <div className="text-center py-8 bg-slate-50 rounded-xl">
+              <p className="text-sm text-slate-400">Henüz A/B test yok.</p>
+              <p className="text-xs text-slate-400 mt-1">Bir kampanya ID girerek test başlatabilirsiniz.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {abTests.map((test: any) => {
+                const ctrA = Number(test.ctr_a || 0)
+                const ctrB = Number(test.ctr_b || 0)
+                const winner = test.winner_variant
+                return (
+                  <div key={test.id} className="border border-slate-100 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        test.status === 'running'
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                          : test.status === 'winner'
+                          ? 'bg-blue-50 border-blue-200 text-blue-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                      }`}>
+                        {test.status === 'running' ? '● Çalışıyor' : test.status === 'winner' ? '✓ Kazanan Belirlendi' : 'Duraklatıldı'}
+                      </span>
+                      {winner && (
+                        <span className="text-[10px] font-semibold text-slate-500">
+                          Kazanan: Varyant {winner.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`p-3 rounded-xl border ${winner === 'a' ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100'}`}>
+                        <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase">Varyant A{winner === 'a' ? ' 🏆' : ''}</p>
+                        <p className="text-xs font-semibold text-slate-900 line-clamp-2">{test.headline_a}</p>
+                        {ctrA > 0 && <p className="text-xs font-bold text-blue-600 mt-1.5">CTR: %{ctrA.toFixed(2)}</p>}
+                      </div>
+                      <div className={`p-3 rounded-xl border ${winner === 'b' ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-100'}`}>
+                        <p className="text-[10px] font-bold text-slate-400 mb-1 uppercase">Varyant B{winner === 'b' ? ' 🏆' : ''}</p>
+                        <p className="text-xs font-semibold text-slate-900 line-clamp-2">{test.headline_b}</p>
+                        {ctrB > 0 && <p className="text-xs font-bold text-blue-600 mt-1.5">CTR: %{ctrB.toFixed(2)}</p>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Advanced section toggle */}
         <div>
