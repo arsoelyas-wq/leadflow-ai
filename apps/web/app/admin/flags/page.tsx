@@ -5,7 +5,9 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.u
 function getAdminToken() { return typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : '' }
 async function req(path: string, opts: RequestInit = {}) {
   const r = await fetch(`${API}/api/admin${path}`, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAdminToken()}`, ...opts.headers } })
-  return r.json()
+  const json = await r.json()
+  if (!r.ok) throw new Error(json?.error || `HTTP ${r.status}`)
+  return json
 }
 
 type FlagStatus = 'active' | 'disabled' | 'coming_soon'
@@ -110,7 +112,7 @@ export default function AdminFlagsPage() {
   const [msg, setMsg] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
 
-  useEffect(() => {
+  const loadFlags = () =>
     req('/flags').then(d => {
       const map: Record<string, FlagStatus> = {}
       ;(d.flags || []).forEach((f: any) => {
@@ -118,7 +120,8 @@ export default function AdminFlagsPage() {
       })
       setFlags(map)
     }).catch(() => {})
-  }, [])
+
+  useEffect(() => { loadFlags() }, [])
 
   const setStatus = async (key: string, status: FlagStatus) => {
     setSaving(key)
@@ -126,9 +129,15 @@ export default function AdminFlagsPage() {
       await req(`/flags/${key}`, { method: 'PATCH', body: JSON.stringify({ status }) })
       setFlags(prev => ({ ...prev, [key]: status }))
       const cfg = STATUS_CONFIG[status]
-      setMsg(`${cfg.label}: "${key}" güncellendi`)
-      setTimeout(() => setMsg(''), 3000)
-    } catch (e: any) { setMsg('❌ Hata: ' + e.message) }
+      setMsg(`✅ ${cfg.label}: "${key}" kaydedildi`)
+      setTimeout(() => setMsg(''), 4000)
+      // DB'den yeniden yükle — gerçekten kaydoldu mu doğrula
+      setTimeout(() => loadFlags(), 800)
+    } catch (e: any) {
+      setMsg(`❌ Kayıt hatası: ${e.message}`)
+      // Hata varsa lokal state'i geri al
+      setTimeout(() => loadFlags(), 300)
+    }
     finally { setSaving(null) }
   }
 
