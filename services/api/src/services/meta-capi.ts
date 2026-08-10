@@ -140,7 +140,7 @@ function makeEvent(eventName: string, lead: any, extra: Record<string, any> = {}
 
   // Predicted LTV for intermediate events — helps Meta value optimization
   if (customData.value === undefined && ['Schedule', 'AddToCart', 'Contact'].includes(eventName)) {
-    const predicted = (lead.deal_value || 0) * 0.2;
+    const predicted = (lead.deal_value || lead.avg_deal_value || 0) * 0.2;
     if (predicted > 0) customData.predicted_ltv = Number(predicted.toFixed(2));
   }
 
