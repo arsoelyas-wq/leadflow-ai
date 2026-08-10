@@ -279,6 +279,9 @@ async function saveLeadToCRM(userId: string, lead: any): Promise<any> {
         const { markHotLead } = require('../services/hotLeadService');
         await markHotLead(supabase, userId, newLead);
       } catch {}
+      // AI quality scoring — fire-and-forget, does not block lead save
+      const { scoreLead } = require('../services/leadQualityAI');
+      scoreLead(supabase, userId, newLead).catch(() => {});
     }
 
     return newLead;
@@ -388,10 +391,21 @@ router.get('/extract-leads', async (req: any, res: any) => {
           title: 'Yeni Meta Reklam Leadi!',
           message: `${lead.name || lead.company || 'Yeni lead'} (${lead.source})`,
         }]);
-        // 5 Dakika Kurali
+        // 5 Dakika Kurali — only for high-quality leads (score >= 6)
         if (fiveMinEnabled && lead.phone) {
           const delayMs = (settings?.call_delay_minutes || 5) * 60 * 1000;
-          setTimeout(() => triggerFiveMinuteCall(userId, result), delayMs);
+          setTimeout(async () => {
+            try {
+              // Wait briefly for AI score to be computed (scoreLead is fire-and-forget above)
+              await new Promise(r => setTimeout(r, 10000)); // 10s for Claude to score
+              const { data: freshLead } = await supabase.from('leads').select('ai_quality_score').eq('id', result.id).single();
+              if ((freshLead?.ai_quality_score ?? 5) < 6) {
+                console.log(`[5DkKurali] Skipped — score ${freshLead?.ai_quality_score} < 6`);
+                return;
+              }
+              await triggerFiveMinuteCall(userId, result);
+            } catch {}
+          }, delayMs);
           console.log(`[5DkKurali] ${delayMs/60000} dk sonra arama: ${lead.phone}`);
         }
         // WhatsApp otomatik mesaj
@@ -593,7 +607,18 @@ async function runAutoSystem() {
             saved++;
             if (settings?.five_minute_rule !== false && lead.phone) {
               const delay = (settings?.call_delay_minutes || 5) * 60 * 1000;
-              setTimeout(() => triggerFiveMinuteCall(conn.user_id, result), delay);
+              setTimeout(async () => {
+                try {
+                  // Wait briefly for AI score to be computed (scoreLead is fire-and-forget above)
+                  await new Promise(r => setTimeout(r, 10000)); // 10s for Claude to score
+                  const { data: freshLead } = await supabase.from('leads').select('ai_quality_score').eq('id', result.id).single();
+                  if ((freshLead?.ai_quality_score ?? 5) < 6) {
+                    console.log(`[5DkKurali] Skipped — score ${freshLead?.ai_quality_score} < 6`);
+                    return;
+                  }
+                  await triggerFiveMinuteCall(conn.user_id, result);
+                } catch {}
+              }, delay);
             }
             sendWhatsAppToLead(conn.user_id, { ...lead, ...result });
           }

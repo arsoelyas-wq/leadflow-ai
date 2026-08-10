@@ -1,8 +1,6 @@
-const Anthropic = require('@anthropic-ai/sdk');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 async function markHotLead(supabase: any, userId: string, lead: any): Promise<void> {
+  const AnthropicSDK = require('@anthropic-ai/sdk');
+  const anthropic = new AnthropicSDK({ apiKey: process.env.ANTHROPIC_API_KEY });
   try {
     // A lead is "hot" if created within 5 minutes
     const createdAt = new Date(lead.created_at || Date.now());
