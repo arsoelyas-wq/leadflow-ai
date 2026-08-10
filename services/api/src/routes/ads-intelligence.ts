@@ -1426,9 +1426,26 @@ router.get('/predict-roas', async (req: any, res: any) => {
   } catch (e: any) { res.json({ prediction: null, error: e.message }); }
 });
 
+// GET /api/ads-intelligence/autopilot-status
+router.get('/autopilot-status', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', req.userId)
+      .eq('type', 'autopilot_summary')
+      .order('created_at', { ascending: false })
+      .limit(7);
+    res.json({ summaries: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // Start hourly ad spend sync
 const { startAdSpendSync } = require('../services/adSpendSync');
 startAdSpendSync();
+
+// Start daily autopilot engine
+require('../services/autoPilot').startAutopilot();
 
 // GET /api/ads-intelligence/hot-leads — returns currently hot leads (< 30 min window)
 router.get('/hot-leads', async (req: any, res: any) => {
