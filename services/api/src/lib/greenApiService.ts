@@ -90,3 +90,12 @@ export async function logoutInstance(apiUrl: string, idInstance: number, apiToke
     await axios.get(`${apiUrl}/waInstance${idInstance}/logout/${apiToken}`, { timeout: 10000 });
   } catch {}
 }
+
+// ── Mesaj gönder ───────────────────────────────────────────────────────────────
+export async function sendMessage(apiUrl: string, idInstance: number, apiToken: string, phone: string, text: string): Promise<void> {
+  const chatId = phone.endsWith('@c.us') ? phone : `${phone}@c.us`;
+  await axios.post(`${apiUrl}/waInstance${idInstance}/sendMessage/${apiToken}`, {
+    chatId,
+    message: text,
+  }, { timeout: 15000 });
+}

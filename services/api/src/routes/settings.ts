@@ -185,7 +185,7 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
   let sent = false;
   try {
     const { data: numbers } = await supabase.from('wa_numbers')
-      .select('id, phone_number, daily_limit, sent_today, status, is_primary')
+      .select('id, phone_number, daily_limit, sent_today, status, is_primary, session_data')
       .eq('user_id', userId).eq('status', 'connected')
       .order('is_primary', { ascending: false });
 
@@ -214,14 +214,23 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
             .order('connected_at', { ascending: false }).limit(1);
           const instance = instRows?.[0] || null;
           if (instance?.instance_id) {
-            const { sendMessage: gatewaySend } = require('../lib/waGateway');
-            await gatewaySend(instance.instance_id, formattedPhone, message);
-            sent = true;
-            console.log(`[WA] Gateway gönderim başarılı — ${formattedPhone}`);
+            if (instance.instance_id.startsWith('green-')) {
+              const creds = (chosen as any).session_data?.greenApi;
+              if (!creds) throw new Error('Green API credentials not found in session_data');
+              const { sendMessage: greenSend } = require('../lib/greenApiService');
+              await greenSend(creds.apiUrl, creds.idInstance, creds.apiToken, formattedPhone, message);
+              sent = true;
+              console.log(`[WA] Green API gönderim başarılı — ${formattedPhone}`);
+            } else {
+              const { sendMessage: gatewaySend } = require('../lib/waGateway');
+              await gatewaySend(instance.instance_id, formattedPhone, message);
+              sent = true;
+              console.log(`[WA] Gateway gönderim başarılı — ${formattedPhone}`);
+            }
           }
         } catch (gaErr: any) {
-          console.error(`[WA] Gateway hatası — ${gaErr.message}`);
-          // Instance bellekte değil veya hazır değil — DB'yi güncelle ki dot doğru göstersin
+          console.error(`[WA] Gönderim hatası — ${gaErr.message}`);
+          // Sadece waGateway "not found" hatalarında bağlantıyı kopar; Green API hataları statüsü değiştirmez
           if (gaErr.message?.includes('instance not ready') || gaErr.message?.includes('not found')) {
             await supabase.from('wa_numbers').update({ status: 'disconnected' }).eq('id', chosen.id);
           }
@@ -239,14 +248,27 @@ const sendWhatsAppMessage = async (userId: string, phone: string, message: strin
     // wa_numbers boşsa wa_instances'dan doğrudan gönder
     if (!sent) {
       const { data: instRows } = await supabase.from('wa_instances')
-        .select('instance_id').eq('user_id', userId).eq('status', 'connected')
+        .select('instance_id, phone').eq('user_id', userId).eq('status', 'connected')
         .order('connected_at', { ascending: false }).limit(1);
       const directInst = instRows?.[0];
       if (directInst?.instance_id) {
-        const { sendMessage: gatewaySend } = require('../lib/waGateway');
-        await gatewaySend(directInst.instance_id, formattedPhone, message);
-        sent = true;
-        console.log(`[WA] Direct instance başarılı — ${formattedPhone}`);
+        if (directInst.instance_id.startsWith('green-')) {
+          const { data: numRow } = await supabase.from('wa_numbers')
+            .select('session_data').eq('user_id', userId).eq('phone_number', directInst.phone)
+            .eq('status', 'connected').single();
+          const creds = numRow?.session_data?.greenApi;
+          if (creds) {
+            const { sendMessage: greenSend } = require('../lib/greenApiService');
+            await greenSend(creds.apiUrl, creds.idInstance, creds.apiToken, formattedPhone, message);
+            sent = true;
+            console.log(`[WA] Green API direct başarılı — ${formattedPhone}`);
+          }
+        } else {
+          const { sendMessage: gatewaySend } = require('../lib/waGateway');
+          await gatewaySend(directInst.instance_id, formattedPhone, message);
+          sent = true;
+          console.log(`[WA] Direct instance başarılı — ${formattedPhone}`);
+        }
       }
     }
   } catch {}
