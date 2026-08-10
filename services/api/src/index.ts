@@ -101,7 +101,9 @@ app.post('/api/meta/webhook', async (req: any, res: any) => {
     const crypto = require('crypto');
     const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
     const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
-    if (sig !== expected) {
+    const sigBuf = Buffer.from(sig);
+    const expectedBuf = Buffer.from(expected);
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
       console.warn('[MetaWebhook] Invalid signature');
       return res.sendStatus(403);
     }
@@ -109,12 +111,11 @@ app.post('/api/meta/webhook', async (req: any, res: any) => {
     // Respond 200 immediately — Meta retries if we take > 20s
     res.sendStatus(200);
 
-    // 2. Parse payload
-    const payload = JSON.parse(rawBody.toString('utf8'));
-
     // 3. Process each entry asynchronously (fire-and-forget after 200 sent)
     setImmediate(async () => {
       try {
+        // 2. Parse payload inside setImmediate so a parse error cannot interfere with the already-sent 200
+        const payload = JSON.parse(rawBody.toString('utf8'));
         const { createClient } = require('@supabase/supabase-js');
         const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -133,6 +134,7 @@ app.post('/api/meta/webhook', async (req: any, res: any) => {
 
             if (!conn) {
               // Fallback: find by any connection that has this page in their ad accounts
+              console.warn('[MetaWebhook] page_id not matched, falling back to all connections — install page_id mapping for accuracy');
               const { data: conns } = await sb
                 .from('meta_connections')
                 .select('user_id, access_token')
@@ -244,7 +246,7 @@ async function processWebhookLead(sb: any, userId: string, token: string, value:
             openingLine: `Merhaba ${newLead.contact_name || 'Degerli Musterimiz'}! Reklamimizi gordugunuz icin tesekkurler, size kisa bilgi vermek istedim.`,
             language: 'tr',
           });
-        } catch {}
+        } catch (e: any) { console.warn('[MetaWebhook] triggerOutboundCall failed:', e.message); }
       }, delay);
     }
 
