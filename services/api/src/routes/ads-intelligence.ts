@@ -154,6 +154,49 @@ async function createLookalikeAudience(userId: string, adAccountId: string) {
       created_at: new Date().toISOString(),
     }]);
 
+    // High-value tier — top 20% by deal_value (separate audience)
+    const sorted = [...uniqueLeads].sort((a: any, b: any) => (b.deal_value || 0) - (a.deal_value || 0));
+    const topTier = sorted.slice(0, Math.ceil(sorted.length * 0.2));
+
+    if (topTier.length >= 20) {
+      const topRows = topTier.map((l: any) => [
+        hashData(l.email?.toLowerCase() || ''),
+        hashData(l.phone?.replace(/\D/g, '') || ''),
+        String(l.deal_value || 1000),
+      ]);
+
+      try {
+        const topAudienceRes = await metaPost(`/${adAccountId}/customaudiences`, token, {
+          name: `LeadFlow Ust Degerli Musteriler ${new Date().toLocaleDateString('tr-TR')}`,
+          description: `LeadFlow CRM — en yuksek degerli musteriler (ust %20), ${topTier.length} kisi`,
+          subtype: 'CUSTOM',
+          customer_file_source: 'PARTNER_PROVIDED_ONLY',
+        });
+        await metaPost(`/${topAudienceRes.id}/users`, token, { schema, data: topRows });
+
+        const topLookalikeRes = await metaPost(`/${adAccountId}/customaudiences`, token, {
+          name: `LeadFlow Ust Deger Lookalike ${new Date().toLocaleDateString('tr-TR')}`,
+          subtype: 'LOOKALIKE',
+          origin_audience_id: topAudienceRes.id,
+          lookalike_spec: { type: 'value', ratio: 0.01, country: 'TR' },
+        });
+
+        await supabase.from('ad_audiences').insert([{
+          user_id: userId,
+          audience_id: topLookalikeRes.id,
+          source_audience_id: topAudienceRes.id,
+          name: topLookalikeRes.name,
+          type: 'high_value_lookalike',
+          size_estimate: topTier.length,
+          created_at: new Date().toISOString(),
+        }]);
+
+        console.log(`[Lookalike] Ust deger lookalike olusturuldu: ${topTier.length} musteri → ${topLookalikeRes.id}`);
+      } catch (e: any) {
+        console.error('[Lookalike] Ust deger lookalike hatasi:', e.message);
+      }
+    }
+
     console.log(`[Lookalike] Value-based güncellendi: ${uniqueLeads.length} müşteri → ${lookalikeRes.id}`);
     return { ok: true, audienceId: lookalikeRes.id, name: lookalikeRes.name, sourceSize: uniqueLeads.length };
   } catch (e: any) {
@@ -857,10 +900,10 @@ router.get('/activity', async (req: any, res: any) => {
   }
 });
 
-// ── AYLIK OTOMATİK VALUE LOOKALIKE GÜNCELLEME ────────────
-// Her ayın 1'i saat 09:00'da, Meta hesabı olan tüm kullanıcılar için güncelle
-require('node-cron').schedule('0 9 1 * *', async () => {
-  console.log('[Lookalike] Aylık value-based güncelleme başlıyor...');
+// ── HAFTALIK OTOMATİK VALUE LOOKALIKE GÜNCELLEME ────────────
+// Her Pazartesi saat 09:00'da, Meta hesabı olan tüm kullanıcılar için güncelle
+require('node-cron').schedule('0 9 * * 1', async () => { // Every Monday 09:00
+  console.log('[Lookalike] Haftalık value-based güncelleme başlıyor...');
   try {
     const { data: connections } = await supabase
       .from('meta_connections')
