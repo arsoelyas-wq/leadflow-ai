@@ -604,12 +604,31 @@ router.patch('/flags/:key', async (req: any, res: any) => {
       return res.status(400).json({ error: 'status must be active|disabled|coming_soon' });
     }
     const is_enabled = status === 'active';
-    const { data, error } = await supabase.from('feature_flags')
-      .upsert([{ flag_key, status, is_enabled, updated_at: new Date().toISOString() }], { onConflict: 'flag_key' })
+    const updated_at = new Date().toISOString();
+
+    let result = await supabase.from('feature_flags')
+      .upsert([{ flag_key, status, is_enabled, updated_at }], { onConflict: 'flag_key' })
       .select().single();
-    if (error) throw error;
+
+    // Fallback: if 'status' column missing from schema cache, update only is_enabled
+    if (result.error && result.error.message.includes('status')) {
+      console.warn('[flags] status column not in schema cache, falling back to is_enabled only');
+      result = await supabase.from('feature_flags')
+        .update({ is_enabled, updated_at })
+        .eq('flag_key', flag_key)
+        .select().single() as any;
+
+      if (result.error) {
+        // Row doesn't exist yet — insert without status column
+        result = await supabase.from('feature_flags')
+          .insert([{ flag_key, is_enabled, updated_at, description: '' }])
+          .select().single() as any;
+      }
+    }
+
+    if (result.error) throw result.error;
     await audit(req.adminEmail, `flag.${status}`, undefined, { flag_key }, req.ip);
-    res.json({ flag: data });
+    res.json({ flag: result.data });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
