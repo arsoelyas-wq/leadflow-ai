@@ -16,7 +16,7 @@ export {};
 const crypto  = require('crypto');
 const https   = require('https');
 
-const CAPI_API_VERSION = 'v19.0';
+const CAPI_API_VERSION = 'v20.0';
 const GRAPH_HOST       = 'graph.facebook.com';
 
 // ─── SHA-256 HASHING ──────────────────────────────────────────────────────────
@@ -124,8 +124,25 @@ function makeEvent(eventName: string, lead: any, extra: Record<string, any> = {}
 
   if (lead.company_name) customData.content_name = lead.company_name;
   if (lead.sector)       customData.content_category = lead.sector;
-  if (extra.value)       customData.value    = Number(extra.value);
-  if (extra.orderId)     customData.order_id = extra.orderId;
+  // Dynamic value logic:
+  // - Purchase: use lead.deal_value
+  // - InitiateCheckout/AddPaymentInfo: use proposalValue or lead.proposal_value
+  // - explicit extra.value always wins
+  const eventValue =
+    extra.value !== undefined ? extra.value :
+    eventName === 'Purchase' ? (lead.deal_value ?? 0) :
+    (eventName === 'InitiateCheckout' || eventName === 'AddPaymentInfo')
+      ? (extra.proposalValue ?? lead.proposal_value ?? 0)
+      : undefined;
+
+  if (eventValue !== undefined && eventValue > 0) customData.value = Number(eventValue);
+  if (extra.orderId) customData.order_id = extra.orderId;
+
+  // Predicted LTV for intermediate events — helps Meta value optimization
+  if (customData.value === undefined && ['Schedule', 'AddToCart', 'Contact'].includes(eventName)) {
+    const predicted = (lead.deal_value || 0) * 0.2;
+    if (predicted > 0) customData.predicted_ltv = Number(predicted.toFixed(2));
+  }
 
   const event: any = {
     event_name:            eventName,
@@ -193,6 +210,19 @@ async function logCapiEvent(supabase: any, userId: string, leadId: string, event
 
 // ─── PUBLIC API ───────────────────────────────────────────────────────────────
 
+export type MetaCapiEventName =
+  | 'Lead'
+  | 'Contact'
+  | 'InitiateCheckout'
+  | 'ViewContent'
+  | 'Purchase'
+  | 'CompleteRegistration'
+  | 'Schedule'
+  | 'AddToCart'
+  | 'AddPaymentInfo'
+  | 'Search'
+  | 'SubmitApplication';
+
 /**
  * Fire a CAPI event for a given lead + user.
  * Fetches settings from DB, builds payload, sends, logs result.
@@ -201,8 +231,8 @@ export async function fireCapiEvent(
   supabase: any,
   userId: string,
   lead: any,
-  eventName: 'Lead' | 'Contact' | 'InitiateCheckout' | 'ViewContent' | 'Purchase' | 'CompleteRegistration',
-  extra: { value?: number; orderId?: string } = {}
+  eventName: MetaCapiEventName,
+  extra: { value?: number; orderId?: string; proposalValue?: number } = {}
 ): Promise<void> {
   const settings = await getMetaSettings(supabase, userId);
   if (!settings) return; // CAPI not configured — silently skip

@@ -316,19 +316,31 @@ router.patch('/:id', authMiddleware, async (req: any, res: any) => {
       }
     }
 
-    // Meta CAPI — fire on status transitions
+    // Meta CAPI — full-funnel event mapping trains Meta algorithm at every stage
     if (data && updates.status) {
       try {
+        const capiMap: Record<string, { event: string; valueField?: string }> = {
+          contacted:      { event: 'Contact' },
+          replied:        { event: 'Contact' },
+          interested:     { event: 'Lead' },
+          meeting_booked: { event: 'Schedule' },
+          proposal:       { event: 'InitiateCheckout', valueField: 'proposal_value' },
+          negotiating:    { event: 'AddToCart',        valueField: 'deal_value' },
+          won:            { event: 'Purchase',          valueField: 'deal_value' },
+          lost:           { event: 'ViewContent' },
+        };
+
+        const mapped = capiMap[updates.status as string];
+        if (mapped) {
+          const val = mapped.valueField ? ((data as any)[mapped.valueField] || 0) : undefined;
+          await fireCapiEvent(supabase, req.userId, data, mapped.event as any, { value: val });
+        }
+
+        // Google Enhanced Conversions — kept on key stages
         if (updates.status === 'won') {
-          await fireCapiEvent(supabase, req.userId, data, 'Purchase', { value: data.deal_value || 0, orderId: `won-${data.id}` });
           await fireGoogleConversion(supabase, req.userId, data, 'Purchase', { value: data.deal_value || 0 });
         } else if (updates.status === 'contacted' || updates.status === 'replied') {
-          await fireCapiEvent(supabase, req.userId, data, 'Contact');
           await fireGoogleConversion(supabase, req.userId, data, 'LeadFormSubmit');
-        } else if (updates.status === 'proposal') {
-          await fireCapiEvent(supabase, req.userId, data, 'InitiateCheckout');
-        } else if (updates.status === 'lost') {
-          await fireCapiEvent(supabase, req.userId, data, 'ViewContent');
         }
       } catch {}
     }
