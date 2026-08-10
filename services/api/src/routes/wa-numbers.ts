@@ -26,6 +26,82 @@ router.get('/', async (req: any, res: any) => {
   }
 });
 
+// POST /api/wa-numbers/connect-manual — Müşteri kendi Green API hesabını bağlar
+router.post('/connect-manual', async (req: any, res: any) => {
+  try {
+    const userId = req.userId;
+    const { instanceId, apiToken, displayName, dailyLimit } = req.body;
+    if (!instanceId || !apiToken) {
+      return res.status(400).json({ error: 'instanceId ve apiToken zorunlu' });
+    }
+
+    const idNum = Number(instanceId);
+    const apiUrl = `https://${String(instanceId).slice(0, 4)}.api.greenapi.com`;
+    const greenInstanceId = `green-${instanceId}`;
+
+    // Plan limiti kontrol
+    const { count } = await supabase.from('wa_numbers')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId).in('status', ['connected', 'connecting']);
+    const { data: user } = await supabase.from('users')
+      .select('plan_type').eq('id', userId).single();
+    const limits: Record<string, number> = { starter: 1, professional: 3, enterprise: 10 };
+    const maxNumbers = limits[user?.plan_type || 'starter'] || 1;
+    if ((count || 0) >= maxNumbers) {
+      return res.status(400).json({ error: `Planınız maksimum ${maxNumbers} numara destekliyor.` });
+    }
+
+    // Webhook ayarla
+    const greenApi = require('../lib/greenApiService');
+    try {
+      await greenApi.configureWebhook(apiUrl, idNum, apiToken);
+    } catch (e: any) {
+      return res.status(400).json({ error: `Green API bağlantısı kurulamadı: ${e.message?.slice(0, 100)}. Instance ID ve Token'ı kontrol edin.` });
+    }
+
+    // wa_numbers kaydı
+    const isPrimary = (count || 0) === 0;
+    const { data: newNumber, error: numErr } = await supabase.from('wa_numbers').insert([{
+      user_id: userId,
+      display_name: displayName || 'WhatsApp Hattım',
+      status: 'connecting',
+      daily_limit: dailyLimit || 100,
+      is_primary: isPrimary,
+      session_data: { greenApi: { idInstance: idNum, apiToken, apiUrl } },
+    }]).select().single();
+    if (numErr) throw numErr;
+
+    // wa_instances kaydı (webhook routing için şart)
+    await supabase.from('wa_instances').upsert([{
+      user_id: userId, instance_id: greenInstanceId, status: 'connecting',
+    }], { onConflict: 'instance_id' });
+
+    // Zaten bağlı mı?
+    const state = await greenApi.getStatus(apiUrl, idNum, apiToken);
+    if (state === 'authorized') {
+      const phone = await greenApi.getPhone(apiUrl, idNum, apiToken);
+      await Promise.all([
+        supabase.from('wa_numbers').update({ status: 'connected', phone_number: phone }).eq('id', newNumber.id),
+        supabase.from('wa_instances').update({ status: 'connected', phone, connected_at: new Date().toISOString() }).eq('instance_id', greenInstanceId),
+      ]);
+      return res.json({ status: 'connected', phone, instanceId: greenInstanceId, number: { ...newNumber, status: 'connected', phone_number: phone } });
+    }
+
+    // QR al
+    await new Promise(r => setTimeout(r, 1500));
+    const qr = await greenApi.getQR(apiUrl, idNum, apiToken);
+    res.json({
+      number: newNumber,
+      qr: (qr && qr !== 'authorized') ? qr : null,
+      status: 'qr_pending',
+      instanceId: greenInstanceId,
+    });
+  } catch (e: any) {
+    console.error('[Connect Manual] Hata:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/wa-numbers/connect — Yeni numara ekle + QR (Green API)
 router.post('/connect', async (req: any, res: any) => {
   try {
