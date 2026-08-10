@@ -215,9 +215,9 @@ export default function AdsPage() {
   useEffect(() => {
     async function fetchHotLeads() {
       try {
-        const r = await fetch(`${API}/api/meta/hot-leads`, { headers: authH() })
+        const r = await fetch(`${API}/api/ads-intelligence/hot-leads`, { headers: authH() })
         const d = await r.json()
-        setHotLeads(Array.isArray(d) ? d : (d.leads || []))
+        setHotLeads(Array.isArray(d) ? d : (d.hot_leads || []))
       } catch {}
     }
     fetchHotLeads()
@@ -229,7 +229,7 @@ export default function AdsPage() {
   useEffect(() => {
     async function fetchCampaignMetrics() {
       try {
-        const r = await fetch(`${API}/api/meta/attribution`, { headers: authH() })
+        const r = await fetch(`${API}/api/meta-capi/attribution`, { headers: authH() })
         const d = await r.json()
         const rows = d.campaigns || d.rows || (Array.isArray(d) ? d : [])
         setCampaignMetrics(rows)
@@ -243,7 +243,7 @@ export default function AdsPage() {
     async function fetchAbTests() {
       setAbTestsLoading(true)
       try {
-        const r = await fetch(`${API}/api/meta/ab-tests`, { headers: authH() })
+        const r = await fetch(`${API}/api/ads-intelligence/ab-tests`, { headers: authH() })
         const d = await r.json()
         setAbTests(Array.isArray(d) ? d : (d.tests || []))
       } catch {}
@@ -314,11 +314,11 @@ export default function AdsPage() {
   async function launchAbTest(campaignId: string) {
     setLaunchingAbTest(campaignId)
     try {
-      const r = await fetch(`${API}/api/meta/ab-tests/${campaignId}/launch`, { method: 'POST', headers: authH() })
+      const r = await fetch(`${API}/api/ads-intelligence/ab-tests/${campaignId}/launch`, { method: 'POST', headers: authH() })
       const d = await r.json()
       if (d.ok || d.test) {
         showMsg('success', 'A/B test başlatıldı!')
-        const r2 = await fetch(`${API}/api/meta/ab-tests`, { headers: authH() })
+        const r2 = await fetch(`${API}/api/ads-intelligence/ab-tests`, { headers: authH() })
         const d2 = await r2.json()
         setAbTests(Array.isArray(d2) ? d2 : (d2.tests || []))
       } else {
