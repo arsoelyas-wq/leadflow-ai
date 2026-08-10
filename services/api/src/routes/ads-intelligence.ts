@@ -3,6 +3,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
 const Anthropic = require('@anthropic-ai/sdk');
+const { fireCapiEvent } = require('../services/meta-capi');
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -60,47 +61,6 @@ async function triggerFiveMinuteCall(userId: string, lead: any) {
   }
 }
 
-// ── 2. CAPI - CONVERSIONS API ────────────────────────────
-async function sendEventToCAPI(userId: string, eventData: {
-  eventName: string;
-  eventTime: number;
-  email?: string;
-  phone?: string;
-  leadId?: string;
-  value?: number;
-  currency?: string;
-}) {
-  try {
-    const pixelId = process.env.META_PIXEL_ID;
-    const accessToken = process.env.META_GRAPH_TOKEN;
-    if (!pixelId || !accessToken) return;
-
-    const userData: any = {};
-    if (eventData.email) userData.em = [hashData(eventData.email.toLowerCase())];
-    if (eventData.phone) userData.ph = [hashData(eventData.phone.replace(/\D/g, ''))];
-
-    const payload = {
-      data: [{
-        event_name: eventData.eventName,
-        event_time: eventData.eventTime,
-        action_source: 'system_generated',
-        user_data: userData,
-        custom_data: {
-          lead_id: eventData.leadId,
-          value: eventData.value || 0,
-          currency: eventData.currency || 'TRY',
-        },
-      }],
-      access_token: accessToken,
-    };
-
-    await axios.post(`${GRAPH}/${pixelId}/events`, payload, { timeout: 10000 });
-    console.log(`[CAPI] Event gonderildi: ${eventData.eventName}`);
-  } catch (e: any) {
-    console.error('[CAPI] Hata:', e.message);
-  }
-}
-
 function hashData(data: string): string {
   const crypto = require('crypto');
   return crypto.createHash('sha256').update(data).digest('hex');
@@ -114,14 +74,8 @@ async function sendLeadQualityFeedback(userId: string, leadId: string, quality: 
 
     const eventName = quality === 'converted' ? 'Purchase' : quality === 'qualified' ? 'Lead' : 'ViewContent';
 
-    await sendEventToCAPI(userId, {
-      eventName,
-      eventTime: Math.floor(Date.now() / 1000),
-      email: lead.email,
-      phone: lead.phone,
-      leadId: lead.meta_lead_id || leadId,
-      value: quality === 'converted' ? 100 : 0,
-    });
+    const val = quality === 'converted' ? (lead.deal_value || 0) : 0;
+    await fireCapiEvent(supabase, userId, lead, eventName, { value: val });
 
     await supabase.from('leads').update({ meta_quality_sent: quality, meta_quality_sent_at: new Date().toISOString() }).eq('id', leadId);
   } catch (e: any) {
@@ -319,13 +273,7 @@ async function saveLeadToCRM(userId: string, lead: any): Promise<any> {
 
     // CAPI'ye Lead eventi gonder
     if (newLead) {
-      await sendEventToCAPI(userId, {
-        eventName: 'Lead',
-        eventTime: Math.floor(Date.now() / 1000),
-        email: lead.email,
-        phone: lead.phone,
-        leadId: lead.meta_lead_id,
-      });
+      await fireCapiEvent(supabase, userId, newLead, 'Lead', {});
     }
 
     return newLead;
@@ -453,10 +401,10 @@ router.get('/extract-leads', async (req: any, res: any) => {
 router.post('/capi-event', async (req: any, res: any) => {
   try {
     const { eventName, email, phone, leadId, value } = req.body;
-    await sendEventToCAPI(req.userId, {
-      eventName, eventTime: Math.floor(Date.now() / 1000),
-      email, phone, leadId, value,
-    });
+    const { data: lead } = await supabase.from('leads').select('*')
+      .eq('id', leadId).eq('user_id', req.userId).maybeSingle();
+    if (!lead) return res.status(404).json({ error: 'Lead bulunamadi' });
+    await fireCapiEvent(supabase, req.userId, lead, eventName as any, { value: value || 0 });
     res.json({ ok: true });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
