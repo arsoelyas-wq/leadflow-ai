@@ -1,4 +1,3 @@
-export {};
 const Anthropic = require('@anthropic-ai/sdk');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -68,8 +67,8 @@ Return ONLY the message text, nothing else.`,
     await supabase.from('notifications').insert([{
       user_id: userId,
       type: 'hot_lead',
-      title: 'Sicak Lead!',
-      message: `${leadName || 'Yeni lead'} — az once formu doldurdu, hemen ara!`,
+      title: 'Sıcak Lead!',
+      message: `${leadName || 'Yeni lead'} — az önce formu doldurdu, hemen ara!`,
       data: JSON.stringify({ leadId: lead.id, openingMessage }),
     }]);
 
