@@ -466,7 +466,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                 cursor: 'pointer', border: 'none', width: '100%', textAlign: 'left',
               }}>
                 <div style={{ width: 21, height: 21, borderRadius: 6, background: `${cloneColor}16`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Mic size={11} color={cloneColor} />
+                  <Phone size={11} color={cloneColor} />
                 </div>
                 <span style={{ flex: 1 }}>{t('nav.voice_agent', 'Sesli Ajan')}</span>
                 <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: `${cloneColor}14`, color: cloneColor, flexShrink: 0 }}>AI</span>
