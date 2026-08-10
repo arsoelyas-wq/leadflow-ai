@@ -99,7 +99,7 @@ app.get('/api/feature-flags', async (req: any, res: any) => {
     const { createClient } = require('@supabase/supabase-js');
     const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
     const { data } = await sb.from('feature_flags').select('flag_key,status,is_enabled').order('flag_key');
-    res.set('Cache-Control', 'public, max-age=60');
+    res.set('Cache-Control', 'public, max-age=10');
     res.json({ flags: data || [] });
   } catch { res.json({ flags: [] }); }
 });

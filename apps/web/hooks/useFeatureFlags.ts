@@ -7,7 +7,7 @@ type FlagsMap = Record<string, FlagStatus>
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://leadflow-ai-production.up.railway.app'
 const CACHE_KEY = 'ff_cache'
-const CACHE_TTL = 60_000 // 60 seconds
+const CACHE_TTL = 10_000 // 10 seconds — hızlı yansıma için
 
 let _cache: { data: FlagsMap; ts: number } | null = null
 
