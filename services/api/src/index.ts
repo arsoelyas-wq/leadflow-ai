@@ -587,6 +587,27 @@ require('node-cron').schedule('0 3 * * *', () => { require('./lib/security').cle
 
 initMonitoring(app).catch(console.error);
 
+// Feature flags — geliştirme aşamasındaki özellikleri varsayılan disabled yap
+setTimeout(async () => {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    const defaultDisabled = [
+      { flag_key: 'video_outreach', description: 'AI Video Outreach — geliştirme aşamasında' },
+      { flag_key: 'google_ads',     description: 'Google Ads entegrasyonu — geliştirme aşamasında' },
+    ];
+    for (const flag of defaultDisabled) {
+      const { data: existing } = await sb.from('feature_flags').select('flag_key').eq('flag_key', flag.flag_key).maybeSingle();
+      if (!existing) {
+        await sb.from('feature_flags').insert([{ ...flag, status: 'disabled', is_enabled: false, updated_at: new Date().toISOString() }]);
+        console.log(`[Flags] Seeded ${flag.flag_key} = disabled`);
+      }
+    }
+  } catch (e: any) {
+    console.error('[Flags] Seed error:', e.message);
+  }
+}, 3000);
+
 // WA Gateway — bağlı instance'ları startup'ta geri yükle
 setTimeout(async () => {
   try {

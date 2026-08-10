@@ -430,11 +430,10 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
           const active = pathname === href
           const flagStatus = getStatus(HREF_FLAG[href] || '')
           const isComingSoon = flagStatus === 'coming_soon'
-          const isDisabled = flagStatus === 'disabled'
+          if (flagStatus === 'disabled') return null
           return (
-            <Link key={href} href={isDisabled ? '#' : href}
-              onClick={isDisabled ? (e) => e.preventDefault() : undefined}
-              style={{ ...itemStyle(active, '#2563eb', isDisabled), opacity: isDisabled ? 0.45 : 1 }}>
+            <Link key={href} href={href}
+              style={itemStyle(active, '#2563eb')}>
               <Icon size={14} style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t(label, label)}
@@ -450,9 +449,11 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
 
         <div style={{ height: 1, background: '#f1f5f9', margin: '8px 2px' }} />
 
-        {/* AI KLONUM — collapsible */}
+        {/* AI KLONUM — collapsible, tüm alt öğeler disabled ise gizle */}
         {(() => {
-          const cloneActive = AI_CLONE_ITEMS.some(i => pathname === i.href)
+          const visibleCloneItems = AI_CLONE_ITEMS.filter(i => getStatus(HREF_FLAG[i.href] || '') !== 'disabled')
+          if (visibleCloneItems.length === 0) return null
+          const cloneActive = visibleCloneItems.some(i => pathname === i.href)
           const cloneColor = '#7c3aed'
           return (
             <>
@@ -470,15 +471,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                 <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: `${cloneColor}14`, color: cloneColor, flexShrink: 0 }}>AI</span>
               </button>
               <div id="ai-clone-sub" style={{ display: cloneActive ? 'flex' : 'none', flexDirection: 'column', gap: 1, paddingLeft: 12 }}>
-                {AI_CLONE_ITEMS.map(({ href, label, icon: Icon }) => {
+                {visibleCloneItems.map(({ href, label, icon: Icon }) => {
                   const active = pathname === href
-                  const flagStatus = getStatus(HREF_FLAG[href] || '')
-                  const isComingSoon = flagStatus === 'coming_soon'
-                  const isDisabled = flagStatus === 'disabled'
+                  const isComingSoon = getStatus(HREF_FLAG[href] || '') === 'coming_soon'
                   return (
-                    <Link key={href} href={isDisabled ? '#' : href}
-                      onClick={isDisabled ? (e) => e.preventDefault() : undefined}
-                      style={{ ...itemStyle(active, cloneColor), padding: '5px 8px', fontSize: 11, opacity: isDisabled ? 0.45 : 1 }}>
+                    <Link key={href} href={href}
+                      style={{ ...itemStyle(active, cloneColor), padding: '5px 8px', fontSize: 11 }}>
                       <Icon size={12} style={{ color: active ? cloneColor : '#94a3b8', flexShrink: 0 }} />
                       <span style={{ flex: 1 }}>{t(label, label)}</span>
                       {isComingSoon && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#fffbeb', color: '#d97706', flexShrink: 0 }}>YAKINDA</span>}
@@ -495,11 +493,9 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
           const active = pathname === href
           const flagStatus = getStatus(HREF_FLAG[href] || '')
           const isComingSoon = flagStatus === 'coming_soon'
-          const isDisabled = flagStatus === 'disabled'
+          if (flagStatus === 'disabled') return null
           return (
-            <Link key={href} href={isDisabled ? '#' : href}
-              onClick={isDisabled ? (e) => e.preventDefault() : undefined}
-              style={{ ...itemStyle(active, color), opacity: isDisabled ? 0.45 : 1 }}>
+            <Link key={href} href={href} style={itemStyle(active, color)}>
               <div style={{ width: 21, height: 21, borderRadius: 6, background: `${color}16`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon size={11} color={color} />
               </div>
@@ -519,8 +515,10 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
 
         {/* ── GRUPLAR ── */}
         {GROUPS.map(group => {
+          const visibleItems = group.items.filter(i => getStatus(HREF_FLAG[i.href] || '') !== 'disabled')
+          if (visibleItems.length === 0) return null
           const isOpen = openGroups[group.id]
-          const hasActive = group.items.some(i => pathname === i.href)
+          const hasActive = visibleItems.some(i => pathname === i.href)
 
           return (
             <div key={group.id} style={{ marginBottom: 2 }}>
@@ -554,7 +552,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
 
               {isOpen && (
                 <div style={{ marginTop: 1 }}>
-                  {group.items.map(({ href, label, icon: Icon, plan, badge }) => {
+                  {visibleItems.map(({ href, label, icon: Icon, plan, badge }) => {
                     const active = pathname === href
                     const locked = plan && (
                       (plan === 'enterprise' && !['enterprise'].includes(user?.planType ?? '')) ||
@@ -564,12 +562,10 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                     const pm = plan ? PLAN_META[plan] : null
                     const flagStatus = getStatus(HREF_FLAG[href] || '')
                     const isComingSoon = flagStatus === 'coming_soon'
-                    const isDisabled = flagStatus === 'disabled'
 
                     return (
-                      <Link key={href} href={isDisabled ? '#' : href}
-                        onClick={isDisabled ? (e) => e.preventDefault() : undefined}
-                        style={{ ...itemStyle(active, '#2563eb', !!locked || isDisabled), opacity: isDisabled ? 0.45 : 1 }}>
+                      <Link key={href} href={href}
+                        style={itemStyle(active, '#2563eb', !!locked)}>
                         <Icon size={13} style={{ flexShrink: 0 }} />
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {t(label, label)}
