@@ -73,7 +73,7 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    id: 'meta_ads', label: 'nav.meta_ads',
+    id: 'marketing', label: 'nav.marketing',
     items: [
       { href: '/ads',          label: 'nav.ads',          icon: Image },
       { href: '/google-ads',   label: 'nav.google_ads',   icon: Search },
@@ -117,10 +117,11 @@ const AI_CLONE_ITEMS = [
 ]
 
 const SPECIAL_TOOLS = [
-  { href: '/competitor',     label: 'nav.competitor', icon: Swords,     color: '#e11d48', badge: 'AI' },
-  { href: '/tenders', label: 'nav.tenders', icon: ScrollText,  color: '#d97706', badge: 'PRO' },
-  { href: '/export',  label: 'nav.export',  icon: Globe2,      color: '#059669', badge: 'PRO' },
-  { href: '/team',    label: 'nav.team',    icon: UsersRound,  color: '#2563eb', badge: 'PRO' },
+  { href: '/ads',        label: 'nav.meta_ads',   icon: Megaphone,  color: '#1877f2', badge: 'META' },
+  { href: '/competitor', label: 'nav.competitor', icon: Swords,     color: '#e11d48', badge: 'AI' },
+  { href: '/tenders',    label: 'nav.tenders',    icon: ScrollText, color: '#d97706', badge: 'PRO' },
+  { href: '/export',     label: 'nav.export',     icon: Globe2,     color: '#059669', badge: 'PRO' },
+  { href: '/team',       label: 'nav.team',       icon: UsersRound, color: '#2563eb', badge: 'PRO' },
 ]
 
 // href → feature flag key mapping
@@ -170,7 +171,7 @@ const HREF_FLAG: Record<string, string> = {
 // Komut paleti için düzleştirilmiş arama indeksi — tüm öğeler tek listede
 const ALL_NAV_ITEMS: { href: string; label: string; icon: any; groupLabel?: string }[] = [
   ...CORE_ITEMS.map(i => ({ href: i.href, label: i.label, icon: i.icon })),
-  ...AI_CLONE_ITEMS.map(i => ({ href: i.href, label: i.label, icon: i.icon, groupLabel: 'Sesli Arama veya Ajan' })),
+  ...AI_CLONE_ITEMS.map(i => ({ href: i.href, label: i.label, icon: i.icon, groupLabel: 'Sesli Ajan' })),
   ...SPECIAL_TOOLS.map(i => ({ href: i.href, label: i.label, icon: i.icon })),
   ...GROUPS.flatMap(g => g.items.map(i => ({ href: i.href, label: i.label, icon: i.icon, groupLabel: g.label }))),
 ]
@@ -467,7 +468,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                 <div style={{ width: 21, height: 21, borderRadius: 6, background: `${cloneColor}16`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Mic size={11} color={cloneColor} />
                 </div>
-                <span style={{ flex: 1 }}>{t('nav.voice_agent', 'Sesli Arama veya Ajan')}</span>
+                <span style={{ flex: 1 }}>{t('nav.voice_agent', 'Sesli Ajan')}</span>
                 <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: `${cloneColor}14`, color: cloneColor, flexShrink: 0 }}>AI</span>
               </button>
               <div id="ai-clone-sub" style={{ display: cloneActive ? 'flex' : 'none', flexDirection: 'column', gap: 1, paddingLeft: 12 }}>
@@ -485,54 +486,6 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
                 })}
               </div>
             </>
-          )
-        })()}
-
-        {/* META ADS — sesli aramanın hemen altında */}
-        {(() => {
-          const group = GROUPS.find(g => g.id === 'meta_ads')
-          if (!group) return null
-          const visibleItems = group.items.filter(i => getStatus(HREF_FLAG[i.href] || '') !== 'disabled')
-          if (visibleItems.length === 0) return null
-          const isOpen = openGroups[group.id]
-          const hasActive = visibleItems.some(i => pathname === i.href)
-          return (
-            <div style={{ marginBottom: 2 }}>
-              <button onClick={() => toggle(group.id)} style={{
-                width: '100%', display: 'flex', alignItems: 'center',
-                justifyContent: 'space-between', gap: 8,
-                padding: '6px 10px 6px 9px', borderRadius: 7, border: 'none',
-                cursor: 'pointer', transition: 'color 0.15s', fontFamily: 'inherit',
-                background: 'transparent',
-                color: hasActive ? '#475569' : '#94a3b8',
-              }}>
-                <span style={{
-                  fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  flex: 1, minWidth: 0, textAlign: 'left',
-                }}>
-                  {t('nav.meta_ads', 'Meta Ads')}
-                </span>
-                <ChevronDown size={11} style={{ flexShrink: 0, transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s' }} />
-              </button>
-              {isOpen && (
-                <div style={{ marginTop: 1 }}>
-                  {visibleItems.map(({ href, label, icon: Icon }) => {
-                    const active = pathname === href
-                    const isComingSoon = getStatus(HREF_FLAG[href] || '') === 'coming_soon'
-                    return (
-                      <Link key={href} href={href} style={itemStyle(active, '#2563eb')}>
-                        <Icon size={13} style={{ flexShrink: 0 }} />
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {t(label, label)}
-                        </span>
-                        {isComingSoon && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4, background: '#fffbeb', color: '#d97706', flexShrink: 0 }}>YAKINDA</span>}
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
           )
         })()}
 
@@ -562,7 +515,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: SidebarPr
         <div style={{ height: 1, background: '#f1f5f9', margin: '8px 2px' }} />
 
         {/* ── GRUPLAR ── */}
-        {GROUPS.filter(g => g.id !== 'meta_ads').map(group => {
+        {GROUPS.map(group => {
           const visibleItems = group.items.filter(i => getStatus(HREF_FLAG[i.href] || '') !== 'disabled')
           if (visibleItems.length === 0) return null
           const isOpen = openGroups[group.id]
