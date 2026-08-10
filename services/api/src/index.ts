@@ -47,6 +47,7 @@ app.use(generalLimiter);
 // Webhooks that need raw body for signature verification — BEFORE global json parser
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/voice/webhook/elevenlabs', express.raw({ type: 'application/json' }));
+app.use('/api/meta/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Ensure all JSON responses explicitly declare UTF-8
@@ -88,6 +89,174 @@ app.get('/api/meta/webhook', (req: any, res: any) => {
     res.status(403).send('Forbidden');
   }
 });
+
+// Meta Webhook POST — real-time lead delivery (signature verified)
+app.post('/api/meta/webhook', async (req: any, res: any) => {
+  try {
+    // 1. Verify Meta signature — HMAC-SHA256 of raw body with app secret
+    const sig = req.headers['x-hub-signature-256'] as string;
+    const appSecret = process.env.META_APP_SECRET;
+    if (!sig || !appSecret) return res.sendStatus(400);
+
+    const crypto = require('crypto');
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+    const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+    if (sig !== expected) {
+      console.warn('[MetaWebhook] Invalid signature');
+      return res.sendStatus(403);
+    }
+
+    // Respond 200 immediately — Meta retries if we take > 20s
+    res.sendStatus(200);
+
+    // 2. Parse payload
+    const payload = JSON.parse(rawBody.toString('utf8'));
+
+    // 3. Process each entry asynchronously (fire-and-forget after 200 sent)
+    setImmediate(async () => {
+      try {
+        const { createClient } = require('@supabase/supabase-js');
+        const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+        for (const entry of payload.entry || []) {
+          for (const change of entry.changes || []) {
+            if (change.field !== 'leadgen') continue;
+            const value = change.value;
+            // value = { leadgen_id, page_id, form_id, ad_id, created_time }
+
+            // Find which user owns this ad account / page
+            const { data: conn } = await sb
+              .from('meta_connections')
+              .select('user_id, access_token')
+              .eq('page_id', value.page_id)
+              .maybeSingle();
+
+            if (!conn) {
+              // Fallback: find by any connection that has this page in their ad accounts
+              const { data: conns } = await sb
+                .from('meta_connections')
+                .select('user_id, access_token')
+                .not('access_token', 'is', null)
+                .limit(10);
+
+              for (const c of conns || []) {
+                await processWebhookLead(sb, c.user_id, c.access_token, value);
+              }
+              continue;
+            }
+
+            await processWebhookLead(sb, conn.user_id, conn.access_token, value);
+          }
+        }
+      } catch (e: any) {
+        console.error('[MetaWebhook] Processing error:', e.message);
+      }
+    });
+  } catch (e: any) {
+    console.error('[MetaWebhook] Error:', e.message);
+    res.sendStatus(500);
+  }
+});
+
+async function processWebhookLead(sb: any, userId: string, token: string, value: any) {
+  try {
+    const axios = require('axios');
+    const GRAPH = 'https://graph.facebook.com/v20.0';
+
+    // Fetch full lead data from Meta
+    const leadResp = await axios.get(`${GRAPH}/${value.leadgen_id}`, {
+      params: {
+        access_token: token,
+        fields: 'id,created_time,field_data,ad_id,ad_name,campaign_id,form_id',
+      },
+      timeout: 10000,
+    });
+    const metaLead = leadResp.data;
+    const fields: any = {};
+    for (const f of metaLead.field_data || []) {
+      fields[f.name] = f.values?.[0];
+    }
+
+    const lead = {
+      source: 'meta_lead_form',
+      meta_lead_id: metaLead.id,
+      name: fields.full_name || `${fields.first_name || ''} ${fields.last_name || ''}`.trim() || null,
+      email: fields.email || null,
+      phone: fields.phone_number || fields.phone || null,
+      company: fields.company_name || null,
+      ad_name: metaLead.ad_name || null,
+      campaign_id: metaLead.campaign_id || null,
+      form_id: metaLead.form_id || null,
+      created_at: metaLead.created_time || new Date().toISOString(),
+    };
+
+    // Check for duplicate
+    const { data: existing } = await sb
+      .from('leads')
+      .select('id')
+      .eq('meta_lead_id', lead.meta_lead_id)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (existing) return;
+
+    // Save to CRM
+    const { data: newLead } = await sb.from('leads').insert([{
+      user_id: userId,
+      company_name: lead.company || lead.name || 'Meta Lead',
+      contact_name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      source: lead.source,
+      meta_lead_id: lead.meta_lead_id,
+      status: 'new',
+      notes: `Meta Lead Form - Reklam: ${lead.ad_name || ''} | Webhook real-time`,
+      created_at: lead.created_at,
+    }]).select().single();
+
+    if (!newLead) return;
+
+    console.log(`[MetaWebhook] New lead saved: ${newLead.id} for user ${userId}`);
+
+    // Fire CAPI Lead event
+    const { fireCapiEvent } = require('./services/meta-capi');
+    await fireCapiEvent(sb, userId, newLead, 'Lead', {});
+
+    // Notification
+    await sb.from('notifications').insert([{
+      user_id: userId,
+      type: 'new_meta_lead',
+      title: 'Anlik Meta Lead!',
+      message: `${lead.name || 'Yeni lead'} — webhook ile aninda geldi`,
+    }]);
+
+    // 5-minute call rule — defer to next tick to not block
+    const { data: adSettings } = await sb.from('ad_settings').select('*').eq('user_id', userId).maybeSingle();
+    if (adSettings?.five_minute_rule !== false && newLead.phone) {
+      const delay = (adSettings?.call_delay_minutes || 5) * 60 * 1000;
+      setTimeout(async () => {
+        try {
+          const { triggerOutboundCall } = require('./services/call-engine');
+          await triggerOutboundCall({
+            toNumber: newLead.phone,
+            agentName: 'Satis Temsilcisi',
+            companyName: 'Sirketimiz',
+            productDesc: '',
+            openingLine: `Merhaba ${newLead.contact_name || 'Degerli Musterimiz'}! Reklamimizi gordugunuz icin tesekkurler, size kisa bilgi vermek istedim.`,
+            language: 'tr',
+          });
+        } catch {}
+      }, delay);
+    }
+
+    // Hot lead marking — optional service (Task 5), safe to skip if not present
+    try {
+      const { markHotLead } = require('./services/hotLeadService');
+      await markHotLead(sb, userId, newLead);
+    } catch {}
+  } catch (e: any) {
+    console.error(`[MetaWebhook] processWebhookLead error for user ${userId}:`, e.message);
+  }
+}
 
 // Automations — public webhook (token-verified), rest requires auth
 app.post('/api/automations/webhook/:userId', require('./routes/automations-webhook-public'));
