@@ -132,9 +132,19 @@ router.get('/attribution', authMiddleware, async (req: any, res: any) => {
       if (lead.fbc) c.hasFbc++;
     }
 
+    // Note: spend is synced hourly by adSpendSync service
+    const { data: spendRows } = await supabase
+      .from('ad_campaigns')
+      .select('spend_7d, leads_7d')
+      .eq('user_id', req.userId)
+      .not('spend_7d', 'is', null);
+    const totalSpend = (spendRows || []).reduce((s: number, c: any) => s + (c.spend_7d || 0), 0);
+    const totalLeads7d = (spendRows || []).reduce((s: number, c: any) => s + (c.leads_7d || 0), 0);
+    const cpl = totalSpend > 0 && totalLeads7d > 0 ? parseFloat((totalSpend / totalLeads7d).toFixed(2)) : null;
+
     const rows = Object.values(campaignMap).map(c => ({
       ...c,
-      cpl:      c.leads   > 0 ? null : null,   // cost per lead — needs ad spend from Meta API
+      cpl,
       winRate:  c.leads   > 0 ? Math.round((c.won      / c.leads)    * 100) : 0,
       convRate: c.leads   > 0 ? Math.round((c.contacted / c.leads)   * 100) : 0,
       avgDeal:  c.won     > 0 ? Math.round(c.revenue / c.won)               : 0,

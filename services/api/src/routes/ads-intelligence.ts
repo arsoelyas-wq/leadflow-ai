@@ -1344,4 +1344,8 @@ router.get('/predict-roas', async (req: any, res: any) => {
   } catch (e: any) { res.json({ prediction: null, error: e.message }); }
 });
 
+// Start hourly ad spend sync
+const { startAdSpendSync } = require('../services/adSpendSync');
+startAdSpendSync();
+
 module.exports = router;

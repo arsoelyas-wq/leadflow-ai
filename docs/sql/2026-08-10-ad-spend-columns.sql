@@ -1,0 +1,14 @@
+-- Ad spend sync columns for ad_campaigns table
+-- Run in Supabase SQL Editor
+-- Created: 2026-08-10 — Task 4: hourly ad spend sync (adSpendSync.ts)
+
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS spend_7d NUMERIC(12,2) DEFAULT 0;
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS spend_today NUMERIC(12,2) DEFAULT 0;
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS ctr NUMERIC(6,4) DEFAULT 0;
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS cpm NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS impressions_7d INTEGER DEFAULT 0;
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS clicks_7d INTEGER DEFAULT 0;
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS leads_7d INTEGER DEFAULT 0;
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS cpl NUMERIC(10,2);
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS roas NUMERIC(6,2);
+ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ;
