@@ -882,6 +882,15 @@ require('node-cron').schedule('0 9 1 * *', async () => {
   }
 });
 
+// A/B test cycle — every Monday 07:00
+require('node-cron').schedule('0 7 * * 1', async () => {
+  console.log('[ABTest] Weekly cycle starting...');
+  try {
+    const { runAbTestCycleAll } = require('../services/abTestEngine');
+    await runAbTestCycleAll();
+  } catch (e: any) { console.error('[ABTest] Weekly cycle error:', (e as any).message); }
+});
+
 // ── 1-CLICK QUALITY LEAD (Privyr-style) ──────────────────────────────────────
 router.post('/quality-signal', async (req: any, res: any) => {
   try {
@@ -1391,6 +1400,32 @@ router.get('/hot-leads', async (req: any, res: any) => {
       .limit(10);
 
     res.json({ hot_leads: data || [], count: data?.length || 0 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ── A/B TEST ROUTES ────────────────────────────────────────────────────────────
+
+// GET /api/ads-intelligence/ab-tests
+router.get('/ab-tests', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase
+      .from('ad_ab_tests')
+      .select('*')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    res.json({ tests: data || [] });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/ads-intelligence/ab-tests/:id/launch
+router.post('/ab-tests/:id/launch', async (req: any, res: any) => {
+  try {
+    await supabase.from('ad_ab_tests')
+      .update({ status: 'running', started_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .eq('user_id', req.userId);
+    res.json({ ok: true, message: 'A/B testi başlatıldı — 48 saat sonra kazanan otomatik seçilecek' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
