@@ -8,17 +8,29 @@ const GRAPH = 'https://graph.facebook.com/v20.0';
 
 async function syncSpendForUser(userId: string, token: string, adAccountId: string) {
   try {
-    // 1. Get all campaigns for this ad account
-    const campaignsResp = await axios.get(`${GRAPH}/${adAccountId}/campaigns`, {
-      params: {
+    // 1. Get all campaigns for this ad account (paginated)
+    let campaigns: any[] = [];
+    let nextPage = true;
+    let afterCursor = '';
+
+    while (nextPage) {
+      const params: any = {
         access_token: token,
         fields: 'id,name,status',
         limit: 50,
-      },
-      timeout: 15000,
-    });
+      };
+      if (afterCursor) params.after = afterCursor;
 
-    const campaigns = campaignsResp.data?.data || [];
+      const resp = await axios.get(`${GRAPH}/${adAccountId}/campaigns`, { params, timeout: 15000 });
+      campaigns = campaigns.concat(resp.data?.data || []);
+
+      if (resp.data?.paging?.cursors?.after && resp.data?.paging?.next) {
+        afterCursor = resp.data.paging.cursors.after;
+      } else {
+        nextPage = false;
+      }
+    }
+
     if (!campaigns.length) return;
 
     // 2. For each campaign, fetch 7-day insights
@@ -126,7 +138,7 @@ export async function runAdSpendSync() {
 
         await syncSpendForUser(conn.user_id, conn.access_token, adAccountId);
         await new Promise(r => setTimeout(r, 1000)); // Rate limit between users
-      } catch {}
+      } catch (err: any) { console.error('[AdSpendSync] User error:', err.message); }
     }
   } catch (err: any) {
     console.error('[AdSpendSync] Main error:', err.message);
