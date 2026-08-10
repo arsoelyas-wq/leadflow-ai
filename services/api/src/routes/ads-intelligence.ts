@@ -274,6 +274,11 @@ async function saveLeadToCRM(userId: string, lead: any): Promise<any> {
     // CAPI'ye Lead eventi gonder
     if (newLead) {
       await fireCapiEvent(supabase, userId, newLead, 'Lead', {});
+      // Hot lead detection — personalized message if < 5 min old
+      try {
+        const { markHotLead } = require('../services/hotLeadService');
+        await markHotLead(supabase, userId, newLead);
+      } catch {}
     }
 
     return newLead;
@@ -1347,5 +1352,21 @@ router.get('/predict-roas', async (req: any, res: any) => {
 // Start hourly ad spend sync
 const { startAdSpendSync } = require('../services/adSpendSync');
 startAdSpendSync();
+
+// GET /api/ads-intelligence/hot-leads — returns currently hot leads (< 30 min window)
+router.get('/hot-leads', async (req: any, res: any) => {
+  try {
+    const { data } = await supabase
+      .from('leads')
+      .select('id, contact_name, company_name, phone, email, source, ai_opening_message, created_at, hot_until')
+      .eq('user_id', req.userId)
+      .eq('is_hot', true)
+      .gt('hot_until', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    res.json({ hot_leads: data || [], count: data?.length || 0 });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 
 module.exports = router;
