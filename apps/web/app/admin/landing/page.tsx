@@ -56,7 +56,7 @@ const DEFAULT: Record<string,any> = {
   hero_headline_suffix:'Ulaş',
   hero_subheadline:'Google Maps\'ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt. {firmCount} firma Sovlo AI ile satışlarını otomatize ediyor.',
   hero_firm_count:'2,000+',
-  hero_cta_primary_text:'14 Gün Ücretsiz Başla',
+  hero_cta_primary_text:'3 Gün Ücretsiz Başla',
   hero_cta_primary_url:'/register',
   hero_cta_secondary_text:'Demo İzle',
   hero_cta_secondary_url:'#demo',
@@ -132,7 +132,7 @@ const DEFAULT: Record<string,any> = {
   // FAQ
   faq_headline:'Sıkça Sorulan Sorular',
   faqs:[
-    {q:'Deneme süresi için kredi kartı gerekiyor mu?',a:'Hayır. 14 günlük ücretsiz deneme süresinde kredi kartı bilgisi istenmez.'},
+    {q:'Deneme süresi için kredi kartı gerekiyor mu?',a:'Hayır. 3 günlük ücretsiz deneme süresinde kredi kartı bilgisi istenmez.'},
     {q:'WhatsApp mesajları spam olarak işaretlenir mi?',a:'Sovlo, resmi WhatsApp Business API (WABA) üzerinden çalışır. Meta onaylı kanallardan kişiselleştirilmiş mesajlar gönderildiğinde spam riski minimum düzeydedir.'},
     {q:'KVKK ve GDPR\'a uyumlu mu?',a:'Evet. Sovlo Türk KVKK mevzuatı ve AB GDPR\'ına tam uyumlu olacak şekilde tasarlanmıştır.'},
     {q:'Günde kaç lead toplayabilirim?',a:'Plana ve kullandığınız kredie göre değişir: Starter planında günde ~50-150, Growth planında ~300-500.'},
@@ -141,12 +141,12 @@ const DEFAULT: Record<string,any> = {
 
   // CTA Section
   cta_headline:'Satışlarınızı Bugün Otomatize Edin',
-  cta_subheadline:'14 gün ücretsiz deneyin. Kurulum 8 dakika.',
+  cta_subheadline:'3 gün ücretsiz deneyin. Kurulum 8 dakika.',
   cta_primary_text:'Ücretsiz Başla',
   cta_primary_url:'/register',
   cta_secondary_text:'Demo İzle',
   cta_secondary_url:'#demo',
-  cta_trust_points:['14 gün ücretsiz deneme','Kredi kartı gerekmez','İstediğin an iptal','Ortalama kurulum: 8 dk'],
+  cta_trust_points:['3 gün ücretsiz deneme','Kredi kartı gerekmez','İstediğin an iptal','Ortalama kurulum: 8 dk'],
 
   // Footer
   footer_company_desc:'AI destekli B2B satış platformu. Google Maps\'ten lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt.',

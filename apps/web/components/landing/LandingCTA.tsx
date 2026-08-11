@@ -5,7 +5,7 @@ import Reveal from './Reveal'
 import { whatsappUrl } from '@/lib/site-config'
 
 const TRUST_POINTS = [
-  '14 gün ücretsiz deneme',
+  '3 gün ücretsiz deneme',
   'Kredi kartı gerekmez',
   'İstediğin an iptal',
   'Ortalama kurulum: 8 dk',
@@ -20,7 +20,7 @@ function trackCTA(label: string) {
 export default function LandingCTA({ cfg }: { cfg?: any }) {
   const headline    = cfg?.cta_headline      || 'Satışlarınızı Bugün Otomatize Edin'
   const subheadline = cfg?.cta_subheadline   || '2,000+ firma Sovlo AI ile satışlarını otomatize etti. Sizin sıranız.'
-  const cta1Text    = cfg?.cta_primary_text  || '14 Gün Ücretsiz Başla'
+  const cta1Text    = cfg?.cta_primary_text  || '3 Gün Ücretsiz Başla'
   const cta1Url     = cfg?.cta_primary_url   || '/register'
   const trustPoints = cfg?.cta_trust_points  || TRUST_POINTS
   return (

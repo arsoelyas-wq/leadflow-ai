@@ -7,7 +7,7 @@ import { whatsappUrl } from '@/lib/site-config'
 const FAQS = [
   {
     q: 'Deneme süresi için kredi kartı gerekiyor mu?',
-    a: 'Hayır. 14 günlük ücretsiz deneme süresinde kredi kartı bilgisi istenmez. Süre sonunda isterseniz ücretli plana geçersiniz, istemezseniz hesabınız otomatik olarak ücretsiz katmana alınır.',
+    a: 'Hayır. 3 günlük ücretsiz deneme süresinde kredi kartı bilgisi istenmez. Süre sonunda isterseniz ücretli plana geçersiniz, istemezseniz hesabınız otomatik olarak ücretsiz katmana alınır.',
   },
   {
     q: 'WhatsApp mesajları spam olarak işaretlenir mi?',

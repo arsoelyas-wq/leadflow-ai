@@ -140,7 +140,7 @@ export default function LandingComparisonTable() {
               </div>
               <Link href="/register"
                 className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[14px] font-bold btn-glow">
-                14 Gün Ücretsiz Dene
+                3 Gün Ücretsiz Dene
               </Link>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function LandingComparisonTable() {
                 </div>
                 <Link href="/register"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 text-white text-[13px] font-bold btn-glow">
-                  14 Gün Ücretsiz Dene
+                  3 Gün Ücretsiz Dene
                 </Link>
               </div>
             </div>

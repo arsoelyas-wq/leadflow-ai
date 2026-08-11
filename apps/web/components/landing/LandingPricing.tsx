@@ -224,7 +224,7 @@ export default function LandingPricing({ cfg }: { cfg?: any }) {
                   </Link>
 
                   <p className="text-[11px] text-slate-400 text-center mt-2">
-                    14 gün ücretsiz · Kredi kartı gerekmez
+                    3 gün ücretsiz · Kredi kartı gerekmez
                   </p>
                 </div>
 

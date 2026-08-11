@@ -1,7 +1,8 @@
 'use client'
 import Link from 'next/link'
-import { Zap, Mail, MessageSquare, Linkedin, Twitter } from 'lucide-react'
+import { Mail, MessageSquare, Linkedin, Twitter } from 'lucide-react'
 import { SITE_CONFIG, whatsappUrl } from '@/lib/site-config'
+import SparkIcon from '@/components/SovloLogo'
 
 const PRODUCT_LINKS = [
   { label: 'Lead Scraper',        href: '#ozellikler' },
@@ -45,10 +46,19 @@ export default function LandingFooter({ cfg }: { cfg?: any }) {
           {/* Brand */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2.5 mb-4 group w-fit">
-              <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
-                <Zap size={15} className="text-white fill-white" />
+              <div className="relative flex-shrink-0">
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{ background: 'linear-gradient(135deg, #0EA5E9, #6366F1)', filter: 'blur(6px)', margin: '-3px', opacity: 0.7 }}
+                />
+                <div className="relative">
+                  <SparkIcon size={36} />
+                </div>
               </div>
-              <span className="text-white text-[17px] font-bold">Sovlo AI</span>
+              <div className="flex items-baseline gap-[3px]">
+                <span className="font-extrabold text-[18px] leading-none tracking-[-0.03em] text-white">Sovlo</span>
+                <span className="font-extrabold text-[18px] leading-none tracking-[-0.03em] text-sky-400">AI</span>
+              </div>
             </Link>
 
             <p className="text-[14px] leading-relaxed mb-5 max-w-xs">

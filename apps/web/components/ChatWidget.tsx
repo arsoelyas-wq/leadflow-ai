@@ -115,14 +115,14 @@ export default function ChatWidget() {
         setTimeout(() => {
           setMessages(prev => [...prev, {
             role: 'bot',
-            text: '📧 Email adresinizi bırakın, 14 günlük ücretsiz denemenizi başlatalım!',
+            text: '📧 Email adresinizi bırakın, 3 günlük ücretsiz denemenizi başlatalım!',
           }])
           setDone(true)
         }, 1000)
       } catch {
         setMessages(prev => [...prev, {
           role: 'bot',
-          text: 'Sovlo AI ile her ay yüzlerce yeni müşteriye ulaşabilirsiniz! 🚀\n\n14 gün ücretsiz deneyin.',
+          text: 'Sovlo AI ile her ay yüzlerce yeni müşteriye ulaşabilirsiniz! 🚀\n\n3 gün ücretsiz deneyin.',
         }])
         setDone(true)
       } finally {

@@ -16,7 +16,7 @@ export default function LandingHero({ cfg }: { cfg?: any }) {
   const suffix     = cfg?.hero_headline_suffix   || 'Ulaş'
   const firmCount  = cfg?.hero_firm_count  || '2,000+'
   const sub        = (cfg?.hero_subheadline || 'Google Maps\'ten otomatik lead çek, WhatsApp ve email ile kişiselleştirilmiş kampanyalar yürüt. {firmCount} firma Sovlo AI ile satışlarını otomatize ediyor.').replace('{firmCount}', firmCount)
-  const cta1Text   = cfg?.hero_cta_primary_text   || '14 Gün Ücretsiz Başla'
+  const cta1Text   = cfg?.hero_cta_primary_text   || '3 Gün Ücretsiz Başla'
   const cta1Url    = cfg?.hero_cta_primary_url    || '/register'
   const cta2Text   = cfg?.hero_cta_secondary_text || 'Demo İzle'
   const cta2Url    = cfg?.hero_cta_secondary_url  || '#demo'
