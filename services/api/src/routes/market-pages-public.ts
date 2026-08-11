@@ -57,6 +57,17 @@ router.get('/:slug', async (req: any, res: any) => {
         cfg.plans = LANDING_PLAN_OVERRIDES;
       }
 
+      // Always normalize trial period to 3 days (source of truth is code)
+      const cfgStr = JSON.stringify(cfg)
+        .replace(/14 günlük/g, '3 günlük')
+        .replace(/14 gün/g, '3 gün')
+        .replace(/14 Gün/g, '3 Gün')
+        .replace(/14 Days Free/g, '3 Days Free')
+        .replace(/14 days free/g, '3 days free')
+        .replace(/Start free for 14 days/g, 'Start free for 3 days')
+        .replace(/for 14 days\./g, 'for 3 days.');
+      Object.assign(cfg, JSON.parse(cfgStr));
+
       res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
       return res.json({ page: Object.keys(cfg).length > 0 ? cfg : null });
     }

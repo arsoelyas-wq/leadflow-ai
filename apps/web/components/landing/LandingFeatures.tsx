@@ -116,36 +116,38 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
             />
             <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #60A5FA 0%, transparent 60%)', transform: 'translate(30%, 30%)' }} />
 
-            <div className="relative p-8 lg:p-12">
-              <div className="lg:grid lg:grid-cols-[1fr_280px] lg:gap-12 items-center">
+            <div className="relative p-6 sm:p-8 lg:p-12">
+              <div className="flex flex-col lg:grid lg:grid-cols-[1fr_260px] lg:gap-12 lg:items-center">
+                {/* Copy */}
                 <div>
-                  <div className="flex items-center gap-2 mb-5">
-                    <span className="w-2 h-2 rounded-full bg-green-400" style={{ animation: 'metaPulse 2s ease-in-out infinite' }} />
-                    <span className="text-[11.5px] font-bold text-green-400 tracking-widest uppercase">7/24 Algoritma Eğitimi Aktif</span>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" style={{ animation: 'metaPulse 2s ease-in-out infinite' }} />
+                    <span className="text-[11px] font-bold text-green-400 tracking-widest uppercase">7/24 Algoritma Eğitimi Aktif</span>
                   </div>
-                  <h3 className="text-[28px] lg:text-[36px] font-black text-white leading-[1.1] tracking-tight mb-4">
-                    Her Satışınız Meta'ya<br />Ders Verir
+                  <h3 className="text-[24px] sm:text-[28px] lg:text-[34px] font-black text-white leading-[1.1] tracking-tight mb-3">
+                    Her Satışınız Meta'ya Ders Verir
                   </h3>
-                  <p className="text-blue-200 text-[15.5px] leading-relaxed mb-8 max-w-lg">
+                  <p className="text-blue-200 text-[14px] sm:text-[15px] leading-relaxed mb-6 max-w-lg">
                     Sovlo, her satış ve görüşmeyi sunucu tarafından anında Meta'ya sinyal olarak iletir.
                     Algoritma müşteri profilinizi öğrenir —{' '}
                     <strong className="text-white font-semibold">reklam giderek daha ucuza, daha doğru kişilere ulaşır.</strong>
                   </p>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {META_BULLETS.map(bullet => (
-                      <div key={bullet} className="flex items-start gap-3">
-                        <CheckCircle2 size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-[14px] text-blue-100 leading-snug">{bullet}</span>
+                      <div key={bullet} className="flex items-start gap-2.5">
+                        <CheckCircle2 size={15} className="text-green-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-[13.5px] text-blue-100 leading-snug">{bullet}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="mt-10 lg:mt-0 grid grid-cols-3 lg:grid-cols-1 gap-4">
+                {/* Stats — horizontal scroll on mobile, vertical on desktop */}
+                <div className="mt-6 lg:mt-0 grid grid-cols-3 lg:grid-cols-1 gap-3">
                   {META_STATS.map(s => (
-                    <div key={s.lbl} className="rounded-2xl p-5 text-center lg:text-left" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                      <div className="text-[32px] lg:text-[38px] font-black text-white leading-none tracking-tight mb-1" style={{ fontVariantNumeric: 'tabular-nums' }}>{s.val}</div>
-                      <div className="text-[13px] font-bold text-blue-200 mb-0.5">{s.lbl}</div>
-                      <div className="text-[11px] text-blue-400">{s.sub}</div>
+                    <div key={s.lbl} className="rounded-xl p-3 sm:p-4 lg:p-5 text-center lg:text-left" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                      <div className="text-[22px] sm:text-[28px] lg:text-[36px] font-black text-white leading-none tracking-tight mb-1" style={{ fontVariantNumeric: 'tabular-nums' }}>{s.val}</div>
+                      <div className="text-[11px] sm:text-[12px] font-bold text-blue-200 mb-0.5">{s.lbl}</div>
+                      <div className="hidden sm:block text-[10px] text-blue-400">{s.sub}</div>
                     </div>
                   ))}
                 </div>
@@ -154,8 +156,8 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
           </div>
         </Reveal>
 
-        {/* 4-step cards — 2×2 grid */}
-        <div className="grid sm:grid-cols-2 gap-5">
+        {/* 4-step cards — 1 col mobile, 2×2 on sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
           {STEPS.map(({ num, icon: Icon, title, desc, bullets, accent, accentBg, accentBorder, numColor }) => (
             <Reveal key={num}>
               <div className="relative bg-white rounded-2xl border border-slate-100 p-7 shadow-sm overflow-hidden h-full" style={{ transition: 'box-shadow .2s, transform .2s' }}

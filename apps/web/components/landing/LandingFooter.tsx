@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { Mail, MessageSquare, Linkedin, Twitter } from 'lucide-react'
 import { SITE_CONFIG, whatsappUrl } from '@/lib/site-config'
-import SparkIcon from '@/components/SovloLogo'
+import { SparkIcon } from '@/components/SovloLogo'
 
 const PRODUCT_LINKS = [
   { label: 'Lead Scraper',        href: '#ozellikler' },
