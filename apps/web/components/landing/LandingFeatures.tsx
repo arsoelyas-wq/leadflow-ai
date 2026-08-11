@@ -1,191 +1,165 @@
 'use client'
-import { useState } from 'react'
 import {
-  Target, Bot, MessageSquare, BarChart3,
-  Crosshair, TrendingUp, Search, Mail,
-  Smartphone, Globe, Workflow, ShieldCheck,
-  Zap, Eye, Video, Phone
+  Target, Phone, MessageSquare, BarChart3,
+  Workflow, TrendingUp, Zap, Activity, CheckCircle2
 } from 'lucide-react'
 import Reveal from './Reveal'
 
-const TABS = ['Tümü', 'Lead Bulma', 'İletişim', 'Analitik', 'AI Araçlar'] as const
-type Tab = typeof TABS[number]
+const META_BULLETS = [
+  'Her satış anında Meta\'ya sinyal gönderir — siz uyurken bile çalışır',
+  'Algoritma müşteri profilinizi öğrenir, zamanla daha doğru kişilere ulaşır',
+  'Aynı bütçeyle daha fazla lead — CPL otomatik olarak düşer',
+  'Autopilot: ölü kampanyayı durdurur, bütçeyi kazanana kaydırır',
+  'Haftalık lookalike kitle — en iyi %20 müşterinize benzer yeni kitle',
+]
+
+const META_STATS = [
+  { val: '↓ %40', lbl: 'CPL Düşüşü', sub: '3. ayda ortalama' },
+  { val: '2.4×', lbl: 'ROAS Artışı', sub: '6 ay içinde' },
+  { val: '↑ %60', lbl: 'CTR İyileşmesi', sub: 'Lookalike ile' },
+]
 
 const FEATURES = [
   {
     icon: Target,
     title: 'Akıllı Lead Toplama',
-    desc: 'Google Maps, Instagram ve 50+ kaynaktan hedef sektöre göre günde 1,000+ firma otomatik toplanır.',
-    color: '#2563eb',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
-    tags: ['Lead Bulma'] as Tab[],
+    desc: 'Google Maps ve 50+ kaynaktan günde 1,000+ hedef firma otomatik toplanır. Sektör ve lokasyona göre filtrele.',
+    color: '#2563eb', bg: 'bg-blue-50', border: 'border-blue-100',
   },
   {
-    icon: Bot,
-    title: 'AI Kişiselleştirme',
-    desc: 'Gelişmiş yapay zeka ile her müşteriye özel, doğal görünen mesajlar. Spam değil, gerçek konuşma.',
-    color: '#7c3aed',
-    bg: 'bg-violet-50',
-    border: 'border-violet-100',
-    tags: ['AI Araçlar', 'İletişim'] as Tab[],
-  },
-  {
-    icon: MessageSquare,
-    title: 'WhatsApp & Email',
-    desc: 'WhatsApp Business API, email ve LinkedIn\'den aynı anda kampanya yürüt. Tek platform, çoklu kanal.',
-    color: '#059669',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-100',
-    tags: ['İletişim'] as Tab[],
+    icon: Phone,
+    title: 'AI Sesli Ajan',
+    desc: 'Lead gelir gelmez 5 dakika içinde AI ajan otomatik arar. Ses klonunuzla Türkçe konuşur, randevu ayarlar.',
+    color: '#dc2626', bg: 'bg-red-50', border: 'border-red-100',
   },
   {
     icon: BarChart3,
     title: 'Pipeline & CRM',
-    desc: 'Tüm satış aşamalarını takip et. Sıcak leadleri anında gör, kaçan fırsatları yakalama.',
-    color: '#d97706',
-    bg: 'bg-amber-50',
-    border: 'border-amber-100',
-    tags: ['Analitik'] as Tab[],
+    desc: 'Sıcak leadleri anında gör, satış aşamalarını takip et, teklif gönder. Fırsatları asla kaçırma.',
+    color: '#d97706', bg: 'bg-amber-50', border: 'border-amber-100',
   },
   {
-    icon: Crosshair,
-    title: 'Karar Verici Bulma',
-    desc: 'AI ile CEO, Satış Direktörü ve karar vericileri bul. LinkedIn entegrasyonu ile direkt ulaş.',
-    color: '#dc2626',
-    bg: 'bg-red-50',
-    border: 'border-red-100',
-    tags: ['Lead Bulma', 'AI Araçlar'] as Tab[],
-  },
-  {
-    icon: TrendingUp,
-    title: 'Gelişmiş Analitik',
-    desc: 'Kampanya performansı, dönüşüm oranları, ROI takibi. Hangi kanalın işe yaradığını bilin.',
-    color: '#0891b2',
-    bg: 'bg-cyan-50',
-    border: 'border-cyan-100',
-    tags: ['Analitik'] as Tab[],
-  },
-  {
-    icon: Video,
-    title: 'Video Outreach',
-    desc: 'AI avatar ile kişiselleştirilmiş satış videoları oluştur, otomatik olarak gönder.',
-    color: '#7c3aed',
-    bg: 'bg-violet-50',
-    border: 'border-violet-100',
-    tags: ['İletişim', 'AI Araçlar'] as Tab[],
+    icon: MessageSquare,
+    title: 'WhatsApp & Email',
+    desc: 'WhatsApp Business API ve email ile aynı anda kişiselleştirilmiş kampanya. Tek platform, çoklu kanal.',
+    color: '#059669', bg: 'bg-emerald-50', border: 'border-emerald-100',
   },
   {
     icon: Workflow,
     title: 'Satış Otomasyonu',
-    desc: 'Tetikleyici tabanlı workflow\'lar kur. Lead geldiğinde otomatik mesaj, takip ve hatırlatma.',
-    color: '#059669',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-100',
-    tags: ['AI Araçlar'] as Tab[],
+    desc: 'Lead geldiğinde otomatik mesaj, takip hatırlatması ve workflow — insan müdahalesi gerekmez.',
+    color: '#7c3aed', bg: 'bg-violet-50', border: 'border-violet-100',
   },
   {
-    icon: Globe,
-    title: 'Çok Dilli Pazar Sayfaları',
-    desc: '14 ülkede yerelleştirilmiş landing page\'ler oluştur. Her pazar için ayrı içerik ve fiyatlandırma.',
-    color: '#2563eb',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
-    tags: ['Lead Bulma'] as Tab[],
-  },
-  {
-    icon: Phone,
-    title: 'AI Sesli Outreach',
-    desc: 'Yapay zeka ile otomatik sesli aramalar yapın. Doğal ses, kişisel dokunuş, ölçeklenebilir.',
-    color: '#dc2626',
-    bg: 'bg-red-50',
-    border: 'border-red-100',
-    tags: ['İletişim', 'AI Araçlar'] as Tab[],
-  },
-  {
-    icon: Eye,
-    title: 'Meta Intent & Retargeting',
-    desc: 'Instagram ve Facebook\'taki potansiyel müşterileri tespit et. CAPI entegrasyonu ile hedef.',
-    color: '#d97706',
-    bg: 'bg-amber-50',
-    border: 'border-amber-100',
-    tags: ['Lead Bulma', 'Analitik'] as Tab[],
-  },
-  {
-    icon: ShieldCheck,
-    title: 'KVKK & GDPR Uyumlu',
-    desc: 'Türk ve AB veri mevzuatına tam uyumlu. Veri güvenliği ve şeffaflık ön planda.',
-    color: '#059669',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-100',
-    tags: ['Tümü'] as Tab[],
+    icon: TrendingUp,
+    title: 'Gerçek Zamanlı Analitik',
+    desc: 'CPL, ROAS, CTR anlık takip. Hangi kampanyanın kazandığını görün, bütçeyi doğru yere kaydırın.',
+    color: '#0891b2', bg: 'bg-cyan-50', border: 'border-cyan-100',
   },
 ]
 
 export default function LandingFeatures({ cfg }: { cfg?: any }) {
-  const headline         = cfg?.features_headline          || 'Satışın her adımı'
-  const headlineGradient = cfg?.features_headline_gradient || (cfg?.features_headline ? '' : 'otomatik')
-  const subheadline      = cfg?.features_subheadline       || 'Lead bulmadan kapatmaya, her aşamada AI destekli araçlar. Rakipleriniz manuel çalışırken siz büyüyün.'
-
-  const [activeTab, setActiveTab] = useState<Tab>('Tümü')
-
-  const filtered = activeTab === 'Tümü'
-    ? FEATURES
-    : FEATURES.filter(f => f.tags.includes(activeTab))
-
   return (
     <section id="ozellikler" className="py-16 sm:py-20 lg:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Header */}
+
+        {/* Section header */}
         <Reveal>
-          <div className="text-center mb-12 max-w-2xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-50 border border-violet-100 text-violet-700 text-[13px] font-semibold mb-6">
-              <Zap size={13} />
-              Özellikler
+          <div className="text-center mb-10 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-[13px] font-semibold mb-6">
+              <Activity size={13} />
+              7/24 Aktif
             </div>
             <h2 className="text-[36px] lg:text-[44px] font-black text-slate-900 leading-[1.1] tracking-[-0.025em] mb-4">
-              {headline}
-              {headlineGradient && <>{' '}<span className="gradient-text-blue">{headlineGradient}</span></>}
+              Meta Reklamınız{' '}
+              <span className="gradient-text-blue">Kendi Kendine Öğrenir</span>
             </h2>
             <p className="text-[17px] text-slate-500 leading-relaxed">
-              {subheadline}
+              Her satışınız algoritmayı eğitir. Zamanla doğru müşterilere daha ucuza ulaşırsınız.
             </p>
           </div>
         </Reveal>
 
-        {/* Tabs */}
-        <div className="flex overflow-x-auto scrollbar-hide sm:flex-wrap sm:justify-center gap-2 mb-10 pb-1">
-          {TABS.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200 whitespace-nowrap ${
-                activeTab === tab
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {tab}
-            </button>
+        {/* META ALGORITHM HERO CARD */}
+        <Reveal>
+          <div className="mb-6 rounded-3xl overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #0F2D6B 0%, #1040A5 45%, #1A3A7A 100%)' }}>
+            {/* Subtle grid pattern */}
+            <div
+              className="absolute inset-0 opacity-[0.06]"
+              style={{
+                backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
+                backgroundSize: '48px 48px',
+              }}
+            />
+            {/* Glow */}
+            <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #60A5FA 0%, transparent 60%)', transform: 'translate(30%, 30%)' }} />
+
+            <div className="relative p-8 lg:p-12">
+              <div className="lg:grid lg:grid-cols-[1fr_280px] lg:gap-12 items-center">
+
+                {/* Left: copy */}
+                <div>
+                  <div className="flex items-center gap-2 mb-5">
+                    <span className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: '0 0 0 0 rgba(74,222,128,0.7)', animation: 'metaPulse 2s ease-in-out infinite' }} />
+                    <span className="text-[11.5px] font-bold text-green-400 tracking-widest uppercase">7/24 Algoritma Eğitimi Aktif</span>
+                  </div>
+                  <h3 className="text-[28px] lg:text-[36px] font-black text-white leading-[1.1] tracking-tight mb-4">
+                    Her Satışınız Meta'ya<br />Ders Verir
+                  </h3>
+                  <p className="text-blue-200 text-[15.5px] leading-relaxed mb-8 max-w-lg">
+                    Sovlo, her satış ve görüşmeyi sunucu tarafından anında Meta'ya sinyal olarak iletir.
+                    Algoritma müşteri profilinizi öğrenir —{' '}
+                    <strong className="text-white font-semibold">reklam giderek daha ucuza, daha doğru kişilere ulaşır.</strong>
+                  </p>
+                  <div className="space-y-3">
+                    {META_BULLETS.map(bullet => (
+                      <div key={bullet} className="flex items-start gap-3">
+                        <CheckCircle2 size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-[14px] text-blue-100 leading-snug">{bullet}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right: stats */}
+                <div className="mt-10 lg:mt-0 grid grid-cols-3 lg:grid-cols-1 gap-4">
+                  {META_STATS.map(s => (
+                    <div key={s.lbl} className="rounded-2xl p-5 text-center lg:text-left" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                      <div className="text-[32px] lg:text-[38px] font-black text-white leading-none tracking-tight mb-1" style={{ fontVariantNumeric: 'tabular-nums' }}>{s.val}</div>
+                      <div className="text-[13px] font-bold text-blue-200 mb-0.5">{s.lbl}</div>
+                      <div className="text-[11px] text-blue-400">{s.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* Supporting features grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {FEATURES.map(({ icon: Icon, title, desc, color, bg, border }) => (
+            <Reveal key={title}>
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 sm:p-6 shadow-sm card-hover group h-full">
+                <div className={`w-10 h-10 rounded-xl ${bg} border ${border} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
+                  <Icon size={18} style={{ color }} />
+                </div>
+                <h3 className="text-[16px] font-bold text-slate-900 mb-2 leading-snug">{title}</h3>
+                <p className="text-[14px] text-slate-500 leading-relaxed">{desc}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
 
-        {/* Feature Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map(({ icon: Icon, title, desc, color, bg, border }) => (
-            <div
-              key={title}
-              className="bg-white rounded-2xl border border-slate-100 p-4 sm:p-6 shadow-sm card-hover group"
-            >
-              <div className={`w-10 h-10 rounded-xl ${bg} border ${border} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
-                <Icon size={18} style={{ color }} />
-              </div>
-              <h3 className="text-[16px] font-bold text-slate-900 mb-2 leading-snug">{title}</h3>
-              <p className="text-[14px] text-slate-500 leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
       </div>
+
+      <style>{`
+        @keyframes metaPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.7); }
+          50% { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+        }
+      `}</style>
     </section>
   )
 }
