@@ -1,7 +1,7 @@
 'use client'
 import {
-  Target, Phone, MessageSquare, BarChart3,
-  Workflow, TrendingUp, Zap, Activity, CheckCircle2
+  Target, Phone, BarChart3, TrendingUp,
+  Activity, CheckCircle2, Check
 } from 'lucide-react'
 import Reveal from './Reveal'
 
@@ -19,42 +19,66 @@ const META_STATS = [
   { val: '↑ %60', lbl: 'CTR İyileşmesi', sub: 'Lookalike ile' },
 ]
 
-const FEATURES = [
+const STEPS = [
   {
+    num: '01',
     icon: Target,
-    title: 'Akıllı Lead Toplama',
-    desc: 'Google Maps ve 50+ kaynaktan günde 1,000+ hedef firma otomatik toplanır. Sektör ve lokasyona göre filtrele.',
-    color: '#2563eb', bg: 'bg-blue-50', border: 'border-blue-100',
+    title: 'Müşteri Bul',
+    desc: 'Google Maps, Instagram ve 50+ kaynaktan her gün hedef müşterileri otomatik toplayın. Sektör, lokasyon ve firma büyüklüğüne göre filtreleyin.',
+    bullets: [
+      'Günde 1,000+ potansiyel müşteri otomatik toplanır',
+      'AI ile CEO ve karar verici tespiti',
+      'Meta reklamdan gelen leadler anında sisteme düşer',
+    ],
+    accent: '#2563eb',
+    accentBg: 'rgba(37,99,235,0.07)',
+    accentBorder: 'rgba(37,99,235,0.18)',
+    numColor: 'rgba(37,99,235,0.08)',
   },
   {
+    num: '02',
     icon: Phone,
-    title: 'AI Sesli Ajan',
-    desc: 'Lead gelir gelmez 5 dakika içinde AI ajan otomatik arar. Ses klonunuzla Türkçe konuşur, randevu ayarlar.',
-    color: '#dc2626', bg: 'bg-red-50', border: 'border-red-100',
+    title: 'Otomatik Ulaş',
+    desc: 'Lead gelir gelmez 5 dakika içinde AI ajan arar. Ses klonunuzla doğal Türkçe görüşme yapar, WhatsApp ve email ile takibi sürdürür.',
+    bullets: [
+      '5 dakika kuralı — sıcak lead kaçmadan aranır',
+      'Ses klonunuzla kişisel, doğal konuşma',
+      'WhatsApp & email otomatik takip dizileri',
+    ],
+    accent: '#dc2626',
+    accentBg: 'rgba(220,38,38,0.07)',
+    accentBorder: 'rgba(220,38,38,0.18)',
+    numColor: 'rgba(220,38,38,0.08)',
   },
   {
+    num: '03',
     icon: BarChart3,
-    title: 'Pipeline & CRM',
-    desc: 'Sıcak leadleri anında gör, satış aşamalarını takip et, teklif gönder. Fırsatları asla kaçırma.',
-    color: '#d97706', bg: 'bg-amber-50', border: 'border-amber-100',
+    title: 'Satışı Kapat',
+    desc: 'Tüm leadleri tek ekranda takip edin. Hangi aşamada kim var, teklifiniz gönderildi mi, anlaşma kapandı mı — hepsini görün.',
+    bullets: [
+      'Kanban pipeline — aşama aşama görsel takip',
+      'Teklif ve fatura tek tıkla oluşturma',
+      'Kaçan fırsatlar için otomatik uyarı',
+    ],
+    accent: '#d97706',
+    accentBg: 'rgba(217,119,6,0.07)',
+    accentBorder: 'rgba(217,119,6,0.18)',
+    numColor: 'rgba(217,119,6,0.08)',
   },
   {
-    icon: MessageSquare,
-    title: 'WhatsApp & Email',
-    desc: 'WhatsApp Business API ve email ile aynı anda kişiselleştirilmiş kampanya. Tek platform, çoklu kanal.',
-    color: '#059669', bg: 'bg-emerald-50', border: 'border-emerald-100',
-  },
-  {
-    icon: Workflow,
-    title: 'Satış Otomasyonu',
-    desc: 'Lead geldiğinde otomatik mesaj, takip hatırlatması ve workflow — insan müdahalesi gerekmez.',
-    color: '#7c3aed', bg: 'bg-violet-50', border: 'border-violet-100',
-  },
-  {
+    num: '04',
     icon: TrendingUp,
-    title: 'Gerçek Zamanlı Analitik',
-    desc: 'CPL, ROAS, CTR anlık takip. Hangi kampanyanın kazandığını görün, bütçeyi doğru yere kaydırın.',
-    color: '#0891b2', bg: 'bg-cyan-50', border: 'border-cyan-100',
+    title: 'Sonucu Gör, Büyü',
+    desc: 'CPL, ROAS, dönüşüm oranı — neyin işe yaradığını gerçek zamanlı bilin. Meta algoritması öğrendikçe maliyetleriniz düşer, sonuçlarınız artar.',
+    bullets: [
+      'CPL, ROAS, CTR anlık takip paneli',
+      'Hangi kanalın kazandırdığını görün',
+      'Haftalık performans raporu — WhatsApp\'a düşer',
+    ],
+    accent: '#059669',
+    accentBg: 'rgba(5,150,105,0.07)',
+    accentBorder: 'rgba(5,150,105,0.18)',
+    numColor: 'rgba(5,150,105,0.08)',
   },
 ]
 
@@ -82,8 +106,7 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
 
         {/* META ALGORITHM HERO CARD */}
         <Reveal>
-          <div className="mb-6 rounded-3xl overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #0F2D6B 0%, #1040A5 45%, #1A3A7A 100%)' }}>
-            {/* Subtle grid pattern */}
+          <div className="mb-10 rounded-3xl overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #0F2D6B 0%, #1040A5 45%, #1A3A7A 100%)' }}>
             <div
               className="absolute inset-0 opacity-[0.06]"
               style={{
@@ -91,16 +114,13 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
                 backgroundSize: '48px 48px',
               }}
             />
-            {/* Glow */}
             <div className="absolute bottom-0 right-0 w-96 h-96 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #60A5FA 0%, transparent 60%)', transform: 'translate(30%, 30%)' }} />
 
             <div className="relative p-8 lg:p-12">
               <div className="lg:grid lg:grid-cols-[1fr_280px] lg:gap-12 items-center">
-
-                {/* Left: copy */}
                 <div>
                   <div className="flex items-center gap-2 mb-5">
-                    <span className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: '0 0 0 0 rgba(74,222,128,0.7)', animation: 'metaPulse 2s ease-in-out infinite' }} />
+                    <span className="w-2 h-2 rounded-full bg-green-400" style={{ animation: 'metaPulse 2s ease-in-out infinite' }} />
                     <span className="text-[11.5px] font-bold text-green-400 tracking-widest uppercase">7/24 Algoritma Eğitimi Aktif</span>
                   </div>
                   <h3 className="text-[28px] lg:text-[36px] font-black text-white leading-[1.1] tracking-tight mb-4">
@@ -120,8 +140,6 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
                     ))}
                   </div>
                 </div>
-
-                {/* Right: stats */}
                 <div className="mt-10 lg:mt-0 grid grid-cols-3 lg:grid-cols-1 gap-4">
                   {META_STATS.map(s => (
                     <div key={s.lbl} className="rounded-2xl p-5 text-center lg:text-left" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
@@ -131,22 +149,48 @@ export default function LandingFeatures({ cfg }: { cfg?: any }) {
                     </div>
                   ))}
                 </div>
-
               </div>
             </div>
           </div>
         </Reveal>
 
-        {/* Supporting features grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {FEATURES.map(({ icon: Icon, title, desc, color, bg, border }) => (
-            <Reveal key={title}>
-              <div className="bg-white rounded-2xl border border-slate-100 p-5 sm:p-6 shadow-sm card-hover group h-full">
-                <div className={`w-10 h-10 rounded-xl ${bg} border ${border} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
-                  <Icon size={18} style={{ color }} />
+        {/* 4-step cards — 2×2 grid */}
+        <div className="grid sm:grid-cols-2 gap-5">
+          {STEPS.map(({ num, icon: Icon, title, desc, bullets, accent, accentBg, accentBorder, numColor }) => (
+            <Reveal key={num}>
+              <div className="relative bg-white rounded-2xl border border-slate-100 p-7 shadow-sm overflow-hidden h-full" style={{ transition: 'box-shadow .2s, transform .2s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 12px 36px rgba(0,0,0,0.09)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = ''; (e.currentTarget as HTMLElement).style.transform = '' }}
+              >
+                {/* Top accent line */}
+                <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl" style={{ background: accent }} />
+
+                {/* Faint background number */}
+                <div className="absolute bottom-3 right-5 text-[100px] font-black leading-none select-none pointer-events-none" style={{ color: numColor, letterSpacing: '-0.05em' }}>{num}</div>
+
+                <div className="relative">
+                  {/* Step badge + icon */}
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: accentBg, border: `1.5px solid ${accentBorder}` }}>
+                      <Icon size={20} style={{ color: accent }} />
+                    </div>
+                    <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: accent }}>Adım {num}</span>
+                  </div>
+
+                  <h3 className="text-[20px] font-black text-slate-900 mb-3 tracking-tight">{title}</h3>
+                  <p className="text-[14.5px] text-slate-500 leading-relaxed mb-5">{desc}</p>
+
+                  <div className="space-y-2.5">
+                    {bullets.map(b => (
+                      <div key={b} className="flex items-start gap-2.5">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: accentBg }}>
+                          <Check size={11} style={{ color: accent }} strokeWidth={3} />
+                        </div>
+                        <span className="text-[13.5px] text-slate-600 leading-snug">{b}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <h3 className="text-[16px] font-bold text-slate-900 mb-2 leading-snug">{title}</h3>
-                <p className="text-[14px] text-slate-500 leading-relaxed">{desc}</p>
               </div>
             </Reveal>
           ))}
