@@ -8,10 +8,12 @@ import { SITE_CONFIG } from '@/lib/site-config'
 
 export default function LandingDemo({ cfg }: { cfg?: any }) {
   const [playing, setPlaying] = useState(false)
-  const VIDEO_ID = cfg?.demo_video_id || SITE_CONFIG.demoVideoId
+  const VIDEO_URL = cfg?.demo_video_url || (SITE_CONFIG as any).demoVideoUrl || ''
+  const VIDEO_ID  = cfg?.demo_video_id  || SITE_CONFIG.demoVideoId || ''
+  const HAS_VIDEO = !!(VIDEO_URL || VIDEO_ID)
 
   const handlePlay = () => {
-    if (!VIDEO_ID) return
+    if (!HAS_VIDEO) return
     setPlaying(true)
   }
 
@@ -41,7 +43,7 @@ export default function LandingDemo({ cfg }: { cfg?: any }) {
             {/* Poster / placeholder */}
             {!playing && (
               <div
-                className={`relative ${VIDEO_ID ? 'cursor-pointer' : 'cursor-default'}`}
+                className={`relative ${HAS_VIDEO ? 'cursor-pointer' : 'cursor-default'}`}
                 onClick={handlePlay}
                 style={{
                   background: 'linear-gradient(145deg, #060a14 0%, #0d111f 50%, #060a14 100%)',
@@ -85,11 +87,9 @@ export default function LandingDemo({ cfg }: { cfg?: any }) {
 
                 {/* Play button / Coming soon */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                  {VIDEO_ID ? (
+                  {HAS_VIDEO ? (
                     <>
-                      <div
-                        className="w-[72px] h-[72px] rounded-full bg-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300"
-                      >
+                      <div className="w-[72px] h-[72px] rounded-full bg-white flex items-center justify-center shadow-2xl group-hover:scale-110 transition-transform duration-300">
                         <Play size={28} className="text-blue-600 fill-blue-600 ml-1.5" />
                       </div>
                       <div className="text-white text-[15px] font-semibold">Demo İzle — 2 dk</div>
@@ -101,14 +101,14 @@ export default function LandingDemo({ cfg }: { cfg?: any }) {
                       </div>
                       <div className="text-center">
                         <div className="text-white text-[15px] font-semibold mb-1">Demo Videosu Yakında</div>
-                        <div className="text-white/50 text-[13px]">site-config.ts dosyasında demoVideoId ayarlayın</div>
+                        <div className="text-white/50 text-[13px]">site-config.ts dosyasında demoVideoUrl ayarlayın</div>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {/* Duration badge (only when video exists) */}
-                {VIDEO_ID && (
+                {HAS_VIDEO && (
                   <div className="absolute bottom-5 right-5 bg-black/60 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm">
                     2:14
                   </div>
@@ -116,8 +116,28 @@ export default function LandingDemo({ cfg }: { cfg?: any }) {
               </div>
             )}
 
-            {/* YouTube player */}
-            {playing && VIDEO_ID && (
+            {/* Direct video player (Supabase / any .mp4 URL) */}
+            {playing && VIDEO_URL && (
+              <div className="relative" style={{ aspectRatio: '16/9', background: '#000' }}>
+                <video
+                  src={VIDEO_URL}
+                  autoPlay
+                  controls
+                  className="absolute inset-0 w-full h-full"
+                  title="Sovlo AI Demo"
+                />
+                <button
+                  onClick={() => setPlaying(false)}
+                  className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                  aria-label="Videoyu kapat"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            {/* YouTube player (fallback) */}
+            {playing && !VIDEO_URL && VIDEO_ID && (
               <div className="relative" style={{ aspectRatio: '16/9', background: '#000' }}>
                 <iframe
                   src={`https://www.youtube.com/embed/${VIDEO_ID}?autoplay=1&rel=0&modestbranding=1&color=white`}

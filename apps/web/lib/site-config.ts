@@ -13,8 +13,12 @@ export const SITE_CONFIG = {
   twitter: 'https://twitter.com/sovloai',
 
   // ── DEMO VİDEO ─────────────────────────────────────────────────
-  // YouTube video ID'sini girin (https://youtube.com/watch?v=BURAYA)
-  demoVideoId: '',   // <-- YouTube video hazırlandıktan sonra buraya girin
+  // Seçenek 1 — Supabase Storage veya herhangi bir direkt video URL'i (.mp4)
+  // Supabase: Storage → New bucket (public) → dosya yükle → "Get URL" kopyala
+  demoVideoUrl: '',  // <-- örn: 'https://xxxx.supabase.co/storage/v1/object/public/videos/demo.mp4'
+
+  // Seçenek 2 — YouTube video ID (URL'deki ?v= kısmı)
+  demoVideoId: '',   // <-- örn: 'dQw4w9WgXcQ'
 
   // ── MARKA ──────────────────────────────────────────────────────
   name: 'Sovlo AI',
