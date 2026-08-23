@@ -145,10 +145,64 @@ export async function runAdSpendSync() {
   }
 }
 
+// ─── TOKEN EXPIRY PROACTIVE CHECK ─────────────────────────────────────────────
+
+async function checkTokenExpiry() {
+  console.log('[TokenExpiry] Checking Meta token expiry for all users...');
+  try {
+    const { data: connections } = await supabase
+      .from('meta_connections')
+      .select('user_id, meta_user_name, token_expires_at')
+      .not('access_token', 'is', null);
+
+    const now = Date.now();
+    for (const conn of connections || []) {
+      if (!conn.token_expires_at) continue;
+      const expiresAt = new Date(conn.token_expires_at).getTime();
+      const daysLeft = Math.max(0, Math.round((expiresAt - now) / (24 * 60 * 60 * 1000)));
+
+      if (daysLeft <= 14) {
+        const isExpired = daysLeft === 0;
+        const title = isExpired
+          ? 'Meta Bağlantısı Kesildi — Yeniden Bağlanın'
+          : `Meta Token ${daysLeft} Gün İçinde Sona Eriyor`;
+        const message = isExpired
+          ? 'Meta reklam hesabı bağlantınız kesildi. CAPI ve kampanya senkronizasyonu durdu. Ayarlar > Meta Ads > Yeniden Bağlan.'
+          : `Meta reklam hesabı token'ınız ${daysLeft} gün sonra sona erecek. Ayarlar > Meta Ads > Yeniden Bağlan.`;
+
+        // Upsert notification (don't spam: one per expiry window)
+        const notifKey = `meta_token_expiry_${conn.user_id}_${daysLeft <= 3 ? '3d' : '14d'}`;
+        const { data: existing } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', conn.user_id)
+          .eq('type', 'meta_token_expiry')
+          .gte('created_at', new Date(now - 24 * 60 * 60 * 1000).toISOString())
+          .maybeSingle();
+
+        if (!existing) {
+          await supabase.from('notifications').insert([{
+            user_id: conn.user_id,
+            type: 'meta_token_expiry',
+            title,
+            message,
+            severity: isExpired || daysLeft <= 3 ? 'error' : 'warning',
+          }]);
+          console.log(`[TokenExpiry] Notified user ${conn.user_id.slice(0, 8)}: ${daysLeft} days left`);
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error('[TokenExpiry] Error:', err.message);
+  }
+}
+
 export function startAdSpendSync() {
   // Run after 2 min delay on startup (lets other services initialize)
   setTimeout(runAdSpendSync, 2 * 60 * 1000);
   // Then every hour at :00
   nodeCron.schedule('0 * * * *', runAdSpendSync);
-  console.log('[AdSpendSync] Hourly sync scheduled');
+  // Token expiry check: daily at 09:00
+  nodeCron.schedule('0 9 * * *', checkTokenExpiry);
+  console.log('[AdSpendSync] Hourly sync + daily token expiry check scheduled');
 }

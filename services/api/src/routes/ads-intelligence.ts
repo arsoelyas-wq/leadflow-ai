@@ -791,7 +791,7 @@ router.post('/launch-campaign', async (req: any, res: any) => {
         axios.post(`${GRAPH_V20}/${adAccountId}/campaigns`, {
           name: plan.campaign_name,
           objective: plan.objective || 'LEAD_GENERATION',
-          status: 'ACTIVE',
+          status: 'PAUSED',
           special_ad_categories: [],
           access_token: token,
         }, { timeout: 15000 }).then((r: any) => r.data)
@@ -805,7 +805,7 @@ router.post('/launch-campaign', async (req: any, res: any) => {
           daily_budget: dailyBudget * 100,
           billing_event: 'IMPRESSIONS',
           optimization_goal: 'LEAD_GENERATION',
-          status: 'ACTIVE',
+          status: 'PAUSED',
           targeting: {
             age_min: plan.audiences?.[0]?.age_min || 25,
             age_max: plan.audiences?.[0]?.age_max || 55,

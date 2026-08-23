@@ -9,13 +9,13 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 const GRAPH = 'https://graph.facebook.com/v20.0';
 
-async function getMetaCreds(userId: string): Promise<{ token: string; adAccountId: string } | null> {
-  const { data } = await supabase.from('meta_connections').select('access_token, ad_accounts').eq('user_id', userId).single();
+async function getMetaCreds(userId: string): Promise<{ token: string; adAccountId: string; pageId: string } | null> {
+  const { data } = await supabase.from('meta_connections').select('access_token, ad_accounts, page_id').eq('user_id', userId).single();
   if (!data?.access_token) return null;
   let adAccountId = '';
   try { const accs = JSON.parse(data.ad_accounts || '[]'); adAccountId = accs[0]?.id || ''; } catch {}
   if (!adAccountId) return null;
-  return { token: data.access_token, adAccountId };
+  return { token: data.access_token, adAccountId, pageId: data.page_id || '' };
 }
 
 async function metaGet(path: string, token: string, params: any = {}) {
@@ -409,7 +409,7 @@ router.post('/ai-campaign/create', async (req: any, res: any) => {
     const userId = (req as any).userId;
     const creds = await getMetaCreds(userId);
     if (!creds) return res.json({ ok: false, error: 'Meta bağlantısı bulunamadı' });
-    const { token, adAccountId } = creds;
+    const { token, adAccountId, pageId } = creds;
     const { plan } = req.body;
 
     if (!plan) return res.json({ ok: false, error: 'Plan verisi gerekli' });
@@ -455,14 +455,14 @@ router.post('/ai-campaign/create', async (req: any, res: any) => {
 
     try {
       const firstAd = plan.ads?.[0];
-      if (firstAd && adSetId) {
+      if (firstAd && adSetId && pageId) {
         await metaPost(`/${adAccountId}/ads`, token, {
           name: firstAd.headline || plan.campaignName,
           adset_id: adSetId,
-          status: 'ACTIVE',
+          status: 'PAUSED',
           creative: {
             object_story_spec: {
-              page_id: '',
+              page_id: pageId,
               link_data: {
                 message: firstAd.primaryText || '',
                 name: firstAd.headline || '',
@@ -472,6 +472,8 @@ router.post('/ai-campaign/create', async (req: any, res: any) => {
             },
           },
         });
+      } else if (firstAd && adSetId && !pageId) {
+        console.warn('[MetaOpt] Reklam oluşturulmadı: Facebook Sayfası bağlantıda kayıtlı değil');
       }
     } catch (e: any) {
       console.error('[MetaOpt] ai-campaign/create ad error (non-fatal)', e?.response?.data || e.message);

@@ -38,7 +38,7 @@ router.post('/smart-launch', async (req: any, res: any) => {
 
     // Kampanya oluştur
     const campResp = await axios.post(
-      `https://graph.facebook.com/v18.0/${adAccountId}/campaigns`,
+      `https://graph.facebook.com/v20.0/${adAccountId}/campaigns`,
       { name: adContent.campaignName, objective: adContent.objective, status: 'PAUSED', special_ad_categories: [] },
       { params: { access_token: token } }
     );
@@ -126,7 +126,7 @@ router.post('/capi/event', async (req: any, res: any) => {
     };
 
     const resp = await axios.post(
-      `https://graph.facebook.com/v18.0/${pixelId}/events`,
+      `https://graph.facebook.com/v20.0/${pixelId}/events`,
       eventData,
       { params: { access_token: token } }
     );
@@ -176,7 +176,7 @@ router.get('/competitor-ads', async (req: any, res: any) => {
     if (keywords) params.search_terms = keywords;
     if (country) params.ad_reached_countries = [country];
 
-    const resp = await axios.get('https://graph.facebook.com/v18.0/ads_archive', { params, timeout: 15000 });
+    const resp = await axios.get('https://graph.facebook.com/v20.0/ads_archive', { params, timeout: 15000 });
 
     const ads = (resp.data?.data || []).map((ad: any) => ({
       id: ad.id,
@@ -232,7 +232,7 @@ router.post('/predict-roas', async (req: any, res: any) => {
 
     // Son 30 günlük performans çek
     const campResp = await axios.get(
-      `https://graph.facebook.com/v18.0/${adAccountId}/campaigns?fields=id,name,insights.date_preset(last_30d){spend,impressions,clicks,actions,purchase_roas}&access_token=${token}&limit=10`
+      `https://graph.facebook.com/v20.0/${adAccountId}/campaigns?fields=id,name,insights.date_preset(last_30d){spend,impressions,clicks,actions,purchase_roas}&access_token=${token}&limit=10`
     );
 
     const campaigns = campResp.data?.data || [];
@@ -362,7 +362,7 @@ router.post('/retargeting/setup', async (req: any, res: any) => {
 
     // Custom Audience oluştur
     const audienceResp = await axios.post(
-      `https://graph.facebook.com/v18.0/${adAccountId}/customaudiences`,
+      `https://graph.facebook.com/v20.0/${adAccountId}/customaudiences`,
       {
         name: audienceName || 'LeadFlow Retargeting',
         description: `${days || 30} günlük retargeting listesi`,
@@ -384,7 +384,7 @@ router.post('/retargeting/setup', async (req: any, res: any) => {
 
       if (data.length > 0) {
         await axios.post(
-          `https://graph.facebook.com/v18.0/${audienceId}/users`,
+          `https://graph.facebook.com/v20.0/${audienceId}/users`,
           { payload: { schema, data } },
           { params: { access_token: token } }
         );
@@ -448,7 +448,7 @@ setInterval(async () => {
       if (!token) continue;
 
       const resp = await axios.get(
-        `https://graph.facebook.com/v18.0/${monitor.ad_account_id}/campaigns?fields=id,name,status,insights{ctr,cpm,spend,purchase_roas}&access_token=${token}&limit=10`
+        `https://graph.facebook.com/v20.0/${monitor.ad_account_id}/campaigns?fields=id,name,status,insights{ctr,cpm,spend,purchase_roas}&access_token=${token}&limit=10`
       ).catch(() => null);
 
       if (!resp?.data?.data) continue;

@@ -133,17 +133,7 @@ app.post('/api/meta/webhook', async (req: any, res: any) => {
               .maybeSingle();
 
             if (!conn) {
-              // Fallback: find by any connection that has this page in their ad accounts
-              console.warn('[MetaWebhook] page_id not matched, falling back to all connections — install page_id mapping for accuracy');
-              const { data: conns } = await sb
-                .from('meta_connections')
-                .select('user_id, access_token')
-                .not('access_token', 'is', null)
-                .limit(10);
-
-              for (const c of conns || []) {
-                await processWebhookLead(sb, c.user_id, c.access_token, value);
-              }
+              console.warn(`[MetaWebhook] page_id ${value.page_id} did not match any meta_connections — lead dropped. Reconnect Meta account to fix page_id mapping.`);
               continue;
             }
 
@@ -219,9 +209,12 @@ async function processWebhookLead(sb: any, userId: string, token: string, value:
 
     console.log(`[MetaWebhook] New lead saved: ${newLead.id} for user ${userId}`);
 
-    // Fire CAPI Lead event
+    // Fire CAPI Lead event — include IP/UA from Meta's platform if available in field_data
     const { fireCapiEvent } = require('./services/meta-capi');
-    await fireCapiEvent(sb, userId, newLead, 'Lead', {});
+    await fireCapiEvent(sb, userId, newLead, 'Lead', {
+      clientIp:        fields['ip_address'] || fields['client_ip_address'] || undefined,
+      clientUserAgent: fields['user_agent'] || fields['client_user_agent'] || undefined,
+    });
 
     // Notification
     await sb.from('notifications').insert([{

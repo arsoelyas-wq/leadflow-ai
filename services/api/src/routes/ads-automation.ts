@@ -8,7 +8,7 @@ const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const GRAPH = 'https://graph.facebook.com/v18.0';
+const GRAPH = 'https://graph.facebook.com/v20.0';
 
 // ── HELPER: week label ────────────────────────────────────
 function getISOWeekLabel(date: Date): string {

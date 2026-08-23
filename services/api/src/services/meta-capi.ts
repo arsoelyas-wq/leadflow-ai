@@ -39,9 +39,9 @@ function hashCity(city: string | null | undefined): string | undefined {
   return crypto.createHash('sha256').update(city.trim().toLowerCase()).digest('hex');
 }
 
-// ─── CAPI HTTP CALL ───────────────────────────────────────────────────────────
+// ─── CAPI HTTP CALL (with retry + exponential backoff) ────────────────────────
 
-async function sendToCAPI(pixelId: string, accessToken: string, events: any[]): Promise<{ success: boolean; response?: any; error?: string }> {
+async function sendToCAPIOnce(pixelId: string, accessToken: string, events: any[]): Promise<{ success: boolean; response?: any; error?: string; statusCode?: number }> {
   return new Promise((resolve) => {
     const body = JSON.stringify({ data: events });
     const path = `/${CAPI_API_VERSION}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`;
@@ -59,19 +59,36 @@ async function sendToCAPI(pixelId: string, accessToken: string, events: any[]): 
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          if (res.statusCode >= 400) resolve({ success: false, error: parsed.error?.message || data });
+          if (res.statusCode >= 400) resolve({ success: false, statusCode: res.statusCode, error: parsed.error?.message || data });
           else resolve({ success: true, response: parsed });
         } catch {
-          resolve({ success: false, error: data });
+          resolve({ success: false, statusCode: res.statusCode, error: data });
         }
       });
     });
 
     req.on('error', (err: any) => resolve({ success: false, error: err.message }));
-    req.setTimeout(8000, () => { req.destroy(); resolve({ success: false, error: 'CAPI timeout' }); });
+    req.setTimeout(10000, () => { req.destroy(); resolve({ success: false, error: 'CAPI timeout' }); });
     req.write(body);
     req.end();
   });
+}
+
+async function sendToCAPI(pixelId: string, accessToken: string, events: any[]): Promise<{ success: boolean; response?: any; error?: string }> {
+  const MAX_RETRIES = 3;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const result = await sendToCAPIOnce(pixelId, accessToken, events);
+    if (result.success) return result;
+
+    const isRetryable = !result.statusCode || result.statusCode === 429 || result.statusCode >= 500;
+    if (!isRetryable || attempt === MAX_RETRIES - 1) return result;
+
+    const delayMs = result.statusCode === 429
+      ? 60000  // rate limited — wait 60s
+      : Math.pow(2, attempt) * 1000;  // 1s, 2s, 4s
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  return { success: false, error: 'Max retries exceeded' };
 }
 
 // ─── USER DATA BUILDER ────────────────────────────────────────────────────────
@@ -94,8 +111,8 @@ function buildUserData(lead: any, extra: { fbc?: string; fbp?: string; clientIp?
   if (ln) ud.ln  = [ln];
   if (ct) ud.ct  = [ct];
 
-  // Turkey country code (ISO 3166-1 alpha-2, lowercased)
-  ud.country = ['1441ee76b75b68e59196a2cce4fd7af2c42b9ad7c77a76b4f5d5e59a1cb2b0d']; // SHA-256 of "tr"
+  // Turkey country code (ISO 3166-1 alpha-2, lowercased) — SHA-256 of "tr"
+  ud.country = [hashField('tr')];
 
   if (extra.fbc)            ud.fbc            = extra.fbc;
   if (extra.fbp)            ud.fbp            = extra.fbp;
@@ -108,7 +125,8 @@ function buildUserData(lead: any, extra: { fbc?: string; fbp?: string; clientIp?
 // ─── EVENT BUILDERS ───────────────────────────────────────────────────────────
 
 function makeEvent(eventName: string, lead: any, extra: Record<string, any> = {}): any {
-  const eventId    = `lf-${eventName.toLowerCase()}-${lead.id}-${Date.now()}`;
+  // Stable ID (no timestamp) so Meta can deduplicate against browser Pixel fires
+  const eventId    = `lf-${eventName.toLowerCase()}-${lead.id}`;
   const eventTime  = Math.floor(Date.now() / 1000);
 
   const userData   = buildUserData(lead, {
@@ -232,12 +250,12 @@ export async function fireCapiEvent(
   userId: string,
   lead: any,
   eventName: MetaCapiEventName,
-  extra: { value?: number; orderId?: string; proposalValue?: number } = {}
+  extra: { value?: number; orderId?: string; proposalValue?: number; clientIp?: string; clientUserAgent?: string } = {}
 ): Promise<void> {
   const settings = await getMetaSettings(supabase, userId);
   if (!settings) return; // CAPI not configured — silently skip
 
-  const event = makeEvent(eventName, lead, extra);
+  const event = makeEvent(eventName, lead, { ...extra, fbc: lead.fbc, fbp: lead.fbp, clientIp: extra.clientIp, clientUserAgent: extra.clientUserAgent });
   if (settings.testCode) event.test_event_code = settings.testCode;
 
   const result = await sendToCAPI(settings.pixelId, settings.accessToken, [event]);

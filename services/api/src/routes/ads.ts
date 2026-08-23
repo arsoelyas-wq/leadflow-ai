@@ -72,11 +72,11 @@ router.post('/exchange-token', async (req: any, res: any) => {
     let capiAutoSetup = false;
     if (pixelIds.length > 0) {
       const { error: capiErr } = await supabase.from('user_settings')
-        .update({ meta_pixel_id: pixelIds[0], meta_capi_enabled: true, updated_at: new Date().toISOString() })
+        .update({ meta_pixel_id: pixelIds[0], meta_access_token: longToken, meta_capi_enabled: true, updated_at: new Date().toISOString() })
         .eq('user_id', req.userId);
       if (capiErr) {
         console.log('[Meta] CAPI update failed, trying insert:', capiErr.message);
-        await supabase.from('user_settings').insert([{ user_id: req.userId, meta_pixel_id: pixelIds[0], meta_capi_enabled: true }]);
+        await supabase.from('user_settings').insert([{ user_id: req.userId, meta_pixel_id: pixelIds[0], meta_access_token: longToken, meta_capi_enabled: true }]);
       }
       capiAutoSetup = true;
       console.log(`[Meta] CAPI auto-setup: pixel=${pixelIds[0]}`);

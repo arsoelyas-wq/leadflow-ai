@@ -104,7 +104,7 @@ async function scrapeInstagram(keyword: string, city: string, limit: number): Pr
     // 1. Hashtag ID al
     const hashtagQuery = keyword.replace(/\s/g, '').toLowerCase();
     const hashResp = await axios.get(
-      `https://graph.facebook.com/v18.0/ig_hashtag_search?user_id=${IG_ACCOUNT_ID}&q=${encodeURIComponent(hashtagQuery)}&access_token=${META_TOKEN}`,
+      `https://graph.facebook.com/v20.0/ig_hashtag_search?user_id=${IG_ACCOUNT_ID}&q=${encodeURIComponent(hashtagQuery)}&access_token=${META_TOKEN}`,
       { timeout: 10000 }
     );
 
@@ -113,7 +113,7 @@ async function scrapeInstagram(keyword: string, city: string, limit: number): Pr
 
     // 2. Top media al
     const mediaResp = await axios.get(
-      `https://graph.facebook.com/v18.0/${hashtagId}/top_media?fields=id,caption,username,permalink,media_type&user_id=${IG_ACCOUNT_ID}&access_token=${META_TOKEN}&limit=${Math.min(limit, 50)}`,
+      `https://graph.facebook.com/v20.0/${hashtagId}/top_media?fields=id,caption,username,permalink,media_type&user_id=${IG_ACCOUNT_ID}&access_token=${META_TOKEN}&limit=${Math.min(limit, 50)}`,
       { timeout: 10000 }
     );
 
@@ -142,7 +142,7 @@ async function scrapeInstagram(keyword: string, city: string, limit: number): Pr
     // 3. Recent media de al
     if (results.length < limit) {
       const recentResp = await axios.get(
-        `https://graph.facebook.com/v18.0/${hashtagId}/recent_media?fields=id,caption,username,permalink&user_id=${IG_ACCOUNT_ID}&access_token=${META_TOKEN}&limit=${limit}`,
+        `https://graph.facebook.com/v20.0/${hashtagId}/recent_media?fields=id,caption,username,permalink&user_id=${IG_ACCOUNT_ID}&access_token=${META_TOKEN}&limit=${limit}`,
         { timeout: 10000 }
       );
 
@@ -228,7 +228,7 @@ async function scrapeFacebook(keyword: string, city: string, limit: number): Pro
     // 1. Sayfa yorumlarından lead cek
     try {
       const feedResp = await axios.get(
-        `https://graph.facebook.com/v18.0/${PAGE_ID}/feed?fields=message,from,created_time&access_token=${META_TOKEN}&limit=${limit}`,
+        `https://graph.facebook.com/v20.0/${PAGE_ID}/feed?fields=message,from,created_time&access_token=${META_TOKEN}&limit=${limit}`,
         { timeout: 10000 }
       );
 
@@ -253,13 +253,13 @@ async function scrapeFacebook(keyword: string, city: string, limit: number): Pro
     // 2. Lead Ads formlarından lead cek
     try {
       const leadsResp = await axios.get(
-        `https://graph.facebook.com/v18.0/${PAGE_ID}/leadgen_forms?fields=id,name,leads_count&access_token=${META_TOKEN}&limit=10`,
+        `https://graph.facebook.com/v20.0/${PAGE_ID}/leadgen_forms?fields=id,name,leads_count&access_token=${META_TOKEN}&limit=10`,
         { timeout: 10000 }
       );
 
       for (const form of leadsResp.data?.data || []) {
         const leadDataResp = await axios.get(
-          `https://graph.facebook.com/v18.0/${form.id}/leads?fields=field_data,created_time&access_token=${META_TOKEN}&limit=${limit}`,
+          `https://graph.facebook.com/v20.0/${form.id}/leads?fields=field_data,created_time&access_token=${META_TOKEN}&limit=${limit}`,
           { timeout: 10000 }
         );
 
