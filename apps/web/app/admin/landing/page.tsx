@@ -232,8 +232,7 @@ export default function AdminLandingPage() {
     const errs: Record<string,string> = {}
     if (!cfg?.nav_logo_name?.trim()) errs.nav_logo_name = 'Logo adı boş bırakılamaz'
     if (!cfg?.hero_headline?.trim()) errs.hero_headline = 'Hero başlık boş bırakılamaz'
-    if ((cfg?.meta_title||'').length > 60) errs.meta_title = 'Meta başlık 60 karakteri geçmemeli'
-    if ((cfg?.meta_description||'').length > 160) errs.meta_description = 'Meta açıklama 160 karakteri geçmemeli'
+    // Meta başlık/açıklama uzunluğu sadece uyarı — inline sayaç zaten gösteriyor, kayıt bloklanmıyor
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
