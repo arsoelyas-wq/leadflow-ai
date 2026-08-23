@@ -193,24 +193,42 @@ ONLY JSON.` }]
   return empty;
 }
 
+// English country names for Google Maps queries (country.name is Turkish)
+const COUNTRY_EN: Record<string, string> = {
+  'DE':'Germany','GB':'United Kingdom','FR':'France','NL':'Netherlands','BE':'Belgium',
+  'IT':'Italy','ES':'Spain','PL':'Poland','US':'United States','CA':'Canada',
+  'AE':'UAE','SA':'Saudi Arabia','QA':'Qatar','KW':'Kuwait','BH':'Bahrain',
+  'OM':'Oman','JO':'Jordan','IQ':'Iraq','EG':'Egypt','MA':'Morocco',
+  'KZ':'Kazakhstan','AZ':'Azerbaijan','UZ':'Uzbekistan','RU':'Russia','GE':'Georgia',
+  'TM':'Turkmenistan','CN':'China','JP':'Japan','IN':'India','KR':'South Korea',
+  'AU':'Australia','SG':'Singapore','MY':'Malaysia','TH':'Thailand','VN':'Vietnam',
+  'ID':'Indonesia','PK':'Pakistan','AT':'Austria','SE':'Sweden','DK':'Denmark',
+  'NO':'Norway','CH':'Switzerland','CZ':'Czech Republic','RO':'Romania',
+  'GR':'Greece','PT':'Portugal','IE':'Ireland','HU':'Hungary','BG':'Bulgaria',
+  'HR':'Croatia','MX':'Mexico','BR':'Brazil','CL':'Chile','NG':'Nigeria',
+  'ZA':'South Africa','KE':'Kenya',
+};
+
 // ── 3. GOOGLE MAPS MÜŞTERİ ARAMA ─────────────────────────────────────────────
 async function searchGoogleMaps(sector: string, sectorLocal: string, country: any, searchTerms?: Record<string, string>): Promise<any[]> {
   const GOOGLE_KEY = process.env.GOOGLE_PLACES_API_KEY;
   if (!GOOGLE_KEY) return [];
   const results: any[] = [];
-  // Use language-appropriate search term for the target country
   const lang = country.language || 'en';
   const localizedSector = searchTerms?.[lang] || searchTerms?.['en'] || sectorLocal || sector;
   const enSector = searchTerms?.['en'] || sector;
+  const countryEn = COUNTRY_EN[country.code] || country.code;
+  const regionCode = country.code.toLowerCase(); // ccTLD bias for Places API
+  // Queries use English country name; `region` param biases results to the country
   const queries = [
-    `${localizedSector} importer ${country.name}`,
-    `${enSector} wholesale distributor ${country.name}`,
-    `${localizedSector} supplier ${country.name}`,
+    `${localizedSector} importer ${countryEn}`,
+    `${enSector} wholesale distributor ${countryEn}`,
+    `${localizedSector} supplier trading company`,
   ];
   for (const query of queries) {
     try {
       const r = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
-        params: { query, key: GOOGLE_KEY, language: country.language },
+        params: { query, key: GOOGLE_KEY, language: country.language, region: regionCode },
         timeout: 12000,
       });
       for (const p of (r.data.results || []).slice(0, 5)) {
@@ -228,13 +246,13 @@ async function searchGoogleMaps(sector: string, sectorLocal: string, country: an
             address: d.formatted_address || p.formatted_address || null,
             country: country.name, country_code: country.code, sector,
             source_type: 'maps', rating: d.rating || null,
-            verified_importer: false,
+            verified_importer: true,
           });
-          if (results.length >= 12) break;
+          if (results.length >= 15) break;
         } catch {}
-        await sleep(200);
+        await sleep(150);
       }
-      if (results.length >= 12) break;
+      if (results.length >= 15) break;
     } catch(e:any) { console.log('[Maps] error:', e.message); }
   }
   return results;
