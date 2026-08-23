@@ -156,33 +156,41 @@ Max 4 HS kodu. SADECE JSON.` }]
   }
 }
 
-// ── 2. PAZAR İSTATİSTİKLERİ (Ticaret Verisi) ─────────────────────────────────
-async function getMarketIntelligence(hsCodes: string[], countryCode: string, country: any): Promise<{
+// ── 2. PAZAR İSTATİSTİKLERİ — Claude AI tahmini (Comtrade v1 deprecated 2022) ──
+async function getMarketIntelligence(hsCodes: string[], _countryCode: string, country: any, sector?: string): Promise<{
   marketSizeUSD:number; turkeyExportsUSD:number; turkeySharePct:number;
   avgUnitPriceUSD:number; yoyGrowthPct:number; year:number;
 }> {
   const empty = { marketSizeUSD:0, turkeyExportsUSD:0, turkeySharePct:0, avgUnitPriceUSD:0, yoyGrowthPct:0, year:2023 };
-  if (!hsCodes.length || !country?.comtradeCode) return empty;
+  if (!hsCodes.length || !country) return empty;
   try {
-    const hs = hsCodes[0];
-    const year = 2023;
-    const TURKEY = '792';
-    const targetCode = country.comtradeCode;
-    const [trResp, mktResp, prevResp] = await Promise.allSettled([
-      axios.get('https://comtrade.un.org/api/get', { params:{ r:TURKEY, p:targetCode, ps:year, px:'HS', cc:hs, type:'C', freq:'A', fmt:'json', max:1 }, timeout:12000 }),
-      axios.get('https://comtrade.un.org/api/get', { params:{ r:targetCode, p:0, ps:year, px:'HS', cc:hs, type:'C', freq:'A', fmt:'json', max:1 }, timeout:12000 }),
-      axios.get('https://comtrade.un.org/api/get', { params:{ r:TURKEY, p:targetCode, ps:year-1, px:'HS', cc:hs, type:'C', freq:'A', fmt:'json', max:1 }, timeout:10000 }),
-    ]);
-    const turkeyExportsUSD = trResp.status==='fulfilled' ? (trResp.value.data?.dataset?.[0]?.TradeValue||0) : 0;
-    const mktData = mktResp.status==='fulfilled' ? mktResp.value.data?.dataset?.[0] : null;
-    const marketSizeUSD = mktData?.TradeValue || 0;
-    const netWeight = mktData?.NetWeight || 0;
-    const avgUnitPriceUSD = netWeight>0 ? Math.round(marketSizeUSD/netWeight) : 0;
-    const turkeySharePct = marketSizeUSD>0 ? parseFloat(((turkeyExportsUSD/marketSizeUSD)*100).toFixed(1)) : 0;
-    const prevVal = prevResp.status==='fulfilled' ? (prevResp.value.data?.dataset?.[0]?.TradeValue||0) : 0;
-    const yoyGrowthPct = prevVal>0 ? parseFloat((((turkeyExportsUSD-prevVal)/prevVal)*100).toFixed(1)) : 0;
-    return { marketSizeUSD, turkeyExportsUSD, turkeySharePct, avgUnitPriceUSD, yoyGrowthPct, year };
-  } catch(e:any) { console.log('[MarketData] error:', e.message); return empty; }
+    const resp = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{ role:'user', content:`International trade estimate: Turkey exports "${sector||hsCodes[0]}" (HS: ${hsCodes.slice(0,2).join(', ')}) to ${country.name}.
+Based on 2022-2023 trade data knowledge, return ONLY JSON:
+{"marketSizeUSD":0,"turkeyExportsUSD":0,"turkeySharePct":0.0,"yoyGrowthPct":0.0,"year":2023}
+- marketSizeUSD: total ${country.name} imports of this sector (USD integer, realistic)
+- turkeyExportsUSD: Turkey exports to ${country.name} in this sector (USD integer)
+- turkeySharePct: Turkey market share % (1 decimal)
+- yoyGrowthPct: YoY growth % (can be negative)
+ONLY JSON.` }]
+    });
+    const text = resp.content[0]?.text?.trim().replace(/```[a-z]*|```/g, '');
+    const match = text?.match(/\{[\s\S]*?\}/);
+    if (match) {
+      const p = JSON.parse(match[0]);
+      return {
+        marketSizeUSD: Math.round(p.marketSizeUSD||0),
+        turkeyExportsUSD: Math.round(p.turkeyExportsUSD||0),
+        turkeySharePct: parseFloat((p.turkeySharePct||0).toFixed(1)),
+        avgUnitPriceUSD: 0,
+        yoyGrowthPct: parseFloat((p.yoyGrowthPct||0).toFixed(1)),
+        year: p.year || 2023,
+      };
+    }
+  } catch(e:any) { console.log('[MarketIntel] Claude estimation error:', e.message); }
+  return empty;
 }
 
 // ── 3. GOOGLE MAPS MÜŞTERİ ARAMA ─────────────────────────────────────────────
@@ -254,18 +262,62 @@ async function searchWebImporters(searchTerms: Record<string, string>, country: 
   // Exa.ai — 5 farklı sorgu, her birinde 20 sonuç → 100 potansiyel lead
   if (EXA_KEY) {
     const tradeDomains: Record<string, string[]> = {
-      'DE':['wer-liefert-was.de','europages.de','kompass.com','gelbeseiten.de'],
+      'DE':['wer-liefert-was.de','europages.de','kompass.com','gelbeseiten.de','bvmw.de'],
       'GB':['europages.co.uk','kompass.com','yell.com','b2bindex.co.uk'],
       'FR':['europages.fr','kompass.fr','societe.com','pagesjaunes.fr'],
-      'NL':['europages.nl','kompass.nl','kvk.nl'],
+      'NL':['europages.nl','kompass.nl','kvk.nl','goudengids.nl'],
+      'BE':['europages.be','kompass.be','golden.be'],
       'IT':['europages.it','kompass.it','paginegialle.it'],
-      'ES':['europages.es','kompass.es'],
-      'US':['thomasnet.com','manta.com','kompass.com','dnb.com'],
+      'ES':['europages.es','kompass.es','paginasamarillas.es'],
+      'PL':['europages.pl','kompass.pl','panoramafirm.pl'],
+      'AT':['europages.at','wko.at','kompass.at'],
+      'SE':['europages.se','allabolag.se','kompass.se'],
+      'DK':['europages.dk','kompass.dk','eniro.dk'],
+      'NO':['europages.no','kompass.no','gulesider.no'],
+      'CH':['europages.ch','local.ch','kompass.ch'],
+      'CZ':['europages.cz','kompass.cz','firmy.cz'],
+      'RO':['europages.ro','kompass.ro','firme.info'],
+      'GR':['europages.gr','kompass.com'],
+      'PT':['europages.pt','kompass.pt'],
+      'IE':['europages.ie','goldenpages.ie'],
+      'HU':['europages.hu','kompass.hu'],
+      'BG':['europages.bg','kompass.com'],
+      'HR':['europages.hr','kompass.com'],
+      'US':['thomasnet.com','manta.com','kompass.com','dnb.com','globalspec.com'],
+      'CA':['yellowpages.ca','kompass.ca','canadabusiness.ca'],
+      'MX':['kompass.com','paginasamarillas.com.mx'],
+      'BR':['kompass.com','paginasamarelas.com.br'],
+      'CL':['kompass.com','paginasamarillas.cl'],
       'AE':['yellowpages.ae','kompass.com'],
-      'SA':['kompass.com','tradekey.com'],
-      'IN':['indiamart.com','kompass.com','tradeindia.com'],
-      'CN':['kompass.com'],
+      'SA':['kompass.com','tradekey.com','zawya.com'],
+      'QA':['yellowpages.qa','kompass.com'],
+      'KW':['yellowpages.com.kw','kompass.com'],
+      'BH':['yellowpages.bh','kompass.com'],
+      'OM':['yellowpages.com.om','kompass.com'],
+      'JO':['yellowpages.jo','kompass.com'],
+      'IQ':['kompass.com'],
+      'EG':['kompass.com','yellowpages.com.eg'],
+      'MA':['europages.fr','kompass.com'],
+      'NG':['kompass.com','yellowpages.com.ng'],
+      'ZA':['kompass.com','yellowpages.co.za'],
+      'KE':['kompass.com','yellowpages.co.ke'],
+      'KZ':['kompass.com'],
+      'AZ':['kompass.com'],
+      'UZ':['kompass.com'],
+      'RU':['kompass.com','bizorg.ru'],
+      'GE':['kompass.com'],
+      'TM':['kompass.com'],
+      'CN':['kompass.com','globalsources.com','hktdc.com'],
       'JP':['kompass.com','jpbiz.net'],
+      'IN':['indiamart.com','kompass.com','tradeindia.com','justdial.com'],
+      'KR':['kompass.com','korcham.net'],
+      'AU':['yellowpages.com.au','kompass.com','truelocal.com.au'],
+      'SG':['yellowpages.com.sg','kompass.com'],
+      'MY':['yellowpages.com.my','kompass.com'],
+      'TH':['yellowpages.co.th','kompass.com'],
+      'VN':['yellowpages.vn','kompass.com'],
+      'ID':['yellowpages.co.id','kompass.com'],
+      'PK':['kompass.com','yellowpages.pk'],
     };
 
     // Geniş arama sorguları — importer türleri
@@ -282,7 +334,7 @@ async function searchWebImporters(searchTerms: Record<string, string>, country: 
       try {
         const res = await axios.post('https://api.exa.ai/search', {
           query: q, numResults: 20, useAutoprompt: false,
-          includeDomains: ['europages.com','kompass.com','thomasnet.com','manta.com','tradekey.com','globalsources.com','alibaba.com','made-in-china.com', ...(tradeDomains[country.code]||[])],
+          includeDomains: ['europages.com','kompass.com','thomasnet.com','manta.com','tradekey.com','globalsources.com', ...(tradeDomains[country.code]||[])],
           startPublishedDate: '2021-01-01',
           contents: { text: { maxCharacters: 400 } },
         }, { headers:{ 'x-api-key':EXA_KEY, 'Content-Type':'application/json' }, timeout:18000 });
@@ -537,7 +589,7 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
 
     // Parallel: market data + Google Maps + Web search
     const [marketIntel, mapsResults, webResults] = await Promise.allSettled([
-      getMarketIntelligence(hsCodes, countryCode, country),
+      getMarketIntelligence(hsCodes, countryCode, country, sector),
       searchGoogleMaps(sector, searchTermsLocal, country, searchTerms),
       searchWebImporters(searchTerms, country, sector),
     ]);
@@ -698,117 +750,75 @@ async function runExportSearch(sessionId: string, userId: string, countryCode: s
   }
 }
 
-// ── AUTO-MIGRATE ──────────────────────────────────────────────────────────────
-async function runSQL(sql: string): Promise<void> {
-  await axios.post(`${process.env.SUPABASE_URL}/rest/v1/sql`, sql, {
-    headers:{ 'Content-Type':'text/plain','apikey':process.env.SUPABASE_SERVICE_KEY,'Authorization':`Bearer ${process.env.SUPABASE_SERVICE_KEY}`,'Prefer':'return=minimal' },
-    timeout:20000,
-  });
-}
+// ── TABLE CHECK — log migration SQL if tables missing ─────────────────────────
+const MIGRATION_SQL = `
+-- Run this SQL in your Supabase Dashboard → SQL Editor to enable İhracat Zekası:
 
-async function autoMigrateExport() {
-  // Drop FK constraints via multiple methods
-  const dropConstraintSQL = `
-    ALTER TABLE IF EXISTS export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_u_ser_id_fkey";
-    ALTER TABLE IF EXISTS export_search_sessions DROP CONSTRAINT IF EXISTS "export_search_sessions_user_id_fkey";
-    ALTER TABLE IF EXISTS export_search_sessions DROP CONSTRAINT IF EXISTS export_search_sessions_user_id_fkey;
-    ALTER TABLE IF EXISTS export_messages DROP CONSTRAINT IF EXISTS "export_messages_user_id_fkey";
-    ALTER TABLE IF EXISTS export_campaigns DROP CONSTRAINT IF EXISTS "export_campaigns_user_id_fkey";
-  `;
-  // Try REST API SQL endpoint
-  try { await runSQL(dropConstraintSQL); } catch {}
-  // Try Supabase Management API
-  try {
-    const projectRef = process.env.SUPABASE_URL?.match(/https?:\/\/([^.]+)\./)?.[1];
-    if (projectRef) {
-      await axios.post(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
-        query: dropConstraintSQL,
-      }, {
-        headers: { 'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json' },
-        timeout: 15000,
-      });
-    }
-  } catch {}
+CREATE TABLE IF NOT EXISTS export_search_sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  country_code TEXT, sector TEXT, status TEXT DEFAULT 'pending',
+  step TEXT, progress INTEGER DEFAULT 0,
+  result JSONB, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE export_search_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "user_own_export_s" ON export_search_sessions;
+CREATE POLICY "user_own_export_s" ON export_search_sessions USING (true);
 
-  const migrations = [
-    {
-      table: 'export_search_sessions',
-      sql: `
-        CREATE TABLE IF NOT EXISTS export_search_sessions (
-          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          country_code TEXT, sector TEXT, status TEXT DEFAULT 'pending',
-          step TEXT, progress INTEGER DEFAULT 0,
-          result JSONB, completed_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT now()
-        );
-        ALTER TABLE export_search_sessions ENABLE ROW LEVEL SECURITY;
-        DROP POLICY IF EXISTS "user_own_export_s" ON export_search_sessions;
-        CREATE POLICY "user_own_export_s" ON export_search_sessions USING (true);
-      `,
-    },
-    {
-      table: 'export_messages',
-      sql: `
-        CREATE TABLE IF NOT EXISTS export_messages (
-          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
-          country_code TEXT, channel TEXT DEFAULT 'whatsapp',
-          subject TEXT, body TEXT NOT NULL, language TEXT,
-          status TEXT DEFAULT 'draft', sent_at TIMESTAMPTZ,
-          created_at TIMESTAMPTZ DEFAULT now()
-        );
-        ALTER TABLE export_messages ENABLE ROW LEVEL SECURITY;
-        DROP POLICY IF EXISTS "user_own_export_m" ON export_messages;
-        CREATE POLICY "user_own_export_m" ON export_messages USING (true);
-        CREATE UNIQUE INDEX IF NOT EXISTS export_messages_unique_idx ON export_messages(user_id, lead_id, channel);
-      `,
-    },
-    {
-      table: 'export_campaigns',
-      sql: `
-        CREATE TABLE IF NOT EXISTS export_campaigns (
-          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          name TEXT NOT NULL, country_code TEXT, country_name TEXT,
-          channel TEXT DEFAULT 'whatsapp', campaign_type TEXT DEFAULT 'outreach',
-          lead_count INTEGER DEFAULT 0, sent_count INTEGER DEFAULT 0,
-          lead_ids JSONB DEFAULT '[]', status TEXT DEFAULT 'draft',
-          language TEXT, started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ,
-          created_at TIMESTAMPTZ DEFAULT now()
-        );
-        ALTER TABLE export_campaigns ENABLE ROW LEVEL SECURITY;
-        DROP POLICY IF EXISTS "user_own_export_c" ON export_campaigns;
-        CREATE POLICY "user_own_export_c" ON export_campaigns USING (true);
-      `,
-    },
-  ];
+CREATE TABLE IF NOT EXISTS export_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+  country_code TEXT, channel TEXT DEFAULT 'whatsapp',
+  subject TEXT, body TEXT NOT NULL, language TEXT,
+  status TEXT DEFAULT 'draft', sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE export_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "user_own_export_m" ON export_messages;
+CREATE POLICY "user_own_export_m" ON export_messages USING (true);
+CREATE UNIQUE INDEX IF NOT EXISTS export_messages_unique_idx ON export_messages(user_id, lead_id, channel);
 
-  // Always run leads column migrations (safe with IF NOT EXISTS)
-  try {
-    await runSQL(`
-      ALTER TABLE leads ADD COLUMN IF NOT EXISTS hs_codes TEXT;
-      ALTER TABLE leads ADD COLUMN IF NOT EXISTS verified_importer BOOLEAN DEFAULT false;
-      ALTER TABLE leads ADD COLUMN IF NOT EXISTS country_code TEXT;
-      ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_name TEXT;
-      ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_title TEXT;
-      ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_linkedin TEXT;
-      ALTER TABLE leads ADD COLUMN IF NOT EXISTS company_score INTEGER DEFAULT 0;
-    `);
-  } catch {}
+CREATE TABLE IF NOT EXISTS export_campaigns (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL, country_code TEXT, country_name TEXT,
+  channel TEXT DEFAULT 'whatsapp', campaign_type TEXT DEFAULT 'outreach',
+  lead_count INTEGER DEFAULT 0, sent_count INTEGER DEFAULT 0,
+  lead_ids JSONB DEFAULT '[]', status TEXT DEFAULT 'draft',
+  language TEXT, started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE export_campaigns ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "user_own_export_c" ON export_campaigns;
+CREATE POLICY "user_own_export_c" ON export_campaigns USING (true);
 
-  for (const m of migrations) {
-    try {
-      const { error } = await supabase.from(m.table).select('id').limit(1);
-      if (!error) continue; // Table exists
-      await runSQL(m.sql);
-      console.log(`[ExportMigrate] ✅ ${m.table} created`);
-    } catch(e:any) { console.log(`[ExportMigrate] ${m.table} skipped:`, e.message); }
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS hs_codes TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS verified_importer BOOLEAN DEFAULT false;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS country_code TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_name TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_title TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS decision_maker_linkedin TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS company_score INTEGER DEFAULT 0;
+`;
+
+async function checkExportTables() {
+  const tables = ['export_search_sessions', 'export_messages', 'export_campaigns'];
+  const missing: string[] = [];
+  for (const t of tables) {
+    const { error } = await supabase.from(t).select('id').limit(1);
+    if (error) missing.push(t);
+  }
+  if (missing.length > 0) {
+    console.warn(`[ExportMigrate] ⚠️  Missing tables: ${missing.join(', ')}`);
+    console.warn('[ExportMigrate] Run the following SQL in Supabase Dashboard → SQL Editor:');
+    console.warn(MIGRATION_SQL);
+  } else {
+    console.log('[ExportMigrate] ✅ All export tables exist');
   }
 }
-autoMigrateExport();
-setTimeout(autoMigrateExport, 3000);
-setTimeout(autoMigrateExport, 15000); // Extra retry
+checkExportTables();
+setTimeout(checkExportTables, 10000);
 
 // ════════════════════════════════════════════════════════════════════════════════
 // ROUTES
@@ -823,13 +833,13 @@ router.post('/start-search', async (req: any, res: any) => {
     const userId = req.userId;
     const { countryCode, sector, preferredLang } = req.body;
     if (!countryCode||!sector) return res.status(400).json({ error:'countryCode ve sector zorunlu' });
-    const country = COUNTRIES.find(c=>c.code===countryCode);
-    if (!country) return res.status(400).json({ error:'Gecersiz ulke kodu' });
-
-    // Override country language if user selected a specific search language
+    const countryBase = COUNTRIES.find(c=>c.code===countryCode);
+    if (!countryBase) return res.status(400).json({ error:'Gecersiz ulke kodu' });
+    // Clone to avoid mutating the shared COUNTRIES array object
+    const country: any = { ...countryBase };
     if (preferredLang && preferredLang !== country.language) {
-      (country as any).language = preferredLang;
-      (country as any).lang = preferredLang;
+      country.language = preferredLang;
+      country.lang = preferredLang;
     }
 
     const { data:profile } = await supabase.from('business_profiles').select('*').eq('user_id',userId).maybeSingle();
@@ -842,19 +852,18 @@ router.post('/start-search', async (req: any, res: any) => {
     // Create session — multiple fallback strategies
     let sessionId = `temp-${Date.now()}`;
     try {
-      // Try with user_id FK
       const { data: session, error: sessErr } = await supabase.from('export_search_sessions').insert([{
         user_id: userId, country_code: countryCode, sector, status: 'running', step: 'starting', progress: 5,
       }]).select().single();
       if (!sessErr && session?.id) {
         sessionId = session.id;
-      } else if (sessErr?.message?.includes('constraint') || sessErr?.message?.includes('foreign')) {
-        // FK constraint fail — try without user_id FK (use text field)
+      } else {
+        // FK constraint or table missing — try without user_id
         const { data: s2, error: e2 } = await supabase.from('export_search_sessions').insert([{
           country_code: countryCode, sector, status: 'running', step: 'starting', progress: 5,
         }]).select().single();
         if (!e2 && s2?.id) sessionId = s2.id;
-        else console.log('[ExportSearch] Session insert failed:', (e2 || sessErr)?.message?.slice(0, 80));
+        else console.log('[ExportSearch] Session insert failed:', (e2 || sessErr)?.message?.slice(0, 100));
       }
     } catch (sessEx: any) { console.log('[ExportSearch] Session exception:', sessEx.message?.slice(0, 60)); }
 
@@ -876,15 +885,10 @@ router.get('/search-session/:id/status', async (req: any, res: any) => {
   } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
-router.get('/market-intel/:countryCode', async (req: any, res: any) => {
+router.get('/market-intel/:countryCode', (req: any, res: any) => {
   const country = COUNTRIES.find(c=>c.code===req.params.countryCode);
   if (!country) return res.status(404).json({ error:'Ülke bulunamadı' });
-  let totalExportsUSD = 0;
-  try {
-    const r = await axios.get('https://comtrade.un.org/api/get', { params:{ r:'792', p:country.comtradeCode, ps:2023, px:'HS', cc:'TOTAL', type:'C', freq:'A', fmt:'json', max:1 }, timeout:10000 });
-    totalExportsUSD = r.data?.dataset?.[0]?.TradeValue||0;
-  } catch {}
-  res.json({ country:{ ...country, paymentRisk:PAYMENT_RISK[req.params.countryCode]||null, culturalIntel:CULTURAL_INTEL[req.params.countryCode]||null, totalExportsUSD } });
+  res.json({ country:{ ...country, paymentRisk:PAYMENT_RISK[req.params.countryCode]||null, culturalIntel:CULTURAL_INTEL[req.params.countryCode]||null } });
 });
 
 router.post('/generate-message', async (req: any, res: any) => {
@@ -1019,7 +1023,11 @@ router.get('/export-leads', async (req: any, res: any) => {
   try {
     const { countryCode, limit=100 } = req.query;
     let query = supabase.from('leads').select('*').eq('user_id',req.userId).eq('source','export_search').order('created_at',{ ascending:false }).limit(Number(limit));
-    if (countryCode) query = query.eq('country_code', countryCode);
+    if (countryCode) {
+      // Filter by country name (always exists) — country_code column may not be available yet
+      const countryObj = COUNTRIES.find(c=>c.code===countryCode);
+      if (countryObj) query = query.eq('country', countryObj.name);
+    }
     const { data } = await query;
     res.json({ leads:data||[] });
   } catch(e:any) { res.status(500).json({ error:e.message }); }
