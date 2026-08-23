@@ -28,14 +28,14 @@ const COUNTRY_CONFIG: Record<string, { currency: string; scrapers: string[] }> =
   'worldwide':     { currency: 'USD', scrapers: ['ekap', 'ted', 'ungm', 'worldbank', 'google'] },
   'international': { currency: 'USD', scrapers: ['ungm', 'worldbank'] },
   'turkey':        { currency: 'TRY', scrapers: ['ekap', 'google_country'] },
-  'eu':            { currency: 'EUR', scrapers: ['ted'] },
+  'eu':            { currency: 'EUR', scrapers: ['ted', 'google_country'] },
   'germany':       { currency: 'EUR', scrapers: ['ted', 'google_country'] },
   'france':        { currency: 'EUR', scrapers: ['ted', 'google_country'] },
   'italy':         { currency: 'EUR', scrapers: ['ted', 'google_country'] },
   'spain':         { currency: 'EUR', scrapers: ['ted', 'google_country'] },
   'netherlands':   { currency: 'EUR', scrapers: ['ted', 'google_country'] },
   'poland':        { currency: 'EUR', scrapers: ['ted', 'google_country'] },
-  'uk':            { currency: 'GBP', scrapers: ['google_country'] },
+  'uk':            { currency: 'GBP', scrapers: ['uk_find_tender', 'google_country'] },
   'usa':           { currency: 'USD', scrapers: ['sam_gov', 'google_country'] },
   'uae':           { currency: 'AED', scrapers: ['google_country'] },
   'saudi':         { currency: 'SAR', scrapers: ['google_country'] },
@@ -105,7 +105,7 @@ async function scrapeEKAP(keyword: string): Promise<any[]> {
     const searchUrl = `https://ekap.kik.gov.tr/EKAP/ws/ihale/aramaJson.npjx?ilanAdi=${encodeURIComponent(keyword)}&ilanTipiList=1,2,3,4&yakinTarihSay=30`;
     const response = await axios.get(searchUrl, {
       headers: { ...HEADERS, 'Referer': 'https://ekap.kik.gov.tr/EKAP/', 'Accept': 'application/json' },
-      timeout: 20000,
+      timeout: 8000,
     });
 
     const items = response.data?.rows || response.data?.data || [];
@@ -130,7 +130,7 @@ async function scrapeEKAP(keyword: string): Promise<any[]> {
     if (tenders.length === 0) {
       const htmlRes = await axios.get(
         `https://ekap.kik.gov.tr/EKAP/common/ilanSorgula.jsp?ilanTipiList=1,2,3,4&yakinTarihSay=30&ilanAdi=${encodeURIComponent(keyword)}`,
-        { headers: { ...HEADERS, 'Referer': 'https://ekap.kik.gov.tr/EKAP/' }, timeout: 20000 }
+        { headers: { ...HEADERS, 'Referer': 'https://ekap.kik.gov.tr/EKAP/' }, timeout: 8000 }
       );
       const $ = cheerio.load(htmlRes.data);
       $('table tr').each((_: any, row: any) => {
@@ -162,16 +162,43 @@ async function scrapeTED(keyword: string): Promise<any[]> {
     });
     const notices = response.data?.results || response.data?.notices || response.data?.content || [];
     for (const n of (Array.isArray(notices) ? notices : [])) {
-      const noticeId = n.ND || n.noticeId || n.id || '';
-      const title = n.TI || n.title || (typeof n.titles === 'object' ? Object.values(n.titles)[0] : '') || '';
+      const noticeId = n.ND || n.noticePublicationId || n.noticeId || n.id || '';
+
+      // TI can be a string or a multilingual object {EN: "...", DE: "..."}
+      const rawTI = n.TI || n.title || n.titles || '';
+      let title = '';
+      if (typeof rawTI === 'string') {
+        title = rawTI;
+      } else if (rawTI && typeof rawTI === 'object') {
+        title = (rawTI as any).EN || (rawTI as any).en || (rawTI as any).FR || Object.values(rawTI)[0] as string || '';
+      }
+      if (!title || title.length < 5) continue;
+
+      // DT is often "20240215" (YYYYMMDD) — convert to ISO
+      const rawDT = n.DT || n.deadline || n.deadlineForSubmission || null;
+      let deadline: string | null = null;
+      if (rawDT) {
+        const s = String(rawDT);
+        if (s.match(/^\d{8}$/)) {
+          deadline = `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+        } else {
+          try { deadline = new Date(s).toISOString(); } catch { deadline = null; }
+        }
+      }
+
+      const institution = n.AU || n.contractingAuthorityName || n.authorityName || n.buyerName || n.OA || '';
+      const rawCY = n.CY || n.country || n.countryCode || 'Avrupa Birligi';
+      const country = typeof rawCY === 'string' ? rawCY : 'Avrupa Birligi';
+      const value = n.VT || n.estimatedValue || null;
+
       tenders.push({
         source: 'TED Europa',
         source_url: noticeId ? `https://ted.europa.eu/en/notice/-/detail/${noticeId}` : 'https://ted.europa.eu',
         title: String(title).substring(0, 300),
-        institution: String(n.AU || n.authorityName || n.buyerName || '').substring(0, 200),
-        deadline: n.DT || n.deadline || null,
-        budget_text: n.VT ? `${n.VT} EUR` : (n.estimatedValue ? `${n.estimatedValue} EUR` : null),
-        country: n.CY || n.country || 'Avrupa Birligi', currency: 'EUR', status: 'active',
+        institution: String(institution).substring(0, 200),
+        deadline,
+        budget_text: value ? `${value} EUR` : null,
+        country: String(country).substring(0, 100), currency: 'EUR', status: 'active',
       });
     }
   } catch (e: any) { console.log('TED API error:', e.message?.slice(0, 80)); }
@@ -186,16 +213,19 @@ async function scrapeUNGM(keyword: string): Promise<any[]> {
       headers: { ...HEADERS, 'Referer': 'https://www.ungm.org/' }, timeout: 20000,
     });
     const $ = cheerio.load(response.data);
-    $('tr.tableRow, table.noticeList tbody tr').each((_: any, row: any) => {
+    // Try multiple selectors — UNGM HTML structure varies
+    const rowSelector = 'tr.tableRow, table.noticeList tbody tr, .notice-list tr, tbody tr, .table-striped tr';
+    $(rowSelector).each((_: any, row: any) => {
       const cells = $(row).find('td');
       if (cells.length < 2) return;
-      const title = cleanText($(cells[0]).text());
-      const org = cleanText($(cells[1])?.text() || '');
-      const link = $(row).find('a').first().attr('href') || '';
-      if (title && title.length > 10) {
+      const titleCell = $(cells[0]);
+      const title = cleanText(titleCell.find('a').first().text() || titleCell.text());
+      const org = cleanText($(cells[1])?.text() || $(cells[2])?.text() || '');
+      const link = $(row).find('a').first().attr('href') || titleCell.find('a').first().attr('href') || '';
+      if (title && title.length > 10 && !title.toLowerCase().includes('title') && !title.toLowerCase().includes('notice')) {
         tenders.push({
           source: 'UNGM (BM)',
-          source_url: link ? `https://www.ungm.org${link}` : 'https://www.ungm.org',
+          source_url: link ? (link.startsWith('http') ? link : `https://www.ungm.org${link}`) : 'https://www.ungm.org',
           title: title.substring(0, 300), institution: org.substring(0, 200),
           deadline: null, budget_text: null,
           country: 'Uluslararasi (BM)', currency: 'USD', status: 'active',
@@ -232,24 +262,150 @@ async function scrapeWorldBank(keyword: string): Promise<any[]> {
 
 async function scrapeSamGov(keyword: string): Promise<any[]> {
   const tenders: any[] = [];
+  const SAM_GOV_API_KEY = process.env.SAM_GOV_API_KEY;
   try {
-    const url = `https://sam.gov/api/prod/sgs/v1/search/?index=opp&q=${encodeURIComponent(keyword)}&page=0&size=15&sort=-modifiedDate&mode=search&is_active=true`;
-    const response = await axios.get(url, {
-      headers: { 'Accept': 'application/json', 'User-Agent': HEADERS['User-Agent'], 'Content-Type': 'application/json' }, timeout: 20000,
-    }).catch(() => ({ data: {} }));
-    const hits = response.data?._embedded?.results || [];
-    for (const h of hits) {
-      tenders.push({
-        source: 'SAM.gov (ABD)',
-        source_url: h.uiLink || `https://sam.gov/opp/${h.noticeId}/view`,
-        title: String(h.title || '').substring(0, 300),
-        institution: String(h.fullParentPathName || 'US Government').substring(0, 200),
-        deadline: h.responseDeadLine || null, budget_text: null,
-        country: 'ABD', currency: 'USD', status: 'active',
-      });
+    // SAM.gov v2 API (requires API key since 2023; without key => 403)
+    if (SAM_GOV_API_KEY) {
+      const v2url = `https://api.sam.gov/opportunities/v2/search?api_key=${SAM_GOV_API_KEY}&keywords=${encodeURIComponent(keyword)}&limit=20&offset=0&status=Active`;
+      const resp = await axios.get(v2url, {
+        headers: { 'Accept': 'application/json', 'User-Agent': HEADERS['User-Agent'] }, timeout: 20000,
+      }).catch(() => ({ data: {} }));
+      const opps = resp.data?.opportunitiesData || resp.data?.opportunities || [];
+      for (const h of (Array.isArray(opps) ? opps : [])) {
+        const title = h.title || h.subject || '';
+        if (!title) continue;
+        tenders.push({
+          source: 'SAM.gov (ABD)',
+          source_url: h.uiLink || h.additionalInfoLink || `https://sam.gov/opp/${h.noticeId}/view`,
+          title: String(title).substring(0, 300),
+          institution: String(h.fullParentPathName || h.department || 'US Government').substring(0, 200),
+          deadline: h.responseDeadLine || h.archiveDate || null, budget_text: null,
+          country: 'ABD', currency: 'USD', status: 'active',
+        });
+      }
+    } else {
+      // No API key — try the legacy SGS endpoint (may 403)
+      const url = `https://sam.gov/api/prod/sgs/v1/search/?index=opp&q=${encodeURIComponent(keyword)}&page=0&size=15&sort=-modifiedDate&mode=search&is_active=true`;
+      const response = await axios.get(url, {
+        headers: { 'Accept': 'application/json', 'User-Agent': HEADERS['User-Agent'] }, timeout: 15000,
+      }).catch(() => ({ data: {} }));
+      const hits = response.data?._embedded?.results || [];
+      for (const h of (Array.isArray(hits) ? hits : [])) {
+        const title = h.title || '';
+        if (!title) continue;
+        tenders.push({
+          source: 'SAM.gov (ABD)',
+          source_url: h.uiLink || `https://sam.gov/opp/${h.noticeId}/view`,
+          title: String(title).substring(0, 300),
+          institution: String(h.fullParentPathName || 'US Government').substring(0, 200),
+          deadline: h.responseDeadLine || null, budget_text: null,
+          country: 'ABD', currency: 'USD', status: 'active',
+        });
+      }
     }
   } catch (e: any) { console.log('SAM.gov error:', e.message?.slice(0, 80)); }
   return tenders;
+}
+
+// ── UK FIND A TENDER ─────────────────────────────────────────────────────────
+async function scrapeUKFindTender(keyword: string): Promise<any[]> {
+  const tenders: any[] = [];
+  try {
+    const url = `https://www.find-tender.service.gov.uk/api/1.0/ocds/opportunities.json?q=${encodeURIComponent(keyword)}&status=active&limit=20`;
+    const response = await axios.get(url, {
+      headers: { 'Accept': 'application/json', 'User-Agent': HEADERS['User-Agent'] }, timeout: 20000,
+    });
+    const releases = response.data?.releases || [];
+    for (const r of (Array.isArray(releases) ? releases : [])) {
+      const tender = r.tender || {};
+      const title = tender.title || r.name || '';
+      if (!title || title.length < 5) continue;
+      const endDate = tender.tenderPeriod?.endDate || null;
+      const value = tender.value?.amount;
+      const currency = tender.value?.currency || 'GBP';
+      const noticeId = r.ocid?.replace('ocds-b5fd17-', '') || '';
+      tenders.push({
+        source: 'UK Find a Tender',
+        source_url: noticeId ? `https://www.find-tender.service.gov.uk/Notice/${noticeId}` : 'https://www.find-tender.service.gov.uk',
+        title: String(title).substring(0, 300),
+        institution: String(r.buyer?.name || r.parties?.[0]?.name || '').substring(0, 200),
+        deadline: endDate || null,
+        budget_text: value ? `${value} ${currency}` : null,
+        country: 'Ingiltere', currency: 'GBP', status: 'active',
+      });
+    }
+  } catch (e: any) { console.log('UK Find a Tender error:', e.message?.slice(0, 80)); }
+  return tenders;
+}
+
+// ── FREE SEARCH FALLBACK (DuckDuckGo + Bing) ─────────────────────────────────
+async function searchViaDDGTenders(query: string): Promise<{title: string; url: string; snippet: string}[]> {
+  try {
+    const encoded = encodeURIComponent(query);
+    const res = await axios.get(`https://api.duckduckgo.com/?q=${encoded}&format=json&no_html=1&no_redirect=1&skip_disambig=1`, {
+      headers: { 'User-Agent': HEADERS['User-Agent'] }, timeout: 10000,
+    });
+    const results: any[] = [];
+    const data = res.data;
+    if (data?.RelatedTopics) {
+      for (const t of data.RelatedTopics) {
+        if (t.Text && t.FirstURL) {
+          results.push({ title: t.Text.split(' - ')[0] || t.Text, url: t.FirstURL, snippet: t.Text });
+        }
+        if (t.Topics) {
+          for (const sub of t.Topics) {
+            if (sub.Text && sub.FirstURL) results.push({ title: sub.Text.split(' - ')[0] || sub.Text, url: sub.FirstURL, snippet: sub.Text });
+          }
+        }
+      }
+    }
+    return results.slice(0, 8);
+  } catch { return []; }
+}
+
+async function searchViaBingTenders(query: string): Promise<{title: string; url: string; snippet: string}[]> {
+  const BING_KEY = process.env.BING_SEARCH_KEY;
+  if (!BING_KEY) return [];
+  try {
+    const res = await axios.get('https://api.bing.microsoft.com/v7.0/search', {
+      params: { q: query, count: 10, mkt: 'en-US', safeSearch: 'Off' },
+      headers: { 'Ocp-Apim-Subscription-Key': BING_KEY, 'User-Agent': HEADERS['User-Agent'] },
+      timeout: 10000,
+    });
+    return (res.data?.webPages?.value || []).map((r: any) => ({ title: r.name || '', url: r.url || '', snippet: r.snippet || '' }));
+  } catch { return []; }
+}
+
+function parseTenderSearchResults(results: {title: string; url: string; snippet: string}[], countryName: string, currency: string): any[] {
+  return results
+    .filter(r => {
+      const combined = (r.title + ' ' + r.snippet).toLowerCase();
+      return combined.match(/tender|procurement|bid|contract|rfp|rfq|supply|government|public|ihale|appel|licitacion/i);
+    })
+    .map(r => ({
+      source: countryName,
+      source_url: r.url || '',
+      title: r.title.substring(0, 300),
+      institution: (r.url?.split('/')[2] || '').substring(0, 200),
+      deadline: null,
+      budget_text: null,
+      country: countryName, currency, status: 'active',
+    }))
+    .filter(r => r.title.length >= 10)
+    .slice(0, 6);
+}
+
+async function searchTendersFree(keyword: string, countryId: string): Promise<any[]> {
+  const countryTerm = COUNTRY_SEARCH_TERMS[countryId] || '';
+  const countryName = COUNTRY_NAMES[countryId] || countryId;
+  const currency = COUNTRY_CONFIG[countryId]?.currency || 'USD';
+  const query = `${keyword} tender procurement government bid ${countryTerm} 2025 OR 2026`;
+
+  const ddgResults = await searchViaDDGTenders(query);
+  if (ddgResults.length >= 3) return parseTenderSearchResults(ddgResults, countryName, currency);
+
+  const bingResults = await searchViaBingTenders(query);
+  return parseTenderSearchResults(bingResults, countryName, currency);
 }
 
 // ── EXA.AI TENDER SEARCH ─────────────────────────────────────────────────────
@@ -335,11 +491,17 @@ async function searchTendersTavily(keyword: string, countryId: string): Promise<
   return tenders;
 }
 
-// ── COMBINED COUNTRY SEARCH: Exa -> Tavily ───────────────────────────────────
+// ── COMBINED COUNTRY SEARCH: Exa -> Tavily -> Free (DDG/Bing) ────────────────
 async function scrapeGoogleCountry(keyword: string, countryId: string): Promise<any[]> {
-  const exaResults = await searchTendersExa(keyword, countryId);
-  if (exaResults.length > 0) return exaResults;
-  return searchTendersTavily(keyword, countryId);
+  if (process.env.EXA_API_KEY) {
+    const exaResults = await searchTendersExa(keyword, countryId);
+    if (exaResults.length > 0) return exaResults;
+  }
+  if (process.env.TAVILY_API_KEY) {
+    const tavilyResults = await searchTendersTavily(keyword, countryId);
+    if (tavilyResults.length > 0) return tavilyResults;
+  }
+  return searchTendersFree(keyword, countryId);
 }
 
 // ── ORCHESTRATOR ─────────────────────────────────────────────────────────────
@@ -348,13 +510,14 @@ async function scrapeByCountry(keyword: string, countryId: string): Promise<any[
   const scrapers = config.scrapers;
   const tasks: Promise<any[]>[] = [];
 
-  if (scrapers.includes('ekap'))          tasks.push(scrapeEKAP(keyword));
-  if (scrapers.includes('ted'))           tasks.push(scrapeTED(keyword));
-  if (scrapers.includes('ungm'))          tasks.push(scrapeUNGM(keyword));
-  if (scrapers.includes('worldbank'))     tasks.push(scrapeWorldBank(keyword));
-  if (scrapers.includes('sam_gov'))       tasks.push(scrapeSamGov(keyword));
-  if (scrapers.includes('google_country')) tasks.push(scrapeGoogleCountry(keyword, countryId));
-  if (scrapers.includes('google'))        tasks.push(scrapeGoogleCountry(keyword, 'worldwide'));
+  if (scrapers.includes('ekap'))            tasks.push(scrapeEKAP(keyword));
+  if (scrapers.includes('ted'))             tasks.push(scrapeTED(keyword));
+  if (scrapers.includes('ungm'))            tasks.push(scrapeUNGM(keyword));
+  if (scrapers.includes('worldbank'))       tasks.push(scrapeWorldBank(keyword));
+  if (scrapers.includes('sam_gov'))         tasks.push(scrapeSamGov(keyword));
+  if (scrapers.includes('uk_find_tender'))  tasks.push(scrapeUKFindTender(keyword));
+  if (scrapers.includes('google_country'))  tasks.push(scrapeGoogleCountry(keyword, countryId));
+  if (scrapers.includes('google'))          tasks.push(scrapeGoogleCountry(keyword, 'worldwide'));
 
   const results = await Promise.allSettled(tasks);
   const all: any[] = [];
@@ -654,9 +817,11 @@ router.post('/scan', async (req: any, res: any) => {
 
     const countryName = COUNTRY_NAMES[country] || country;
 
-    const { data: scan } = await supabase.from('tender_scans').insert([{
-      user_id: userId, keyword, sources: [country], status: 'running', started_at: new Date().toISOString(),
+    const { data: scan, error: scanInsertErr } = await supabase.from('tender_scans').insert([{
+      user_id: userId, keyword, sources: country, status: 'running', started_at: new Date().toISOString(),
     }]).select().single();
+
+    if (scanInsertErr) console.error('[Tenders] tender_scans insert error:', scanInsertErr.message);
 
     if (save_pref) {
       await supabase.from('tender_scan_prefs').upsert([{
@@ -669,7 +834,14 @@ router.post('/scan', async (req: any, res: any) => {
       });
     }
 
-    res.json({ message: `"${keyword}" icin ${countryName} taramasi baslatildi.`, scanId: scan?.id });
+    res.json({ message: `"${keyword}" icin ${countryName} taramasi baslatildi.`, scanId: scan?.id || null });
+
+    if (!scan?.id) {
+      console.error('[Tenders] Scan aborted — tender_scans insert returned no id');
+      return;
+    }
+
+    const scanId = scan.id;
 
     (async () => {
       try {
@@ -677,10 +849,10 @@ router.post('/scan', async (req: any, res: any) => {
         console.log(`[Tenders] Scan raw: ${allTenders.length} found for "${keyword}" in ${country}`);
 
         if (allTenders.length === 0) {
-          console.log(`[Tenders] No results for "${keyword}" in ${country} — no mock data injected`);
+          console.log(`[Tenders] No results for "${keyword}" in ${country}`);
           await supabase.from('tender_scans').update({
             status: 'completed', tenders_found: 0, completed_at: new Date().toISOString(),
-          }).eq('id', scan?.id);
+          }).eq('id', scanId);
           return;
         }
 
@@ -697,8 +869,8 @@ router.post('/scan', async (req: any, res: any) => {
             await sleep(300);
           }
 
-          await supabase.from('tenders').insert([{
-            user_id: userId, scan_id: scan?.id, ...tender,
+          const { error: insertErr } = await supabase.from('tenders').insert([{
+            user_id: userId, scan_id: scanId, ...tender,
             ai_score: analysis.score, ai_summary: analysis.summary,
             ai_recommendation: analysis.recommendation,
             requirements: analysis.requirements, eligibility: analysis.eligibility,
@@ -707,27 +879,28 @@ router.post('/scan', async (req: any, res: any) => {
             action_steps: analysis.action_steps, missing_docs: analysis.missing_docs,
             competitor_insight: analysis.competitor_insight,
             pipeline_step: 'discovered', notify_sent: false,
-          }]).catch((err: any) => {
-            // Fallback: new columns might not exist yet
-            supabase.from('tenders').insert([{
-              user_id: userId, scan_id: scan?.id, ...tender,
+          }]);
+          if (insertErr) {
+            // Fallback: new columns might not exist in DB yet
+            await supabase.from('tenders').insert([{
+              user_id: userId, scan_id: scanId, ...tender,
               ai_score: analysis.score, ai_summary: analysis.summary,
               ai_recommendation: analysis.recommendation,
               requirements: analysis.requirements, eligibility: analysis.eligibility,
               documents: analysis.documents, notify_sent: false,
             }]).catch(() => {});
-          });
+          }
           added++;
         }
 
         await supabase.from('tender_scans').update({
           status: 'completed', tenders_found: added, completed_at: new Date().toISOString(),
-        }).eq('id', scan?.id);
+        }).eq('id', scanId);
 
         console.log(`[Tenders] Scan complete: ${added} saved for "${keyword}" in ${country}`);
       } catch (err: any) {
         console.error('[Tenders] Scan error:', err.message);
-        await supabase.from('tender_scans').update({ status: 'failed' }).eq('id', scan?.id);
+        await supabase.from('tender_scans').update({ status: 'failed', error_message: err.message?.slice(0, 200) }).eq('id', scanId);
       }
     })();
   } catch (e: any) { res.status(500).json({ error: e.message }); }

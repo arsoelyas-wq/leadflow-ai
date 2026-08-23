@@ -262,13 +262,20 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
   if (status === 'completed') return (
     <div style={{ padding:'14px 20px', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:12 }}>
       <CheckCircle size={16} color="#059669" />
-      <p style={{ color:'#047857', fontSize:13, margin:0, fontWeight:600 }}>Tarama tamamlandı — {found} yeni ihale bulundu! Sayfayı yeniliyorum...</p>
+      <p style={{ color:'#047857', fontSize:13, margin:0, fontWeight:600 }}>
+        {found > 0
+          ? `Tarama tamamlandı — ${found} yeni ihale bulundu! Sayfayı yeniliyorum...`
+          : 'Tarama tamamlandı — Bu arama için yeni ihale bulunamadı. Farklı anahtar kelime deneyin veya daha geniş kapsam için EXA_API_KEY / TAVILY_API_KEY ekleyin.'}
+      </p>
     </div>
   )
   if (status === 'failed') return (
     <div style={{ padding:'14px 20px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:12, display:'flex', alignItems:'center', gap:12 }}>
       <XCircle size={16} color="#dc2626" />
-      <p style={{ color:'#dc2626', fontSize:13, margin:0 }}>Tarama başarısız oldu</p>
+      <div>
+        <p style={{ color:'#dc2626', fontSize:13, margin:'0 0 4px', fontWeight:600 }}>Tarama başarısız oldu</p>
+        <p style={{ color:'#dc2626', fontSize:11, margin:0, opacity:0.8 }}>Lütfen tekrar deneyin. Sorun devam ederse farklı anahtar kelime veya ülke seçin.</p>
+      </div>
     </div>
   )
 
@@ -284,7 +291,7 @@ function ScanProgress({ scanId, onComplete }: { scanId: string; onComplete: () =
       <div style={{ height:5, background:'rgba(124,58,237,0.12)', borderRadius:3 }}>
         <div style={{ height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#7c3aed,#a78bfa)', borderRadius:3, transition:'width 0.5s', boxShadow:'0 0 10px rgba(124,58,237,0.5)' }} />
       </div>
-      <p style={{ color:'#475569', fontSize:11, margin:'8px 0 0' }}>EKAP · TED Europa · World Bank · Exa.ai · Tavily — ~60 saniye</p>
+      <p style={{ color:'#475569', fontSize:11, margin:'8px 0 0' }}>EKAP · TED Europa · World Bank · UK Find a Tender · SAM.gov · Exa.ai · Tavily · DuckDuckGo — ~60 saniye</p>
     </div>
   )
 }
