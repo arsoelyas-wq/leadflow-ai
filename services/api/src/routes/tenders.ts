@@ -817,11 +817,15 @@ router.post('/scan', async (req: any, res: any) => {
 
     const countryName = COUNTRY_NAMES[country] || country;
 
-    const { data: scan, error: scanInsertErr } = await supabase.from('tender_scans').insert([{
-      user_id: userId, keyword, sources: country, status: 'running', started_at: new Date().toISOString(),
-    }]).select().single();
-
-    if (scanInsertErr) console.error('[Tenders] tender_scans insert error:', scanInsertErr.message);
+    // Try array first (text[] column), fall back to string, fall back to omitting sources
+    let scan: any = null;
+    for (const sourcesVal of [[country], country, undefined]) {
+      const payload: any = { user_id: userId, keyword, status: 'running', started_at: new Date().toISOString() };
+      if (sourcesVal !== undefined) payload.sources = sourcesVal;
+      const { data, error } = await supabase.from('tender_scans').insert([payload]).select().single();
+      if (!error && data?.id) { scan = data; break; }
+      if (sourcesVal === undefined) console.error('[Tenders] tender_scans insert failed on all attempts:', error?.message);
+    }
 
     if (save_pref) {
       await supabase.from('tender_scan_prefs').upsert([{
