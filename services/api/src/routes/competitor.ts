@@ -952,7 +952,10 @@ router.post('/list', async (req: any, res: any) => {
 
 router.delete('/list/:id', async (req: any, res: any) => {
   try {
-    await supabase.from('competitors').delete().eq('id', req.params.id).eq('user_id', req.userId);
+    // Delete associated dedup records first (FK constraint: competitor_leads.competitor_id → competitors.id)
+    await supabase.from('competitor_leads').delete().eq('competitor_id', req.params.id).eq('user_id', req.userId);
+    const { error } = await supabase.from('competitors').delete().eq('id', req.params.id).eq('user_id', req.userId);
+    if (error) throw error;
     res.json({ message: 'Rakip silindi' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
