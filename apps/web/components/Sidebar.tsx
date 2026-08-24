@@ -45,7 +45,6 @@ const PLAN_META: Record<string, { label: string; color: string; bg: string; bord
 
 const CORE_ITEMS: NavItem[] = [
   { href: '/dashboard',    label: 'nav.dashboard',    icon: LayoutDashboard },
-  { href: '/lead-machine', label: 'nav.lead_machine', icon: Sparkles, badge: 'AI' },
   { href: '/leads',        label: 'nav.leads',        icon: Users },
   { href: '/pipeline',     label: 'nav.pipeline',     icon: Kanban },
   { href: '/automations', label: 'nav.automations', icon: Megaphone },

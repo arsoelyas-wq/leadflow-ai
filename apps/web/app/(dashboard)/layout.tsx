@@ -9,6 +9,7 @@ import TopBar from '../../components/TopBar'
 import PWAInstallBanner from '../../components/PWAInstallBanner'
 import DashboardSupportChat from '../../components/DashboardSupportChat'
 import MobileBottomNav from '../../components/MobileBottomNav'
+import SovloAIFloat from '../../components/SovloAIFloat'
 import { LifeBuoy, Menu, Sparkles, X } from 'lucide-react'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -259,6 +260,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {isMobile && (
         <MobileBottomNav onMenuOpen={() => setSidebarOpen(true)} />
       )}
+
+      {/* Sovlo AI floating chatbot */}
+      <SovloAIFloat />
 
       {/* Dashboard support chat panel */}
       {supportOpen && user && (
