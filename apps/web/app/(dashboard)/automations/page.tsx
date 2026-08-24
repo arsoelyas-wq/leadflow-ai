@@ -385,7 +385,7 @@ export default function AutomationsPage() {
       {!mode && (
         <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: 14 }}>
           {MODES.map(m => (
-            <button key={m.id} onClick={() => setMode(m.id as Mode)}
+            <button key={m.id} onClick={() => m.id === 'broadcast' ? router.push('/campaigns/new') : setMode(m.id as Mode)}
               style={{ ...card, padding: '24px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', border: '2px solid #e2e8f0' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = m.color; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}>
