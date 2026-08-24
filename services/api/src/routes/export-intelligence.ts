@@ -167,11 +167,11 @@ async function getMarketIntelligence(hsCodes: string[], _countryCode: string, co
     const resp = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
-      messages: [{ role:'user', content:`International trade estimate: Turkey exports "${sector||hsCodes[0]}" (HS: ${hsCodes.slice(0,2).join(', ')}) to ${country.name}.
+      messages: [{ role:'user', content:`International trade estimate: Turkey exports "${sector||hsCodes[0]}" (HS: ${hsCodes.slice(0,2).join(', ')}) to ${COUNTRY_EN[country.code]||country.code}.
 Based on 2022-2023 trade data knowledge, return ONLY JSON:
 {"marketSizeUSD":0,"turkeyExportsUSD":0,"turkeySharePct":0.0,"yoyGrowthPct":0.0,"year":2023}
-- marketSizeUSD: total ${country.name} imports of this sector (USD integer, realistic)
-- turkeyExportsUSD: Turkey exports to ${country.name} in this sector (USD integer)
+- marketSizeUSD: total ${COUNTRY_EN[country.code]||country.code} imports of this sector (USD integer, realistic)
+- turkeyExportsUSD: Turkey exports to ${COUNTRY_EN[country.code]||country.code} in this sector (USD integer)
 - turkeySharePct: Turkey market share % (1 decimal)
 - yoyGrowthPct: YoY growth % (can be negative)
 ONLY JSON.` }]
@@ -555,16 +555,18 @@ async function enrichCompanyContact(company: any): Promise<any> {
 
 // ── OUTREACH MESAJI ÜRET ──────────────────────────────────────────────────────
 async function generateOutreachMessage(params: {
-  companyName: string; country: string; language: string; sector: string;
+  companyName: string; country: string; countryCode?: string; language: string; sector: string;
   senderCompany: string; senderProduct: string; channel: string; hsCodes?: string[];
 }): Promise<{ subject?: string; body: string }> {
-  const { companyName, country, language, sector, senderCompany, senderProduct, channel, hsCodes } = params;
+  const { companyName, country, countryCode, language, sector, senderCompany, senderProduct, channel, hsCodes } = params;
   const langNames: Record<string, string> = {
     de:'Almanca', en:'İngilizce', fr:'Fransızca', ar:'Arapça',
     ru:'Rusça', az:'Azerbaycanca', zh:'Çince', ja:'Japonca',
     it:'İtalyanca', es:'İspanyolca', nl:'Hollandaca', pl:'Lehçe',
+    pt:'Portekizce', ko:'Korece', zh:'Çince',
   };
-  const cultural = CULTURAL_INTEL[params.country] || null;
+  // Use countryCode for CULTURAL_INTEL lookup (keys are 'DE','GB' etc, not Turkish names)
+  const cultural = countryCode ? (CULTURAL_INTEL[countryCode] || null) : null;
   try {
     const r = await anthropic.messages.create({
       model: 'claude-sonnet-4-6', max_tokens: 600,
@@ -914,13 +916,14 @@ router.post('/generate-message', async (req: any, res: any) => {
     const { leadId, channel='whatsapp' } = req.body;
     const { data:lead } = await supabase.from('leads').select('*').eq('id',leadId).eq('user_id',req.userId).single();
     if (!lead) return res.status(404).json({ error:'Lead bulunamadı' });
-    const country = COUNTRIES.find(c=>c.code===(lead.country_code||'DE'))||COUNTRIES[0];
+    // country_code may not exist if migration not run — fall back to matching by country name
+    const country = COUNTRIES.find(c=>c.code===(lead.country_code||'') || c.name===lead.country) || COUNTRIES[0];
     const { data:profile } = await supabase.from('business_profiles').select('*').eq('user_id',req.userId).maybeSingle();
     const { data:userRow } = await supabase.from('users').select('company').eq('id',req.userId).single();
     const senderCompany = (typeof profile?.company==='string'?profile.company:profile?.company?.name)||userRow?.company||'Şirketimiz';
     const senderProduct = (typeof profile?.product==='string'?profile.product:profile?.product?.description)||lead.sector||'';
     const hsCodes = (() => { try { return lead.hs_codes ? (typeof lead.hs_codes === 'string' ? JSON.parse(lead.hs_codes) : lead.hs_codes) : [] } catch { return [] } })();
-    const message = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
+    const message = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, countryCode:country.code, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
     const msgData = { user_id:req.userId, lead_id:leadId, country_code:country.code, channel, subject:message.subject||null, body:message.body, language:country.language, status:'draft' };
     // Try upsert first, fall back to insert if unique constraint missing
     const { error: upsertErr } = await supabase.from('export_messages').upsert([msgData], { onConflict:'user_id,lead_id,channel' });
@@ -957,7 +960,7 @@ router.post('/bulk-messages', async (req: any, res: any) => {
           const { data:lead } = await supabase.from('leads').select('*').eq('id',leadId).eq('user_id',req.userId).single();
           if (!lead) continue;
           const hsCodes = (() => { try { return lead.hs_codes ? (typeof lead.hs_codes === 'string' ? JSON.parse(lead.hs_codes) : lead.hs_codes) : [] } catch { return [] } })();
-          const msg = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
+          const msg = await generateOutreachMessage({ companyName:lead.company_name, country:country.name, countryCode:country.code, language:country.language, sector:lead.sector||'', senderCompany, senderProduct, channel, hsCodes });
           const bmData = { user_id:req.userId, lead_id:leadId, country_code:countryCode, channel, subject:msg.subject||null, body:msg.body, language:country.language, status:'draft' };
           const { error: bmErr } = await supabase.from('export_messages').upsert([bmData], { onConflict:'user_id,lead_id,channel' });
           if (bmErr) await supabase.from('export_messages').insert([bmData]).select();
@@ -1053,16 +1056,19 @@ router.get('/export-leads', async (req: any, res: any) => {
 
 router.get('/analytics', async (req: any, res: any) => {
   try {
-    const { data:leads } = await supabase.from('leads').select('country,country_code,status,sector').eq('user_id',req.userId).eq('source','export_search');
-    const { data:campaigns } = await supabase.from('export_campaigns').select('country_code,status,lead_count,sent_count').eq('user_id',req.userId);
-    const { data:msgs } = await supabase.from('export_messages').select('country_code,status,channel').eq('user_id',req.userId);
+    // Select only guaranteed columns (country_code may not exist before migration)
+    const { data:leads } = await supabase.from('leads').select('country,status,sector').eq('user_id',req.userId).eq('source','export_search');
+    const campaigns = await supabase.from('export_campaigns').select('status,lead_count,sent_count').eq('user_id',req.userId).then(r=>r.data);
+    const msgs = await supabase.from('export_messages').select('status,channel').eq('user_id',req.userId).then(r=>r.data);
     const byCountry: Record<string,any> = {};
     (leads||[]).forEach((l:any) => {
-      if (!byCountry[l.country]) byCountry[l.country] = { leads:0, converted:0, country_code:l.country_code };
-      byCountry[l.country].leads++;
-      if (l.status==='won') byCountry[l.country].converted++;
+      const key = l.country || 'Bilinmeyen';
+      const cc = COUNTRIES.find(c=>c.name===key)?.code || '';
+      if (!byCountry[key]) byCountry[key] = { leads:0, converted:0, country_code: cc };
+      byCountry[key].leads++;
+      if (l.status==='won') byCountry[key].converted++;
     });
-    res.json({ totalLeads:leads?.length||0, totalCampaigns:campaigns?.length||0, totalMessages:msgs?.length||0, sentMessages:msgs?.filter((m:any)=>m.status==='sent').length||0, byCountry:Object.entries(byCountry).map(([c,v]:any)=>({ country:c, country_code:v.country_code, leads:v.leads, converted:v.converted, convRate:v.leads>0?Math.round((v.converted/v.leads)*100):0 })).sort((a,b)=>b.leads-a.leads).slice(0,8) });
+    res.json({ totalLeads:leads?.length||0, totalCampaigns:campaigns?.length||0, totalMessages:msgs?.length||0, sentMessages:(msgs||[]).filter((m:any)=>m.status==='sent').length, byCountry:Object.entries(byCountry).map(([c,v]:any)=>({ country:c, country_code:v.country_code, leads:v.leads, converted:v.converted, convRate:v.leads>0?Math.round((v.converted/v.leads)*100):0 })).sort((a,b)=>b.leads-a.leads).slice(0,8) });
   } catch(e:any) { res.status(500).json({ error:e.message }); }
 });
 
