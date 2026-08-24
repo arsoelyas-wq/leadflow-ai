@@ -566,7 +566,7 @@ async function generateOutreachMessage(params: {
     de:'Almanca', en:'İngilizce', fr:'Fransızca', ar:'Arapça',
     ru:'Rusça', az:'Azerbaycanca', zh:'Çince', ja:'Japonca',
     it:'İtalyanca', es:'İspanyolca', nl:'Hollandaca', pl:'Lehçe',
-    pt:'Portekizce', ko:'Korece', zh:'Çince',
+    pt:'Portekizce', ko:'Korece',
   };
   // Use countryCode for CULTURAL_INTEL lookup (keys are 'DE','GB' etc, not Turkish names)
   const cultural = countryCode ? (CULTURAL_INTEL[countryCode] || null) : null;
