@@ -338,13 +338,14 @@ async function searchWebImporters(searchTerms: Record<string, string>, country: 
       'PK':['kompass.com','yellowpages.pk'],
     };
 
-    // Geniş arama sorguları — importer türleri
+    // Geniş arama sorguları — importer türleri (İngilizce ülke adı kullan!)
+    const countryEnName = COUNTRY_EN[country.code] || country.code;
     const queries = [
-      `${localTerm} ${country.name} wholesale importer contact`,
-      `${enTerm} buyer purchasing ${country.name} company`,
-      `${enTerm} distributor trading company ${country.name}`,
-      `${localTerm} ${country.name} import business supplier`,
-      `buy ${enTerm} ${country.name} B2B procurement`,
+      `${localTerm} ${countryEnName} wholesale importer contact`,
+      `${enTerm} buyer purchasing ${countryEnName} company`,
+      `${enTerm} distributor trading company ${countryEnName}`,
+      `${localTerm} ${countryEnName} import business supplier`,
+      `buy ${enTerm} ${countryEnName} B2B procurement`,
     ];
 
     for (const q of queries) {
@@ -378,10 +379,11 @@ async function searchWebImporters(searchTerms: Record<string, string>, country: 
     }
 
     // Genel web araması — domain kısıtlaması olmadan
+    const cEN = COUNTRY_EN[country.code] || country.code;
     const openQueries = [
-      `"${enTerm}" importer "${country.name}" email OR contact`,
-      `site:linkedin.com "${enTerm}" "import" "${country.name}"`,
-      `"${enTerm}" wholesale "${country.name}" +importer`,
+      `"${enTerm}" importer "${cEN}" email OR contact`,
+      `site:linkedin.com "${enTerm}" "import" "${cEN}"`,
+      `"${enTerm}" wholesale "${cEN}" +importer`,
     ];
     for (const q of openQueries) {
       if (results.length >= 100) break;
@@ -409,9 +411,10 @@ async function searchWebImporters(searchTerms: Record<string, string>, country: 
 
   // Tavily — paralel arama, her zaman çalış
   if (TAVILY_KEY && results.length < 50) {
+    const countryEnForTavily = COUNTRY_EN[country.code] || country.code;
     const tavilyQueries = [
-      `${enTerm} importer wholesale company ${country.name} contact phone`,
-      `${enTerm} buyer distributor ${country.name} B2B supplier`,
+      `${enTerm} importer wholesale company ${countryEnForTavily} contact phone`,
+      `${enTerm} buyer distributor ${countryEnForTavily} B2B supplier`,
     ];
     for (const tq of tavilyQueries) {
       if (results.length >= 80) break;
@@ -444,7 +447,7 @@ async function searchLinkedInDecisionMakers(sector: string, companyName: string,
   const EXA_KEY = process.env.EXA_API_KEY;
   if (!EXA_KEY) return null;
   try {
-    const query = `${sector} importer ${companyName} ${country.name} procurement manager director LinkedIn`;
+    const query = `${sector} importer ${companyName} ${COUNTRY_EN[country.code]||country.code} procurement manager director LinkedIn`;
     const res = await axios.post('https://api.exa.ai/search', {
       query, numResults: 3, useAutoprompt: false,
       includeDomains: ['linkedin.com'],
