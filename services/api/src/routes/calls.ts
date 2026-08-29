@@ -249,6 +249,7 @@ router.get('/stats/overview', async (req: any, res: any) => {
     const { data } = await supabase
       .from('call_analyses')
       .select('*')
+      .eq('user_id', userId)
       .gte('created_at', since);
 
     const calls = data || [];

@@ -2,11 +2,8 @@ export {};
 /**
  * LeadFlow Voice Engine
  *
- * İki arama yolu:
- *   1. Klonlanmış ses  → XTTS-v2 (RunPod) TTS + Vapi çağrı altyapısı
- *   2. Ses kütüphanesi → XTTS klonlanmış sesler + Vapi çağrı altyapısı
- *
- * Klonlar Supabase Storage'da saklanır (bizde kayıtlı).
+ * Arama altyapısı: Twilio Media Streams + Deepgram Nova-3 (STT) + Claude (AI) + Cartesia Sonic-3 (TTS)
+ * Ses klonlama: XTTS-v2 (RunPod) — klonlar Supabase Storage'da saklanır.
  */
 
 const express  = require('express');
@@ -23,49 +20,6 @@ const router    = express.Router();
 const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
 const upload    = multer({ dest: '/tmp/voice/' });
-
-// ─── 5 KONUŞMA TARZI ─────────────────────────────────────────────────────────
-const STYLE_VOICE_SETTINGS: Record<string, { stability: number; similarity_boost: number; style: number; use_speaker_boost: boolean }> = {
-  consultant: { stability: 0.72, similarity_boost: 0.87, style: 0.20, use_speaker_boost: true },   // sakin, güven verici
-  challenger: { stability: 0.48, similarity_boost: 0.82, style: 0.62, use_speaker_boost: true },   // dinamik, provokatif
-  rapport:    { stability: 0.65, similarity_boost: 0.92, style: 0.38, use_speaker_boost: true },   // sıcak, samimi
-  direct:     { stability: 0.42, similarity_boost: 0.80, style: 0.70, use_speaker_boost: true },   // net, hızlı
-  corporate:  { stability: 0.88, similarity_boost: 0.96, style: 0.08, use_speaker_boost: false },  // resmi, kurumsal
-};
-
-const VAPI_KEY    = process.env.VAPI_API_KEY || '';
-// Twilio imported number — uluslararası arama destekli
-const VAPI_PHONE_ID = process.env.VAPI_PHONE_NUMBER_ID || 'c5103fbb-47da-411e-b690-2329c2fe4f06';
-
-const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app';
-
-// Ses kütüphanesi artık ElevenLabs shared-voices API'den geliyor (voice-library.ts + tts-engine.ts)
-// /api/voice/library-voices → getElevenLabsSharedVoices() → 3000+ ses, tüm diller
-
-// Cartesia Sonic-2 ses ID'leri — gerçek aramalar için (dil + cinsiyet bazında)
-// sonic-2 multilingual model: aynı voice_id ile tüm dilleri destekler
-const CALL_VOICES: Record<string, string> = {
-  tr: '5a31e4fb-f823-4359-aa91-82c0ae9a991c',
-  en: '79a125e8-cd45-4c13-8a67-188112f4dd22',
-  de: '3f6e78a8-5283-42aa-b5e7-af82e8bb310c',
-  fr: 'a8a1eb38-5f15-4c1d-8722-7ac0f329727d',
-  ar: '3b554bf4-e0d4-4a74-ae96-3c1f6db66f82',
-  default: 'b7d50908-b17c-442d-ad8d-810c63997ed9',
-};
-
-// Gender bazlı Cartesia sesi — kullanıcı EL library'den cinsiyet seçtiğinde kullanılır
-const CARTESIA_BY_GENDER: Record<'male'|'female'|'neutral', string> = {
-  male:    '79a125e8-cd45-4c13-8a67-188112f4dd22', // Chris — professional male
-  female:  'a0e99841-438c-4a64-b679-ae501e7d6091', // Barbara — professional female
-  neutral: 'b7d50908-b17c-442d-ad8d-810c63997ed9', // multilingual neutral
-};
-
-function getCallVoiceId(language: string, gender?: string): string {
-  if (gender && gender !== 'neutral' && CARTESIA_BY_GENDER[gender as 'male'|'female']) {
-    return CARTESIA_BY_GENDER[gender as 'male'|'female'];
-  }
-  return CALL_VOICES[language] || CALL_VOICES.default;
-}
 
 // Telefon numarasını E.164 formatına çevir
 function normalizePhoneE164(phone: string, countryCode?: string): string {
@@ -349,433 +303,10 @@ function buildBusinessContext(profile: any): string {
   return parts.join('\n\n');
 }
 
-// ─── VAPI SİSTEM PROMPT — 5 KONUŞMA TARZI ────────────────────────────────────
 
-function buildVapiSystemPrompt(params: {
-  agentName: string; companyName: string; productDesc: string;
-  leadName: string; leadCompany: string; language: string;
-  pain1?: string; pain2?: string; signal?: string; avoidWords?: string;
-  transferNumber?: string; style?: string; callMemory?: string;
-}): string {
-  const { agentName, companyName, productDesc, leadName, leadCompany, language, pain1, pain2, signal, avoidWords, transferNumber, style = 'consultant', callMemory = '' } = params;
 
-  // ─── 5 TARZ: Türkçe sahne bazlı prompt zinciri ─────────────────────────────
-  const STYLE_RULES: Record<string, string> = {
-    consultant: `
-═══ TARZ: DANIŞMAN ═══
-Soru soran, dinleyen, Sokrates yöntemi. Hiç satış yapma — sadece sorularla müşteriyi kendi sorununu keşfetmeye götür.
-Aşama 2 soru örnekleri: "Şu an ${pain1 ? `"${pain1}"` : 'bu konuyu'} nasıl yönetiyorsunuz?" / "Bu sizin için ne kadar öncelikli?" / "Neden şimdiye kadar değiştirmediniz?"
-İtiraz gelince: "Anlıyorum — peki şu an bu sizin için gerçekten sorun mu yoksa 'yapsak iyi olur' düzeyinde mi?"`,
-
-    challenger: `
-═══ TARZ: MEYDAN OKUYUCU ═══
-İçgörü-önce, varsayım-sorgulayan yaklaşım. Karşı tarafın mevcut yöntemini nazikçe sorgula.
-Aşama 2 örneği: "${leadCompany} gibi şirketlerin çoğu ${pain1 ? `'${pain1.slice(0,50)}'` : 'bu konuda'} eski yöntemle devam ediyor — sektörde baktığımda başarılı olanlar bunu çoktan değiştirdi."
-İtiraz gelince: "Bunu duyuyorum — ama tam olarak bu yüzden arıyorum. Mevcut yaklaşımınızı bir gözden geçirelim mi?"`,
-
-    rapport: `
-═══ TARZ: İLİŞKİ KURUCU ═══
-Önce bağ kur, sonra iş. İnsan tarafını öncele. Kişisel bir gözlem veya şirkete özel bir iltifatla başla.
-Aşama 1 ek: "${leadCompany}'yi araştırdım, ${signal ? signal.slice(0,60) + '.' : 'etkileyici çalışmalar yapıyorsunuz.'} Bu büyümeyi nasıl yönetiyorsunuz?"
-İtiraz gelince: "Kesinlikle zor bir dönemde arıyorum — ne zaman daha uygun olur sizin için?"`,
-
-    direct: `
-═══ TARZ: DİREKT ═══
-Kısa, net, zamanına saygılı. Her cevap 1 cümle. Hızlı değer → hızlı karar.
-Aşama 1: "Merhaba ${leadName?.split(' ')[0] || ''}, 2 dakika — ${pain1 ? `"${pain1.slice(0,40)}"` : productDesc.slice(0,40)} hakkında kısa bir şey paylaşmak istiyorum."
-Aşama 2'yi atla. Doğrudan Aşama 3'e: Tek cümle değer → Aşama 4: randevu.
-İtiraz gelince: Tek cümle, direkt: "Anlıyorum. Çarşamba 10 dakika?"`,
-
-    corporate: `
-═══ TARZ: KURUMSAL ═══
-Resmi dil, enterprise-grade sunum. "Siz" hitabı. Veri ve referanslarla konuş.
-Aşama 2: "Şirketinizin ${pain1 ? `"${pain1}"` : 'bu alandaki'} süreçlerini incelediğimizde, kurumsal ölçekte çalışan firmalarla ortaklaştığımız noktalar var. Bunu sizinle değerlendirmek istiyorum."
-İtiraz gelince: "Saygıyla anlıyorum. Yönetim ekibinizden kim bu konuya bakıyor? Kendilerine yönelik bir brifing hazırlayayım."`,
-  };
-
-  const TRANSFER_NOTE = transferNumber
-    ? `\nEğer karşı taraf çok ilgiliyse ve HEMEN görüşmek isterse: "Sizi hemen uzman arkadaşıma aktarıyorum" de ve ${transferNumber} numarasına transfer et.`
-    : '';
-
-  const COMMON_RULES = `
-═══ KİMLİK ═══
-Sen ${agentName}. ${companyName} adına ${leadCompany}'yi arıyorsun. Sunduğun: ${productDesc}.
-Sen gerçek bir insansın. Yapay zeka, bot, sistem, otomatik kelimelerini ASLA kullanma. "Robot musun?" → "Hayır, ben ${agentName}, ${companyName}'den arıyorum."
-
-═══ TELEFON KURALLARI (değişmez) ═══
-- HER CEVAP MAKSİMUM 2 CÜMLE. Telefonda insanlar kısa konuşur.
-- Doğal dolgu: "Şey...", "Anlıyorum", "Tabii", "Hmm" — 3-4 cümlede bir, hep değil.
-- Karşı taraf konuşurken SUS. Sözünü keserse HEMEN dur, "buyurun" de.
-- Soru sorduğunda cevabı BEKLE.
-${avoidWords ? `- ASLA şunları kullanma: ${avoidWords}` : ''}
-
-═══ KONUŞMA AŞAMALARI ═══
-AŞAMA 1 — AÇILIŞ: Açılış cümlesi zaten verildi (firstMessage). Devamında: "30 saniyenizi alabilir miyim?" Eğer müsait değillerse: "Anlıyorum, ne zaman uygun olur?"
-
-AŞAMA 2 — KEŞİF (30-60 sn): SATIŞ YAPMA. Sadece soru sor ve dinle.
-${pain1 ? `→ "${leadName?.split(' ')[0] || leadCompany}, ${pain1.slice(0,60)} konusunda nasıl bir süreciniz var?"` : `→ "${leadName?.split(' ')[0] || leadCompany}, ${productDesc.slice(0,50)} konusunda şu an nasıl bir çözüm kullanıyorsunuz?"`}
-${pain2 ? `Takip: "${pain2.slice(0,60)} sizi etkiliyor mu?"` : ''}
-
-AŞAMA 3 — DEĞER (15-20 sn): Tek kısa cümle, merak uyandır. Detay verme.
-→ "Tam da bu konuda farklı bir yaklaşımımız var. Benzer şirketlerle çalışıyoruz."
-
-AŞAMA 4 — KAPANIŞ:
-→ "Bu hafta 15 dakikalık bir görüşme ayarlasak, detaylı gösterebilirim. Çarşamba veya Perşembe hangisi uygun?"
-${TRANSFER_NOTE}
-
-═══ İTİRAZ KARŞILAMA (genel) ═══
-"Mail atın" → "Tabii, atarım. Hangi konuya özel bakıyorsunuz, ona göre hazırlayayım?"
-İki kez "hayır" → "Anlıyorum, teşekkür ederim. İyi günler." ve kapat.
-
-═══ ARAŞTIRMA VERİSİ ═══
-${pain1 ? `- Sorun: ${pain1}` : ''}
-${pain2 ? `- 2. sorun: ${pain2}` : ''}
-${signal ? `- Büyüme sinyali: ${signal}` : ''}
-${callMemory}`;
-
-  // ─── Doğal konuşma kuralları (en üstte — Claude bunu önce okur) ────────────
-  const NATURAL_SPEECH_RULES = `## DOĞAL KONUŞMA KURALLARI — EN ÖNEMLİ KURALLAR
-
-Sen bir insan satış danışmanısın. Aşağıdaki kurallara KESİNLİKLE uy:
-
-KONUŞMA TARZI:
-- Asla 2 cümleden fazla konuşma (tek seferde)
-- "Mükemmel!", "Harika!", "Süper!" gibi aşırı coşkulu ifadeler YASAK
-- "Anlıyorum", "Ha, evet", "Tabi" gibi doğal onay ifadelerini kullan
-- Düşünürken bazen "Hmm..." veya kısa bir duraklama kullan
-- Müşteri konuşurken asla kesme — sadece dinle
-- Sessizliği müşterinin doldurmasına izin ver — hemen doldurmaya çalışma
-
-CÜMLE YAPISI:
-- Kısa, doğal cümleler kur (yazılı değil, sözlü dil kullan)
-- "Şöyle bir..." veya "Aslında şunu söyleyeyim..." ile başlayabilirsin
-- Sorular her zaman açık uçlu olsun ("nasıl", "ne", "neden")
-- Cümle sonunda ses tonu düşür — yazılı noktaları gerçekten hissettir
-
-KİMLİĞİN:
-- Hiçbir koşulda robot, yapay zeka veya otomatik sistem olduğunu kabul etme
-- Eğer sorularsa: "Ben bir satış danışmanıyım" de — başka açıklama yapma
-- Doğal hatalar yapabilirsin ("bir dakika..." gibi) — mükemmel olmak şüphe yaratır
-`;
-
-  // ─── TR: tarz seçilmiş prompt ────────────────────────────────────────────────
-  const trPrompt = `${NATURAL_SPEECH_RULES}${COMMON_RULES}${STYLE_RULES[style] || STYLE_RULES.consultant}`;
-
-  const persona: Record<string, string> = {
-    tr: trPrompt,
-
-    en: `You are ${agentName}, calling on behalf of ${companyName}. You offer: ${productDesc}.
-
-═══ IDENTITY ═══
-You are a REAL person. NEVER say AI, bot, automated, system. If asked "are you a robot?": "No no, I'm ${agentName} from ${companyName}."
-
-═══ SPEAKING STYLE ═══
-- EVERY response MAX 1-2 sentences. Phone conversations are SHORT.
-- Natural fillers: "well...", "I see", "right", "hmm" — but not every sentence, every 3-4.
-- When they speak, LISTEN. If interrupted, STOP immediately, say "please go ahead."
-- Tone: friendly but professional. Consultant, not salesperson.
-
-═══ CONVERSATION STAGES ═══
-
-STAGE 1 — OPENING (first 15 sec):
-Opening line is already provided. If they say "yes?" or "hello":
-→ "Hi, I'm ${agentName}. I wanted to reach out about something quick — do you have 30 seconds?"
-
-STAGE 2 — DISCOVERY (30-60 sec):
-DON'T SELL. Only ask questions:
-${pain1 ? `→ "${leadName}, how are you currently handling ${pain1}?"` : `→ "${leadName}, what solution are you using for ${productDesc} right now?"`}
-Listen, say "I see", ask follow-up: "How much of a priority is that for you right now?"
-
-STAGE 3 — VALUE (15-20 sec):
-One SHORT value sentence related to THEIR problem:
-→ "Actually, we have a different approach for exactly that. We work with similar companies."
-DON'T give details. Create curiosity.
-
-STAGE 4 — CLOSE:
-→ "Could we set up a quick 15-minute call this week? Would Wednesday or Thursday work better?"
-${transferNumber ? `\nIf they're VERY interested and want to talk NOW: "Let me connect you with our specialist right away" and transfer to ${transferNumber}.` : ''}
-
-═══ OBJECTION HANDLING ═══
-"Not interested" → "Understood. Just one question — are you happy with your current solution for ${pain1 || productDesc}?"
-"No time" → "Of course, I'll be very brief. When would 2 minutes work?"
-"Send an email" → "Sure, I'll send it right over. But quickly — what specific area are you looking at so I can tailor it?"
-SECOND "no" → "Understood, thank you for your time. Have a great day." and end call.
-
-═══ RESEARCH ═══
-- Person: ${leadName} at ${leadCompany}
-${pain1 ? `- Known challenge: ${pain1}` : ''}
-${pain2 ? `- 2nd challenge: ${pain2}` : ''}
-${signal ? `- Growth signal: ${signal}` : ''}
-${avoidWords ? `- Avoid: ${avoidWords}` : ''}
-
-═══ CRITICAL RULES ═══
-1. NEVER speak more than 3 sentences
-2. NEVER pitch — ask questions
-3. NEVER say "AI", "bot", "automated", "system"
-4. When they speak, SHUT UP
-5. 2 "no"s → politely end call
-6. Get an appointment OR gather info — one must happen`,
-  };
-
-  return persona[language] || persona['en'];
-}
-
-// ─── VAPI ÇAĞRISI ─────────────────────────────────────────────────────────────
-
-async function makeVapiCall(params: {
-  toNumber: string; agentName: string; companyName: string;
-  productDesc: string; leadName: string; leadCompany: string;
-  language: string; openingLine: string; systemPrompt: string;
-  voiceConfig?: any; userPhoneId?: string; lead?: any;
-  conversationStyle?: string;
-}): Promise<{ conversationId: string; callSid: string }> {
-  const { toNumber, language, openingLine, systemPrompt, voiceConfig, conversationStyle = 'consultant' } = params;
-
-  const deepgramLang: Record<string, string> = {
-    tr: 'tr', en: 'en-US', de: 'de', fr: 'fr', ar: 'ar',
-    ru: 'ru', es: 'es', it: 'it', nl: 'nl',
-  };
-
-  // Tarz bazlı Cartesia ses ayarları (STYLE_VOICE_SETTINGS'i Sonic-2 parametrelerine çevirme)
-  const styleVoice = STYLE_VOICE_SETTINGS[conversationStyle] || STYLE_VOICE_SETTINGS.consultant;
-  const cartesiaSpeed = styleVoice.stability > 0.7 ? 'slow' : styleVoice.stability < 0.5 ? 'fast' : 'normal';
-  const cartesiaEmotion = styleVoice.style > 0.5
-    ? (conversationStyle === 'challenger' ? ['curiosity:high'] : conversationStyle === 'direct' ? ['curiosity:high'] : ['positivity:medium'])
-    : [];
-
-  // Cartesia — cinsiyet bazlı ses seçimi (EL library'den cinsiyet bilgisi geliyorsa kullan)
-  const selectedGender = params.voiceConfig?.selectedGender as 'male'|'female'|'neutral' | undefined;
-  const cartesiaVoiceId = getCallVoiceId(language, selectedGender);
-  const defaultVoice = {
-    provider: 'cartesia',
-    voiceId: cartesiaVoiceId,
-    model: 'sonic-2',
-    language: language === 'tr' ? 'tr' : undefined,
-    // speed + emotion: Vapi Cartesia API artık bunları kabul etmiyor
-  };
-
-  // Tarz bazlı interrupt sensitivity: Direkt tarz = daha az interrupt (hızlı geçiş)
-  const interruptSensitivity: Record<string, number> = {
-    consultant: 2, challenger: 2, rapport: 3, direct: 1, corporate: 3,
-  };
-  const numWordsToInterrupt = interruptSensitivity[conversationStyle] ?? 2;
-
-  // Tarz bazlı max konuşma süresi
-  const maxDurationByStyle: Record<string, number> = {
-    consultant: 420,
-    challenger: 300,
-    direct: 180,
-    rapport: 480,
-    corporate: 360,
-  };
-  const maxDuration = maxDurationByStyle[conversationStyle] || 360;
-
-  const phoneId = params.userPhoneId || VAPI_PHONE_ID;
-  const normalizedNumber = normalizePhoneE164(toNumber, params.lead?.country_code);
-  console.log(`[Vapi Call] ${toNumber} → ${normalizedNumber} | style=${conversationStyle}`);
-
-  const body: any = {
-    phoneNumberId: phoneId,
-    customer: { number: normalizedNumber },
-    assistant: {
-      serverUrl: `${API_BASE}/api/voice/webhook/vapi`,  // webhook — assistant seviyesinde
-      transcriber: {
-        provider: 'deepgram',
-        model: 'nova-3',
-        language: deepgramLang[language] || 'tr',
-        smartFormat: true,
-        endpointing: 250,
-        keywords: ['merhaba', 'evet', 'hayır', 'tamam', 'görüşürüz', 'randevu', 'çarşamba', 'perşembe'],
-      },
-      model: {
-        provider: 'anthropic',
-        model: 'claude-sonnet-4-6',
-        messages: [{ role: 'system', content: systemPrompt }],
-        temperature: 0.4,
-        maxTokens: 150,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'book_appointment',
-              description: 'Müşteri belirli bir gün/saat randevu verirse bunu kaydet.',
-              parameters: {
-                type: 'object',
-                properties: {
-                  day: { type: 'string', description: 'Randevu günü (örn: Çarşamba)' },
-                  time: { type: 'string', description: 'Randevu saati (örn: 10:00)' },
-                },
-                required: ['day'],
-              },
-            },
-          },
-          {
-            type: 'function',
-            function: {
-              name: 'add_to_blacklist',
-              description: 'Müşteri kesinlikle aranmak istemiyorsa kara listeye ekle.',
-              parameters: {
-                type: 'object',
-                properties: { reason: { type: 'string' } },
-                required: [],
-              },
-            },
-          },
-        ],
-      },
-      voice: voiceConfig || defaultVoice,
-      firstMessage: openingLine || (language === 'tr' ? 'Merhaba, nasılsınız? Kısa bir konuda aramak istedim.' : 'Hi, how are you? I wanted to reach out about something quick.'),
-      firstMessageMode: 'assistant-speaks-first',
-      endCallMessage: language === 'tr' ? 'Teşekkürler, iyi günler dilerim!' : 'Thank you, have a great day!',
-      endCallPhrases: language === 'tr'
-        ? ['görüşürüz', 'hoşça kalın', 'iyi günler dilerim', 'sonra konuşuruz']
-        : ['goodbye', 'have a good day', 'talk later', 'take care'],
-      backgroundDenoisingEnabled: true,
-      silenceTimeoutSeconds: 25,
-      maxDurationSeconds: maxDuration,
-      recordingEnabled: true,
-      responseDelaySeconds: 0.8,
-      llmRequestDelaySeconds: 0.3,
-      numWordsToInterruptAssistant: numWordsToInterrupt,
-      backgroundSound: 'office',
-    },
-  };
-  console.log('[Vapi Call] firstMessage:', body.assistant.firstMessage?.slice(0, 60));
-
-  const r = await axios.post('https://api.vapi.ai/call/phone', body, {
-    headers: { 'Authorization': `Bearer ${VAPI_KEY}`, 'Content-Type': 'application/json' },
-    timeout: 30000,
-  });
-
-  if (!r.data?.id && !r.data?.conversation_id) {
-    throw new Error(`Vapi call creation failed: ${JSON.stringify(r.data).slice(0, 200)}`);
-  }
-
-  return {
-    conversationId: r.data.id || r.data.conversation_id || '',
-    callSid: r.data.phoneCallProviderId || r.data.callSid || '',
-  };
-}
-
-// ─── ÇAĞRI YÖNLENDIRICI ───────────────────────────────────────────────────────
-
-async function dispatchCall(params: {
-  toNumber: string; agentName: string; companyName: string;
-  productDesc: string; leadName: string; leadCompany: string;
-  language: string; lead: any; researchData?: any; avoidWords?: string;
-  voiceType?: 'cloned' | 'library';
-  clonedVoiceId?: string;
-  libraryVoiceId?: string;
-  transferNumber?: string;
-  userPhoneId?: string;
-  conversationStyle?: string;
-  callMemory?: string;
-}): Promise<{ conversationId: string; callSid: string; provider: string }> {
-  const { language, lead, researchData, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, conversationStyle = 'consultant', callMemory = '' } = params;
-
-  console.log(`[dispatchCall] Başlıyor → ${params.toNumber} | lang=${language} | style=${conversationStyle} | voiceType=${voiceType}`);
-  const openingLine = await generatePersonalizedOpening({
-    lead, agentName: params.agentName, companyName: params.companyName,
-    productDesc: params.productDesc, language, researchData,
-  });
-
-  // ── Yol 1: Kendi klonlanan ses ──────────────────────────────────────────────
-  if (voiceType === 'cloned' && clonedVoiceId) {
-    if (VAPI_KEY && VAPI_PHONE_ID) {
-      const systemPrompt = buildVapiSystemPrompt({
-        agentName: params.agentName, companyName: params.companyName,
-        productDesc: params.productDesc, leadName: params.leadName,
-        leadCompany: params.leadCompany, language,
-        pain1: researchData?.pains?.[0],
-        pain2: researchData?.pains?.[1],
-        signal: researchData?.jobSignals?.[0],
-        avoidWords,
-        transferNumber: params.transferNumber,
-        style: conversationStyle,
-        callMemory,
-      });
-
-      // XTTS — kendi ses sentezi sistemimiz (RunPod serverless)
-      let voiceConfig: any;
-      if (process.env.RUNPOD_XTTS_ENDPOINT_ID) {
-        voiceConfig = {
-          provider: 'custom-voice',
-          server: { url: `${API_BASE}/api/voice/tts-xtts/${clonedVoiceId}` },
-        };
-      } else {
-        // XTTS endpoint yoksa Cartesia fallback
-        voiceConfig = {
-          provider: 'cartesia',
-          voiceId: CALL_VOICES['tr'],
-          model: 'sonic-3',
-        };
-      }
-
-      const result = await makeVapiCall({ ...params, openingLine, systemPrompt, voiceConfig, userPhoneId: params.userPhoneId, conversationStyle });
-      return { ...result, provider: 'vapi-cloned' };
-    }
-  }
-
-  // ── Yol 2: Ses kütüphanesi ───────────────────────────────────────────────────
-  if (VAPI_KEY && VAPI_PHONE_ID) {
-    const systemPrompt = buildVapiSystemPrompt({
-      agentName: params.agentName, companyName: params.companyName,
-      productDesc: params.productDesc, leadName: params.leadName,
-      leadCompany: params.leadCompany, language,
-      pain1: researchData?.pains?.[0],
-      pain2: researchData?.pains?.[1],
-      signal: researchData?.jobSignals?.[0],
-      avoidWords,
-      transferNumber: params.transferNumber,
-      style: conversationStyle,
-      callMemory,
-    });
-    const result = await makeVapiCall({ ...params, openingLine, systemPrompt, userPhoneId: params.userPhoneId, conversationStyle });
-    return { ...result, provider: 'vapi' };
-  }
-
-  throw new Error('Vapi API anahtarı yapılandırılmamış — sesli arama için VAPI_API_KEY gereklidir');
-}
 
 // ─── ROTALAR ─────────────────────────────────────────────────────────────────
-
-// POST /api/voice/tts-xtts/:voiceId — public, Vapi bu endpoint'i çağırır
-router.post('/tts-xtts/:voiceId', async (req: any, res: any) => {
-  try {
-    const { voiceId } = req.params;
-    // Vapi formatı: { message: { type: 'speech-update', text: '...' } }
-    const text = req.body?.message?.text || req.body?.text || '';
-    if (!text) return res.status(400).send('text required');
-
-    const { data: voice } = await supabase
-      .from('cloned_voices')
-      .select('sample_url')
-      .eq('id', voiceId)
-      .single();
-    if (!voice) return res.status(404).send('voice not found');
-
-    const language = req.body?.message?.language || 'tr';
-
-    const XTTS_TIMEOUT_MS = 22000;
-    // TODO: Capture setTimeout ID and clear on settle to prevent timer leak
-    const audioBuffer = await Promise.race([
-      synthesizeXtts(text, voice.sample_url, language),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('XTTS_TIMEOUT')), XTTS_TIMEOUT_MS)
-      ),
-    ]);
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.send(audioBuffer);
-  } catch (err: any) {
-    if (err.message === 'XTTS_TIMEOUT') {
-      console.warn('[XTTS] Cold start timeout — returning 503 for Vapi fallback');
-      return res.status(503).json({ error: 'Voice synthesizer warming up, using fallback voice' });
-    }
-    console.error('[XTTS] Error:', err.message);
-    return res.status(500).json({ error: 'TTS unavailable' });
-  }
-});
 
 // GET /api/voice/my-voices — kullanıcının klonladığı sesler
 router.get('/my-voices', async (req: any, res: any) => {
@@ -1749,37 +1280,6 @@ router.get('/ab-results', async (req: any, res: any) => {
 
 // ─── NUMARA DOĞRULAMA ────────────────────────────────────────────────────────
 
-// POST /api/voice/import-twilio-number — Twilio numarasını Vapi'ye otomatik import et
-router.post('/import-twilio-number', async (req: any, res: any) => {
-  try {
-    if (!VAPI_KEY) return res.status(400).json({ error: 'VAPI_API_KEY ayarlanmamış' });
-    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
-    if (!twilioSid || !twilioToken || !twilioPhone) return res.status(400).json({ error: 'Twilio bilgileri eksik' });
-
-    // Vapi'ye Twilio numarasını import et
-    const r = await axios.post('https://api.vapi.ai/phone-number', {
-      provider: 'twilio',
-      number: twilioPhone,
-      twilioAccountSid: twilioSid,
-      twilioAuthToken: twilioToken,
-    }, {
-      headers: { Authorization: `Bearer ${VAPI_KEY}`, 'Content-Type': 'application/json' },
-      timeout: 30000,
-    });
-
-    const vapiPhoneId = r.data?.id;
-    console.log(`[Vapi] Twilio number imported: ${twilioPhone} → ${vapiPhoneId}`);
-
-    res.json({ ok: true, phoneNumberId: vapiPhoneId, number: twilioPhone });
-  } catch (e: any) {
-    const detail = e.response?.data ? JSON.stringify(e.response.data).slice(0, 300) : e.message;
-    console.error('[Vapi Import]', detail);
-    res.status(500).json({ error: detail });
-  }
-});
-
 // POST /api/voice/verify-number — Doğrulama kodu gönder
 router.post('/verify-number', async (req: any, res: any) => {
   try {
@@ -1888,7 +1388,6 @@ router.get('/provider-status', async (_req: any, res: any) => {
   res.json({
     xttsConfigured:       !!endpointId,
     xttsHealth,
-    vapiConfigured:       !!VAPI_KEY && !!VAPI_PHONE_ID,
     libraryConfigured:    true,
     perplexityConfigured: !!process.env.PERPLEXITY_API_KEY,
   });
@@ -1927,15 +1426,17 @@ async function cleanupZombieCalls(): Promise<void> {
 setTimeout(cleanupZombieCalls, 15000); // ilk çalışma: boot + 15s
 setInterval(cleanupZombieCalls, 15 * 60 * 1000); // her 15 dakikada bir
 
-// GET /api/voice/diag — Vapi + Supabase bağlantı testi
+// GET /api/voice/diag — Supabase + Twilio bağlantı testi
 router.get('/diag', async (req: any, res: any) => {
   const results: Record<string, any> = {};
 
   // 1. Ortam değişkenleri
   results.env = {
-    VAPI_KEY: VAPI_KEY ? `${VAPI_KEY.slice(0, 8)}...` : 'EKSİK ❌',
-    VAPI_PHONE_ID: VAPI_PHONE_ID ? `${VAPI_PHONE_ID.slice(0, 8)}...` : 'EKSİK ❌',
-    VAPI_PHONE_NUMBER: process.env.VAPI_PHONE_NUMBER || 'boş',
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID ? `${process.env.TWILIO_ACCOUNT_SID.slice(0, 8)}...` : 'EKSİK ❌',
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || 'EKSİK ❌',
+    DEEPGRAM_API_KEY:   process.env.DEEPGRAM_API_KEY ? 'OK ✅' : 'EKSİK ❌',
+    CARTESIA_API_KEY:   process.env.CARTESIA_API_KEY ? 'OK ✅' : 'EKSİK ❌',
+    ANTHROPIC_API_KEY:  process.env.ANTHROPIC_API_KEY ? 'OK ✅' : 'EKSİK ❌',
   };
 
   // 2. Supabase voice_calls tablosu
@@ -1944,18 +1445,11 @@ router.get('/diag', async (req: any, res: any) => {
     results.voice_calls_table = error ? `HATA: ${error.message}` : `OK (conversation_style sütunu ${data?.length ? 'var ✅' : 'kontrol edildi ✅'})`;
   } catch (e: any) { results.voice_calls_table = `THROW: ${e.message}`; }
 
-  // 3. Vapi API bağlantısı — telefon numaraları
+  // 3. Twilio doğrulanmış numaralar
   try {
-    if (!VAPI_KEY) { results.vapi_phones = 'VAPI_KEY eksik ❌'; }
-    else {
-      const r = await axios.get('https://api.vapi.ai/phone-number', {
-        headers: { Authorization: `Bearer ${VAPI_KEY}` }, timeout: 10000,
-      });
-      const phones = (r.data || []).map((p: any) => ({ id: p.id, number: p.number?.number || p.number, active: p.status }));
-      results.vapi_phones = phones.length ? phones : 'Hiç telefon yok ❌';
-      results.configured_phone_id_match = phones.some((p: any) => p.id === VAPI_PHONE_ID) ? '✅ MATCH' : `❌ NO MATCH — configured: ${VAPI_PHONE_ID}`;
-    }
-  } catch (e: any) { results.vapi_phones = `HATA: ${e.response?.data?.message || e.message}`; }
+    const { data: callerIds } = await supabase.from('user_caller_ids').select('phone_number, status').eq('user_id', req.userId);
+    results.verified_numbers = callerIds || [];
+  } catch (e: any) { results.verified_numbers = `HATA: ${e.message}`; }
 
   // 4. User info
   try {

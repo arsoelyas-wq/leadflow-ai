@@ -235,6 +235,7 @@ export class CallSession extends EventEmitter {
       language:      this.langCfg.deepgramLanguage,
       model:         this.langCfg.deepgramModel,
       endpointingMs: this.langCfg.deepgramEndpointingMs,
+      keyterms:      this._buildKeyterms(),
       onTranscript:  (r) => this._onTranscript(r.text, r.isFinal, r.confidence, r.isInterim),
       onError:       (e) => console.error(`[Session ${this.sessionId}] Deepgram error:`, e.message),
       onClose:       () => console.warn(`[Session ${this.sessionId}] Deepgram closed`),

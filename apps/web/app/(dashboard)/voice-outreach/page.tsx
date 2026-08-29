@@ -1464,16 +1464,32 @@ function StepConfig({ selectedLanguage, setSelectedLanguage, callMode, delayMinu
       </div>
 
       {callMode === 'campaign' && (
-        <div className="fade-in-up">
-          <label className="text-xs mb-3 block font-bold uppercase tracking-widest" style={{ color:'#94a3b8' }}>Aramalar Arası Bekleme</label>
-          <div className="flex gap-2 flex-wrap">
-            {[2,5,10,15,30].map(m => (
-              <button key={m} onClick={() => setDelayMinutes(m)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 cursor-pointer"
-                style={{ background: delayMinutes===m ? '#fffbeb' : '#ffffff', border: delayMinutes===m ? '1.5px solid #fbbf24' : '1px solid #e2e8f0', color: delayMinutes===m ? '#b45309' : '#64748b' }}>
-                {m} dk
-              </button>
-            ))}
+        <div className="fade-in-up space-y-3">
+          <div>
+            <label className="text-xs mb-3 block font-bold uppercase tracking-widest" style={{ color:'#94a3b8' }}>Aramalar Arası Bekleme</label>
+            <div className="flex gap-2 flex-wrap">
+              {[2,5,10,15,30].map(m => (
+                <button key={m} onClick={() => setDelayMinutes(m)}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 cursor-pointer"
+                  style={{ background: delayMinutes===m ? '#fffbeb' : '#ffffff', border: delayMinutes===m ? '1.5px solid #fbbf24' : '1px solid #e2e8f0', color: delayMinutes===m ? '#b45309' : '#64748b' }}>
+                  {m} dk
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl" style={{ background:'#f0f9ff', border:'1px solid #bae6fd' }}>
+            <span className="text-base leading-none mt-0.5">🕘</span>
+            <div>
+              <p className="text-xs font-semibold" style={{ color:'#0284c7' }}>Saat Dilimi Koruması Aktif</p>
+              <p className="text-[10px]" style={{ color:'#7dd3fc' }}>
+                Aramalar yalnızca hedefin yerel saat 09:00–18:00 arasında yapılır
+                {selectedLanguage === 'tr' ? ' (Türkiye saatiyle)' :
+                 selectedLanguage === 'de' ? ' (Almanya saatiyle)' :
+                 selectedLanguage === 'en' ? ' (İngiltere saatiyle)' :
+                 selectedLanguage === 'fr' ? ' (Fransa saatiyle)' :
+                 selectedLanguage === 'ar' ? ' (Dubai saatiyle)' : ' (hedef ülke saatiyle)'}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -1637,6 +1653,7 @@ export default function VoicePage() {
   const [selectedVoiceType, setSelectedVoiceType] = useState<'cloned' | 'library' | 'cartesia'>('cartesia')
   const [conversationStyle, setConversationStyle] = useState('consultant')
   const [styleRec, setStyleRec] = useState<{ style: string; reason: string; confidence: number } | null>(null)
+  const [styleRecBannerDismissed, setStyleRecBannerDismissed] = useState(false)
   const [calling, setCalling] = useState(false)
   const [campaignRunning, setCampaignRunning] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -1689,6 +1706,29 @@ export default function VoicePage() {
       .subscribe()
     return () => { supabaseClient.removeChannel(channel) }
   }, [])
+
+  // Supabase Realtime — kampanya tamamlandığında anında bildir
+  useEffect(() => {
+    const campaignChannel = supabaseClient
+      .channel('voice-campaigns-realtime')
+      .on(
+        'postgres_changes' as any,
+        { event: 'UPDATE', schema: 'public', table: 'voice_campaigns' },
+        (payload: any) => {
+          const updated = payload.new
+          if (updated.status === 'completed' && updated.id === activeCampaignId) {
+            setCampaignProgress((prev: any) => ({ ...prev, percent: 100 }))
+            setActiveCampaignId(null)
+            setCampaignRunning(false)
+            loadAll()
+          } else {
+            setCampaigns((prev: any[]) => prev.map((c: any) => c.id === updated.id ? { ...c, ...updated } : c))
+          }
+        }
+      )
+      .subscribe()
+    return () => { supabaseClient.removeChannel(campaignChannel) }
+  }, [activeCampaignId])
 
   // Web Audio ringtone — Türk telefon zil sesi (beep-beep ... pause döngüsü)
   function startRingtone() {
@@ -1886,11 +1926,6 @@ export default function VoicePage() {
 
   const [hasVerifiedPhone, setHasVerifiedPhone] = useState(false)
 
-  useEffect(() => {
-    fetch(`${API}/api/voice/my-number`, { headers: authH() })
-      .then(r => r.json()).then(d => { if (d.phone) setHasVerifiedPhone(true) }).catch(() => {})
-  }, [])
-
   const canNext: Record<number, boolean> = {
     1: !!selectedVoiceId,
     2: callMode==='single' ? !!selectedLead : selectedLeads.length > 0,
@@ -1976,6 +2011,26 @@ export default function VoicePage() {
           color: msg.type==='success' ? '#059669' : '#dc2626',
         }}>
           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: msg.type==='success' ? '#34d399' : '#f87171' }}/>{msg.text}
+        </div>
+      )}
+
+      {/* ── AI TARZ ÖNERİSİ BANNER ────────────────────────────────────────────── */}
+      {styleRec && styleRec.confidence >= 50 && !styleRecBannerDismissed && (
+        <div className="fade-in-up flex items-center justify-between gap-3 px-4 py-3 rounded-2xl" style={{ background:'linear-gradient(135deg,#ede9fe,#f5f3ff)', border:'1.5px solid #c4b5fd' }}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span style={{ fontSize:18 }}>🧠</span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold" style={{ color:'#6d28d9' }}>
+                AI Öneri Uygulandı — <span style={{ color:'#7c3aed' }}>{CONV_STYLES.find(s => s.id === styleRec.style)?.label}</span> tarzı seçildi
+              </p>
+              <p className="text-[10px] truncate" style={{ color:'#a78bfa' }}>
+                {styleRec.reason} · %{styleRec.confidence} güven
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setStyleRecBannerDismissed(true)} className="flex-shrink-0 p-1 rounded-lg transition hover:bg-purple-100" style={{ color:'#a78bfa' }}>
+            <X size={14}/>
+          </button>
         </div>
       )}
 
@@ -2119,7 +2174,12 @@ export default function VoicePage() {
           <div className="flex gap-4 text-xs" style={{ color: '#64748b' }}>
             <span>✅ Tamamlanan: {campaignProgress.done}</span>
             <span>⏳ Bekleyen: {campaignProgress.pending}</span>
-            <span>❌ Başarısız: {campaignProgress.failed}</span>
+            {(campaignProgress.retrying ?? 0) > 0 && (
+              <span style={{ color: '#b45309' }}>🔄 Yeniden: {campaignProgress.retrying}</span>
+            )}
+            {(campaignProgress.failed ?? 0) > 0 && (
+              <span style={{ color: '#dc2626' }}>❌ Başarısız: {campaignProgress.failed}</span>
+            )}
           </div>
         </div>
       )}
@@ -2272,14 +2332,35 @@ export default function VoicePage() {
                     {expandedCallId===c.id && (
                       <tr key={`${c.id}-detail`} style={{ borderBottom:'1px solid #f1f5f9' }}>
                         <td colSpan={6} className="px-5 pb-4 pt-2">
+                          {/* Voicemail indicator */}
+                          {c.outcome==='voicemail' && (
+                            <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background:'#fef9c3', border:'1px solid #fde68a' }}>
+                              <span style={{ fontSize:16 }}>📬</span>
+                              <span className="text-xs font-semibold" style={{ color:'#92400e' }}>Sesli mesaj bırakıldı</span>
+                            </div>
+                          )}
+                          {/* No-answer detail */}
+                          {c.status==='no-answer' && (
+                            <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background:'#f1f5f9', border:'1px solid #e2e8f0' }}>
+                              <span style={{ fontSize:16 }}>📵</span>
+                              <span className="text-xs" style={{ color:'#64748b' }}>Telefon açılmadı — {c.notes||'SIP 480'}</span>
+                            </div>
+                          )}
+                          {/* Recording playback */}
+                          {c.recording_url && (
+                            <div className="mb-3 rounded-xl px-3 py-2" style={{ background:'#f0f9ff', border:'1px solid #bae6fd' }}>
+                              <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color:'#0284c7' }}>Arama Kaydı</p>
+                              <audio controls src={c.recording_url} className="w-full h-8" style={{ accentColor:'#0284c7' }}/>
+                            </div>
+                          )}
                           {c.transcript ? (
                             <div className="rounded-xl p-4 space-y-3" style={{ background:'#f8fafc', border:'1px solid #e2e8f0' }}>
                               <p className="text-xs font-bold uppercase tracking-wider" style={{ color:'#94a3b8' }}>Konuşma Transkripti</p>
                               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                                 {c.transcript.split('\n').filter((line: string) => line.trim()).map((line: string, i: number) => {
-                                  const isAgent = line.startsWith('AI:') || line.startsWith('Assistant:') || line.startsWith('Bot:')
-                                  const isUser = line.startsWith('User:') || line.startsWith('Human:') || line.startsWith('Müşteri:')
-                                  const cleanLine = line.replace(/^(AI:|Assistant:|Bot:|User:|Human:|Müşteri:)\s*/,'')
+                                  const isAgent = line.startsWith('Agent:')
+                                  const isUser = line.startsWith('Lead:')
+                                  const cleanLine = line.replace(/^(Agent:|Lead:)\s*/,'')
                                   return (
                                     <div key={i} className={`flex gap-2 ${isAgent?'justify-start':isUser?'justify-end':'justify-start'}`}>
                                       <div className="max-w-xs px-3 py-2 rounded-xl text-xs" style={{
@@ -2314,6 +2395,11 @@ export default function VoicePage() {
                                 <div className="mb-2 px-3 py-2 rounded-xl" style={{ background:'#fef2f2', border:'1px solid #fecaca' }}>
                                   <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color:'#dc2626' }}>Hata Detayı</p>
                                   <p className="text-xs break-all" style={{ color:'#7f1d1d', fontFamily:'monospace' }}>{c.notes}</p>
+                                </div>
+                              )}
+                              {c.status==='busy' && (
+                                <div className="mb-2 px-3 py-2 rounded-xl" style={{ background:'#fffbeb', border:'1px solid #fde68a' }}>
+                                  <p className="text-xs" style={{ color:'#92400e' }}>Hat meşgul — yeniden deneme kuyrukta</p>
                                 </div>
                               )}
                               <div className="text-center text-xs" style={{ color:'#cbd5e1' }}>

@@ -424,13 +424,13 @@ async function _transferCallViaTwilio(callSid: string, transferTo: string): Prom
 
 export async function onTwilioStatus(sessionId: string, status: string, body: Record<string, any>): Promise<void> {
   const statusMap: Record<string, string> = {
-    initiated:  'initiating',
-    ringing:    'ringing',
-    answered:   'answered',
-    'no-answer': 'failed',
-    busy:       'failed',
-    failed:     'failed',
-    completed:  'completed',
+    initiated:   'initiating',
+    ringing:     'ringing',
+    answered:    'answered',
+    'no-answer': 'no-answer',
+    busy:        'busy',
+    failed:      'failed',
+    completed:   'completed',
   };
   const mapped = statusMap[status] || status;
 
@@ -446,7 +446,7 @@ export async function onTwilioStatus(sessionId: string, status: string, body: Re
     console.error(`[Engine] Call ${status}: sessionId=${sessionId} ErrorCode=${errorCode} ErrorMsg=${errorMsg}`);
     await getSupabase()
       .from('voice_calls')
-      .update({ status: 'failed', end_reason: status, notes: failNote, ended_at: new Date().toISOString() })
+      .update({ status: mapped, end_reason: status, notes: failNote, ended_at: new Date().toISOString() })
       .eq('id', sessionId);
   }
 

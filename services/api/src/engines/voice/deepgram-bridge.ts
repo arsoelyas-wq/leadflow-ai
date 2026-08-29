@@ -56,6 +56,10 @@ export class DeepgramBridge {
       punctuate:       'true',
       endpointing:     String(this.opts.endpointingMs),
     });
+    // Keyterms boost accuracy for proper nouns (names, company names)
+    for (const term of (this.opts.keyterms || [])) {
+      params.append('keyterm', term);
+    }
 
     const url = `${DEEPGRAM_WS_URL}?${params.toString()}`;
 
