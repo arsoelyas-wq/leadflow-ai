@@ -1312,7 +1312,7 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
         <label className="text-xs font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#0369a1' }}>
           <Phone className="w-3.5 h-3.5"/> Arama Numaralarım
         </label>
-        {step === 'list' && (
+        {step === 'list' && numbers.length === 0 && (
           <button onClick={loadCountries}
             className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold transition"
             style={{ background: '#dbeafe', color: '#1d4ed8' }}>
@@ -1463,8 +1463,8 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
               placeholder="İsim (ör. Satış Hattı, Almanya Ofisi)"
               className="w-full px-3 py-2.5 rounded-xl text-xs focus:outline-none"
               style={{ background: '#fff', border: '1px solid #e2e8f0', color: '#0f172a' }}/>
-            <div className="p-3 rounded-xl text-xs" style={{ background: '#fefce8', border: '1px solid #fde68a', color: '#92400e' }}>
-              Bu numara Twilio hesabınıza eklenir. Aylık ~$1–3 maliyet oluşur. Numara aktifleştikten sonra aramalar bu numaradan çıkar.
+            <div className="p-3 rounded-xl text-xs" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534' }}>
+              ✓ Planınıza dahildir — ekstra maliyet yok. Numara aktifleştikten sonra aramalar bu numaradan çıkar.
             </div>
             <button onClick={purchaseNumber} disabled={buying}
               className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 flex items-center justify-center gap-2"
