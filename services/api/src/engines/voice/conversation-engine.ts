@@ -316,7 +316,7 @@ export async function streamResponse(
 // Kısaltma ve ondalık sayıları atlar, gerçek cümle sonlarını yakalar
 
 const SENTENCE_END = /([^.!?]*[.!?]+)\s+/g;
-const ABBREV       = /\b([A-ZÇĞİÖŞÜa-zçğışöü]{1,3})\.$/ ;  // kısaltma kontrolü
+const ABBREV       = /(?:\b[A-ZÇĞİÖŞÜ]|\b\d+)\.$/ ;          // kısaltma kontrolü — tek büyük harf veya sayı
 const DECIMAL      = /\d\.$/ ;                                // ondalık kontrol
 
 function extractCompleteSentences(text: string): { sentences: string[]; remaining: string } {

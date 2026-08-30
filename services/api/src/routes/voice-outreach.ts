@@ -603,6 +603,7 @@ router.post('/call/single', async (req: any, res: any) => {
       callee_number: normalizedPhone,
       caller_number: '',    // engine araması başlayınca Twilio numarası yazılır
       status: 'initiating', language: callLang,
+      conversation_style: finalStyle,
       notes: `style:${finalStyle}`,
     }]).select().single();
 
@@ -710,7 +711,7 @@ router.post('/call/campaign', async (req: any, res: any) => {
       user_id: userId,
       name: campaignName || `Kampanya ${new Date().toLocaleDateString('tr-TR')}`,
       total_leads: leadIds.length, status: 'running',
-      caller_number: process.env.VAPI_PHONE_NUMBER || process.env.ELEVENLABS_CALLER_NUMBER || '',
+      caller_number: process.env.TWILIO_PHONE_TR || process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_PHONE || '',
       delay_minutes: delayMinutes,
       conversation_style: conversationStyle || 'consultant',
       language: language || 'tr',
@@ -792,6 +793,7 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
         const { data: callRecord } = await supabase.from('voice_calls').insert([{
           user_id: userId, lead_id: lead.id, campaign_id: campaignId,
           callee_number: normPhone, status: 'initiating', language: callLang,
+          conversation_style: conversationStyle,
           notes: `style:${conversationStyle}`,
         }]).select().single();
 
@@ -917,184 +919,6 @@ async function resumePendingCampaigns() {
   }
 }
 
-router.post('/webhook/vapi', async (req: any, res: any) => {
-  try {
-    const { message } = req.body;
-    res.sendStatus(200);
-    if (!message || message.type !== 'end-of-call-report') return;
-    const callId = message.call?.id;
-    if (!callId) return;
-
-    // Önce vapi_call_id ile bul; yoksa callee_number + zaman penceresi ile ara (race condition düzeltmesi)
-    let { data: call } = await supabase.from('voice_calls')
-      .select('*, leads(*)')
-      .eq('eleven_conversation_id', callId)
-      .maybeSingle();
-
-    if (!call) {
-      const calleeNum = message.call?.customer?.number;
-      if (calleeNum) {
-        const since2h = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-        const { data: fallback } = await supabase.from('voice_calls')
-          .select('*, leads(*)')
-          .eq('callee_number', calleeNum)
-          .in('status', ['initiating', 'calling'])
-          .gte('created_at', since2h)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (fallback) {
-          call = fallback;
-          // eleven_conversation_id güncelle — sonraki webhook'lar direkt bulabilsin
-          await supabase.from('voice_calls').update({ eleven_conversation_id: callId, vapi_call_id: callId }).eq('id', fallback.id);
-          console.log(`[Vapi Webhook] Fallback lookup matched by callee_number for callId=${callId}`);
-        }
-      }
-    }
-
-    if (!call) {
-      console.warn(`[Vapi Webhook] No matching call found for callId=${callId}`);
-      return;
-    }
-
-    const transcript = message.transcript || message.artifact?.transcript || '';
-    const durationSec = message.call?.duration || message.durationSeconds || 0;
-    const endReason = message.endedReason || message.call?.endedReason || 'unknown';
-    const costCents = message.cost || 0;
-    const recordingUrl = message.artifact?.recordingUrl || message.recordingUrl || null;
-
-    const noConversation = !transcript || transcript.length < 20;
-    const silenceEnd = endReason === 'silence-timed-out' || endReason === 'customer-did-not-speak';
-    const failedEnd = endReason === 'assistant-error' || endReason === 'pipeline-error-openai-llm-failed';
-    const noAnswer = endReason === 'customer-busy' || endReason === 'customer-did-not-answer' || endReason === 'voicemail';
-
-    let callStatus = 'completed';
-    if (noAnswer) callStatus = 'no-answer';
-    else if (failedEnd) callStatus = 'failed';
-    else if (silenceEnd && noConversation) callStatus = 'no-answer';
-    else if (durationSec < 5 && noConversation) callStatus = 'no-answer';
-
-    const updates: any = {
-      status: callStatus,
-      ended_at: new Date().toISOString(),
-      transcript: transcript.slice(0, 10000),
-      duration_seconds: durationSec,
-      end_reason: endReason,
-      recording_url: recordingUrl,
-      cost_cents: costCents,
-    };
-
-    // AI analiz: geliştirilmiş — call_intelligence tablosuna öğrenme verisi kaydeder
-    let analysisData: any = null;
-    if (transcript.length > 50) {
-      try {
-        const analysisResult = await anthropic.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 600,
-          messages: [{ role: 'user', content: `Aşağıdaki telefon satış görüşmesini analiz et ve JSON döndür:
-Transkript: "${transcript.slice(0, 4000)}"
-
-JSON (tüm alanları doldur):
-{
-  "outcome": "appointment|callback|rejected|no_answer|unknown",
-  "sentiment_score": 1-10,
-  "interest_score": 1-10,
-  "appointment_set": true/false,
-  "objections": ["itiraz1", "itiraz2"],
-  "next_action": "sonraki adım (1 cümle)",
-  "transcript_summary": "konuşmanın 1-2 cümle özeti"
-}` }],
-        }, { timeout: 25000 });
-        const txt = (analysisResult.content[0] as any)?.text || '';
-        // Robust JSON çıkarımı — birden fazla {...} varsa SADECE ilkini al
-        const jsonMatches = [...txt.matchAll(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/g)];
-        const jsonStr = jsonMatches.length > 0 ? jsonMatches[0][0] : (txt.match(/\{[\s\S]*?\}/)?.[0] || '');
-        if (jsonStr) {
-          try {
-            analysisData = JSON.parse(jsonStr);
-            // Tür güvenliği
-            if (analysisData.sentiment_score) analysisData.sentiment_score = Math.min(10, Math.max(1, parseInt(analysisData.sentiment_score) || 5));
-            if (analysisData.interest_score) analysisData.interest_score = Math.min(10, Math.max(1, parseInt(analysisData.interest_score) || 5));
-            if (!Array.isArray(analysisData.objections)) analysisData.objections = [];
-
-            updates.analysis = analysisData;
-            updates.outcome = analysisData.outcome === 'appointment' ? 'positive'
-                            : analysisData.outcome === 'callback' ? 'callback'
-                            : analysisData.outcome === 'rejected' ? 'negative' : 'negative';
-
-            if (analysisData.appointment_set && call.lead_id) {
-              await supabase.from('leads').update({ status: 'replied' }).eq('id', call.lead_id);
-            }
-          } catch (jsonErr: any) {
-            console.warn('[Webhook] JSON parse failed, raw:', txt.slice(0, 100));
-          }
-        }
-      } catch (analysisErr: any) {
-        console.warn('[Webhook] Analysis failed:', analysisErr.message?.slice(0, 80));
-      }
-    }
-
-    // Vapi tool call'larını kontrol et — book_appointment / add_to_blacklist
-    const toolCalls = message.toolCallResults || message.toolCallList || [];
-    for (const tc of toolCalls) {
-      if (tc.name === 'book_appointment' && tc.result?.day) {
-        const apptNote = `Randevu: ${tc.result.day}${tc.result.time ? ' ' + tc.result.time : ''} | Arama ID: ${callId}`;
-        try { await supabase.from('leads').update({ notes: apptNote, status: 'replied' }).eq('id', call.lead_id); } catch {}
-        console.log(`[Webhook] Appointment booked: ${apptNote}`);
-      }
-      if (tc.name === 'add_to_blacklist' && call.lead_id) {
-        const phone = normalizePhoneE164(call.callee_number, '');
-        try { await supabase.from('call_blacklist').upsert([{
-          user_id: call.user_id, phone, reason: tc.result?.reason || 'Müşteri isteği', lead_id: call.lead_id,
-        }], { onConflict: 'user_id,phone' }); } catch {}
-        console.log(`[Webhook] Blacklisted: ${phone}`);
-      }
-    }
-
-    // "Bir daha aramayın" keyword tespiti — transcript'ten
-    if (transcript && call.user_id && call.callee_number) {
-      const dncPhrases = ['aramayın', 'a̋ramayın', 'istemiyorum', 'do not call', 'remove me'];
-      if (dncPhrases.some(p => transcript.toLowerCase().includes(p))) {
-        const phone = normalizePhoneE164(call.callee_number, '');
-        try { await supabase.from('call_blacklist').upsert([{
-          user_id: call.user_id, phone, reason: 'Transcript analizi — DNC', lead_id: call.lead_id,
-        }], { onConflict: 'user_id,phone' }); } catch {}
-        console.log(`[Webhook] Auto-blacklisted from transcript: ${phone}`);
-      }
-    }
-
-    await supabase.from('voice_calls').update(updates).eq('id', call.id);
-    console.log(`[Vapi Webhook] Call ${callId}: ${updates.outcome || 'completed'}, ${durationSec}s, reason=${endReason}`);
-
-    // Call Intelligence: öğrenme verisini kaydet
-    if (analysisData) {
-      try {
-        const ciPayload: any = {
-          user_id: call.user_id,
-          lead_id: call.lead_id || null,
-          call_id: call.id,
-          conversation_style: call.conversation_style || 'consultant',
-          duration_sec: durationSec,
-          outcome: analysisData.outcome || 'unknown',
-          sentiment_score: analysisData.sentiment_score || null,
-          interest_score: analysisData.interest_score || null,
-          objections: analysisData.objections || [],
-          next_action: analysisData.next_action || null,
-          transcript_summary: analysisData.transcript_summary || null,
-          sector: call.leads?.sector || null,
-        };
-        const { error: ciErr } = await supabase.from('call_intelligence').insert([ciPayload]);
-        if (ciErr) console.warn('[CallIntelligence] Insert failed:', ciErr.message?.slice(0, 80));
-        else console.log(`[CallIntelligence] Saved: style=${ciPayload.conversation_style}, outcome=${ciPayload.outcome}, interest=${ciPayload.interest_score}`);
-
-        // A/B test sonucunu güncelle
-        try { await supabase.from('ab_test_assignments').update({ outcome: analysisData.outcome }).eq('call_id', call.id); } catch {}
-      } catch (ciErr: any) {
-        console.warn('[CallIntelligence] Unexpected error:', ciErr.message?.slice(0, 60));
-      }
-    }
-  } catch (e: any) { console.error('Vapi webhook error:', e.message); }
-});
 
 // GET /api/voice/calls
 router.get('/calls', async (req: any, res: any) => {
@@ -1185,13 +1009,12 @@ router.get('/settings', async (req: any, res: any) => {
 // PATCH /api/voice/settings — upsert (race condition fix)
 router.patch('/settings', async (req: any, res: any) => {
   try {
-    const { agent_name, company_name, product_description, transfer_number, vapi_phone_id, voice_speed, voice_pitch, voice_bass, voice_treble, voice_warmth, voice_presence, voice_volume, voice_compress } = req.body;
+    const { agent_name, company_name, product_description, transfer_number, voice_speed, voice_pitch, voice_bass, voice_treble, voice_warmth, voice_presence, voice_volume, voice_compress } = req.body;
     const updateData: any = { user_id: req.userId };
     if (agent_name !== undefined) updateData.agent_name = agent_name;
     if (company_name !== undefined) updateData.company_name = company_name;
     if (product_description !== undefined) updateData.product_description = product_description;
     if (transfer_number !== undefined) updateData.transfer_number = transfer_number;
-    if (vapi_phone_id !== undefined) updateData.vapi_phone_id = vapi_phone_id;
     if (voice_speed !== undefined) updateData.voice_speed = voice_speed;
     if (voice_pitch !== undefined) updateData.voice_pitch = voice_pitch;
     if (voice_bass !== undefined) updateData.voice_bass = voice_bass;
@@ -1455,9 +1278,8 @@ router.get('/diag', async (req: any, res: any) => {
   try {
     const { data: userRow } = await supabase.from('users').select('id, name').eq('id', req.userId).single();
     results.user = userRow ? `${userRow.name} (${userRow.id?.slice(0, 8)})` : 'bulunamadı';
-    const { data: settings } = await supabase.from('voice_settings').select('agent_name, vapi_phone_id').eq('user_id', req.userId).single();
+    const { data: settings } = await supabase.from('voice_settings').select('agent_name').eq('user_id', req.userId).single();
     results.voice_settings = settings || 'yok';
-    if (settings?.vapi_phone_id) results.custom_phone_id = settings.vapi_phone_id;
   } catch (e: any) { results.user = `HATA: ${e.message}`; }
 
   res.json(results);
