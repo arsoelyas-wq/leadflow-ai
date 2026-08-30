@@ -377,4 +377,222 @@ router.get('/default', async (req: any, res: any) => {
   }
 });
 
+// ─── TWILIO NUMARA SATIN ALMA SİSTEMİ ────────────────────────────────────────
+
+const API_BASE = process.env.VITE_API_URL || 'https://leadflow-ai-production.up.railway.app';
+
+function getCountryName(iso: string): string {
+  const m: Record<string, string> = {
+    US:'Amerika', CA:'Kanada', GB:'Birleşik Krallık', DE:'Almanya',
+    FR:'Fransa', NL:'Hollanda', ES:'İspanya', IT:'İtalya',
+    SE:'İsveç', NO:'Norveç', BE:'Belçika', AT:'Avusturya',
+    CH:'İsviçre', AU:'Avustralya', TR:'Türkiye', PL:'Polonya',
+    DK:'Danimarka', FI:'Finlandiya', PT:'Portekiz', IE:'İrlanda',
+  };
+  return m[iso] || iso;
+}
+
+// Desteklenen ülkeler ve Twilio numara tipleri
+const PURCHASABLE_COUNTRIES = [
+  { code: 'US', name: 'Amerika',             flag: '🇺🇸', types: ['local', 'mobile', 'tollFree'] },
+  { code: 'CA', name: 'Kanada',              flag: '🇨🇦', types: ['local', 'tollFree'] },
+  { code: 'GB', name: 'Birleşik Krallık',   flag: '🇬🇧', types: ['local', 'mobile'] },
+  { code: 'DE', name: 'Almanya',             flag: '🇩🇪', types: ['local', 'mobile'] },
+  { code: 'FR', name: 'Fransa',              flag: '🇫🇷', types: ['local', 'mobile'] },
+  { code: 'NL', name: 'Hollanda',            flag: '🇳🇱', types: ['local', 'mobile'] },
+  { code: 'ES', name: 'İspanya',             flag: '🇪🇸', types: ['local', 'mobile'] },
+  { code: 'IT', name: 'İtalya',              flag: '🇮🇹', types: ['local', 'mobile'] },
+  { code: 'SE', name: 'İsveç',              flag: '🇸🇪', types: ['local', 'mobile'] },
+  { code: 'NO', name: 'Norveç',             flag: '🇳🇴', types: ['local', 'mobile'] },
+  { code: 'BE', name: 'Belçika',             flag: '🇧🇪', types: ['local', 'mobile'] },
+  { code: 'AT', name: 'Avusturya',           flag: '🇦🇹', types: ['local', 'mobile'] },
+  { code: 'CH', name: 'İsviçre',            flag: '🇨🇭', types: ['local', 'mobile'] },
+  { code: 'AU', name: 'Avustralya',          flag: '🇦🇺', types: ['local', 'mobile'] },
+  { code: 'PL', name: 'Polonya',             flag: '🇵🇱', types: ['local', 'mobile'] },
+  { code: 'DK', name: 'Danimarka',           flag: '🇩🇰', types: ['local', 'mobile'] },
+  { code: 'PT', name: 'Portekiz',            flag: '🇵🇹', types: ['local', 'mobile'] },
+  { code: 'IE', name: 'İrlanda',            flag: '🇮🇪', types: ['local', 'mobile'] },
+];
+
+// GET /api/voice/caller-ids/countries
+router.get('/countries', (_req: any, res: any) => {
+  res.json({ countries: PURCHASABLE_COUNTRIES });
+});
+
+// GET /api/voice/caller-ids/search-available?country=US&type=local&pattern=415
+router.get('/search-available', async (req: any, res: any) => {
+  try {
+    const { country = 'US', type = 'local', pattern } = req.query;
+    const client = getTwilioClient();
+
+    const opts: any = { voiceEnabled: true, limit: 20 };
+    if (pattern && String(pattern).trim()) opts.contains = String(pattern).trim();
+
+    const validTypes = ['local', 'mobile', 'tollFree'];
+    const twilioType = validTypes.includes(String(type)) ? String(type) : 'local';
+
+    let numbers: any[] = [];
+    try {
+      numbers = await (client.availablePhoneNumbers(String(country)) as any)[twilioType].list(opts);
+    } catch (e: any) {
+      if (e.status === 404 || e.code === 20404 || (e.message || '').includes('not found')) {
+        return res.json({ numbers: [] });
+      }
+      throw e;
+    }
+
+    res.json({
+      numbers: numbers.map((n: any) => ({
+        phoneNumber:  n.phoneNumber,
+        friendlyName: n.friendlyName,
+        locality:     n.locality || '',
+        region:       n.region || '',
+        isoCountry:   n.isoCountry,
+        capabilities: { voice: !!n.capabilities?.voice, sms: !!n.capabilities?.sms },
+      })),
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/voice/caller-ids/purchase-number
+router.post('/purchase-number', async (req: any, res: any) => {
+  try {
+    const { phoneNumber, friendlyName } = req.body;
+    if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber zorunlu' });
+
+    const client = getTwilioClient();
+
+    // Twilio'dan satın al
+    let purchased: any;
+    try {
+      purchased = await client.incomingPhoneNumbers.create({
+        phoneNumber,
+        friendlyName: friendlyName || phoneNumber,
+      });
+    } catch (twilioErr: any) {
+      return res.status(502).json({ error: `Numara satın alınamadı: ${twilioErr.message}` });
+    }
+
+    // Bu kullanıcının ilk numarası mı?
+    const { count } = await supabase
+      .from('user_phone_numbers')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', req.userId)
+      .eq('status', 'active');
+    const isFirst = !count || count === 0;
+
+    // Varsa eski default'ları temizle
+    if (isFirst) {
+      await supabase.from('user_phone_numbers')
+        .update({ is_default: false })
+        .eq('user_id', req.userId);
+    }
+
+    const { data: newNum, error: insertErr } = await supabase
+      .from('user_phone_numbers')
+      .insert([{
+        user_id:            req.userId,
+        phone_number:       purchased.phoneNumber,
+        twilio_sid:         purchased.sid,
+        friendly_name:      friendlyName || purchased.phoneNumber,
+        country_code:       purchased.isoCountry || 'UN',
+        country_name:       getCountryName(purchased.isoCountry || ''),
+        capabilities_voice: purchased.capabilities?.voice !== false,
+        capabilities_sms:   purchased.capabilities?.sms === true,
+        status:             'active',
+        is_default:         isFirst,
+        twilio_monthly_cost: 100,
+        our_monthly_price:   0,
+        purchased_at:       new Date().toISOString(),
+      }])
+      .select()
+      .single();
+
+    if (insertErr) throw new Error(insertErr.message);
+
+    console.log(`[PhoneNumbers] Purchased ${purchased.phoneNumber} for user=${req.userId} isDefault=${isFirst}`);
+    res.json({ ok: true, number: newNum });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/voice/caller-ids/purchased
+router.get('/purchased', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_phone_numbers')
+      .select('id, phone_number, friendly_name, country_code, country_name, capabilities_voice, capabilities_sms, is_default, purchased_at')
+      .eq('user_id', req.userId)
+      .eq('status', 'active')
+      .order('is_default', { ascending: false })
+      .order('purchased_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    res.json({ numbers: data || [] });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/voice/caller-ids/purchased/:id/set-default
+router.post('/purchased/:id/set-default', async (req: any, res: any) => {
+  try {
+    await supabase.from('user_phone_numbers')
+      .update({ is_default: false })
+      .eq('user_id', req.userId);
+    const { error } = await supabase.from('user_phone_numbers')
+      .update({ is_default: true })
+      .eq('id', req.params.id)
+      .eq('user_id', req.userId);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/voice/caller-ids/purchased/:id
+router.delete('/purchased/:id', async (req: any, res: any) => {
+  try {
+    const { data: num } = await supabase
+      .from('user_phone_numbers')
+      .select('twilio_sid, is_default')
+      .eq('id', req.params.id)
+      .eq('user_id', req.userId)
+      .single();
+    if (!num) return res.status(404).json({ error: 'Numara bulunamadı' });
+
+    // Twilio'dan yayınla
+    const client = getTwilioClient();
+    if (num.twilio_sid) {
+      try { await client.incomingPhoneNumbers(num.twilio_sid).remove(); } catch (e: any) {
+        console.warn(`[PhoneNumbers] Twilio release warn: ${e.message}`);
+      }
+    }
+
+    await supabase.from('user_phone_numbers')
+      .update({ status: 'released', released_at: new Date().toISOString(), is_default: false })
+      .eq('id', req.params.id);
+
+    // Default ise bir sonrakini yap
+    if (num.is_default) {
+      const { data: others } = await supabase
+        .from('user_phone_numbers')
+        .select('id')
+        .eq('user_id', req.userId)
+        .eq('status', 'active')
+        .order('purchased_at', { ascending: true })
+        .limit(1);
+      if (others && others.length > 0) {
+        await supabase.from('user_phone_numbers').update({ is_default: true }).eq('id', others[0].id);
+      }
+    }
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

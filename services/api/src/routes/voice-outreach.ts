@@ -580,11 +580,14 @@ router.post('/call/single', async (req: any, res: any) => {
         .limit(1)
         .maybeSingle(),
       getCallMemory(userId, leadId),  // PolyAI tarzı: önceki aramaları AI'ya ver
-      supabase.from('user_caller_ids')
+      supabase.from('user_phone_numbers')
         .select('phone_number')
         .eq('user_id', userId)
-        .eq('is_verified', true)
-        .eq('is_default', true)
+        .eq('status', 'active')
+        .eq('capabilities_voice', true)
+        .order('is_default', { ascending: false })
+        .order('purchased_at', { ascending: true })
+        .limit(1)
         .maybeSingle(),
     ]);
     const userCallerId: string | undefined = callerIdRow?.phone_number || undefined;
@@ -797,13 +800,16 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
           notes: `style:${conversationStyle}`,
         }]).select().single();
 
-        // Kullanıcının varsayılan callerId'sini al
+        // Kullanıcının satın aldığı varsayılan Twilio numarasını al
         const { data: callerIdRow } = await supabase
-          .from('user_caller_ids')
+          .from('user_phone_numbers')
           .select('phone_number')
           .eq('user_id', userId)
-          .eq('is_verified', true)
-          .eq('is_default', true)
+          .eq('status', 'active')
+          .eq('capabilities_voice', true)
+          .order('is_default', { ascending: false })
+          .order('purchased_at', { ascending: true })
+          .limit(1)
           .maybeSingle();
 
         const openingLine = await generatePersonalizedOpening({

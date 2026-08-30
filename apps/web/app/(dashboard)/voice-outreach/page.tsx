@@ -1221,90 +1221,90 @@ function StepLead({ leads, callMode, setCallMode, selectedLead, setSelectedLead,
   )
 }
 
-// ─── CALLER ID PANEL ─────────────────────────────────────────────────────────
-// Müşteri kendi numarasını ekler → Twilio onu arar → kod onaylanır → aramalar o numaradan görünür
+// ─── PHONE NUMBERS PANEL ─────────────────────────────────────────────────────
+// Satın alınan Twilio numaraları — aramalar bu numaralardan yapılır
 function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) => void; onVerified: (v: boolean) => void }) {
-  const [callerIds, setCallerIds]       = useState<any[]>([])
+  const [numbers, setNumbers]           = useState<any[]>([])
   const [loading, setLoading]           = useState(true)
-  const [addPhone, setAddPhone]         = useState('')
-  const [addName, setAddName]           = useState('')
-  const [step, setStep]                 = useState<'list' | 'add' | 'verify'>('list')
-  const [busy, setBusy]                 = useState(false)
-  const [checkBusy, setCheckBusy]       = useState(false)
-  const [pendingId, setPendingId]       = useState<string | null>(null)
-  const [validationCode, setValidCode]  = useState<string>('')
-  const [pendingPhone, setPendingPhone] = useState<string>('')
+  const [step, setStep]                 = useState<'list'|'country'|'search'|'confirm'>('list')
+  const [countries, setCountries]       = useState<any[]>([])
+  const [selCountry, setSelCountry]     = useState<any>(null)
+  const [selType, setSelType]           = useState('local')
+  const [pattern, setPattern]           = useState('')
+  const [available, setAvailable]       = useState<any[]>([])
+  const [searching, setSearching]       = useState(false)
+  const [selNumber, setSelNumber]       = useState<any>(null)
+  const [buying, setBuying]             = useState(false)
+  const [friendlyName, setFriendlyName] = useState('')
 
   const load = async () => {
+    setLoading(true)
     try {
-      const r = await fetch(`${API}/api/voice/caller-ids`, { headers: authH() })
+      const r = await fetch(`${API}/api/voice/caller-ids/purchased`, { headers: authH() })
       const d = await r.json()
-      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`)
-      setCallerIds(d.callerIds || [])
-      const hasVerified = (d.callerIds || []).some((c: any) => c.is_verified && c.is_default)
-      onVerified(hasVerified)
-    } catch (e: any) {
-      onMsg('error', `Numara listesi yüklenemedi: ${e.message}`)
-    }
+      const nums = d.numbers || []
+      setNumbers(nums)
+      onVerified(nums.some((n: any) => n.capabilities_voice))
+    } catch {}
     setLoading(false)
   }
 
   useEffect(() => { load() }, [])
 
-  const startAdd = async () => {
-    if (!addPhone || addPhone.length < 9) return onMsg('error', 'Geçerli telefon numarası girin')
-    setBusy(true)
-    try {
-      const r = await fetch(`${API}/api/voice/caller-ids/add`, {
-        method: 'POST', headers: authH(),
-        body: JSON.stringify({ phoneNumber: addPhone, friendlyName: addName || addPhone }),
-      })
-      const d = await r.json()
-      if (d.ok) {
-        if (d.alreadyVerified) {
-          onMsg('success', d.message || 'Numara aktifleştirildi!')
-          setStep('list'); setAddPhone(''); setAddName('')
-          await load()
-        } else {
-          setPendingId(d.id)
-          setValidCode(d.validationCode || '')
-          setPendingPhone(d.phoneNumber || addPhone)
-          setStep('verify')
-          setAddPhone(''); setAddName('')
-        }
-      } else onMsg('error', d.error || 'Eklenemedi')
-    } catch { onMsg('error', 'Bağlantı hatası') }
-    setBusy(false)
+  const loadCountries = async () => {
+    if (countries.length > 0) { setStep('country'); return }
+    const r = await fetch(`${API}/api/voice/caller-ids/countries`, { headers: authH() })
+    const d = await r.json()
+    setCountries(d.countries || [])
+    setStep('country')
   }
 
-  const checkVerification = async () => {
-    if (!pendingId) return
-    setCheckBusy(true)
+  const searchNumbers = async () => {
+    if (!selCountry) return
+    setSearching(true); setAvailable([])
     try {
-      const r = await fetch(`${API}/api/voice/caller-ids/check-status/${pendingId}`, { method: 'POST', headers: authH() })
+      const params = new URLSearchParams({ country: selCountry.code, type: selType, pattern })
+      const r = await fetch(`${API}/api/voice/caller-ids/search-available?${params}`, { headers: authH() })
       const d = await r.json()
-      if (d.verified) {
-        onMsg('success', `✅ ${pendingPhone} doğrulandı! Aramalar artık bu numaradan görünecek.`)
-        setStep('list'); setPendingId(null); setValidCode('')
-        await load()
-      } else {
-        onMsg('error', d.message || 'Henüz doğrulanmadı — Twilio aramasını yanıtlayın ve * + kodu girin')
-      }
-    } catch { onMsg('error', 'Bağlantı hatası') }
-    setCheckBusy(false)
+      setAvailable(d.numbers || [])
+    } catch {}
+    setSearching(false)
+    setStep('search')
+  }
+
+  const purchaseNumber = async () => {
+    if (!selNumber) return
+    setBuying(true)
+    try {
+      const r = await fetch(`${API}/api/voice/caller-ids/purchase-number`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ phoneNumber: selNumber.phoneNumber, friendlyName: friendlyName || selNumber.phoneNumber }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`)
+      onMsg('success', `${selNumber.phoneNumber} numarası satın alındı! Aramalar bu numaradan yapılacak.`)
+      setStep('list'); setSelNumber(null); setFriendlyName('')
+      await load()
+    } catch (e: any) { onMsg('error', e.message) }
+    setBuying(false)
   }
 
   const setDefault = async (id: string) => {
-    await fetch(`${API}/api/voice/caller-ids/${id}/set-default`, { method: 'POST', headers: authH() })
+    await fetch(`${API}/api/voice/caller-ids/purchased/${id}/set-default`, { method: 'POST', headers: authH() })
     await load()
   }
 
-  const remove = async (id: string) => {
-    await fetch(`${API}/api/voice/caller-ids/${id}`, { method: 'DELETE', headers: authH() })
+  const releaseNumber = async (id: string, num: string) => {
+    if (!confirm(`${num} numarasını serbest bırakmak istediğinizden emin misiniz? Bu işlem geri alınamaz ve Twilio'dan numara silinir.`)) return
+    await fetch(`${API}/api/voice/caller-ids/purchased/${id}`, { method: 'DELETE', headers: authH() })
+    onMsg('success', `${num} numarası serbest bırakıldı.`)
     await load()
   }
 
-  const verified = callerIds.filter((c: any) => c.is_verified)
+  const COUNTRY_FLAGS: Record<string,string> = {
+    US:'🇺🇸',CA:'🇨🇦',GB:'🇬🇧',DE:'🇩🇪',FR:'🇫🇷',NL:'🇳🇱',ES:'🇪🇸',IT:'🇮🇹',
+    SE:'🇸🇪',NO:'🇳🇴',BE:'🇧🇪',AT:'🇦🇹',CH:'🇨🇭',AU:'🇦🇺',PL:'🇵🇱',DK:'🇩🇰',PT:'🇵🇹',IE:'🇮🇪'
+  }
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #bae6fd', background: '#f0f9ff' }}>
@@ -1313,112 +1313,167 @@ function CallerIdPanel({ onMsg, onVerified }: { onMsg: (t: string, m: string) =>
           <Phone className="w-3.5 h-3.5"/> Arama Numaralarım
         </label>
         {step === 'list' && (
-          <button onClick={() => setStep('add')}
+          <button onClick={loadCountries}
             className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold transition"
             style={{ background: '#dbeafe', color: '#1d4ed8' }}>
-            <Plus className="w-3 h-3"/> Numara Ekle
+            <Plus className="w-3 h-3"/> Numara Satın Al
+          </button>
+        )}
+        {step !== 'list' && (
+          <button onClick={() => { setStep('list'); setSelNumber(null); setAvailable([]) }}
+            className="text-xs px-3 py-1.5 rounded-lg" style={{ background: '#f1f5f9', color: '#64748b' }}>
+            ← Geri
           </button>
         )}
       </div>
 
       <div className="px-4 pb-4">
-        {step === 'add' && (
-          <div className="space-y-3 pt-2">
-            <p className="text-xs" style={{ color: '#0369a1' }}>
-              Kendi telefon numaranızı ekleyin. Twilio numaranızı arayacak ve doğrulama kodunu sesli okuyacak. Kodu telefonunuzdan tuşlayın.
-            </p>
-            <input value={addPhone} onChange={e => setAddPhone(e.target.value)}
-              placeholder="+90 5XX XXX XX XX"
-              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-              style={{ background: '#fff', border: '1.5px solid #bae6fd', color: '#0f172a' }}/>
-            <input value={addName} onChange={e => setAddName(e.target.value)}
-              placeholder="İsim (isteğe bağlı) — ör. Satış Hattı"
-              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
-              style={{ background: '#fff', border: '1px solid #e2e8f0', color: '#0f172a' }}/>
-            <div className="flex gap-2">
-              <button onClick={startAdd} disabled={busy}
-                className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all"
-                style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
-                {busy ? <RefreshCw className="w-4 h-4 animate-spin mx-auto"/> : 'Doğrulamayı Başlat'}
-              </button>
-              <button onClick={() => setStep('list')} className="px-4 py-3 rounded-xl text-sm" style={{ background: '#f1f5f9', color: '#64748b' }}>
-                İptal
-              </button>
-            </div>
-          </div>
-        )}
 
-        {step === 'verify' && (
-          <div className="space-y-4 pt-2">
-            <div className="p-4 rounded-xl" style={{ background: '#fefce8', border: '1px solid #fde68a' }}>
-              <p className="text-xs font-bold mb-1" style={{ color: '#92400e' }}>📞 Twilio Sizi Arıyor</p>
-              <p className="text-xs" style={{ color: '#78350f' }}>
-                <strong>{pendingPhone}</strong> numaranız aranıyor. Aramayı <strong>yanıtlayın</strong>, ardından telefonunuzda:
-              </p>
-              <div className="mt-3 flex items-center justify-center gap-2">
-                <span className="text-2xl font-mono font-black tracking-widest px-4 py-2 rounded-xl" style={{ background: '#fff', border: '2px solid #fbbf24', color: '#92400e', letterSpacing: '0.3em' }}>
-                  * {validationCode}
-                </span>
-              </div>
-              <p className="text-[10px] mt-2 text-center" style={{ color: '#a16207' }}>
-                Yıldız (*) tuşuna basın, ardından <strong>{validationCode}</strong> kodunu girin
-              </p>
-            </div>
-            <button onClick={checkVerification} disabled={checkBusy}
-              className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 transition-all flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
-              {checkBusy ? <RefreshCw className="w-4 h-4 animate-spin"/> : <><CheckCircle className="w-4 h-4"/> Doğrulamayı Kontrol Et</>}
-            </button>
-            <button onClick={() => { setStep('list'); setPendingId(null); setValidCode('') }}
-              className="w-full py-2 rounded-xl text-xs" style={{ color: '#64748b' }}>
-              İptal — daha sonra dene
-            </button>
-          </div>
-        )}
-
+        {/* ── LİSTE: satın alınan numaralar ── */}
         {step === 'list' && (
           <div className="space-y-2 mt-2">
             {loading && <p className="text-xs text-center py-3" style={{ color: '#94a3b8' }}>Yükleniyor…</p>}
 
-            {!loading && verified.length === 0 && (
-              <div className="text-center py-4">
+            {!loading && numbers.length === 0 && (
+              <div className="text-center py-5">
                 <Phone className="w-8 h-8 mx-auto mb-2" style={{ color: '#bae6fd' }}/>
-                <p className="text-xs" style={{ color: '#64748b' }}>Henüz doğrulanmış numara yok.</p>
-                <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>Numaranızı ekleyin — Twilio telefon doğrulamasıyla aktifleştirilir.</p>
+                <p className="text-xs font-semibold" style={{ color: '#0369a1' }}>Henüz Twilio numaranız yok</p>
+                <p className="text-xs mt-1" style={{ color: '#64748b' }}>Numara satın alın — aramalar o numaradan gerçekten çıkar.</p>
+                <button onClick={loadCountries}
+                  className="mt-3 px-4 py-2 rounded-xl text-xs font-bold text-white"
+                  style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)' }}>
+                  + Numara Satın Al
+                </button>
               </div>
             )}
 
-            {verified.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between p-3 rounded-xl transition"
-                style={{ background: c.is_default ? '#dcfce7' : '#fff', border: `1px solid ${c.is_default ? '#86efac' : '#e2e8f0'}` }}>
+            {numbers.map((n: any) => (
+              <div key={n.id} className="flex items-center justify-between p-3 rounded-xl"
+                style={{ background: n.is_default ? '#dcfce7' : '#fff', border: `1px solid ${n.is_default ? '#86efac' : '#e2e8f0'}` }}>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: c.is_default ? '#bbf7d0' : '#f1f5f9' }}>
-                    {c.is_default ? <Star className="w-4 h-4" style={{ color: '#059669' }}/> : <Phone className="w-4 h-4" style={{ color: '#94a3b8' }}/>}
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+                    style={{ background: n.is_default ? '#bbf7d0' : '#f1f5f9' }}>
+                    {COUNTRY_FLAGS[n.country_code] || '📞'}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold" style={{ color: '#0f172a' }}>{c.phone_number}</p>
-                    <p className="text-[10px]" style={{ color: c.is_default ? '#059669' : '#94a3b8' }}>
-                      {c.friendly_name && c.friendly_name !== c.phone_number ? c.friendly_name + ' · ' : ''}
-                      {c.is_default ? '✓ Varsayılan — aramalar bu numaradan görünür' : 'Twilio Doğrulanmış'}
+                    <p className="text-sm font-semibold" style={{ color: '#0f172a' }}>{n.phone_number}</p>
+                    <p className="text-[10px]" style={{ color: n.is_default ? '#059669' : '#94a3b8' }}>
+                      {n.country_name} · {n.friendly_name && n.friendly_name !== n.phone_number ? n.friendly_name + ' · ' : ''}
+                      {n.is_default ? '✓ Varsayılan — aramalar bu numaradan çıkar' : 'Twilio Numarası'}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {!c.is_default && (
-                    <button onClick={() => setDefault(c.id)} className="text-[10px] px-2.5 py-1 rounded-lg font-medium transition"
+                  {!n.is_default && (
+                    <button onClick={() => setDefault(n.id)}
+                      className="text-[10px] px-2.5 py-1 rounded-lg font-medium"
                       style={{ background: '#eff6ff', color: '#2563eb' }}>
-                      Varsayılan Yap
+                      Varsayılan
                     </button>
                   )}
-                  <button onClick={() => remove(c.id)} className="p-1.5 rounded-lg transition" style={{ color: '#ef4444' }}>
+                  <button onClick={() => releaseNumber(n.id, n.phone_number)}
+                    className="p-1.5 rounded-lg" style={{ color: '#ef4444' }}>
                     <Trash2 className="w-3.5 h-3.5"/>
                   </button>
                 </div>
               </div>
             ))}
-
           </div>
         )}
+
+        {/* ── ÜLKE SEÇ ── */}
+        {step === 'country' && (
+          <div className="space-y-3 pt-2">
+            <p className="text-xs font-semibold" style={{ color: '#0369a1' }}>Numara için ülke seçin:</p>
+            <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+              {countries.map((c: any) => (
+                <button key={c.code}
+                  onClick={() => { setSelCountry(c); setSelType(c.types[0]); setStep('search') }}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition hover:opacity-80"
+                  style={{ background: '#fff', border: '1px solid #e2e8f0', color: '#0f172a' }}>
+                  <span className="text-base">{c.flag}</span>
+                  <span>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── NUMARA ARA ── */}
+        {step === 'search' && selCountry && (
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{selCountry.flag}</span>
+              <span className="text-sm font-bold" style={{ color: '#0f172a' }}>{selCountry.name}</span>
+            </div>
+            <div className="flex gap-2">
+              <select value={selType} onChange={e => setSelType(e.target.value)}
+                className="px-3 py-2 rounded-xl text-xs focus:outline-none"
+                style={{ background: '#fff', border: '1px solid #e2e8f0', color: '#0f172a' }}>
+                {selCountry.types.map((t: string) => (
+                  <option key={t} value={t}>
+                    {t === 'local' ? 'Yerel' : t === 'mobile' ? 'Mobil' : 'Ücretsiz Hat'}
+                  </option>
+                ))}
+              </select>
+              <input value={pattern} onChange={e => setPattern(e.target.value)}
+                placeholder="Alan kodu (ör. 212)"
+                className="flex-1 px-3 py-2 rounded-xl text-xs focus:outline-none"
+                style={{ background: '#fff', border: '1px solid #e2e8f0', color: '#0f172a' }}/>
+              <button onClick={searchNumbers} disabled={searching}
+                className="px-3 py-2 rounded-xl text-xs font-bold text-white disabled:opacity-40"
+                style={{ background: '#2563eb' }}>
+                {searching ? <RefreshCw className="w-3.5 h-3.5 animate-spin"/> : <Search className="w-3.5 h-3.5"/>}
+              </button>
+            </div>
+            {!searching && available.length === 0 && (
+              <p className="text-xs text-center py-3" style={{ color: '#94a3b8' }}>
+                Arama yapın veya alan kodu bırakıp tüm numaralara bakın
+              </p>
+            )}
+            <div className="space-y-2 max-h-52 overflow-y-auto">
+              {available.map((n: any) => (
+                <button key={n.phoneNumber}
+                  onClick={() => { setSelNumber(n); setStep('confirm') }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition hover:opacity-80"
+                  style={{ background: '#fff', border: '1px solid #e2e8f0' }}>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5" style={{ color: '#2563eb' }}/>
+                    <span className="font-semibold" style={{ color: '#0f172a' }}>{n.phoneNumber}</span>
+                    {n.locality && <span style={{ color: '#94a3b8' }}>{n.locality}{n.region ? ', ' + n.region : ''}</span>}
+                  </div>
+                  <ChevronRight className="w-3 h-3" style={{ color: '#94a3b8' }}/>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── ONAY ── */}
+        {step === 'confirm' && selNumber && (
+          <div className="space-y-4 pt-2">
+            <div className="p-4 rounded-xl" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+              <p className="text-xs font-bold mb-1" style={{ color: '#1e40af' }}>Satın Alınacak Numara</p>
+              <p className="text-lg font-bold" style={{ color: '#0f172a' }}>{selNumber.phoneNumber}</p>
+              <p className="text-xs mt-1" style={{ color: '#64748b' }}>
+                {selCountry?.name}{selNumber.locality ? ' · ' + selNumber.locality : ''}{selNumber.region ? ', ' + selNumber.region : ''}
+              </p>
+            </div>
+            <input value={friendlyName} onChange={e => setFriendlyName(e.target.value)}
+              placeholder="İsim (ör. Satış Hattı, Almanya Ofisi)"
+              className="w-full px-3 py-2.5 rounded-xl text-xs focus:outline-none"
+              style={{ background: '#fff', border: '1px solid #e2e8f0', color: '#0f172a' }}/>
+            <div className="p-3 rounded-xl text-xs" style={{ background: '#fefce8', border: '1px solid #fde68a', color: '#92400e' }}>
+              Bu numara Twilio hesabınıza eklenir. Aylık ~$1–3 maliyet oluşur. Numara aktifleştikten sonra aramalar bu numaradan çıkar.
+            </div>
+            <button onClick={purchaseNumber} disabled={buying}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40 flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+              {buying ? <RefreshCw className="w-4 h-4 animate-spin"/> : <><CheckCircle className="w-4 h-4"/> Satın Al — {selNumber.phoneNumber}</>}
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   )
