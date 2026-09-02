@@ -254,6 +254,7 @@ export class CallSession extends EventEmitter {
 
   private _preloadedGreeting:    Buffer[] | null = null; // makeCall'da önceden sentezlenen greeting (sync cache)
   private _greetingPromise:      Promise<Buffer[]> | null = null; // async pre-synth promise (cold start absorblanır)
+  private _speakStartMs          = 0;   // AI konuşmaya başladığı zaman — barge-in için minimum süre koruması
   private _pendingUserText       = '';  // barge-in veya echo-guard sırasında biriken metin
   private _processingLock        = false; // aynı anda birden fazla Claude çağrısını önle
   private _ttsEmptyCount         = 0;  // arka arkaya 0-chunk dönen TTS cümleleri sayacı
@@ -273,7 +274,9 @@ export class CallSession extends EventEmitter {
       const wordCount  = text.trim().split(/\s+/).length;
       const confOk     = confidence >= this.langCfg.silenceConfidenceThreshold;
       const wordsOk    = wordCount  >= this.langCfg.minWordsToBarge;
-      if (confOk && wordsOk) {
+      // AI konuşmaya başladıktan en az 1.5 saniye geçmeden barge-in izin verme
+      const speakAgeOk = (Date.now() - this._speakStartMs) >= 1500;
+      if (confOk && wordsOk && speakAgeOk) {
         if (this._isEchoLikely(text)) {
           // AI'nın kendi sesinin echo'su — barge-in tetikleme, yoksay
           console.log(`[Session ${this.sessionId}] Barge-in echo filtered: "${text}" conf=${confidence.toFixed(2)}`);
@@ -469,9 +472,10 @@ export class CallSession extends EventEmitter {
       return;
     }
 
-    this.ttsProcessing = true;
+    this.ttsProcessing  = true;
     this._setState('speaking');
-    this.isSpeaking    = true;
+    this.isSpeaking     = true;
+    this._speakStartMs  = Date.now();
 
     const sentence = this.ttsQueue.shift()!;
     this.ttsAbort  = new AbortController();

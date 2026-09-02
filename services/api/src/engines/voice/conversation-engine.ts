@@ -75,7 +75,7 @@ const TOOLS = [
   },
   {
     name: 'end_call',
-    description: 'Konuşma tamamlandığında, müşteri vedalaştığında, veya başka bir uygun nokta bulunduğunda aramayı sonlandır.',
+    description: 'SADECE müşteri açıkça veda ettiğinde çağır ("güle güle", "görüşürüz", "hoşça kalın", "iyi günler" gibi kesin veda sözcükleri). "Daha sonra konuşalım", "şimdi müsait değilim", "meşgulüm", "düşüneceğim" gibi ifadelerde ASLA çağırma — bunlar olumsuz yanıt değil, geri arama fırsatıdır. Sessizlik veya belirsiz yanıt da end_call için yeterli değildir.',
     input_schema: {
       type: 'object',
       properties: {
@@ -138,11 +138,12 @@ function buildSystemPrompt(ctx: CallContext): string {
       '• Sıcak ve samimi konuş, aşırı resmi değil. Gerçek bir insan gibi.',
       '',
       'ARAÇLAR:',
-      '• Müşteri açıkça veda edince: end_call çağır. Sadece "görüşürüz", "güle güle", "iyi günler" gibi kesin veda sözcükleriyle.',
+      '• Müşteri açıkça veda edince: end_call çağır. SADECE "görüşürüz", "güle güle", "iyi günler", "hoşça kalın" gibi kesin veda sözcükleriyle.',
+      '• "Daha sonra konuşalım" veya "şimdi müsait değilim" → end_call DEĞİL. "Tabii ki, ne zaman uygun olur?" de ve geri arama zamanı sor.',
+      '• Müşteri iki kez açıkça "hayır istemiyorum" veya "lütfen aramayın" derse: add_to_blacklist çağır ve nazikçe vedalaş.',
       '• Randevu kesinleşince: book_appointment → nazikçe vedalaş.',
       '• Canlı temsilci istiyorsa: transfer_call.',
-      '• İkinci net "hayır"dan sonra nazikçe kapat — ısrar etme, end_call çağır.',
-      '• Sessizlik, kısa cevap veya konu değişikliği end_call için yeterli DEĞIL. Konuşmayı sürdür.',
+      '• Sessizlik, kısa cevap, tereddüt veya konu değişikliği end_call için ASLA yeterli değil. Konuşmayı sürdür.',
       '',
       'YASAK:',
       '• Markdown yok. Emoji yok. Liste yok. Sadece düz metin.',
@@ -221,7 +222,11 @@ function buildSystemPrompt(ctx: CallContext): string {
     (lang === 'tr' ? `Konuşma tarzı: ` : lang === 'de' ? `Gesprächsstil: ` : `Conversation style: `) + style,
     ctx.pain1 ? (lang === 'tr' ? `Müşteri sorunu: ${ctx.pain1}` : `Prospect pain point: ${ctx.pain1}`) : '',
     ctx.pain2 ? (lang === 'tr' ? `2. sorun: ${ctx.pain2}` : `2nd pain: ${ctx.pain2}`) : '',
-    ctx.callMemory ? (lang === 'tr' ? `Önceki görüşme: ${ctx.callMemory}` : `Previous call note: ${ctx.callMemory}`) : '',
+    ctx.callMemory ? (
+      lang === 'tr'
+        ? `ÖNCEKİ GÖRÜŞME NOTU (geçmiş bilgi — mevcut görüşmede doğrudan alıntılama): ${ctx.callMemory}`
+        : `PREVIOUS CALL NOTE (historical context — do not quote directly): ${ctx.callMemory}`
+    ) : '',
     ctx.avoidWords ? (lang === 'tr' ? `Yasaklı kelimeler: ${ctx.avoidWords}` : `Avoid words: ${ctx.avoidWords}`) : '',
     ctx.transferNumber ? (lang === 'tr' ? `Transfer no: ${ctx.transferNumber}` : `Transfer number: ${ctx.transferNumber}`) : '',
     ctx.businessContext ? `\n── ÜRÜN/HİZMET BİLGİLERİ ──\n${ctx.businessContext}` : '',
@@ -255,7 +260,7 @@ export async function streamResponse(
 
   const stream = await anthropic.messages.stream({
     model:       'claude-haiku-4-5-20251001',
-    max_tokens:  200,   // 1-2 cümle için yeterli; fazlası konuşmayı uzatır
+    max_tokens:  280,   // 1-2 cümle + araç çağrısı için yeterli alan
     system:      buildSystemPrompt(ctx),
     messages,
     tools:       TOOLS,

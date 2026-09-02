@@ -60,10 +60,10 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     cartesiaModel:    'sonic-3',
     deepgramModel:    'nova-3',
     deepgramLanguage: 'tr',
-    deepgramEndpointingMs: 300,        // 400ms gecikme kısaltıldı — barge-in daha hızlı
-    silenceConfidenceThreshold: 0.55,
-    minWordsToBarge: 2,
-    fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee', 'evet', 'tamam', 'he', 'ya', 'vay', 'ooo', 'yani', 'şey', 'tabi']),
+    deepgramEndpointingMs: 500,        // Türkçe'de doğal duraklama için yeterli süre
+    silenceConfidenceThreshold: 0.72,  // Düşük güvenilirlikli geçici transkriptlerde barge-in engelle
+    minWordsToBarge: 4,                // 4+ kelime gerekir — tek kelime / kısa tepkiler AI'yı kesmemeli
+    fillerWords: new Set(['mm', 'mmm', 'aa', 'ha', 'hmm', 'ee', 'evet', 'tamam', 'he', 'ya', 'vay', 'ooo', 'yani', 'şey', 'tabi', 'tabii', 'peki', 'anladım', 'anlıyorum', 'elbette', 'aaa', 'aha', 'oh', 'ah', 'efendim', 'buyurun', 'hayır', 'yok']),
     fillerResponses: [
       'Anlıyorum.',
       'Tabii efendim.',
@@ -84,10 +84,10 @@ export const VOICE_CATALOG: Record<string, LangConfig> = {
     cartesiaModel:         'sonic-3',
     deepgramModel:         'nova-3',
     deepgramLanguage:      'en-US',
-    deepgramEndpointingMs: 300,
-    silenceConfidenceThreshold: 0.55,
-    minWordsToBarge: 2,
-    fillerWords: new Set(['um', 'uh', 'hmm', 'ah', 'oh', 'yeah', 'ok', 'right', 'sure']),
+    deepgramEndpointingMs: 450,
+    silenceConfidenceThreshold: 0.72,
+    minWordsToBarge: 4,
+    fillerWords: new Set(['um', 'uh', 'hmm', 'ah', 'oh', 'yeah', 'ok', 'right', 'sure', 'no', 'yes', 'okay', 'alright', 'got it', 'i see']),
     fillerResponses: ['Sure...', 'Let me see...', 'Right...', 'Of course...', 'Absolutely...'],
     endCallPhrases:  ['goodbye', 'bye', 'have a good day', 'talk later', 'take care', 'thanks bye'],
     callEndMessage:  'Thank you, have a great day!',
