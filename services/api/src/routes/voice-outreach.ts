@@ -160,24 +160,22 @@ async function generatePersonalizedOpening(params: {
 
   const prompt = `${langInstructions[language] || langInstructions['tr']}
 
-Bilgiler:
-- Arayan: ${agentName} (${companyName} adına)
-- Aranan kişi: ${firstName}
-- Şirket: ${brandName}
-${pain ? `- Tespit edilen sorun: ${pain}` : ''}
-${signal ? `- Büyüme sinyali: ${signal}` : ''}
-- Sunulan: ${productDesc}
+Kişi: ${firstName}${brandName ? ` (${brandName})` : ''}
+${pain ? `Sorun: ${pain}` : ''}
+${signal ? `Sinyal: ${signal}` : ''}
+Ürün/hizmet: ${productDesc}
 
-Kural:
-1. "Ben X, Y adına arıyorum" ile BAŞLAMA
-2. Kişinin adı veya şirketle ilgili gözlemle başla
-3. 1-2 cümle maksimum, soru ile bitir
-4. Sadece açılış cümlesini yaz, başka hiçbir şey ekleme.`;
+Kural (KESİNLİKLE UY):
+1. MAKSIMUM 1 kısa cümle + kısa soru. Toplamda 15-20 kelimeyi geçme.
+2. Kişinin adıyla veya şirketiyle ilgili doğal, kısa bir gözlemle başla.
+3. "Ben X, Y adına arıyorum" diyerek başlama. Kimliğini söyleme.
+4. Soru ile bitir — kısa, merak uyandıran.
+5. Sadece açılış metnini yaz, başka hiçbir şey ekleme.`;
 
   try {
     const r = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 180,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 80,
       messages: [{ role: 'user', content: prompt }],
     });
     return ((r.content[0] as any)?.text || '').trim();
@@ -524,11 +522,10 @@ router.post('/call/single', async (req: any, res: any) => {
     const avoidWords  = profile?.sales_style?.avoid_words || '';
     const callLang    = language || getLanguageByCountry(lead.country_code || '') || 'tr';
 
-    const voiceType       = (settings?.voice_provider === 'cloned' ? 'cloned' : 'library') as 'cloned' | 'library';
-    const clonedVoiceId   = voiceType === 'cloned' ? settings?.elevenlabs_voice_id : undefined;
-    const libraryVoiceId  = voiceType === 'library' ? settings?.elevenlabs_voice_id : undefined;
-    // Cartesia kütüphanesinden seçilen ses ID'si — engine'e doğrudan geçirilir
-    const cartesiaVoiceOverride = settings?.voice_provider === 'cartesia' ? (settings?.elevenlabs_voice_id || undefined) : undefined;
+    // Cloned olmayan her ses tipinde elevenlabs_voice_id = Cartesia voice ID'si
+    const cartesiaVoiceOverride = (settings?.voice_provider !== 'cloned' && settings?.elevenlabs_voice_id)
+      ? settings.elevenlabs_voice_id
+      : undefined;
 
     // Kara liste kontrolü — "bir daha aramayın" demiş mi?
     const normalizedPhone = normalizePhoneE164(lead.phone, lead.country_code);
@@ -828,7 +825,7 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
             language:          callLang,
             conversationStyle,
             firstMessage:      openingLine,
-            voiceId:           settings?.voice_provider === 'cartesia' ? (settings?.elevenlabs_voice_id || undefined) : undefined,
+            voiceId:           (settings?.voice_provider !== 'cloned' && settings?.elevenlabs_voice_id) ? settings.elevenlabs_voice_id : undefined,
             gender:            settings?.voice_gender || undefined,
             transferNumber:    settings?.transfer_number || '',
             avoidWords:        avoidWords || '',

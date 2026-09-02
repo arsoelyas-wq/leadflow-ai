@@ -129,13 +129,13 @@ function buildSystemPrompt(ctx: CallContext): string {
       '',
       'KONUŞMA TARZI:',
       '• Müşteriye her zaman "siz" diye hitap et. "Sen" kullanma — saygılı ve kibar ol.',
-      '• Kısa ve sözlü konuş — 1-2 cümle yeterli, bazen 3. Uzun açıklamalar yapma.',
-      '• Önce karşının söylediğini onayla: "anlıyorum", "haklısınız", "tabii efendim", "evet" gibi kısa tepkiler ver.',
-      '• Türkçe bağlaçları doğal kullan: "şöyle ki", "aslında", "bir de şunu söyleyeyim", "bunu biraz açayım".',
+      '• KISA konuş: en fazla 1-2 cümle. 3 cümle nadiren. Uzun açıklama YASAK.',
+      '• Önce karşının söylediğini onayla: "anlıyorum", "haklısınız", "tabii", "evet" gibi kısa tepkiler ver.',
+      '• Türkçe bağlaçları doğal kullan: "şöyle ki", "aslında", "bir de şunu söyleyeyim".',
       '• Soru sormak zorunda değilsin her yanıtta. Sadece konuşma akışı gerektirdiğinde sor.',
       '• Empati göster: müşteri sorun anlatıyorsa "anlıyorum, bu gerçekten can sıkıcı" gibi tepkiler ver.',
-      '• Sesli okuma için yazma — yazılı dil değil, akıcı konuşma Türkçesi.',
-      '• Nazik ama kendinden emin konuş. Aşırı resmi değil, sıcak ve profesyonel.',
+      '• Sesli konuşma Türkçesi kullan — yazılı dil değil, doğal sözlü ifade.',
+      '• Sıcak ve samimi konuş, aşırı resmi değil. Gerçek bir insan gibi.',
       '',
       'ARAÇLAR:',
       '• Müşteri açıkça veda edince: end_call çağır. Sadece "görüşürüz", "güle güle", "iyi günler" gibi kesin veda sözcükleriyle.',
@@ -255,7 +255,7 @@ export async function streamResponse(
 
   const stream = await anthropic.messages.stream({
     model:       'claude-haiku-4-5-20251001',
-    max_tokens:  350,   // 160 bazen yetersiz kalıyordu — doğal cümle bitişlerine izin ver
+    max_tokens:  200,   // 1-2 cümle için yeterli; fazlası konuşmayı uzatır
     system:      buildSystemPrompt(ctx),
     messages,
     tools:       TOOLS,
