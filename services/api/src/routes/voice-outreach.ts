@@ -152,39 +152,45 @@ async function generatePersonalizedOpening(params: {
   const pain      = researchData?.pains?.[0] || '';
   const signal    = researchData?.jobSignals?.[0] || '';
 
-  const langInstructions: Record<string, string> = {
-    tr: 'Türkçe yaz. Samimi, doğal, satışçı gibi değil — gerçekten araştırmış biri gibi.',
-    en: 'Write in English. Warm, natural, NOT a sales pitch.',
-    de: 'Schreib auf Deutsch. Warmherzig, natürlich.',
-    fr: 'Écris en français. Chaleureux, naturel.',
-    ar: 'اكتب بالعربية. دافئ، طبيعي.',
+  const openingByLang: Record<string, string> = {
+    tr: `Doğal Türkçe telefon açılışı yaz. Bu üç parçayı kullan:
+1. "Merhaba ${firstName} Bey/Hanım, nasılsınız?" (kısa selamlama)
+2. "${agentName} arıyorum, ${companyName}'dan." (kim olduğunu söyle)
+3. Tek cümle arama nedeni + "Müsait misiniz?" (izin iste)
+
+Toplam 3 kısa cümle, 20-25 kelime. Doğal konuşma dili. Sadece metni yaz.`,
+    en: `Write a natural phone opening in English:
+1. "Hi ${firstName}, how are you?" (warm greeting)
+2. "It's ${agentName} calling from ${companyName}." (who you are)
+3. One-sentence reason + "Do you have a moment?" (ask permission)
+3 short sentences, 20-25 words. Natural spoken English. Write only the text.`,
+    de: `Natürliche Telefon-Eröffnung auf Deutsch:
+1. "Hallo ${firstName}, wie geht's Ihnen?"
+2. "Hier ist ${agentName} von ${companyName}."
+3. Ein kurzer Satz Grund + "Haben Sie einen Moment?"
+3 Sätze, 20-25 Wörter. Nur den Text schreiben.`,
+    fr: `Ouverture téléphonique naturelle en français:
+1. "Bonjour ${firstName}, comment allez-vous?"
+2. "${agentName} à l'appareil, de ${companyName}."
+3. Raison en une phrase + "Avez-vous un moment?"
+3 phrases, 20-25 mots. Écrire seulement le texte.`,
   };
 
-  const prompt = `${langInstructions[language] || langInstructions['tr']}
-
-Kişi: ${firstName}${brandName ? ` (${brandName})` : ''}
-${pain ? `Sorun: ${pain}` : ''}
-${signal ? `Sinyal: ${signal}` : ''}
-Ürün/hizmet: ${productDesc}
-
-Kural (KESİNLİKLE UY):
-1. MAKSIMUM 1 kısa cümle + kısa soru. Toplamda 15-20 kelimeyi geçme.
-2. Kişinin adıyla veya şirketiyle ilgili doğal, kısa bir gözlemle başla.
-3. "Ben X, Y adına arıyorum" diyerek başlama. Kimliğini söyleme.
-4. Soru ile bitir — kısa, merak uyandıran.
-5. Sadece açılış metnini yaz, başka hiçbir şey ekleme.`;
+  const prompt = openingByLang[language] || openingByLang['tr'];
 
   try {
     const r = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 80,
+      max_tokens: 120,
       messages: [{ role: 'user', content: prompt }],
     });
     return ((r.content[0] as any)?.text || '').trim();
   } catch {
     const fallbacks: Record<string, string> = {
-      tr: `${firstName}, merhaba — ${pain ? `"${pain.slice(0, 60)}" konusunda` : 'şirketinizi araştırırken'} aklıma geldi. Bir dakikanız var mı?`,
-      en: `${firstName}, hi — I came across ${brandName} and had a thought. Do you have a moment?`,
+      tr: `Merhaba ${firstName} Bey/Hanım, nasılsınız? ${agentName} arıyorum, ${companyName}'dan. ${productDesc.slice(0, 40)} konusunda kısa bir şey paylaşmak istedim — müsait misiniz?`,
+      en: `Hi ${firstName}, how are you? It's ${agentName} calling from ${companyName}. I wanted to share something quickly — do you have a moment?`,
+      de: `Hallo ${firstName}, wie geht's Ihnen? Hier ist ${agentName} von ${companyName}. Ich wollte kurz etwas mitteilen — haben Sie einen Moment?`,
+      fr: `Bonjour ${firstName}, comment allez-vous? ${agentName} à l'appareil, de ${companyName}. Je voulais partager quelque chose rapidement — avez-vous un moment?`,
     };
     return fallbacks[language] || fallbacks['tr'];
   }
@@ -424,18 +430,30 @@ router.delete('/my-voices/:id', async (req: any, res: any) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+// Bilinen Cartesia kadın sesi UUID'leri — set-voice'ta gender otomatik belirlenir
+const KNOWN_FEMALE_VOICE_IDS = new Set([
+  'fa7bfcdc-603c-4bf1-a600-a371400d2f8c',  // TR — Leyla
+  'a0e99841-438c-4a64-b679-ae501e7d6091',  // EN — Barbara
+  '694f9389-aac1-45b6-b726-9d9369183238',  // EN — Lilya
+  '5c42302c-194b-4d0c-ba1a-8cb485c84ab9',  // EN — Jessica
+  'f9836c6e-a0bd-460e-9d3c-f7299fa60f94',  // EN — Madame Mischief
+]);
+
 // POST /api/voice/set-voice
 router.post('/set-voice', async (req: any, res: any) => {
   try {
     const { voiceId, voiceName, voiceType = 'library', gender } = req.body;
     // voiceType: 'cloned' | 'library' | 'cartesia'
+    // gender: UI'dan gelmiyorsa voiceId'den çıkar
+    const resolvedGender: string = gender || (KNOWN_FEMALE_VOICE_IDS.has(voiceId) ? 'female' : 'male');
+
     const row: any = {
       user_id:             req.userId,
       elevenlabs_voice_id: voiceId,   // Cartesia ID de bu kolona saklanır
       voice_name:          voiceName,
       voice_provider:      voiceType,
+      voice_gender:        resolvedGender,
     };
-    if (gender) row.voice_gender = gender;
 
     const { error } = await supabase.from('voice_settings').upsert([row]);
     if (error && error.message?.includes('voice_gender')) {

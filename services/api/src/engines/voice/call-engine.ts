@@ -436,6 +436,13 @@ export async function onTwilioStatus(sessionId: string, status: string, body: Re
 
   if (status === 'answered') {
     await _updateCallStatus(sessionId, 'in_progress');
+  } else if (status === 'completed') {
+    // Kullanıcı kapattıysa session.on('ended') tetiklenmemiş olabilir — DB'yi düzelt
+    const { data: row } = await getSupabase()
+      .from('voice_calls').select('status').eq('id', sessionId).single().catch(() => ({ data: null }));
+    if (row && ['in_progress', 'calling', 'initiating', 'ringing'].includes(row.status)) {
+      await _updateCallStatus(sessionId, 'completed', { end_reason: 'user_hangup', ended_at: new Date().toISOString() });
+    }
   } else if (['no-answer', 'busy', 'failed'].includes(status)) {
     _voicemailPending.delete(body.CallSid || '');  // WS hiç bağlanmadıysa temizle
     const errorCode = body.ErrorCode || body.SipResponseCode || '';
