@@ -15,11 +15,26 @@ const FormData = require('form-data');
 const Anthropic = require('@anthropic-ai/sdk');
 const crypto   = require('crypto');
 const { synthesizeXtts, warmUpXtts } = require('../services/xtts-engine');
+const { getLangConfig, getCartesiaVoiceId } = require('../engines/voice/voice-catalog');
 
 const router    = express.Router();
 const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-// Cartesia voice ID'leri UUID formatında — geçersiz ID Cartesia'yı patlatır
+// UUID_RE: Cartesia voice ID formatı — ElevenLabs ID'lerini (< 36 char) filtreler
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Seçilen ses ayarlarından Cartesia voiceId çıkar.
+ *  - Kullanıcı geçerli bir Cartesia UUID seçmişse → o ID
+ *  - Seçilmemişse → catalog'dan gender'a göre doğru ID
+ */
+function resolveVoiceId(settings: any, lang: string): string {
+  const storedId = settings?.elevenlabs_voice_id;
+  if (settings?.voice_provider !== 'cloned' && storedId && UUID_RE.test(storedId)) {
+    return storedId;
+  }
+  const gender = (settings?.voice_gender as 'male' | 'female') || 'female';
+  const langCfg = getLangConfig(lang);
+  return getCartesiaVoiceId(langCfg, gender);
+}
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
 const upload    = multer({ dest: '/tmp/voice/' });
 
@@ -542,10 +557,8 @@ router.post('/call/single', async (req: any, res: any) => {
     const avoidWords  = profile?.sales_style?.avoid_words || '';
     const callLang    = language || getLanguageByCountry(lead.country_code || '') || 'tr';
 
-    // Cartesia voice ID UUID formatında olmalı — geçersiz ID'ler sesi tamamen keser
-    const cartesiaVoiceOverride = (
-      settings?.voice_provider !== 'cloned' && UUID_RE.test(settings?.elevenlabs_voice_id || '')
-    ) ? settings!.elevenlabs_voice_id : undefined;
+    // Seçilen ses → her zaman geçerli bir Cartesia ID döner (seçilmemişse gender default)
+    const cartesiaVoiceOverride = resolveVoiceId(settings, callLang);
 
     // Kara liste kontrolü — "bir daha aramayın" demiş mi?
     const normalizedPhone = normalizePhoneE164(lead.phone, lead.country_code);
@@ -669,8 +682,8 @@ router.post('/call/single', async (req: any, res: any) => {
             language:          callLang,
             conversationStyle: finalStyle,
             firstMessage:      openingLine,
-            voiceId:           cartesiaVoiceOverride,   // Kütüphaneden seçilmişse kullan
-            gender:            settings?.voice_gender || undefined,
+            voiceId:           cartesiaVoiceOverride,   // resolveVoiceId() — her zaman geçerli bir ID
+            gender:            undefined,               // voiceId zaten doğru ses — gender fallback kullanılmaz
             transferNumber:    settings?.transfer_number || '',
             avoidWords:        avoidWords || '',
             pain1:             researchData?.pains?.[0] || '',
@@ -845,8 +858,8 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
             language:          callLang,
             conversationStyle,
             firstMessage:      openingLine,
-            voiceId:           (settings?.voice_provider !== 'cloned' && UUID_RE.test(settings?.elevenlabs_voice_id || '')) ? settings!.elevenlabs_voice_id : undefined,
-            gender:            settings?.voice_gender || undefined,
+            voiceId:           resolveVoiceId(settings, callLang),
+            gender:            undefined,
             transferNumber:    settings?.transfer_number || '',
             avoidWords:        avoidWords || '',
             pain1:             researchData?.pains?.[0] || '',
