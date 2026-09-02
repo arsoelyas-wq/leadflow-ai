@@ -296,12 +296,12 @@ export async function streamResponse(
   }
 
   // Stream bitti — kalan parçayı flush et
+  // NOT: fullText zaten tüm token'ları içeriyor; pending buraya eklenmemeli — çift cümle hatası oluşur
   if (pending.trim().length > 0 && !signal.aborted) {
     const sent = pending.trim();
     sentences.push(sent);
     onSentence(sent);
-    fullText += pending;
-    pending   = '';
+    pending = '';
   }
 
   // Araç çağrılarını al

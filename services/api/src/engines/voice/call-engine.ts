@@ -435,13 +435,31 @@ export async function onTwilioStatus(sessionId: string, status: string, body: Re
   const mapped = statusMap[status] || status;
 
   if (status === 'answered') {
-    await _updateCallStatus(sessionId, 'in_progress');
+    // Sadece henüz in_progress olmayan durumlarda güncelle — geç gelen callback completed'ı ezmesin
+    const { data: rowA } = await getSupabase()
+      .from('voice_calls').select('status').eq('id', sessionId).single().catch(() => ({ data: null }));
+    if (rowA && ['initiating', 'ringing', 'calling'].includes(rowA.status)) {
+      await _updateCallStatus(sessionId, 'in_progress');
+    }
   } else if (status === 'completed') {
     // Kullanıcı kapattıysa session.on('ended') tetiklenmemiş olabilir — DB'yi düzelt
+    // İki yoldan dene: sessionId (= voice_calls.id) ve twilio_call_sid
+    const endedAt = new Date().toISOString();
+    const activeStatuses = ['in_progress', 'calling', 'initiating', 'ringing', 'answered'];
     const { data: row } = await getSupabase()
       .from('voice_calls').select('status').eq('id', sessionId).single().catch(() => ({ data: null }));
-    if (row && ['in_progress', 'calling', 'initiating', 'ringing'].includes(row.status)) {
-      await _updateCallStatus(sessionId, 'completed', { end_reason: 'user_hangup', ended_at: new Date().toISOString() });
+    if (row && activeStatuses.includes(row.status)) {
+      await _updateCallStatus(sessionId, 'completed', { end_reason: 'user_hangup', ended_at: endedAt });
+    }
+    // Fallback: twilio_call_sid üzerinden bul (sessionId eşleşmemişse)
+    const callSid = body.CallSid || '';
+    if (callSid && (!row || activeStatuses.includes(row.status))) {
+      await getSupabase()
+        .from('voice_calls')
+        .update({ status: 'completed', end_reason: 'user_hangup', ended_at: endedAt })
+        .eq('twilio_call_sid', callSid)
+        .in('status', activeStatuses)
+        .catch(() => {});
     }
   } else if (['no-answer', 'busy', 'failed'].includes(status)) {
     _voicemailPending.delete(body.CallSid || '');  // WS hiç bağlanmadıysa temizle
