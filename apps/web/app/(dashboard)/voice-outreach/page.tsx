@@ -2405,7 +2405,7 @@ export default function VoicePage() {
                           {c.recording_url && (
                             <div className="mb-3 rounded-xl px-3 py-2" style={{ background:'#f0f9ff', border:'1px solid #bae6fd' }}>
                               <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color:'#0284c7' }}>Arama Kaydı</p>
-                              <audio controls src={c.recording_url} className="w-full h-8" style={{ accentColor:'#0284c7' }}/>
+                              <audio controls src={`${API}/api/voice/recording/${c.id}`} className="w-full h-8" style={{ accentColor:'#0284c7' }}/>
                             </div>
                           )}
                           {c.transcript ? (

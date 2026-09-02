@@ -18,6 +18,8 @@ const { synthesizeXtts, warmUpXtts } = require('../services/xtts-engine');
 
 const router    = express.Router();
 const supabase  = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+// Cartesia voice ID'leri UUID formatında — geçersiz ID Cartesia'yı patlatır
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
 const upload    = multer({ dest: '/tmp/voice/' });
 
@@ -522,10 +524,10 @@ router.post('/call/single', async (req: any, res: any) => {
     const avoidWords  = profile?.sales_style?.avoid_words || '';
     const callLang    = language || getLanguageByCountry(lead.country_code || '') || 'tr';
 
-    // Cloned olmayan her ses tipinde elevenlabs_voice_id = Cartesia voice ID'si
-    const cartesiaVoiceOverride = (settings?.voice_provider !== 'cloned' && settings?.elevenlabs_voice_id)
-      ? settings.elevenlabs_voice_id
-      : undefined;
+    // Cartesia voice ID UUID formatında olmalı — geçersiz ID'ler sesi tamamen keser
+    const cartesiaVoiceOverride = (
+      settings?.voice_provider !== 'cloned' && UUID_RE.test(settings?.elevenlabs_voice_id || '')
+    ) ? settings!.elevenlabs_voice_id : undefined;
 
     // Kara liste kontrolü — "bir daha aramayın" demiş mi?
     const normalizedPhone = normalizePhoneE164(lead.phone, lead.country_code);
@@ -825,7 +827,7 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
             language:          callLang,
             conversationStyle,
             firstMessage:      openingLine,
-            voiceId:           (settings?.voice_provider !== 'cloned' && settings?.elevenlabs_voice_id) ? settings.elevenlabs_voice_id : undefined,
+            voiceId:           (settings?.voice_provider !== 'cloned' && UUID_RE.test(settings?.elevenlabs_voice_id || '')) ? settings!.elevenlabs_voice_id : undefined,
             gender:            settings?.voice_gender || undefined,
             transferNumber:    settings?.transfer_number || '',
             avoidWords:        avoidWords || '',
@@ -922,6 +924,30 @@ async function resumePendingCampaigns() {
   }
 }
 
+
+// GET /api/voice/recording/:callId — Twilio recording proxy (Basic Auth sorununu çözer)
+router.get('/recording/:callId', async (req: any, res: any) => {
+  try {
+    const { callId } = req.params;
+    const { data: call } = await supabase.from('voice_calls')
+      .select('recording_url').eq('id', callId).eq('user_id', req.userId).single();
+    if (!call?.recording_url) return res.status(404).json({ error: 'Kayıt bulunamadı' });
+
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken  = process.env.TWILIO_AUTH_TOKEN;
+    if (!accountSid || !authToken) return res.status(503).json({ error: 'Twilio credentials eksik' });
+
+    const axios = require('axios');
+    const twilioRes = await axios.get(call.recording_url, {
+      auth: { username: accountSid, password: authToken },
+      responseType: 'stream',
+      timeout: 30000,
+    });
+    res.setHeader('Content-Type', twilioRes.headers['content-type'] || 'audio/mpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    twilioRes.data.pipe(res);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
 
 // GET /api/voice/calls
 router.get('/calls', async (req: any, res: any) => {
