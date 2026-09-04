@@ -1965,7 +1965,7 @@ export default function VoicePage() {
       const d = await r.json()
       if (d.ok) {
         setActiveCampaignId(d.campaignId)
-        showMsg('success', d.message)
+        showMsg('success', d.creditWarning ? `${d.message} ⚠️ ${d.creditWarning}` : d.message)
         loadAll()
         setSelectedLeads([])
       } else {

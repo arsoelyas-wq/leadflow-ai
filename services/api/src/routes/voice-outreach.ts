@@ -38,6 +38,47 @@ function resolveVoiceId(settings: any, lang: string): string {
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 0 });
 const upload    = multer({ dest: '/tmp/voice/' });
 
+// ─── KREDİ KONTROLÜ VE DÜŞME ─────────────────────────────────────────────────
+const VOICE_CALL_CREDIT_COST = 10;
+
+async function checkAndDeductVoiceCredit(userId: string, description: string): Promise<void> {
+  const { data: user } = await supabase
+    .from('users')
+    .select('plan_type, credits_total, credits_used, credits_rollover')
+    .eq('id', userId)
+    .single();
+
+  if (!user) throw new Error('Kullanıcı bulunamadı');
+  if (user.plan_type === 'enterprise') return; // sınırsız
+
+  const monthly  = user.credits_total  || 0;
+  const used     = user.credits_used   || 0;
+  const rollover = user.credits_rollover || 0;
+  const remaining = Math.max(0, monthly - used) + rollover;
+
+  if (remaining < VOICE_CALL_CREDIT_COST) {
+    throw new Error(`Yetersiz kredi — ${remaining} kredi var, ${VOICE_CALL_CREDIT_COST} gerekli. Kredi satın alın: /credits`);
+  }
+
+  // Önce rollover'dan düş, sonra aylıktan
+  const rolloverUsed = Math.min(VOICE_CALL_CREDIT_COST, rollover);
+  const monthlyUsed  = VOICE_CALL_CREDIT_COST - rolloverUsed;
+
+  await supabase.from('users').update({
+    credits_rollover: rollover - rolloverUsed,
+    credits_used:     used + monthlyUsed,
+  }).eq('id', userId);
+
+  // Log
+  await supabase.from('credit_transactions').insert({
+    user_id:       userId,
+    action:        'voice_call',
+    amount:        -VOICE_CALL_CREDIT_COST,
+    description,
+    balance_after: remaining - VOICE_CALL_CREDIT_COST,
+  }).catch(() => {});
+}
+
 // Telefon numarasını E.164 formatına çevir
 function normalizePhoneE164(phone: string, countryCode?: string): string {
   let num = phone.replace(/[\s\-\(\)\.]/g, '');
@@ -660,6 +701,9 @@ router.post('/call/single', async (req: any, res: any) => {
 
     (async () => {
       try {
+        // Kredi kontrolü ve düşme (10 kredi/arama)
+        await checkAndDeductVoiceCredit(userId, `Ses arama: ${lead.company_name || normalizedPhone}`);
+
         // İlk mesajı üret — lead'e özel kişiselleştirilmiş açılış
         const openingLine = await generatePersonalizedOpening({
           lead, agentName, companyName, productDesc, language: callLang, researchData,
@@ -762,7 +806,20 @@ router.post('/call/campaign', async (req: any, res: any) => {
 
     await supabase.from('campaign_queue').insert(queueItems);
 
-    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead kuyruğa eklendi — aramalar ${delayMinutes} dakika arayla başlayacak` });
+    // Kredi yeterliliği uyarısı (hard-block değil — aramalar zamanla yapılır ve kredi eklenebilir)
+    let creditWarning: string | undefined;
+    try {
+      const { data: userRow } = await supabase.from('users').select('plan_type, credits_total, credits_used, credits_rollover').eq('id', userId).single();
+      if (userRow && userRow.plan_type !== 'enterprise') {
+        const remaining = Math.max(0, (userRow.credits_total || 0) - (userRow.credits_used || 0)) + (userRow.credits_rollover || 0);
+        const needed = leadIds.length * VOICE_CALL_CREDIT_COST;
+        if (remaining < needed) {
+          creditWarning = `Uyarı: ${remaining} krediniz var, kampanya için ${needed} gerekiyor. Eksik krediler için aramalar atlanacak.`;
+        }
+      }
+    } catch {}
+
+    res.json({ ok: true, campaignId: campaign?.id, total: leadIds.length, message: `${leadIds.length} lead kuyruğa eklendi — aramalar ${delayMinutes} dakika arayla başlayacak`, creditWarning });
 
     // Arka planda ilk 5 aramanın işlenmesi (scheduler ayrıca /process-queue ile sürekli tetiklenir)
     void processCampaignQueue(userId, campaign.id, { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent: 3, businessContext: buildBusinessContext(profile) });
@@ -829,6 +886,9 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
       }
 
       try {
+        // Kredi kontrolü — yetersizse bu lead'i atla, kampanya devam eder
+        await checkAndDeductVoiceCredit(userId, `Kampanya araması: ${lead.company_name || normPhone}`);
+
         const callLang = lead.country_code ? getLanguageByCountry(lead.country_code) : campaignLangDefault;
         const { data: resVid } = await supabase.from('video_outreach').select('research_data').eq('lead_id', lead.id).not('research_data', 'is', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
         const researchData = resVid?.research_data || { pains: [], jobSignals: [], brandName: lead.company_name, quality: 'minimal' };
