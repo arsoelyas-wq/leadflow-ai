@@ -776,6 +776,11 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
   const batchSize = maxConcurrent;
   let processed = 0;
 
+  // Kampanya ayarlarını bir kez oku (conversation_style vb.)
+  const { data: campaignMeta } = await supabase.from('voice_campaigns').select('conversation_style, language').eq('id', campaignId).single();
+  const campaignStyle = campaignMeta?.conversation_style || 'consultant';
+  const campaignLangDefault = campaignMeta?.language || 'tr';
+
   while (true) {
     // Kampanya durumunu kontrol et — pause/cancel edilmişse dur
     const { data: campRow } = await supabase.from('voice_campaigns').select('status').eq('id', campaignId).single();
@@ -824,11 +829,11 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
       }
 
       try {
-        const callLang = lead.country_code ? getLanguageByCountry(lead.country_code) : 'tr';
+        const callLang = lead.country_code ? getLanguageByCountry(lead.country_code) : campaignLangDefault;
         const { data: resVid } = await supabase.from('video_outreach').select('research_data').eq('lead_id', lead.id).not('research_data', 'is', null).order('created_at', { ascending: false }).limit(1).maybeSingle();
         const researchData = resVid?.research_data || { pains: [], jobSignals: [], brandName: lead.company_name, quality: 'minimal' };
         const callMemory = await getCallMemory(userId, lead.id);
-        const conversationStyle = job.conversation_style || settings?.campaign_style || 'consultant';
+        const conversationStyle = campaignStyle;
 
         const { data: callRecord } = await supabase.from('voice_calls').insert([{
           user_id: userId, lead_id: lead.id, campaign_id: campaignId,
