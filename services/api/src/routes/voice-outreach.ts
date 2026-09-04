@@ -777,6 +777,13 @@ async function processCampaignQueue(userId: string, campaignId: string, opts: an
   let processed = 0;
 
   while (true) {
+    // Kampanya durumunu kontrol et — pause/cancel edilmişse dur
+    const { data: campRow } = await supabase.from('voice_campaigns').select('status').eq('id', campaignId).single();
+    if (campRow && !['running', 'active'].includes(campRow.status)) {
+      console.log(`[Campaign] ${campaignId} status=${campRow.status} — loop stopping`);
+      break;
+    }
+
     // Kuyruktan işlenecek kayıtları al (scheduled_at geçmiş, pending olanlar)
     const { data: jobs } = await supabase.from('campaign_queue')
       .select('*, leads(*)')
@@ -905,6 +912,14 @@ const _activeCampaignIds = new Set<string>();
 
 async function resumePendingCampaigns() {
   try {
+    // 15+ dakikadır 'processing'te takılı kalmış kayıtları kurtар — server crash sonrası
+    const stuckCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    await supabase.from('campaign_queue')
+      .update({ status: 'pending', started_at: null })
+      .eq('status', 'processing')
+      .lt('started_at', stuckCutoff)
+      .catch(e => console.warn('[resumePendingCampaigns] stuck-processing reset error:', e.message));
+
     // Pending ve süresi geçmiş kuyruk kayıtlarını bul, campaign_id + user_id bazında grupla
     const { data: pendingJobs, error } = await supabase
       .from('campaign_queue')
@@ -942,7 +957,7 @@ async function resumePendingCampaigns() {
         const libraryVoiceId = voiceType === 'library'  ? settings?.elevenlabs_voice_id : undefined;
 
         console.log(`[resumePendingCampaigns] Resuming campaign ${campaignId} for user ${userId}`);
-        processCampaignQueue(userId, campaignId, { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent: 3 })
+        processCampaignQueue(userId, campaignId, { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent: 3, businessContext: buildBusinessContext(profile) })
           .catch(err => console.error(`[resumePendingCampaigns] Campaign ${campaignId} error:`, err.message))
           .finally(() => _activeCampaignIds.delete(campaignId));
       } catch (err: any) {
@@ -1122,7 +1137,7 @@ router.get('/campaign/:id/progress', async (req: any, res: any) => {
   try {
     const [{ data: campaign }, { data: queue }] = await Promise.all([
       supabase.from('voice_campaigns').select('*').eq('id', req.params.id).eq('user_id', req.userId).single(),
-      supabase.from('campaign_queue').select('status').eq('campaign_id', req.params.id),
+      supabase.from('campaign_queue').select('status, attempt_count').eq('campaign_id', req.params.id),
     ]);
     if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
     const q = queue || [];
@@ -1130,14 +1145,72 @@ router.get('/campaign/:id/progress', async (req: any, res: any) => {
       campaign,
       progress: {
         total: q.length,
-        pending: q.filter((r: any) => r.status === 'pending').length,
+        pending: q.filter((r: any) => r.status === 'pending' && !(r.attempt_count > 0)).length,
         processing: q.filter((r: any) => r.status === 'processing').length,
         done: q.filter((r: any) => r.status === 'done').length,
         failed: q.filter((r: any) => r.status === 'failed').length,
         skipped: q.filter((r: any) => r.status === 'skipped').length,
+        retrying: q.filter((r: any) => r.status === 'pending' && (r.attempt_count || 0) > 0).length,
         percent: q.length ? Math.round(q.filter((r: any) => ['done','failed','skipped'].includes(r.status)).length / q.length * 100) : 0,
       },
     });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/voice/campaign/:id/pause — kampanyayı duraklat
+router.post('/campaign/:id/pause', async (req: any, res: any) => {
+  try {
+    const { data: campaign } = await supabase.from('voice_campaigns').select('status').eq('id', req.params.id).eq('user_id', req.userId).single();
+    if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
+    if (!['running', 'active'].includes(campaign.status)) return res.status(400).json({ error: `Kampanya ${campaign.status} durumunda — duraklatamazsınız` });
+    await supabase.from('voice_campaigns').update({ status: 'paused' }).eq('id', req.params.id);
+    res.json({ ok: true, status: 'paused' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/voice/campaign/:id/resume — duraklatılmış kampanyayı devam ettir
+router.post('/campaign/:id/resume', async (req: any, res: any) => {
+  try {
+    const campaignId = req.params.id;
+    const userId = req.userId;
+    const { data: campaign } = await supabase.from('voice_campaigns').select('status').eq('id', campaignId).eq('user_id', userId).single();
+    if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
+    if (campaign.status !== 'paused') return res.status(400).json({ error: `Kampanya ${campaign.status} durumunda` });
+    if (_activeCampaignIds.has(campaignId)) return res.status(400).json({ error: 'Kampanya zaten işleniyor' });
+
+    await supabase.from('voice_campaigns').update({ status: 'running' }).eq('id', campaignId);
+
+    const [{ data: settings }, { data: profile }, { data: userRow }] = await Promise.all([
+      supabase.from('voice_settings').select('*').eq('user_id', userId).single(),
+      supabase.from('business_profiles').select('*').eq('user_id', userId).single(),
+      supabase.from('users').select('name, company').eq('id', userId).single(),
+    ]);
+    const agentName   = settings?.agent_name         || userRow?.name    || 'Ahmet';
+    const companyName = settings?.company_name       || profile?.company?.name || userRow?.company || 'Şirketimiz';
+    const productDesc = settings?.product_description || profile?.product?.description || '';
+    const avoidWords  = profile?.sales_style?.avoid_words || '';
+    const voiceType      = (settings?.voice_provider === 'cloned' ? 'cloned' : 'library') as 'cloned' | 'library';
+    const clonedVoiceId  = voiceType === 'cloned'  ? settings?.elevenlabs_voice_id : undefined;
+    const libraryVoiceId = voiceType === 'library' ? settings?.elevenlabs_voice_id : undefined;
+
+    _activeCampaignIds.add(campaignId);
+    processCampaignQueue(userId, campaignId, { agentName, companyName, productDesc, avoidWords, voiceType, clonedVoiceId, libraryVoiceId, settings, maxConcurrent: 3, businessContext: buildBusinessContext(profile) })
+      .catch(err => console.error(`[CampaignResume] ${campaignId}:`, err.message))
+      .finally(() => _activeCampaignIds.delete(campaignId));
+
+    res.json({ ok: true, status: 'running' });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/voice/campaign/:id/cancel — kampanyayı iptal et
+router.post('/campaign/:id/cancel', async (req: any, res: any) => {
+  try {
+    const { data: campaign } = await supabase.from('voice_campaigns').select('status').eq('id', req.params.id).eq('user_id', req.userId).single();
+    if (!campaign) return res.status(404).json({ error: 'Kampanya bulunamadı' });
+    await supabase.from('voice_campaigns').update({ status: 'cancelled', completed_at: new Date() }).eq('id', req.params.id);
+    // Bekleyen kuyruk kayıtlarını da iptal et
+    await supabase.from('campaign_queue').update({ status: 'skipped', last_error: 'Campaign cancelled' }).eq('campaign_id', req.params.id).eq('status', 'pending');
+    res.json({ ok: true, status: 'cancelled' });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

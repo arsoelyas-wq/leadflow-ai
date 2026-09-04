@@ -1864,8 +1864,9 @@ export default function VoicePage() {
     const iv = setInterval(async () => {
       const r = await fetch(`${API}/api/voice/campaign/${activeCampaignId}/progress`, { headers: authH() })
       const d = await r.json()
-      setCampaignProgress(d.progress)
-      if (d.campaign?.status === 'completed') {
+      const status = d.campaign?.status
+      setCampaignProgress((prev: any) => ({ ...d.progress, _paused: status === 'paused' || prev?._paused && status !== 'running' }))
+      if (status === 'completed' || status === 'cancelled') {
         setActiveCampaignId(null)
         setCampaignRunning(false)
         loadAll()
@@ -2215,13 +2216,50 @@ export default function VoicePage() {
 
       {/* ── KAMPANYA PROGRESS ─────────────────────────────────────────────────── */}
       {activeCampaignId && campaignProgress && (
-        <div className="fade-in-up rounded-2xl p-4 space-y-2" style={{ background: 'linear-gradient(135deg,#eff6ff,#f0f9ff)', border: '1.5px solid #93c5fd' }}>
+        <div className="fade-in-up rounded-2xl p-4 space-y-3" style={{ background: 'linear-gradient(135deg,#eff6ff,#f0f9ff)', border: '1.5px solid #93c5fd' }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: '#3b82f6' }}/>
-              <span className="font-semibold text-sm" style={{ color: '#1e40af' }}>Kampanya Devam Ediyor</span>
+              <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: campaignProgress._paused ? '#f59e0b' : '#3b82f6' }}/>
+              <span className="font-semibold text-sm" style={{ color: '#1e40af' }}>
+                {campaignProgress._paused ? 'Kampanya Duraklatıldı' : 'Kampanya Devam Ediyor'}
+              </span>
             </div>
-            <span className="text-xs font-bold" style={{ color: '#3b82f6' }}>{campaignProgress.percent}%</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold" style={{ color: '#3b82f6' }}>{campaignProgress.percent}%</span>
+              {!campaignProgress._paused ? (
+                <button
+                  onClick={async () => {
+                    await fetch(`${API}/api/voice/campaign/${activeCampaignId}/pause`, { method: 'POST', headers: authH() })
+                    setCampaignProgress((p: any) => ({ ...p, _paused: true }))
+                  }}
+                  className="px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  style={{ background: '#fef9c3', color: '#92400e', border: '1px solid #fde68a' }}>
+                  ⏸ Duraklat
+                </button>
+              ) : (
+                <button
+                  onClick={async () => {
+                    await fetch(`${API}/api/voice/campaign/${activeCampaignId}/resume`, { method: 'POST', headers: authH() })
+                    setCampaignProgress((p: any) => ({ ...p, _paused: false }))
+                  }}
+                  className="px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  style={{ background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>
+                  ▶ Devam Et
+                </button>
+              )}
+              <button
+                onClick={async () => {
+                  if (!confirm('Kampanyayı iptal etmek istediğinizden emin misiniz? Bu işlem geri alınamaz.')) return
+                  await fetch(`${API}/api/voice/campaign/${activeCampaignId}/cancel`, { method: 'POST', headers: authH() })
+                  setActiveCampaignId(null)
+                  setCampaignRunning(false)
+                  loadAll()
+                }}
+                className="px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                ✕ İptal
+              </button>
+            </div>
           </div>
           <div className="w-full rounded-full h-2" style={{ background: '#dbeafe' }}>
             <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${campaignProgress.percent}%`, background: 'linear-gradient(90deg,#3b82f6,#06b6d4)' }}/>
