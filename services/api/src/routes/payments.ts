@@ -46,41 +46,94 @@ router.get('/plans', async (_req: any, res: any) => {
     if (data?.value) adminCfg = data.value;
   } catch (_e) { /* use defaults */ }
 
-  // Build admin plan lookup by id
+  // Build admin plan lookup + ordered id list
   const adminPlans: Record<string, any> = {};
+  const adminPlanOrder: string[] = [];
   if (Array.isArray(adminCfg?.plans)) {
     for (const p of adminCfg.plans) {
-      if (p.id) adminPlans[p.id] = p;
+      if (p.id) { adminPlans[p.id] = p; adminPlanOrder.push(p.id); }
     }
   }
 
-  const subscriptionPlans = Object.values(PLANS)
-    .filter((p: any) => p.id !== 'enterprise')
-    .map((p: any) => {
-      const adm = adminPlans[p.id];
-      const features = adm?.features
-        ? adm.features.filter((f: any) => f.inc !== false).map((f: any) => f.text)
-        : p.features;
-      // Prices always come from plan-limits.ts — admin DB cannot override them
-      const priceMonthly   = p.priceMonthly;
-      const priceAnnual    = p.priceAnnual;
-      const monthlyCredits = p.monthlyCredits;
-      return {
-        id:             p.id,
-        name:           p.name,
-        nameLocal:      adm?.name      || p.nameLocal,
-        desc:           adm?.desc      || '',
-        monthlyCredits,
-        rolloverMonths: p.rolloverMonths,
-        priceMonthly,
-        priceAnnual,
-        color:          p.color,
-        popular:        adm ? (adm.popular ?? p.popular) : p.popular,
-        features,
-        ctaText:        adm?.cta_text  || '',
-        ctaUrl:         adm?.cta_url   || '',
-      };
-    });
+  const systemPlanIds = new Set(Object.keys(PLANS));
+
+  // Build a plan entry merging system plan + admin overrides (admin price wins)
+  function buildSystemPlan(p: any): any {
+    const adm = adminPlans[p.id];
+    const features = adm?.features
+      ? adm.features.filter((f: any) => f.inc !== false).map((f: any) => f.text)
+      : p.features;
+    const priceMonthly = (adm?.monthly_price != null && adm.monthly_price > 0)
+      ? adm.monthly_price * 100 : p.priceMonthly;
+    const priceAnnual  = (adm?.annual_price  != null && adm.annual_price  > 0)
+      ? adm.annual_price  * 100 : p.priceAnnual;
+    return {
+      id:             p.id,
+      name:           p.name,
+      nameLocal:      adm?.name     || p.nameLocal,
+      desc:           adm?.desc     || '',
+      monthlyCredits: p.monthlyCredits,
+      rolloverMonths: p.rolloverMonths,
+      priceMonthly,
+      priceAnnual,
+      color:          p.color,
+      popular:        adm ? (adm.popular ?? p.popular) : p.popular,
+      features,
+      ctaText:        adm?.cta_text || '',
+      ctaUrl:         adm?.cta_url  || '',
+    };
+  }
+
+  // Build a plan entry for admin-only plans (not in plan-limits.ts)
+  function buildAdminOnlyPlan(adm: any): any {
+    const credits = parseInt(String(adm.credits || '0').replace(/[^0-9]/g, '')) || 0;
+    const features = Array.isArray(adm.features)
+      ? adm.features.filter((f: any) => f.inc !== false).map((f: any) => f.text)
+      : [];
+    return {
+      id:             adm.id,
+      name:           adm.name || 'Plan',
+      nameLocal:      adm.name || 'Plan',
+      desc:           adm.desc || '',
+      monthlyCredits: credits,
+      rolloverMonths: 0,
+      priceMonthly:   (adm.monthly_price || 0) * 100,
+      priceAnnual:    (adm.annual_price  || 0) * 100,
+      color:          '#64748b',
+      popular:        adm.popular || false,
+      features,
+      ctaText:        adm.cta_text || 'Başla',
+      ctaUrl:         adm.cta_url  || '/register',
+      adminOnly:      true,
+    };
+  }
+
+  const includedIds = new Set<string>();
+  const subscriptionPlans: any[] = [];
+
+  if (adminPlanOrder.length > 0) {
+    // Follow admin ordering; include both system and admin-only plans
+    for (const id of adminPlanOrder) {
+      if (id === 'enterprise') continue;
+      if (systemPlanIds.has(id)) {
+        subscriptionPlans.push(buildSystemPlan((PLANS as any)[id]));
+      } else {
+        subscriptionPlans.push(buildAdminOnlyPlan(adminPlans[id]));
+      }
+      includedIds.add(id);
+    }
+    // Append system plans not mentioned in admin config
+    for (const p of Object.values(PLANS) as any[]) {
+      if (p.id === 'enterprise' || includedIds.has(p.id)) continue;
+      subscriptionPlans.push(buildSystemPlan(p));
+    }
+  } else {
+    // No admin config — use system plan order
+    for (const p of Object.values(PLANS) as any[]) {
+      if (p.id === 'enterprise') continue;
+      subscriptionPlans.push(buildSystemPlan(p));
+    }
+  }
 
   const topupPackages = Object.entries(TOPUP_PACKAGES).map(([id, pkg]: [string, any]) => ({
     id,
@@ -179,7 +232,20 @@ router.post('/subscribe', async (req: any, res: any) => {
       return res.status(400).json({ error: 'Geçersiz plan' });
     }
 
-    const price = billing === 'annual' ? plan.priceAnnual : plan.priceMonthly;
+    // Admin may override prices — use admin price for Stripe session
+    let priceMonthly = plan.priceMonthly;
+    let priceAnnual  = plan.priceAnnual;
+    try {
+      const { data: cfgRow } = await supabase
+        .from('site_settings').select('value').eq('key', 'landing_home').single();
+      if (cfgRow?.value?.plans) {
+        const adm = cfgRow.value.plans.find((p: any) => p.id === planId);
+        if (adm?.monthly_price > 0) priceMonthly = adm.monthly_price * 100;
+        if (adm?.annual_price  > 0) priceAnnual  = adm.annual_price  * 100;
+      }
+    } catch (_e) {}
+
+    const price = billing === 'annual' ? priceAnnual : priceMonthly;
 
     // Test modu
     if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.startsWith('sk_test_placeholder')) {
