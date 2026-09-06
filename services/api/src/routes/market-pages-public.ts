@@ -9,27 +9,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// Plan prices from code — always authoritative over DB config
-const LANDING_PLAN_OVERRIDES = [
-  {
-    id: 'starter',
-    monthly_price: Math.round(PLANS.starter.priceMonthly / 100),
-    annual_price:  Math.round(PLANS.starter.priceAnnual  / 100),
-    credits:       PLANS.starter.monthlyCredits.toLocaleString('en-US'),
-  },
-  {
-    id: 'growth',
-    monthly_price: Math.round(PLANS.growth.priceMonthly / 100),
-    annual_price:  Math.round(PLANS.growth.priceAnnual  / 100),
-    credits:       PLANS.growth.monthlyCredits.toLocaleString('en-US'),
-  },
-  {
-    id: 'scale',
-    monthly_price: Math.round(PLANS.scale.priceMonthly / 100),
-    annual_price:  Math.round(PLANS.scale.priceAnnual  / 100),
-    credits:       PLANS.scale.monthlyCredits.toLocaleString('en-US'),
-  },
-];
+// Fallback prices from plan-limits.ts — used only when admin has NOT set a custom price
+const PLAN_PRICE_FALLBACK: Record<string, { monthly_price: number; annual_price: number; credits: string }> = {
+  starter: { monthly_price: Math.round(PLANS.starter.priceMonthly / 100), annual_price: Math.round(PLANS.starter.priceAnnual / 100), credits: PLANS.starter.monthlyCredits.toLocaleString('en-US') },
+  growth:  { monthly_price: Math.round(PLANS.growth.priceMonthly  / 100), annual_price: Math.round(PLANS.growth.priceAnnual  / 100), credits: PLANS.growth.monthlyCredits.toLocaleString('en-US')  },
+  scale:   { monthly_price: Math.round(PLANS.scale.priceMonthly   / 100), annual_price: Math.round(PLANS.scale.priceAnnual   / 100), credits: PLANS.scale.monthlyCredits.toLocaleString('en-US')   },
+};
 
 // GET /api/market-pages/public/:slug — No auth required
 // Called by Next.js ISR to render the public market page
@@ -47,14 +32,19 @@ router.get('/:slug', async (req: any, res: any) => {
 
       const cfg = data?.value && Object.keys(data.value).length > 0 ? { ...data.value } : {};
 
-      // Always override plan prices from plan-limits.ts (source of truth)
+      // Normalize plan prices: admin price wins; fall back to plan-limits.ts only if admin has not set one
       if (Array.isArray(cfg.plans)) {
-        cfg.plans = cfg.plans.map((p: any, i: number) => ({
-          ...p,
-          ...(LANDING_PLAN_OVERRIDES[i] || {}),
-        }));
+        cfg.plans = cfg.plans.map((p: any) => {
+          const fb = PLAN_PRICE_FALLBACK[p.id];
+          return {
+            ...p,
+            monthly_price: (p.monthly_price > 0) ? p.monthly_price : (fb?.monthly_price ?? 0),
+            annual_price:  (p.annual_price  > 0) ? p.annual_price  : (fb?.annual_price  ?? 0),
+            credits:       p.credits || fb?.credits || '0',
+          };
+        });
       } else {
-        cfg.plans = LANDING_PLAN_OVERRIDES;
+        cfg.plans = Object.entries(PLAN_PRICE_FALLBACK).map(([id, v]) => ({ id, ...v }));
       }
 
       // Always normalize trial period to 3 days (source of truth is code)
