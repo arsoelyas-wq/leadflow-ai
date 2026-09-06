@@ -226,24 +226,45 @@ router.post('/subscribe', async (req: any, res: any) => {
   try {
     const { planId, billing = 'monthly' } = req.body;
     const userId = req.userId;
-    const plan = PLANS[planId];
 
-    if (!plan || planId === 'trial' || planId === 'enterprise') {
+    if (planId === 'trial' || planId === 'enterprise') {
       return res.status(400).json({ error: 'Geçersiz plan' });
     }
 
-    // Admin may override prices — use admin price for Stripe session
-    let priceMonthly = plan.priceMonthly;
-    let priceAnnual  = plan.priceAnnual;
+    const plan = PLANS[planId] || null;
+
+    // Read admin config — needed for price overrides and admin-only plans
+    let adminPlanCfg: any = null;
     try {
       const { data: cfgRow } = await supabase
         .from('site_settings').select('value').eq('key', 'landing_home').single();
       if (cfgRow?.value?.plans) {
-        const adm = cfgRow.value.plans.find((p: any) => p.id === planId);
-        if (adm?.monthly_price > 0) priceMonthly = adm.monthly_price * 100;
-        if (adm?.annual_price  > 0) priceAnnual  = adm.annual_price  * 100;
+        adminPlanCfg = cfgRow.value.plans.find((p: any) => p.id === planId) || null;
       }
     } catch (_e) {}
+
+    if (!plan && !adminPlanCfg) {
+      return res.status(400).json({ error: 'Geçersiz plan' });
+    }
+
+    // Determine prices — admin wins over plan-limits.ts
+    let priceMonthly: number;
+    let priceAnnual: number;
+    let planName: string;
+    let monthlyCredits: number;
+
+    if (plan) {
+      priceMonthly = (adminPlanCfg?.monthly_price > 0) ? adminPlanCfg.monthly_price * 100 : plan.priceMonthly;
+      priceAnnual  = (adminPlanCfg?.annual_price  > 0) ? adminPlanCfg.annual_price  * 100 : plan.priceAnnual;
+      planName     = adminPlanCfg?.name || plan.name;
+      monthlyCredits = plan.monthlyCredits;
+    } else {
+      // Admin-only plan
+      priceMonthly = (adminPlanCfg.monthly_price || 0) * 100;
+      priceAnnual  = (adminPlanCfg.annual_price  || 0) * 100;
+      planName     = adminPlanCfg.name || planId;
+      monthlyCredits = parseInt(String(adminPlanCfg.credits || '0').replace(/[^0-9]/g, '')) || 0;
+    }
 
     const price = billing === 'annual' ? priceAnnual : priceMonthly;
 
@@ -253,7 +274,7 @@ router.post('/subscribe', async (req: any, res: any) => {
 
       await supabase.from('users').update({
         plan_type:             planId,
-        credits_total:         plan.monthlyCredits,
+        credits_total:         monthlyCredits,
         credits_used:          0,
         credits_rollover:      0,
         subscription_renews_at: renewsAt,
@@ -262,9 +283,9 @@ router.post('/subscribe', async (req: any, res: any) => {
       await supabase.from('credit_transactions').insert({
         user_id:       userId,
         action:        'subscription',
-        amount:        plan.monthlyCredits,
-        description:   `${plan.name} planı aktif — ${plan.monthlyCredits.toLocaleString()} kredi yüklendi`,
-        balance_after: plan.monthlyCredits,
+        amount:        monthlyCredits,
+        description:   `${planName} planı aktif — ${monthlyCredits.toLocaleString()} kredi yüklendi`,
+        balance_after: monthlyCredits,
       });
 
       return res.json({
@@ -301,8 +322,8 @@ router.post('/subscribe', async (req: any, res: any) => {
           currency:   'usd',
           recurring:  { interval: billing === 'annual' ? 'year' : 'month' },
           product_data: {
-            name:        `Sovlo ${plan.name} Plan`,
-            description: `${plan.monthlyCredits.toLocaleString('en-US')} credits/month`,
+            name:        `Sovlo ${planName} Plan`,
+            description: `${monthlyCredits.toLocaleString('en-US')} credits/month`,
           },
           unit_amount: billing === 'annual' ? price * 12 : price,
         },

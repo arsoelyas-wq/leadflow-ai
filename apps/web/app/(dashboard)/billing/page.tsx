@@ -398,37 +398,20 @@ export default function BillingPage() {
                     </div>
 
                     {plan.id !== 'trial' && (
-                      plan.adminOnly && plan.ctaUrl ? (
-                        <a
-                          href={plan.ctaUrl}
-                          style={{
-                            width: '100%', padding: '11px', borderRadius: 12, border: 'none', fontFamily: 'inherit',
-                            background: plan.popular ? `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)` : `${plan.color}15`,
-                            color: plan.popular ? '#fff' : plan.color,
-                            fontSize: 13, fontWeight: 700,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                            textDecoration: 'none',
-                            boxShadow: plan.popular ? `0 4px 14px ${plan.color}35` : 'none',
-                          }}>
-                          <ChevronRight size={13} />
-                          {plan.ctaText || `${plan.nameLocal} Seç`}
-                        </a>
-                      ) : (
-                        <button
-                          onClick={() => handleSubscribe(plan.id)}
-                          disabled={isLoading || isCurrent}
-                          style={{
-                            width: '100%', padding: '11px', borderRadius: 12, border: 'none', fontFamily: 'inherit',
-                            background: isCurrent ? '#f1f5f9' : plan.popular ? `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)` : `${plan.color}15`,
-                            color: isCurrent ? '#94a3b8' : plan.popular ? '#fff' : plan.color,
-                            fontSize: 13, fontWeight: 700, cursor: isLoading || isCurrent ? 'not-allowed' : 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                            boxShadow: plan.popular && !isCurrent ? `0 4px 14px ${plan.color}35` : 'none',
-                          }}>
-                          {isLoading ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <ChevronRight size={13} />}
-                          {isCurrent ? 'Mevcut Plan' : isLoading ? 'Yönlendiriliyor...' : (plan.ctaText || `${plan.nameLocal} Seç`)}
-                        </button>
-                      )
+                      <button
+                        onClick={() => handleSubscribe(plan.id)}
+                        disabled={isLoading || isCurrent}
+                        style={{
+                          width: '100%', padding: '11px', borderRadius: 12, border: 'none', fontFamily: 'inherit',
+                          background: isCurrent ? '#f1f5f9' : plan.popular ? `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)` : `${plan.color}15`,
+                          color: isCurrent ? '#94a3b8' : plan.popular ? '#fff' : plan.color,
+                          fontSize: 13, fontWeight: 700, cursor: isLoading || isCurrent ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                          boxShadow: plan.popular && !isCurrent ? `0 4px 14px ${plan.color}35` : 'none',
+                        }}>
+                        {isLoading ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <ChevronRight size={13} />}
+                        {isCurrent ? 'Mevcut Plan' : isLoading ? 'Yönlendiriliyor...' : (plan.ctaText || `${plan.nameLocal} Seç`)}
+                      </button>
                     )}
                   </div>
                 </div>
