@@ -85,4 +85,30 @@ export const adminApi = {
 
   // Audit
   auditLog: () => adminRequest('/audit'),
+
+  // Generic direct requests — full path, admin auth, no /api/admin prefix
+  get: async (fullPath: string) => {
+    const token = getAdminToken()
+    const res = await fetch(`${API_URL}${fullPath}`, {
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Hata oluştu' }))
+      throw new Error(err.error || `API hatası (${res.status})`)
+    }
+    return res.json()
+  },
+  patch: async (fullPath: string, data: object) => {
+    const token = getAdminToken()
+    const res = await fetch(`${API_URL}${fullPath}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(data),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Hata oluştu' }))
+      throw new Error(err.error || `API hatası (${res.status})`)
+    }
+    return res.json()
+  },
 }

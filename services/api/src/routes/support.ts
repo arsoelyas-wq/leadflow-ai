@@ -322,4 +322,165 @@ router.patch('/conversations/:id', async (req: any, res: any) => {
   }
 });
 
+// ─── TICKET ENDPOINTS (authenticated users) ───────────────────────────────────
+
+// POST /api/support/tickets — create a formal support ticket
+router.post('/tickets', async (req: any, res: any) => {
+  try {
+    const { category, title, description, priority, attachments, conversationId } = req.body;
+    if (!title?.trim() || !description?.trim()) {
+      return res.status(400).json({ error: 'Başlık ve açıklama zorunlu' });
+    }
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('email, name')
+      .eq('id', req.userId)
+      .single();
+
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .insert({
+        user_id: req.userId,
+        user_email: user?.email || null,
+        user_name: user?.name || null,
+        conversation_id: conversationId || null,
+        category: category || 'general',
+        title: title.trim().slice(0, 200),
+        description: description.trim(),
+        priority: priority || 'normal',
+        status: 'open',
+        attachments: Array.isArray(attachments) ? attachments.slice(0, 3) : [],
+      })
+      .select('id, ticket_number, category, title, priority, status, created_at')
+      .single();
+
+    if (error) throw error;
+    res.json({ ticket: data });
+  } catch (err: any) {
+    console.error('Support create ticket error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/support/tickets — list user's tickets (no attachments for performance)
+router.get('/tickets', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('id, ticket_number, category, title, priority, status, admin_reply, admin_name, admin_replied_at, created_at, updated_at')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+    res.json({ tickets: data || [] });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/support/tickets/:id — full ticket detail including attachments
+router.get('/tickets/:id', async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('user_id', req.userId)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Talep bulunamadı' });
+    res.json({ ticket: data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── ADMIN TICKET ENDPOINTS ───────────────────────────────────────────────────
+
+const { adminAuthMiddleware } = require('../middleware/adminAuth');
+
+// GET /api/support/admin/tickets
+router.get('/admin/tickets', adminAuthMiddleware, async (req: any, res: any) => {
+  try {
+    const { status, limit = 50, offset = 0 } = req.query;
+
+    let query = supabase
+      .from('support_tickets')
+      .select('id, ticket_number, user_email, user_name, category, title, priority, status, admin_reply, admin_name, created_at, updated_at')
+      .order('created_at', { ascending: false })
+      .range(Number(offset), Number(offset) + Number(limit) - 1);
+
+    if (status && status !== 'all') query = query.eq('status', status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Status counts for badges
+    const { data: allRows } = await supabase
+      .from('support_tickets')
+      .select('status');
+
+    const statusCounts = (allRows || []).reduce((acc: any, r: any) => {
+      acc[r.status] = (acc[r.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    res.json({ tickets: data || [], statusCounts });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/support/admin/tickets/:id — full detail with attachments
+router.get('/admin/tickets/:id', adminAuthMiddleware, async (req: any, res: any) => {
+  try {
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: 'Bulunamadı' });
+    res.json({ ticket: data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/support/admin/tickets/:id — update status and/or send admin reply
+router.patch('/admin/tickets/:id', adminAuthMiddleware, async (req: any, res: any) => {
+  try {
+    const { status, admin_reply } = req.body;
+    const updateData: any = {};
+
+    if (status) updateData.status = status;
+    if (admin_reply !== undefined && admin_reply !== null) {
+      updateData.admin_reply = admin_reply;
+      updateData.admin_name = req.adminEmail;
+      updateData.admin_replied_at = new Date().toISOString();
+    }
+    if (status === 'resolved' || status === 'closed') {
+      updateData.resolved_at = new Date().toISOString();
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'Güncellenecek alan yok' });
+    }
+
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select('id, ticket_number, status, admin_reply, admin_name, admin_replied_at, updated_at')
+      .single();
+
+    if (error) throw error;
+    res.json({ ticket: data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
