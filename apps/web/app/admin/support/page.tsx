@@ -87,7 +87,7 @@ export default function AdminSupportPage() {
     setLoadingTickets(true)
     try {
       const params = filterStatus !== 'all' ? `?status=${filterStatus}` : ''
-      const d: any = await adminApi.get(`/api/support/admin/tickets${params}`)
+      const d: any = await adminApi.get(`/api/admin/support-tickets${params}`)
       setTickets(d.tickets || [])
       setStatusCounts(d.statusCounts || {})
     } catch {}
@@ -97,7 +97,7 @@ export default function AdminSupportPage() {
   async function loadTicketDetail(id: string) {
     setLoadingDetail(true); setReplyText(''); setReplyResult(''); setNewStatus('')
     try {
-      const d: any = await adminApi.get(`/api/support/admin/tickets/${id}`)
+      const d: any = await adminApi.get(`/api/admin/support-tickets/${id}`)
       setSelectedTicket(d.ticket)
       setNewStatus(d.ticket.status)
     } catch {}
@@ -110,7 +110,7 @@ export default function AdminSupportPage() {
     try {
       const body: any = { status: newStatus }
       if (replyText.trim()) body.admin_reply = replyText.trim()
-      const d: any = await adminApi.patch(`/api/support/admin/tickets/${selectedTicket.id}`, body)
+      const d: any = await adminApi.patch(`/api/admin/support-tickets/${selectedTicket.id}`, body)
       setSelectedTicket(prev => prev ? { ...prev, ...d.ticket, admin_reply: d.ticket.admin_reply || prev.admin_reply } : null)
       setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: d.ticket.status, admin_reply: d.ticket.admin_reply || t.admin_reply } : t))
       setReplyResult('✅ Kaydedildi')

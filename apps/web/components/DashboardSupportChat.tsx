@@ -142,10 +142,10 @@ export default function DashboardSupportChat({ user, onClose }: Props) {
       .finally(() => setLoadingConvs(false))
   }, [])
 
-  // Load messages
+  // Load messages + reset escalation banner when conversation changes
   useEffect(() => {
     if (!activeConvId) return
-    setLoadingMsgs(true); setMessages([])
+    setLoadingMsgs(true); setMessages([]); setHasEscalation(false)
     api.get(`/api/support/conversations/${activeConvId}/messages`)
       .then((d: any) => setMessages(d.messages || []))
       .catch(() => {})
@@ -195,14 +195,26 @@ export default function DashboardSupportChat({ user, onClose }: Props) {
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim()
     if (!trimmed || sending) return
-    if (!activeConvId) { await createConversation(); return }
+
+    // Auto-create conversation if none exists, and keep the ID locally
+    let convId = activeConvId
+    if (!convId) {
+      try {
+        const d: any = await api.post('/api/support/conversations', { title: 'Yeni Destek Talebi' })
+        const conv = d.conversation as Conversation
+        convId = conv.id
+        setConversations(prev => [conv, ...prev])
+        setActiveConvId(conv.id)
+        setShowConvList(false)
+      } catch { return }
+    }
 
     setInput(''); setSending(true)
     const optId = `opt-${Date.now()}`
     setMessages(prev => [...prev, { id: optId, role: 'user', content: trimmed, quick_replies: [], created_at: new Date().toISOString() }])
 
     try {
-      const d: any = await api.post(`/api/support/conversations/${activeConvId}/messages`, {
+      const d: any = await api.post(`/api/support/conversations/${convId}/messages`, {
         content: trimmed, pageContext: 'Dashboard',
         userProfile: { name: user.name, planType: user.planType, company: user.company, sector: user.sector },
       })
@@ -213,7 +225,7 @@ export default function DashboardSupportChat({ user, onClose }: Props) {
       if (d.needsEscalation) setHasEscalation(true)
       if (d.aiMessage?.content) {
         setConversations(prev => prev.map(c =>
-          c.id === activeConvId ? { ...c, updated_at: new Date().toISOString(), message_count: c.message_count + 2 } : c
+          c.id === convId ? { ...c, updated_at: new Date().toISOString(), message_count: c.message_count + 2 } : c
         ))
       }
     } catch {
@@ -222,7 +234,7 @@ export default function DashboardSupportChat({ user, onClose }: Props) {
       setSending(false)
       setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [sending, activeConvId, user, createConversation])
+  }, [sending, activeConvId, user])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) }

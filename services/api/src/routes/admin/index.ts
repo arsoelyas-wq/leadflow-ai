@@ -48,6 +48,7 @@ function clearAttempts(ip: string): void {
 }
 
 router.use('/avatar-library', require('./avatar-library'));
+router.use('/support-tickets', require('./support-tickets'));
 
 // ── Helper: audit log — delegates to central security lib ─────────────────────
 const { auditLog: _auditLog, securityEvent } = require('../../lib/security');
